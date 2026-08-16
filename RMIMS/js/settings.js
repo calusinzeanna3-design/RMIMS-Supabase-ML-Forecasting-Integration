@@ -115,6 +115,8 @@ onAuthStateChanged(auth, async (user) => {
             status: data.status || "inactive"
         };
 
+        document.body.classList.add("auth-verified");
+
         profileBtn.querySelector(".profile-text").textContent = `${currentUser.fullName} ▼`;
         profileBtn.querySelector(".avatar").textContent = initials(currentUser.fullName);
 

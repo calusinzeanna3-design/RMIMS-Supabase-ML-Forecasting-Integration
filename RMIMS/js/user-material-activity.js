@@ -48,6 +48,7 @@ onAuthStateChanged(auth, async(user)=>{
 
     currentUser = { uid: user.uid, fullName: data.fullName || "Staff" };
     profileBtn.textContent = `${data.fullName} ▼`;
+    document.body.classList.add("auth-verified");
 
 });
 

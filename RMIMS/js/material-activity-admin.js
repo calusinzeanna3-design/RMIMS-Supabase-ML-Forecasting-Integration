@@ -32,6 +32,7 @@ onAuthStateChanged(auth, async (user) => {
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
     currentUser = { uid: user.uid, fullName: profile.fullName };
+    document.body.classList.add("auth-verified");
     document.getElementById("profileBtn").textContent = `${profile.fullName} ▼`;
 
     initPage();
@@ -61,9 +62,13 @@ const toastStack = document.getElementById("toastStack");
    ========================================================== */
 
 function escapeHtml(str) {
-    const d = document.createElement("div");
-    d.textContent = str ?? "";
-    return d.innerHTML;
+    return String(str ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[c]));
 }
 
 function showToast(message, type = "success") {

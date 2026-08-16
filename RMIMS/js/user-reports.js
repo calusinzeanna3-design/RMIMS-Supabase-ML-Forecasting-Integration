@@ -94,6 +94,7 @@ async function verifyUser() {
                     document.createTextNode(data.fullName || "User")
                 );
 
+                document.body.classList.add("auth-verified");
                 resolve(true);
             } catch (error) {
                 console.error("User verification failed:", error);

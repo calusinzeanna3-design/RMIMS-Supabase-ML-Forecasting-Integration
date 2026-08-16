@@ -106,11 +106,19 @@ async function loadMaterials() {
 }
 
 async function loadHistoricalConsumption(material) {
-  const { data, error } = await supabase
+  if (!material) return [];
+
+  let queryBuilder = supabase
     .from("usage_records")
-    .select("material_id, material_name, used_quantity, unit, usage_date, created_at")
-    .or(`material_id.eq.${material.id},material_name.ilike.${material.material_name}`)
-    .order("usage_date", { ascending: true });
+    .select("material_id, material_name, used_quantity, unit, usage_date, created_at");
+
+  if (material.id) {
+    queryBuilder = queryBuilder.eq("material_id", String(material.id));
+  } else if (material.material_name) {
+    queryBuilder = queryBuilder.eq("material_name", String(material.material_name));
+  }
+
+  const { data, error } = await queryBuilder.order("usage_date", { ascending: true });
 
   if (error) throw error;
 
@@ -408,6 +416,7 @@ onAuthStateChanged(auth, async (user) => {
       window.location.href = "../user/dashboard.html";
       return;
     }
+    document.body.classList.add("auth-verified");
     await init();
   } catch (error) {
     console.error("Forecasting role check failed:", error);

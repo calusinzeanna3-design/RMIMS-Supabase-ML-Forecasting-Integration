@@ -179,7 +179,32 @@
   notifBtn?.addEventListener('click',()=>{const open=notif.hidden;closeMenus(notif);notif.hidden=!open;});
   helpBtn?.addEventListener('click',()=>{const open=help.hidden;closeMenus(help);help.hidden=!open;});
   document.addEventListener('click',(e)=>{if(!e.target.closest('.rmsme-header-actions')) closeMenus(null);});
-  document.getElementById('rmsmeLogout')?.addEventListener('click',()=>{ localStorage.removeItem('rmsmeNotificationRead'); location.href='../login.html'; });
+
+  function escapeHtml(str){
+    return String(str ?? "").replace(/[&<>"']/g, c=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  document.getElementById('rmsmeLogout')?.addEventListener('click', async () => {
+    try {
+      const { supabase } = await import("../supabase/supabase-config.js");
+      if (supabase && supabase.auth) {
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.warn("Sign out exception:", e);
+    }
+    const cachedKeys = [
+      'rmsmeNotifications', 'rmsmeNotificationRead', 'rmsmeCurrentUser',
+      'currentUser', 'rmimsCurrentUser', 'userProfile', 'user'
+    ];
+    cachedKeys.forEach(k => {
+      try { localStorage.removeItem(k); } catch (err) {}
+    });
+    try { sessionStorage.clear(); } catch (err) {}
+    location.href = '../login.html';
+  });
 
   // Notification state is persistent: reading removes highlight but keeps history.
   const notificationsKey='rmsmeNotifications';
@@ -197,7 +222,7 @@
     data.slice(0,8).forEach((n,i)=>{
       const id=String(n.id||`${n.type||'notice'}-${n.createdAt||i}`), isRead=read.has(id);
       const item=document.createElement('button'); item.type='button'; item.className='rmsme-notification-item '+(isRead?'read':'unread');
-      const notifIcon=n.type==='warning'?'<svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v4M12 17h.01"/></svg>':n.type==='success'?'<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>':'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'; item.innerHTML=`<span class="rmsme-notif-icon">${notifIcon}</span><span><strong>${String(n.title||'Notification')}</strong><small>${String(n.message||'')}</small><em>${String(n.time||'Just now')}</em></span>${isRead?'':'<b>NEW</b>'}`;
+      const notifIcon=n.type==='warning'?'<svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v4M12 17h.01"/></svg>':n.type==='success'?'<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>':'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'; item.innerHTML=`<span class="rmsme-notif-icon">${notifIcon}</span><span><strong>${escapeHtml(n.title||'Notification')}</strong><small>${escapeHtml(n.message||'')}</small><em>${escapeHtml(n.time||'Just now')}</em></span>${isRead?'':'<b>NEW</b>'}`;
       item.addEventListener('click',()=>{read.add(id);saveRead(read);renderNotifications();}); list.appendChild(item);
     });
     const unread=data.filter(n=>!read.has(String(n.id||`${n.type||'notice'}-${n.createdAt||0}`))).length;

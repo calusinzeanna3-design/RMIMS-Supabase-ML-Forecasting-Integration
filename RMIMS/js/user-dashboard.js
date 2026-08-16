@@ -82,6 +82,7 @@ onAuthStateChanged(auth, async(user)=>{
         `${greetingWord()}, ${firstName}`;
     }
 
+    document.body.classList.add("auth-verified");
     loadDashboard();
 
 });

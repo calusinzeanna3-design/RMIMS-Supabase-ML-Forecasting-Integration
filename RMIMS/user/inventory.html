@@ -4,6 +4,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:5000 http://localhost:5000; frame-ancestors 'none'; base-uri 'self';">
 
 <title>Inventory Overview | RMSME</title>
 <link rel="icon" href="../assets/favicon-64.png" type="image/png">
@@ -15,7 +16,7 @@
 <link rel="stylesheet" href="../css/rmims-unified.css">
 </head>
 
-<body>
+<body class="protected-route">
 
 <div class="container">
 

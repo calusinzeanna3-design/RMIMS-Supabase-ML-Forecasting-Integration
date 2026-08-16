@@ -342,5 +342,6 @@ onAuthStateChanged(auth,async user=>{
         const profile=await getDoc(doc(db,"users",user.uid));
         if(profile.exists()&&profile.data().role!=="admin"){window.location.href="../user/inventory.html";return;}
     }catch(e){console.warn("Role check failed",e);}
+    document.body.classList.add("auth-verified");
     await loadData();
 });

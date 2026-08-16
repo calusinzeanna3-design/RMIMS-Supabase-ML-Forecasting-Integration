@@ -45,6 +45,7 @@ onAuthStateChanged(auth, async (user) => {
     document.querySelectorAll("[data-shell-email]").forEach(el => el.textContent = profile.email || user.email || "");
     document.querySelectorAll("[data-shell-avatar]").forEach(el => el.textContent = initials(profile.fullName));
 
+    document.body.classList.add("auth-verified");
     init();
 });
 
@@ -67,9 +68,13 @@ const tableState = { search: "", status: "all", role: "all", page: 1, pageSize: 
    ========================================================== */
 
 function escapeHtml(str) {
-    const d = document.createElement("div");
-    d.textContent = str ?? "";
-    return d.innerHTML;
+    return String(str ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[c]));
 }
 
 function isValidEmail(email) {
