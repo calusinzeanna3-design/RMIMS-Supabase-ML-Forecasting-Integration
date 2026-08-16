@@ -19,19 +19,6 @@
 html,body{background:var(--rm-bg)!important;color:var(--rm-ink)!important;}
 body{font-family:'Inter',sans-serif!important;}
 
-/* Auth Cloaking Shield: prevents Flash of Unauthenticated Content (FOUC) */
-body.protected-route:not(.auth-verified) .container {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
-body.protected-route.auth-verified .container {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 0.18s ease-in-out;
-}
-
 /* Shared internal shell */
 .sidebar{
   background:linear-gradient(180deg,#0E3E22 0%,#14532D 58%,#103f25 100%)!important;

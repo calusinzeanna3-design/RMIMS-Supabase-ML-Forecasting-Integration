@@ -56,7 +56,6 @@ async function loadAccount(user) {
         }
 
         setAccountFields(data);
-        document.body.classList.add("auth-verified");
         setStatus("Account information loaded.", "success");
         return true;
     } catch (error) {

@@ -23,7 +23,6 @@ onAuthStateChanged(auth, async (user) => {
     if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
-    document.body.classList.add("auth-verified");
     document.getElementById("profileBtn").querySelector(".profile-text").textContent = profile.fullName;
 
     init();
@@ -109,13 +108,9 @@ const INFO_TEXT = {
    ========================================================== */
 
 function escapeHtml(str) {
-    return String(str ?? "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    }[c]));
+    const d = document.createElement("div");
+    d.textContent = str ?? "";
+    return d.innerHTML;
 }
 
 function statusPill(material) {

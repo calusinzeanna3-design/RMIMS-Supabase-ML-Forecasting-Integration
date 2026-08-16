@@ -2518,8 +2518,6 @@ onAuthStateChanged(
 
     wireModals();
 
-    document.body.classList.add("auth-verified");
-
     await loadSugarForecastFromML();
 
     await loadDashboard();

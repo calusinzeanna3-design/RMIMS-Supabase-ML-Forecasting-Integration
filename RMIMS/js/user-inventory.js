@@ -46,7 +46,6 @@ onAuthStateChanged(auth, async(user)=>{
 
     profileBtn.textContent = data.fullName || "Staff";
 
-    document.body.classList.add("auth-verified");
     loadInventory();
 
 });

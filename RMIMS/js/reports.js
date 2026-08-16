@@ -44,7 +44,6 @@ onAuthStateChanged(auth, async (user) => {
     if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
-    document.body.classList.add("auth-verified");
     document.getElementById("profileBtn").querySelector(".profile-text").textContent = `${profile.fullName} ▼`;
     document.getElementById("profileBtn").querySelector(".avatar").textContent = initials(profile.fullName);
 
@@ -83,13 +82,9 @@ const capacityTableState = { search: "", category: "all", page: 1, pageSize: 8 }
    ========================================================== */
 
 function escapeHtml(str) {
-    return String(str ?? "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    }[c]));
+    const d = document.createElement("div");
+    d.textContent = str ?? "";
+    return d.innerHTML;
 }
 
 function fmtQty(qty, unit) {
@@ -536,7 +531,6 @@ function buildMonthlyGoals(decisionRows) {
     goals.push("Review materials repeatedly limiting production capacity.");
     goals.push("Monitor materials repeatedly reaching low stock.");
     return [...new Set(goals)].slice(0, 5);
-}
 
 /* ==========================================================
    REPORT MODEL

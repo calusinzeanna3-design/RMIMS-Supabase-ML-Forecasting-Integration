@@ -55,13 +55,9 @@ function fmtBytes(bytes) {
 }
 
 function escapeHtml(str) {
-    return String(str ?? "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    }[c]));
+    const d = document.createElement("div");
+    d.textContent = str ?? "";
+    return d.innerHTML;
 }
 
 function slugTimestamp(d = new Date()) {
@@ -415,8 +411,8 @@ async function verifyRestoreFile() {
         const rows = manifest.categories.map(key => {
             const cat = CATEGORIES.find(c => c.key === key);
             const label = cat ? cat.label : key;
-            const count = Number(manifest.record_counts?.[key] ?? payload[key]?.length ?? 0);
-            return `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(Number.isFinite(count) ? count : 0)}</strong></div>`;
+            const count = manifest.record_counts?.[key] ?? payload[key]?.length ?? 0;
+            return `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${count}</strong></div>`;
         }).join("");
 
         resultEl.innerHTML = `
@@ -425,8 +421,8 @@ async function verifyRestoreFile() {
                 <div>
                     <strong>✓ Backup Verified</strong>
                     <div class="confirm-note" style="margin-top:8px;">
-                        Backup Date: ${escapeHtml(fmtDateTime(manifest.created_at))}<br>
-                        Backup Version: ${escapeHtml(manifest.version)}
+                        Backup Date: ${fmtDateTime(manifest.created_at)}<br>
+                        Backup Version: ${manifest.version}
                     </div>
                     <div class="detail-grid" style="margin-top:10px;">${rows}</div>
                 </div>

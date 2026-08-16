@@ -71,13 +71,9 @@ let resetInProgress = false;
 let onResetComplete = null; // callback to refresh Data Summary elsewhere
 
 function escapeHtml(str) {
-    return String(str ?? "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    }[c]));
+    const d = document.createElement("div");
+    d.textContent = str ?? "";
+    return d.innerHTML;
 }
 
 function showToast(message, type = "success") {

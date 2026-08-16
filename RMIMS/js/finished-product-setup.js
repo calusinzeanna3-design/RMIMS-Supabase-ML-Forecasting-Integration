@@ -123,21 +123,11 @@ function productInitials(name) {
     return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-function sanitizeImageUrl(url) {
-    if (!url) return "";
-    const clean = String(url).trim();
-    if (/^https?:\/\//i.test(clean) || /^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(clean)) {
-        return escapeHtml(clean);
-    }
-    return "";
-}
-
 function productImageHtml(p, large = false) {
     const cls = large ? "fp-product-image fp-product-image-large" : "fp-product-thumb";
     const name = p.productName || "Finished product";
-    const safeUrl = sanitizeImageUrl(p.imageUrl);
-    if (safeUrl) {
-        return `<img class="${cls}" src="${safeUrl}" alt="${escapeHtml(name)}">`;
+    if (p.imageUrl) {
+        return `<img class="${cls}" src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(name)}">`;
     }
     const avatarCls = large ? "fp-product-avatar fp-product-avatar-large" : "fp-product-avatar";
     return `<div class="${avatarCls}" aria-label="Product avatar for ${escapeHtml(name)}"><span>${escapeHtml(productInitials(name))}</span></div>`;
@@ -322,14 +312,13 @@ function resetImagePicker() {
 }
 
 function renderImagePreview(dataUrl) {
-    const safeUrl = sanitizeImageUrl(dataUrl);
-    if (!safeUrl) {
+    if (!dataUrl) {
         fpImagePreview.hidden = true;
         fpImagePreview.innerHTML = "";
         return;
     }
     fpImagePreview.hidden = false;
-    fpImagePreview.innerHTML = `<img src="${safeUrl}" alt="Product image preview">`;
+    fpImagePreview.innerHTML = `<img src="${escapeHtml(dataUrl)}" alt="Product image preview">`;
 }
 
 function openModal(mode, product) {
@@ -745,9 +734,9 @@ function renderImageMatchPreview() {
         return;
     }
     const html = groups.map(g => {
-        const img = sanitizeImageUrl(importImageMap.get(normalizeName(g.productName)));
+        const img = importImageMap.get(normalizeName(g.productName));
         return `<div class="fp-import-match ${img ? "matched" : "unmatched"}">
-            ${img ? `<img src="${img}" alt="${escapeHtml(g.productName)}">` : `<div class="fp-product-avatar fp-product-avatar-small" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></div>`}
+            ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(g.productName)}">` : `<div class="fp-product-avatar fp-product-avatar-small" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></div>`}
             <span>${escapeHtml(g.productName)}</span>
             <small>${img ? "Image matched" : "No matching image"}</small>
         </div>`;
@@ -823,9 +812,9 @@ fpImportPreviewBtn.addEventListener("click", () => {
 
     fpImportPreviewBody.innerHTML = preview.groups.flatMap(g => g.materials.map(m => {
         const existing = inventoryMatch(m.name);
-        const image = sanitizeImageUrl(importImageMap.get(normalizeName(g.productName)));
+        const image = importImageMap.get(normalizeName(g.productName));
         return `<tr>
-            <td>${image ? `<img class="fp-import-mini-image" src="${image}" alt="${escapeHtml(g.productName)}">` : `<span class="fp-product-avatar fp-product-avatar-mini" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></span>`}</td>
+            <td>${image ? `<img class="fp-import-mini-image" src="${escapeHtml(image)}" alt="${escapeHtml(g.productName)}">` : `<span class="fp-product-avatar fp-product-avatar-mini" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></span>`}</td>
             <td><strong>${escapeHtml(g.productName)}</strong></td>
             <td>${escapeHtml(g.category || "—")}</td>
             <td>${escapeHtml(m.name)}</td>

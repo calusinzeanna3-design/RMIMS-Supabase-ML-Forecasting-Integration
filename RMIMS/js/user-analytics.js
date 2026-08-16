@@ -72,13 +72,9 @@ const INFO_TEXT = {
 };
 
 function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    }[c]));
+    const d = document.createElement("div");
+    d.textContent = value ?? "";
+    return d.innerHTML;
 }
 
 function num(v) {
@@ -422,7 +418,6 @@ onAuthStateChanged(auth, async user=>{
         if(profile.role!=="user"){window.location.href="../admin/dashboard.html";return;}
         if(profile.status && profile.status!=="active"){window.location.href="../login.html";return;}
         currentUser={uid:user.uid,fullName:profile.fullName||"Staff"};
-        document.body.classList.add("auth-verified");
         init();
     }catch(e){console.error(e);showError("Your account could not be verified. Please sign in again.");}
 });

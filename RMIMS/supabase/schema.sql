@@ -135,69 +135,15 @@ create policy "users_select_own_or_admin"
     on public.users for select
     using (id = auth.uid() or public.is_active_admin());
 
--- Lock down INSERT: Non-admin callers can only insert with role='user' and status='inactive'
 drop policy if exists "users_insert_own" on public.users;
 create policy "users_insert_own"
     on public.users for insert
-    with check (
-        id = auth.uid()
-        and (
-            public.is_active_admin()
-            or (role = 'user' and status = 'inactive')
-        )
-    );
+    with check (id = auth.uid());
 
--- Lock down UPDATE: Admins can update any account; users can only update their own non-admin profile
 drop policy if exists "users_update_own_or_admin" on public.users;
 create policy "users_update_own_or_admin"
     on public.users for update
-    using (id = auth.uid() or public.is_active_admin())
-    with check (
-        public.is_active_admin()
-        or (id = auth.uid() and role = 'user')
-    );
-
--- Trigger: Guard against direct admin / active creation on self-registration
-create or replace function public.protect_user_insert()
-returns trigger
-language plpgsql
-security definer
-as $$
-begin
-    if auth.uid() is not null and not public.is_active_admin() then
-        if new.role <> 'user' or new.status <> 'inactive' then
-            raise exception 'Access Denied: Self-registered accounts must have role "user" and status "inactive".';
-        end if;
-    end if;
-    return new;
-end;
-$$;
-
-drop trigger if exists trg_protect_user_insert on public.users;
-create trigger trg_protect_user_insert
-    before insert on public.users
-    for each row execute function public.protect_user_insert();
-
--- Trigger: Guard against unauthorized role or status tampering on existing accounts
-create or replace function public.protect_user_roles_update()
-returns trigger
-language plpgsql
-security definer
-as $$
-begin
-    if (new.role is distinct from old.role or new.status is distinct from old.status) then
-        if auth.uid() is not null and not public.is_active_admin() then
-            raise exception 'Access Denied: Only active administrators can modify account role or status.';
-        end if;
-    end if;
-    return new;
-end;
-$$;
-
-drop trigger if exists trg_protect_user_roles_update on public.users;
-create trigger trg_protect_user_roles_update
-    before update on public.users
-    for each row execute function public.protect_user_roles_update();
+    using (id = auth.uid() or public.is_active_admin());
 
 -- ---- materials / usage_records / stock_receipts / operational data ----
 -- Any signed-in, active account (admin or user) may read and write.
