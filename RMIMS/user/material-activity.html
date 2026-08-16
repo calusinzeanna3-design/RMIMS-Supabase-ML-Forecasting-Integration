@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Material Activity | RMSME</title>
+<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+<link href="../css/user-material-activity.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="../css/rmims-unified.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="container">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+<div class="logo">
+<div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
+<div class="logo-text">
+                RMSME
+                <span>Raw Materials Inventory<br/>Management System</span>
+</div>
+</div>
+<div class="menu">
+<p class="section">MAIN</p>
+<a href="dashboard.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="14"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="14"></rect></svg>
+                Dashboard
+            </a>
+<p class="section">INVENTORY</p>
+<a href="inventory.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                Inventory Overview
+            </a>
+<a class="active" href="material-activity.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Material Activity
+            </a>
+<p class="section">ANALYTICS</p>
+<a href="analytics.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+                Consumption Analytics
+            </a>
+<p class="section">REPORTS</p>
+<a href="reports.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Reports
+            </a>
+<p class="section">ACCOUNT</p>
+<a href="settings.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"></circle><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path></svg>
+                Settings
+            </a>
+</div>
+</aside>
+<!-- CONTENT -->
+<main class="content">
+<header class="topbar">
+<div class="topbar-left">
+<button aria-label="Toggle menu" class="menu-toggle">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+</button>
+<nav class="breadcrumb">
+<span>Inventory</span>
+<span class="crumb-sep">›</span>
+<span class="crumb-active">Material Activity</span>
+</nav>
+</div>
+<div class="header-actions">
+<div class="header-date" id="headerDate">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+<span></span>
+</div>
+<button class="profile-btn" id="profileBtn">
+                    Loading...
+                </button>
+</div>
+</header>
+<!-- PAGE TITLE -->
+
+<!-- TOP CONTROLS: PRODUCT SELECT + REFRESH -->
+<div class="top-controls">
+<div class="product-picker" id="productPicker">
+<button class="product-picker-btn" id="productPickerBtn" type="button">
+<span class="ppb-label" id="productPickerLabel">Select Finished Product</span>
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<div class="product-picker-panel" id="productPickerPanel">
+<div class="pp-search">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+<input id="productSearchInput" placeholder="Search product..." type="text"/>
+</div>
+<div class="pp-list" id="productPickerList">
+<div class="pp-empty">Loading products...</div>
+</div>
+</div>
+</div>
+<button class="btn-secondary" id="refreshBtn">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C15.0064 3 17.6608 4.46326 19.3062 6.71428" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path><path d="M19 3V7H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+                Refresh
+            </button>
+</div>
+<!-- SELECTED PRODUCT / NO PRODUCT -->
+<div id="selectedProductArea"></div>
+<!-- RECEIVE STOCKS -->
+<section class="activity-card" id="receiveCard" style="display:none;">
+<div class="activity-card-header">
+<span class="aci icon-receive">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 19V5M12 19L6 13M12 19L18 13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<h3>Receive Stocks</h3>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Raw Material</th>
+<th class="col-right">Current Stock</th>
+<th class="col-right">Receive</th>
+<th class="col-right">After Receive</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="receiveTableBody"></tbody>
+</table>
+</div>
+<div class="activity-summary">
+<div class="as-text" id="receiveSummaryText">No materials selected to receive yet.</div>
+<button class="btn-primary btn-green" id="saveReceiveBtn">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9 17L19 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path></svg>
+                    Save Receive Activity
+                </button>
+</div>
+</section>
+<!-- USED / CONSUMED STOCKS -->
+<section class="activity-card" id="usedCard" style="display:none;">
+<div class="activity-card-header">
+<span class="aci icon-used">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M12 19L6 13M12 19L18 13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<h3>Used / Consumed Stocks</h3>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Raw Material</th>
+<th class="col-right">Current Stock</th>
+<th class="col-right">Used</th>
+<th class="col-right">After Used</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="usedTableBody"></tbody>
+</table>
+</div>
+<div id="usedWarnings"></div>
+<div class="activity-summary">
+<div class="as-text" id="usedSummaryText">No materials selected to use yet.</div>
+<button class="btn-primary btn-orange" id="saveUsedBtn">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9 17L19 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path></svg>
+                    Save Used Activity
+                </button>
+</div>
+</section>
+<!-- RECENT ACTIVITY -->
+<section class="collapsible" id="recentActivityCollapsible">
+<button class="collapsible-toggle" id="recentActivityToggle" type="button">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path></svg>
+                Recent Activity
+            </button>
+<div class="collapsible-body" id="recentActivityBody">
+<div class="empty-state">
+<span>No recent material activity.</span>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div class="toast-stack" id="toastStack"></div>
+<div class="modal-overlay" id="confirmModal">
+<div class="modal-box">
+<h3 id="confirmModalTitle">Unsaved changes</h3>
+<p id="confirmModalMessage">You have unsaved changes.</p>
+<div class="modal-actions">
+<button class="modal-btn" id="confirmModalCancel" type="button">Cancel</button>
+<button class="modal-btn danger" id="confirmModalConfirm" type="button">Discard Changes</button>
+</div>
+</div>
+</div>
+<script src="../js/user-material-activity.js" type="module"></script>
+<script>
+const headerDateEl = document.querySelector("#headerDate span");
+if(headerDateEl){
+    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+}
+
+const menuToggle = document.querySelector(".menu-toggle");
+const sidebarEl = document.querySelector(".sidebar");
+if(menuToggle && sidebarEl){
+    menuToggle.addEventListener("click", ()=>{
+        sidebarEl.classList.toggle("open");
+    });
+}
+
+document.querySelectorAll(".collapsible-toggle").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+        btn.closest(".collapsible").classList.toggle("open");
+    });
+});
+</script>
+<script src="../js/rmsme-shell.js"></script>
+</body>
+</html>

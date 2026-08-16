@@ -1,0 +1,16 @@
+RMSME REPORT OUTPUT UPDATE — APPLIED
+
+Applied to admin/reports.html, css/reports.css, and js/reports.js.
+
+Report package now supports selectable report sections before PDF/Excel/Print:
+- Manager Summary
+- Inventory Records
+- Material Receiving
+- Material Disbursement
+- Material Activity
+- Consumption Analysis
+- Decision Support
+
+The selected sections are placed into one PDF and/or one Excel workbook with separate sheets.
+Reports include report period, generated date/time, configuration, summary totals, dated records where applicable, consumption/forecast visual result, and manager decision breakdown.
+No cost/price/financial calculations were introduced.

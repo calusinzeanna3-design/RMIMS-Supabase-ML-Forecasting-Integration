@@ -1,0 +1,49 @@
+RMIMS USER REPORTS + SETTINGS UPDATE
+====================================
+
+This package is based on the previously integrated RMIMS Admin + User build.
+
+UPDATED USER MODULES
+- user/reports.html
+- js/user-reports.js
+- css/user-reports.css
+- user/settings.html
+- js/user-settings.js
+- css/user-settings.css
+
+REPORTS EDGE CASES
+- No materials
+- No low/critical stock
+- No usage records
+- Usage loading failure is distinguished from zero usage
+- Invalid/missing numeric quantities are safely handled
+- Negative/zero usage does not create a false consumption total
+- Different units are never added together
+- Missing material names/units are displayed safely
+- Archived/inactive historical material rows are not silently erased
+- Out-of-stock is derived from zero current quantity
+- Stock gap is calculated without cost/price logic
+- Safe empty/error states
+- Retry and print controls
+- HTML output is escaped before rendering
+- User role/authentication protection
+
+SETTINGS EDGE CASES
+- Missing/expired session redirects to login
+- Missing user profile does not silently display fake data
+- Wrong role redirects away from User settings
+- Inactive account is handled explicitly
+- Missing profile fields receive safe fallback text
+- Repeated logout clicks are blocked while processing
+- Logout failure restores the button and explains that the session remains active
+- Account refresh/retry is available
+- User settings cannot access Admin-only backup, restore, reset, or system-management actions
+- Fixed the User Settings page to load js/user-settings.js instead of the Admin settings script
+
+DATABASE / SUPABASE
+No new SQL migration is required for this update. The changes use the existing:
+- public.materials
+- public.usage_records
+- public.users
+
+FORECASTING

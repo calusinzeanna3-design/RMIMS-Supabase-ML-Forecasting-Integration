@@ -1,0 +1,188 @@
+/* ==========================================================
+   MATERIAL ACTIVITY (Admin + shared components)
+   Reuses inventory.css tokens (:root vars, .btn-*, .status,
+   .table-card, .search-wrap, .ov-card, .toast-stack, ...).
+   ========================================================== */
+
+.ov-card-static{ cursor:default; }
+.ov-card-static:hover{ transform:none; box-shadow:var(--shadow-soft); }
+
+/* -------- Mode tabs -------- */
+
+.mode-tabs{
+  display:inline-flex;
+  gap:4px;
+  padding:4px;
+  background:var(--bg-app-2);
+  border-radius:var(--radius-md);
+  margin:4px 0 20px;
+}
+
+.mode-tab{
+  border:none;
+  background:none;
+  padding:10px 20px;
+  border-radius:10px;
+  font-size:.85rem;
+  font-weight:700;
+  color:var(--text-soft);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+
+.mode-tab.active{
+  background:var(--card-bg);
+  color:var(--blue);
+  box-shadow:var(--shadow-soft);
+}
+
+/* -------- Product picker -------- */
+
+.product-picker{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+
+.product-picker .search-wrap{ flex:1; min-width:220px; }
+
+.product-chip-row{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding-bottom:6px;
+  scrollbar-width:thin;
+}
+
+.product-chip{
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  padding:10px 16px;
+  border-radius:12px;
+  border:1.5px solid var(--line-soft);
+  background:var(--card-bg);
+  cursor:pointer;
+  font-family:inherit;
+  transition:border-color .15s ease, transform .15s ease;
+  white-space:nowrap;
+}
+.product-chip:hover{ transform:translateY(-1px); }
+.product-chip.selected{
+  border-color:var(--blue);
+  background:rgba(37,99,235,.08);
+}
+.product-chip strong{ font-size:.88rem; color:var(--ink); }
+.product-chip span{ font-size:.7rem; color:var(--text-faint); }
+
+/* -------- Table header actions -------- */
+
+.table-header-actions{ display:flex; align-items:center; gap:10px; }
+
+/* -------- Forecast columns (collapsible) -------- */
+
+.forecast-col{ background:rgba(168,124,242,.06); }
+
+table.forecast-collapsed .forecast-col{ display:none; }
+
+.forecast-note{
+  font-size:.78rem;
+  color:var(--text-faint);
+  font-style:italic;
+  margin-top:10px;
+  text-align:center;
+}
+
+/* -------- +/- Quantity stepper -------- */
+
+.stepper{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:var(--bg-app-2);
+  border-radius:10px;
+  padding:4px;
+}
+
+.stepper button{
+  width:26px;
+  height:26px;
+  border-radius:7px;
+  border:none;
+  background:var(--card-bg);
+  color:var(--text-body);
+  font-size:1rem;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:var(--shadow-soft);
+}
+.stepper button:hover{ background:var(--bg-app); }
+.stepper button:disabled{ opacity:.4; cursor:not-allowed; }
+
+.stepper .stepper-value{
+  min-width:30px;
+  text-align:center;
+  font-size:.85rem;
+  font-weight:700;
+  color:var(--ink);
+}
+
+.stepper.receive .stepper-value{ color:var(--good); }
+.stepper.used .stepper-value{ color:var(--warn); }
+
+/* -------- Save Activity row -------- */
+
+.save-activity-row{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:16px;
+  padding-top:16px;
+  border-top:1px solid var(--line-soft);
+}
+
+/* -------- Totals -------- */
+
+.total-pill{ font-weight:700; font-size:.85rem; }
+.total-pill.positive{ color:var(--good); }
+.total-pill.negative{ color:var(--bad); }
+.total-pill.none{ color:var(--text-faint); font-weight:600; }
+
+/* -------- Material Overview matrix (sticky columns) -------- */
+
+.overview-scroll{ overflow-x:auto; }
+
+#overviewTable{ min-width:100%; border-collapse:separate; border-spacing:0; }
+
+#overviewTable th, #overviewTable td{
+  white-space:nowrap;
+}
+
+#overviewTable .sticky-col{
+  position:sticky;
+  background:var(--card-bg);
+  z-index:2;
+}
+
+#overviewTable thead .sticky-col{ background:var(--bg-app-2); z-index:3; }
+
+#overviewTable .product-col{
+  min-width:110px;
+  text-align:center;
+  background:var(--bg-app-2);
+}
+
+#overviewTable tbody .product-col{ background:var(--card-bg); text-align:center; }
+
+/* -------- Misc -------- */
+
+.field-hint{ font-size:.74rem; color:var(--text-faint); margin-top:4px; }
+
+@media (max-width:900px){
+  .overview-cards{ grid-template-columns:repeat(2,1fr); }
+}

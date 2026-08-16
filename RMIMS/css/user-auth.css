@@ -1,0 +1,85 @@
+/* ==========================================================
+   RMIMS USER AUTH — Sign In / Register
+   Same look as the landing page: light bg, animated material
+   illustration, floating workspace panel. Kept as its own file
+   so it only narrows/extends index.css + user-entry.css rules.
+   ========================================================== */
+
+.workspace-panel.auth-panel{
+  max-width:480px;
+  padding:36px 40px 34px;
+}
+
+.auth-panel .panel-topbar{
+  margin-bottom:22px;
+}
+
+/* login.css's .brand-icon svg rule (written for its own left-panel logo)
+   leaks onto this shared topbar and overrides the icon color set by
+   index.css's .brand-mark .brand-icon svg — restore it here. */
+.panel-topbar .brand-mark .brand-icon svg{
+  color:var(--rm-light);
+}
+
+/* .register-success uses flex-direction:column in login.css, which
+   forces its inline-flex button child to blockify and mis-size.
+   Switch to plain block + text-align centering here instead. */
+#registerSuccess.register-success.active{
+  display:block;
+  text-align:center;
+}
+
+#registerSuccess .pending-pill{
+  display:flex;
+  width:fit-content;
+  margin:0 auto 24px;
+}
+
+#registerSuccess .approval-ring{
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.register-success .back-to-login-btn{
+  white-space:nowrap;
+}
+
+.auth-panel .ue-back{
+  margin-bottom:22px;
+}
+
+.auth-panel .ue-header{
+  margin-bottom:26px;
+}
+
+.auth-panel form{
+  margin-top:2px;
+}
+
+.switch-auth{
+  text-align:center;
+  margin-top:20px;
+  font-size:13.5px;
+  color:var(--rm-ink-mid);
+}
+
+.switch-auth a{
+  color:var(--rm-mid);
+  font-weight:700;
+}
+
+.switch-auth a:hover{
+  text-decoration:underline;
+}
+
+.auth-panel .demo-box{
+  border-top:1px solid var(--rm-line-soft);
+  padding-top:16px;
+}
+
+@media (max-width: 520px){
+  .workspace-panel.auth-panel{
+    padding:28px 22px 26px;
+    border-radius:24px;
+  }
+}

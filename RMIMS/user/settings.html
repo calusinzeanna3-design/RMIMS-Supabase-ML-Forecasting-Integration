@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings | RMSME</title>
+<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+<link href="../css/user-settings.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="../css/rmims-unified.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="container">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+<div class="logo">
+<div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
+<div class="logo-text">
+                RMSME
+                <span>Raw Materials Inventory<br/>Management System</span>
+</div>
+</div>
+<div class="menu">
+<p class="section">MAIN</p>
+<a href="dashboard.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="14"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="14"></rect></svg>
+                Dashboard
+            </a>
+<p class="section">INVENTORY</p>
+<a href="inventory.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                Inventory Overview
+            </a>
+<a href="material-activity.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Material Activity
+            </a>
+<p class="section">ANALYTICS</p>
+<a href="analytics.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+                Consumption Analytics
+            </a>
+<p class="section">REPORTS</p>
+<a href="reports.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Reports
+            </a>
+<p class="section">ACCOUNT</p>
+<a class="active" href="settings.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"></circle><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path></svg>
+                Settings
+            </a>
+</div>
+</aside>
+<!-- CONTENT -->
+<main class="content">
+<header class="topbar">
+<div class="topbar-left">
+<button aria-label="Toggle menu" class="menu-toggle">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+</button>
+<nav class="breadcrumb">
+<span class="crumb-active">Settings</span>
+</nav>
+</div>
+<div class="header-actions">
+<div class="header-date" id="headerDate">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+<span></span>
+</div>
+<button class="profile-btn" id="profileBtn">
+<span class="avatar">AU</span>
+<span class="profile-text">Loading...</span>
+<svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+</button>
+</div>
+</header>
+<!-- PAGE TITLE -->
+
+<div aria-live="polite" class="settings-status" hidden="" id="settingsStatus"></div>
+<div class="settings-actions-bar">
+<div>
+<strong>Account safety</strong>
+<span>Changes made here affect only your account session.</span>
+</div>
+<button class="secondary-action" id="retrySettingsBtn" type="button">Refresh Account</button>
+</div>
+<!-- ACCOUNT SETTINGS -->
+<section class="settings-card">
+<div class="card-head">
+<div class="card-head-icon icon-blue">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"></circle><path d="M2.5 20C2.5 16.5 5.5 14.5 9 14.5C12.5 14.5 15.5 16.5 15.5 20" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path><path d="M16 14.8C18.5 15.3 20.5 17 20.5 20" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path><path d="M14.5 8.3C15.6 8.7 16.3 9.7 16.3 11C16.3 12.3 15.6 13.3 14.5 13.7" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+</div>
+<div class="card-head-text">
+<h3>Account Information</h3>
+<p>Your personal account details</p>
+</div>
+</div>
+<div class="settings-grid">
+<div class="input-group">
+<label>
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"></circle><path d="M4 20C4 16 7.5 14 12 14C16.5 14 20 16 20 20" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                        Full Name
+                    </label>
+<input id="fullName" readonly="" type="text"/>
+</div>
+<div class="input-group">
+<label>
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 5H20C21.1 5 22 5.9 22 7V17C22 18.1 21.1 19 20 19H4C2.9 19 2 18.1 2 17V7C2 5.9 2.9 5 4 5Z" stroke="currentColor" stroke-width="1.6"></path><path d="M22 7L13.03 13.7C12.42 14.15 11.58 14.15 10.97 13.7L2 7" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                        Email Address
+                    </label>
+<input id="email" readonly="" type="email"/>
+</div>
+<div class="input-group">
+<label>
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L3 7V12C3 16.5 6.5 20.74 12 22C17.5 20.74 21 16.5 21 12V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M9 12L11 14L15 10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                        Role
+                    </label>
+<input id="role" readonly="" type="text"/>
+</div>
+</div>
+</section>
+<!-- SYSTEM SETTINGS -->
+<section class="settings-card">
+<div class="card-head">
+<div class="card-head-icon icon-purple">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="13" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="4"></rect><path d="M8 21H16M12 17V21" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+</div>
+<div class="card-head-text">
+<h3>System Preferences</h3>
+<p>Platform and infrastructure information</p>
+</div>
+</div>
+<div class="info-tiles">
+<div class="info-tile">
+<div class="info-tile-icon icon-blue">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+</div>
+<div class="info-tile-text">
+<span>System Name</span>
+<strong>RMIMS</strong>
+</div>
+</div>
+<div class="info-tile">
+<div class="info-tile-icon icon-teal">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="1.6"></ellipse><path d="M4 6V12C4 13.66 7.58 15 12 15C16.42 15 20 13.66 20 12V6" stroke="currentColor" stroke-width="1.6"></path><path d="M4 12V18C4 19.66 7.58 21 12 21C16.42 21 20 19.66 20 18V12" stroke="currentColor" stroke-width="1.6"></path></svg>
+</div>
+<div class="info-tile-text">
+<span>Database</span>
+<strong>Supabase Database</strong>
+</div>
+</div>
+<div class="info-tile">
+<div class="info-tile-icon icon-green">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M9 12L11 14L15 10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+</div>
+<div class="info-tile-text">
+<span>Version</span>
+<strong>Version 1.0</strong>
+</div>
+</div>
+</div>
+</section>
+<!-- SECURITY -->
+<section class="settings-card">
+<div class="card-head">
+<div class="card-head-icon icon-red">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L19 5V11C19 16 15.5 19.5 12 21C8.5 19.5 5 16 5 11V5L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 8V12M12 15.5H12.01" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+</div>
+<div class="card-head-text">
+<h3>Security</h3>
+<p>Manage your active session</p>
+</div>
+</div>
+<div class="security-row">
+<div class="security-row-text">
+<strong>Sign out of RMIMS</strong>
+<span>End your current session on this device.</span>
+</div>
+<div class="button-group">
+<button id="logoutBtn">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M16 17L21 12L16 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M21 12H9" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+                        Logout
+                    </button>
+</div>
+</div>
+</section>
+<section class="settings-card security-notes">
+<div class="card-head">
+<div class="card-head-icon icon-blue">ⓘ</div>
+<div class="card-head-text">
+<h3>Account Safety</h3>
+<p>What happens if something goes wrong</p>
+</div>
+</div>
+<ul>
+<li>If your session expires, RMIMS will return you to the login page instead of showing incomplete account data.</li>
+<li>If your account record cannot be loaded, your information will not be replaced with fake or blank values.</li>
+<li>Logging out is protected against repeated clicks while the request is processing.</li>
+<li>Your User settings cannot access Admin-only backup, restore, reset, or system-management actions.</li>
+</ul>
+</section>
+</main>
+</div>
+<script src="../js/user-settings.js" type="module">
+</script>
+<script>
+const headerDateEl = document.querySelector("#headerDate span");
+if(headerDateEl){
+    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+}
+
+const menuToggle = document.querySelector(".menu-toggle");
+const sidebarEl = document.querySelector(".sidebar");
+if(menuToggle && sidebarEl){
+    menuToggle.addEventListener("click", ()=>{
+        sidebarEl.classList.toggle("open");
+    });
+}
+</script>
+<script src="../js/rmsme-shell.js"></script>
+</body>
+</html>

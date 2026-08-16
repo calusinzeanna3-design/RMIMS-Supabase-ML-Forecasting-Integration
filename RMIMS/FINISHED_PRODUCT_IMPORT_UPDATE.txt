@@ -1,0 +1,64 @@
+RMIMS — Finished Product Setup Import Update
+================================================
+
+This update keeps Finished Product Setup INSIDE Admin > Materials > Inventory.
+
+Implemented:
+- Finished Product Setup remains inside Inventory Management.
+- No new sidebar/module was created.
+- No Product ID field.
+- Manual product image upload with preview.
+- Separate bulk image import.
+- Image matching by normalized filename:
+  "kibets.png" -> "Kibets"
+  "banana_bread.jpg" -> "Banana Bread"
+- Unmatched images do not create records.
+- Finished product rows can be expanded to show required raw materials.
+- Expanded view shows required quantity, unit, current stock, and availability.
+- Finished product import accepts Excel/CSV.
+- Multiple rows for the same finished product are grouped together.
+- Existing Inventory materials are linked and reused.
+- Missing raw materials in an import are added to Inventory with zero current stock after the user confirms Import & Save.
+- No duplicate material record is created when a matching Inventory material already exists.
+- No sample/demo finished-product data is added by the feature.
+
+Expected import columns:
+  Finished Product
+  Category
+  Unit
+  Description
+  Status
+  Raw Material
+  Required Quantity
+  Raw Material Unit
+  Raw Material Category
+  Current Stock
+  Minimum Stock
+  Supplier
+  Storage Location
+  Notes
+
+Only these are required for the finished-product import:
+  Finished Product
+  Raw Material
+  Required Quantity
+
+Image import is optional.
+
+Database:
+Run supabase/material-activity-schema.sql after the base schema if the
+finished_products and product_material_requirements tables are not yet
+installed. The migration also adds finished product Unit and Description
+columns for existing installations.
+
+Important:
+- The feature does NOT use ML.
+- The feature does NOT use a REST API.
+- The feature does NOT use a Python model.
+- No forecasting integration is included.
+- Existing consumption/usage records remain available for a future model.
+
+Images:
+For this version, images are compressed in the browser and stored in the
+finished_products.image_url field as image data. This avoids requiring a
+separate storage module while keeping image import/manual upload functional.

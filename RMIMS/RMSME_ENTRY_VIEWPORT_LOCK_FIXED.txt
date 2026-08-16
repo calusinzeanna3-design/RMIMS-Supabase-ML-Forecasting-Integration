@@ -1,0 +1,9 @@
+RMSME ENTRY VIEWPORT LOCK FIX
+
+Applied to:
+- index.html: normal landing-page scrolling retained; browser overscroll/white bounce disabled.
+- portal.html: body and stage locked to 100dvh on desktop; internal stage handles overflow on small screens.
+- login.html: same locked entry behavior.
+- user-signin.html: same locked entry behavior.
+
+The fix uses overscroll-behavior-y:none, 100dvh sizing, and an isolated #rmStage scroll surface on small screens so the browser body cannot create extra white space.

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reports | RMSME</title>
+<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+<link href="../css/user-reports.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="../css/rmims-unified.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="container">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+<div class="logo">
+<div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
+<div class="logo-text">
+                RMSME
+                <span>Raw Materials Inventory<br/>Management System</span>
+</div>
+</div>
+<div class="menu">
+<p class="section">MAIN</p>
+<a href="dashboard.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="14"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="14"></rect></svg>
+                Dashboard
+            </a>
+<p class="section">INVENTORY</p>
+<a href="inventory.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                Inventory Overview
+            </a>
+<a href="material-activity.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Material Activity
+            </a>
+<p class="section">ANALYTICS</p>
+<a href="analytics.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+                Consumption Analytics
+            </a>
+<p class="section">REPORTS</p>
+<a class="active" href="reports.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Reports
+            </a>
+<p class="section">ACCOUNT</p>
+<a href="settings.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"></circle><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path></svg>
+                Settings
+            </a>
+</div>
+</aside>
+<!-- MAIN CONTENT -->
+<main class="content">
+<header class="topbar">
+<div class="topbar-left">
+<button aria-label="Toggle menu" class="menu-toggle">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+</button>
+<nav class="breadcrumb">
+<span class="crumb-active">Reports</span>
+</nav>
+</div>
+<div class="header-actions">
+<button class="profile-btn" id="profileBtn">
+                    Loading...
+                </button>
+</div>
+</header>
+<!-- PAGE TITLE -->
+
+<!-- KPI CARDS -->
+<section class="cards">
+<div class="card">
+<div class="card-text">
+<span>Total Materials</span>
+<h2 id="totalMaterials">0</h2>
+</div>
+<div class="card-icon icon-blue">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Low Stock Items</span>
+<h2 id="lowStockItems">0</h2>
+</div>
+<div class="card-icon icon-orange">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Total Material Activity</span>
+<h2 id="totalUsageRecords">0</h2>
+</div>
+<div class="card-icon icon-green">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+</div>
+</div>
+</section>
+<div class="report-toolbar">
+<div>
+<span class="report-period-label">Report scope</span>
+<strong>Current inventory + recorded consumption</strong>
+</div>
+<div class="report-actions">
+<button class="secondary-btn" id="retryReportBtn" type="button">Refresh Report</button>
+<button class="primary-btn" id="printBtn" type="button">Print Report</button>
+</div>
+</div>
+<div aria-live="polite" class="report-status" hidden="" id="reportStatus"></div>
+<section class="report-summary-grid">
+<div class="summary-card">
+<span>ⓘ Total Materials</span>
+<strong id="totalMaterials">—</strong>
+<small>Active inventory records available to this report.</small>
+</div>
+<div class="summary-card">
+<span>ⓘ Low / Critical</span>
+<strong id="lowStockItems">—</strong>
+<small>Materials needing stock attention.</small>
+</div>
+<div class="summary-card">
+<span>ⓘ Usage Records</span>
+<strong id="totalUsageRecords">—</strong>
+<small>Recorded material-consumption activities.</small>
+</div>
+</section>
+<!-- INVENTORY REPORT -->
+<section class="table-card">
+<div class="card-header">
+<h3>Inventory Summary Report</h3>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Material</th>
+<th>Quantity</th>
+<th>Unit</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="inventoryReportBody">
+</tbody>
+</table>
+</div>
+</section>
+<!-- LOW STOCK REPORT -->
+<section class="table-card">
+<div class="card-header">
+<h3>Low Stock Report</h3>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Material</th>
+<th>Current Stock</th>
+<th>Minimum Threshold</th>
+<th>Stock Gap</th>
+</tr>
+</thead>
+<tbody id="lowStockReportBody">
+</tbody>
+</table>
+</div>
+</section>
+<!-- CONSUMPTION REPORT -->
+<section class="table-card">
+<div class="card-header">
+<h3><span class="title-icon">ⓘ</span> Consumption Summary</h3>
+<span class="card-help">Quantities are grouped by material and unit; different units are never added together.</span>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Material</th>
+<th>Quantity Used</th>
+<th>Unit</th>
+<th>Records</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody id="usageReportBody"></tbody>
+</table>
+</div>
+</section>
+<!-- DECISION SUPPORT -->
+<section class="insights">
+<div class="card-header">
+<h3>
+<span class="title-icon">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 2 7 4.5 7 7.5C7 9.5 8 10.8 9 12C9.6 12.7 10 13.4 10 14.5V16H14V14.5C14 13.4 14.4 12.7 15 12C16 10.8 17 9.5 17 7.5C17 4.5 15 2 12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M10 19H14M11 22H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+</span>
+                    Decision Support Recommendations
+                </h3>
+</div>
+<ul id="decisionSupportList">
+<li>
+                    Loading recommendations...
+                </li>
+</ul>
+</section>
+</main>
+</div>
+<script src="../js/user-reports.js" type="module">
+</script>
+<script>
+const menuToggle = document.querySelector(".menu-toggle");
+const sidebarEl = document.querySelector(".sidebar");
+if(menuToggle && sidebarEl){
+    menuToggle.addEventListener("click", ()=>{
+        sidebarEl.classList.toggle("open");
+    });
+}
+</script>
+<script src="../js/rmsme-shell.js"></script>
+</body>
+</html>

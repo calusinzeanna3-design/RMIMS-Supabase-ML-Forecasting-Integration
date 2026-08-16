@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>RMSME Dashboard</title>
+<link rel="icon" href="../assets/favicon-64.png" type="image/png">
+
+<link rel="stylesheet" href="../css/dashboard.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/rmims-unified.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logo-icon"><img src="../assets/logo-icon.png" alt="RMSME logo"></div>
+            <div class="logo-text">
+                RMSME
+                <span>Raw Materials Inventory<br>Management System</span>
+            </div>
+        </div>
+
+        <div class="menu">
+
+            <p class="section">MAIN</p>
+
+            <a href="dashboard.html" class="active">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+                Dashboard
+            </a>
+
+            <p class="section">INVENTORY</p>
+
+            <a href="inventory.html">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                Inventory Management
+            </a>
+
+            <a href="material-activity.html">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6H20M4 12H20M4 18H14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17 15L20 18L17 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Material Activity
+            </a>
+
+            <p class="section">ANALYTICS</p>
+
+            <a href="analytics.html">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Consumption Analytics
+            </a>
+<p class="section">REPORTS</p>
+
+            <a href="reports.html">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3V8H19" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                Reports &amp; Decision Support
+            </a>
+
+            <p class="section">ADMINISTRATION</p>
+
+            <a href="user-management.html">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 20C2.5 16.5 5.5 14.5 9 14.5C12.5 14.5 15.5 16.5 15.5 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 14.8C18.5 15.3 20.5 17 20.5 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M14.5 8.3C15.6 8.7 16.3 9.7 16.3 11C16.3 12.3 15.6 13.3 14.5 13.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                User Management
+            </a>
+
+            <a href="settings.html">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                Settings
+            </a>
+
+        </div>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+
+    <main class="content">
+
+        <!-- HEADER -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <button class="menu-toggle" aria-label="Toggle menu">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </button>
+
+                <nav class="breadcrumb">
+                    <span>Dashboard</span>
+                    <span class="crumb-sep">›</span>
+                    <span class="crumb-active">Overview</span>
+                </nav>
+
+            </div>
+
+            <div class="header-actions">
+
+                <div class="header-date" id="headerDate">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"/><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <span></span>
+                </div>
+
+                <button id="themeToggleBtn" class="icon-btn" aria-label="Toggle theme" title="Toggle dark / light mode">
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5V4.5M12 19.5V21.5M4.5 12H2.5M21.5 12H19.5M5.6 5.6L4.2 4.2M19.8 19.8L18.4 18.4M18.4 5.6L19.8 4.2M4.2 19.8L5.6 18.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5C18.9 15 17.7 15.3 16.5 15.3C11.9 15.3 8.2 11.6 8.2 7C8.2 5.8 8.5 4.6 9 3.5C5.3 4.6 2.5 8.1 2.5 12.2C2.5 17.2 6.6 21.3 11.6 21.3C15.6 21.3 19 18.7 20 14.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                </button>
+
+                <button id="notificationBtn" class="icon-btn">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <span class="notif-badge" id="notifBadge" hidden>0</span>
+                </button>
+
+                <button id="profileBtn" class="profile-btn">
+                    <span class="avatar">AU</span>
+                    <span class="profile-text">Loading...</span>
+                    <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+
+            </div>
+
+        </header>
+
+        <!-- PAGE TITLE -->
+
+        <div class="page-title fade-in">
+            <div class="page-title-text">
+                <h1>Inventory Command Center</h1>
+                <p>A live, at-a-glance view of what's happening across your raw materials.</p>
+            </div>
+            <div class="live-pill" id="livePill">
+                <span class="live-dot"></span>
+                Live
+            </div>
+        </div>
+
+        <!-- COMMAND CENTER GRID -->
+
+        <section class="command-grid">
+
+            <!-- RECENT ACTIVITIES -->
+
+            <div class="panel glass activities-panel fade-in" style="--delay:0ms">
+
+                <div class="panel-header">
+                    <h3>
+                        <span class="panel-icon icon-blue">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 8V12L14.5 14.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg>
+                        </span>
+                        Recent Activities
+                    </h3>
+                    <span class="panel-badge" id="activitiesCount">0</span>
+                </div>
+
+                <p class="panel-subtext">Live feed of inventory and usage events</p>
+
+                <div class="activity-feed" id="activityFeed">
+                    <!-- skeleton / items / empty state injected by JS -->
+                    <div class="skeleton-list">
+                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN -->
+
+            <div class="command-side">
+
+                <!-- CONSUMPTION SUMMARY -->
+
+                <div class="panel glass fade-in" style="--delay:80ms">
+
+                    <div class="panel-header">
+                        <h3>
+                            <span class="panel-icon icon-green">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            Raw Material Consumption Summary
+                        </h3>
+                    </div>
+
+                    <p class="panel-subtext">Highlights from your most recent usage records</p>
+
+                    <div id="consumptionNarrative" class="consumption-narrative">
+                        <div class="skeleton-list">
+                            <div class="skeleton-row"><span class="skeleton-line" style="width:96%"></span></div>
+                            <div class="skeleton-row"><span class="skeleton-line" style="width:88%"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="consumption-history" id="consumptionHistory">
+                        <div class="skeleton-list">
+                            <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                            <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                            <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RECOMMENDATIONS -->
+
+                <div class="panel glass fade-in" style="--delay:160ms">
+
+                    <div class="panel-header">
+                        <h3>
+                            <span class="panel-icon icon-purple">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 2 7 4.5 7 7.5C7 9.5 8 10.8 9 12C9.6 12.7 10 13.4 10 14.5V16H14V14.5C14 13.4 14.4 12.7 15 12C16 10.8 17 9.5 17 7.5C17 4.5 15 2 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19H14M11 22H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                            </span>
+                            Latest Raw Material Recommendations
+                        </h3>
+                    </div>
+
+                    <p class="panel-subtext">Open a result to see its visual inventory-to-requirement process</p>
+
+                    <div class="recommendation-chips" id="recommendationChips">
+                        <div class="skeleton-list">
+                            <div class="skeleton-chip"></div>
+                            <div class="skeleton-chip"></div>
+                            <div class="skeleton-chip"></div>
+                        </div>
+                    </div>
+</div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- ACTIVITY DETAIL MODAL -->
+
+<div class="modal-overlay" id="activityModalOverlay">
+    <div class="modal-sheet" id="activityModalSheet" role="dialog" aria-modal="true">
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <span class="modal-icon" id="activityModalIcon"></span>
+                <div>
+                    <h4 id="activityModalTitle">Activity</h4>
+                    <span id="activityModalTime" class="modal-time"></span>
+                </div>
+            </div>
+            <button class="modal-close" id="activityModalClose" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="modal-body" id="activityModalBody"></div>
+        <div class="modal-sticky-footer">
+            <button class="btn-secondary" id="activityModalCloseBtn">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- RECOMMENDATION MODAL -->
+
+<div class="modal-overlay" id="recModalOverlay">
+    <div class="modal-sheet rec-visual-sheet" id="recModalSheet" role="dialog" aria-modal="true">
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <span class="modal-icon icon-purple" id="recModalIcon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 2 7 4.5 7 7.5C7 9.5 8 10.8 9 12C9.6 12.7 10 13.4 10 14.5V16H14V14.5C14 13.4 14.4 12.7 15 12C16 10.8 17 9.5 17 7.5C17 4.5 15 2 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19H14M11 22H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </span>
+                <div>
+                    <h4 id="recModalTitle">Material</h4>
+                    <span id="recModalConfidence" class="modal-time"></span>
+                </div>
+            </div>
+            <button class="modal-close" id="recModalClose" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="modal-body rec-visual-body" id="recModalBody"></div>
+        <div class="modal-sticky-footer">
+            <button class="btn-secondary" id="recModalCloseBtn">Close</button>
+</div>
+    </div>
+</div>
+
+<!-- TOASTS -->
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script
+type="module"
+src="../js/dashboard.js">
+</script>
+
+<script>
+const headerDateEl = document.querySelector("#headerDate span");
+if(headerDateEl){
+    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+}
+
+const menuToggle = document.querySelector(".menu-toggle");
+const sidebarEl = document.querySelector(".sidebar");
+if(menuToggle && sidebarEl){
+    menuToggle.addEventListener("click", ()=>{
+        sidebarEl.classList.toggle("open");
+    });
+}
+
+/* THEME TOGGLE (light/dark, persisted) */
+(function(){
+    const root = document.documentElement;
+    const stored = localStorage.getItem("rmims-theme");
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initial = stored || (prefersDark ? "dark" : "light");
+    root.setAttribute("data-theme", initial);
+
+    const btn = document.getElementById("themeToggleBtn");
+    if(btn){
+        btn.addEventListener("click", ()=>{
+            const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+            root.setAttribute("data-theme", next);
+            localStorage.setItem("rmims-theme", next);
+        });
+    }
+})();
+</script>
+
+<script src="../js/rmsme-shell.js"></script>
+</body>
+</html>

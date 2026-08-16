@@ -1,0 +1,22 @@
+RMSME UI/UX FINAL SHELL ALIGNMENT
+
+Applied across Admin and User internal pages:
+- RMSME visible product branding.
+- Compact icon-first sidebar; expands on hover/focus.
+- Materials expandable group: Inventory + Material Activity.
+- Admin-only User Management.
+- User-side Forecasting retained without the "AI" label in navigation.
+- Shared header with notifications, help, and profile menu.
+- Logout is inside the profile menu, not the sidebar.
+- Notification read state is persistent: reading removes the unread highlight but keeps the notification in history.
+- Portal-inspired pale green background with subtle animated geometric pattern.
+- Application cards/surfaces are solid white; legacy glass/rainbow surfaces are neutralized.
+- Shared green RMSME visual language for icons, controls, active states, tables, and forms.
+- Responsive behavior and keyboard focus support included.
+
+Important:
+- Existing page-specific application logic and the project's current database/auth implementation were not replaced by this UI shell.
+- Database/provider references were intentionally not changed as part of the UI alignment.
+- Existing page scripts may still contain legacy UI IDs/classes internally; the shared shell is designed to preserve those IDs where needed.
+
+SHELL FIX PASS: locked 100dvh sidebar, no sidebar scrolling, smooth hover expansion on pointer devices, icon-only locked mobile behavior, fixed bottom identifier, real notification SVG icons, read notifications remain visible without highlight, popovers constrained to viewport.

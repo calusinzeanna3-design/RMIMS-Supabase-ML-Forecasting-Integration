@@ -1,0 +1,187 @@
+/* ==========================================================
+   RMIMS USER ENTRY — Login / Register choice
+   ========================================================== */
+
+body{
+  background:
+    radial-gradient(120% 90% at 82% 0%, rgba(134,239,172,0.22), transparent 55%),
+    radial-gradient(90% 70% at 0% 100%, rgba(220,252,231,0.65), transparent 60%),
+    var(--rm-bg);
+}
+
+.ue-panel{
+  position:relative;
+  z-index:1;
+  width:100%;
+  max-width:520px;
+  background:var(--rm-white);
+  border:1px solid var(--rm-line);
+  border-radius:28px;
+  box-shadow:var(--rm-shadow-lg);
+  padding:40px 40px 36px;
+  animation:panelEnter .6s var(--rm-ease) both;
+}
+
+@keyframes panelEnter{
+  from{ opacity:0; transform:translateY(16px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+.ue-back{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--rm-ink-mid);
+  margin-bottom:26px;
+  transition:color .2s var(--rm-ease-soft), transform .2s var(--rm-ease-soft);
+}
+
+.ue-back svg{
+  width:15px;
+  height:15px;
+  transition:transform .2s var(--rm-ease-soft);
+}
+
+.ue-back:hover{
+  color:var(--rm-dark);
+}
+.ue-back:hover svg{
+  transform:translateX(-3px);
+}
+
+.ue-header{
+  text-align:center;
+  margin-bottom:30px;
+}
+
+.ue-header .ue-icon{
+  width:46px;
+  height:46px;
+  border-radius:13px;
+  background:var(--rm-soft);
+  color:var(--rm-dark);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto 16px;
+}
+
+.ue-header .ue-icon svg{
+  width:22px;
+  height:22px;
+}
+
+.ue-header .ue-eyebrow{
+  font-family:var(--rm-font-display);
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--rm-mid);
+  margin-bottom:8px;
+}
+
+.ue-header h1{
+  font-family:var(--rm-font-display);
+  font-weight:700;
+  font-size:24px;
+  color:var(--rm-dark);
+  margin-bottom:8px;
+}
+
+.ue-header p{
+  font-size:14px;
+  color:var(--rm-ink-mid);
+}
+
+.ue-options{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.ue-option{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:20px 22px;
+  border-radius:18px;
+  border:1.4px solid var(--rm-line);
+  background:var(--rm-white);
+  cursor:pointer;
+  transition:transform .3s var(--rm-ease), box-shadow .3s var(--rm-ease),
+             background .3s var(--rm-ease-soft), border-color .3s var(--rm-ease-soft);
+}
+
+.ue-option .o-icon{
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:transform .3s var(--rm-ease);
+}
+
+.ue-option .o-icon svg{
+  width:20px;
+  height:20px;
+}
+
+.ue-option .o-text{
+  flex:1 1 auto;
+}
+
+.ue-option .o-title{
+  font-family:var(--rm-font-display);
+  font-weight:700;
+  font-size:15px;
+  color:var(--rm-dark);
+  margin-bottom:2px;
+}
+
+.ue-option .o-desc{
+  font-size:12.5px;
+  color:var(--rm-ink-mid);
+}
+
+.ue-option .o-arrow{
+  flex:0 0 auto;
+  width:16px;
+  height:16px;
+  color:var(--rm-mid);
+  transition:transform .3s var(--rm-ease);
+}
+
+.ue-option:hover{
+  transform:translateY(-4px);
+  box-shadow:var(--rm-shadow-md);
+}
+
+.ue-option:hover .o-arrow{
+  transform:translateX(5px);
+}
+
+.ue-option:hover .o-icon{
+  transform:translateY(-2px);
+}
+
+.ue-option.opt-login:hover{
+  background:var(--rm-soft);
+  border-color:var(--rm-mid);
+}
+.ue-option.opt-login .o-icon{
+  background:var(--rm-soft);
+  color:var(--rm-dark);
+}
+
+
+@media (max-width: 520px){
+  .ue-panel{
+    padding:32px 24px 28px;
+    border-radius:22px;
+  }
+}

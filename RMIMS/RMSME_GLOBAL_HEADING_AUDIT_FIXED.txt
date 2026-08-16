@@ -1,0 +1,15 @@
+RMSME GLOBAL HEADING AUDIT
+
+Fixed duplicate page headings across Admin and User modules.
+
+Removed redundant content page-title blocks where the shared RMSME topbar already provides the same title/subtitle:
+- Admin: Analytics, Forecasting, Material Activity, Reports, Settings
+- User: Analytics, Forecasting, Material Activity, Reports, Settings
+
+Preserved intentional content headings:
+- Admin Inventory: title remains because it owns Add Material/Import/Export/Refresh actions.
+- Admin User Management: title remains because it owns Refresh/Add User actions.
+- User Dashboard: personalized welcome heading remains.
+- User Inventory: "Inventory Overview" remains because it provides view-only context distinct from the generic header.
+
+For Admin Inventory and User Management, the shared topbar now intentionally omits its duplicate page heading while keeping the utility actions.

@@ -1,0 +1,27 @@
+RMIMS USER CONSUMPTION ANALYTICS — EDGE CASE UPDATE
+
+Applied to user/analytics.html, js/user-analytics.js, and css/user-analytics.css.
+
+Handled cases:
+- No consumption records
+- No records in selected date range
+- Only one material consumed
+- Mixed units are never added together
+- Inconsistent units for the same material are flagged
+- Zero/negative/invalid usage records are excluded from analytics
+- Duplicate submissions are not artificially combined by analytics
+- Archived materials keep historical consumption visibility
+- Missing/orphan material references are excluded and reported
+- Invalid date ranges are blocked
+- Future historical periods are blocked
+- Tied highest/lowest consumption is represented without arbitrary selection
+- Large and decimal quantities are formatted safely
+- Database/load failure is distinguished from zero consumption
+- Forecast readiness is shown only as a data-readiness notice
+- Trend is not calculated when there is insufficient history
+- Consumption trend is not combined across kg, pcs, L, etc.
+- Current stock status remains separate from consumption quantity
+
+IMPORTANT:
+No new SQL migration is required for these UI/analytics edge-case protections.
+The page uses the existing materials and usage_records tables.

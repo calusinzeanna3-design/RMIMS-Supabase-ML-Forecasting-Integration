@@ -1,0 +1,864 @@
+/* ==========================================================
+   RMIMS LOGIN / REGISTER — fresh green identity
+   ========================================================== */
+
+body{
+  min-height:100vh;
+  overflow-x:hidden;
+  position:relative;
+}
+
+.bg-grid{
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(20,83,45,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20,83,45,.05) 1px, transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(ellipse at 30% 40%, black 10%, transparent 68%);
+  mask-image:radial-gradient(ellipse at 30% 40%, black 10%, transparent 68%);
+  z-index:0;
+  pointer-events:none;
+}
+
+.bg-glow{
+  position:fixed;
+  top:-8%;
+  left:8%;
+  width:900px;
+  height:600px;
+  background:radial-gradient(ellipse at center, rgba(134,239,172,.35), transparent 65%);
+  filter:blur(20px);
+  z-index:0;
+  pointer-events:none;
+}
+
+/* ---------- layout ---------- */
+
+.login-container{
+  position:relative;
+  z-index:1;
+  width:100%;
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:1.5fr 1fr;
+  align-items:stretch;
+}
+
+/* ---------- BENTO LEFT PANEL ---------- */
+
+.bento-left{
+  background:
+    radial-gradient(circle at 12% 12%, rgba(134,239,172,.16), transparent 45%),
+    linear-gradient(160deg, #0E3E22 0%, var(--rm-dark) 55%, #0C331C 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  position:relative;
+  overflow:hidden;
+}
+
+.bento-left-inner{
+  width:100%;
+  max-width:640px;
+  padding:64px 56px;
+  display:flex;
+  flex-direction:column;
+  gap:44px;
+}
+
+.bento-left-header{
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+}
+
+.brand-mark{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+
+.brand-icon{
+  width:44px;
+  height:44px;
+  flex-shrink:0;
+  border-radius:12px;
+  background:var(--rm-light);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 0 20px rgba(134,239,172,.35);
+}
+
+.brand-icon svg{
+  width:24px;
+  height:24px;
+  color:var(--rm-dark);
+}
+
+.brand-name{
+  font-family:var(--rm-font-display);
+  font-size:1.4rem;
+  font-weight:800;
+  letter-spacing:.06em;
+  color:#F3FBF6;
+  line-height:1.2;
+}
+
+.brand-name span{
+  display:block;
+  margin-top:4px;
+  font-family:var(--rm-font-body);
+  font-size:.78rem;
+  font-weight:500;
+  letter-spacing:.01em;
+  color:#9CC2AC;
+}
+
+.welcome-heading h1{
+  font-family:var(--rm-font-display);
+  font-size:2.2rem;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-0.02em;
+  margin-bottom:10px;
+}
+
+.welcome-heading p{
+  font-size:1.02rem;
+  line-height:1.6;
+  color:#A9CBB6;
+  max-width:620px;
+}
+
+.mode-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  align-self:flex-start;
+  padding:7px 14px;
+  border-radius:999px;
+  background:rgba(134,239,172,.14);
+  border:1px solid rgba(134,239,172,.3);
+  color:var(--rm-light);
+  font-size:.78rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+
+.mode-badge svg{
+  width:14px;
+  height:14px;
+}
+
+.back-link{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:.85rem;
+  font-weight:600;
+  color:#9CC2AC;
+  margin-bottom:6px;
+  transition:color .2s ease, transform .2s ease;
+  width:fit-content;
+}
+
+.back-link svg{
+  width:15px;
+  height:15px;
+  transition:transform .2s ease;
+}
+
+.back-link:hover{
+  color:#fff;
+}
+.back-link:hover svg{
+  transform:translateX(-3px);
+}
+
+/* ---------- BENTO RIGHT PANEL ---------- */
+
+.bento-right{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  background:var(--rm-white);
+}
+
+.login-card{
+  width:100%;
+  max-width:460px;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  padding:56px 48px;
+  box-shadow:none;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  position:relative;
+  overflow:visible;
+}
+
+.card-top-bar{
+  position:absolute;
+  top:0;
+  left:48px;
+  right:48px;
+  height:4px;
+  border-radius:0 0 4px 4px;
+  background:linear-gradient(90deg,var(--rm-dark),var(--rm-mid),var(--rm-light));
+}
+
+.logo{
+  width:64px;
+  height:64px;
+  margin:6px auto 18px;
+  border-radius:16px;
+  background:var(--rm-dark);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 8px 24px rgba(20,83,45,.28);
+}
+
+.logo svg{
+  width:32px;
+  height:32px;
+}
+
+.card-title{
+  text-align:center;
+  font-family:var(--rm-font-display);
+  font-size:1.6rem;
+  font-weight:700;
+  letter-spacing:.1em;
+  color:var(--rm-dark);
+}
+
+.card-tagline{
+  text-align:center;
+  margin-top:6px;
+  font-size:.92rem;
+  color:var(--rm-ink-mid);
+}
+
+.auth-tabs{
+  position:relative;
+  display:flex;
+  gap:8px;
+  margin:28px 0 26px;
+  border-bottom:1.5px solid var(--rm-line-soft);
+}
+
+.auth-tab{
+  flex:1;
+  background:none;
+  border:none;
+  padding:0 0 14px;
+  font-size:.95rem;
+  font-weight:700;
+  color:var(--rm-ink-dim);
+  cursor:pointer;
+  transition:color .15s ease;
+}
+
+.auth-tab:hover{
+  color:var(--rm-ink-mid);
+}
+
+.auth-tab.active{
+  color:var(--rm-dark);
+}
+
+.auth-tab-indicator{
+  position:absolute;
+  bottom:-1.5px;
+  left:0;
+  width:50%;
+  height:2px;
+  background:linear-gradient(90deg,var(--rm-mid),var(--rm-light));
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+}
+
+.auth-tab-indicator.to-register{
+  transform:translateX(100%);
+}
+
+.auth-tabs.single-tab{
+  border-bottom:none;
+  margin-bottom:8px;
+}
+
+.register-pane{
+  display:none;
+}
+
+.register-pane.active{
+  display:block;
+}
+
+/* ---------- WAITING FOR APPROVAL ---------- */
+
+.register-success{
+  display:none;
+  text-align:center;
+  padding:14px 8px 6px;
+  flex-direction:column;
+  align-items:center;
+}
+
+.register-success.active{
+  display:flex;
+}
+
+.approval-ring{
+  position:relative;
+  width:78px;
+  height:78px;
+  margin-bottom:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.approval-ring::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:3px solid var(--rm-soft);
+}
+
+.approval-ring::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:3px solid transparent;
+  border-top-color:var(--rm-mid);
+  border-right-color:var(--rm-light);
+  animation:approvalSpin 1.8s linear infinite;
+}
+
+.approval-ring svg{
+  width:32px;
+  height:32px;
+  color:var(--rm-dark);
+  position:relative;
+  z-index:1;
+}
+
+@keyframes approvalSpin{
+  to{ transform:rotate(360deg); }
+}
+
+.register-success h3{
+  font-family:var(--rm-font-display);
+  font-size:1.1rem;
+  font-weight:700;
+  color:var(--rm-dark);
+  margin-bottom:8px;
+}
+
+.register-success p{
+  font-size:.88rem;
+  line-height:1.6;
+  color:var(--rm-ink-mid);
+  max-width:320px;
+  margin-bottom:16px;
+}
+
+.pending-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 14px;
+  border-radius:999px;
+  background:var(--rm-soft);
+  border:1px solid var(--rm-line-soft);
+  color:var(--rm-dark);
+  font-size:.76rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  margin-bottom:24px;
+}
+
+.pending-pill .p-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#F5A524;
+  box-shadow:0 0 0 0 rgba(245,165,36,.5);
+  animation:pulseAmber 2.1s ease-out infinite;
+}
+
+@keyframes pulseAmber{
+  0%{ box-shadow:0 0 0 0 rgba(245,165,36,.45); }
+  70%{ box-shadow:0 0 0 7px rgba(245,165,36,0); }
+  100%{ box-shadow:0 0 0 0 rgba(245,165,36,0); }
+}
+
+.form-note{
+  font-size:.83rem;
+  line-height:1.5;
+  margin:-6px 0 14px;
+  min-height:0;
+}
+
+.form-note.error{
+  color:#DC2626;
+}
+
+.form-note.success{
+  color:var(--rm-mid);
+}
+
+.form-note:empty{
+  display:none;
+}
+
+.back-to-login-btn{
+  padding:12px 26px;
+  border:none;
+  border-radius:12px;
+  background:var(--rm-dark);
+  color:#fff;
+  font-size:.9rem;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 10px 24px rgba(20,83,45,.24);
+}
+
+.back-to-login-btn:hover{
+  background:var(--rm-dark-2);
+  transform:translateY(-1px);
+  box-shadow:0 14px 30px rgba(20,83,45,.3);
+}
+
+.input-group{
+  margin-bottom:16px;
+}
+
+.input-group label{
+  display:block;
+  margin-bottom:7px;
+  font-size:.84rem;
+  font-weight:600;
+  color:var(--rm-ink-mid);
+}
+
+.input-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+
+.input-icon{
+  position:absolute;
+  left:14px;
+  width:18px;
+  height:18px;
+  color:#9AB6A5;
+  pointer-events:none;
+}
+
+.input-wrap input{
+  width:100%;
+  padding:13px 14px 13px 42px;
+  border:1.5px solid var(--rm-line-soft);
+  border-radius:12px;
+  font-size:.95rem;
+  color:var(--rm-ink);
+  background:#fff;
+  outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+
+.input-wrap input::placeholder{
+  color:#A9BDB0;
+}
+
+.input-wrap input:focus{
+  border-color:var(--rm-mid);
+  box-shadow:0 0 0 4px rgba(22,128,60,.12);
+}
+
+.toggle-pw{
+  position:absolute;
+  right:12px;
+  background:none;
+  border:none;
+  padding:4px;
+  cursor:pointer;
+  color:#9AB6A5;
+  display:flex;
+}
+
+.toggle-pw svg{
+  width:18px;
+  height:18px;
+}
+
+.toggle-pw:hover{
+  color:var(--rm-ink-mid);
+}
+
+.options{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:4px 0 22px;
+  font-size:.85rem;
+}
+
+.remember{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--rm-ink-mid);
+  cursor:pointer;
+}
+
+.remember input[type="checkbox"]{
+  width:16px;
+  height:16px;
+  accent-color:var(--rm-mid);
+  cursor:pointer;
+}
+
+.options a{
+  color:var(--rm-mid);
+  text-decoration:none;
+  font-weight:600;
+}
+
+.options a:hover{
+  text-decoration:underline;
+}
+
+.login-btn{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:var(--rm-dark);
+  color:#fff;
+  font-size:1rem;
+  font-weight:700;
+  letter-spacing:.01em;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  cursor:pointer;
+  box-shadow:0 12px 28px rgba(20,83,45,.24);
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.login-btn svg{
+  width:18px;
+  height:18px;
+  transition:transform .25s var(--rm-ease);
+}
+
+.login-btn:hover{
+  background:var(--rm-dark-2);
+  transform:translateY(-1px);
+  box-shadow:0 16px 34px rgba(20,83,45,.3);
+}
+
+.login-btn:hover svg{
+  transform:translateX(4px);
+}
+
+.login-btn:active{
+  transform:translateY(0);
+}
+
+.login-btn:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+  transform:none;
+}
+
+/* ---------- demo accounts ---------- */
+
+.demo-box{
+  margin-top:18px;
+}
+
+.demo-box summary{
+  cursor:pointer;
+  font-size:.84rem;
+  font-weight:600;
+  color:var(--rm-mid);
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.demo-box summary::-webkit-details-marker{
+  display:none;
+}
+
+.demo-box summary::before{
+  content:'▸';
+  font-size:.7rem;
+  transition:transform .15s ease;
+}
+
+.demo-box[open] summary::before{
+  transform:rotate(90deg);
+}
+
+.demo-content{
+  margin-top:12px;
+  padding:14px 16px;
+  background:var(--rm-bg);
+  border:1px solid var(--rm-line-soft);
+  border-radius:12px;
+  font-size:.84rem;
+}
+
+.demo-account strong{
+  display:block;
+  color:var(--rm-dark);
+  margin-bottom:3px;
+}
+
+.demo-account p{
+  color:var(--rm-ink-mid);
+  line-height:1.5;
+}
+
+.demo-content hr{
+  border:none;
+  border-top:1px solid var(--rm-line-soft);
+  margin:10px 0;
+}
+
+.card-footer{
+  margin-top:22px;
+  text-align:center;
+  font-size:.78rem;
+  line-height:1.6;
+  color:#A9BDB0;
+}
+
+/* ---------- STATS CONTAINER & BENTO GRID ---------- */
+
+.stats-container{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  width:100%;
+}
+
+.stats-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid rgba(134,239,172,.12);
+  padding-bottom:12px;
+}
+
+.stats-header h3{
+  font-family:var(--rm-font-display);
+  font-size:0.85rem;
+  font-weight:700;
+  letter-spacing:.08em;
+  color:#A9CBB6;
+  text-transform:uppercase;
+}
+
+.left-panel-shelves{
+  display:flex;
+  gap:10px;
+}
+
+.shelf-icon{
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  background:rgba(134,239,172,.08);
+  border:1px solid rgba(134,239,172,.2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--rm-light);
+}
+
+.shelf-icon svg{
+  width:16px;
+  height:16px;
+}
+
+.stats-bento-grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:16px;
+}
+
+.stat-card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(134,239,172,.1);
+  border-radius:18px;
+  padding:24px 28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow:0 4px 20px rgba(0,0,0,.15);
+  position:relative;
+  overflow:hidden;
+}
+
+.stat-card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, rgba(255,255,255,.04), transparent);
+  opacity:0;
+  transition:opacity 0.3s ease;
+}
+
+.stat-card:hover{
+  transform:translateY(-2px);
+  border-color:rgba(134,239,172,.3);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.25),
+    0 0 20px rgba(134,239,172,.08);
+}
+
+.stat-card:hover::before{
+  opacity:1;
+}
+
+.stat-text span{
+  display:block;
+  font-size:0.8rem;
+  font-weight:600;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:#9CC2AC;
+  margin-bottom:6px;
+}
+
+.stat-text h2{
+  font-family:var(--rm-font-display);
+  font-size:2rem;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-0.01em;
+}
+
+.stat-icon{
+  width:52px;
+  height:52px;
+  flex-shrink:0;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:transform 0.3s ease;
+}
+
+.stat-card:hover .stat-icon{
+  transform:scale(1.05) rotate(3deg);
+}
+
+.stat-icon svg{
+  width:26px;
+  height:26px;
+}
+
+.icon-cube{
+  background:rgba(134,239,172,.12);
+  border:1px solid rgba(134,239,172,.2);
+  color:var(--rm-light);
+}
+
+.icon-stock{
+  background:rgba(220,252,231,.14);
+  border:1px solid rgba(220,252,231,.24);
+  color:var(--rm-soft);
+}
+
+.icon-trend-up{
+  background:rgba(134,239,172,.12);
+  border:1px solid rgba(134,239,172,.2);
+  color:var(--rm-light);
+}
+
+.icon-forecast{
+  background:rgba(187,247,208,.14);
+  border:1px solid rgba(187,247,208,.24);
+  color:var(--rm-light-2);
+}
+
+/* ---------- page transition ---------- */
+
+.login-container{
+  animation:pageEnter .6s var(--rm-ease) both;
+}
+
+@keyframes pageEnter{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (max-width:1080px){
+  .login-container{
+    grid-template-columns:1fr;
+  }
+  .bento-left{
+    min-height:auto;
+    order:2;
+    padding:0;
+  }
+  .bento-left-inner{
+    padding:48px 32px;
+  }
+  .bento-right{
+    min-height:auto;
+    order:1;
+    padding:24px 0;
+  }
+}
+
+@media (max-width:640px){
+  .bento-left-inner{
+    padding:36px 24px;
+    gap:32px;
+  }
+  .stats-bento-grid{
+    grid-template-columns:1fr;
+  }
+  .login-card{
+    padding:40px 24px;
+  }
+  .card-top-bar{
+    left:24px;
+    right:24px;
+  }
+  .welcome-heading h1{
+    font-size:1.6rem;
+  }
+}

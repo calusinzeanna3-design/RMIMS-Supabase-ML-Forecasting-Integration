@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Based Forecasting | RMSME Admin</title>
+<link rel="icon" type="image/png" href="../assets/favicon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/rmims-unified.css">
+<link rel="stylesheet" href="../css/forecasting.css">
+<script src="../js/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <aside class="sidebar"></aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" aria-label="Toggle menu" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="header-actions">
+                <div class="header-date" id="headerDate"><span></span></div>
+                <button class="icon-btn" id="themeToggleBtn" type="button" aria-label="Toggle theme" title="Toggle dark / light mode">◐</button>
+            </div>
+        </header>
+
+        <section class="forecast-page">
+            <div class="forecast-page-heading">
+                <div>
+                    <span class="forecast-kicker">AI-BASED FORECASTING</span>
+                    <h1>Raw Material Forecasting</h1>
+                    <p>Generate predictive raw-material requirements from recorded consumption data using the trained Time-Series model.</p>
+                </div>
+                <div class="forecast-service-badge" id="serviceBadge">
+                    <span class="service-dot"></span>
+                    <span>Checking ML service...</span>
+                </div>
+            </div>
+
+            <section class="forecast-control-card">
+                <div class="control-field">
+                    <label for="materialSelect">Raw Material</label>
+                    <select id="materialSelect">
+                        <option value="">Loading materials...</option>
+                    </select>
+                </div>
+                <div class="control-field">
+                    <label for="forecastPeriodSelect">Forecast Period</label>
+                    <select id="forecastPeriodSelect">
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+                <div class="control-field forecast-period-display">
+                    <label>Forecast Period</label>
+                    <div id="forecastPeriodValue" class="control-readonly">Waiting for forecast</div>
+                </div>
+                <button class="primary-btn" id="generateForecastBtn" type="button">
+                    Generate Forecast
+                </button>
+            </section>
+
+            <div id="forecastMessage" class="forecast-message" hidden></div>
+
+            <section class="forecast-grid">
+                <article class="forecast-card forecast-chart-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Raw Material Consumption &amp; Forecast</h2>
+                            <p>Recorded consumption is shown first; the model forecast is shown for the forecast period.</p>
+                        </div>
+                        <span class="chart-legend"><i class="legend-history"></i> Historical <i class="legend-forecast"></i> Forecast</span>
+                    </div>
+                    <div class="chart-wrap" id="chartEmptyState">
+                        <div class="empty-state">
+                            <strong>No forecast generated yet.</strong>
+                            <span>Select a raw material and generate a forecast.</span>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" id="forecastChartWrap" hidden>
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="forecast-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Forecast Requirement by Raw Material</h2>
+                            <p>Only materials with an available forecasting model are displayed.</p>
+                        </div>
+                    </div>
+                    <div id="forecastMaterialsList" class="forecast-material-list">
+                        <div class="empty-state compact">
+                            <span>Generate a forecast to view available model results.</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="forecast-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Forecast Decision Summary</h2>
+                            <p>Decision status is based on the model forecast compared with current inventory.</p>
+                        </div>
+                    </div>
+                    <div class="decision-grid">
+                        <div class="decision-card shortage">
+                            <span>Potential Shortage</span>
+                            <strong id="shortageCount">0</strong>
+                            <small>Materials</small>
+                        </div>
+                        <div class="decision-card sufficient">
+                            <span>Sufficient</span>
+                            <strong id="sufficientCount">0</strong>
+                            <small>Materials</small>
+                        </div>
+                        <div class="decision-card excess">
+                            <span>Potential Excess</span>
+                            <strong id="excessCount">0</strong>
+                            <small>Materials</small>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="forecast-card forecast-details-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Forecast Details</h2>
+                            <p>Actual result returned by the authenticated Flask ML service.</p>
+                        </div>
+                    </div>
+                    <div id="forecastDetails" class="details-empty">
+                        Generate a forecast to view the model result.
+                    </div>
+                    <div class="details-actions">
+                        <button class="secondary-btn" id="view3dBtn" type="button" disabled>
+                            View Detailed Result (3D Process)
+                        </button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="forecast-note">
+                <strong>AI-Based Forecasting</strong>
+                <span>The system uses a trained autoregressive Time-Series model to estimate future raw-material requirements from recorded consumption patterns. Forecast results are used for inventory decision support.</span>
+            </section>
+        </section>
+    </main>
+</div>
+
+<script type="module" src="../js/forecasting.js?v=2"></script>
+<script src="../js/rmsme-shell.js"></script>
+<script>
+(function(){
+    const root = document.documentElement;
+    const stored = localStorage.getItem("rmims-theme");
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", stored || (prefersDark ? "dark" : "light"));
+    const btn = document.getElementById("themeToggleBtn");
+    if(btn) btn.addEventListener("click", ()=>{
+        const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        localStorage.setItem("rmims-theme", next);
+    });
+    const dateEl = document.querySelector("#headerDate span");
+    if(dateEl) dateEl.textContent = new Date().toLocaleDateString("en-US", {year:"numeric", month:"short", day:"numeric"});
+    const menuToggle = document.querySelector(".menu-toggle");
+    const sidebar = document.querySelector(".sidebar");
+    menuToggle?.addEventListener("click", ()=>sidebar?.classList.toggle("open"));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Consumption Analytics | RMSME User</title>
+<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+<link href="../css/user-analytics.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script src="../js/chart.js"></script>
+<link href="../css/rmims-unified.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="container">
+<!-- SIDEBAR (USER) -->
+<aside class="sidebar">
+<div class="logo">
+<div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
+<div class="logo-text">
+                    RMSME
+                    <span>Raw Materials Inventory<br/>Management System</span>
+</div>
+</div>
+<div class="menu">
+<p class="section">MAIN</p>
+<a href="dashboard.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="3"></rect>
+<rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="3"></rect>
+<rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="14"></rect>
+<rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="14"></rect>
+</svg>
+                    Dashboard
+                </a>
+<p class="section">INVENTORY</p>
+<a href="inventory.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+<path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+</svg>
+                    Inventory Overview
+                </a>
+<a href="material-activity.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path>
+<path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+                    Material Activity
+                </a>
+<p class="section">ANALYTICS</p>
+<a class="active" href="analytics.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+                    Consumption Analytics
+                </a>
+<p class="section">REPORTS</p>
+<a href="reports.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+<path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+<path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+                    Reports
+                </a>
+<p class="section">ACCOUNT</p>
+<a href="settings.html">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"></circle>
+<path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path>
+</svg>
+                    Settings
+                </a>
+</div>
+</aside>
+<!-- MAIN CONTENT -->
+<main class="content">
+<header class="topbar">
+<div class="topbar-left">
+<button aria-label="Toggle menu" class="menu-toggle">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+</svg>
+</button>
+<nav class="breadcrumb">
+<span>Analytics</span>
+<span class="crumb-sep">›</span>
+<span class="crumb-active">Consumption Analytics</span>
+</nav>
+</div>
+<div class="header-actions">
+<div class="header-date" id="headerDate">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect>
+<path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path>
+<path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+<span>July 29, 2026</span>
+</div>
+<button aria-label="Toggle theme" class="icon-btn" id="themeToggleBtn" title="Toggle dark / light mode">
+<svg class="icon-sun" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"></circle>
+<path d="M12 2.5V4.5M12 19.5V21.5M4.5 12H2.5M21.5 12H19.5M5.6 5.6L4.2 4.2M19.8 19.8L18.4 18.4M18.4 5.6L19.8 4.2M4.2 19.8L5.6 18.4" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+<svg class="icon-moon" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 14.5C18.9 15 17.7 15.3 16.5 15.3C11.9 15.3 8.2 11.6 8.2 7C8.2 5.8 8.5 4.6 9 3.5C5.3 4.6 2.5 8.1 2.5 12.2C2.5 17.2 6.6 21.3 11.6 21.3C15.6 21.3 19 18.7 20 14.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+</svg>
+</button>
+<button class="icon-btn" id="notificationBtn">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+<path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+<span class="notif-badge" hidden="" id="notifBadge">0</span>
+</button>
+<button class="profile-btn" id="profileBtn">
+<span class="avatar">U</span>
+<span class="profile-text">Staff Member</span>
+<svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</button>
+</div>
+</header>
+<!-- PAGE TITLE -->
+
+<!-- ANALYTICS FILTERS CARD -->
+<section class="filter-card fade-in" style="--delay:60ms">
+<div class="filter-grid">
+<div class="filter-item">
+<label for="searchInput">Search Material</label>
+<div class="filter-input-wrap">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle>
+<path d="M21 21L16.65 16.65" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+</svg>
+<input class="filter-control" id="searchInput" placeholder="Search Material..." type="text"/>
+</div>
+</div>
+<div class="filter-item">
+<label for="categorySelect">Category</label>
+<select class="filter-control" id="categorySelect">
+</select>
+</div>
+<div class="filter-item">
+<label for="unitSelect">Unit</label>
+<select class="filter-control" id="unitSelect">
+<option value="">All Units</option>
+</select>
+</div>
+<div class="filter-item">
+<label for="dateRangeSelect">Period</label>
+<select class="filter-control" id="dateRangeSelect">
+<option value="today">Today</option>
+<option selected="" value="week">This Week</option>
+<option value="month">This Month</option>
+<option value="last30">Last 30 Days</option>
+</select>
+</div>
+<div class="filter-item">
+<label>Date Range (optional)</label>
+<div class="date-range-group">
+<input class="date-control" id="startDateInput" type="date"/>
+<span style="color:#94a3b8;">–</span>
+<input class="date-control" id="endDateInput" type="date"/>
+</div>
+</div>
+<div class="filter-item">
+<label> </label>
+<button class="reset-btn" id="resetFiltersBtn">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4V9H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M20 20V15H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M19.4 9A9 9 0 0 0 5.6 5.6L4 9M20 15L18.4 18.4A9 9 0 0 1 4.6 15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+                            Reset Filters
+                        </button>
+</div>
+</div>
+</section>
+<div class="analytics-state loading" hidden="" id="analyticsState"></div>
+<div class="analytics-data-quality" hidden="" id="analyticsDataQuality"></div>
+<!-- KPI CARDS -->
+<section class="cards fade-in" style="--delay:120ms">
+<div class="card">
+<div class="card-text">
+<span>Total Material Activity <button aria-label="What is Total Material Activity?" class="info-icon" data-info="totalActivity" type="button">ⓘ</button></span>
+<h2 id="totalUsageRecords">0</h2>
+</div>
+<div class="card-icon icon-blue">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path>
+<path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Most Used Material <button aria-label="What is Most Used Material?" class="info-icon" data-info="mostUsed" type="button">ⓘ</button></span>
+<h2 class="text-stat" id="mostUsedMaterial">-</h2>
+</div>
+<div class="card-icon icon-green">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Least Used Material <button aria-label="What is Least Used Material?" class="info-icon" data-info="leastUsed" type="button">ⓘ</button></span>
+<h2 class="text-stat" id="leastUsedMaterial">-</h2>
+</div>
+<div class="card-icon icon-orange">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M3 7L9 13L13 9L21 17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<path d="M15 17H21V11" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Total Consumption <button aria-label="What is Total Consumption?" class="info-icon" data-info="totalConsumption" type="button">ⓘ</button></span>
+<h2 id="totalConsumption">0</h2>
+</div>
+<div class="card-icon icon-purple">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="1.6"></ellipse>
+<path d="M4 6V18C4 19.6569 7.58172 21 12 21C16.4183 21 20 19.6569 20 18V6" stroke="currentColor" stroke-width="1.6"></path>
+<path d="M4 12C4 13.6569 7.58172 15 12 15C16.4183 15 20 13.6569 20 12" stroke="currentColor" stroke-width="1.6"></path>
+</svg>
+</div>
+</div>
+</section>
+<!-- CHARTS -->
+<section class="chart-grid fade-in" style="--delay:180ms">
+<div class="chart-card">
+<div class="card-header">
+<h3>Material Consumption Trend <button aria-label="What is Material Consumption Trend?" class="info-icon" data-info="consumptionTrend" type="button">ⓘ</button></h3>
+<div class="period-toggle">
+<button class="period-btn active" data-period="Daily">Daily</button>
+<button class="period-btn" data-period="Weekly">Weekly</button>
+<button class="period-btn" data-period="Monthly">Monthly</button>
+</div>
+</div>
+<div class="chart-canvas-wrap">
+<canvas id="consumptionChart"></canvas>
+</div>
+</div>
+<div class="chart-card">
+<div class="card-header">
+<h3>Material Usage Breakdown <button aria-label="What is Material Usage Breakdown?" class="info-icon" data-info="usageBreakdown" type="button">ⓘ</button></h3>
+</div>
+<div class="chart-canvas-wrap">
+<canvas id="distributionChart"></canvas>
+</div>
+</div>
+</section>
+<!-- CHARTS GRID 2: MOST CONSUMED & RECENT ACTIVITY -->
+<section class="chart-grid-secondary fade-in" style="--delay:220ms">
+<div class="chart-card">
+<div class="card-header">
+<h3>Most Consumed Raw Materials <button aria-label="What is Most Consumed Raw Materials?" class="info-icon" data-info="mostConsumed" type="button">ⓘ</button></h3>
+</div>
+<div class="chart-canvas-wrap">
+<canvas id="mostConsumedBarChart"></canvas>
+</div>
+</div>
+<div class="chart-card">
+<div class="card-header">
+<h3>Recent Material Consumption <button aria-label="What is Recent Material Consumption?" class="info-icon" data-info="recentConsumption" type="button">ⓘ</button></h3>
+<button class="view-all-btn" id="viewAllRecentBtn">View All →</button>
+</div>
+<div class="activity-list" id="recentActivityList">
+</div>
+</div>
+</section>
+<!-- ANALYTICS TABLE -->
+<section class="table-card fade-in" style="--delay:260ms">
+<div class="table-header">
+<h3>Material Usage Overview <button aria-label="What is Material Usage Overview?" class="info-icon" data-info="usageOverview" type="button">ⓘ</button></h3>
+</div>
+<div class="table-scroll">
+<table id="overviewTable">
+<thead>
+<tr>
+<th data-sort="name">Material Name <span class="sort-icon">▲▼</span></th>
+<th data-sort="category">Category <span class="sort-icon">▲▼</span></th>
+<th data-sort="unit">Unit <span class="sort-icon">▲▼</span></th>
+<th data-sort="total">Total Consumed <span class="sort-icon">▲▼</span></th>
+<th data-sort="trend">Consumption Trend <span class="sort-icon">▲▼</span></th>
+<th data-sort="status">Status <span class="sort-icon">▲▼</span></th>
+</tr>
+</thead>
+<tbody id="analyticsTableBody">
+</tbody>
+</table>
+</div>
+<div class="table-pagination" id="tablePagination">
+<div class="page-info" id="pageInfo">Showing 0 to 0 of 0 materials</div>
+<div class="pagination-controls" id="paginationControls">
+</div>
+</div>
+</section>
+<!-- INSIGHTS -->
+<section class="insights fade-in" style="--delay:300ms">
+<div class="card-header">
+<h3>
+<span class="title-icon">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C9 2 7 4.5 7 7.5C7 9.5 8 10.8 9 12C9.6 12.7 10 13.4 10 14.5V16H14V14.5C14 13.4 14.4 12.7 15 12C16 10.8 17 9.5 17 7.5C17 4.5 15 2 12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+<path d="M10 19H14M11 22H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+</svg>
+</span>
+                        Consumption Insights <button aria-label="What are Consumption Insights?" class="info-icon" data-info="consumptionInsights" type="button">ⓘ</button>
+</h3>
+</div>
+<ul id="insightsList">
+<li>Loading insights...</li>
+</ul>
+</section>
+</main>
+</div>
+<!-- INFO POPOVER -->
+<div aria-live="polite" class="info-popover" hidden="" id="infoPopover" role="tooltip">
+<strong id="infoPopoverTitle"></strong>
+<p id="infoPopoverBody"></p>
+</div>
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+<div class="modal-container">
+<div class="modal-header">
+<h3>Complete Consumption Log</h3>
+<button class="modal-close" id="modalCloseBtn">✕</button>
+</div>
+<div class="modal-body" id="modalHistoryList"></div>
+</div>
+</div>
+<script src="../js/user-analytics.js" type="module"></script>
+<script>
+        const headerDateEl = document.querySelector("#headerDate span");
+        if (headerDateEl) {
+            headerDateEl.textContent = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+        }
+
+        const menuToggle = document.querySelector(".menu-toggle");
+        const sidebarEl = document.querySelector(".sidebar");
+        if (menuToggle && sidebarEl) {
+            menuToggle.addEventListener("click", () => {
+                sidebarEl.classList.toggle("open");
+            });
+        }
+
+        /* THEME TOGGLE (light/dark, persisted, shared across pages) */
+        (function () {
+            const root = document.documentElement;
+            const stored = localStorage.getItem("rmims-theme");
+            const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const initial = stored || (prefersDark ? "dark" : "light");
+            root.setAttribute("data-theme", initial);
+
+            const btn = document.getElementById("themeToggleBtn");
+            if (btn) {
+                btn.addEventListener("click", () => {
+                    const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+                    root.setAttribute("data-theme", next);
+                    localStorage.setItem("rmims-theme", next);
+                });
+            }
+        })();
+    </script>
+<script src="../js/rmsme-shell.js"></script>
+</body>
+</html>
