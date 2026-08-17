@@ -1,504 +1,215 @@
-import {
-    auth,
-    db
-} from "../supabase/supabase-config.js";
+// js/user-dashboard.js
+// Staff Operational Dashboard — Inventory Command Center matching Admin UI quality.
 
-import {
-    collection,
-    query,
-    orderBy,
-    limit,
-    getDocs,
-    doc,
-    getDoc
-} from "../supabase/db-compat.js";
+import { auth, db } from "../supabase/supabase-config.js";
+import { collection, getDocs } from "../supabase/db-compat.js";
+import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
-import {
-    onAuthStateChanged
-} from "../supabase/auth-compat.js";
+const $ = id => document.getElementById(id);
 
-/* ==========================
-   ROLE PROTECTION + WELCOME
-========================== */
+const esc = v =>
+    String(v ?? "").replace(
+        /[&<>"']/g,
+        c => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[c])
+    );
 
-const profileBtn =
-document.getElementById("profileBtn");
-
-const welcomeHeading =
-document.getElementById("welcomeHeading");
-
-function greetingWord(){
+function greetingWord() {
     const hour = new Date().getHours();
-    if(hour < 12) return "Good morning";
-    if(hour < 18) return "Good afternoon";
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
     return "Good evening";
 }
 
-onAuthStateChanged(auth, async(user)=>{
+/* ============================================================
+   ROLE GUARD & AUTH
+   ============================================================ */
 
-    if(!user){
+onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "../login.html"; return; }
 
-        window.location.href =
-        "../login.html";
+    const snap = await getDocs(collection(db, "users"));
+    const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
 
-        return;
+    if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
+    if (profile.role !== "user") { window.location.href = "../admin/dashboard.html"; return; }
 
+    const firstName = (profile.fullName || "there").split(" ")[0];
+    if ($("welcomeGreeting")) {
+        $("welcomeGreeting").textContent = `Inventory Command Center — ${greetingWord()}, ${firstName}`;
     }
 
-    const userDoc =
-    await getDoc(
-        doc(db,"users",user.uid)
-    );
-
-    if(!userDoc.exists()){
-
-        window.location.href =
-        "../login.html";
-
-        return;
-
+    const pBtn = $("profileBtn");
+    if (pBtn) {
+        const pText = pBtn.querySelector(".profile-text") || pBtn;
+        pText.textContent = `${profile.fullName || "Staff Member"} ▼`;
+        const pAv = pBtn.querySelector(".avatar");
+        if (pAv && profile.fullName) {
+            pAv.textContent = profile.fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join("");
+        }
     }
 
-    const data =
-    userDoc.data();
-
-    if(data.role !== "user"){
-
-        window.location.href =
-        "../admin/dashboard.html";
-
-        return;
-
-    }
-
-    const firstName =
-    (data.fullName || "there").split(" ")[0];
-
-    profileBtn.querySelector(".profile-text").textContent =
-    data.fullName || "Staff";
-
-    if(welcomeHeading){
-        welcomeHeading.textContent =
-        `${greetingWord()}, ${firstName}`;
-    }
-
-    loadDashboard();
-
+    initUserDashboard();
 });
 
-/* ==========================
-   HELPERS
-========================== */
+/* ============================================================
+   DATA FETCH & RENDER
+   ============================================================ */
 
-function toMillis(ts){
-    if(!ts) return 0;
-    if(typeof ts.toMillis === "function") return ts.toMillis();
-    if(typeof ts === "string") return new Date(ts).getTime();
-    return 0;
-}
+async function initUserDashboard() {
+    try {
+        const [matSnap, usageSnap, receiptSnap] = await Promise.all([
+            getDocs(collection(db, "materials")),
+            getDocs(collection(db, "usageRecords")),
+            getDocs(collection(db, "stockReceipts"))
+        ]);
 
-function formatRelativeTime(ms){
+        const materials = matSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const usageRecords = usageSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const stockReceipts = receiptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    if(!ms) return "";
+        const total = materials.length;
+        const available = materials.filter(m => Number(m.quantity || 0) > Number(m.minimumThreshold || 10)).length;
+        const low = materials.filter(m => Number(m.quantity || 0) > 0 && Number(m.quantity || 0) <= Number(m.minimumThreshold || 10)).length;
+        const out = materials.filter(m => Number(m.quantity || 0) <= 0).length;
 
-    const date = new Date(ms);
-    const now = new Date();
+        if ($("userTotalMat")) $("userTotalMat").textContent = total;
+        if ($("userAvailableMat")) $("userAvailableMat").textContent = available;
+        if ($("userLowMat")) $("userLowMat").textContent = low;
+        if ($("userOutMat")) $("userOutMat").textContent = out;
 
-    const isToday =
-    date.toDateString() === now.toDateString();
-
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    const isYesterday =
-    date.toDateString() === yesterday.toDateString();
-
-    const time = date.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
-
-    if(isToday) return `Today · ${time}`;
-    if(isYesterday) return `Yesterday · ${time}`;
-
-    return date.toLocaleDateString("en-US",{month:"short",day:"numeric"}) + ` · ${time}`;
-
-}
-
-function formatQty(qty, unit){
-    const n = Number(qty);
-    const num = Number.isFinite(n) ? n : 0;
-    return unit ? `${num} ${unit}` : `${num}`;
-}
-
-function escapeHtml(str){
-    return String(str ?? "").replace(/[&<>"']/g, (c)=>({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[c]));
-}
-
-/* ==========================
-   DASHBOARD DATA
-========================== */
-
-async function loadDashboard(){
-
-    let materials = [];
-    let usageRecords = [];
-    let stockReceipts = [];
-    let materialsFailed = false;
-    let activityFailed = false;
-
-    try{
-
-        const materialsSnap =
-        await getDocs(collection(db,"materials"));
-
-        materialsSnap.forEach((item)=>{
-            materials.push({ id:item.id, ...item.data() });
-        });
-
-    }catch(err){
-
-        console.error("Failed to load materials:", err);
-        materialsFailed = true;
-
+        renderActivityFeed(usageRecords, stockReceipts);
+        renderConsumptionSummary(usageRecords);
+        renderRecommendations(materials);
+    } catch (err) {
+        console.error("Failed loading staff dashboard data:", err);
     }
-
-    try{
-
-        const usageSnap =
-        await getDocs(
-            query(
-                collection(db,"usageRecords"),
-                orderBy("createdAt","desc"),
-                limit(25)
-            )
-        );
-
-        usageSnap.forEach((item)=>{
-            usageRecords.push({ id:item.id, ...item.data() });
-        });
-
-        const receiptsSnap =
-        await getDocs(
-            query(
-                collection(db,"stockReceipts"),
-                orderBy("createdAt","desc"),
-                limit(25)
-            )
-        );
-
-        receiptsSnap.forEach((item)=>{
-            stockReceipts.push({ id:item.id, ...item.data() });
-        });
-
-    }catch(err){
-
-        console.error("Failed to load material activity:", err);
-        activityFailed = true;
-
-    }
-
-    renderSummary(materials, usageRecords, stockReceipts, materialsFailed, activityFailed);
-    renderStatusList(materials, materialsFailed);
-    renderAttentionList(materials, materialsFailed);
-    renderActivityFeed(usageRecords, stockReceipts, activityFailed);
-    renderReminders(materials, materialsFailed);
-
 }
 
-/* ==========================
-   SUMMARY CARDS
-========================== */
+/* ============================================================
+   RECENT ACTIVITY FEED
+   ============================================================ */
 
-function renderSummary(materials, usageRecords, stockReceipts, materialsFailed, activityFailed){
+function renderActivityFeed(usageRecords, stockReceipts) {
+    const feed = $("activityFeed") || $("userActivityFeed");
+    const countBadge = $("activitiesCount") || $("activityLogCount");
+    if (!feed) return;
 
-    const totalEl = document.getElementById("kpiTotalMaterials");
-    const stockEl = document.getElementById("kpiAvailableStock");
-    const lowEl = document.getElementById("kpiLowStock");
-    const activityEl = document.getElementById("kpiRecentActivity");
+    const events = [
+        ...stockReceipts.map(r => ({
+            date: r.createdAt || r.receivedDate,
+            type: "Received",
+            material: r.materialName || "Material",
+            qty: r.receivedQuantity || 0,
+            unit: r.unit || "",
+            product: null
+        })),
+        ...usageRecords.map(u => ({
+            date: u.createdAt || u.usageDate,
+            type: u.productName ? "Used" : "Consumed",
+            material: u.materialName || "Material",
+            qty: u.usedQuantity || 0,
+            unit: u.unit || "",
+            product: u.productName || null
+        }))
+    ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 8);
 
-    [totalEl, stockEl, lowEl, activityEl].forEach(el=>el.classList.remove("kpi-skel"));
+    if (countBadge) countBadge.textContent = events.length;
 
-    if(materialsFailed){
-        totalEl.textContent = "—";
-        stockEl.textContent = "—";
-        lowEl.textContent = "—";
-    }else{
-        const totalStock = materials.reduce((sum,m)=>sum + (Number(m.quantity) || 0), 0);
-        const lowCount = materials.filter(m=> m.status === "Low" || m.status === "Critical").length;
-
-        totalEl.textContent = materials.length;
-        stockEl.textContent = totalStock.toLocaleString();
-        lowEl.textContent = lowCount;
-    }
-
-    if(activityFailed){
-        activityEl.textContent = "—";
-    }else{
-        activityEl.textContent = usageRecords.length + stockReceipts.length;
-    }
-
-}
-
-/* ==========================
-   INVENTORY STATUS
-========================== */
-
-function renderStatusList(materials, failed){
-
-    const container = document.getElementById("statusList");
-
-    if(failed){
-        container.innerHTML = errorStateHtml("Unable to load inventory status.");
+    if (events.length === 0) {
+        feed.innerHTML = `<div class="empty-state"><strong>No recent activity</strong><span>Inventory activity will appear here after records are logged.</span></div>`;
         return;
     }
 
-    if(materials.length === 0){
-        container.innerHTML = emptyStateHtml("No materials yet.", "Materials will appear here once they're added to inventory.");
-        return;
-    }
-
-    const good = materials.filter(m=>m.status === "Available").length;
-    const low = materials.filter(m=>m.status === "Low").length;
-    const critical = materials.filter(m=>m.status === "Critical").length;
-
-    container.innerHTML = `
-        <div class="status-row">
-            <span class="status-row-label"><span class="status-dot good"></span>Good</span>
-            <span class="status-row-count">${good}</span>
+    feed.innerHTML = events.map(e => `
+        <div class="activity-row">
+            <span class="activity-dot"></span>
+            <span class="activity-main">
+                <strong>${esc(e.type)} — ${esc(e.material)}</strong>
+                <small>${e.product ? `For ${esc(e.product)} · ` : ""}${esc(e.qty)} ${esc(e.unit)}</small>
+            </span>
+            <span class="activity-time">${e.date ? esc(new Date(e.date).toLocaleDateString()) : "—"}</span>
         </div>
-        <div class="status-row">
-            <span class="status-row-label"><span class="status-dot warn"></span>Running Low</span>
-            <span class="status-row-count">${low}</span>
-        </div>
-        <div class="status-row">
-            <span class="status-row-label"><span class="status-dot bad"></span>Needs Restocking</span>
-            <span class="status-row-count">${critical}</span>
-        </div>
-    `;
-
+    `).join("");
 }
 
-/* ==========================
-   MATERIALS NEEDING ATTENTION
-========================== */
+/* ============================================================
+   CONSUMPTION SUMMARY & NARRATIVE
+   ============================================================ */
 
-function renderAttentionList(materials, failed){
+function renderConsumptionSummary(usageRecords) {
+    const narrative = $("consumptionNarrative");
+    const history = $("consumptionHistory");
 
-    const container = document.getElementById("attentionList");
-    const countEl = document.getElementById("attentionCount");
+    const totalUsed = usageRecords.reduce((s, u) => s + (Number(u.usedQuantity) || 0), 0);
 
-    if(failed){
-        container.innerHTML = errorStateHtml("Unable to load materials needing attention.");
-        countEl.textContent = "—";
+    if (narrative) {
+        narrative.textContent = usageRecords.length
+            ? `${usageRecords.length} consumption record${usageRecords.length === 1 ? "" : "s"} logged, with ${totalUsed.toLocaleString()} total units consumed across production runs.`
+            : "No consumption records logged yet.";
+    }
+
+    if (history) {
+        const sorted = usageRecords.slice().sort((a, b) => new Date(b.usageDate || b.createdAt || 0) - new Date(a.usageDate || a.createdAt || 0)).slice(0, 5);
+
+        if (sorted.length === 0) {
+            history.innerHTML = `<div class="empty-state"><span>No consumption history yet.</span></div>`;
+            return;
+        }
+
+        history.innerHTML = sorted.map(u => `
+            <div class="history-row">
+                <strong>${esc(u.materialName)}</strong>
+                <span>-${esc(u.usedQuantity)} ${esc(u.unit || "")}</span>
+            </div>
+        `).join("");
+    }
+}
+
+/* ============================================================
+   RECOMMENDATIONS / STOCK ATTENTION
+   ============================================================ */
+
+function renderRecommendations(materials) {
+    const container = $("recommendationsContainer");
+    if (!container) return;
+
+    const needy = materials.filter(m => m.status === "Low" || m.status === "Critical" || Number(m.quantity || 0) <= Number(m.minimumThreshold || m.minStock || 10));
+
+    if (needy.length === 0) {
+        container.innerHTML = `
+            <div class="recommendation-result">
+                <div class="recommendation-result-main">
+                    <span class="recommendation-result-dot" style="background: linear-gradient(135deg, #10B981, #059669); box-shadow: 0 0 0 5px rgba(16,185,129,.12);"></span>
+                    <span class="recommendation-result-copy">
+                        <strong>All Stock Levels Healthy</strong>
+                        <span>All raw materials currently meet or exceed target operational thresholds.</span>
+                    </span>
+                </div>
+                <span class="badge good" style="padding:6px 12px; font-size:12px; border-radius:20px; flex-shrink:0;">✓ Optimal</span>
+            </div>
+        `;
         return;
     }
 
-    const needing = materials
-        .filter(m=> m.status === "Low" || m.status === "Critical")
-        .sort((a,b)=> (a.status === "Critical" ? 0 : 1) - (b.status === "Critical" ? 0 : 1))
-        .slice(0, 6);
-
-    countEl.textContent = needing.length;
-
-    if(needing.length === 0){
-        container.innerHTML = emptyStateHtml("You're all caught up.", "No materials currently need attention.");
-        return;
-    }
-
-    container.innerHTML = needing.map(m=>{
+    container.innerHTML = needy.map(m => {
         const isCritical = m.status === "Critical";
         return `
-            <div class="attention-row">
-                <div>
-                    <div class="attention-name">${escapeHtml(m.materialName)}</div>
-                    <div class="attention-stock">Current stock: ${formatQty(m.quantity, m.unit)}</div>
+            <div class="recommendation-result">
+                <div class="recommendation-result-main">
+                    <span class="recommendation-result-dot" style="${isCritical ? 'background: linear-gradient(135deg, #EF4444, #DC2626); box-shadow: 0 0 0 5px rgba(239,68,68,.12);' : 'background: linear-gradient(135deg, #F59E0B, #D97706); box-shadow: 0 0 0 5px rgba(245,158,11,.12);'}"></span>
+                    <span class="recommendation-result-copy">
+                        <strong>${esc(m.materialName)}</strong>
+                        <span>Current balance: ${m.quantity} ${esc(m.unit || "")} (Min: ${m.minimumThreshold || m.minStock || 10})</span>
+                    </span>
                 </div>
-                <span class="pill ${isCritical ? "bad" : "warn"}">${isCritical ? "🔴 Needs Restocking" : "🟠 Running Low"}</span>
+                <span class="badge ${isCritical ? 'bad' : 'warn'}" style="padding:6px 12px; font-size:12px; border-radius:20px; flex-shrink:0;">${esc(m.status || "Low Stock")}</span>
             </div>
         `;
     }).join("");
-
-}
-
-/* ==========================
-   RECENT MATERIAL ACTIVITY
-========================== */
-
-function renderActivityFeed(usageRecords, stockReceipts, failed){
-
-    const container = document.getElementById("activityFeed");
-    const countEl = document.getElementById("activityCount");
-
-    if(failed){
-        container.innerHTML = errorStateHtml("Unable to load recent activity.");
-        countEl.textContent = "—";
-        return;
-    }
-
-    const used = usageRecords.map(r=>({
-        type:"used",
-        materialName:r.materialName,
-        quantity:r.usedQuantity,
-        unit:r.unit,
-        ms:toMillis(r.createdAt)
-    }));
-
-    const received = stockReceipts.map(r=>({
-        type:"received",
-        materialName:r.materialName,
-        quantity:r.receivedQuantity,
-        unit:r.unit,
-        ms:toMillis(r.createdAt)
-    }));
-
-    const combined = [...used, ...received]
-        .sort((a,b)=> b.ms - a.ms)
-        .slice(0, 6);
-
-    countEl.textContent = used.length + received.length;
-
-    if(combined.length === 0){
-        container.innerHTML = emptyStateHtml("No material activity yet.", "Received and used material records will appear here once activity is recorded.");
-        return;
-    }
-
-    container.innerHTML = combined.map(item=>{
-
-        const isReceived = item.type === "received";
-
-        return `
-            <div class="activity-row">
-                <div class="activity-icon ${isReceived ? "icon-green" : "icon-orange"}">
-                    ${isReceived ? "📥" : "📤"}
-                </div>
-                <div class="activity-main">
-                    <div class="activity-title">${escapeHtml(item.materialName)}</div>
-                    <div class="activity-desc">${isReceived ? "Received" : "Used"} ${isReceived ? "+" : "−"}${formatQty(item.quantity, item.unit)}</div>
-                </div>
-                <div class="activity-time">${formatRelativeTime(item.ms)}</div>
-            </div>
-        `;
-
-    }).join("");
-
-}
-
-/* ==========================
-   STAFF REMINDERS
-========================== */
-
-let remindersVisible = true;
-
-function renderReminders(materials, failed){
-
-    const body = document.getElementById("remindersBody");
-    const countEl = document.getElementById("reminderCount");
-    const hideBtn = document.getElementById("remindersHideBtn");
-    const collapsedRow = document.getElementById("remindersCollapsedRow");
-    const collapsedCount = document.getElementById("remindersCollapsedCount");
-
-    if(failed){
-        body.innerHTML = errorStateHtml("Unable to load staff reminders.");
-        countEl.textContent = "—";
-        hideBtn.hidden = true;
-        return;
-    }
-
-    const critical = materials
-        .filter(m=>m.status === "Critical")
-        .map(m=>({
-            priority:"bad",
-            icon:"🔴",
-            title:`${m.materialName} needs attention`,
-            sub:`Current stock: ${formatQty(m.quantity, m.unit)}`
-        }));
-
-    const low = materials
-        .filter(m=>m.status === "Low")
-        .map(m=>({
-            priority:"warn",
-            icon:"🟠",
-            title:`${m.materialName} is running low`,
-            sub:`Current stock: ${formatQty(m.quantity, m.unit)}`
-        }));
-
-    const reminders = [...critical, ...low].slice(0, 6);
-
-    countEl.textContent = reminders.length;
-
-    function renderBody(){
-
-        if(reminders.length === 0){
-            body.innerHTML = `
-                <div class="empty-state">
-                    <strong>✓ You're all caught up.</strong>
-                    <span>No inventory actions need your attention.</span>
-                </div>
-            `;
-            hideBtn.hidden = true;
-            collapsedRow.hidden = true;
-            return;
-        }
-
-        if(!remindersVisible){
-            body.innerHTML = "";
-            hideBtn.hidden = true;
-            collapsedRow.hidden = false;
-            collapsedCount.textContent = reminders.length;
-            return;
-        }
-
-        collapsedRow.hidden = true;
-        hideBtn.hidden = false;
-
-        body.innerHTML = `
-            <div class="reminder-list">
-                ${reminders.map(r=>`
-                    <div class="reminder-item priority-${r.priority}">
-                        <span class="reminder-icon">${r.icon}</span>
-                        <div class="reminder-body">
-                            <div class="reminder-title">${escapeHtml(r.title)}</div>
-                            <div class="reminder-sub">${escapeHtml(r.sub)}</div>
-                            <a class="reminder-action" href="inventory.html">View Inventory →</a>
-                        </div>
-                    </div>
-                `).join("")}
-            </div>
-        `;
-
-    }
-
-    renderBody();
-
-    hideBtn.onclick = ()=>{
-        remindersVisible = false;
-        renderBody();
-    };
-
-    collapsedRow.onclick = ()=>{
-        remindersVisible = true;
-        renderBody();
-    };
-
-}
-
-/* ==========================
-   SHARED EMPTY / ERROR STATE MARKUP
-========================== */
-
-function emptyStateHtml(title, sub){
-    return `
-        <div class="empty-state">
-            <strong>${escapeHtml(title)}</strong>
-            ${sub ? `<span>${escapeHtml(sub)}</span>` : ""}
-        </div>
-    `;
-}
-
-function errorStateHtml(message){
-    return `
-        <div class="error-state">
-            <strong>${escapeHtml(message)}</strong>
-            <button class="retry-btn" onclick="location.reload()">Retry</button>
-        </div>
-    `;
 }

@@ -44,8 +44,13 @@ onAuthStateChanged(auth, async (user) => {
     if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
-    document.getElementById("profileBtn").querySelector(".profile-text").textContent = `${profile.fullName} ▼`;
-    document.getElementById("profileBtn").querySelector(".avatar").textContent = initials(profile.fullName);
+    const pBtn = document.getElementById("profileBtn");
+    if (pBtn) {
+        const pText = pBtn.querySelector(".profile-text") || pBtn;
+        pText.textContent = `${profile.fullName} ▼`;
+        const pAv = pBtn.querySelector(".avatar");
+        if (pAv) pAv.textContent = initials(profile.fullName);
+    }
 
     init();
 });
@@ -111,8 +116,8 @@ function showToast(message, type = "success") {
 
 /* ---------- dates ---------- */
 
-const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const MONTHS_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function atMidnight(d) {
     const c = new Date(d);
@@ -323,8 +328,10 @@ function computeProductionCapacity() {
         const reqs = requirementsByProduct.get(product.id) || [];
 
         if (reqs.length === 0) {
-            return { product, ok: false, statusLabel: "Incomplete",
-                message: "Production capacity cannot be calculated because required material information is incomplete." };
+            return {
+                product, ok: false, statusLabel: "Incomplete",
+                message: "Production capacity cannot be calculated because required material information is incomplete."
+            };
         }
 
         let capacity = Infinity;
@@ -352,16 +359,22 @@ function computeProductionCapacity() {
         }
 
         if (unitIssue) {
-            return { product, ok: false, statusLabel: "Incompatible Units",
-                message: "Production capacity cannot be calculated because material units are incompatible." };
+            return {
+                product, ok: false, statusLabel: "Incompatible Units",
+                message: "Production capacity cannot be calculated because material units are incompatible."
+            };
         }
         if (missingMaterial || capacity === Infinity) {
-            return { product, ok: false, statusLabel: "Incomplete",
-                message: "Production capacity cannot be calculated because required material information is incomplete." };
+            return {
+                product, ok: false, statusLabel: "Incomplete",
+                message: "Production capacity cannot be calculated because required material information is incomplete."
+            };
         }
         if (zeroStockMaterial) {
-            return { product, ok: true, capacity: 0, limiting: zeroStockMaterial, statusLabel: "Limited",
-                message: `Production currently limited by ${zeroStockMaterial.materialName}.` };
+            return {
+                product, ok: true, capacity: 0, limiting: zeroStockMaterial, statusLabel: "Limited",
+                message: `Production currently limited by ${zeroStockMaterial.materialName}.`
+            };
         }
 
         return { product, ok: true, capacity, limiting, statusLabel: capacity > 0 ? "Limited" : "Critical", message: null };
@@ -531,6 +544,7 @@ function buildMonthlyGoals(decisionRows) {
     goals.push("Review materials repeatedly limiting production capacity.");
     goals.push("Monitor materials repeatedly reaching low stock.");
     return [...new Set(goals)].slice(0, 5);
+}
 
 /* ==========================================================
    REPORT MODEL
@@ -1158,63 +1172,63 @@ function drawMiniBarChart(doc, title, rows, valueKey, unitLabel = "") {
         const barW = Math.max(2, (pageWidthFor(doc) - 210) * (value / max));
         doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...RM_DIM);
         doc.text(label, 40, y + 7);
-        doc.setFillColor(22,128,60); doc.roundedRect(145, y, barW, 9, 2, 2, "F");
+        doc.setFillColor(22, 128, 60); doc.roundedRect(145, y, barW, 9, 2, 2, "F");
         doc.setTextColor(...RM_INK); doc.text(`${value}${unitLabel ? " " + unitLabel : ""}`, 150 + barW, y + 7);
         y += 15;
     });
     return y + 6;
 }
-function pageWidthFor(doc){ return doc.internal.pageSize.getWidth(); }
+function pageWidthFor(doc) { return doc.internal.pageSize.getWidth(); }
 
-function selectedReportLabel(key){
-    return ({manager:"Manager Summary",inventory:"Inventory Records",receiving:"Material Receiving",disbursement:"Material Disbursement",activity:"Material Activity",consumption:"Consumption Analysis",decision:"Decision Support"})[key] || key;
+function selectedReportLabel(key) {
+    return ({ manager: "Manager Summary", inventory: "Inventory Records", receiving: "Material Receiving", disbursement: "Material Disbursement", activity: "Material Activity", consumption: "Consumption Analysis", decision: "Decision Support" })[key] || key;
 }
 
 function addSelectedPdfSection(doc, report, key, y) {
     if (key === "manager") {
-        y = autoTableSection(doc, y, "Manager Overview", ["Metric","Result"], [
+        y = autoTableSection(doc, y, "Manager Overview", ["Metric", "Result"], [
             ["Total Materials", String(report.overallRows.length)],
             ["Good Stock", String(report.overallRows.filter(r => r.statusLabel === "Good").length)],
             ["Low / Critical", String(report.summary.attention)],
             ["Receiving Records", String(report.summary.received)],
             ["Consumption Records", String(report.summary.consumed)],
             ["Disbursement Records", String(report.summary.disbursed)],
-            
+
         ]);
         y = ensureSpace(doc, y);
-        y = autoTableSection(doc, y, "Manager Decision Breakdown", ["Priority","Material","What the Data Shows","Suggested Action"],
+        y = autoTableSection(doc, y, "Manager Decision Breakdown", ["Priority", "Material", "What the Data Shows", "Suggested Action"],
             report.decisionRows.map(r => [r.priority, r.material, r.finding, r.action]));
         return y;
     }
     if (key === "inventory") {
-        return autoTableSection(doc, y, "Inventory Records", ["Material","Current Stock","Minimum Stock","Status"],
-            report.overallRows.map(r => [r.material,fmtQty(r.current,r.unit),fmtQty(r.min,r.unit),r.statusLabel]));
+        return autoTableSection(doc, y, "Inventory Records", ["Material", "Current Stock", "Minimum Stock", "Status"],
+            report.overallRows.map(r => [r.material, fmtQty(r.current, r.unit), fmtQty(r.min, r.unit), r.statusLabel]));
     }
     if (key === "receiving") {
-        return autoTableSection(doc, y, "Material Receiving", ["Material","Previous Stock","Received","Last Receive","Current Stock","Status"],
-            report.receiveRows.map(r => [r.material,fmtQty(r.previous,r.unit),fmtQty(r.received,r.unit),r.lastReceive,fmtQty(r.current,r.unit),r.statusLabel]));
+        return autoTableSection(doc, y, "Material Receiving", ["Material", "Previous Stock", "Received", "Last Receive", "Current Stock", "Status"],
+            report.receiveRows.map(r => [r.material, fmtQty(r.previous, r.unit), fmtQty(r.received, r.unit), r.lastReceive, fmtQty(r.current, r.unit), r.statusLabel]));
     }
     if (key === "disbursement") {
-        return autoTableSection(doc, y, "Material Disbursement / Release", ["Material","Finished Product","Released","Date","Status"],
-            report.disbursementRows.map(r => [r.material,r.product,fmtQty(r.qty,r.unit),r.date,"Recorded"]));
+        return autoTableSection(doc, y, "Material Disbursement / Release", ["Material", "Finished Product", "Released", "Date", "Status"],
+            report.disbursementRows.map(r => [r.material, r.product, fmtQty(r.qty, r.unit), r.date, "Recorded"]));
     }
     if (key === "activity") {
         const rows = [];
-        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—","Received",r.materialName || materials.find(m=>m.id===r.materialId)?.materialName || "—",fmtSigned(Number(r.receivedQuantity||0),materials.find(m=>m.id===r.materialId)?.unit||""),"—"]));
-        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—",u.productId ? "Disbursed / Used" : "Consumed",u.materialName || materials.find(m=>m.id===u.materialId)?.materialName || "—",fmtSigned(-Number(u.usedQuantity||0),u.unit||materials.find(m=>m.id===u.materialId)?.unit||""),u.productName || "—"]));
-        rows.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
-        return autoTableSection(doc, y, "Material Activity Records", ["Date","Activity","Material","Quantity","Purpose / Product"], rows);
+        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—", "Received", r.materialName || materials.find(m => m.id === r.materialId)?.materialName || "—", fmtSigned(Number(r.receivedQuantity || 0), materials.find(m => m.id === r.materialId)?.unit || ""), "—"]));
+        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—", u.productId ? "Disbursed / Used" : "Consumed", u.materialName || materials.find(m => m.id === u.materialId)?.materialName || "—", fmtSigned(-Number(u.usedQuantity || 0), u.unit || materials.find(m => m.id === u.materialId)?.unit || ""), u.productName || "—"]));
+        rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+        return autoTableSection(doc, y, "Material Activity Records", ["Date", "Activity", "Material", "Quantity", "Purpose / Product"], rows);
     }
     if (key === "consumption") {
-        y = autoTableSection(doc, y, "Consumption Breakdown", ["Material","Previous Stock","Consumed","Current Stock","Trend","Status"],
-            report.consumedRows.map(r => [r.material,fmtQty(r.previous,r.unit),fmtQty(r.consumed,r.unit),fmtQty(r.current,r.unit),r.trend === "up" ? "Increasing" : r.trend === "down" ? "Decreasing" : "Stable",r.statusLabel]));
-        y = ensureSpace(doc,y);
-        return drawMiniBarChart(doc,"Top Recorded Consumption",report.consumedRows,"consumed");
+        y = autoTableSection(doc, y, "Consumption Breakdown", ["Material", "Previous Stock", "Consumed", "Current Stock", "Trend", "Status"],
+            report.consumedRows.map(r => [r.material, fmtQty(r.previous, r.unit), fmtQty(r.consumed, r.unit), fmtQty(r.current, r.unit), r.trend === "up" ? "Increasing" : r.trend === "down" ? "Decreasing" : "Stable", r.statusLabel]));
+        y = ensureSpace(doc, y);
+        return drawMiniBarChart(doc, "Top Recorded Consumption", report.consumedRows, "consumed");
     }
     if (key === "decision") {
-        y = autoTableSection(doc, y, "Decision Support", ["Priority","Material","Condition","Finding","Recommended Action"],
-            report.decisionRows.map(r => [r.priority,r.material,r.condition,r.finding,r.action]));
-        return textList(doc,y,"Management Goals",report.goals,true);
+        y = autoTableSection(doc, y, "Decision Support", ["Priority", "Material", "Condition", "Finding", "Recommended Action"],
+            report.decisionRows.map(r => [r.priority, r.material, r.condition, r.finding, r.action]));
+        return textList(doc, y, "Management Goals", report.goals, true);
     }
     return y;
 }
@@ -1224,7 +1238,7 @@ function buildMainPdf(report, selectedKeys = ["manager"]) {
     let y = drawDocumentHeader(doc, report, { title: "RMSME Report Package", meta: baseMeta(report) });
     selectedKeys.forEach((key, index) => {
         if (index > 0) { doc.addPage(); y = 48; }
-        doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...RM_GREEN);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...RM_GREEN);
         doc.text(selectedReportLabel(key), 40, y); y += 18;
         y = addSelectedPdfSection(doc, report, key, y);
     });
@@ -1234,23 +1248,35 @@ function buildMainPdf(report, selectedKeys = ["manager"]) {
 
 
 const SUPPORTING_DEFS = [
-    { key: "receive", file: "Receive_Stocks", title: "Receive Stocks", snapshot: false,
+    {
+        key: "receive", file: "Receive_Stocks", title: "Receive Stocks", snapshot: false,
         head: ["Material", "Previous", "Received", "Last Receive", "Current", "Status"],
-        rows: (r) => r.receiveRows.map(x => [x.material, fmtQty(x.previous, x.unit), fmtQty(x.received, x.unit), x.lastReceive, fmtQty(x.current, x.unit), x.statusLabel]) },
-    { key: "consumed", file: "Consumed_Stocks", title: "Consumed Stocks", snapshot: false,
+        rows: (r) => r.receiveRows.map(x => [x.material, fmtQty(x.previous, x.unit), fmtQty(x.received, x.unit), x.lastReceive, fmtQty(x.current, x.unit), x.statusLabel])
+    },
+    {
+        key: "consumed", file: "Consumed_Stocks", title: "Consumed Stocks", snapshot: false,
         head: ["Material", "Previous", "Consumed", "Current", "Status"],
-        rows: (r) => r.consumedRows.map(x => [x.material, fmtQty(x.previous, x.unit), fmtQty(x.consumed, x.unit), fmtQty(x.current, x.unit), x.statusLabel]) },
-    { key: "disbursement", file: "Disbursement_Progress", title: "Disbursement Progress", snapshot: false,
+        rows: (r) => r.consumedRows.map(x => [x.material, fmtQty(x.previous, x.unit), fmtQty(x.consumed, x.unit), fmtQty(x.current, x.unit), x.statusLabel])
+    },
+    {
+        key: "disbursement", file: "Disbursement_Progress", title: "Disbursement Progress", snapshot: false,
         head: ["Material", "Finished Product", "Disbursed", "Date", "Progress", "Status"],
-        rows: (r) => r.disbursementRows.map(x => [x.material, x.product, fmtQty(x.qty, x.unit), x.date, "100%", "Complete"]) },
-    { key: "overall", file: "Overall_Raw_Materials", title: "Overall Raw Materials", snapshot: true,
+        rows: (r) => r.disbursementRows.map(x => [x.material, x.product, fmtQty(x.qty, x.unit), x.date, "100%", "Complete"])
+    },
+    {
+        key: "overall", file: "Overall_Raw_Materials", title: "Overall Raw Materials", snapshot: true,
         head: ["Material", "Current Stock", "Minimum Stock", "Maximum Stock", "Status"],
-        rows: (r) => r.overallRows.map(x => [x.material, fmtQty(x.current, x.unit), fmtQty(x.min, x.unit), x.max === null ? "—" : fmtQty(x.max, x.unit), x.statusLabel]) },
-    { key: "capacity", file: "Production_Capacity", title: "Raw Material Production Capacity", snapshot: true,
+        rows: (r) => r.overallRows.map(x => [x.material, fmtQty(x.current, x.unit), fmtQty(x.min, x.unit), x.max === null ? "—" : fmtQty(x.max, x.unit), x.statusLabel])
+    },
+    {
+        key: "capacity", file: "Production_Capacity", title: "Raw Material Production Capacity", snapshot: true,
         head: ["Finished Product", "Limiting Material", "Can Produce", "Status"],
-        rows: (r) => r.capacityRows.map(x => [x.product, x.ok ? x.limiting : x.message, x.canProduce, x.statusLabel]) },
-    { key: "decision", file: "Decision_Support", title: "Decision Support", snapshot: false,
-        head: null, rows: null }
+        rows: (r) => r.capacityRows.map(x => [x.product, x.ok ? x.limiting : x.message, x.canProduce, x.statusLabel])
+    },
+    {
+        key: "decision", file: "Decision_Support", title: "Decision Support", snapshot: false,
+        head: null, rows: null
+    }
 ];
 
 function buildSupportingPdf(def, report) {
@@ -1301,23 +1327,23 @@ function buildMainWorkbook(report) {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summarySheet), "Report Summary");
 
     const receiveSheet = [["Raw Material", "Previous Stock", "Received", "Last Receive", "Current Stock", "Status"],
-        ...report.receiveRows.map(r => [r.material, r.previous, r.received, r.lastReceive, r.current, r.statusLabel])];
+    ...report.receiveRows.map(r => [r.material, r.previous, r.received, r.lastReceive, r.current, r.statusLabel])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(receiveSheet), "Receive Stocks");
 
     const consumedSheet = [["Raw Material", "Previous Stock", "Consumed", "Current Stock", "Status"],
-        ...report.consumedRows.map(r => [r.material, r.previous, r.consumed, r.current, r.statusLabel])];
+    ...report.consumedRows.map(r => [r.material, r.previous, r.consumed, r.current, r.statusLabel])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(consumedSheet), "Consumed Stocks");
 
     const disbSheet = [["Raw Material", "Finished Product", "Disbursed", "Date", "Progress", "Status"],
-        ...report.disbursementRows.map(r => [r.material, r.product, r.qty, r.date, "100%", "Complete"])];
+    ...report.disbursementRows.map(r => [r.material, r.product, r.qty, r.date, "100%", "Complete"])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(disbSheet), "Disbursement Progress");
 
     const overallSheet = [["Raw Material", "Current Stock", "Minimum Stock", "Maximum Stock", "Status"],
-        ...report.overallRows.map(r => [r.material, r.current, r.min, r.max === null ? "—" : r.max, r.statusLabel])];
+    ...report.overallRows.map(r => [r.material, r.current, r.min, r.max === null ? "—" : r.max, r.statusLabel])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(overallSheet), "Overall Raw Materials");
 
     const capSheet = [["Finished Product", "Limiting Material", "Can Produce", "Status"],
-        ...report.capacityRows.map(r => [r.product, r.ok ? r.limiting : r.message, r.canProduce, r.statusLabel])];
+    ...report.capacityRows.map(r => [r.product, r.ok ? r.limiting : r.message, r.canProduce, r.statusLabel])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(capSheet), "Production Capacity");
 
     const decisionHead = report.type === "weekly"
@@ -1341,83 +1367,83 @@ const saveModalOverlay = document.getElementById("saveModalOverlay");
 const saveReportName = document.getElementById("saveReportName");
 const saveModalSubtitle = document.getElementById("saveModalSubtitle");
 
-function getSelectedReportKeys(){
-    return [...document.querySelectorAll('#reportSelection input[type="checkbox"]:checked')].map(x=>x.value);
+function getSelectedReportKeys() {
+    return [...document.querySelectorAll('#reportSelection input[type="checkbox"]:checked')].map(x => x.value);
 }
-function updateSelectedReportCount(){
-    const n=getSelectedReportKeys().length;
-    document.getElementById("selectedReportCount").textContent=`${n} selected`;
+function updateSelectedReportCount() {
+    const n = getSelectedReportKeys().length;
+    document.getElementById("selectedReportCount").textContent = `${n} selected`;
 }
-function openSaveModal(preferredFormat){
-    if(!currentReport) return;
-    saveReportName.value=fileBaseName(currentReport.type,currentReport.start,currentReport.end);
-    saveModalSubtitle.textContent=`${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · ${currentReport.periodLabel}`;
-    document.querySelector(`input[name="saveFormat"][value="${preferredFormat}"]`).checked=true;
-    document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x=>x.checked=x.value==="manager");
+function openSaveModal(preferredFormat) {
+    if (!currentReport) return;
+    saveReportName.value = fileBaseName(currentReport.type, currentReport.start, currentReport.end);
+    saveModalSubtitle.textContent = `${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · ${currentReport.periodLabel}`;
+    document.querySelector(`input[name="saveFormat"][value="${preferredFormat}"]`).checked = true;
+    document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = x.value === "manager");
     updateSelectedReportCount();
     saveModalOverlay.classList.add("open");
 }
-function closeSaveModal(){window.__rmsmePrintMode=false; saveModalOverlay.classList.remove("open");}
+function closeSaveModal() { window.__rmsmePrintMode = false; saveModalOverlay.classList.remove("open"); }
 
-document.getElementById("saveAsPdfBtn").addEventListener("click",()=>openSaveModal("pdf"));
-document.getElementById("saveAsExcelBtn").addEventListener("click",()=>openSaveModal("excel"));
-document.getElementById("saveModalClose").addEventListener("click",closeSaveModal);
-document.getElementById("saveModalCancel").addEventListener("click",closeSaveModal);
-saveModalOverlay.addEventListener("click",e=>{if(e.target===saveModalOverlay)closeSaveModal();});
-document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x=>x.addEventListener("change",updateSelectedReportCount));
-document.getElementById("selectAllReports").addEventListener("click",()=>{document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x=>x.checked=true);updateSelectedReportCount();});
-document.getElementById("clearAllReports").addEventListener("click",()=>{document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x=>x.checked=false);updateSelectedReportCount();});
+document.getElementById("saveAsPdfBtn").addEventListener("click", () => openSaveModal("pdf"));
+document.getElementById("saveAsExcelBtn").addEventListener("click", () => openSaveModal("excel"));
+document.getElementById("saveModalClose").addEventListener("click", closeSaveModal);
+document.getElementById("saveModalCancel").addEventListener("click", closeSaveModal);
+saveModalOverlay.addEventListener("click", e => { if (e.target === saveModalOverlay) closeSaveModal(); });
+document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.addEventListener("change", updateSelectedReportCount));
+document.getElementById("selectAllReports").addEventListener("click", () => { document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = true); updateSelectedReportCount(); });
+document.getElementById("clearAllReports").addEventListener("click", () => { document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = false); updateSelectedReportCount(); });
 
-document.getElementById("browseLocationBtn").addEventListener("click",async()=>{
-    if(!window.showDirectoryPicker){showToast("Your browser will use its default downloads location.","success");return;}
-    try{const handle=await window.showDirectoryPicker();document.getElementById("saveLocationDisplay").value=handle.name;document.getElementById("saveLocationHint").textContent=`Files will be offered for download; move them into "${handle.name}" if your browser doesn't save there directly.`;}catch{}
+document.getElementById("browseLocationBtn").addEventListener("click", async () => {
+    if (!window.showDirectoryPicker) { showToast("Your browser will use its default downloads location.", "success"); return; }
+    try { const handle = await window.showDirectoryPicker(); document.getElementById("saveLocationDisplay").value = handle.name; document.getElementById("saveLocationHint").textContent = `Files will be offered for download; move them into "${handle.name}" if your browser doesn't save there directly.`; } catch { }
 });
-function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}
+function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
 
-document.getElementById("saveModalConfirm").addEventListener("click",async()=>{
-    if(window.__rmsmePrintMode){
-        const selected=getSelectedReportKeys();
-        if(!selected.length){showToast("Select at least one report.","error");return;}
-        const blob=buildMainPdf(currentReport,selected).output("blob");
-        const url=URL.createObjectURL(blob); const w=window.open(url,"_blank");
-        if(w){w.onload=()=>setTimeout(()=>w.print(),500);} else {downloadBlob(blob,"RMSME_Selected_Report.pdf");}
-        window.__rmsmePrintMode=false; closeSaveModal();
-        setTimeout(()=>URL.revokeObjectURL(url),10000);
+document.getElementById("saveModalConfirm").addEventListener("click", async () => {
+    if (window.__rmsmePrintMode) {
+        const selected = getSelectedReportKeys();
+        if (!selected.length) { showToast("Select at least one report.", "error"); return; }
+        const blob = buildMainPdf(currentReport, selected).output("blob");
+        const url = URL.createObjectURL(blob); const w = window.open(url, "_blank");
+        if (w) { w.onload = () => setTimeout(() => w.print(), 500); } else { downloadBlob(blob, "RMSME_Selected_Report.pdf"); }
+        window.__rmsmePrintMode = false; closeSaveModal();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
         return;
     }
-    if(!currentReport)return;
-    const selected=getSelectedReportKeys();
-    if(!selected.length){showToast("Select at least one report.","error");return;}
-    const format=document.querySelector('input[name="saveFormat"]:checked').value;
-    const baseName=(saveReportName.value||fileBaseName(currentReport.type,currentReport.start,currentReport.end)).trim();
-    const btn=document.getElementById("saveModalConfirm"); const original=btn.textContent; btn.disabled=true; btn.textContent="Preparing...";
-    try{
-        const pdfBlob=(format==="pdf"||format==="both")?buildMainPdf(currentReport,selected).output("blob"):null;
-        const xlsxBlob=(format==="excel"||format==="both")?new Blob([XLSX.write(buildSelectedWorkbook(currentReport,selected),{bookType:"xlsx",type:"array"})],{type:"application/octet-stream"}):null;
-        if(format==="pdf"||format==="both")downloadBlob(pdfBlob,`${baseName}.pdf`);
-        if(format==="excel"||format==="both")downloadBlob(xlsxBlob,`${baseName}.xlsx`);
-        showToast(`${selected.length} report section${selected.length>1?"s":""} saved.`); closeSaveModal();
-    }catch(err){console.error(err);showToast("Could not save the selected reports.","error");}
-    finally{btn.disabled=false;btn.textContent=original;}
+    if (!currentReport) return;
+    const selected = getSelectedReportKeys();
+    if (!selected.length) { showToast("Select at least one report.", "error"); return; }
+    const format = document.querySelector('input[name="saveFormat"]:checked').value;
+    const baseName = (saveReportName.value || fileBaseName(currentReport.type, currentReport.start, currentReport.end)).trim();
+    const btn = document.getElementById("saveModalConfirm"); const original = btn.textContent; btn.disabled = true; btn.textContent = "Preparing...";
+    try {
+        const pdfBlob = (format === "pdf" || format === "both") ? buildMainPdf(currentReport, selected).output("blob") : null;
+        const xlsxBlob = (format === "excel" || format === "both") ? new Blob([XLSX.write(buildSelectedWorkbook(currentReport, selected), { bookType: "xlsx", type: "array" })], { type: "application/octet-stream" }) : null;
+        if (format === "pdf" || format === "both") downloadBlob(pdfBlob, `${baseName}.pdf`);
+        if (format === "excel" || format === "both") downloadBlob(xlsxBlob, `${baseName}.xlsx`);
+        showToast(`${selected.length} report section${selected.length > 1 ? "s" : ""} saved.`); closeSaveModal();
+    } catch (err) { console.error(err); showToast("Could not save the selected reports.", "error"); }
+    finally { btn.disabled = false; btn.textContent = original; }
 });
 
-function buildSelectedWorkbook(report,selected){
-    const wb=XLSX.utils.book_new();
-    const add=(name,head,rows)=>{const ws=XLSX.utils.aoa_to_sheet([head,...rows]);XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));};
-    if(selected.includes("manager")) add("Manager Summary",["Metric","Result"],[
-        ["Total Materials",report.overallRows.length],["Good Stock",report.overallRows.filter(r=>r.statusLabel==="Good").length],["Low / Critical",report.summary.attention],["Receiving Records",report.summary.received],["Consumption Records",report.summary.consumed],["Disbursement Records",report.summary.disbursed]
+function buildSelectedWorkbook(report, selected) {
+    const wb = XLSX.utils.book_new();
+    const add = (name, head, rows) => { const ws = XLSX.utils.aoa_to_sheet([head, ...rows]); XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31)); };
+    if (selected.includes("manager")) add("Manager Summary", ["Metric", "Result"], [
+        ["Total Materials", report.overallRows.length], ["Good Stock", report.overallRows.filter(r => r.statusLabel === "Good").length], ["Low / Critical", report.summary.attention], ["Receiving Records", report.summary.received], ["Consumption Records", report.summary.consumed], ["Disbursement Records", report.summary.disbursed]
     ]);
-    if(selected.includes("inventory")) add("Inventory",["Material","Current Stock","Minimum Stock","Status"],report.overallRows.map(r=>[r.material,r.current,r.min,r.statusLabel]));
-    if(selected.includes("receiving")) add("Receiving",["Material","Previous Stock","Received","Last Receive","Current Stock","Status"],report.receiveRows.map(r=>[r.material,r.previous,r.received,r.lastReceive,r.current,r.statusLabel]));
-    if(selected.includes("disbursement")) add("Disbursement",["Material","Finished Product","Released","Date","Status"],report.disbursementRows.map(r=>[r.material,r.product,r.qty,r.date,"Recorded"]));
-    if(selected.includes("activity")){
-        const rows=[];
-        stockReceipts.filter(r=>withinRange(r.receivedDate,report.start,report.end)).forEach(r=>rows.push([r.receivedDate||"—","Received",r.materialName||materials.find(m=>m.id===r.materialId)?.materialName||"—",Number(r.receivedQuantity||0),"—"]));
-        usageRecords.filter(u=>withinRange(u.usageDate,report.start,report.end)).forEach(u=>rows.push([u.usageDate||"—",u.productId?"Disbursed / Used":"Consumed",u.materialName||materials.find(m=>m.id===u.materialId)?.materialName||"—",-Number(u.usedQuantity||0),u.productName||"—"]));
-        add("Activity",["Date","Activity","Material","Quantity","Purpose / Product"],rows);
+    if (selected.includes("inventory")) add("Inventory", ["Material", "Current Stock", "Minimum Stock", "Status"], report.overallRows.map(r => [r.material, r.current, r.min, r.statusLabel]));
+    if (selected.includes("receiving")) add("Receiving", ["Material", "Previous Stock", "Received", "Last Receive", "Current Stock", "Status"], report.receiveRows.map(r => [r.material, r.previous, r.received, r.lastReceive, r.current, r.statusLabel]));
+    if (selected.includes("disbursement")) add("Disbursement", ["Material", "Finished Product", "Released", "Date", "Status"], report.disbursementRows.map(r => [r.material, r.product, r.qty, r.date, "Recorded"]));
+    if (selected.includes("activity")) {
+        const rows = [];
+        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—", "Received", r.materialName || materials.find(m => m.id === r.materialId)?.materialName || "—", Number(r.receivedQuantity || 0), "—"]));
+        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—", u.productId ? "Disbursed / Used" : "Consumed", u.materialName || materials.find(m => m.id === u.materialId)?.materialName || "—", -Number(u.usedQuantity || 0), u.productName || "—"]));
+        add("Activity", ["Date", "Activity", "Material", "Quantity", "Purpose / Product"], rows);
     }
-    if(selected.includes("consumption")) add("Consumption",["Material","Previous Stock","Consumed","Current Stock","Trend","Status"],report.consumedRows.map(r=>[r.material,r.previous,r.consumed,r.current,r.trend,r.statusLabel]));
-    if(selected.includes("decision")) add("Decision Support",["Priority","Material","Condition","Finding","Recommended Action"],report.decisionRows.map(r=>[r.priority,r.material,r.condition,r.finding,r.action]));
+    if (selected.includes("consumption")) add("Consumption", ["Material", "Previous Stock", "Consumed", "Current Stock", "Trend", "Status"], report.consumedRows.map(r => [r.material, r.previous, r.consumed, r.current, r.trend, r.statusLabel]));
+    if (selected.includes("decision")) add("Decision Support", ["Priority", "Material", "Condition", "Finding", "Recommended Action"], report.decisionRows.map(r => [r.priority, r.material, r.condition, r.finding, r.action]));
     return wb;
 }
 
@@ -1426,11 +1452,11 @@ function buildSelectedWorkbook(report,selected){
    ========================================================== */
 
 document.getElementById("printReportBtn").addEventListener("click", () => {
-    if(!currentReport){showToast("Generate a report first.","error");return;}
-    window.__rmsmePrintMode=true;
+    if (!currentReport) { showToast("Generate a report first.", "error"); return; }
+    window.__rmsmePrintMode = true;
     openSaveModal("pdf");
     saveModalSubtitle.textContent = `${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · Select sections to print`;
-    document.getElementById("saveModalConfirm").textContent="Print Selected Reports";
+    document.getElementById("saveModalConfirm").textContent = "Print Selected Reports";
 });
 
 /* ==========================================================
@@ -1441,6 +1467,7 @@ async function init() {
     renderPeriodLabel();
     try {
         await loadAllData();
+        document.getElementById("generateBtn")?.click();
     } catch (err) {
         console.error(err);
         showToast("Unable to load data. Please try again.", "error");

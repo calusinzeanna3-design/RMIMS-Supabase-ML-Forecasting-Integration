@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="../css/rmims-unified.css">
 </head>
 
-<body>
+<body class="admin-page">
 
 <div class="container">
 
@@ -141,99 +141,139 @@
             </div>
         </div>
 
-        <!-- COMMAND CENTER GRID -->
-
-        <section class="command-grid">
-
-            <!-- RECENT ACTIVITIES -->
-
-            <div class="panel glass activities-panel fade-in" style="--delay:0ms">
-
-                <div class="panel-header">
-                    <h3>
-                        <span class="panel-icon icon-blue">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 8V12L14.5 14.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg>
-                        </span>
-                        Recent Activities
-                    </h3>
-                    <span class="panel-badge" id="activitiesCount">0</span>
-                </div>
-
-                <p class="panel-subtext">Live feed of inventory and usage events</p>
-
-                <div class="activity-feed" id="activityFeed">
-                    <!-- skeleton / items / empty state injected by JS -->
-                    <div class="skeleton-list">
-                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                        <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                    </div>
-                </div>
-
+        <!-- RAW MATERIAL ANALYTICS OVERVIEW (TOP METRIC STRIP) -->
+        <section class="overview-cards" id="adminAnalyticsOverview">
+            <div class="ov-card ov-card-static fade-in" style="--delay:0ms">
+                <span class="ov-icon icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="ov-text">
+                    <span class="ov-label">Total Materials</span>
+                    <span class="ov-value" id="dashTotalMaterials">0</span>
+                    <span class="ov-desc">All raw materials tracked</span>
+                </span>
             </div>
 
-            <!-- RIGHT COLUMN -->
+            <div class="ov-card ov-card-static fade-in" style="--delay:40ms">
+                <span class="ov-icon icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9.5 17.5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="ov-text">
+                    <span class="ov-label">Available Stock</span>
+                    <span class="ov-value" id="dashAvailable">0</span>
+                    <span class="ov-desc">Currently ready for use</span>
+                </span>
+            </div>
 
-            <div class="command-side">
+            <div class="ov-card ov-card-static fade-in" style="--delay:80ms">
+                <span class="ov-icon icon-orange">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="ov-text">
+                    <span class="ov-label">Low Stock</span>
+                    <span class="ov-value" id="dashLowStock">0</span>
+                    <span class="ov-desc">Running below minimum</span>
+                </span>
+            </div>
 
-                <!-- CONSUMPTION SUMMARY -->
+            <div class="ov-card ov-card-static fade-in" style="--delay:120ms">
+                <span class="ov-icon icon-red">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <span class="ov-text">
+                    <span class="ov-label">Out of Stock</span>
+                    <span class="ov-value" id="dashOutOfStock">0</span>
+                    <span class="ov-desc">No stock remaining</span>
+                </span>
+            </div>
+        </section>
 
-                <div class="panel glass fade-in" style="--delay:80ms">
+        <!-- MAIN DASHBOARD CONTENT GRID (PRIORITY ORDER) -->
+        <section class="command-grid" style="grid-template-columns: 1fr 340px; gap: 20px; align-items: start;">
 
+            <!-- PRIMARY COLUMN (CONSUMPTION OVERVIEW -> FORECASTED ANALYTICS -> RECOMMENDATIONS) -->
+            <div class="command-main-col" style="display: flex; flex-direction: column; gap: 20px;">
+
+                <!-- 1. CONSUMPTION OVERVIEW -->
+                <div class="panel glass fade-in" style="--delay:140ms">
                     <div class="panel-header">
                         <h3>
                             <span class="panel-icon icon-green">
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </span>
-                            Raw Material Consumption Summary
+                            Raw Material Consumption Overview
                         </h3>
                     </div>
+                    <p class="panel-subtext">Live trend and usage movement based on recorded consumption</p>
 
-                    <p class="panel-subtext">Highlights from your most recent usage records</p>
+                    <div class="chart-container" style="position: relative; height: 230px; margin-top: 10px;">
+                        <canvas id="dashConsumptionChart"></canvas>
+                    </div>
 
-                    <div id="consumptionNarrative" class="consumption-narrative">
-                        <div class="skeleton-list">
-                            <div class="skeleton-row"><span class="skeleton-line" style="width:96%"></span></div>
-                            <div class="skeleton-row"><span class="skeleton-line" style="width:88%"></span></div>
-                        </div>
+                    <div id="consumptionNarrative" class="consumption-narrative" style="margin-top: 12px; margin-bottom: 10px;">
+                        <!-- Injected via JS -->
                     </div>
 
                     <div class="consumption-history" id="consumptionHistory">
-                        <div class="skeleton-list">
-                            <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                            <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                            <div class="skeleton-row"><span class="skeleton-dot"></span><span class="skeleton-line"></span></div>
-                        </div>
+                        <!-- Injected via JS -->
                     </div>
-
                 </div>
 
-                <!-- RECOMMENDATIONS -->
+                <!-- 2. FORECASTED ANALYTICS -->
+                <div class="panel glass fade-in" style="--delay:180ms">
+                    <div class="panel-header">
+                        <h3>
+                            <span class="panel-icon icon-blue">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            Forecasted Material Requirements
+                        </h3>
+                        <span class="panel-badge" id="forecastStatusBadge">Updated Forecast</span>
+                    </div>
+                    <p class="panel-subtext">7-day and 4-week expected raw material requirements based on recorded usage</p>
 
-                <div class="panel glass fade-in" style="--delay:160ms">
+                    <div class="chart-container" style="position: relative; height: 210px; margin-top: 10px;">
+                        <canvas id="dashForecastChart"></canvas>
+                    </div>
 
+                    <div id="dashForecastAnalytics" class="forecast-summary-panel" style="margin-top: 12px;">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <!-- 3. RECOMMENDATIONS / DECISION SUPPORT -->
+                <div class="panel glass fade-in" style="--delay:220ms">
                     <div class="panel-header">
                         <h3>
                             <span class="panel-icon icon-purple">
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 2 7 4.5 7 7.5C7 9.5 8 10.8 9 12C9.6 12.7 10 13.4 10 14.5V16H14V14.5C14 13.4 14.4 12.7 15 12C16 10.8 17 9.5 17 7.5C17 4.5 15 2 12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19H14M11 22H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
                             </span>
-                            Latest Raw Material Recommendations
+                            Latest Decision-Support Recommendations
                         </h3>
                     </div>
+                    <p class="panel-subtext">Automated inventory advice derived from current stock, actual usage, and forecast requirements</p>
 
-                    <p class="panel-subtext">Open a result to see its visual inventory-to-requirement process</p>
+                    <div class="recommendation-chips" id="recommendationChips"></div>
+                </div>
 
-                    <div class="recommendation-chips" id="recommendationChips">
-                        <div class="skeleton-list">
-                            <div class="skeleton-chip"></div>
-                            <div class="skeleton-chip"></div>
-                            <div class="skeleton-chip"></div>
-                        </div>
+            </div>
+
+            <!-- SECONDARY SIDEBAR COLUMN (COMPACT RECENT ACTIVITY - PRIORITY 5) -->
+            <div class="command-side-col">
+                <div class="panel glass activities-panel fade-in" style="--delay:260ms">
+                    <div class="panel-header">
+                        <h3>
+                            <span class="panel-icon icon-blue">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 8V12L14.5 14.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg>
+                            </span>
+                            Recent Activity
+                        </h3>
+                        <span class="panel-badge" id="activitiesCount">0</span>
                     </div>
-</div>
+                    <p class="panel-subtext">Compact log of recent material movement</p>
 
+                    <div class="activity-feed" id="activityFeed"></div>
+                </div>
             </div>
 
         </section>

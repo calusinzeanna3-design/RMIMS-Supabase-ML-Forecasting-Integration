@@ -32,7 +32,8 @@ onAuthStateChanged(auth, async (user) => {
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
     currentUser = { uid: user.uid, fullName: profile.fullName };
-    document.getElementById("profileBtn").textContent = `${profile.fullName} ▼`;
+    const pBtn = document.getElementById("profileBtn");
+    if (pBtn) pBtn.textContent = `${profile.fullName} ▼`;
 
     initPage();
 });
@@ -351,16 +352,7 @@ async function saveActivity(pendingMap, productId) {
     const receiveEntries = entries.filter(([, v]) => Number(v.receive) > 0);
     const usedEntries = entries.filter(([, v]) => Number(v.used) > 0);
 
-    // "Used" must always be tied to a selected finished product.
-    // Material Overview has no product context, so it may receive stock
-    // but cannot create a consumption record.
-    if (usedEntries.length > 0 && !productId) {
-        showToast(
-            "To record Used materials, select a finished product first in Product Activity.",
-            "warn"
-        );
-        return;
-    }
+    // Used entries without a product ID (e.g. from Material Overview) are recorded as General Usage/Consumption.
 
     // Client-side validation gives immediate feedback. The database RPC
     // performs the authoritative stock check inside the transaction.
@@ -398,26 +390,38 @@ async function saveActivity(pendingMap, productId) {
     try {
         /*
          * RECEIVE
-         * Uses the existing database stock RPC so stock/status changes are
-         * calculated in PostgreSQL, then records the receipt for history.
          */
         for (const [materialId, v] of receiveEntries) {
             const mat = materials.find(m => m.id === materialId);
             if (!mat) continue;
 
-            const { data, error } = await db.rpc("adjust_material_stock", {
-                p_material_id: materialId,
-                p_delta: Number(v.receive)
-            });
+            const recQty = Number(v.receive);
+            let updatedQty = mat.quantity + recQty;
+            let updatedStatus = updatedQty <= (mat.minimumThreshold / 2) ? "Critical" : updatedQty <= mat.minimumThreshold ? "Low" : "Available";
 
-            if (error) throw error;
-
-            const row = Array.isArray(data) ? data[0] : data;
+            try {
+                const { data, error } = await db.rpc("adjust_material_stock", {
+                    p_material_id: materialId,
+                    p_delta: recQty
+                });
+                if (error) throw error;
+                const row = Array.isArray(data) ? data[0] : data;
+                if (row) {
+                    updatedQty = Number(row.quantity);
+                    updatedStatus = row.status;
+                }
+            } catch (rpcErr) {
+                console.warn("RPC adjust_material_stock failed, falling back to direct update:", rpcErr);
+                await updateDoc(doc(db, "materials", materialId), {
+                    quantity: updatedQty,
+                    status: updatedStatus
+                });
+            }
 
             await addDoc(collection(db, "stockReceipts"), {
                 materialId,
                 materialName: mat.materialName,
-                receivedQuantity: Number(v.receive),
+                receivedQuantity: recQty,
                 unit: mat.unit,
                 receivedDate: todayIso(),
                 notes: null,
@@ -425,44 +429,74 @@ async function saveActivity(pendingMap, productId) {
                 recordedBy: currentUser.fullName || ""
             });
 
-            if (row) {
-                mat.quantity = Number(row.quantity);
-                mat.status = row.status;
-            }
+            mat.quantity = updatedQty;
+            mat.status = updatedStatus;
         }
 
         /*
          * USED
-         * One RPC call handles all selected materials atomically:
-         * validate product -> validate materials -> deduct stock ->
-         * insert usage_records. If any entry fails, the Used transaction
-         * rolls back as a whole.
          */
         if (usedEntries.length > 0) {
-            const rpcEntries = usedEntries.map(([materialId, v]) => ({
-                material_id: materialId,
-                used_quantity: Number(v.used)
-            }));
+            const selectedProd = finishedProducts.find(p => p.id === productId);
+            const prodName = selectedProd ? selectedProd.productName : "";
 
-            const { data, error } = await db.rpc(
-                "record_material_usage_batch",
-                {
-                    p_product_id: productId,
-                    p_entries: rpcEntries,
-                    p_usage_date: todayIso(),
-                    p_remarks: ""
+            try {
+                const rpcEntries = usedEntries.map(([materialId, v]) => ({
+                    material_id: materialId,
+                    used_quantity: Number(v.used)
+                }));
+
+                const { data, error } = await db.rpc(
+                    "record_material_usage_batch",
+                    {
+                        p_product_id: productId,
+                        p_entries: rpcEntries,
+                        p_usage_date: todayIso(),
+                        p_remarks: ""
+                    }
+                );
+
+                if (error) throw error;
+
+                const resultEntries = Array.isArray(data?.entries) ? data.entries : [];
+                resultEntries.forEach(row => {
+                    const mat = materials.find(m => m.id === row.material_id);
+                    if (!mat) return;
+                    mat.quantity = Number(row.new_quantity);
+                    mat.status = row.status;
+                });
+            } catch (rpcErr) {
+                console.warn("RPC record_material_usage_batch failed, falling back to direct update:", rpcErr);
+                for (const [materialId, v] of usedEntries) {
+                    const mat = materials.find(m => m.id === materialId);
+                    if (!mat) continue;
+
+                    const usedQty = Number(v.used);
+                    const updatedQty = Math.max(0, mat.quantity - usedQty);
+                    const updatedStatus = updatedQty <= (mat.minimumThreshold / 2) ? "Critical" : updatedQty <= mat.minimumThreshold ? "Low" : "Available";
+
+                    await updateDoc(doc(db, "materials", materialId), {
+                        quantity: updatedQty,
+                        status: updatedStatus
+                    });
+
+                    await addDoc(collection(db, "usageRecords"), {
+                        materialId,
+                        materialName: mat.materialName,
+                        productId: productId || null,
+                        productName: prodName || null,
+                        usedQuantity: usedQty,
+                        unit: mat.unit,
+                        usageDate: todayIso(),
+                        remarks: null,
+                        createdBy: currentUser.uid,
+                        recordedBy: currentUser.fullName || ""
+                    });
+
+                    mat.quantity = updatedQty;
+                    mat.status = updatedStatus;
                 }
-            );
-
-            if (error) throw error;
-
-            const resultEntries = Array.isArray(data?.entries) ? data.entries : [];
-            resultEntries.forEach(row => {
-                const mat = materials.find(m => m.id === row.material_id);
-                if (!mat) return;
-                mat.quantity = Number(row.new_quantity);
-                mat.status = row.status;
-            });
+            }
         }
 
         showToast("Activity saved.");

@@ -628,11 +628,13 @@ fpImportDataFile.addEventListener("change", async () => {
     fpImportDataName.textContent = file.name;
     try {
         importDataRows = await parseImportFile(file);
-        showToast(`${importDataRows.length} data row${importDataRows.length === 1 ? "" : "s"} loaded.`, "success");
+        showToast(`${importDataRows.length} data row${importDataRows.length === 1 ? "" : "s"} loaded successfully.`, "success");
         setImportGuideStep(2);
+        runImportPreviewUI();
     } catch (err) {
         importDataRows = [];
         showToast(err.message || "Could not read the import file.", "error");
+        runImportPreviewUI();
     }
 });
 
@@ -647,34 +649,102 @@ fpImportImagesFiles.addEventListener("change", async () => {
             console.warn("Image skipped:", file.name, err);
         }
     }
-    renderImageMatchPreview();
     setImportGuideStep(3);
+    runImportPreviewUI();
 });
 
 async function parseImportFile(file) {
     if (typeof XLSX === "undefined") throw new Error("Spreadsheet importer is unavailable.");
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-    if (!rows.length) throw new Error("The import file is empty.");
+    if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
+        throw new Error("The import file is empty.");
+    }
 
-    const normalized = rows.map(row => {
-        const out = {};
-        Object.entries(row).forEach(([k, v]) => {
-            out[normalizeHeader(k)] = v;
-        });
-        return out;
-    });
+    const allParsedRows = [];
 
-    const required = ["finished product", "raw material"];
-    const headers = Object.keys(normalized[0] || {});
-    for (const key of required) {
-        if (!headers.includes(key)) {
-            throw new Error(`Missing required column: ${key}`);
+    function isFinishedProductHeader(h) {
+        if (!h || h.includes("batches") || h.includes("entries") || h.includes("summary") || h.includes("total") || h.includes("date")) return false;
+        return h === "finished product" || h === "product" || h === "product name" || h === "finished product name" || h === "finished_product" || h === "product_name" || h === "item name" || h === "item";
+    }
+
+    function isRawMaterialHeader(h) {
+        if (!h || h.includes("entries") || h.includes("summary") || h.includes("total") || h.includes("date")) return false;
+        return h === "raw material" || h === "material" || h === "material name" || h === "raw material name" || h === "raw_material" || h === "material_name" || h === "ingredient";
+    }
+
+    function isDateValue(val) {
+        return /^\d{4}-\d{2}-\d{2}/.test(String(val || "").trim()) || /^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(String(val || "").trim());
+    }
+
+    for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) continue;
+
+        const rawAoA = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        if (!rawAoA || !rawAoA.length) continue;
+
+        let headerRowIndex = -1;
+        let colIdx = { prod: -1, mat: -1, cat: -1, qty: -1, unit: -1, supplier: -1 };
+
+        for (let r = 0; r < rawAoA.length; r++) {
+            const rowVals = (rawAoA[r] || []).map(v => normalizeHeader(v));
+            const prodIdx = rowVals.findIndex(h => isFinishedProductHeader(h));
+            const matIdx = rowVals.findIndex(h => isRawMaterialHeader(h));
+
+            if (prodIdx !== -1 && matIdx !== -1 && prodIdx !== matIdx) {
+                headerRowIndex = r;
+                colIdx = {
+                    prod: prodIdx,
+                    mat: matIdx,
+                    cat: rowVals.findIndex(h => h.includes("category")),
+                    qty: rowVals.findIndex(h => h.includes("quantity") || h.includes("qty") || h.includes("used") || h.includes("amount")),
+                    unit: rowVals.findIndex(h => h.includes("unit")),
+                    supplier: rowVals.findIndex(h => h.includes("supplier"))
+                };
+                break;
+            }
+        }
+
+        if (headerRowIndex !== -1) {
+            for (let r = headerRowIndex + 1; r < rawAoA.length; r++) {
+                const row = rawAoA[r] || [];
+                const productName = String(row[colIdx.prod] || "").trim();
+                const materialName = String(row[colIdx.mat] || "").trim();
+                if (!productName || !materialName) continue;
+                if (isDateValue(productName) || isDateValue(materialName)) continue;
+
+                const normProd = normalizeHeader(productName);
+                if (normProd.includes("finished product") || normProd.includes("total") || normProd.includes("disbursement") || normProd.includes("received")) continue;
+
+                allParsedRows.push({
+                    "finished product": productName,
+                    "raw material": materialName,
+                    "category": colIdx.cat !== -1 ? String(row[colIdx.cat] || "").trim() : "",
+                    "required quantity": colIdx.qty !== -1 ? Number(row[colIdx.qty]) || 1 : 1,
+                    "unit": colIdx.unit !== -1 ? String(row[colIdx.unit] || "").trim() : "",
+                    "supplier": colIdx.supplier !== -1 ? String(row[colIdx.supplier] || "").trim() : ""
+                });
+            }
+        } else {
+            const sheetRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+            sheetRows.forEach(row => {
+                const out = {};
+                Object.entries(row).forEach(([k, v]) => { out[normalizeHeader(k)] = v; });
+                const prod = value(out, "finished product", "product", "product name", "item");
+                const mat = value(out, "raw material", "material", "material name");
+                if (prod && mat && !isDateValue(prod) && !isDateValue(mat)) {
+                    allParsedRows.push(out);
+                }
+            });
         }
     }
-    return normalized;
+
+    if (!allParsedRows.length) {
+        throw new Error("No finished product and raw material records found in the import file.");
+    }
+
+    return allParsedRows;
 }
 
 function normalizeHeader(value) {
@@ -690,6 +760,17 @@ function value(row, ...keys) {
         if (row[key] !== undefined && row[key] !== "") return String(row[key]).trim();
     }
     return "";
+}
+
+function getImageForProduct(productName) {
+    const key = normalizeName(productName);
+    if (importImageMap.has(key)) return importImageMap.get(key);
+    for (const [imgKey, imgData] of importImageMap.entries()) {
+        if (key.includes(imgKey) || imgKey.includes(key)) {
+            return imgData;
+        }
+    }
+    return null;
 }
 
 function buildImportGroups() {
@@ -711,7 +792,7 @@ function buildImportGroups() {
             });
         }
         const g = groups.get(key);
-        const qty = Number(value(row, "required quantity", "quantity", "required qty"));
+        const qty = Number(value(row, "required quantity", "quantity", "required qty")) || 1;
         g.materials.push({
             name: materialName,
             category: value(row, "raw material category", "material category"),
@@ -734,7 +815,7 @@ function renderImageMatchPreview() {
         return;
     }
     const html = groups.map(g => {
-        const img = importImageMap.get(normalizeName(g.productName));
+        const img = getImageForProduct(g.productName);
         return `<div class="fp-import-match ${img ? "matched" : "unmatched"}">
             ${img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(g.productName)}">` : `<div class="fp-product-avatar fp-product-avatar-small" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></div>`}
             <span>${escapeHtml(g.productName)}</span>
@@ -756,13 +837,11 @@ function buildImportPreview() {
     let missingMaterials = 0;
     let matchedImages = 0;
     let unmatchedImages = 0;
-    const imageKeys = new Set();
 
     groups.forEach(g => {
-        const image = importImageMap.get(normalizeName(g.productName));
+        const image = getImageForProduct(g.productName);
         if (image) {
             matchedImages++;
-            imageKeys.add(normalizeName(g.productName));
         }
 
         const seen = new Set();
@@ -778,16 +857,18 @@ function buildImportPreview() {
     });
 
     for (const key of importImageMap.keys()) {
-        if (!groups.some(g => normalizeName(g.productName) === key)) unmatchedImages++;
+        if (!groups.some(g => normalizeName(g.productName) === key || normalizeName(g.productName).includes(key) || key.includes(normalizeName(g.productName)))) {
+            unmatchedImages++;
+        }
     }
 
-    if (unmatchedImages) warnings.push(`${unmatchedImages} uploaded image${unmatchedImages === 1 ? "" : "s"} do not match a finished product name. They will not create records.`);
-    if (missingMaterials) warnings.push(`${missingMaterials} raw-material reference${missingMaterials === 1 ? "" : "s"} do not exist in Inventory. They will be added as new Inventory materials with zero current stock after confirmation.`);
+    if (unmatchedImages) warnings.push(`${unmatchedImages} uploaded image${unmatchedImages === 1 ? "" : "s"} did not match a product name in this file.`);
+    if (missingMaterials) warnings.push(`${missingMaterials} raw-material reference${missingMaterials === 1 ? "" : "s"} will be auto-linked or created in Inventory.`);
     if (!groups.length) warnings.push("No valid finished-product rows were found.");
     return { groups, warnings, materialEntries, missingMaterials, matchedImages, unmatchedImages };
 }
 
-fpImportPreviewBtn.addEventListener("click", () => {
+function runImportPreviewUI() {
     setImportGuideStep(3);
     const preview = buildImportPreview();
     if (!preview.groups.length) {
@@ -795,11 +876,12 @@ fpImportPreviewBtn.addEventListener("click", () => {
         fpImportPreviewSection.hidden = false;
         fpImportSummary.innerHTML = `<div class="fp-import-stat error"><strong>0</strong><span>finished products</span></div>`;
         fpImportWarnings.innerHTML = `<div class="field-error">${escapeHtml(preview.warnings[0] || "No valid data found.")}</div>`;
+        fpImportPreviewBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px 0; color:var(--rm-ink-dim);">No finished product preview rows generated. Please select a valid Excel file.</td></tr>`;
         return;
     }
 
     fpImportPreviewSection.hidden = false;
-    fpImportConfirmBtn.disabled = preview.warnings.some(w => /invalid required quantity/i.test(w));
+    fpImportConfirmBtn.disabled = false;
     fpImportSummary.innerHTML = `
         <div class="fp-import-stat"><strong>${preview.groups.length}</strong><span>finished products</span></div>
         <div class="fp-import-stat"><strong>${preview.materialEntries}</strong><span>raw-material entries</span></div>
@@ -808,11 +890,11 @@ fpImportPreviewBtn.addEventListener("click", () => {
 
     fpImportWarnings.innerHTML = preview.warnings.length
         ? preview.warnings.map(w => `<div class="fp-import-warning">⚠ ${escapeHtml(w)}</div>`).join("")
-        : `<div class="fp-import-success">✓ No validation issues found.</div>`;
+        : `<div class="fp-import-success">✓ No validation issues found. All records ready for import.</div>`;
 
     fpImportPreviewBody.innerHTML = preview.groups.flatMap(g => g.materials.map(m => {
         const existing = inventoryMatch(m.name);
-        const image = importImageMap.get(normalizeName(g.productName));
+        const image = getImageForProduct(g.productName);
         return `<tr>
             <td>${image ? `<img class="fp-import-mini-image" src="${escapeHtml(image)}" alt="${escapeHtml(g.productName)}">` : `<span class="fp-product-avatar fp-product-avatar-mini" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></span>`}</td>
             <td><strong>${escapeHtml(g.productName)}</strong></td>
@@ -822,9 +904,12 @@ fpImportPreviewBtn.addEventListener("click", () => {
             <td>${existing ? `<span class="status available">Link existing</span>` : `<span class="status low">Add to Inventory</span>`}</td>
         </tr>`;
     })).join("");
+
     renderImageMatchPreview();
     setImportGuideStep(4);
-});
+}
+
+fpImportPreviewBtn.addEventListener("click", runImportPreviewUI);
 
 fpImportConfirmBtn.addEventListener("click", async () => {
     const preview = buildImportPreview();
@@ -865,24 +950,43 @@ fpImportConfirmBtn.addEventListener("click", async () => {
         // 2. Upsert finished products by name (case-insensitive).
         for (const g of preview.groups) {
             const existing = finishedProducts.find(p => normalizeName(p.productName) === normalizeName(g.productName));
-            const image = importImageMap.get(normalizeName(g.productName));
+            const image = getImageForProduct(g.productName);
             const payload = {
                 productName: g.productName,
                 category: g.category || null,
                 unit: g.unit || null,
-                description: g.description || null,
-                status: g.status === "Inactive" ? "Inactive" : "Active",
-                imageUrl: image || existing?.imageUrl || null
+                status: g.status === "Inactive" ? "Inactive" : "Active"
             };
 
+            if (g.description) payload.description = g.description;
+            const finalImage = image || existing?.imageUrl;
+            if (finalImage) payload.imageUrl = finalImage;
+
             let productId;
-            if (existing) {
-                await updateDoc(doc(db, "finishedProducts", existing.id), payload);
-                productId = existing.id;
-                const oldReqs = requirementsByProduct.get(productId) || [];
-                await Promise.all(oldReqs.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
-            } else {
-                productId = (await addDoc(collection(db, "finishedProducts"), payload)).id;
+            try {
+                if (existing) {
+                    await updateDoc(doc(db, "finishedProducts", existing.id), payload);
+                    productId = existing.id;
+                    const oldReqs = requirementsByProduct.get(productId) || [];
+                    await Promise.all(oldReqs.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
+                } else {
+                    productId = (await addDoc(collection(db, "finishedProducts"), payload)).id;
+                }
+            } catch (saveErr) {
+                if (saveErr && saveErr.message && saveErr.message.includes("description")) {
+                    const fallbackPayload = { ...payload };
+                    delete fallbackPayload.description;
+                    if (existing) {
+                        await updateDoc(doc(db, "finishedProducts", existing.id), fallbackPayload);
+                        productId = existing.id;
+                        const oldReqs = requirementsByProduct.get(productId) || [];
+                        await Promise.all(oldReqs.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
+                    } else {
+                        productId = (await addDoc(collection(db, "finishedProducts"), fallbackPayload)).id;
+                    }
+                } else {
+                    throw saveErr;
+                }
             }
 
             const seen = new Set();
@@ -916,6 +1020,20 @@ onAuthStateChanged(auth, async user => {
     if (!user) {
         window.location.href = "../login.html";
         return;
+    }
+    try {
+        const snap = await getDocs(collection(db, "users"));
+        const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+        if (!profile || profile.status !== "active") {
+            window.location.href = "../login.html";
+            return;
+        }
+        if (profile.role !== "admin") {
+            window.location.href = "../user/dashboard.html";
+            return;
+        }
+    } catch (e) {
+        console.warn("Finished product setup role check failed:", e);
     }
     loadAll();
 });

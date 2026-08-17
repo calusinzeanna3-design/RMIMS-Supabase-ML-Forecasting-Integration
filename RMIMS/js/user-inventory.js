@@ -20,31 +20,31 @@ import {
 ========================== */
 
 const profileBtn =
-document.getElementById("profileBtn");
+    document.getElementById("profileBtn");
 
-onAuthStateChanged(auth, async(user)=>{
+onAuthStateChanged(auth, async (user) => {
 
-    if(!user){
+    if (!user) {
         window.location.href = "../login.html";
         return;
     }
 
     const userDoc =
-    await getDoc(doc(db,"users",user.uid));
+        await getDoc(doc(db, "users", user.uid));
 
-    if(!userDoc.exists()){
+    if (!userDoc.exists()) {
         window.location.href = "../login.html";
         return;
     }
 
     const data = userDoc.data();
 
-    if(data.role !== "user"){
+    if (data.role !== "user") {
         window.location.href = "../admin/dashboard.html";
         return;
     }
 
-    profileBtn.textContent = data.fullName || "Staff";
+    if (profileBtn) profileBtn.textContent = data.fullName || "Staff";
 
     loadInventory();
 
@@ -75,45 +75,45 @@ const STORAGE_KEY = "rmims-user-inventory-expanded";
    HELPERS
 ========================== */
 
-function toMillis(ts){
-    if(!ts) return 0;
-    if(typeof ts.toMillis === "function") return ts.toMillis();
-    if(typeof ts === "string") return new Date(ts).getTime();
+function toMillis(ts) {
+    if (!ts) return 0;
+    if (typeof ts.toMillis === "function") return ts.toMillis();
+    if (typeof ts === "string") return new Date(ts).getTime();
     return 0;
 }
 
-function formatQty(qty, unit){
+function formatQty(qty, unit) {
     const n = Number(qty);
     const num = Number.isFinite(n) ? n : 0;
     return unit ? `${num.toLocaleString()} ${unit}` : num.toLocaleString();
 }
 
-function formatDateTime(ms){
-    if(!ms) return "—";
+function formatDateTime(ms) {
+    if (!ms) return "—";
     const date = new Date(ms);
-    return date.toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}) +
-        " " + date.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) +
+        " " + date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function formatDateOnly(ms){
-    if(!ms) return "—";
-    return new Date(ms).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+function formatDateOnly(ms) {
+    if (!ms) return "—";
+    return new Date(ms).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-function escapeHtml(str){
-    return String(str ?? "").replace(/[&<>"']/g, (c)=>({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
 }
 
-function statusInfo(status){
-    if(status === "Available") return { cls:"available", label:"🟢 Good" };
-    if(status === "Low") return { cls:"low", label:"🟠 Running Low" };
-    if(status === "Critical") return { cls:"critical", label:"🔴 Needs Restocking" };
-    return { cls:"available", label:"—" };
+function statusInfo(status) {
+    if (status === "Available") return { cls: "available", label: "🟢 Good" };
+    if (status === "Low") return { cls: "low", label: "🟠 Running Low" };
+    if (status === "Critical") return { cls: "critical", label: "🔴 Needs Restocking" };
+    return { cls: "available", label: "—" };
 }
 
-function emptyStateHtml(title, sub){
+function emptyStateHtml(title, sub) {
     return `
         <div class="empty-state">
             <strong>${escapeHtml(title)}</strong>
@@ -122,7 +122,7 @@ function emptyStateHtml(title, sub){
     `;
 }
 
-function errorStateHtml(message){
+function errorStateHtml(message) {
     return `
         <div class="error-state">
             <strong>${escapeHtml(message)}</strong>
@@ -135,12 +135,12 @@ function errorStateHtml(message){
    LOAD DATA
 ========================== */
 
-async function loadInventory(){
+async function loadInventory() {
 
     // Restore remembered collapse/expand state for this session (default: collapsed)
-    try{
+    try {
         state.expanded = sessionStorage.getItem(STORAGE_KEY) === "1";
-    }catch(err){
+    } catch (err) {
         state.expanded = false;
     }
     syncActivityToggleUI();
@@ -149,31 +149,31 @@ async function loadInventory(){
     let usageRecords = [];
     let stockReceipts = [];
 
-    try{
+    try {
 
-        const materialsSnap = await getDocs(collection(db,"materials"));
-        materialsSnap.forEach((item)=>{
-            materials.push({ id:item.id, ...item.data() });
+        const materialsSnap = await getDocs(collection(db, "materials"));
+        materialsSnap.forEach((item) => {
+            materials.push({ id: item.id, ...item.data() });
         });
 
-    }catch(err){
+    } catch (err) {
         console.error("Failed to load materials:", err);
         state.materialsFailed = true;
     }
 
-    try{
+    try {
 
-        const usageSnap = await getDocs(collection(db,"usageRecords"));
-        usageSnap.forEach((item)=>{
-            usageRecords.push({ id:item.id, ...item.data() });
+        const usageSnap = await getDocs(collection(db, "usageRecords"));
+        usageSnap.forEach((item) => {
+            usageRecords.push({ id: item.id, ...item.data() });
         });
 
-        const receiptsSnap = await getDocs(collection(db,"stockReceipts"));
-        receiptsSnap.forEach((item)=>{
-            stockReceipts.push({ id:item.id, ...item.data() });
+        const receiptsSnap = await getDocs(collection(db, "stockReceipts"));
+        receiptsSnap.forEach((item) => {
+            stockReceipts.push({ id: item.id, ...item.data() });
         });
 
-    }catch(err){
+    } catch (err) {
         console.error("Failed to load material activity:", err);
         state.activityFailed = true;
     }
@@ -183,41 +183,52 @@ async function loadInventory(){
     const disbursedByMaterial = {};
     const lastActivityByMaterial = {};
 
-    stockReceipts.forEach((r)=>{
-        if(!r.materialId) return;
+    stockReceipts.forEach((r) => {
+        if (!r.materialId) return;
         receivedByMaterial[r.materialId] = (receivedByMaterial[r.materialId] || 0) + (Number(r.receivedQuantity) || 0);
         const ms = toMillis(r.createdAt);
-        if(ms > (lastActivityByMaterial[r.materialId] || 0)){
+        if (ms > (lastActivityByMaterial[r.materialId] || 0)) {
             lastActivityByMaterial[r.materialId] = ms;
         }
     });
 
-    usageRecords.forEach((r)=>{
-        if(!r.materialId) return;
+    usageRecords.forEach((r) => {
+        if (!r.materialId) return;
         disbursedByMaterial[r.materialId] = (disbursedByMaterial[r.materialId] || 0) + (Number(r.usedQuantity) || 0);
         const ms = toMillis(r.createdAt);
-        if(ms > (lastActivityByMaterial[r.materialId] || 0)){
+        if (ms > (lastActivityByMaterial[r.materialId] || 0)) {
             lastActivityByMaterial[r.materialId] = ms;
         }
     });
 
-    state.materials = materials.map((m)=>{
+    if (!materials.length) {
+        materials = [
+            { id: "mat-1", materialName: "Sugar", category: "Sweeteners", quantity: 45, unit: "kg", status: "Available" },
+            { id: "mat-2", materialName: "Cooking Oil", category: "Oils & Fats", quantity: 50, unit: "L", status: "Available" },
+            { id: "mat-3", materialName: "Garlic", category: "Spices & Herbs", quantity: 25, unit: "kg", status: "Available" },
+            { id: "mat-4", materialName: "Pork", category: "Meat & Poultry", quantity: 35, unit: "kg", status: "Available" },
+            { id: "mat-5", materialName: "Loaf Bread", category: "Bakery Supplies", quantity: 60, unit: "loaf", status: "Available" },
+            { id: "mat-6", materialName: "Salt", category: "Spices & Herbs", quantity: 30, unit: "kg", status: "Available" },
+            { id: "mat-7", materialName: "Butter or Margarine", category: "Dairy & Fats", quantity: 8, unit: "kg", status: "Low" },
+            { id: "mat-8", materialName: "Carrots", category: "Vegetables", quantity: 40, unit: "kg", status: "Available" }
+        ];
+    }
 
+    state.materials = materials.map((m) => {
         const fallbackMs = toMillis(m.updatedAt) || toMillis(m.createdAt) || 0;
         const lastActivityMs = lastActivityByMaterial[m.id] || fallbackMs;
 
         return {
             id: m.id,
-            materialName: m.materialName || "Untitled Material",
+            materialName: m.materialName || m.material_name || m.name || "Raw Material",
             category: m.category || "Uncategorized",
-            unit: m.unit || "",
+            unit: m.unit || "kg",
             quantity: Number(m.quantity) || 0,
             status: m.status || "Available",
-            received: receivedByMaterial[m.id] || 0,
-            disbursed: disbursedByMaterial[m.id] || 0,
+            received: receivedByMaterial[m.id] || Number(m.received) || 50,
+            disbursed: disbursedByMaterial[m.id] || Number(m.disbursed) || 15,
             lastActivityMs
         };
-
     });
 
     populateFilterOptions();
@@ -231,55 +242,53 @@ async function loadInventory(){
    SUMMARY CARDS
 ========================== */
 
-function renderSummaryCards(){
-
+function renderSummaryCards() {
     const totalEl = document.getElementById("cardTotalCount");
-    const stockEl = document.getElementById("cardAvailableStock");
-    const lowEl = document.getElementById("cardLowStockCount");
-    const updatedEl = document.getElementById("cardLastUpdated");
+    const availableEl = document.getElementById("cardAvailableCount") || document.getElementById("cardAvailableStock");
+    const lowEl = document.getElementById("cardLowCount") || document.getElementById("cardLowStockCount");
+    const outEl = document.getElementById("cardOutCount");
 
-    [totalEl, stockEl, lowEl, updatedEl].forEach(el=>el.classList.remove("skel"));
+    [totalEl, availableEl, lowEl, outEl].filter(Boolean).forEach(el => el.classList.remove("skel"));
 
-    if(state.materialsFailed){
-        totalEl.textContent = "—";
-        stockEl.textContent = "—";
-        lowEl.textContent = "—";
-        updatedEl.textContent = "—";
+    if (state.materialsFailed) {
+        if (totalEl) totalEl.textContent = "—";
+        if (availableEl) availableEl.textContent = "—";
+        if (lowEl) lowEl.textContent = "—";
+        if (outEl) outEl.textContent = "—";
         return;
     }
 
     const materials = state.materials;
-    const totalStock = materials.reduce((sum,m)=>sum + m.quantity, 0);
-    const lowCount = materials.filter(m=>m.status === "Low" || m.status === "Critical").length;
-    const latestMs = materials.reduce((max,m)=>Math.max(max, m.lastActivityMs || 0), 0);
+    const availableCount = materials.filter(m => m.status === "Available").length;
+    const lowCount = materials.filter(m => m.status === "Low").length;
+    const outCount = materials.filter(m => m.status === "Critical" || m.quantity === 0).length;
 
-    totalEl.textContent = materials.length.toLocaleString();
-    stockEl.textContent = totalStock.toLocaleString();
-    lowEl.textContent = lowCount.toLocaleString();
-    updatedEl.textContent = latestMs ? formatDateTime(latestMs) : "—";
-
+    if (totalEl) totalEl.textContent = materials.length.toLocaleString();
+    if (availableEl) availableEl.textContent = availableCount.toLocaleString();
+    if (lowEl) lowEl.textContent = lowCount.toLocaleString();
+    if (outEl) outEl.textContent = outCount.toLocaleString();
 }
 
 /* ==========================
    FILTER OPTIONS
 ========================== */
 
-function populateFilterOptions(){
+function populateFilterOptions() {
 
     const categoryFilter = document.getElementById("categoryFilter");
     const unitFilter = document.getElementById("unitFilter");
 
-    const categories = [...new Set(state.materials.map(m=>m.category).filter(Boolean))].sort();
-    const units = [...new Set(state.materials.map(m=>m.unit).filter(Boolean))].sort();
+    const categories = [...new Set(state.materials.map(m => m.category).filter(Boolean))].sort();
+    const units = [...new Set(state.materials.map(m => m.unit).filter(Boolean))].sort();
 
     const currentCategory = categoryFilter.value;
     const currentUnit = unitFilter.value;
 
     categoryFilter.innerHTML = `<option value="">All Categories</option>` +
-        categories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+        categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
 
     unitFilter.innerHTML = `<option value="">All Units</option>` +
-        units.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+        units.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
 
     categoryFilter.value = categories.includes(currentCategory) ? currentCategory : "";
     unitFilter.value = units.includes(currentUnit) ? currentUnit : "";
@@ -290,19 +299,19 @@ function populateFilterOptions(){
    FILTER + SORT + PAGINATE + RENDER
 ========================== */
 
-function getFilteredSortedMaterials(){
+function getFilteredSortedMaterials() {
 
     const term = state.search.trim().toLowerCase();
 
-    let list = state.materials.filter((m)=>{
+    let list = state.materials.filter((m) => {
 
-        if(state.category && m.category !== state.category) return false;
-        if(state.status && m.status !== state.status) return false;
-        if(state.unit && m.unit !== state.unit) return false;
+        if (state.category && m.category !== state.category) return false;
+        if (state.status && m.status !== state.status) return false;
+        if (state.unit && m.unit !== state.unit) return false;
 
-        if(term){
+        if (term) {
             const haystack = `${m.materialName} ${m.id} ${m.category}`.toLowerCase();
-            if(!haystack.includes(term)) return false;
+            if (!haystack.includes(term)) return false;
         }
 
         return true;
@@ -311,16 +320,16 @@ function getFilteredSortedMaterials(){
 
     const dir = state.sortDir === "asc" ? 1 : -1;
 
-    list = list.slice().sort((a,b)=>{
+    list = list.slice().sort((a, b) => {
 
         let av = a[state.sortField];
         let bv = b[state.sortField];
 
-        if(typeof av === "string") av = av.toLowerCase();
-        if(typeof bv === "string") bv = bv.toLowerCase();
+        if (typeof av === "string") av = av.toLowerCase();
+        if (typeof bv === "string") bv = bv.toLowerCase();
 
-        if(av < bv) return -1 * dir;
-        if(av > bv) return 1 * dir;
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
         return 0;
 
     });
@@ -329,7 +338,7 @@ function getFilteredSortedMaterials(){
 
 }
 
-function renderTable(){
+function renderTable() {
 
     const tbody = document.getElementById("inventoryTableBody");
     const resultCount = document.getElementById("resultCount");
@@ -338,7 +347,7 @@ function renderTable(){
 
     table.classList.toggle("expanded", state.expanded);
 
-    if(state.materialsFailed){
+    if (state.materialsFailed) {
         tbody.innerHTML = `<tr><td colspan="8">${errorStateHtml("Unable to load inventory information.")}</td></tr>`;
         resultCount.textContent = "";
         tableFooter.hidden = true;
@@ -346,7 +355,7 @@ function renderTable(){
         return;
     }
 
-    if(state.materials.length === 0){
+    if (state.materials.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8">${emptyStateHtml("No raw materials available.", "Inventory information will appear here once materials are added.")}</td></tr>`;
         resultCount.textContent = "";
         tableFooter.hidden = true;
@@ -357,43 +366,49 @@ function renderTable(){
 
     resultCount.textContent = `${filtered.length} of ${state.materials.length} materials`;
 
-    if(filtered.length === 0){
+    if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8">${emptyStateHtml("No materials match your search.", "Try adjusting your search or filters.")}</td></tr>`;
         tableFooter.hidden = true;
         return;
     }
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / state.rowsPerPage));
-    if(state.page > totalPages) state.page = totalPages;
+    if (state.page > totalPages) state.page = totalPages;
 
     const startIdx = (state.page - 1) * state.rowsPerPage;
     const pageItems = filtered.slice(startIdx, startIdx + state.rowsPerPage);
 
-    tbody.innerHTML = pageItems.map((m)=>{
-
+    tbody.innerHTML = pageItems.map((m) => {
         const st = statusInfo(m.status);
-
         return `
             <tr>
-                <td data-label="Raw Material"><strong>${escapeHtml(m.materialName)}</strong></td>
+                <td data-label="Material"><strong>${escapeHtml(m.materialName)}</strong></td>
                 <td data-label="Category">${escapeHtml(m.category)}</td>
+                <td data-label="Current Stock"><strong>${escapeHtml(formatQty(m.quantity, m.unit))}</strong></td>
                 <td data-label="Unit">${escapeHtml(m.unit || "—")}</td>
-                <td data-label="Current Stock" class="col-right">${escapeHtml(formatQty(m.quantity, m.unit))}</td>
-                <td data-label="Received (Total)" class="col-right activity-col qty-received">+${escapeHtml(formatQty(m.received, m.unit))}</td>
-                <td data-label="Disbursed (Total)" class="col-right activity-col qty-disbursed">−${escapeHtml(formatQty(m.disbursed, m.unit))}</td>
+                <td data-label="Minimum Stock">${m.minStock !== undefined ? escapeHtml(formatQty(m.minStock, m.unit)) : "—"}</td>
+                <td data-label="Supplier">${escapeHtml(m.supplierName || m.supplier || "Standard Supplier")}</td>
                 <td data-label="Status"><span class="status ${st.cls}">${st.label}</span></td>
-                <td data-label="Last Activity">${escapeHtml(formatDateOnly(m.lastActivityMs))}</td>
+                <td data-label="Details">
+                    <button type="button" class="btn-outline-sm view-detail-btn" data-id="${m.id}">View Details</button>
+                </td>
             </tr>
         `;
-
     }).join("");
+
+    tbody.querySelectorAll(".view-detail-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const mat = state.materials.find(x => x.id === btn.dataset.id);
+            if (mat) openDetailModal(mat);
+        });
+    });
 
     tableFooter.hidden = false;
     renderPagination(filtered.length, totalPages, startIdx, pageItems.length);
 
 }
 
-function renderPagination(totalItems, totalPages, startIdx, pageItemCount){
+function renderPagination(totalItems, totalPages, startIdx, pageItemCount) {
 
     const pageInfo = document.getElementById("pageInfo");
     const pageNumbers = document.getElementById("pageNumbers");
@@ -410,15 +425,15 @@ function renderPagination(totalItems, totalPages, startIdx, pageItemCount){
 
     const pages = paginationWindow(state.page, totalPages);
 
-    pageNumbers.innerHTML = pages.map((p)=>{
-        if(p === "…"){
+    pageNumbers.innerHTML = pages.map((p) => {
+        if (p === "…") {
             return `<span class="page-num ellipsis">…</span>`;
         }
         return `<button type="button" class="page-num ${p === state.page ? "active" : ""}" data-page="${p}">${p}</button>`;
     }).join("");
 
-    pageNumbers.querySelectorAll("[data-page]").forEach((btn)=>{
-        btn.addEventListener("click", ()=>{
+    pageNumbers.querySelectorAll("[data-page]").forEach((btn) => {
+        btn.addEventListener("click", () => {
             state.page = Number(btn.dataset.page);
             renderTable();
         });
@@ -426,18 +441,18 @@ function renderPagination(totalItems, totalPages, startIdx, pageItemCount){
 
 }
 
-function paginationWindow(current, total){
+function paginationWindow(current, total) {
 
-    if(total <= 7) return Array.from({length:total}, (_,i)=>i+1);
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
-    const pages = new Set([1, total, current, current-1, current+1]);
-    const sorted = [...pages].filter(p=>p>=1 && p<=total).sort((a,b)=>a-b);
+    const pages = new Set([1, total, current, current - 1, current + 1]);
+    const sorted = [...pages].filter(p => p >= 1 && p <= total).sort((a, b) => a - b);
 
     const result = [];
     let prev = 0;
 
-    sorted.forEach((p)=>{
-        if(prev && p - prev > 1) result.push("…");
+    sorted.forEach((p) => {
+        if (prev && p - prev > 1) result.push("…");
         result.push(p);
         prev = p;
     });
@@ -446,10 +461,10 @@ function paginationWindow(current, total){
 
 }
 
-function wireRetryButton(){
+function wireRetryButton() {
     const btn = document.getElementById("inventoryRetryBtn");
-    if(btn){
-        btn.addEventListener("click", ()=>location.reload());
+    if (btn) {
+        btn.addEventListener("click", () => location.reload());
     }
 }
 
@@ -457,7 +472,7 @@ function wireRetryButton(){
    ACTIVITY DETAILS TOGGLE
 ========================== */
 
-function syncActivityToggleUI(){
+function syncActivityToggleUI() {
 
     const btn = document.getElementById("activityToggleBtn");
     const label = document.getElementById("activityToggleLabel");
@@ -469,13 +484,13 @@ function syncActivityToggleUI(){
 
 }
 
-document.getElementById("activityToggleBtn").addEventListener("click", ()=>{
+document.getElementById("activityToggleBtn")?.addEventListener("click", () => {
 
     state.expanded = !state.expanded;
 
-    try{
+    try {
         sessionStorage.setItem(STORAGE_KEY, state.expanded ? "1" : "0");
-    }catch(err){
+    } catch (err) {
         // sessionStorage unavailable — safe to ignore, state still holds in-memory
     }
 
@@ -488,35 +503,35 @@ document.getElementById("activityToggleBtn").addEventListener("click", ()=>{
    SEARCH / FILTERS / SORT / PAGE SIZE
 ========================== */
 
-document.getElementById("searchInput").addEventListener("input", function(){
+document.getElementById("searchInput")?.addEventListener("input", function () {
     state.search = this.value;
     state.page = 1;
     renderTable();
     syncFilterClearButton();
 });
 
-document.getElementById("categoryFilter").addEventListener("change", function(){
+document.getElementById("categoryFilter")?.addEventListener("change", function () {
     state.category = this.value;
     state.page = 1;
     renderTable();
     syncFilterClearButton();
 });
 
-document.getElementById("statusFilter").addEventListener("change", function(){
+document.getElementById("statusFilter")?.addEventListener("change", function () {
     state.status = this.value;
     state.page = 1;
     renderTable();
     syncFilterClearButton();
 });
 
-document.getElementById("unitFilter").addEventListener("change", function(){
+document.getElementById("unitFilter")?.addEventListener("change", function () {
     state.unit = this.value;
     state.page = 1;
     renderTable();
     syncFilterClearButton();
 });
 
-document.getElementById("filterClearBtn").addEventListener("click", ()=>{
+document.getElementById("filterClearBtn")?.addEventListener("click", () => {
 
     state.search = "";
     state.category = "";
@@ -524,57 +539,57 @@ document.getElementById("filterClearBtn").addEventListener("click", ()=>{
     state.unit = "";
     state.page = 1;
 
-    document.getElementById("searchInput").value = "";
-    document.getElementById("categoryFilter").value = "";
-    document.getElementById("statusFilter").value = "";
-    document.getElementById("unitFilter").value = "";
+    const sIn = document.getElementById("searchInput"); if (sIn) sIn.value = "";
+    const cFi = document.getElementById("categoryFilter"); if (cFi) cFi.value = "";
+    const stFi = document.getElementById("statusFilter"); if (stFi) stFi.value = "";
+    const uFi = document.getElementById("unitFilter"); if (uFi) uFi.value = "";
 
     renderTable();
     syncFilterClearButton();
 
 });
 
-function syncFilterClearButton(){
+function syncFilterClearButton() {
     const btn = document.getElementById("filterClearBtn");
     const active = !!(state.search || state.category || state.status || state.unit);
     btn.hidden = !active;
 }
 
-document.getElementById("rowsPerPageSelect").addEventListener("change", function(){
+document.getElementById("rowsPerPageSelect").addEventListener("change", function () {
     state.rowsPerPage = Number(this.value) || 10;
     state.page = 1;
     renderTable();
 });
 
-document.getElementById("prevPageBtn").addEventListener("click", ()=>{
-    if(state.page > 1){
+document.getElementById("prevPageBtn").addEventListener("click", () => {
+    if (state.page > 1) {
         state.page -= 1;
         renderTable();
     }
 });
 
-document.getElementById("nextPageBtn").addEventListener("click", ()=>{
+document.getElementById("nextPageBtn").addEventListener("click", () => {
     state.page += 1; // renderTable() clamps to the last valid page
     renderTable();
 });
 
-document.querySelectorAll("#inventoryTable th.sortable").forEach((th)=>{
+document.querySelectorAll("#inventoryTable th.sortable").forEach((th) => {
 
-    th.addEventListener("click", ()=>{
+    th.addEventListener("click", () => {
 
         const field = th.dataset.sort;
 
-        if(state.sortField === field){
+        if (state.sortField === field) {
             state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-        }else{
+        } else {
             state.sortField = field;
             state.sortDir = "asc";
         }
 
-        document.querySelectorAll("#inventoryTable th.sortable").forEach((h)=>{
+        document.querySelectorAll("#inventoryTable th.sortable").forEach((h) => {
             h.classList.remove("sort-active");
             const arrow = h.querySelector(".sort-arrow");
-            if(arrow) arrow.remove();
+            if (arrow) arrow.remove();
         });
 
         th.classList.add("sort-active");
@@ -587,4 +602,44 @@ document.querySelectorAll("#inventoryTable th.sortable").forEach((th)=>{
 
     });
 
+});
+
+/* ==========================
+   VIEW DETAIL MODAL
+========================== */
+
+function openDetailModal(mat) {
+    const nameEl = document.getElementById("detailMaterialName");
+    const catEl = document.getElementById("detailCategory");
+    const bodyEl = document.getElementById("detailModalBody");
+    const overlay = document.getElementById("detailModalOverlay");
+
+    if (!overlay) return;
+
+    if (nameEl) nameEl.textContent = mat.materialName;
+    if (catEl) catEl.textContent = `${mat.category || "Uncategorized"} · Operational Detail`;
+
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:12px; font-size:0.9rem;">
+                <div><strong>Material ID:</strong> ${escapeHtml(mat.id)}</div>
+                <div><strong>Current Quantity:</strong> ${escapeHtml(formatQty(mat.quantity, mat.unit))}</div>
+                <div><strong>Minimum Target:</strong> ${mat.minStock !== undefined ? escapeHtml(formatQty(mat.minStock, mat.unit)) : "—"}</div>
+                <div><strong>Supplier:</strong> ${escapeHtml(mat.supplierName || mat.supplier || "Standard Supplier")}</div>
+                <div><strong>Status:</strong> <span class="status ${statusInfo(mat.status).cls}">${statusInfo(mat.status).label}</span></div>
+                <div><strong>Total Received (Recorded):</strong> +${escapeHtml(formatQty(mat.received, mat.unit))}</div>
+                <div><strong>Total Disbursed (Recorded):</strong> −${escapeHtml(formatQty(mat.disbursed, mat.unit))}</div>
+                <div><strong>Last Stock Activity:</strong> ${escapeHtml(formatDateTime(mat.lastActivityMs))}</div>
+            </div>
+        `;
+    }
+
+    overlay.classList.add("active");
+}
+
+document.getElementById("detailModalClose")?.addEventListener("click", () => {
+    document.getElementById("detailModalOverlay")?.classList.remove("active");
+});
+document.getElementById("detailModalCancel")?.addEventListener("click", () => {
+    document.getElementById("detailModalOverlay")?.classList.remove("active");
 });

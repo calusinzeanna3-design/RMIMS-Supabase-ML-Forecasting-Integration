@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="../css/forecasting.css">
 <script src="../js/chart.js"></script>
 </head>
-<body>
+<body class="admin-page">
 <div class="container">
     <aside class="sidebar"></aside>
 
@@ -34,21 +34,97 @@
         <section class="forecast-page">
             <div class="forecast-page-heading">
                 <div>
-                    <span class="forecast-kicker">AI-BASED FORECASTING</span>
+                    <span class="forecast-kicker">INVENTORY FORECASTING</span>
                     <h1>Raw Material Forecasting</h1>
-                    <p>Generate predictive raw-material requirements from recorded consumption data using the trained Time-Series model.</p>
+                    <p>Generate expected raw-material requirements from recorded consumption patterns for decision support.</p>
                 </div>
-                <div class="forecast-service-badge" id="serviceBadge">
+                <div class="forecast-service-badge connected" id="serviceBadge">
                     <span class="service-dot"></span>
-                    <span>Checking ML service...</span>
+                    <span>Forecast Available</span>
                 </div>
             </div>
+
+            <!-- FORECAST OVERVIEW METRIC STRIP -->
+            <section class="overview-cards" id="forecastOverviewStrip" style="margin-bottom: 24px;">
+                <div class="ov-card ov-card-static fade-in" style="--delay:0ms">
+                    <span class="ov-icon icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="ov-text">
+                        <span class="ov-label">Forecastable Materials</span>
+                        <span class="ov-value" id="topMaterialsCount">30</span>
+                        <span class="ov-desc">Materials with trained models</span>
+                    </span>
+                </div>
+
+                <div class="ov-card ov-card-static fade-in" style="--delay:40ms">
+                    <span class="ov-icon icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 7V3M16 7V3M3 11H21M5 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7C3 5.89543 3.89543 5 5 5Z" stroke="currentColor" stroke-width="1.6"/></svg>
+                    </span>
+                    <span class="ov-text">
+                        <span class="ov-label">7-Day Requirement</span>
+                        <span class="ov-value" id="top7DayReq">7 Days</span>
+                        <span class="ov-desc">Expected next 7 days</span>
+                    </span>
+                </div>
+
+                <div class="ov-card ov-card-static fade-in" style="--delay:80ms">
+                    <span class="ov-icon icon-purple">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="ov-text">
+                        <span class="ov-label">4-Week Requirement</span>
+                        <span class="ov-value" id="top4WeekReq">4 Weeks</span>
+                        <span class="ov-desc">Expected next 4 weeks</span>
+                    </span>
+                </div>
+
+                <div class="ov-card ov-card-static fade-in" style="--delay:120ms">
+                    <span class="ov-icon icon-red">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </span>
+                    <span class="ov-text">
+                        <span class="ov-label">Potential Shortages</span>
+                        <span class="ov-value" id="topShortageCount">0</span>
+                        <span class="ov-desc">Materials needing attention</span>
+                    </span>
+                </div>
+            </section>
 
             <section class="forecast-control-card">
                 <div class="control-field">
                     <label for="materialSelect">Raw Material</label>
                     <select id="materialSelect">
-                        <option value="">Loading materials...</option>
+                        <option value="Sugar">Sugar</option>
+                        <option value="Bell Pepper">Bell Pepper</option>
+                        <option value="Butter or Margarine">Butter or Margarine</option>
+                        <option value="Cabbage">Cabbage</option>
+                        <option value="Carrots">Carrots</option>
+                        <option value="Chicken">Chicken</option>
+                        <option value="Chiton">Chiton</option>
+                        <option value="Cooking Oil">Cooking Oil</option>
+                        <option value="Crushed Garlic">Crushed Garlic</option>
+                        <option value="Garlic">Garlic</option>
+                        <option value="Ground Pepper">Ground Pepper</option>
+                        <option value="Honey">Honey</option>
+                        <option value="Loaf Bread">Loaf Bread</option>
+                        <option value="Oil">Oil</option>
+                        <option value="Onion">Onion</option>
+                        <option value="Optional Spices or Flavorings">Optional Spices or Flavorings</option>
+                        <option value="Oyster Sauce">Oyster Sauce</option>
+                        <option value="Peanuts">Peanuts</option>
+                        <option value="Pork">Pork</option>
+                        <option value="Pork Skin">Pork Skin</option>
+                        <option value="Raw Bananas">Raw Bananas</option>
+                        <option value="Salt">Salt</option>
+                        <option value="Sea Salt">Sea Salt</option>
+                        <option value="Sesame Oil">Sesame Oil</option>
+                        <option value="Small Shrimp">Small Shrimp</option>
+                        <option value="Soy Sauce">Soy Sauce</option>
+                        <option value="Spring Onion">Spring Onion</option>
+                        <option value="Turmeric Powder">Turmeric Powder</option>
+                        <option value="Water">Water</option>
+                        <option value="White Sugar">White Sugar</option>
                     </select>
                 </div>
                 <div class="control-field">
@@ -62,13 +138,14 @@
                     <div id="forecastPeriodValue" class="control-readonly">Waiting for forecast</div>
                 </div>
                 <button class="primary-btn" id="generateForecastBtn" type="button">
-                    Generate Forecast
+                    Generate Selected Forecast
                 </button>
             </section>
 
             <div id="forecastMessage" class="forecast-message" hidden></div>
 
             <section class="forecast-grid">
+                <!-- 1. INDIVIDUAL RAW MATERIAL FORECAST -->
                 <article class="forecast-card forecast-chart-card">
                     <div class="card-heading">
                         <div>
@@ -77,14 +154,52 @@
                         </div>
                         <span class="chart-legend"><i class="legend-history"></i> Historical <i class="legend-forecast"></i> Forecast</span>
                     </div>
-                    <div class="chart-wrap" id="chartEmptyState">
-                        <div class="empty-state">
-                            <strong>No forecast generated yet.</strong>
-                            <span>Select a raw material and generate a forecast.</span>
+                    <div class="chart-wrap" id="forecastChartWrap" style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                </article>
+
+                <!-- 2. TOP 4 RAW MATERIAL FORECAST OVERVIEW -->
+                <article class="forecast-card forecast-chart-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Top 4 Raw Material Forecast Overview</h2>
+                            <p>Simultaneous requirement comparison across top raw materials.</p>
+                        </div>
+                        <div class="top4-pagination" style="display: flex; gap: 8px; align-items: center;">
+                            <button type="button" class="secondary-btn" id="prevTop4Btn" style="padding: 4px 10px; font-size: 12px;">← Prev</button>
+                            <span id="top4PageIndicator" style="font-size: 12px; color: var(--rm-muted, #64748b);">1 / 1</span>
+                            <button type="button" class="secondary-btn" id="nextTop4Btn" style="padding: 4px 10px; font-size: 12px;">Next →</button>
                         </div>
                     </div>
-                    <div class="chart-wrap" id="forecastChartWrap" hidden>
-                        <canvas id="forecastChart"></canvas>
+                    <div class="chart-wrap" style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="top4ForecastChart"></canvas>
+                    </div>
+                </article>
+
+                <!-- 3. FINISHED PRODUCT / BUNDLE FORECAST OVERVIEW -->
+                <article class="forecast-card forecast-chart-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Finished Product &amp; Bundle Forecast Overview</h2>
+                            <p>Overall expected raw material requirement for finished products over time.</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="bundleForecastChart"></canvas>
+                    </div>
+                </article>
+
+                <!-- 4. 7-DAY & 4-WEEK HORIZON PROGRESSION -->
+                <article class="forecast-card forecast-chart-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>7-Day &amp; 4-Week Horizon Progression</h2>
+                            <p>Visual progression comparing immediate 7-day requirement vs 4-week horizon.</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="horizonForecastChart"></canvas>
                     </div>
                 </article>
 
@@ -92,13 +207,16 @@
                     <div class="card-heading">
                         <div>
                             <h2>Forecast Requirement by Raw Material</h2>
-                            <p>Only materials with an available forecasting model are displayed.</p>
+                            <p>Requirement comparison across raw materials with active forecasts.</p>
                         </div>
                     </div>
-                    <div id="forecastMaterialsList" class="forecast-material-list">
+                    <div id="forecastMaterialsList" class="forecast-material-list" style="margin-bottom: 12px;">
                         <div class="empty-state compact">
                             <span>Generate a forecast to view available model results.</span>
                         </div>
+                    </div>
+                    <div class="chart-wrap" style="position: relative; height: 200px; width: 100%;">
+                        <canvas id="forecastRequirementBarChart"></canvas>
                     </div>
                 </article>
 
@@ -109,7 +227,7 @@
                             <p>Decision status is based on the model forecast compared with current inventory.</p>
                         </div>
                     </div>
-                    <div class="decision-grid">
+                    <div class="decision-grid" style="margin-bottom: 12px;">
                         <div class="decision-card shortage">
                             <span>Potential Shortage</span>
                             <strong id="shortageCount">0</strong>
@@ -125,6 +243,9 @@
                             <strong id="excessCount">0</strong>
                             <small>Materials</small>
                         </div>
+                    </div>
+                    <div class="chart-wrap" style="position: relative; height: 160px; width: 100%;">
+                        <canvas id="decisionDonutChart"></canvas>
                     </div>
                 </article>
 
@@ -147,8 +268,8 @@
             </section>
 
             <section class="forecast-note">
-                <strong>AI-Based Forecasting</strong>
-                <span>The system uses a trained autoregressive Time-Series model to estimate future raw-material requirements from recorded consumption patterns. Forecast results are used for inventory decision support.</span>
+                <strong>Forecast Guidance</strong>
+                <span>The system estimates future raw-material requirements based on recorded consumption patterns to support reordering decisions.</span>
             </section>
         </section>
     </main>

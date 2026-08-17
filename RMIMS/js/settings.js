@@ -115,8 +115,12 @@ onAuthStateChanged(auth, async (user) => {
             status: data.status || "inactive"
         };
 
-        profileBtn.querySelector(".profile-text").textContent = `${currentUser.fullName} ▼`;
-        profileBtn.querySelector(".avatar").textContent = initials(currentUser.fullName);
+        if (profileBtn) {
+            const pText = profileBtn.querySelector(".profile-text") || profileBtn;
+            pText.textContent = `${currentUser.fullName} ▼`;
+            const pAv = profileBtn.querySelector(".avatar");
+            if (pAv) pAv.textContent = initials(currentUser.fullName);
+        }
 
         document.getElementById("fullName").value = currentUser.fullName;
         document.getElementById("email").value = currentUser.email;
@@ -342,43 +346,43 @@ document.getElementById("confirmDeleteAccountBtn").addEventListener("click", asy
 /* ==========================================================
    SETTINGS NAVIGATION — dedicated page-style views
    ========================================================== */
-(function initSettingsNavigation(){
+(function initSettingsNavigation() {
     const overview = document.getElementById('settings-overview');
     const views = [...document.querySelectorAll('.settings-detail-view')];
     if (!overview || !views.length) return;
 
-    const valid = new Set(['account','system','data','security','danger','sessions']);
-    function showView(section){
+    const valid = new Set(['account', 'system', 'data', 'security', 'danger', 'sessions']);
+    function showView(section) {
         const target = valid.has(section) ? section : null;
         overview.style.display = target ? 'none' : '';
         views.forEach(v => { v.style.display = v.dataset.settingsView === target ? '' : 'none'; });
         const crumb = document.querySelector('.crumb-active');
-        if (crumb) crumb.textContent = target ? (target === 'sessions' ? 'Sessions & Devices' : target[0].toUpperCase()+target.slice(1)) : 'Settings';
-        window.scrollTo(0,0);
+        if (crumb) crumb.textContent = target ? (target === 'sessions' ? 'Sessions & Devices' : target[0].toUpperCase() + target.slice(1)) : 'Settings';
+        window.scrollTo(0, 0);
     }
-    function readSection(){
+    function readSection() {
         const params = new URLSearchParams(window.location.search);
         return params.get('section') || '';
     }
     showView(readSection());
     document.querySelectorAll('[data-settings-link]').forEach(link => {
-        link.addEventListener('click', (e)=>{
+        link.addEventListener('click', (e) => {
             const section = link.dataset.settingsLink;
             if (!valid.has(section)) return;
             e.preventDefault();
             const url = new URL(window.location.href);
             url.searchParams.set('section', section);
-            history.pushState({section}, '', url);
+            history.pushState({ section }, '', url);
             showView(section);
         });
     });
-    window.addEventListener('popstate', ()=>showView(readSection()));
-    document.querySelectorAll('.settings-back-link').forEach(link=>{
-        link.addEventListener('click',(e)=>{
+    window.addEventListener('popstate', () => showView(readSection()));
+    document.querySelectorAll('.settings-back-link').forEach(link => {
+        link.addEventListener('click', (e) => {
             e.preventDefault();
             const url = new URL(window.location.href);
             url.searchParams.delete('section');
-            history.pushState({},'',url);
+            history.pushState({}, '', url);
             showView('');
         });
     });

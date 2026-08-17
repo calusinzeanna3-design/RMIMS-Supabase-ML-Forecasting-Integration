@@ -1,18 +1,17 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Reports | RMSME</title>
+<title>Reports &amp; Decision Support | RMSME User</title>
 <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
-<link href="../css/user-reports.css" rel="stylesheet"/>
+<link href="../css/reports.css" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
 <body>
 <div class="container">
-<!-- SIDEBAR -->
+<!-- SIDEBAR (USER) -->
 <aside class="sidebar">
 <div class="logo">
 <div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
@@ -61,23 +60,81 @@
 <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
 </button>
 <nav class="breadcrumb">
-<span class="crumb-active">Reports</span>
+<span>Reports</span>
+<span class="crumb-sep">›</span>
+<span class="crumb-active">Reports Overview</span>
 </nav>
 </div>
 <div class="header-actions">
+<div class="header-date" id="headerDate">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+<span></span>
+</div>
 <button class="profile-btn" id="profileBtn">
-                    Loading...
-                </button>
+<span class="avatar">U</span>
+<span class="profile-text">Loading...</span>
+<svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+</button>
 </div>
 </header>
-<!-- PAGE TITLE -->
 
-<!-- KPI CARDS -->
-<section class="cards">
+
+<!-- CONTROL BAR -->
+<section aria-label="Report controls" class="control-bar">
+<div class="control-bar-left">
+<div class="field-select">
+<select aria-label="Report type" id="reportType">
+<option selected="" value="weekly">Weekly</option>
+<option value="monthly">Monthly</option>
+</select>
+<svg class="select-chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+</div>
+<div aria-label="Report period" class="period-control" id="periodControl">
+<button aria-label="Previous period" class="period-nav" id="periodPrev" type="button">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+</button>
+<span id="periodLabel">Aug 3–9, 2026</span>
+<button aria-label="Next period" class="period-nav" id="periodNext" type="button">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+</button>
+</div>
+<button class="btn-generate" id="generateBtn" type="button">
+                Generate Report
+            </button>
+</div>
+<div class="control-bar-right">
+<button class="btn-refresh" id="refreshBtn" type="button">
+<svg fill="none" id="refreshIcon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4V9H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M20 20V15H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M5.5 9C6.7 6 9.6 4 13 4C17.4 4 21 7.6 21 12M18.5 15C17.3 18 14.4 20 11 20C6.6 20 3 16.4 3 12" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+<span id="refreshLabel">Refresh</span>
+</button>
+</div>
+</section>
+<p class="data-asof" id="dataAsOf">Data last refreshed: —</p>
+
+<!-- REPORT CONTENT -->
+<div class="report-empty" id="reportEmptyState">
+<div class="report-empty-icon">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"></path></svg>
+</div>
+<h3>No report generated yet</h3>
+<p>Select Weekly or Monthly, choose a period, and click <strong>Generate Report</strong> to build the report from the latest available data.</p>
+</div>
+<div hidden="" id="printArea">
+<section class="report-summary-bar">
+<div>
+<span class="report-summary-label" id="reportSummaryType">Weekly Report</span>
+<h2 id="reportSummaryPeriod">Aug 3–9, 2026</h2>
+</div>
+<div class="report-summary-meta">
+<span>Generated <strong id="reportGeneratedAt">—</strong></span>
+<span>Source: Inventory + Material Activity + Analytics</span>
+</div>
+</section>
+<section class="cards" id="summaryCards">
 <div class="card">
 <div class="card-text">
-<span>Total Materials</span>
-<h2 id="totalMaterials">0</h2>
+<span>Received</span>
+<h2 id="cardReceived">0 activities</h2>
 </div>
 <div class="card-icon icon-blue">
 <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
@@ -85,132 +142,295 @@
 </div>
 <div class="card">
 <div class="card-text">
-<span>Low Stock Items</span>
-<h2 id="lowStockItems">0</h2>
+<span>Consumed</span>
+<h2 id="cardConsumed">0 activities</h2>
+</div>
+<div class="card-icon icon-purple">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Disbursed</span>
+<h2 id="cardDisbursed">0 activities</h2>
+</div>
+<div class="card-icon icon-green">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 6H20M4 12H20M4 18H14" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path><path d="M17 15L20 18L17 21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+</div>
+</div>
+<div class="card">
+<div class="card-text">
+<span>Needs Attention</span>
+<h2 id="cardAttention">0 materials</h2>
 </div>
 <div class="card-icon icon-orange">
 <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
 </div>
 </div>
-<div class="card">
-<div class="card-text">
-<span>Total Material Activity</span>
-<h2 id="totalUsageRecords">0</h2>
-</div>
-<div class="card-icon icon-green">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-</div>
-</div>
 </section>
-<div class="report-toolbar">
-<div>
-<span class="report-period-label">Report scope</span>
-<strong>Current inventory + recorded consumption</strong>
-</div>
-<div class="report-actions">
-<button class="secondary-btn" id="retryReportBtn" type="button">Refresh Report</button>
-<button class="primary-btn" id="printBtn" type="button">Print Report</button>
-</div>
-</div>
-<div aria-live="polite" class="report-status" hidden="" id="reportStatus"></div>
-<section class="report-summary-grid">
-<div class="summary-card">
-<span>ⓘ Total Materials</span>
-<strong id="totalMaterials">—</strong>
-<small>Active inventory records available to this report.</small>
-</div>
-<div class="summary-card">
-<span>ⓘ Low / Critical</span>
-<strong id="lowStockItems">—</strong>
-<small>Materials needing stock attention.</small>
-</div>
-<div class="summary-card">
-<span>ⓘ Usage Records</span>
-<strong id="totalUsageRecords">—</strong>
-<small>Recorded material-consumption activities.</small>
-</div>
-</section>
-<!-- INVENTORY REPORT -->
 <section class="table-card">
 <div class="card-header">
-<h3>Inventory Summary Report</h3>
+<h3>Receive Stocks</h3>
+<span class="card-header-note" id="receiveNote">This period</span>
 </div>
 <div class="table-scroll">
 <table>
 <thead>
 <tr>
-<th>Material</th>
-<th>Quantity</th>
-<th>Unit</th>
+<th>Raw Material</th>
+<th>Previous Stock</th>
+<th>Received</th>
+<th>Last Receive</th>
+<th>Current Stock</th>
 <th>Status</th>
 </tr>
 </thead>
-<tbody id="inventoryReportBody">
-</tbody>
+<tbody id="receiveStocksBody"></tbody>
 </table>
 </div>
 </section>
-<!-- LOW STOCK REPORT -->
 <section class="table-card">
 <div class="card-header">
-<h3>Low Stock Report</h3>
+<h3>Consumed Stocks</h3>
+<span class="card-header-note" id="consumedNote">This period</span>
 </div>
 <div class="table-scroll">
 <table>
 <thead>
 <tr>
-<th>Material</th>
+<th>Raw Material</th>
+<th>Previous Stock</th>
+<th>Consumed</th>
 <th>Current Stock</th>
-<th>Minimum Threshold</th>
-<th>Stock Gap</th>
+<th>Change</th>
+<th>Status</th>
 </tr>
 </thead>
-<tbody id="lowStockReportBody">
-</tbody>
+<tbody id="consumedStocksBody"></tbody>
 </table>
 </div>
 </section>
-<!-- CONSUMPTION REPORT -->
 <section class="table-card">
 <div class="card-header">
-<h3><span class="title-icon">ⓘ</span> Consumption Summary</h3>
-<span class="card-help">Quantities are grouped by material and unit; different units are never added together.</span>
+<h3>Disbursement Progress</h3>
+<span class="card-header-note">Materials issued for production</span>
 </div>
 <div class="table-scroll">
 <table>
 <thead>
 <tr>
-<th>Material</th>
-<th>Quantity Used</th>
-<th>Unit</th>
-<th>Records</th>
-<th>Coverage</th>
+<th>Raw Material</th>
+<th>Finished Product</th>
+<th>Disbursed</th>
+<th>Date</th>
+<th>Progress</th>
+<th>Status</th>
 </tr>
 </thead>
-<tbody id="usageReportBody"></tbody>
+<tbody id="disbursementBody"></tbody>
 </table>
 </div>
 </section>
-<!-- DECISION SUPPORT -->
+<section class="table-card">
+<div class="card-header">
+<h3>Overall Raw Materials</h3>
+<span class="card-header-note">Current snapshot · as of <span id="overallAsOf">—</span></span>
+</div>
+<div class="table-toolbar">
+<div class="search-wrap">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+<input id="overallSearch" placeholder="Search raw materials..." type="text"/>
+</div>
+<select id="overallStatusFilter">
+<option value="all">All Status</option>
+<option value="Good">Good</option>
+<option value="Low">Low</option>
+<option value="Critical">Critical</option>
+</select>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Raw Material</th>
+<th>Current Stock</th>
+<th>Minimum Stock</th>
+<th>Maximum Stock</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="overallBody"></tbody>
+</table>
+</div>
+<p class="table-footnote">Maximum stock levels are shown only where configured in Inventory Management.</p>
+<div class="table-pagination" id="overallPagination"></div>
+</section>
+<section class="table-card">
+<div class="card-header">
+<h3>Raw Material Production Capacity</h3>
+<span class="card-header-note">Current snapshot · as of <span id="capacityAsOf">—</span></span>
+</div>
+<div class="table-toolbar">
+<div class="search-wrap">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+<input id="capacitySearch" placeholder="Search finished products..." type="text"/>
+</div>
+<select id="capacityCategoryFilter">
+<option value="all">All Categories</option>
+</select>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Finished Product</th>
+<th>Limiting Material</th>
+<th>Current Capacity</th>
+<th>Can Produce</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="capacityBody"></tbody>
+</table>
+</div>
+<div class="table-pagination" id="capacityPagination"></div>
+</section>
 <section class="insights">
 <div class="card-header">
 <h3>
 <span class="title-icon">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 2 7 4.5 7 7.5C7 9.5 8 10.8 9 12C9.6 12.7 10 13.4 10 14.5V16H14V14.5C14 13.4 14.4 12.7 15 12C16 10.8 17 9.5 17 7.5C17 4.5 15 2 12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M10 19H14M11 22H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 20V10M12 4V6M6 20V14M6 10V4M18 20V16M18 12V4" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
 </span>
-                    Decision Support Recommendations
+                    Important Changes
                 </h3>
 </div>
-<ul id="decisionSupportList">
-<li>
-                    Loading recommendations...
-                </li>
-</ul>
+<ul id="importantChangesList"></ul>
+</section>
+<section class="table-card">
+<div class="card-header">
+<h3 id="decisionSupportTitle">Decision Support — Next 7 Days</h3>
+</div>
+<div class="table-scroll">
+<table>
+<thead id="decisionSupportHead">
+<tr>
+<th>Raw Material</th>
+<th>Current Condition</th>
+<th>Finding</th>
+<th>Recommended Action</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody id="decisionSupportBody"></tbody>
+</table>
+</div>
+</section>
+<section class="insights goals-card">
+<div class="card-header">
+<h3 id="goalsTitle">
+<span class="title-icon icon-goals">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"></circle><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.6"></circle><circle cx="12" cy="12" fill="currentColor" r="1.4"></circle></svg>
+</span>
+                    Next 7-Day Goals
+                </h3>
+</div>
+<ol class="goals-list" id="goalsList"></ol>
+</section>
+<section class="insights goals-card" hidden="" id="immediateGoalsSection">
+<div class="card-header">
+<h3>
+<span class="title-icon icon-immediate">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 7V12L15.5 14.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"></circle></svg>
+</span>
+                    Immediate Next 7 Days
+                </h3>
+</div>
+<ol class="goals-list" id="immediateGoalsList"></ol>
+</section>
+</div>
+<section class="report-actions" hidden="" id="reportActions">
+<div class="report-actions-text">
+<h3>Report Actions</h3>
+<p>Your report is ready. Save a copy or print the report for your records.</p>
+</div>
+<div class="report-actions-buttons">
+<button class="btn-export btn-export-pdf" id="saveAsPdfBtn" type="button">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                Save as PDF
+            </button>
+<button class="btn-export btn-export-excel" id="saveAsExcelBtn" type="button">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20V20H4V4Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M8 8L16 16M16 8L8 16" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
+                Save as Excel
+            </button>
+<button class="btn-export btn-export-print" id="printReportBtn" type="button">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V2H18V9" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M6 18H4C3.46957 18 2.96086 17.7893 2.58579 17.4142C2.21071 17.0391 2 16.5304 2 16V11C2 10.4696 2.21071 9.96086 2.58579 9.58579C2.96086 9.21071 3.46957 9 4 9H20C20.5304 9 21.0391 9.21071 21.4142 9.58579C21.7893 9.96086 22 10.4696 22 11V16C22 16.5304 21.7893 17.0391 21.4142 17.4142C21.0391 17.7893 20.5304 18 20 18H18" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><rect height="8" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6" width="12" x="6" y="14"></rect></svg>
+                Print Report
+            </button>
+</div>
 </section>
 </main>
 </div>
-<script src="../js/user-reports.js" type="module">
-</script>
+<div class="modal-overlay" id="saveModalOverlay">
+<div class="modal-sheet">
+<div class="modal-sticky-header">
+<div class="modal-header-info">
+<div class="modal-icon">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16L21 8V19C21 20.1046 20.1046 21 19 21Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M17 21V13H7V21" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+</div>
+<div>
+<h4>Save Report Package</h4>
+<span class="modal-time" id="saveModalSubtitle">Weekly Report</span>
+</div>
+</div>
+<button aria-label="Close" class="modal-close" id="saveModalClose">
+<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+</button>
+</div>
+<div class="modal-body">
+<label class="modal-field-label" for="saveReportName">Report Name</label>
+<input class="modal-input" id="saveReportName" type="text" value="RMIMS_Weekly_Report"/>
+<label class="modal-field-label">Save Location</label>
+<div class="save-location-row">
+<input class="modal-input" id="saveLocationDisplay" readonly="" type="text" value="Documents / RMIMS Reports"/>
+<button class="btn-outline-sm" id="browseLocationBtn" type="button">Browse</button>
+</div>
+<p class="save-location-hint" id="saveLocationHint">Your browser will prompt you for the exact save location and filename.</p>
+<label class="modal-field-label">File Format</label>
+<div class="format-options">
+<label class="format-option"><input name="saveFormat" type="radio" value="pdf"/><span>PDF</span></label>
+<label class="format-option"><input name="saveFormat" type="radio" value="excel"/><span>Excel</span></label>
+<label class="format-option"><input checked="" name="saveFormat" type="radio" value="both"/><span>PDF + Excel</span></label>
+</div>
+<div class="report-select-block">
+<label class="modal-field-label">Reports to include</label>
+<div class="report-select-actions">
+<button class="btn-outline-sm" id="selectAllReports" type="button">Select all</button>
+<button class="btn-outline-sm" id="clearAllReports" type="button">Clear</button>
+<span id="selectedReportCount">1 selected</span>
+</div>
+<div class="report-select-grid" id="reportSelection">
+<label class="report-select-option"><input type="checkbox" value="manager" checked/><span><strong>Manager Summary</strong><small>Overall results and decisions</small></span></label>
+<label class="report-select-option"><input type="checkbox" value="inventory"/><span><strong>Inventory Records</strong><small>Current stock and status</small></span></label>
+<label class="report-select-option"><input type="checkbox" value="receiving"/><span><strong>Material Receiving</strong><small>Received stock records</small></span></label>
+<label class="report-select-option"><input type="checkbox" value="disbursement"/><span><strong>Material Disbursement</strong><small>Released/used stock records</small></span></label>
+<label class="report-select-option"><input type="checkbox" value="activity"/><span><strong>Material Activity</strong><small>Chronological stock movements</small></span></label>
+<label class="report-select-option"><input type="checkbox" value="consumption"/><span><strong>Consumption Analysis</strong><small>Usage totals, trend and graph</small></span></label>
+<label class="report-select-option"><input type="checkbox" value="decision"/><span><strong>Decision Support</strong><small>Priority and suggested actions</small></span></label>
+</div>
+</div>
+</div>
+<div class="modal-sticky-footer">
+<button class="btn-outline-sm" id="saveModalCancel" type="button">Cancel</button>
+<button class="btn-generate" id="saveModalConfirm" type="button">Save Report</button>
+</div>
+</div>
+</div>
+<div class="toast-stack" id="toastStack"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../js/user-reports.js" type="module"></script>
 <script>
 const menuToggle = document.querySelector(".menu-toggle");
 const sidebarEl = document.querySelector(".sidebar");

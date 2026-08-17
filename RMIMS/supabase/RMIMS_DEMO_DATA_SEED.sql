@@ -5,6 +5,10 @@
 -- Do not present these generated quantities as actual business records.
 BEGIN;
 
+-- Clean existing demo/draft records safely to prevent name constraint collisions
+DELETE FROM public.product_material_requirements;
+DELETE FROM public.finished_products;
+
 INSERT INTO public.materials (id, material_name, category, unit, quantity, minimum_threshold, supplier, storage_location, notes, status) VALUES
 ('MAT-001','Chiton','Seafood','kg',45,50,'Quezon Seafood Supplier','Freezer A','Demo dataset for RMIMS testing','Low'),
 ('MAT-002','Small Shrimp','Seafood','kg',60,20,'Lucena Seafood Supplier','Freezer A','Demo dataset for RMIMS testing','Available'),
@@ -43,8 +47,7 @@ INSERT INTO public.finished_products (id, product_name, category, status) VALUES
 ('PROD-004','Crispy Bucheron','Meat Snack','Active'),
 ('PROD-005','Salted Banana Chips','Fruit Snack','Active'),
 ('PROD-006','Creamy Peanut Butter','Spread','Active'),
-('PROD-007','Crunchy Peanut Butter','Spread','Active')
-ON CONFLICT (id) DO UPDATE SET product_name=EXCLUDED.product_name, category=EXCLUDED.category, status='Active';
+('PROD-007','Crunchy Peanut Butter','Spread','Active');
 
 INSERT INTO public.product_material_requirements (id, product_id, material_id, required_quantity, unit) VALUES
 ('PMR-001','PROD-001','MAT-001',5,'kg'),

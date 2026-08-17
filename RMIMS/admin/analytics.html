@@ -11,7 +11,7 @@
 <script src="../js/chart.js"></script>
 <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
-<body>
+<body class="admin-page">
 <div class="container">
 <!-- SIDEBAR (ADMIN) -->
 <aside class="sidebar">
@@ -249,16 +249,17 @@
 </div>
 </section>
 <!-- CHARTS -->
-<section class="chart-grid fade-in" style="--delay:180ms">
+<section class="chart-grid fade-in" style="--delay:180ms; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
 <div class="chart-card">
 <div class="card-header">
-<h3>Raw Material Consumption <button class="info-icon" data-info="rmConsumption" type="button">ⓘ</button></h3>
+<h3>Top Consumed Raw Materials <button class="info-icon" data-info="rmConsumption" type="button">ⓘ</button></h3>
 </div>
-<div class="chart-canvas-wrap">
+<div class="chart-canvas-wrap" style="position: relative; height: 240px;">
 <canvas id="distributionChart"></canvas>
 </div>
 <p class="chart-others-hint" hidden="" id="othersHintBar">Showing top raw materials. Smaller ones are grouped under "Others" — click that bar for details.</p>
 </div>
+
 <div class="chart-card">
 <div class="card-header">
 <h3>Consumption Trend <button class="info-icon" data-info="consumptionTrend" type="button">ⓘ</button></h3>
@@ -267,8 +268,17 @@
 <button class="period-btn" data-period="Monthly">Monthly</button>
 </div>
 </div>
-<div class="chart-canvas-wrap">
+<div class="chart-canvas-wrap" style="position: relative; height: 240px;">
 <canvas id="consumptionChart"></canvas>
+</div>
+</div>
+
+<div class="chart-card">
+<div class="card-header">
+<h3>Consumption Distribution by Category <button class="info-icon" data-info="rmConsumption" type="button">ⓘ</button></h3>
+</div>
+<div class="chart-canvas-wrap" style="position: relative; height: 240px;">
+<canvas id="categoryDonutChart"></canvas>
 </div>
 </div>
 </section>

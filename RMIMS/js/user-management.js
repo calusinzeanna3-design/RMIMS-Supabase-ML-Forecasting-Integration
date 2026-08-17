@@ -206,17 +206,17 @@ function renderSummary() {
    SEARCH / FILTERS
    ========================================================== */
 
-document.getElementById("searchInput").addEventListener("input", (e) => {
+document.getElementById("searchInput")?.addEventListener("input", (e) => {
     tableState.search = e.target.value;
     tableState.page = 1;
     renderTable();
 });
-document.getElementById("statusFilter").addEventListener("change", (e) => {
+document.getElementById("statusFilter")?.addEventListener("change", (e) => {
     tableState.status = e.target.value;
     tableState.page = 1;
     renderTable();
 });
-document.getElementById("roleFilter").addEventListener("change", (e) => {
+document.getElementById("roleFilter")?.addEventListener("change", (e) => {
     tableState.role = e.target.value;
     tableState.page = 1;
     renderTable();
@@ -277,8 +277,8 @@ function filteredUsers() {
         if (key === "status") return `${u.status || ""} ${u.deletionRequestStatus || ""}`.toLowerCase();
         return String(u[key] || "").toLowerCase();
     };
-    rows.sort((a,b) => {
-        const av=valueOf(a,tableState.sortBy), bv=valueOf(b,tableState.sortBy);
+    rows.sort((a, b) => {
+        const av = valueOf(a, tableState.sortBy), bv = valueOf(b, tableState.sortBy);
         if (av < bv) return tableState.sortDir === "asc" ? -1 : 1;
         if (av > bv) return tableState.sortDir === "asc" ? 1 : -1;
         return 0;
@@ -382,11 +382,11 @@ function renderTable() {
                         <span>Reset Password</span>
                     </button>
                     ${u.status === "active"
-                        ? `<button type="button" class="row-action deactivate" data-deactivate-user="${u.id}" aria-label="Deactivate ${escapeHtml(u.fullName || "user")}" ${isSelf ? "disabled title=\"You cannot deactivate your own account.\"" : ""}>
+                ? `<button type="button" class="row-action deactivate" data-deactivate-user="${u.id}" aria-label="Deactivate ${escapeHtml(u.fullName || "user")}" ${isSelf ? "disabled title=\"You cannot deactivate your own account.\"" : ""}>
                             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 12H16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                             <span>Deactivate</span>
                           </button>`
-                        : `<button type="button" class="row-action activate" data-activate-user="${u.id}" aria-label="Activate ${escapeHtml(u.fullName || "user")}">
+                : `<button type="button" class="row-action activate" data-activate-user="${u.id}" aria-label="Activate ${escapeHtml(u.fullName || "user")}">
                             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 12.5L11 15L15.8 9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             <span>Activate</span>
                           </button>`}
@@ -1146,7 +1146,7 @@ const usersTab = document.getElementById("usersTab");
 const rolesPanel = document.getElementById("rolesPanel");
 const usersPanel = document.getElementById("usersPanel");
 
-function activateManagementTab(tab){
+function activateManagementTab(tab) {
     const showRoles = tab === "roles";
     rolesTab.classList.toggle("active", showRoles);
     usersTab.classList.toggle("active", !showRoles);

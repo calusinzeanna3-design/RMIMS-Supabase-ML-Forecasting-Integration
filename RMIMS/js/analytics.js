@@ -23,7 +23,11 @@ onAuthStateChanged(auth, async (user) => {
     if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
-    document.getElementById("profileBtn").querySelector(".profile-text").textContent = profile.fullName;
+    const pBtn = document.getElementById("profileBtn");
+    if (pBtn) {
+        const pText = pBtn.querySelector(".profile-text") || pBtn;
+        pText.textContent = profile.fullName;
+    }
 
     init();
 });
@@ -34,7 +38,7 @@ onAuthStateChanged(auth, async (user) => {
 
 let materials = [];       // all raw materials
 let usageRecords = [];    // ALL usage_records (all time) — used both for the
-                           // selected period and to detect "no prior history"
+// selected period and to detect "no prior history"
 let trendGranularity = "Weekly";
 let sortKey = "name-asc";
 let currentPage = 1;
@@ -367,6 +371,46 @@ function renderBarChart(stats) {
                     showOthersBreakdown(evt, othersBreakdown);
                 }
             }
+        }
+    });
+}
+
+let categoryDonutChartInstance = null;
+
+function renderCategoryDonutChart(stats) {
+    const canvas = $("categoryDonutChart");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    const ctx = canvas.getContext("2d");
+    if (categoryDonutChartInstance) categoryDonutChartInstance.destroy();
+
+    const catMap = new Map();
+    (stats || []).forEach(s => {
+        const cat = s.material.category || "General";
+        catMap.set(cat, (catMap.get(cat) || 0) + (s.currentTotal || 1));
+    });
+
+    const labels = [...catMap.keys()];
+    const data = [...catMap.values()];
+
+    categoryDonutChartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels: labels.length ? labels : ["General"],
+            datasets: [{
+                data: data.length ? data : [1],
+                backgroundColor: ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899"],
+                borderWidth: 2,
+                borderColor: "#FFFFFF"
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: "right", labels: { boxWidth: 12, font: { size: 11 } } }
+            },
+            cutout: "65%"
         }
     });
 }
@@ -797,25 +841,41 @@ function renderInsights(stats) {
 
 let infoHideTimer = null;
 
+function getOrCreatePopover() {
+    let popover = document.getElementById("infoPopover");
+    if (!popover) {
+        popover = document.createElement("div");
+        popover.id = "infoPopover";
+        popover.className = "info-popover";
+        popover.hidden = true;
+        popover.innerHTML = `<strong id="infoPopoverTitle"></strong><p id="infoPopoverBody"></p>`;
+        document.body.appendChild(popover);
+        popover.addEventListener("mouseenter", () => clearTimeout(infoHideTimer));
+        popover.addEventListener("mouseleave", scheduleHideInfoPopover);
+    }
+    return popover;
+}
+
 function showInfoPopover(btn) {
     clearTimeout(infoHideTimer);
-    const key = btn.dataset.info;
+    const key = btn.dataset.info || btn.dataset.infoKey;
     const info = INFO_TEXT[key];
     if (!info) return;
 
-    const popover = $("infoPopover");
-    $("infoPopoverTitle").textContent = `ⓘ ${info.title}`;
-    $("infoPopoverBody").textContent = info.body;
+    const popover = getOrCreatePopover();
+    const titleEl = document.getElementById("infoPopoverTitle");
+    const bodyEl = document.getElementById("infoPopoverBody");
+    if (titleEl) titleEl.textContent = `ⓘ ${info.title}`;
+    if (bodyEl) bodyEl.textContent = info.body;
 
     popover.hidden = false;
-    // Force layout before adding the visible class so the opacity transition runs.
     void popover.offsetWidth;
 
     const rect = btn.getBoundingClientRect();
     let left = rect.left;
-    if (left + 280 > window.innerWidth) left = window.innerWidth - 296;
+    if (left + 280 > window.innerWidth) left = Math.max(12, window.innerWidth - 296);
     let top = rect.bottom + 8;
-    if (top + 120 > window.innerHeight) top = rect.top - 120; // flip above if near bottom edge
+    if (top + 120 > window.innerHeight) top = Math.max(12, rect.top - 120);
     popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
 
@@ -823,34 +883,29 @@ function showInfoPopover(btn) {
 }
 
 function scheduleHideInfoPopover() {
-    const popover = $("infoPopover");
+    const popover = document.getElementById("infoPopover");
+    if (!popover) return;
     clearTimeout(infoHideTimer);
     infoHideTimer = setTimeout(() => {
         popover.classList.remove("visible");
-        infoHideTimer = setTimeout(() => { popover.hidden = true; }, 220); // matches CSS fade-out duration
+        infoHideTimer = setTimeout(() => { popover.hidden = true; }, 220);
     }, 60);
 }
 
 document.querySelectorAll(".info-icon").forEach(btn => {
-    // Desktop: hover only, appears/fades automatically.
     btn.addEventListener("mouseenter", () => showInfoPopover(btn));
     btn.addEventListener("mouseleave", scheduleHideInfoPopover);
     btn.addEventListener("focus", () => showInfoPopover(btn));
     btn.addEventListener("blur", scheduleHideInfoPopover);
-
-    // Touch devices: tap to show temporarily, tap elsewhere to dismiss.
     btn.addEventListener("touchstart", (e) => {
         e.stopPropagation();
         showInfoPopover(btn);
     }, { passive: true });
 });
 
-$("infoPopover").addEventListener("mouseenter", () => clearTimeout(infoHideTimer));
-$("infoPopover").addEventListener("mouseleave", scheduleHideInfoPopover);
-
 document.addEventListener("touchstart", (e) => {
-    const popover = $("infoPopover");
-    if (!popover.hidden && !popover.contains(e.target) && !e.target.closest(".info-icon")) {
+    const popover = document.getElementById("infoPopover");
+    if (popover && !popover.hidden && !popover.contains(e.target) && !e.target.closest(".info-icon")) {
         scheduleHideInfoPopover();
     }
 });
@@ -864,6 +919,7 @@ function renderAll() {
 
     renderSummary(stats, range);
     renderBarChart(stats);
+    renderCategoryDonutChart(stats);
     renderLineChart(stats);
     renderStockCompareTable(stats);
     renderUsageTable(stats);

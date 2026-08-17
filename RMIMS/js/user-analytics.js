@@ -1,455 +1,636 @@
-// RMIMS User — Consumption Analytics
-// Robust, unit-aware analytics with explicit edge-case handling.
+// js/user-analytics.js
+// User — Consumption Analytics.
+// Subject: RAW MATERIAL CONSUMPTION, calculated from actual usage_records.
+// 100% matched structure, components, and logic with Admin Analytics.
 
 import { auth, db } from "../supabase/supabase-config.js";
-import { collection, getDocs, getDoc, doc } from "../supabase/db-compat.js";
+import { collection, getDocs } from "../supabase/db-compat.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
-let currentUser = null;
-let materials = [];
-let usageRecords = [];
-let trendGranularity = "Daily";
-let currentRange = "week";
-let lineChart = null;
-let distributionChart = null;
-let mostConsumedChart = null;
-let currentPage = 1;
-const PAGE_SIZE = 10;
-
-const $ = (id) => document.getElementById(id);
-const searchInput = $("searchInput");
-const categorySelect = $("categorySelect");
-const unitSelect = $("unitSelect");
-const dateRangeSelect = $("dateRangeSelect");
-const startDateInput = $("startDateInput");
-const endDateInput = $("endDateInput");
-const resetFiltersBtn = $("resetFiltersBtn");
-
 /* ==========================================================
-   INFO ICON CONTENT — balanced with the Admin analytics view
+   ROLE GUARD
    ========================================================== */
-const INFO_TEXT = {
-    totalActivity: {
-        title: "Total Material Activity",
-        body: "Shows the number of recorded material-use activities included in the selected period. It counts activity records, not the total quantity consumed."
-    },
-    mostUsed: {
-        title: "Most Used Material",
-        body: "Identifies the raw material with the highest recorded consumption in the selected period. Materials with different units are not compared as if their quantities were the same."
-    },
-    leastUsed: {
-        title: "Least Used Material",
-        body: "Shows the material with the lowest recorded consumption among materials with usage in the selected period. If there is a tie or not enough comparable data, the system avoids forcing a single result."
-    },
-    totalConsumption: {
-        title: "Total Consumption",
-        body: "Shows recorded consumed quantities for the selected period. Different units such as kg, liters, and pieces are kept separate so the summary is not misleading."
-    },
-    consumptionTrend: {
-        title: "Material Consumption Trend",
-        body: "Shows how recorded material consumption changes over time. The system uses available historical records and does not invent an increase or decrease when there is not enough history."
-    },
-    usageBreakdown: {
-        title: "Material Usage Breakdown",
-        body: "Shows how recorded consumption is distributed across materials. When materials use different measurement units, the system keeps their quantities separate instead of combining incompatible units."
-    },
-    mostConsumed: {
-        title: "Most Consumed Raw Materials",
-        body: "Ranks materials by recorded consumption for the selected period. This helps identify which raw materials are being used most often or in the greatest recorded quantity within the same unit."
-    },
-    recentConsumption: {
-        title: "Recent Material Consumption",
-        body: "Shows the latest recorded Used/Consumed activities. A finished product may appear as context when it was included in the activity record."
-    },
-    usageOverview: {
-        title: "Material Usage Overview",
-        body: "Provides a material-by-material view of recorded consumption, trend, and current stock status. Archived materials can remain visible when they have historical usage."
-    },
-    consumptionInsights: {
-        title: "Consumption Insights",
-        body: "Summarizes useful observations from the selected consumption data, such as increasing usage, low stock, tied results, archived materials, or data-quality limitations."
-    }
-};
 
-function escapeHtml(value) {
-    const d = document.createElement("div");
-    d.textContent = value ?? "";
-    return d.innerHTML;
-}
+onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "../login.html"; return; }
 
-function num(v) {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-}
+    const snap = await getDocs(collection(db, "users"));
+    const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+    if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
+    if (profile.role !== "user") { window.location.href = "../admin/dashboard.html"; return; }
 
-function formatNum(v) {
-    const n = num(v);
-    return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-function formatQty(v, unit = "") {
-    const text = formatNum(v);
-    return `${text}${unit ? ` ${escapeHtml(unit)}` : ""}`;
-}
-
-function normalizeDate(value) {
-    if (!value) return null;
-    if (typeof value?.toDate === "function") return value.toDate();
-    if (typeof value?.toMillis === "function") return new Date(value.toMillis());
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function startOfWeek(date) {
-    const d = new Date(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day));
-    d.setHours(0, 0, 0, 0);
-    return d;
-}
-
-function getRange() {
-    const now = new Date();
-    if (startDateInput?.value || endDateInput?.value) {
-        if (!startDateInput.value || !endDateInput.value) return { error: "Select both start and end dates." };
-        const start = new Date(`${startDateInput.value}T00:00:00`);
-        const end = new Date(`${endDateInput.value}T23:59:59.999`);
-        if (start > end) return { error: "Invalid date range. End date must be on or after the start date." };
-        if (start > now) return { error: "Future dates cannot be used for historical consumption analytics." };
-        return { start, end: end > now ? now : end };
-    }
-    const key = dateRangeSelect?.value || currentRange;
-    if (key === "today") {
-        const start = new Date(now); start.setHours(0, 0, 0, 0); return { start, end: now };
-    }
-    if (key === "month") return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: now };
-    if (key === "last30") { const start = new Date(now); start.setDate(start.getDate() - 30); return { start, end: now }; }
-    return { start: startOfWeek(now), end: now };
-}
-
-function previousRange(range) {
-    const duration = range.end.getTime() - range.start.getTime();
-    const end = new Date(range.start.getTime() - 1);
-    return { start: new Date(end.getTime() - duration), end };
-}
-
-function inRange(date, range) {
-    const d = normalizeDate(date);
-    return d && d >= range.start && d <= range.end;
-}
-
-function materialStatus(material) {
-    if (!material) return "Unknown";
-    if (material.status) return material.status;
-    const qty = num(material.quantity ?? material.currentStock);
-    const min = num(material.minimumThreshold ?? material.minimumStock);
-    if (qty <= min / 2) return "Critical";
-    if (qty <= min) return "Low";
-    return "Available";
-}
-
-function showState(type, message) {
-    const box = $("analyticsState");
-    if (!box) return;
-    box.className = `analytics-state ${type}`;
-    box.hidden = false;
-    box.innerHTML = message;
-}
-
-function hideState() { const box = $("analyticsState"); if (box) box.hidden = true; }
-
-function showError(message) {
-    showState("error", `<strong>Unable to load analytics.</strong><span>${escapeHtml(message)}</span><button id="retryAnalyticsBtn" type="button">Try Again</button>`);
-    $("retryAnalyticsBtn")?.addEventListener("click", loadAll);
-}
-
-function populateFilters() {
-    const categories = [...new Set(materials.map(m => m.category).filter(Boolean))].sort();
-    const units = [...new Set(materials.map(m => m.unit).filter(Boolean))].sort();
-    const oldCat = categorySelect.value, oldUnit = unitSelect.value;
-    categorySelect.innerHTML = `<option value="">All Categories</option>${categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")}`;
-    unitSelect.innerHTML = `<option value="">All Units</option>${units.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("")}`;
-    categorySelect.value = categories.includes(oldCat) ? oldCat : "";
-    unitSelect.value = units.includes(oldUnit) ? oldUnit : "";
-}
-
-function validUsageRecords() {
-    return usageRecords.filter(r => {
-        const q = num(r.usedQuantity);
-        return normalizeDate(r.usageDate) && q > 0;
-    });
-}
-
-function computeStats() {
-    const range = getRange();
-    if (range.error) return { error: range.error };
-    const prev = previousRange(range);
-    const search = (searchInput.value || "").trim().toLowerCase();
-    const category = categorySelect.value;
-    const unit = unitSelect.value;
-
-    const filteredMaterials = materials.filter(m => {
-        const name = String(m.materialName || m.name || "").toLowerCase();
-        return (!search || name.includes(search)) && (!category || m.category === category) && (!unit || m.unit === unit);
-    });
-
-    const stats = filteredMaterials.map(material => {
-        const records = validUsageRecords().filter(r => r.materialId === material.id && inRange(r.usageDate, range));
-        const prevRecords = validUsageRecords().filter(r => r.materialId === material.id && inRange(r.usageDate, prev));
-        const total = records.reduce((s, r) => s + num(r.usedQuantity), 0);
-        const previous = prevRecords.reduce((s, r) => s + num(r.usedQuantity), 0);
-        const hasOlder = validUsageRecords().some(r => r.materialId === material.id && normalizeDate(r.usageDate) < range.start);
-        let trend = { arrow: "none", change: null, label: "Not enough data" };
-        if (hasOlder && previous > 0) {
-            const change = ((total - previous) / previous) * 100;
-            trend = { arrow: change > 5 ? "up" : change < -5 ? "down" : "flat", change, label: change > 5 ? "Increasing" : change < -5 ? "Decreasing" : "Stable" };
-        } else if (hasOlder && total > 0 && previous === 0) {
-            trend = { arrow: "up", change: null, label: "New usage" };
+    const pBtn = document.getElementById("profileBtn");
+    if (pBtn) {
+        const pText = pBtn.querySelector(".profile-text") || pBtn;
+        pText.textContent = profile.fullName || "Staff Member";
+        const pAv = pBtn.querySelector(".avatar");
+        if (pAv && profile.fullName) {
+            pAv.textContent = profile.fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join("");
         }
-        return { material, records, total, previous, trend };
-    });
-    return { stats, range, prev };
-}
-
-function renderSummary(stats) {
-    const withUsage = stats.filter(s => s.total > 0);
-    const byUnit = new Map();
-    withUsage.forEach(s => byUnit.set(s.material.unit || "unit", (byUnit.get(s.material.unit || "unit") || 0) + s.total));
-
-    $("totalUsageRecords").textContent = validUsageRecords().filter(r => inRange(r.usageDate, getRange())).length.toLocaleString();
-    const totalEl = $("totalConsumption");
-    if (!withUsage.length) totalEl.innerHTML = `<span class="summary-muted">No usage recorded</span>`;
-    else totalEl.innerHTML = [...byUnit.entries()].sort((a,b) => b[1]-a[1]).map(([u,v]) => `<span class="summary-unit">${formatNum(v)} <small>${escapeHtml(u)}</small></span>`).join("");
-
-    if (!withUsage.length) {
-        $("mostUsedMaterial").textContent = "—";
-        $("leastUsedMaterial").textContent = "—";
-        $("mostUsedMaterial").title = "No consumption records in the selected period.";
-        $("leastUsedMaterial").title = "No consumption records in the selected period.";
-        return;
     }
 
-    const groups = new Map();
-    withUsage.forEach(s => {
-        const key = s.material.unit || "unit";
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(s);
-    });
-    // A cross-unit 'most used' label is only shown if all active records use one unit.
-    if (groups.size === 1) {
-        const arr = [...withUsage].sort((a,b) => b.total - a.total);
-        const max = arr[0].total;
-        const min = arr[arr.length - 1].total;
-        const tops = arr.filter(x => x.total === max);
-        const lows = arr.filter(x => x.total === min);
-        $("mostUsedMaterial").textContent = tops.map(x => x.material.materialName).join(" / ");
-        $("leastUsedMaterial").textContent = lows.map(x => x.material.materialName).join(" / ");
-        $("mostUsedMaterial").title = `${formatQty(max, arr[0].material.unit)} used`;
-        $("leastUsedMaterial").title = `${formatQty(min, arr[arr.length-1].material.unit)} used`;
-    } else {
-        $("mostUsedMaterial").textContent = "By unit";
-        $("leastUsedMaterial").textContent = "By unit";
-        $("mostUsedMaterial").title = "Materials with different units are not directly compared.";
-        $("leastUsedMaterial").title = "Materials with different units are not directly compared.";
-    }
-}
-
-function destroyCharts() {
-    [lineChart, distributionChart, mostConsumedChart].forEach(c => c?.destroy());
-    lineChart = distributionChart = mostConsumedChart = null;
-}
-
-function renderNoDataChart(canvasId, message) {
-    const canvas = $(canvasId); if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.save(); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text-soft") || "#64748b";
-    ctx.font = "600 14px Inter, sans-serif"; ctx.textAlign = "center"; ctx.fillText(message, canvas.width/2, canvas.height/2); ctx.restore();
-}
-
-function renderCharts(stats, range) {
-    const usable = stats.filter(s => s.total > 0);
-    destroyCharts();
-    const units = [...new Set(usable.map(s => s.material.unit || "unit"))];
-
-    if (!usable.length) {
-        renderNoDataChart("consumptionChart", "No consumption data for this period");
-        renderNoDataChart("distributionChart", "No material usage to display");
-        renderNoDataChart("mostConsumedBarChart", "No material usage to rank");
-        return;
-    }
-
-    // Trend is only aggregated when the selected set has one unit. This prevents kg + pcs + L from being added.
-    if (units.length === 1) {
-        const buckets = new Map();
-        validUsageRecords().filter(r => inRange(r.usageDate, range) && units.includes(materials.find(m=>m.id===r.materialId)?.unit || "unit")).forEach(r => {
-            const d = normalizeDate(r.usageDate); let key;
-            if (trendGranularity === "Monthly") key = d.toLocaleDateString(undefined,{month:"short",year:"numeric"});
-            else if (trendGranularity === "Weekly") key = `Week of ${startOfWeek(d).toLocaleDateString(undefined,{month:"short",day:"numeric"})}`;
-            else key = d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
-            buckets.set(key, (buckets.get(key)||0) + num(r.usedQuantity));
-        });
-        lineChart = new Chart($("consumptionChart"), { type:"line", data:{labels:[...buckets.keys()],datasets:[{label:`Quantity used (${units[0]})`,data:[...buckets.values()],tension:.35,fill:true}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}} });
-    } else renderNoDataChart("consumptionChart", "Select one unit to view a comparable trend");
-
-    const top = [...usable].sort((a,b)=>b.total-a.total).slice(0,6);
-    const rest = [...usable].sort((a,b)=>b.total-a.total).slice(6);
-    const labels = top.map(s=>s.material.materialName);
-    const values = top.map(s=>s.total);
-    if (rest.length) { labels.push("Others"); values.push(rest.reduce((s,x)=>s+x.total,0)); }
-    distributionChart = new Chart($("distributionChart"), { type:"doughnut", data:{labels,datasets:[{data:values}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}}} });
-    mostConsumedChart = new Chart($("mostConsumedBarChart"), { type:"bar", data:{labels:top.map(s=>s.material.materialName),datasets:[{label:"Quantity used",data:top.map(s=>s.total)}]}, options:{responsive:true,maintainAspectRatio:false,indexAxis:top.length>=6?"y":"x",plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}} });
-}
-
-function trendHtml(t) {
-    if (t.arrow === "up") return `<span class="trend-badge trend-up">↑ ${t.change === null ? "New" : `${Math.abs(Math.round(t.change))}%`}</span>`;
-    if (t.arrow === "down") return `<span class="trend-badge trend-down">↓ ${Math.abs(Math.round(t.change))}%</span>`;
-    if (t.arrow === "flat") return `<span class="trend-badge trend-flat">→ Stable</span>`;
-    return `<span class="trend-badge trend-flat">— Not enough data</span>`;
-}
-
-function statusHtml(material) {
-    const s = materialStatus(material);
-    const cls = s === "Critical" ? "stock-critical" : s === "Low" ? "stock-low" : s === "Available" ? "stock-good" : "stock-unknown";
-    const label = s === "Critical" ? "Needs Restocking" : s === "Low" ? "Running Low" : s === "Available" ? "Good" : s;
-    return `<span class="status ${cls}">${label}</span>`;
-}
-
-function renderTable(stats) {
-    const rows = [...stats].sort((a,b)=>b.total-a.total);
-    const totalPages = Math.max(1, Math.ceil(rows.length/PAGE_SIZE));
-    currentPage = Math.min(currentPage,totalPages);
-    const pageRows = rows.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
-    const tbody = $("analyticsTableBody");
-    if (!rows.length) tbody.innerHTML = `<tr><td colspan="6" class="empty-table">No materials match the selected filters.</td></tr>`;
-    else tbody.innerHTML = pageRows.map(s=>`<tr>
-        <td><strong>${escapeHtml(s.material.materialName || s.material.name || "Unknown")}</strong>${s.material.isActive===false?` <span class="archived-label">Archived</span>`:""}</td>
-        <td>${escapeHtml(s.material.category||"—")}</td>
-        <td>${escapeHtml(s.material.unit||"—")}</td>
-        <td>${s.total > 0 ? formatQty(s.total,s.material.unit) : "0"}</td>
-        <td>${trendHtml(s.trend)}</td>
-        <td>${statusHtml(s.material)}</td>
-    </tr>`).join("");
-    $("pageInfo").textContent = rows.length ? `Showing ${(currentPage-1)*PAGE_SIZE+1} to ${Math.min(currentPage*PAGE_SIZE,rows.length)} of ${rows.length} materials` : "Showing 0 to 0 of 0 materials";
-    const controls=$("paginationControls"); controls.innerHTML="";
-    for(let p=1;p<=totalPages;p++){const b=document.createElement("button");b.textContent=p;b.className=p===currentPage?"active":"";b.addEventListener("click",()=>{currentPage=p;renderPage();});controls.appendChild(b);}
-}
-
-function renderRecent(range) {
-    const recent = validUsageRecords().filter(r=>inRange(r.usageDate,range)).sort((a,b)=>normalizeDate(b.usageDate)-normalizeDate(a.usageDate)).slice(0,8);
-    const list=$("recentActivityList");
-    if(!recent.length){list.innerHTML=`<div class="empty-state">No consumption records found for the selected period.</div>`;return;}
-    list.innerHTML=recent.map(r=>{const m=materials.find(x=>x.id===r.materialId);return `<div class="activity-item"><div><strong>${escapeHtml(m?.materialName||r.materialName||"Unknown material")}</strong><small>${normalizeDate(r.usageDate)?.toLocaleDateString()||"Unknown date"}${r.finishedProductName?` · ${escapeHtml(r.finishedProductName)}`:""}</small></div><b>${formatQty(r.usedQuantity,m?.unit||r.unit||"")}</b></div>`}).join("");
-}
-
-function renderInsights(stats) {
-    const list=$("insightsList");
-    const usable=stats.filter(s=>s.total>0);
-    const messages=[];
-    if(!usable.length){messages.push("No consumption data is available for the selected period.");}
-    else {
-        const units=[...new Set(usable.map(s=>s.material.unit||"unit"))];
-        if(units.length>1) messages.push("Materials use different measurement units. Totals are kept separate to avoid misleading calculations.");
-        const tiedMax=usable.filter(s=>s.total===Math.max(...usable.map(x=>x.total)));
-        if(tiedMax.length>1 && units.length===1) messages.push(`${tiedMax.length} materials are tied for highest consumption.`);
-        const noHistory=usable.filter(s=>s.trend.arrow==="none");
-        if(noHistory.length) messages.push(`${noHistory.length} material${noHistory.length===1?" has":"s have"} not enough history for a reliable trend comparison.`);
-        const lowHigh=usable.filter(s=>["Low","Critical"].includes(materialStatus(s.material)));
-        if(lowHigh.length) messages.push(`${lowHigh.length} consumed material${lowHigh.length===1?" is":"s are"} currently low or critical in stock.`);
-        const archived=usable.filter(s=>s.material.isActive===false);
-        if(archived.length) messages.push("Historical consumption from archived materials is still included.");
-    }
-    list.innerHTML=messages.map(m=>`<li>${escapeHtml(m)}</li>`).join("");
-}
-
-function renderQuality(range) {
-    const valid = validUsageRecords();
-    const invalid = usageRecords.length - valid.length;
-    const orphan = valid.filter(r=>!materials.some(m=>m.id===r.materialId));
-    const mixed = [];
-    const byMaterial = new Map();
-    valid.forEach(r=>{if(!byMaterial.has(r.materialId))byMaterial.set(r.materialId,new Set());const m=materials.find(x=>x.id===r.materialId);byMaterial.get(r.materialId).add(m?.unit||r.unit||"unknown")});
-    byMaterial.forEach((units,id)=>{if(units.size>1)mixed.push(id)});
-    const messages=[];
-    if(invalid) messages.push(`${invalid} invalid or zero/negative consumption record${invalid===1?"":"s"} excluded.`);
-    if(orphan.length) messages.push(`${orphan.length} consumption record${orphan.length===1?"":"s"} reference a missing material and were excluded from material summaries.`);
-    if(mixed.length) messages.push(`${mixed.length} material${mixed.length===1?" has":"s have"} inconsistent units and need data review.`);
-    const box=$("analyticsDataQuality");
-    if(!box)return;
-    if(messages.length){box.hidden=false;box.innerHTML=`<strong>Data quality notice</strong><ul>${messages.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>`;}
-    else box.hidden=true;
-}
-
-function renderPage(){
-    const result=computeStats();
-    if(result.error){showState("warning",`<strong>Check your date range.</strong><span>${escapeHtml(result.error)}</span>`);return;}
-    hideState();
-    renderSummary(result.stats,result.range);
-    renderCharts(result.stats,result.range);
-    renderTable(result.stats);
-    renderRecent(result.range);
-    renderInsights(result.stats);
-    renderQuality(result.range);
-}
-
-async function loadAll(){
-    try{
-        showState("loading","Loading consumption analytics…");
-        const [matSnap,usageSnap]=await Promise.all([getDocs(collection(db,"materials")),getDocs(collection(db,"usageRecords"))]);
-        materials=matSnap.docs.map(d=>({id:d.id,...d.data()}));
-        usageRecords=usageSnap.docs.map(d=>({id:d.id,...d.data()}));
-        populateFilters();
-        renderPage();
-        if(!usageRecords.length) showState("info","<strong>No consumption records yet.</strong><span>Record material usage in Material Activity to begin building consumption analytics.</span>");
-    }catch(error){console.error(error);showError("The system could not retrieve consumption records. Your data was not replaced with zeros.");}
-}
-
-function init(){
-    if($('profileBtn') && currentUser) $('profileBtn').querySelector('.profile-text')?.replaceChildren(document.createTextNode(currentUser.fullName));
-    loadAll();
-}
-
-onAuthStateChanged(auth, async user=>{
-    if(!user){window.location.href="../login.html";return;}
-    try{
-        const snap=await getDoc(doc(db,"users",user.uid));
-        if(!snap.exists()){window.location.href="../login.html";return;}
-        const profile=snap.data();
-        if(profile.role!=="user"){window.location.href="../admin/dashboard.html";return;}
-        if(profile.status && profile.status!=="active"){window.location.href="../login.html";return;}
-        currentUser={uid:user.uid,fullName:profile.fullName||"Staff"};
-        init();
-    }catch(e){console.error(e);showError("Your account could not be verified. Please sign in again.");}
+    init();
 });
 
 /* ==========================================================
-   INFO ICON POPOVER
+   STATE
    ========================================================== */
+
+let materials = [];       // all raw materials
+let usageRecords = [];    // ALL usage_records
+let trendGranularity = "Weekly";
+let sortKey = "name-asc";
+let currentPage = 1;
+const PAGE_SIZE = 10;
+
+let barChart = null;
+let lineChart = null;
+
+/* ==========================================================
+   DOM
+   ========================================================== */
+
+const $ = (id) => document.getElementById(id);
+
+const searchInput = $("searchInput");
+const dateRangeSelect = $("dateRangeSelect");
+const customDateWrap = $("customDateWrap");
+const startDateInput = $("startDateInput");
+const endDateInput = $("endDateInput");
+const categorySelect = $("categorySelect");
+const unitSelect = $("unitSelect");
+const statusSelect = $("statusSelect");
+const resetFiltersBtn = $("resetFiltersBtn");
+const sortSelect = $("sortSelect");
+
+/* ==========================================================
+   INFO ICON CONTENT
+   ========================================================== */
+
+const INFO_TEXT = {
+    totalUsed: {
+        title: "Total Used",
+        body: "Shows the total recorded quantity used during the selected period. Different units are kept separate — quantities are never added together across units."
+    },
+    mostUsed: {
+        title: "Most Used Raw Material",
+        body: "Identifies the raw material with the highest recorded usage during the selected period."
+    },
+    materialsWithUsage: {
+        title: "Materials With Usage",
+        body: "Shows how many raw materials have recorded consumption during the selected period."
+    },
+    recentUsage: {
+        title: "Recent Usage",
+        body: "Shows the number of recent consumption activities recorded in the selected period."
+    },
+    rmConsumption: {
+        title: "Raw Material Consumption",
+        body: "Shows and compares the quantity of each raw material recorded as Used/Consumed during the selected period. Only actual consumption records are included — received quantities are not included."
+    },
+    consumptionTrend: {
+        title: "Consumption Trend",
+        body: "Shows how recorded raw-material consumption changes over the selected period. Trend comparisons use available historical consumption data — if there is not enough historical data, no trend is invented."
+    },
+    stockCompare: {
+        title: "Consumption & Current Stock",
+        body: "Compares recent raw-material usage with current available stock to help identify materials that may require attention. High consumption does not automatically mean low stock — status reflects actual inventory status."
+    },
+    rmUsageTable: {
+        title: "Raw Material Usage",
+        body: "Provides detailed consumption information for each raw material, including usage, previous-period comparison, trend, and current stock status."
+    },
+    recentConsumption: {
+        title: "Recent Consumption",
+        body: "Shows recent Used/Consumed activity recorded through Material Activity. Finished Product is shown only as activity context when available."
+    }
+};
+
+/* ==========================================================
+   HELPERS
+   ========================================================== */
+
+function escapeHtml(str) {
+    const d = document.createElement("div");
+    d.textContent = str ?? "";
+    return d.innerHTML;
+}
+
+function statusPill(material) {
+    if (!material) return `<span class="status stock-good">—</span>`;
+    if (material.status === "Critical") return `<span class="status stock-critical">Needs Restocking</span>`;
+    if (material.status === "Low") return `<span class="status stock-low">Running Low</span>`;
+    return `<span class="status stock-good">Good</span>`;
+}
+
+function trendBadge(trend) {
+    if (trend.arrow === "up") return `<span class="trend-badge trend-up">↑ ${trend.change !== null ? Math.abs(Math.round(trend.change)) + "%" : "New"}</span>`;
+    if (trend.arrow === "down") return `<span class="trend-badge trend-down">↓ ${trend.change !== null ? Math.abs(Math.round(trend.change)) + "%" : ""}</span>`;
+    if (trend.arrow === "flat") return `<span class="trend-badge trend-flat">→ Stable</span>`;
+    return `<span class="trend-badge trend-flat">—</span>`;
+}
+
+/* -------- Date range handling -------- */
+
+function startOfWeek(d) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = (day === 0 ? -6 : 1) - day; // Monday as start of week
+    date.setDate(date.getDate() + diff);
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+function getCurrentRange() {
+    const now = new Date();
+
+    if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
+        const start = new Date(startDateInput.value + "T00:00:00");
+        const end = new Date(endDateInput.value + "T23:59:59");
+        return { start, end };
+    }
+
+    const key = dateRangeSelect ? dateRangeSelect.value : "week";
+
+    if (key === "today") {
+        const start = new Date(now); start.setHours(0, 0, 0, 0);
+        return { start, end: now };
+    }
+    if (key === "month") {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { start, end: now };
+    }
+    if (key === "last7") {
+        const start = new Date(now); start.setDate(start.getDate() - 7);
+        return { start, end: now };
+    }
+    if (key === "last30") {
+        const start = new Date(now); start.setDate(start.getDate() - 30);
+        return { start, end: now };
+    }
+    return { start: startOfWeek(now), end: now };
+}
+
+function getPreviousRange(current) {
+    const durationMs = current.end.getTime() - current.start.getTime();
+    const prevEnd = new Date(current.start.getTime() - 1);
+    const prevStart = new Date(prevEnd.getTime() - durationMs);
+    return { start: prevStart, end: prevEnd };
+}
+
+function inRange(dateStr, range) {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return d >= range.start && d <= range.end;
+}
+
+function hasHistoryBefore(materialId, beforeDate) {
+    return usageRecords.some(r => r.materialId === materialId && new Date(r.usageDate) < beforeDate);
+}
+
+/* ==========================================================
+   DATA LOAD
+   ========================================================== */
+
+async function loadAll() {
+    const [matSnap, usageSnap] = await Promise.all([
+        getDocs(collection(db, "materials")),
+        getDocs(collection(db, "usageRecords"))
+    ]);
+    materials = matSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    usageRecords = usageSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.usageDate);
+
+    populateFilterOptions();
+    renderAll();
+}
+
+function populateFilterOptions() {
+    if (!categorySelect || !unitSelect) return;
+    const categories = [...new Set(materials.map(m => m.category).filter(Boolean))].sort();
+    const currentCat = categorySelect.value;
+    categorySelect.innerHTML = `<option value="">All Categories</option>` +
+        categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    if (categories.includes(currentCat)) categorySelect.value = currentCat;
+
+    const units = [...new Set(materials.map(m => m.unit).filter(Boolean))].sort();
+    const currentUnit = unitSelect.value;
+    unitSelect.innerHTML = `<option value="">All Units</option>` +
+        units.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+    if (units.includes(currentUnit)) unitSelect.value = currentUnit;
+}
+
+/* ==========================================================
+   CORE CALCULATION
+   ========================================================== */
+
+function computeMaterialStats() {
+    const range = getCurrentRange();
+    const prevRange = getPreviousRange(range);
+
+    const search = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    const category = categorySelect ? categorySelect.value : "";
+    const unit = unitSelect ? unitSelect.value : "";
+    const status = statusSelect ? statusSelect.value : "";
+
+    const filteredMaterials = materials.filter(m =>
+        (!search || m.materialName.toLowerCase().includes(search)) &&
+        (!category || m.category === category) &&
+        (!unit || m.unit === unit) &&
+        (!status || m.status === status)
+    );
+
+    const stats = filteredMaterials.map(mat => {
+        const currentRecords = usageRecords.filter(r => r.materialId === mat.id && inRange(r.usageDate, range));
+        const previousRecords = usageRecords.filter(r => r.materialId === mat.id && inRange(r.usageDate, prevRange));
+
+        const currentTotal = currentRecords.reduce((s, r) => s + Number(r.usedQuantity || 0), 0);
+        const previousTotal = previousRecords.reduce((s, r) => s + Number(r.usedQuantity || 0), 0);
+
+        let trend;
+        if (!hasHistoryBefore(mat.id, range.start)) {
+            trend = { arrow: "none", change: null, label: "Not enough data" };
+        } else if (previousTotal === 0 && currentTotal > 0) {
+            trend = { arrow: "up", change: null, label: "New usage vs previous period" };
+        } else if (previousTotal === 0 && currentTotal === 0) {
+            trend = { arrow: "flat", change: 0, label: "No recorded usage" };
+        } else {
+            const change = ((currentTotal - previousTotal) / previousTotal) * 100;
+            trend = { arrow: change > 5 ? "up" : change < -5 ? "down" : "flat", change, label: null };
+        }
+
+        return { material: mat, currentTotal, previousTotal, trend, recordCount: currentRecords.length };
+    });
+
+    return { stats, range, prevRange };
+}
+
+/* ==========================================================
+   RENDER: SUMMARY CARDS
+   ========================================================== */
+
+function renderSummary(stats, range) {
+    const withUsage = stats.filter(s => s.currentTotal > 0);
+
+    const byUnit = new Map();
+    withUsage.forEach(s => {
+        const u = s.material.unit || "";
+        byUnit.set(u, (byUnit.get(u) || 0) + s.currentTotal);
+    });
+    const totalUsedEl = $("totalUsedValue");
+    if (totalUsedEl) {
+        if (byUnit.size === 0) {
+            totalUsedEl.innerHTML = `<span class="unit-total-row" style="font-size:.95rem;color:var(--text-faint);font-weight:600;">No usage recorded</span>`;
+        } else {
+            totalUsedEl.innerHTML = [...byUnit.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .map(([u, total]) => `<div class="unit-total-row">${formatNum(total)}<span>${escapeHtml(u)}</span></div>`)
+                .join("");
+        }
+    }
+
+    if ($("mostUsedMaterial")) {
+        if (withUsage.length === 0) {
+            $("mostUsedMaterial").textContent = "-";
+            if ($("mostUsedSubtext")) $("mostUsedSubtext").textContent = "";
+        } else {
+            const top = [...withUsage].sort((a, b) => b.currentTotal - a.currentTotal)[0];
+            $("mostUsedMaterial").textContent = top.material.materialName;
+            if ($("mostUsedSubtext")) $("mostUsedSubtext").textContent = `${formatNum(top.currentTotal)} ${top.material.unit || ""} used`;
+        }
+    }
+
+    if ($("materialsWithUsage")) $("materialsWithUsage").textContent = withUsage.length;
+    const recentCount = withUsage.reduce((s, x) => s + x.recordCount, 0);
+    if ($("recentUsageCount")) $("recentUsageCount").textContent = recentCount;
+}
+
+function formatNum(n) {
+    const num = Number(n);
+    return Number.isInteger(num) ? num.toString() : num.toFixed(2).replace(/\.00$/, "");
+}
+
+/* ==========================================================
+   RENDER: BAR CHART (Raw Material Consumption)
+   ========================================================== */
+
+function renderBarChart(stats) {
+    const withUsage = [...stats.filter(s => s.currentTotal > 0)].sort((a, b) => b.currentTotal - a.currentTotal);
+    const ctx = document.getElementById("distributionChart");
+    const othersHint = $("othersHintBar");
+    if (!ctx) return;
+
+    if (withUsage.length === 0) {
+        if (barChart) { barChart.destroy(); barChart = null; }
+        if (othersHint) othersHint.hidden = true;
+        return;
+    }
+
+    const TOP_N = 6;
+    const top = withUsage.slice(0, TOP_N);
+    const rest = withUsage.slice(TOP_N);
+
+    const labels = top.map(s => s.material.materialName);
+    const data = top.map(s => s.currentTotal);
+
+    if (rest.length > 0) {
+        labels.push("Others");
+        data.push(rest.reduce((s, x) => s + x.currentTotal, 0));
+        if (othersHint) othersHint.hidden = false;
+    } else {
+        if (othersHint) othersHint.hidden = true;
+    }
+
+    if (barChart) barChart.destroy();
+    barChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: ["#2563eb", "#22c08a", "#f5a524", "#a87cf2", "#3b82f6", "#10b981", "#64748b"]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: "rgba(148,180,224,.14)" } }, x: { grid: { display: false } } }
+        }
+    });
+}
+
+/* ==========================================================
+   RENDER: LINE CHART (Consumption Trend - Weekly / Monthly)
+   ========================================================== */
+
+function renderLineChart(stats) {
+    const { range } = computeMaterialStats();
+    const ctx = document.getElementById("consumptionChart");
+    if (!ctx) return;
+    const withUsage = stats.filter(s => s.currentTotal > 0);
+
+    if (withUsage.length === 0) {
+        if (lineChart) { lineChart.destroy(); lineChart = null; }
+        return;
+    }
+
+    const materialIds = new Set(withUsage.map(s => s.material.id));
+    const relevantRecords = usageRecords.filter(r => materialIds.has(r.materialId) && inRange(r.usageDate, range));
+
+    const buckets = new Map();
+    relevantRecords.forEach(r => {
+        const label = bucketLabel(new Date(r.usageDate), trendGranularity);
+        buckets.set(label, (buckets.get(label) || 0) + Number(r.usedQuantity || 0));
+    });
+
+    const sortedLabels = [...buckets.keys()].sort();
+    const data = sortedLabels.map(l => buckets.get(l));
+
+    if (lineChart) lineChart.destroy();
+    lineChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: sortedLabels.map(l => formatBucketLabel(l, trendGranularity)),
+            datasets: [{
+                data,
+                borderColor: "#2563eb",
+                backgroundColor: "rgba(37,99,235,.12)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 4,
+                pointBackgroundColor: "#2563eb"
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: "rgba(148,180,224,.14)" } }, x: { grid: { display: false } } }
+        }
+    });
+}
+
+function bucketLabel(date, granularity) {
+    if (granularity === "Monthly") return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const start = startOfWeek(date);
+    return start.toISOString().slice(0, 10);
+}
+
+function formatBucketLabel(label, granularity) {
+    if (granularity === "Monthly") {
+        const [y, m] = label.split("-");
+        return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+    const weekStart = new Date(label);
+    return `Week of ${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+}
+
+/* ==========================================================
+   RENDER: TABLES & INSIGHTS
+   ========================================================== */
+
+function renderStockCompareTable(stats) {
+    const tbody = $("stockCompareTableBody");
+    if (!tbody) return;
+    const rows = stats.filter(s => s.currentTotal > 0).sort((a, b) => b.currentTotal - a.currentTotal);
+
+    if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p>No consumption data found for the selected filters.</p></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = rows.map(s => `
+        <tr>
+            <td><strong>${escapeHtml(s.material.materialName)}</strong></td>
+            <td>${formatNum(s.currentTotal)} ${escapeHtml(s.material.unit || "")}</td>
+            <td>${formatNum(s.material.quantity)} ${escapeHtml(s.material.unit || "")}</td>
+            <td>${trendBadge(s.trend)}</td>
+            <td>${statusPill(s.material)}</td>
+        </tr>`).join("");
+}
+
+function renderUsageTable(stats) {
+    let rows = [...stats];
+    if (!sortSelect) return;
+
+    switch (sortKey) {
+        case "name-asc": rows.sort((a, b) => a.material.materialName.localeCompare(b.material.materialName)); break;
+        case "name-desc": rows.sort((a, b) => b.material.materialName.localeCompare(a.material.materialName)); break;
+        case "used-desc": rows.sort((a, b) => b.currentTotal - a.currentTotal); break;
+        case "used-asc": rows.sort((a, b) => a.currentTotal - b.currentTotal); break;
+        case "change-desc": rows.sort((a, b) => (b.trend.change ?? -Infinity) - (a.trend.change ?? -Infinity)); break;
+        case "change-asc": rows.sort((a, b) => (a.trend.change ?? Infinity) - (b.trend.change ?? Infinity)); break;
+        case "status": {
+            const order = { Critical: 0, Low: 1, Available: 2 };
+            rows.sort((a, b) => (order[a.material.status] ?? 3) - (order[b.material.status] ?? 3));
+            break;
+        }
+    }
+
+    const total = rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    currentPage = Math.min(currentPage, totalPages);
+    const pageRows = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const tbody = $("analyticsTableBody");
+    if (!tbody) return;
+    if (pageRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>No consumption data found for the selected filters.</p></div></td></tr>`;
+    } else {
+        tbody.innerHTML = pageRows.map(s => `
+            <tr>
+                <td><strong>${escapeHtml(s.material.materialName)}</strong></td>
+                <td>${escapeHtml(s.material.category || "—")}</td>
+                <td>${escapeHtml(s.material.unit || "—")}</td>
+                <td>${s.currentTotal > 0 ? formatNum(s.currentTotal) : "—"}</td>
+                <td>${s.previousTotal > 0 ? formatNum(s.previousTotal) : "—"}</td>
+                <td>${s.trend.change !== null ? `${s.trend.change >= 0 ? "+" : ""}${Math.round(s.trend.change)}%` : "—"}</td>
+                <td>${trendBadge(s.trend)}</td>
+                <td>${statusPill(s.material)}</td>
+            </tr>`).join("");
+    }
+
+    if ($("pageInfo")) {
+        $("pageInfo").textContent = total === 0
+            ? "Showing 0 to 0 of 0 materials"
+            : `Showing ${(currentPage - 1) * PAGE_SIZE + 1} to ${Math.min(currentPage * PAGE_SIZE, total)} of ${total} materials`;
+    }
+
+    const controls = $("paginationControls");
+    if (controls) {
+        controls.innerHTML = "";
+        for (let p = 1; p <= totalPages; p++) {
+            const btn = document.createElement("button");
+            btn.textContent = p;
+            btn.className = "page-btn" + (p === currentPage ? " active" : "");
+            btn.addEventListener("click", () => { currentPage = p; renderAll(); });
+            controls.appendChild(btn);
+        }
+    }
+}
+
+function renderRecentConsumption() {
+    const recent = [...usageRecords]
+        .sort((a, b) => new Date(b.usageDate) - new Date(a.usageDate))
+        .slice(0, 8);
+
+    const tbody = $("recentActivityList");
+    if (!tbody) return;
+    if (recent.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><p>No consumption data yet. Consumption analytics will appear here once material activity is recorded.</p></div></td></tr>`;
+        return;
+    }
+    tbody.innerHTML = recent.map(r => `
+        <tr>
+            <td>${new Date(r.usageDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
+            <td>${escapeHtml(r.materialName)}</td>
+            <td>${formatNum(r.usedQuantity)} ${escapeHtml(r.unit || "")}</td>
+            <td>${escapeHtml(r.productName || "—")}</td>
+        </tr>`).join("");
+}
+
+function renderModalHistory() {
+    const all = [...usageRecords].sort((a, b) => new Date(b.usageDate) - new Date(a.usageDate));
+    const list = $("modalHistoryList");
+    if (!list) return;
+    if (all.length === 0) { list.innerHTML = `<p style="padding:20px;text-align:center;color:var(--text-faint);">No consumption records yet.</p>`; return; }
+    list.innerHTML = all.map(r => `
+        <div class="activity-item">
+            <span>${new Date(r.usageDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} — <strong>${escapeHtml(r.materialName)}</strong> ${escapeHtml(r.productName ? `(${r.productName})` : "")}</span>
+            <span>${formatNum(r.usedQuantity)} ${escapeHtml(r.unit || "")}</span>
+        </div>`).join("");
+}
+
+function renderInsights(stats) {
+    const withUsage = stats.filter(s => s.currentTotal > 0);
+    const list = $("insightsList");
+    if (!list) return;
+
+    if (withUsage.length === 0) {
+        list.innerHTML = `<li>No consumption data yet. Insights will appear here once material activity is recorded.</li>`;
+        return;
+    }
+
+    const candidates = [];
+    withUsage.filter(s => (s.material.status === "Low" || s.material.status === "Critical") && s.trend.arrow === "up")
+        .forEach(s => candidates.push({
+            priority: 1, icon: "⚠", title: "Stock Attention",
+            text: `${s.material.materialName} has increased usage while its current stock is ${s.material.status === "Critical" ? "critically low" : "low"}.`,
+            magnitude: s.trend.change ?? 999
+        }));
+
+    withUsage.filter(s => s.trend.change !== null && s.trend.change > 25)
+        .forEach(s => candidates.push({
+            priority: 2, icon: "↑", title: "Usage Change",
+            text: `${s.material.materialName} usage increased by ${Math.round(s.trend.change)}% compared with the previous period.`,
+            magnitude: s.trend.change
+        }));
+
+    const top = [...withUsage].sort((a, b) => b.currentTotal - a.currentTotal)[0];
+    if (top) candidates.push({
+        priority: 4, icon: "💡", title: "Highest Usage",
+        text: `${top.material.materialName} has the highest recorded consumption during the selected period.`,
+        magnitude: top.currentTotal
+    });
+
+    if (candidates.length === 0) {
+        candidates.push({ priority: 6, icon: "💡", title: "Observation", text: "Not enough previous data to determine a trend.", magnitude: 0 });
+    }
+
+    candidates.sort((a, b) => a.priority - b.priority || b.magnitude - a.magnitude);
+    list.innerHTML = candidates.slice(0, 4).map(c => `
+        <li><strong>${c.icon} ${escapeHtml(c.title)}</strong><br>${escapeHtml(c.text)}</li>`).join("");
+}
+
+/* ==========================================================
+   INFO POPOVERS
+   ========================================================== */
+
 let infoHideTimer = null;
+
+function getOrCreatePopover() {
+    let popover = document.getElementById("infoPopover");
+    if (!popover) {
+        popover = document.createElement("div");
+        popover.id = "infoPopover";
+        popover.className = "info-popover";
+        popover.hidden = true;
+        popover.innerHTML = `<strong id="infoPopoverTitle"></strong><p id="infoPopoverBody"></p>`;
+        document.body.appendChild(popover);
+        popover.addEventListener("mouseenter", () => clearTimeout(infoHideTimer));
+        popover.addEventListener("mouseleave", scheduleHideInfoPopover);
+    }
+    return popover;
+}
 
 function showInfoPopover(btn) {
     clearTimeout(infoHideTimer);
-    const info = INFO_TEXT[btn.dataset.info];
+    const key = btn.dataset.info || btn.dataset.infoKey;
+    const info = INFO_TEXT[key];
     if (!info) return;
-    const popover = $("infoPopover");
-    if (!popover) return;
-    $("infoPopoverTitle").textContent = `ⓘ ${info.title}`;
-    $("infoPopoverBody").textContent = info.body;
+
+    const popover = getOrCreatePopover();
+    const titleEl = document.getElementById("infoPopoverTitle");
+    const bodyEl = document.getElementById("infoPopoverBody");
+    if (titleEl) titleEl.textContent = `ⓘ ${info.title}`;
+    if (bodyEl) bodyEl.textContent = info.body;
+
     popover.hidden = false;
     void popover.offsetWidth;
+
     const rect = btn.getBoundingClientRect();
-    const width = 280;
     let left = rect.left;
-    if (left + width > window.innerWidth - 12) left = window.innerWidth - width - 12;
+    if (left + 280 > window.innerWidth) left = Math.max(12, window.innerWidth - 296);
     let top = rect.bottom + 8;
-    if (top + 150 > window.innerHeight) top = Math.max(12, rect.top - 150);
-    popover.style.left = `${Math.max(12, left)}px`;
+    if (top + 120 > window.innerHeight) top = Math.max(12, rect.top - 120);
+    popover.style.left = `${left}px`;
     popover.style.top = `${top}px`;
+
     popover.classList.add("visible");
 }
 
 function scheduleHideInfoPopover() {
-    const popover = $("infoPopover");
+    const popover = document.getElementById("infoPopover");
     if (!popover) return;
     clearTimeout(infoHideTimer);
     infoHideTimer = setTimeout(() => {
@@ -463,34 +644,120 @@ document.querySelectorAll(".info-icon").forEach(btn => {
     btn.addEventListener("mouseleave", scheduleHideInfoPopover);
     btn.addEventListener("focus", () => showInfoPopover(btn));
     btn.addEventListener("blur", scheduleHideInfoPopover);
-    btn.addEventListener("touchstart", e => {
+    btn.addEventListener("touchstart", (e) => {
         e.stopPropagation();
         showInfoPopover(btn);
     }, { passive: true });
 });
 
-$("infoPopover")?.addEventListener("mouseenter", () => clearTimeout(infoHideTimer));
-$("infoPopover")?.addEventListener("mouseleave", scheduleHideInfoPopover);
-document.addEventListener("touchstart", e => {
-    const popover = $("infoPopover");
-    if (popover && !popover.hidden && !popover.contains(e.target) && !e.target.closest(".info-icon")) scheduleHideInfoPopover();
-});
+/* ==========================================================
+   MASTER RENDER
+   ========================================================== */
 
-function bind(){
-    [searchInput,categorySelect,unitSelect].forEach(el=>el?.addEventListener("input",()=>{currentPage=1;renderPage();}));
-    dateRangeSelect?.addEventListener("change",()=>{startDateInput.value="";endDateInput.value="";currentRange=dateRangeSelect.value;currentPage=1;renderPage();});
-    [startDateInput,endDateInput].forEach(el=>el?.addEventListener("change",()=>{currentPage=1;renderPage();}));
-    resetFiltersBtn?.addEventListener("click",()=>{searchInput.value="";categorySelect.value="";unitSelect.value="";dateRangeSelect.value="week";startDateInput.value="";endDateInput.value="";currentPage=1;renderPage();});
-    document.querySelectorAll(".period-btn").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".period-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");trendGranularity=btn.dataset.period;renderPage();}));
-    $("viewAllRecentBtn")?.addEventListener("click",()=>{
-        const result=computeStats();if(result.error)return;
-        const recent=validUsageRecords().sort((a,b)=>normalizeDate(b.usageDate)-normalizeDate(a.usageDate));
-        const list=$("modalHistoryList");
-        list.innerHTML=recent.length?recent.map(r=>{const m=materials.find(x=>x.id===r.materialId);return `<div class="activity-item"><div><strong>${escapeHtml(m?.materialName||"Unknown material")}</strong><small>${normalizeDate(r.usageDate)?.toLocaleString()||"Unknown date"}</small></div><b>${formatQty(r.usedQuantity,m?.unit||r.unit||"")}</b></div>`}).join(""):"<div class='empty-state'>No consumption records found.</div>";
-        $("modalOverlay").classList.add("active");
-    });
-    $("modalCloseBtn")?.addEventListener("click",()=>$("modalOverlay").classList.remove("active"));
-    $("modalOverlay")?.addEventListener("click",e=>{if(e.target.id==="modalOverlay")$("modalOverlay").classList.remove("active")});
+function renderAll() {
+    const { stats, range } = computeMaterialStats();
+
+    renderSummary(stats, range);
+    renderBarChart(stats);
+    renderLineChart(stats);
+    renderStockCompareTable(stats);
+    renderUsageTable(stats);
+    renderRecentConsumption();
+    renderInsights(stats);
+
+    if ($("noDataBlock")) {
+        const noData = usageRecords.length === 0;
+        $("noDataBlock").hidden = !noData;
+    }
 }
 
-bind();
+/* ==========================================================
+   BINDINGS
+   ========================================================== */
+
+[searchInput, categorySelect, unitSelect, statusSelect].filter(Boolean).forEach(el => {
+    el.addEventListener("input", () => { currentPage = 1; renderAll(); });
+});
+
+if (dateRangeSelect) {
+    dateRangeSelect.addEventListener("change", () => {
+        if (startDateInput) startDateInput.value = "";
+        if (endDateInput) endDateInput.value = "";
+        if ($("clearCustomDateBtn")) $("clearCustomDateBtn").hidden = true;
+        currentPage = 1;
+        renderAll();
+    });
+}
+
+function handleCustomDateChange() {
+    if ($("clearCustomDateBtn")) $("clearCustomDateBtn").hidden = !(startDateInput && endDateInput && startDateInput.value && endDateInput.value);
+    currentPage = 1;
+    renderAll();
+}
+if (startDateInput) startDateInput.addEventListener("change", handleCustomDateChange);
+if (endDateInput) endDateInput.addEventListener("change", handleCustomDateChange);
+
+if ($("clearCustomDateBtn")) {
+    $("clearCustomDateBtn").addEventListener("click", () => {
+        if (startDateInput) startDateInput.value = "";
+        if (endDateInput) endDateInput.value = "";
+        $("clearCustomDateBtn").hidden = true;
+        currentPage = 1;
+        renderAll();
+    });
+}
+
+if (sortSelect) {
+    sortSelect.addEventListener("change", () => { sortKey = sortSelect.value; currentPage = 1; renderAll(); });
+}
+
+if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", () => {
+        if (searchInput) searchInput.value = "";
+        if (categorySelect) categorySelect.value = "";
+        if (unitSelect) unitSelect.value = "";
+        if (statusSelect) statusSelect.value = "";
+        if (dateRangeSelect) dateRangeSelect.value = "week";
+        if (startDateInput) startDateInput.value = "";
+        if (endDateInput) endDateInput.value = "";
+        if ($("clearCustomDateBtn")) $("clearCustomDateBtn").hidden = true;
+        if (sortSelect) sortSelect.value = "name-asc";
+        sortKey = "name-asc";
+        currentPage = 1;
+        renderAll();
+    });
+}
+
+document.querySelectorAll(".period-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        trendGranularity = btn.dataset.period;
+        renderAll();
+    });
+});
+
+if ($("viewAllRecentBtn")) {
+    $("viewAllRecentBtn").addEventListener("click", () => {
+        renderModalHistory();
+        if ($("modalOverlay")) $("modalOverlay").classList.add("active");
+    });
+}
+if ($("modalCloseBtn")) {
+    $("modalCloseBtn").addEventListener("click", () => {
+        if ($("modalOverlay")) $("modalOverlay").classList.remove("active");
+    });
+}
+if ($("modalOverlay")) {
+    $("modalOverlay").addEventListener("click", (e) => {
+        if (e.target.id === "modalOverlay") $("modalOverlay").classList.remove("active");
+    });
+}
+
+/* ==========================================================
+   INIT
+   ========================================================== */
+
+function init() {
+    loadAll();
+}

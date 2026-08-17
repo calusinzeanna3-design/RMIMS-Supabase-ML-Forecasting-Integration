@@ -885,8 +885,6 @@ select.modal-input{ cursor:pointer; }
   min-height:0;
 }
 
-.field-error:empty{ display:none; }
-
 .inline-notice{
   margin-top:14px;
   padding:12px 14px;
@@ -899,6 +897,11 @@ select.modal-input{ cursor:pointer; }
   align-items:center;
   justify-content:space-between;
   gap:10px;
+}
+
+.inline-notice[hidden],
+.inline-notice:empty {
+  display: none !important;
 }
 
 .inline-notice-warn{

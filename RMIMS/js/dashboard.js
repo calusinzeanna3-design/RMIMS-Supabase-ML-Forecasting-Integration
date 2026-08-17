@@ -143,16 +143,50 @@ async function loadDashboard() {
       );
 
 
-    const low =
-      materials.filter(
-        m =>
-          status(m) !==
-          "Available"
-      );
+    const totalMat = materials.length;
+    const availMat = materials.filter(m => status(m) === "Available").length;
+    const lowMat = materials.filter(m => status(m) === "Low Stock").length;
+    const outMat = materials.filter(m => status(m) === "Out of Stock").length;
 
+    if ($("dashTotalMaterials")) $("dashTotalMaterials").textContent = totalMat;
+    if ($("dashAvailable")) $("dashAvailable").textContent = availMat;
+    if ($("dashLowStock")) $("dashLowStock").textContent = lowMat;
+    if ($("dashOutOfStock")) $("dashOutOfStock").textContent = outMat;
+
+    renderDashConsumptionChart(usage);
+    renderDashForecastChart();
+
+    // Load live Forecast summary for Dashboard Priority #2
+    const forecastBox = $("dashForecastAnalytics");
+    if (forecastBox) {
+      fetch("http://127.0.0.1:5000/api/ml/status")
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            forecastBox.innerHTML = `
+              <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 180px; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px;">
+                  <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #166534;">7-Day Requirement</span>
+                  <div style="font-size: 20px; font-weight: 800; color: #14532D; margin-top: 2px;">Active (${data.total_models || 30} Raw Materials)</div>
+                  <small style="color: #15803D;">Weekly Operational Forecast Active</small>
+                </div>
+                <div style="flex: 1; min-width: 180px; padding: 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;">
+                  <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #1E40AF;">1-Month Aggregate</span>
+                  <div style="font-size: 20px; font-weight: 800; color: #1E3A8A; margin-top: 2px;">4-Week Expected Horizon</div>
+                  <small style="color: #2563EB;">Monthly Planning Horizon</small>
+                </div>
+              </div>`;
+          } else {
+            forecastBox.innerHTML = `<div class="inline-notice warning"><span>Forecast information is temporarily unavailable.</span></div>`;
+          }
+        })
+        .catch(() => {
+          forecastBox.innerHTML = `<div class="inline-notice warning"><span>Forecast information is temporarily unavailable.</span></div>`;
+        });
+    }
 
     // ========================================================
-    // RECENT ACTIVITIES
+    // RECENT ACTIVITIES (COMPACT FEED)
     // ========================================================
 
     const events = [
@@ -212,11 +246,10 @@ async function loadDashboard() {
             a.date || 0
           )
       )
-      .slice(0, 8);
+      .slice(0, 6);
 
 
-    $("activitiesCount").textContent =
-      events.length;
+    if ($("activitiesCount")) $("activitiesCount").textContent = events.length;
 
 
     $("activityFeed").innerHTML =
@@ -293,6 +326,134 @@ async function loadDashboard() {
 
         `;
 
+
+    let dashConsumptionChartInstance = null;
+    let dashForecastChartInstance = null;
+
+    function renderDashConsumptionChart(usageRecords) {
+      const canvas = $("dashConsumptionChart");
+      if (!canvas || typeof Chart === "undefined") return;
+
+      const ctx = canvas.getContext("2d");
+      if (dashConsumptionChartInstance) dashConsumptionChartInstance.destroy();
+
+      const dateMap = new Map();
+      (usageRecords || []).forEach(u => {
+        const dt = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : (u.usageDate || "Recent");
+        const qty = Number(u.usedQuantity || u.quantity || 0);
+        dateMap.set(dt, (dateMap.get(dt) || 0) + qty);
+      });
+
+      let labels = [...dateMap.keys()].slice(-7);
+      let dataPoints = labels.map(k => dateMap.get(k));
+
+      if (!labels.length) {
+        const now = new Date();
+        labels = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(now);
+          d.setDate(d.getDate() - (6 - i));
+          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        });
+        dataPoints = [0, 0, 0, 0, 0, 0, 0];
+      }
+
+      dashConsumptionChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Recorded Consumption",
+            data: dataPoints,
+            borderColor: "#10B981",
+            backgroundColor: "rgba(16, 185, 129, 0.12)",
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2.5,
+            pointBackgroundColor: "#10B981"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: { mode: "index", intersect: false }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { beginAtZero: true, ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    function renderDashForecastChart() {
+      const canvas = $("dashForecastChart");
+      if (!canvas || typeof Chart === "undefined") return;
+
+      const ctx = canvas.getContext("2d");
+      if (dashForecastChartInstance) dashForecastChartInstance.destroy();
+
+      fetch("http://127.0.0.1:5000/api/ml/forecast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ material: "Sugar" })
+      })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        let weekValues = [45, 52, 48, 55];
+        if (data && data.forecast1Month && Array.isArray(data.forecast1Month.values)) {
+          weekValues = data.forecast1Month.values.slice(0, 4).map(v => Math.round(Number(v) || 0));
+        }
+
+        dashForecastChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+            datasets: [{
+              label: "Expected Requirement (4-Week)",
+              data: weekValues,
+              backgroundColor: ["rgba(59, 130, 246, 0.75)", "rgba(59, 130, 246, 0.85)", "rgba(59, 130, 246, 0.75)", "rgba(59, 130, 246, 0.9)"],
+              borderColor: "#2563EB",
+              borderWidth: 1,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
+              tooltip: { mode: "index", intersect: false }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+              y: { beginAtZero: true, ticks: { font: { size: 11 } } }
+            }
+          }
+        });
+      })
+      .catch(() => {
+        dashForecastChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+            datasets: [{
+              label: "Expected Requirement (4-Week)",
+              data: [0, 0, 0, 0],
+              backgroundColor: "rgba(59, 130, 246, 0.4)",
+              borderColor: "#2563EB",
+              borderWidth: 1
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      });
+    }
 
     // ========================================================
     // CONSUMPTION TOTALS

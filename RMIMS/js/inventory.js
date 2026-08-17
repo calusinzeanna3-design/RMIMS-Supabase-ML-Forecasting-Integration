@@ -41,23 +41,371 @@ function statusOf(m){
 
 function setFieldError(id,msg=""){ const el=$(id); if(el)el.textContent=msg; }
 
+let matAnalyticsPage = 1;
+const MAT_PER_PAGE = 4;
+
+
+
 async function loadData(){
     try{
-        const [m,u,r]=await Promise.all([
-            getDocs(collection(db,"materials")),
-            getDocs(collection(db,"usageRecords")),
-            getDocs(collection(db,"stockReceipts"))
+        const [mRes, uRes, rRes] = await Promise.all([
+            supabase.from("materials").select("*").catch(() => ({ data: null })),
+            supabase.from("usage_records").select("*").catch(() => ({ data: null })),
+            supabase.from("stock_receipts").select("*").catch(() => ({ data: null }))
         ]);
-        state.materials=m.docs.map(d=>({id:d.id,...d.data()}));
-        state.usage=u.docs.map(d=>({id:d.id,...d.data()}));
-        state.receipts=r.docs.map(d=>({id:d.id,...d.data()}));
+
+        let materialsList = [];
+        if (mRes && mRes.data && mRes.data.length) {
+            materialsList = mRes.data.map(d => ({
+                id: d.id,
+                materialName: d.material_name || d.materialName || d.name || "Raw Material",
+                minimumThreshold: num(d.minimum_threshold || d.minimumThreshold || 10),
+                quantity: num(d.quantity || 0),
+                unit: d.unit || "kg",
+                category: d.category || "General",
+                supplier: d.supplier || "Main Supplier",
+                status: d.status || "Available",
+                ...d
+            }));
+        } else {
+            const firebaseMat = await getDocs(collection(db,"materials")).catch(() => ({ docs: [] }));
+            materialsList = firebaseMat.docs ? firebaseMat.docs.map(d=> {
+                const data = d.data();
+                return {
+                    id: d.id,
+                    materialName: data.materialName || data.material_name || data.name || "Raw Material",
+                    minimumThreshold: num(data.minimumThreshold || data.minimum_threshold || 10),
+                    quantity: num(data.quantity || 0),
+                    unit: data.unit || "kg",
+                    category: data.category || "General",
+                    supplier: data.supplier || "Main Supplier",
+                    status: data.status || "Available",
+                    ...data
+                };
+            }) : [];
+        }
+
+        state.materials = materialsList;
+
+        let usageList = [];
+        if (uRes && uRes.data && uRes.data.length) {
+            usageList = uRes.data.map(d => ({
+                id: d.id,
+                productName: d.product_name || d.productName || "Finished Product",
+                materialName: d.material_name || d.materialName || "Material",
+                usedQuantity: num(d.used_quantity || d.usedQuantity || d.quantity || 0),
+                unit: d.unit || "kg",
+                ...d
+            }));
+        } else {
+            const firebaseUsage = await getDocs(collection(db,"usageRecords")).catch(() => ({ docs: [] }));
+            usageList = firebaseUsage.docs ? firebaseUsage.docs.map(d=>({id:d.id,...d.data()})) : [];
+        }
+
+        state.usage = usageList;
+
+        let receiptsList = [];
+        if (rRes && rRes.data && rRes.data.length) {
+            receiptsList = rRes.data.map(d => ({
+                id: d.id,
+                materialName: d.material_name || d.materialName || "Material",
+                receivedQuantity: num(d.received_quantity || d.receivedQuantity || d.quantity || 0),
+                unit: d.unit || "kg",
+                ...d
+            }));
+        } else {
+            const firebaseReceipts = await getDocs(collection(db,"stockReceipts")).catch(() => ({ docs: [] }));
+            receiptsList = firebaseReceipts.docs ? firebaseReceipts.docs.map(d=>({id:d.id,...d.data()})) : [];
+        }
+
+        state.receipts = receiptsList;
+
         populateCategoryFilter();
         renderSummary();
         renderTable();
+        renderMaterialAnalytics();
+        renderFinishedProductUsage();
+        renderInventoryCharts();
+        setupPaginationListeners();
     }catch(err){
-        console.error(err);
-        $("inventoryTableBody").innerHTML=`<tr><td colspan="8"><div class="error-state"><strong>Unable to load inventory.</strong><span>Check your Supabase connection and database tables.</span></div></td></tr>`;
+        console.error("loadData error:", err);
+        state.materials = [];
+        state.usage = [];
+        state.receipts = [];
+        populateCategoryFilter();
+        renderSummary();
+        renderTable();
+        renderMaterialAnalytics();
+        renderFinishedProductUsage();
+        renderInventoryCharts();
+        setupPaginationListeners();
     }
+}
+
+let invDonutChartInstance = null;
+let invMovementChartInstance = null;
+
+function renderInventoryCharts() {
+    // 1. Stock Health Distribution Donut Chart
+    const canvasDonut = $("invStatusDonutChart");
+    if (canvasDonut && typeof Chart !== "undefined") {
+        const ctx = canvasDonut.getContext("2d");
+        if (invDonutChartInstance) invDonutChartInstance.destroy();
+
+        const avail = state.materials.filter(m => statusOf(m).key === "available").length;
+        const low = state.materials.filter(m => statusOf(m).key === "low").length;
+        const out = state.materials.filter(m => statusOf(m).key === "out").length;
+        const hasData = state.materials.length > 0;
+
+        invDonutChartInstance = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels: hasData ? ["Available", "Low Stock", "Out of Stock"] : ["No Inventory Data Available"],
+                datasets: [{
+                    data: hasData ? [avail, low, out] : [1],
+                    backgroundColor: hasData ? ["#10B981", "#F59E0B", "#EF4444"] : ["#CBD5E1"],
+                    borderWidth: 2,
+                    borderColor: "#FFFFFF"
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: "right", labels: { boxWidth: 12, font: { size: 11 } } },
+                    tooltip: { enabled: hasData }
+                },
+                cutout: "68%"
+            }
+        });
+    }
+
+    // 2. Received vs Used Movement Bar Chart
+    const canvasMovement = $("invReceivedVsUsedChart");
+    if (canvasMovement && typeof Chart !== "undefined") {
+        const ctx = canvasMovement.getContext("2d");
+        if (invMovementChartInstance) invMovementChartInstance.destroy();
+
+        const totalReceived = state.receipts.reduce((s, r) => s + (num(r.receivedQuantity) || 0), 0);
+        const totalUsed = state.usage.reduce((s, u) => s + (num(u.usedQuantity) || 0), 0);
+
+        invMovementChartInstance = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: ["Current Period Movement"],
+                datasets: [
+                    {
+                        label: "Quantity Received",
+                        data: [totalReceived || 0],
+                        backgroundColor: "rgba(16, 185, 129, 0.8)",
+                        borderColor: "#10B981",
+                        borderWidth: 1,
+                        borderRadius: 6
+                    },
+                    {
+                        label: "Quantity Used",
+                        data: [totalUsed || 0],
+                        backgroundColor: "rgba(239, 68, 68, 0.8)",
+                        borderColor: "#EF4444",
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: "top", labels: { boxWidth: 12, font: { size: 11 } } }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+}
+
+function setupPaginationListeners() {
+    const prevBtn = $("prevMatPageBtn");
+    const nextBtn = $("nextMatPageBtn");
+    if (prevBtn && !prevBtn.dataset.bound) {
+        prevBtn.dataset.bound = "true";
+        prevBtn.addEventListener("click", () => {
+            if (matAnalyticsPage > 1) {
+                matAnalyticsPage--;
+                renderMaterialAnalytics();
+            }
+        });
+    }
+    if (nextBtn && !nextBtn.dataset.bound) {
+        nextBtn.dataset.bound = "true";
+        nextBtn.addEventListener("click", () => {
+            const totalPages = Math.ceil(state.materials.length / MAT_PER_PAGE);
+            if (matAnalyticsPage < totalPages) {
+                matAnalyticsPage++;
+                renderMaterialAnalytics();
+            }
+        });
+    }
+}
+
+function renderMaterialAnalytics() {
+    const grid = $("matQuantityBarGrid");
+    const indicator = $("matPageIndicator");
+    const prevBtn = $("prevMatPageBtn");
+    const nextBtn = $("nextMatPageBtn");
+    if (!grid) return;
+
+    const sortedMaterials = [...state.materials].sort((a, b) => String(a.materialName || "").localeCompare(String(b.materialName || "")));
+    const totalPages = Math.max(1, Math.ceil(sortedMaterials.length / MAT_PER_PAGE));
+    if (matAnalyticsPage > totalPages) matAnalyticsPage = totalPages;
+    if (matAnalyticsPage < 1) matAnalyticsPage = 1;
+
+    const pageMaterials = sortedMaterials.slice((matAnalyticsPage - 1) * MAT_PER_PAGE, matAnalyticsPage * MAT_PER_PAGE);
+
+    if (indicator) indicator.textContent = `Page ${matAnalyticsPage} of ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = matAnalyticsPage <= 1;
+    if (nextBtn) nextBtn.disabled = matAnalyticsPage >= totalPages;
+
+    if (!pageMaterials.length) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; padding: 24px 0; text-align: center; color: var(--rm-ink-dim); font-size: 13px; font-weight: 500;">No raw materials found yet.</div>`;
+        return;
+    }
+
+    grid.innerHTML = pageMaterials.map(m => {
+        const qty = num(m.quantity);
+        const min = num(m.minimumThreshold || 10);
+        const maxRef = Math.max(qty, min * 2.5, 80);
+        const pct = Math.min(100, Math.max(5, Math.round((qty / maxRef) * 100)));
+        const st = statusOf(m);
+        const badgeBg = st.key === "out" ? "rgba(239, 68, 68, 0.12)" : st.key === "low" ? "rgba(245, 158, 11, 0.12)" : "rgba(16, 185, 129, 0.12)";
+        const badgeColor = st.key === "out" ? "#DC2626" : st.key === "low" ? "#D97706" : "#059669";
+        const barColor = st.key === "out" ? "#EF4444" : st.key === "low" ? "#F59E0B" : "#10B981";
+
+        return `
+            <div style="padding: 20px; background: #ffffff; border: 1px solid var(--line-soft, #E2E8F0); border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <strong style="font-size: 15px; font-weight: 700; color: var(--rm-ink, #0F172A);">${esc(m.materialName)}</strong>
+                        <span style="font-size: 13px; font-weight: 800; color: var(--rm-ink, #0F172A); background: rgba(0,0,0,0.04); padding: 4px 10px; border-radius: 20px;">${fmtQty(qty, m.unit || "kg")}</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--rm-ink-dim, #64748B); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Category: <strong style="color: var(--rm-ink, #1E293B);">${esc(m.category || "General")}</strong></span>
+                        <span>Min Stock: <strong style="color: var(--rm-ink, #1E293B);">${fmtQty(min, m.unit || "kg")}</strong></span>
+                    </div>
+                </div>
+                <div>
+                    <div style="height: 9px; background: rgba(0,0,0,0.06); border-radius: 6px; overflow: hidden; position: relative; margin-bottom: 10px;">
+                        <div style="height: 100%; width: ${pct}%; background: ${barColor}; border-radius: 6px; transition: width 0.4s ease;"></div>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: ${badgeBg}; color: ${badgeColor}; display: inline-flex; align-items: center; gap: 4px;">
+                            ${esc(st.label)}
+                        </span>
+                        <span style="font-size: 11px; color: var(--rm-ink-dim, #64748B);">Supplier: ${esc(m.supplier || "Supplier")}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+let prodAnalyticsPage = 1;
+const PROD_PER_PAGE = 4;
+
+function renderFinishedProductUsage() {
+    const container = $("finishedProductUsageContainer");
+    const indicator = $("prodPageIndicator");
+    const prevBtn = $("prevProdPageBtn");
+    const nextBtn = $("nextProdPageBtn");
+    if (!container) return;
+
+    const usageWithProduct = state.usage.filter(u => u.productName && u.usedQuantity);
+    if (!usageWithProduct.length) {
+        container.innerHTML = `
+            <div class="empty-state" style="padding: 24px 0; text-align: center;">
+                <p style="margin: 0; font-size: 13px; color: var(--rm-ink-dim); font-weight: 500;">No product consumption records available yet.</p>
+            </div>`;
+        if (indicator) indicator.textContent = "Page 1 of 1";
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        return;
+    }
+
+    const prodMap = new Map();
+    usageWithProduct.forEach(u => {
+        const key = u.productName;
+        if (!prodMap.has(key)) prodMap.set(key, []);
+        prodMap.get(key).push(u);
+    });
+
+    const entries = [...prodMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const totalPages = Math.max(1, Math.ceil(entries.length / PROD_PER_PAGE));
+    if (prodAnalyticsPage > totalPages) prodAnalyticsPage = totalPages;
+    if (prodAnalyticsPage < 1) prodAnalyticsPage = 1;
+
+    const pageEntries = entries.slice((prodAnalyticsPage - 1) * PROD_PER_PAGE, prodAnalyticsPage * PROD_PER_PAGE);
+
+    if (indicator) indicator.textContent = `Page ${prodAnalyticsPage} of ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = prodAnalyticsPage <= 1;
+    if (nextBtn) nextBtn.disabled = prodAnalyticsPage >= totalPages;
+
+    if (!prevBtn?.dataset.bound) {
+        if (prevBtn) {
+            prevBtn.dataset.bound = "true";
+            prevBtn.addEventListener("click", () => {
+                if (prodAnalyticsPage > 1) {
+                    prodAnalyticsPage--;
+                    renderFinishedProductUsage();
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.dataset.bound = "true";
+            nextBtn.addEventListener("click", () => {
+                if (prodAnalyticsPage < totalPages) {
+                    prodAnalyticsPage++;
+                    renderFinishedProductUsage();
+                }
+            });
+        }
+    }
+
+    const maxVal = Math.max(...entries.map(([_, items]) => items.reduce((s, i) => s + (num(i.usedQuantity) || 0), 0)), 1);
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            ${pageEntries.map(([prod, items]) => {
+                const totalUsed = items.reduce((s, i) => s + (num(i.usedQuantity) || 0), 0);
+                const pct = Math.min(100, Math.max(8, Math.round((totalUsed / maxVal) * 100)));
+                const matSummary = items.slice(0, 3).map(i => `${esc(i.materialName)}: ${fmtQty(i.usedQuantity, i.unit || "")}`).join(" • ");
+                return `
+                    <div style="padding: 20px; background: #ffffff; border: 1px solid var(--line-soft, #E2E8F0); border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <strong style="font-size: 15px; font-weight: 700; color: var(--rm-ink, #0F172A);">${esc(prod)}</strong>
+                                <span style="font-size: 12px; font-weight: 700; color: #16803C; background: rgba(22, 128, 60, 0.08); padding: 4px 10px; border-radius: 20px;">${fmtQty(totalUsed)} total used</span>
+                            </div>
+                            <div style="font-size: 12px; color: var(--rm-ink-dim, #64748B); margin-bottom: 14px; line-height: 1.4;">
+                                ${matSummary ? `Materials consumed: <strong style="color: var(--rm-ink);">${matSummary}</strong>` : "Raw material usage recorded"}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="height: 9px; background: rgba(0,0,0,0.06); border-radius: 6px; overflow: hidden; margin-bottom: 6px;">
+                                <div style="height: 100%; width: ${pct}%; background: linear-gradient(90deg, #16803C, #10B981); border-radius: 6px; transition: width 0.4s ease;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--rm-ink-dim);">
+                                <span>Usage Level</span>
+                                <span style="font-weight: 600; color: var(--rm-ink);">${pct}% of peak</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
 }
 
 function populateCategoryFilter(){
