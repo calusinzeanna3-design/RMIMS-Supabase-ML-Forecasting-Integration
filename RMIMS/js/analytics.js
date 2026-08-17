@@ -8,7 +8,7 @@
 // never referenced here.
 
 import { auth, db } from "../supabase/supabase-config.js";
-import { collection, getDocs } from "../supabase/db-compat.js";
+import { collection, getDocs, doc, getDoc } from "../supabase/db-compat.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
 /* ==========================================================
@@ -18,15 +18,21 @@ import { onAuthStateChanged } from "../supabase/auth-compat.js";
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "../login.html"; return; }
 
-    const snap = await getDocs(collection(db, "users"));
-    const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+    const userDoc = await getDoc(doc(db, "users", user.uid)).catch(() => null);
+    let profile = userDoc && userDoc.exists() ? userDoc.data() : null;
+
+    if (!profile) {
+        const snap = await getDocs(collection(db, "users")).catch(() => ({ docs: [] }));
+        profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+    }
+
     if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
     const pBtn = document.getElementById("profileBtn");
     if (pBtn) {
         const pText = pBtn.querySelector(".profile-text") || pBtn;
-        pText.textContent = profile.fullName;
+        pText.textContent = profile.fullName || "Admin";
     }
 
     init();

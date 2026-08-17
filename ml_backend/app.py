@@ -323,17 +323,43 @@ def ml_status():
     })
 
 
-@app.get("/api/ml/materials")
+@app.route("/api/ml/materials", methods=["GET"])
 def forecast_materials():
-    """Return list of all 30 trained materials."""
+    """Return list of all trained materials with model metadata and units."""
     unique_materials = sorted(list(set(meta["material"] for meta in model_metadata.values())))
+    models_summary = []
+    seen = set()
+    for meta in model_metadata.values():
+        mat_name = meta["material"]
+        if mat_name not in seen:
+            seen.add(mat_name)
+            models_summary.append({
+                "material": mat_name,
+                "name": mat_name,
+                "unit": meta.get("unit", "kg"),
+                "lags": meta.get("lags", 7),
+                "frequency": meta.get("frequency", "weekly")
+            })
     return jsonify({
         "materials": unique_materials,
-        "count": len(unique_materials)
+        "count": len(unique_materials),
+        "models": models_summary
     })
 
 
-@app.get("/api/ml/inventory/<material_name>")
+@app.route("/api/ml/forecast", methods=["GET", "POST"])
+def generic_forecast():
+    """Support both GET/POST for material forecasting with query param or body."""
+    material_name = "Sugar"
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        material_name = data.get("material") or data.get("raw_material_name") or "Sugar"
+    else:
+        material_name = request.args.get("material") or request.args.get("raw_material_name") or "Sugar"
+    return material_forecast_inventory(material_name)
+
+
+@app.route("/api/ml/inventory/<material_name>", methods=["GET"])
 def material_inventory(material_name):
     """Retrieve raw inventory data from Supabase for a material."""
     try:
@@ -350,12 +376,12 @@ def material_inventory(material_name):
         return jsonify({"error": str(e)}), 500
 
 
-@app.get("/api/ml/inventory/sugar")
+@app.route("/api/ml/inventory/sugar", methods=["GET"])
 def sugar_inventory():
     return material_inventory("Sugar")
 
 
-@app.get("/api/ml/forecast/<material_name>")
+@app.route("/api/ml/forecast/<material_name>", methods=["GET", "POST"])
 def material_forecast(material_name):
     """
     Generate AutoReg 7-day and 1-month forecasts for a material.
@@ -400,7 +426,7 @@ def sugar_forecast():
     return material_forecast("Sugar")
 
 
-@app.get("/api/ml/forecast/<material_name>/inventory")
+@app.route("/api/ml/forecast/<material_name>/inventory", methods=["GET", "POST"])
 def material_forecast_inventory(material_name):
     """
     Generate forecast using live Supabase consumption history and compare against current inventory.

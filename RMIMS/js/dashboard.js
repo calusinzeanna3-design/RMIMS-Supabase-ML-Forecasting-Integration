@@ -394,16 +394,27 @@ async function loadDashboard() {
       const ctx = canvas.getContext("2d");
       if (dashForecastChartInstance) dashForecastChartInstance.destroy();
 
-      fetch("http://127.0.0.1:5000/api/ml/forecast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ material: "Sugar" })
+      fetch("http://127.0.0.1:5000/api/ml/forecast/Sugar/inventory", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
       })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        let weekValues = [45, 52, 48, 55];
-        if (data && data.forecast1Month && Array.isArray(data.forecast1Month.values)) {
-          weekValues = data.forecast1Month.values.slice(0, 4).map(v => Math.round(Number(v) || 0));
+        let weekValues = [0, 0, 0, 0];
+        let materialUnit = "kg";
+        if (data) {
+          materialUnit = data.unit || "kg";
+          const f7 = Number(data.forecast7Day?.quantity || data.forecast?.quantity) || 0;
+          const f1m = Number(data.forecast1Month?.quantity) || (f7 * 4);
+          if (Array.isArray(data.forecast1Month?.values) && data.forecast1Month.values.length >= 4) {
+            weekValues = data.forecast1Month.values.slice(0, 4).map(v => Math.round(Number(v) || 0));
+          } else if (f7 > 0) {
+            const w1 = Math.round(f7);
+            const w2 = Math.round(f7 * 0.98);
+            const w3 = Math.round(f7 * 1.02);
+            const w4 = Math.max(0, Math.round(f1m - (w1 + w2 + w3)));
+            weekValues = [w1, w2, w3, w4];
+          }
         }
 
         dashForecastChartInstance = new Chart(ctx, {
@@ -411,7 +422,7 @@ async function loadDashboard() {
           data: {
             labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
             datasets: [{
-              label: "Expected Requirement (4-Week)",
+              label: `Forecast Requirement (${materialUnit})`,
               data: weekValues,
               backgroundColor: ["rgba(59, 130, 246, 0.75)", "rgba(59, 130, 246, 0.85)", "rgba(59, 130, 246, 0.75)", "rgba(59, 130, 246, 0.9)"],
               borderColor: "#2563EB",

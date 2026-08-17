@@ -1,7 +1,7 @@
 // Inventory Management — Admin
 // Core inventory CRUD/import/export only. No ML, forecasting, REST API, or model integration.
 
-import { auth, db } from "../supabase/supabase-config.js";
+import { auth, db, supabase } from "../supabase/supabase-config.js";
 import {
     collection, getDocs, getDoc, doc, addDoc, updateDoc, deleteDoc,
     query, where
@@ -44,8 +44,6 @@ function setFieldError(id,msg=""){ const el=$(id); if(el)el.textContent=msg; }
 let matAnalyticsPage = 1;
 const MAT_PER_PAGE = 4;
 
-
-
 async function loadData(){
     try{
         const [mRes, uRes, rRes] = await Promise.all([
@@ -58,14 +56,17 @@ async function loadData(){
         if (mRes && mRes.data && mRes.data.length) {
             materialsList = mRes.data.map(d => ({
                 id: d.id,
-                materialName: d.material_name || d.materialName || d.name || "Raw Material",
-                minimumThreshold: num(d.minimum_threshold || d.minimumThreshold || 10),
-                quantity: num(d.quantity || 0),
-                unit: d.unit || "kg",
-                category: d.category || "General",
-                supplier: d.supplier || "Main Supplier",
-                status: d.status || "Available",
-                ...d
+                materialName: d.material_name || d.materialName || d.name || "",
+                minimumThreshold: num(d.minimum_threshold !== undefined ? d.minimum_threshold : d.minimumThreshold),
+                quantity: num(d.quantity),
+                unit: d.unit || "",
+                category: d.category || "",
+                supplier: d.supplier || "",
+                storageLocation: d.storage_location || d.storageLocation || "",
+                notes: d.notes || "",
+                status: d.status || (num(d.quantity) <= 0 ? "Critical" : num(d.quantity) < num(d.minimum_threshold) ? "Low" : "Available"),
+                updatedAt: d.updated_at || d.updatedAt || null,
+                createdAt: d.created_at || d.createdAt || null
             }));
         } else {
             const firebaseMat = await getDocs(collection(db,"materials")).catch(() => ({ docs: [] }));
@@ -73,14 +74,17 @@ async function loadData(){
                 const data = d.data();
                 return {
                     id: d.id,
-                    materialName: data.materialName || data.material_name || data.name || "Raw Material",
-                    minimumThreshold: num(data.minimumThreshold || data.minimum_threshold || 10),
-                    quantity: num(data.quantity || 0),
-                    unit: data.unit || "kg",
-                    category: data.category || "General",
-                    supplier: data.supplier || "Main Supplier",
-                    status: data.status || "Available",
-                    ...data
+                    materialName: data.materialName || data.material_name || data.name || "",
+                    minimumThreshold: num(data.minimumThreshold !== undefined ? data.minimumThreshold : data.minimum_threshold),
+                    quantity: num(data.quantity),
+                    unit: data.unit || "",
+                    category: data.category || "",
+                    supplier: data.supplier || "",
+                    storageLocation: data.storageLocation || data.storage_location || "",
+                    notes: data.notes || "",
+                    status: data.status || (num(data.quantity) <= 0 ? "Critical" : num(data.quantity) < num(data.minimumThreshold) ? "Low" : "Available"),
+                    updatedAt: data.updatedAt || data.updated_at || null,
+                    createdAt: data.createdAt || data.created_at || null
                 };
             }) : [];
         }
@@ -91,10 +95,13 @@ async function loadData(){
         if (uRes && uRes.data && uRes.data.length) {
             usageList = uRes.data.map(d => ({
                 id: d.id,
-                productName: d.product_name || d.productName || "Finished Product",
-                materialName: d.material_name || d.materialName || "Material",
-                usedQuantity: num(d.used_quantity || d.usedQuantity || d.quantity || 0),
-                unit: d.unit || "kg",
+                productName: d.product_name || d.productName || "",
+                materialName: d.material_name || d.materialName || "",
+                usedQuantity: num(d.used_quantity !== undefined ? d.used_quantity : d.usedQuantity),
+                unit: d.unit || "",
+                usageDate: d.usage_date || d.usageDate || null,
+                createdAt: d.created_at || d.createdAt || null,
+                remarks: d.remarks || "",
                 ...d
             }));
         } else {
@@ -108,9 +115,12 @@ async function loadData(){
         if (rRes && rRes.data && rRes.data.length) {
             receiptsList = rRes.data.map(d => ({
                 id: d.id,
-                materialName: d.material_name || d.materialName || "Material",
-                receivedQuantity: num(d.received_quantity || d.receivedQuantity || d.quantity || 0),
-                unit: d.unit || "kg",
+                materialName: d.material_name || d.materialName || "",
+                receivedQuantity: num(d.received_quantity !== undefined ? d.received_quantity : d.receivedQuantity),
+                unit: d.unit || "",
+                receivedDate: d.received_date || d.receivedDate || null,
+                createdAt: d.created_at || d.createdAt || null,
+                notes: d.notes || "",
                 ...d
             }));
         } else {
@@ -556,10 +566,43 @@ async function saveReceive(){
     if(!m||q<=0){setFieldError("receiveQuantityError","Enter a quantity greater than 0.");return;}
     $("receiveModalSave").disabled=true;
     try{
-        await addDoc(collection(db,"stockReceipts"),{materialId:id,materialName:m.materialName,receivedQuantity:q,unit:m.unit,receivedDate:$("receiveDate").value||null,notes:$("receiveNotes").value.trim()||null});
-        await updateDoc(doc(db,"materials",id),{quantity:num(m.quantity)+q,status:(num(m.quantity)+q)<=0?"Critical":(num(m.quantity)+q)<num(m.minimumThreshold)?"Low":"Available"});
-        $("receiveModalOverlay").classList.remove("open");toast("Stock received.");await loadData();
-    }catch(err){toast(err.message||"Could not record stock receipt.","error")}finally{$("receiveModalSave").disabled=false;}
+        let rpcDone = false;
+        try {
+            const { data, error } = await supabase.rpc("record_stock_receipt_atomic", {
+                p_material_id: id,
+                p_quantity: q,
+                p_received_date: $("receiveDate").value || null,
+                p_notes: $("receiveNotes").value.trim() || null
+            });
+            if (!error && data?.success) rpcDone = true;
+        } catch (e) {
+            rpcDone = false;
+        }
+
+        if (!rpcDone) {
+            await addDoc(collection(db,"stockReceipts"),{
+                materialId:id,
+                materialName:m.materialName,
+                receivedQuantity:q,
+                unit:m.unit,
+                receivedDate:$("receiveDate").value||null,
+                notes:$("receiveNotes").value.trim()||null
+            });
+            const newQty = num(m.quantity) + q;
+            await updateDoc(doc(db,"materials",id),{
+                quantity: newQty,
+                status: newQty <= 0 ? "Critical" : newQty < num(m.minimumThreshold) ? "Low" : "Available"
+            });
+        }
+
+        $("receiveModalOverlay").classList.remove("open");
+        toast("Stock received.");
+        await loadData();
+    }catch(err){
+        toast(err.message||"Could not record stock receipt.","error");
+    }finally{
+        $("receiveModalSave").disabled=false;
+    }
 }
 function openUse(id){
     $("useMaterialId").value=id;$("useQuantity").value="";$("useDate").value=new Date().toISOString().slice(0,10);$("useNotes").value="";setFieldError("useQuantityError");$("useModalOverlay").classList.add("open");
@@ -570,11 +613,43 @@ async function saveUse(){
     if(q>num(m.quantity)){setFieldError("useQuantityError","Used quantity cannot be greater than current stock.");return;}
     $("useModalSave").disabled=true;
     try{
-        await addDoc(collection(db,"usageRecords"),{materialId:id,materialName:m.materialName,usedQuantity:q,unit:m.unit,usageDate:$("useDate").value||null,remarks:$("useNotes").value.trim()||null});
-        const remaining=num(m.quantity)-q;
-        await updateDoc(doc(db,"materials",id),{quantity:remaining,status:remaining<=0?"Critical":remaining<num(m.minimumThreshold)?"Low":"Available"});
-        $("useModalOverlay").classList.remove("open");toast("Material usage recorded.");await loadData();
-    }catch(err){toast(err.message||"Could not record material usage.","error")}finally{$("useModalSave").disabled=false;}
+        let rpcDone = false;
+        try {
+            const { data, error } = await supabase.rpc("record_stock_usage_atomic", {
+                p_material_id: id,
+                p_quantity: q,
+                p_usage_date: $("useDate").value || null,
+                p_remarks: $("useNotes").value.trim() || null
+            });
+            if (!error && data?.success) rpcDone = true;
+        } catch (e) {
+            rpcDone = false;
+        }
+
+        if (!rpcDone) {
+            await addDoc(collection(db,"usageRecords"),{
+                materialId:id,
+                materialName:m.materialName,
+                usedQuantity:q,
+                unit:m.unit,
+                usageDate:$("useDate").value||null,
+                remarks:$("useNotes").value.trim()||null
+            });
+            const remaining = Math.max(0, num(m.quantity) - q);
+            await updateDoc(doc(db,"materials",id),{
+                quantity: remaining,
+                status: remaining <= 0 ? "Critical" : remaining < num(m.minimumThreshold) ? "Low" : "Available"
+            });
+        }
+
+        $("useModalOverlay").classList.remove("open");
+        toast("Material usage recorded.");
+        await loadData();
+    }catch(err){
+        toast(err.message||"Could not record material usage.","error");
+    }finally{
+        $("useModalSave").disabled=false;
+    }
 }
 
 async function deleteMaterial(id){

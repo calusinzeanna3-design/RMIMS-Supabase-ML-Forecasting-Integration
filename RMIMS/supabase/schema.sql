@@ -129,6 +129,52 @@ as $$
     );
 $$;
 
+-- Helper: is the current auth user an active account?
+create or replace function public.is_active_user()
+returns boolean
+language sql
+security definer
+stable
+as $$
+    select exists (
+        select 1 from public.users
+        where id = auth.uid()
+          and status = 'active'
+    );
+$$;
+
+-- Guardrail: Non-admin users cannot escalate their own role or status
+create or replace function public.prevent_user_self_elevation()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+    if not public.is_active_admin() then
+        if new.role <> old.role or new.status <> old.status then
+            raise exception 'Unauthorized: Non-admins cannot modify account role or status.';
+        end if;
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists trg_prevent_user_self_elevation on public.users;
+create trigger trg_prevent_user_self_elevation
+    before update on public.users
+    for each row execute function public.prevent_user_self_elevation();
+
+-- Add database-level non-negative check constraints on materials
+alter table public.materials
+    drop constraint if exists check_materials_quantity_non_negative,
+    add constraint check_materials_quantity_non_negative check (quantity >= 0);
+
+alter table public.materials
+    drop constraint if exists check_materials_threshold_non_negative,
+    add constraint check_materials_threshold_non_negative check (minimum_threshold >= 0);
+
+create unique index if not exists idx_materials_name_unique on public.materials (lower(trim(material_name)));
+
 -- ---- users ----
 drop policy if exists "users_select_own_or_admin" on public.users;
 create policy "users_select_own_or_admin"
@@ -146,25 +192,168 @@ create policy "users_update_own_or_admin"
     using (id = auth.uid() or public.is_active_admin());
 
 -- ---- materials / usage_records / stock_receipts / operational data ----
--- Any signed-in, active account (admin or user) may read and write.
--- Tighten later (e.g. restrict delete to admins) once roles are final.
+-- Only signed-in, ACTIVE accounts may read and write operational data.
 drop policy if exists "materials_all_authenticated" on public.materials;
 create policy "materials_all_authenticated"
     on public.materials for all
-    using (auth.role() = 'authenticated')
-    with check (auth.role() = 'authenticated');
+    using (public.is_active_user())
+    with check (public.is_active_user());
 
 drop policy if exists "usage_records_all_authenticated" on public.usage_records;
 create policy "usage_records_all_authenticated"
     on public.usage_records for all
-    using (auth.role() = 'authenticated')
-    with check (auth.role() = 'authenticated');
+    using (public.is_active_user())
+    with check (public.is_active_user());
 
 drop policy if exists "stock_receipts_all_authenticated" on public.stock_receipts;
 create policy "stock_receipts_all_authenticated"
     on public.stock_receipts for all
-    using (auth.role() = 'authenticated')
-    with check (auth.role() = 'authenticated');
+    using (public.is_active_user())
+    with check (public.is_active_user());
+
+-- ============================================================
+-- ATOMIC INVENTORY TRANSACTIONS
+-- ============================================================
+
+-- Atomic Stock Receive
+create or replace function public.record_stock_receipt_atomic(
+    p_material_id text,
+    p_quantity numeric,
+    p_received_date date default current_date,
+    p_notes text default null,
+    p_recorded_by text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_mat public.materials%rowtype;
+    v_new_qty numeric;
+    v_status text;
+    v_receipt_id text;
+begin
+    if p_quantity is null or p_quantity <= 0 then
+        raise exception 'Quantity must be greater than zero.';
+    end if;
+
+    select * into v_mat
+      from public.materials
+     where id = p_material_id
+       for update;
+
+    if not found then
+        raise exception 'Material not found.';
+    end if;
+
+    v_new_qty := v_mat.quantity + p_quantity;
+
+    if v_new_qty <= v_mat.minimum_threshold / 2 then
+        v_status := 'Critical';
+    elsif v_new_qty <= v_mat.minimum_threshold then
+        v_status := 'Low';
+    else
+        v_status := 'Available';
+    end if;
+
+    update public.materials
+       set quantity = v_new_qty,
+           status = v_status,
+           updated_at = now()
+     where id = p_material_id;
+
+    v_receipt_id := gen_random_uuid()::text;
+    insert into public.stock_receipts (
+        id, material_id, material_name, received_quantity, unit, received_date, notes, created_by
+    ) values (
+        v_receipt_id, v_mat.id, v_mat.material_name, p_quantity, v_mat.unit, coalesce(p_received_date, current_date), p_notes, auth.uid()
+    );
+
+    return jsonb_build_object(
+        'success', true,
+        'material_id', v_mat.id,
+        'new_quantity', v_new_qty,
+        'status', v_status,
+        'receipt_id', v_receipt_id
+    );
+end;
+$$;
+
+grant execute on function public.record_stock_receipt_atomic to authenticated;
+
+-- Atomic Stock Usage
+create or replace function public.record_stock_usage_atomic(
+    p_material_id text,
+    p_quantity numeric,
+    p_usage_date date default current_date,
+    p_product_id text default null,
+    p_product_name text default null,
+    p_remarks text default null,
+    p_recorded_by text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_mat public.materials%rowtype;
+    v_new_qty numeric;
+    v_status text;
+    v_usage_id text;
+begin
+    if p_quantity is null or p_quantity <= 0 then
+        raise exception 'Usage quantity must be greater than zero.';
+    end if;
+
+    select * into v_mat
+      from public.materials
+     where id = p_material_id
+       for update;
+
+    if not found then
+        raise exception 'Material not found.';
+    end if;
+
+    if v_mat.quantity < p_quantity then
+        raise exception 'Insufficient stock. Available: %, Requested: %', v_mat.quantity, p_quantity;
+    end if;
+
+    v_new_qty := v_mat.quantity - p_quantity;
+
+    if v_new_qty <= v_mat.minimum_threshold / 2 then
+        v_status := 'Critical';
+    elsif v_new_qty <= v_mat.minimum_threshold then
+        v_status := 'Low';
+    else
+        v_status := 'Available';
+    end if;
+
+    update public.materials
+       set quantity = v_new_qty,
+           status = v_status,
+           updated_at = now()
+     where id = p_material_id;
+
+    v_usage_id := gen_random_uuid()::text;
+    insert into public.usage_records (
+        id, material_id, material_name, used_quantity, unit, usage_date, remarks, product_id, product_name, created_by
+    ) values (
+        v_usage_id, v_mat.id, v_mat.material_name, p_quantity, v_mat.unit, coalesce(p_usage_date, current_date), p_remarks, p_product_id, p_product_name, auth.uid()
+    );
+
+    return jsonb_build_object(
+        'success', true,
+        'material_id', v_mat.id,
+        'new_quantity', v_new_qty,
+        'status', v_status,
+        'usage_id', v_usage_id
+    );
+end;
+$$;
+
+grant execute on function public.record_stock_usage_atomic to authenticated;
 
 
 -- ============================================================

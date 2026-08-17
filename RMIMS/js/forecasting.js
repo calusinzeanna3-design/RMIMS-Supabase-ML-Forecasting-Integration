@@ -78,39 +78,6 @@ async function checkMLService() {
   }
 }
 
-const TRAINED_MATERIALS_30 = [
-  { name: "Sugar", unit: "kg" },
-  { name: "Bell Pepper", unit: "kg" },
-  { name: "Butter or Margarine", unit: "kg" },
-  { name: "Cabbage", unit: "kg" },
-  { name: "Carrots", unit: "kg" },
-  { name: "Chicken", unit: "kg" },
-  { name: "Chiton", unit: "kg" },
-  { name: "Cooking Oil", unit: "L" },
-  { name: "Crushed Garlic", unit: "kg" },
-  { name: "Garlic", unit: "kg" },
-  { name: "Ground Pepper", unit: "kg" },
-  { name: "Honey", unit: "L" },
-  { name: "Loaf Bread", unit: "loaf" },
-  { name: "Oil", unit: "L" },
-  { name: "Onion", unit: "kg" },
-  { name: "Optional Spices or Flavorings", unit: "kg" },
-  { name: "Oyster Sauce", unit: "L" },
-  { name: "Peanuts", unit: "kg" },
-  { name: "Pork", unit: "kg" },
-  { name: "Pork Skin", unit: "kg" },
-  { name: "Raw Bananas", unit: "kg" },
-  { name: "Salt", unit: "kg" },
-  { name: "Sea Salt", unit: "kg" },
-  { name: "Sesame Oil", unit: "L" },
-  { name: "Small Shrimp", unit: "kg" },
-  { name: "Soy Sauce", unit: "L" },
-  { name: "Spring Onion", unit: "kg" },
-  { name: "Turmeric Powder", unit: "kg" },
-  { name: "Water", unit: "L" },
-  { name: "White Sugar", unit: "kg" }
-];
-
 async function loadMaterials() {
   const select = $("materialSelect");
   if (!select) return;
@@ -118,64 +85,71 @@ async function loadMaterials() {
   try {
     let supaMaterialsMap = {};
     try {
-      const queryPromise = supabase
+      const { data: supaMats, error: supaErr } = await supabase
         .from("materials")
         .select("id, material_name, unit, quantity, minimum_threshold, status");
 
-      const timeoutPromise = new Promise((resolve) =>
-        setTimeout(() => resolve({ data: null }), 1000)
-      );
-
-      const res = await Promise.race([queryPromise, timeoutPromise]);
-      if (res && res.data) {
-        res.data.forEach((m) => {
+      if (!supaErr && supaMats && supaMats.length) {
+        supaMats.forEach((m) => {
           if (m.material_name) supaMaterialsMap[m.material_name.toLowerCase().trim()] = m;
         });
       }
     } catch (e) {
-      console.warn("Supabase materials query warning:", e);
+      console.warn("Supabase materials query notice:", e);
     }
 
     const mlRes = await fetch("http://127.0.0.1:5000/api/ml/materials").catch(() => null);
-    let trainedList = TRAINED_MATERIALS_30;
+    let trainedList = [];
     if (mlRes && mlRes.ok) {
       const mlData = await mlRes.json().catch(() => ({}));
-      if (mlData.materials && mlData.materials.length) {
-        trainedList = mlData.materials.map((name) => {
-          const match = TRAINED_MATERIALS_30.find(t => t.name.toLowerCase() === name.toLowerCase());
-          return { name, unit: match ? match.unit : "kg" };
+      if (mlData.models && Array.isArray(mlData.models)) {
+        trainedList = mlData.models.map(m => ({ name: m.material || m.name, unit: m.unit || "kg" }));
+      } else if (mlData.materials && Array.isArray(mlData.materials)) {
+        trainedList = mlData.materials.map(name => {
+          const lower = String(name).toLowerCase();
+          const unit = (lower.includes("oil") || lower.includes("sauce") || lower.includes("water") || lower.includes("honey")) ? "L" : lower.includes("loaf") ? "loaf" : "kg";
+          return { name, unit };
         });
       }
     }
 
+    if (!trainedList.length) {
+      // If ML backend is starting or connecting, query Supabase materials directly
+      trainedList = Object.values(supaMaterialsMap).map(m => ({
+        name: m.material_name,
+        unit: m.unit || "kg"
+      }));
+    }
+
     materials = trainedList.map((t) => {
-      const supaMatch = supaMaterialsMap[t.name.toLowerCase()];
+      const supaMatch = supaMaterialsMap[t.name.toLowerCase().trim()];
       return {
         id: supaMatch ? supaMatch.id : t.name,
         material_name: t.name,
-        unit: supaMatch ? supaMatch.unit : t.unit,
+        unit: supaMatch ? (supaMatch.unit || t.unit) : t.unit,
         quantity: supaMatch ? Number(supaMatch.quantity) || 0 : 0,
-        minimum_threshold: supaMatch ? Number(supaMatch.minimum_threshold) || 10 : 10,
+        minimum_threshold: supaMatch ? Number(supaMatch.minimum_threshold) || 0 : 0,
         status: supaMatch ? supaMatch.status : "Available"
       };
     });
 
     if ($("topMaterialsCount")) {
-      $("topMaterialsCount").textContent = materials.length;
+      $("topMaterialsCount").textContent = String(materials.length);
     }
 
-    select.innerHTML = materials
-      .map((m) => `<option value="${esc(m.id)}">${esc(m.material_name)}</option>`)
-      .join("");
+    if (materials.length > 0) {
+      select.innerHTML = materials
+        .map((m) => `<option value="${esc(m.id)}">${esc(m.material_name)}</option>`)
+        .join("");
 
-    const sugar = materials.find((m) => String(m.material_name || "").trim().toLowerCase() === "sugar");
-    if (sugar) select.value = sugar.id;
+      const sugar = materials.find((m) => String(m.material_name || "").trim().toLowerCase() === "sugar");
+      if (sugar) select.value = sugar.id;
+    } else {
+      select.innerHTML = `<option value="">No trained materials available</option>`;
+    }
   } catch (error) {
-    select.innerHTML = TRAINED_MATERIALS_30
-      .map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`)
-      .join("");
-    if ($("topMaterialsCount")) $("topMaterialsCount").textContent = "30";
     console.error("Forecasting materials load failed:", error);
+    select.innerHTML = `<option value="">Unable to load materials</option>`;
   }
 }
 

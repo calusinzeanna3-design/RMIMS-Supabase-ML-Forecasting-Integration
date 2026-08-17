@@ -27,8 +27,13 @@ let currentUser = null; // { uid, fullName, role }
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "../login.html"; return; }
 
-    const snap = await getDocs(collection(db, "users"));
-    const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+    const userDoc = await getDoc(doc(db, "users", user.uid)).catch(() => null);
+    let profile = userDoc && userDoc.exists() ? userDoc.data() : null;
+
+    if (!profile) {
+        const snap = await getDocs(collection(db, "users")).catch(() => ({ docs: [] }));
+        profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+    }
 
     if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
