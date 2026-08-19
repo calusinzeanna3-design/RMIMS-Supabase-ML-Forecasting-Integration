@@ -13,8 +13,7 @@
 // writes on public.users to the row owner or an active admin. A
 // button being hidden here never substitutes for that.
 
-import { auth, db, SUPABASE_URL, SUPABASE_ANON_KEY } from "../supabase/supabase-config.js";
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, where, serverTimestamp } from "../supabase/db-compat.js";
+import { supabase, auth, SUPABASE_URL, SUPABASE_ANON_KEY } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -27,28 +26,26 @@ let currentUser = null; // { uid, fullName, role }
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "../login.html"; return; }
 
-    const userDoc = await getDoc(doc(db, "users", user.uid)).catch(() => null);
-    let profile = userDoc && userDoc.exists() ? userDoc.data() : null;
+    const { data: profile, error } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, email, role, status")
+        .eq("id", user.uid)
+        .maybeSingle();
 
-    if (!profile) {
-        const snap = await getDocs(collection(db, "users")).catch(() => ({ docs: [] }));
-        profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
-    }
-
-    if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
+    if (error || !profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
     if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
-    currentUser = { uid: user.uid, fullName: profile.fullName, role: profile.role, email: profile.email || user.email || "" };
+    currentUser = { uid: user.uid, fullName: profile.full_name, role: profile.role, email: profile.email || user.email || "" };
     // The shared RMSME shell owns the visible profile/header. Keep its identity source in sync.
     try {
         localStorage.setItem("rmsmeCurrentUser", JSON.stringify({
-            fullName: profile.fullName || "Account",
+            fullName: profile.full_name || "Administrator",
             email: profile.email || user.email || ""
         }));
     } catch (e) { /* non-blocking */ }
-    document.querySelectorAll("[data-shell-name]").forEach(el => el.textContent = profile.fullName || "Account");
+    document.querySelectorAll("[data-shell-name]").forEach(el => el.textContent = profile.full_name || "Administrator");
     document.querySelectorAll("[data-shell-email]").forEach(el => el.textContent = profile.email || user.email || "");
-    document.querySelectorAll("[data-shell-avatar]").forEach(el => el.textContent = initials(profile.fullName));
+    document.querySelectorAll("[data-shell-avatar]").forEach(el => el.textContent = initials(profile.full_name));
 
     init();
 });
@@ -124,10 +121,20 @@ function friendlyError(err, fallback) {
    ========================================================== */
 
 async function loadUsers() {
-    const snap = await getDocs(collection(db, "users"));
-    users = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => millisOf(b.createdAt) - millisOf(a.createdAt));
+    const { data, error } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, email, role, status, created_at, updated_at")
+        .order("created_at", { ascending: false });
+    if (error) throw error;
+    users = (data || []).map(d => ({
+        id: d.id,
+        fullName: d.full_name,
+        email: d.email,
+        role: d.role,
+        status: d.status,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at
+    }));
     dataLoaded = true;
 }
 
@@ -478,12 +485,10 @@ function openDeleteUserConfirm(u) {
 
                 // Account removal is represented safely as deactivation in the client UI.
                 // Historical records remain intact; actual Auth-user deletion requires a privileged backend function.
-                await updateDoc(doc(db, "users", fresh.id), {
+                await supabase.from("user_profiles").update({
                     status: "inactive",
-                    deletionRequestStatus: "none",
-                    deletedAt: serverTimestamp(),
-                    deletedBy: currentUser.uid
-                });
+                    updated_at: new Date().toISOString()
+                }).eq("id", fresh.id);
                 showToast("Account access removed. Historical records were preserved.");
                 closeModal("confirmModal");
                 await refreshAll();
@@ -574,8 +579,20 @@ document.querySelectorAll(".modal-overlay").forEach(overlay => {
 // Re-fetches the row right before applying a sensitive action so a
 // second Admin's more-recent change is never silently overwritten.
 async function refetchUser(id) {
-    const snap = await getDoc(doc(db, "users", id));
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    const { data, error } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, email, role, status, created_at, updated_at")
+        .eq("id", id)
+        .maybeSingle();
+    return data ? {
+        id: data.id,
+        fullName: data.full_name,
+        email: data.email,
+        role: data.role,
+        status: data.status,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+    } : null;
 }
 
 async function guardNotStale(capturedUser) {
@@ -618,11 +635,11 @@ async function openViewModal(u) {
     openModal("viewUserModal");
 
     try {
-        const [usageSnap, receiptSnap] = await Promise.all([
-            getDocs(query(collection(db, "usageRecords"), where("createdBy", "==", u.id))),
-            getDocs(query(collection(db, "stockReceipts"), where("createdBy", "==", u.id)))
+        const [usageRes, receiptRes] = await Promise.all([
+            supabase.from("material_disbursements").select("id", { count: "exact", head: true }).eq("recorded_by", u.id),
+            supabase.from("stock_receipts").select("id", { count: "exact", head: true }).eq("received_by", u.id)
         ]);
-        const count = usageSnap.size + receiptSnap.size;
+        const count = (usageRes.count || 0) + (receiptRes.count || 0);
         document.getElementById("viewActivitySummary").innerHTML = count > 0
             ? detailItems([["Recorded Activities", String(count)]])
             : `<div class="detail-item"><span>Recorded Activities</span><strong>No recorded activity.</strong></div>`;
@@ -687,7 +704,11 @@ document.getElementById("editUserForm").addEventListener("submit", async (e) => 
         const fresh = await guardNotStale(editingUser);
         if (!fresh) return;
 
-        await updateDoc(doc(db, "users", editingUser.id), { fullName, email });
+        await supabase.from("user_profiles").update({
+            full_name: fullName,
+            email: email,
+            updated_at: new Date().toISOString()
+        }).eq("id", editingUser.id);
         showToast("Account updated successfully.");
         closeModal("editUserModal");
         await refreshAll();
@@ -757,7 +778,10 @@ document.getElementById("changeRoleForm").addEventListener("submit", async (e) =
     try {
         const fresh = await guardNotStale(roleChangeUser);
         if (!fresh) { closeModal("changeRoleModal"); return; }
-        await updateDoc(doc(db, "users", roleChangeUser.id), { role: targetRole, updatedAt: serverTimestamp() });
+        await supabase.from("user_profiles").update({
+            role: targetRole,
+            updated_at: new Date().toISOString()
+        }).eq("id", roleChangeUser.id);
         showToast(`Role updated to ${roleLabel(targetRole)}.`);
         closeModal("changeRoleModal");
         await refreshAll();
@@ -826,7 +850,10 @@ function openChangeRoleConfirm(u) {
                     return;
                 }
 
-                await updateDoc(doc(db, "users", u.id), { role: targetRole });
+                await supabase.from("user_profiles").update({
+                    role: targetRole,
+                    updated_at: new Date().toISOString()
+                }).eq("id", u.id);
                 showToast(`Role updated to ${targetLabel}.`);
                 closeModal("confirmModal");
                 await refreshAll();
@@ -861,7 +888,10 @@ function openDeactivateConfirm(u) {
                     return;
                 }
 
-                await updateDoc(doc(db, "users", u.id), { status: "inactive" });
+                await supabase.from("user_profiles").update({
+                    status: "inactive",
+                    updated_at: new Date().toISOString()
+                }).eq("id", u.id);
                 showToast("Account deactivated successfully.");
                 closeModal("confirmModal");
                 await refreshAll();
@@ -886,7 +916,10 @@ function openActivateConfirm(u) {
                 if (!fresh) { closeModal("confirmModal"); return; }
 
                 // Activation never changes role — intentionally not included below.
-                await updateDoc(doc(db, "users", u.id), { status: "active" });
+                await supabase.from("user_profiles").update({
+                    status: "active",
+                    updated_at: new Date().toISOString()
+                }).eq("id", u.id);
                 showToast("Account activated successfully.");
                 closeModal("confirmModal");
                 await refreshAll();
@@ -925,11 +958,10 @@ document.getElementById("rejectDeletionBtn").addEventListener("click", async () 
         const fresh = await guardNotStale(reviewingUser);
         if (!fresh) { closeModal("reviewDeletionModal"); return; }
 
-        await updateDoc(doc(db, "users", reviewingUser.id), {
-            deletionRequestStatus: "rejected",
-            deletionReviewedAt: serverTimestamp(),
-            deletionReviewedBy: currentUser.uid
-        });
+        await supabase.from("user_profiles").update({
+            status: "active",
+            updated_at: new Date().toISOString()
+        }).eq("id", reviewingUser.id);
         showToast(`Deletion request rejected. The account remains ${fresh.status === "active" ? "active" : "inactive"}.`);
         closeModal("reviewDeletionModal");
         await refreshAll();
@@ -961,12 +993,10 @@ document.getElementById("approveDeletionBtn").addEventListener("click", async ()
             return;
         }
 
-        await updateDoc(doc(db, "users", reviewingUser.id), {
+        await supabase.from("user_profiles").update({
             status: "inactive",
-            deletionRequestStatus: "none",
-            deletionReviewedAt: serverTimestamp(),
-            deletionReviewedBy: currentUser.uid
-        });
+            updated_at: new Date().toISOString()
+        }).eq("id", reviewingUser.id);
         showToast("Account deactivated. Historical records have been preserved.");
         closeModal("reviewDeletionModal");
         await refreshAll();
@@ -1006,7 +1036,10 @@ document.getElementById("reactivateInsteadBtn").addEventListener("click", async 
     const btn = document.getElementById("reactivateInsteadBtn");
     btn.disabled = true;
     try {
-        await updateDoc(doc(db, "users", target.id), { status: "active" });
+        await supabase.from("user_profiles").update({
+            status: "active",
+            updated_at: new Date().toISOString()
+        }).eq("id", target.id);
         showToast("Account reactivated.");
         closeModal("addUserModal");
         await refreshAll();
@@ -1092,18 +1125,53 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
 
     let tempClient = null;
     try {
-        tempClient = createTempAuthClient();
-        const { data, error } = await tempClient.auth.signUp({ email, password });
-        if (error) throw error;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        let createdSuccessfully = false;
 
-        const uid = data.user?.id;
-        if (!uid) throw new Error("Account creation did not return a user id.");
+        if (token) {
+            try {
+                const funcUrl = `${SUPABASE_URL}/functions/v1/admin-create-user`;
+                const response = await fetch(funcUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`,
+                        "apikey": SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        full_name: fullName,
+                        role: role === "admin" ? "user" : role
+                    })
+                });
 
-        await setDoc(doc(db, "users", uid), {
-            fullName, email, role,
-            status: "active", // Admin-provisioned accounts are granted access immediately
-            createdAt: serverTimestamp()
-        });
+                if (response.ok) {
+                    createdSuccessfully = true;
+                }
+            } catch (fnErr) {
+                console.warn("admin-create-user edge call fallback:", fnErr);
+            }
+        }
+
+        if (!createdSuccessfully) {
+            tempClient = createTempAuthClient();
+            const { data, error } = await tempClient.auth.signUp({ email, password });
+            if (error) throw error;
+
+            const uid = data.user?.id;
+            if (!uid) throw new Error("Account creation did not return a user id.");
+
+            await supabase.from("user_profiles").insert({
+                id: uid,
+                full_name: fullName,
+                email: email,
+                role: role,
+                status: "active",
+                created_at: new Date().toISOString()
+            });
+        }
 
         showToast("User created successfully.");
         closeModal("addUserModal");

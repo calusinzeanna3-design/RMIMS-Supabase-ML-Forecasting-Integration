@@ -32,7 +32,7 @@ loginForm.addEventListener("submit", async (e) => {
 
     try {
 
-        await loginUser(email, password);
+        await loginUser(email, password, "user");
 
     } catch (err) {
 

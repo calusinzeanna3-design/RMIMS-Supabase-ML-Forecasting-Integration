@@ -1881,119 +1881,99 @@ body {
   }
 }
 
-\n\n
-
-/* ==========================================================\n   RMSME MATERIALS NAVIGATION — SMOOTH EXPAND/COLLAPSE\n   ========================================================== */
-\n.rmsme-material-toggle {
-  \n position: relative;
-  \n
+/* ==========================================================
+   RMSME MATERIALS NAVIGATION — SMOOTH EXPAND/COLLAPSE
+   ========================================================== */
+.rmsme-material-toggle {
+  position: relative;
 }
 
-\n.rmsme-material-toggle .rmsme-nav-chevron {
-  \n display: grid;
-  \n place-items: center;
-  \n width: 18px;
-  \n height: 18px;
-  \n font-size: 14px;
-  \n line-height: 1;
-  \n transform: rotate(0deg);
-  \n transition: transform .24s cubic-bezier(.22, .61, .36, 1), opacity .16s ease;
-  \n
+.rmsme-material-toggle .rmsme-nav-chevron {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 14px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform .24s cubic-bezier(.22, .61, .36, 1), opacity .16s ease;
 }
 
-\n.sidebar.materials-open .rmsme-material-toggle .rmsme-nav-chevron {
-  \n transform: rotate(180deg);
-  \n
+.sidebar.materials-open .rmsme-material-toggle .rmsme-nav-chevron {
+  transform: rotate(180deg);
 }
 
-\n.rmsme-subnav {
-  \n display: flex !important;
-  \n flex-direction: column;
-  \n gap: 2px;
-  \n padding: 0 0 0 33px !important;
-  \n margin: 0 !important;
-  \n max-height: 0;
-  \n opacity: 0;
-  \n overflow: hidden !important;
-  \n pointer-events: none;
-  \n transition: max-height .28s cubic-bezier(.22, .61, .36, 1), opacity .2s ease, padding-bottom .28s ease;
-  \n will-change: max-height, opacity;
-  \n
+.rmsme-subnav {
+  display: flex !important;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0 0 33px !important;
+  margin: 0 !important;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden !important;
+  pointer-events: none;
+  transition: max-height .28s cubic-bezier(.22, .61, .36, 1), opacity .2s ease, padding-bottom .28s ease;
+  will-change: max-height, opacity;
 }
 
-\n.sidebar.materials-open .rmsme-subnav {
-  \n max-height: 82px;
-  \n opacity: 1;
-  \n padding-bottom: 4px !important;
-  \n pointer-events: auto;
-  \n
+.sidebar.materials-open .rmsme-subnav {
+  max-height: 82px;
+  opacity: 1;
+  padding-bottom: 4px !important;
+  pointer-events: auto;
 }
 
-\n.rmsme-subitem {
-  \n opacity: 0 !important;
-  \n transform: translateY(-5px) !important;
-  \n pointer-events: none !important;
-  \n transition: opacity .2s ease, transform .24s cubic-bezier(.22, .61, .36, 1), background-color .18s ease, color .18s ease !important;
-  \n
+.rmsme-subitem {
+  opacity: 0 !important;
+  transform: translateY(-5px) !important;
+  pointer-events: none !important;
+  transition: opacity .2s ease, transform .24s cubic-bezier(.22, .61, .36, 1), background-color .18s ease, color .18s ease !important;
 }
 
-\n.sidebar:hover .rmsme-subitem,
+.sidebar:hover .rmsme-subitem,
 .sidebar:focus-within .rmsme-subitem,
-\n.sidebar.materials-open .rmsme-subitem {
-  \n opacity: 1 !important;
-  \n transform: translateY(0) !important;
-  \n pointer-events: auto !important;
-  \n
+.sidebar.materials-open .rmsme-subitem {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
 }
 
-\n.sidebar.materials-open .rmsme-subitem:nth-child(2) {
-  \n transition-delay: .035s !important;
-  \n
+.sidebar.materials-open .rmsme-subitem:nth-child(2) {
+  transition-delay: .035s !important;
 }
 
-\n
 /* When the rail is collapsed, the group must not leave invisible vertical space. */
-\n@media (min-width:901px) {
-  \n .sidebar:not(:hover):not(:focus-within) .rmsme-subnav {
-    \n max-height: 0 !important;
-    \n opacity: 0 !important;
-    \n padding-bottom: 0 !important;
-    \n pointer-events: none !important;
-    \n
+@media (min-width:901px) {
+  .sidebar:not(:hover):not(:focus-within) .rmsme-subnav {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    padding-bottom: 0 !important;
+    pointer-events: none !important;
   }
 
-  \n .sidebar:not(:hover):not(:focus-within) .rmsme-subitem {
-    \n opacity: 0 !important;
-    \n transform: translateY(-4px) !important;
-    \n pointer-events: none !important;
-    \n
+  .sidebar:not(:hover):not(:focus-within) .rmsme-subitem {
+    opacity: 0 !important;
+    transform: translateY(-4px) !important;
+    pointer-events: none !important;
   }
-
-  \n
 }
 
-\n
 /* Touch devices stay compact; no sticky/hover-expanded material submenu. */
-\n@media (hover:none),
+@media (hover:none),
 (max-width:900px) {
-  \n .sidebar .rmsme-subnav {
-    \n max-height: 0 !important;
-    \n opacity: 0 !important;
-    \n padding-bottom: 0 !important;
-    \n pointer-events: none !important;
-    \n
+  .sidebar .rmsme-subnav {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    padding-bottom: 0 !important;
+    pointer-events: none !important;
   }
 
-  \n .sidebar.materials-open .rmsme-subnav {
-    \n max-height: 0 !important;
-    \n opacity: 0 !important;
-    \n
+  .sidebar.materials-open .rmsme-subnav {
+    max-height: 0 !important;
+    opacity: 0 !important;
   }
-
-  \n
 }
-
-\n
 
 /* ==========================================================
    RMSME VIEWPORT SCROLL LOCK — CONTENT-ONLY SCROLL

@@ -1,53 +1,53 @@
-import {
-    auth,
-    db
-} from "../supabase/supabase-config.js";
+// RMIMS V2 — User Inventory Overview
+// View-only operational catalog with live Supabase V2 data binding.
+// Zero mock data. Authoritative tables: raw_materials, stock_receipts, material_disbursements.
 
-import {
-    collection,
-    getDocs,
-    doc,
-    getDoc
-} from "../supabase/db-compat.js";
-
-import {
-    onAuthStateChanged
-} from "../supabase/auth-compat.js";
+import { auth, supabase } from "../supabase/supabase-config.js";
+import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
 /* ==========================
    ROLE PROTECTION
-   (view-only page — no write operations anywhere below)
 ========================== */
 
-const profileBtn =
-    document.getElementById("profileBtn");
+const profileBtn = document.getElementById("profileBtn");
 
 onAuthStateChanged(auth, async (user) => {
-
     if (!user) {
-        window.location.href = "../login.html";
+        window.location.href = "../user-signin.html";
         return;
     }
 
-    const userDoc =
-        await getDoc(doc(db, "users", user.uid));
+    try {
+        const { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, role, status")
+            .eq("id", user.uid)
+            .single();
 
-    if (!userDoc.exists()) {
-        window.location.href = "../login.html";
-        return;
+        if (error || !profile || profile.status !== "active") {
+            window.location.href = "../user-signin.html";
+            return;
+        }
+
+        if (profile.role !== "user") {
+            window.location.href = "../admin/dashboard.html";
+            return;
+        }
+
+        if (profileBtn) {
+            const pText = profileBtn.querySelector(".profile-text") || profileBtn;
+            pText.textContent = profile.full_name || "Staff";
+            const pAv = profileBtn.querySelector(".avatar");
+            if (pAv && profile.full_name) {
+                pAv.textContent = profile.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join("");
+            }
+        }
+
+        await loadInventory();
+    } catch (err) {
+        console.error("Auth verification failed:", err);
+        window.location.href = "../user-signin.html";
     }
-
-    const data = userDoc.data();
-
-    if (data.role !== "user") {
-        window.location.href = "../admin/dashboard.html";
-        return;
-    }
-
-    if (profileBtn) profileBtn.textContent = data.fullName || "Staff";
-
-    loadInventory();
-
 });
 
 /* ==========================
@@ -55,7 +55,7 @@ onAuthStateChanged(auth, async (user) => {
 ========================== */
 
 const state = {
-    materials: [],          // { id, materialName, category, unit, quantity, status, received, disbursed, lastActivityMs }
+    materials: [], // { id, itemCode, materialName, category, unit, quantity, minStock, status, received, disbursed, lastActivityMs }
     materialsFailed: false,
     activityFailed: false,
     search: "",
@@ -79,13 +79,14 @@ function toMillis(ts) {
     if (!ts) return 0;
     if (typeof ts.toMillis === "function") return ts.toMillis();
     if (typeof ts === "string") return new Date(ts).getTime();
+    if (ts instanceof Date) return ts.getTime();
     return 0;
 }
 
 function formatQty(qty, unit) {
     const n = Number(qty);
-    const num = Number.isFinite(n) ? n : 0;
-    return unit ? `${num.toLocaleString()} ${unit}` : num.toLocaleString();
+    const numVal = Number.isFinite(n) ? n : 0;
+    return unit ? `${numVal.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${unit}` : numVal.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
 function formatDateTime(ms) {
@@ -93,11 +94,6 @@ function formatDateTime(ms) {
     const date = new Date(ms);
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) +
         " " + date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
-function formatDateOnly(ms) {
-    if (!ms) return "—";
-    return new Date(ms).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function escapeHtml(str) {
@@ -131,13 +127,18 @@ function errorStateHtml(message) {
     `;
 }
 
+function syncActivityToggleUI() {
+    const toggleBtn = document.getElementById("toggleActivityBtn");
+    if (toggleBtn) {
+        toggleBtn.setAttribute("aria-expanded", state.expanded ? "true" : "false");
+    }
+}
+
 /* ==========================
    LOAD DATA
 ========================== */
 
 async function loadInventory() {
-
-    // Restore remembered collapse/expand state for this session (default: collapsed)
     try {
         state.expanded = sessionStorage.getItem(STORAGE_KEY) === "1";
     } catch (err) {
@@ -145,37 +146,31 @@ async function loadInventory() {
     }
     syncActivityToggleUI();
 
-    let materials = [];
-    let usageRecords = [];
-    let stockReceipts = [];
+    state.materialsFailed = false;
+    state.activityFailed = false;
+
+    let materialsList = [];
+    let receiptsList = [];
+    let disbursementsList = [];
 
     try {
+        const [mRes, rRes, dRes] = await Promise.all([
+            supabase.from("raw_materials").select("id, item_code, name, description, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, created_at, updated_at").order("name"),
+            supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("created_at", { ascending: false }),
+            supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("created_at", { ascending: false })
+        ]);
 
-        const materialsSnap = await getDocs(collection(db, "materials"));
-        materialsSnap.forEach((item) => {
-            materials.push({ id: item.id, ...item.data() });
-        });
+        if (mRes.error) throw mRes.error;
+        materialsList = mRes.data || [];
 
+        if (rRes.error) console.warn("Stock receipts fetch notice:", rRes.error);
+        receiptsList = rRes.data || [];
+
+        if (dRes.error) console.warn("Disbursements fetch notice:", dRes.error);
+        disbursementsList = dRes.data || [];
     } catch (err) {
-        console.error("Failed to load materials:", err);
+        console.error("Failed to load inventory data:", err);
         state.materialsFailed = true;
-    }
-
-    try {
-
-        const usageSnap = await getDocs(collection(db, "usageRecords"));
-        usageSnap.forEach((item) => {
-            usageRecords.push({ id: item.id, ...item.data() });
-        });
-
-        const receiptsSnap = await getDocs(collection(db, "stockReceipts"));
-        receiptsSnap.forEach((item) => {
-            stockReceipts.push({ id: item.id, ...item.data() });
-        });
-
-    } catch (err) {
-        console.error("Failed to load material activity:", err);
-        state.activityFailed = true;
     }
 
     // Aggregate Received (Total) / Disbursed (Total) / Last Activity per material
@@ -183,50 +178,51 @@ async function loadInventory() {
     const disbursedByMaterial = {};
     const lastActivityByMaterial = {};
 
-    stockReceipts.forEach((r) => {
-        if (!r.materialId) return;
-        receivedByMaterial[r.materialId] = (receivedByMaterial[r.materialId] || 0) + (Number(r.receivedQuantity) || 0);
-        const ms = toMillis(r.createdAt);
-        if (ms > (lastActivityByMaterial[r.materialId] || 0)) {
-            lastActivityByMaterial[r.materialId] = ms;
+    receiptsList.forEach((r) => {
+        if (!r.material_id) return;
+        receivedByMaterial[r.material_id] = (receivedByMaterial[r.material_id] || 0) + (Number(r.received_quantity) || 0);
+        const ms = toMillis(r.receipt_date || r.created_at);
+        if (ms > (lastActivityByMaterial[r.material_id] || 0)) {
+            lastActivityByMaterial[r.material_id] = ms;
         }
     });
 
-    usageRecords.forEach((r) => {
-        if (!r.materialId) return;
-        disbursedByMaterial[r.materialId] = (disbursedByMaterial[r.materialId] || 0) + (Number(r.usedQuantity) || 0);
-        const ms = toMillis(r.createdAt);
-        if (ms > (lastActivityByMaterial[r.materialId] || 0)) {
-            lastActivityByMaterial[r.materialId] = ms;
+    disbursementsList.forEach((d) => {
+        if (!d.material_id) return;
+        disbursedByMaterial[d.material_id] = (disbursedByMaterial[d.material_id] || 0) + (Number(d.consumed_quantity) || 0);
+        const ms = toMillis(d.usage_date || d.created_at);
+        if (ms > (lastActivityByMaterial[d.material_id] || 0)) {
+            lastActivityByMaterial[d.material_id] = ms;
         }
     });
 
-    if (!materials.length) {
-        materials = [
-            { id: "mat-1", materialName: "Sugar", category: "Sweeteners", quantity: 45, unit: "kg", status: "Available" },
-            { id: "mat-2", materialName: "Cooking Oil", category: "Oils & Fats", quantity: 50, unit: "L", status: "Available" },
-            { id: "mat-3", materialName: "Garlic", category: "Spices & Herbs", quantity: 25, unit: "kg", status: "Available" },
-            { id: "mat-4", materialName: "Pork", category: "Meat & Poultry", quantity: 35, unit: "kg", status: "Available" },
-            { id: "mat-5", materialName: "Loaf Bread", category: "Bakery Supplies", quantity: 60, unit: "loaf", status: "Available" },
-            { id: "mat-6", materialName: "Salt", category: "Spices & Herbs", quantity: 30, unit: "kg", status: "Available" },
-            { id: "mat-7", materialName: "Butter or Margarine", category: "Dairy & Fats", quantity: 8, unit: "kg", status: "Low" },
-            { id: "mat-8", materialName: "Carrots", category: "Vegetables", quantity: 40, unit: "kg", status: "Available" }
-        ];
-    }
-
-    state.materials = materials.map((m) => {
-        const fallbackMs = toMillis(m.updatedAt) || toMillis(m.createdAt) || 0;
+    state.materials = materialsList.map((m) => {
+        const fallbackMs = toMillis(m.updated_at) || toMillis(m.created_at) || 0;
         const lastActivityMs = lastActivityByMaterial[m.id] || fallbackMs;
+        const currentStock = Number(m.current_stock) || 0;
+        const minThreshold = m.minimum_threshold !== null && m.minimum_threshold !== undefined ? Number(m.minimum_threshold) : null;
+
+        let status = "Available";
+        if (currentStock <= 0) {
+            status = "Critical";
+        } else if (minThreshold !== null && currentStock < minThreshold) {
+            status = "Low";
+        }
 
         return {
             id: m.id,
-            materialName: m.materialName || m.material_name || m.name || "Raw Material",
-            category: m.category || "Uncategorized",
-            unit: m.unit || "kg",
-            quantity: Number(m.quantity) || 0,
-            status: m.status || "Available",
-            received: receivedByMaterial[m.id] || Number(m.received) || 50,
-            disbursed: disbursedByMaterial[m.id] || Number(m.disbursed) || 15,
+            itemCode: m.item_code || "",
+            materialName: m.name || "",
+            description: m.description || "",
+            category: m.description || "General",
+            unit: m.unit_of_measure || "kg",
+            quantity: currentStock,
+            minStock: minThreshold,
+            reorderQty: m.reorder_quantity,
+            leadTimeDays: m.lead_time_days,
+            status,
+            received: receivedByMaterial[m.id] || 0,
+            disbursed: disbursedByMaterial[m.id] || 0,
             lastActivityMs
         };
     });
@@ -235,7 +231,6 @@ async function loadInventory() {
     renderSummaryCards();
     state.page = 1;
     renderTable();
-
 }
 
 /* ==========================
@@ -248,80 +243,58 @@ function renderSummaryCards() {
     const lowEl = document.getElementById("cardLowCount") || document.getElementById("cardLowStockCount");
     const outEl = document.getElementById("cardOutCount");
 
-    [totalEl, availableEl, lowEl, outEl].filter(Boolean).forEach(el => el.classList.remove("skel"));
+    const total = state.materials.length;
+    const available = state.materials.filter((m) => m.status === "Available").length;
+    const low = state.materials.filter((m) => m.status === "Low").length;
+    const out = state.materials.filter((m) => m.status === "Critical").length;
 
-    if (state.materialsFailed) {
-        if (totalEl) totalEl.textContent = "—";
-        if (availableEl) availableEl.textContent = "—";
-        if (lowEl) lowEl.textContent = "—";
-        if (outEl) outEl.textContent = "—";
-        return;
-    }
-
-    const materials = state.materials;
-    const availableCount = materials.filter(m => m.status === "Available").length;
-    const lowCount = materials.filter(m => m.status === "Low").length;
-    const outCount = materials.filter(m => m.status === "Critical" || m.quantity === 0).length;
-
-    if (totalEl) totalEl.textContent = materials.length.toLocaleString();
-    if (availableEl) availableEl.textContent = availableCount.toLocaleString();
-    if (lowEl) lowEl.textContent = lowCount.toLocaleString();
-    if (outEl) outEl.textContent = outCount.toLocaleString();
+    if (totalEl) totalEl.textContent = total.toLocaleString();
+    if (availableEl) availableEl.textContent = available.toLocaleString();
+    if (lowEl) lowEl.textContent = low.toLocaleString();
+    if (outEl) outEl.textContent = out.toLocaleString();
 }
 
 /* ==========================
-   FILTER OPTIONS
+   FILTERS
 ========================== */
 
 function populateFilterOptions() {
-
     const categoryFilter = document.getElementById("categoryFilter");
-    const unitFilter = document.getElementById("unitFilter");
+    if (!categoryFilter) return;
 
-    const categories = [...new Set(state.materials.map(m => m.category).filter(Boolean))].sort();
-    const units = [...new Set(state.materials.map(m => m.unit).filter(Boolean))].sort();
+    const categories = [...new Set(state.materials.map((m) => m.category).filter(Boolean))].sort();
 
     const currentCategory = categoryFilter.value;
-    const currentUnit = unitFilter.value;
 
     categoryFilter.innerHTML = `<option value="">All Categories</option>` +
-        categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-
-    unitFilter.innerHTML = `<option value="">All Units</option>` +
-        units.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+        categories.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
 
     categoryFilter.value = categories.includes(currentCategory) ? currentCategory : "";
-    unitFilter.value = units.includes(currentUnit) ? currentUnit : "";
-
 }
 
-/* ==========================
-   FILTER + SORT + PAGINATE + RENDER
-========================== */
-
 function getFilteredSortedMaterials() {
-
     const term = state.search.trim().toLowerCase();
 
     let list = state.materials.filter((m) => {
-
         if (state.category && m.category !== state.category) return false;
-        if (state.status && m.status !== state.status) return false;
+        if (state.status) {
+            if (state.status === "available" && m.status !== "Available") return false;
+            if (state.status === "low" && m.status !== "Low") return false;
+            if (state.status === "out" && m.status !== "Critical") return false;
+        }
         if (state.unit && m.unit !== state.unit) return false;
 
         if (term) {
-            const haystack = `${m.materialName} ${m.id} ${m.category}`.toLowerCase();
+            const haystack = `${m.materialName} ${m.itemCode} ${m.id} ${m.category}`.toLowerCase();
             if (!haystack.includes(term)) return false;
         }
 
         return true;
-
     });
 
     const dir = state.sortDir === "asc" ? 1 : -1;
 
     list = list.slice().sort((a, b) => {
-
         let av = a[state.sortField];
         let bv = b[state.sortField];
 
@@ -331,44 +304,45 @@ function getFilteredSortedMaterials() {
         if (av < bv) return -1 * dir;
         if (av > bv) return 1 * dir;
         return 0;
-
     });
 
     return list;
-
 }
 
-function renderTable() {
+/* ==========================
+   TABLE RENDERING
+========================== */
 
+function renderTable() {
     const tbody = document.getElementById("inventoryTableBody");
     const resultCount = document.getElementById("resultCount");
     const tableFooter = document.getElementById("tableFooter");
     const table = document.getElementById("inventoryTable");
 
-    table.classList.toggle("expanded", state.expanded);
+    if (table) table.classList.toggle("expanded", state.expanded);
 
     if (state.materialsFailed) {
-        tbody.innerHTML = `<tr><td colspan="8">${errorStateHtml("Unable to load inventory information.")}</td></tr>`;
-        resultCount.textContent = "";
-        tableFooter.hidden = true;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8">${errorStateHtml("Unable to load inventory information.")}</td></tr>`;
+        if (resultCount) resultCount.textContent = "";
+        if (tableFooter) tableFooter.hidden = true;
         wireRetryButton();
         return;
     }
 
     if (state.materials.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8">${emptyStateHtml("No raw materials available.", "Inventory information will appear here once materials are added.")}</td></tr>`;
-        resultCount.textContent = "";
-        tableFooter.hidden = true;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8">${emptyStateHtml("No raw materials recorded yet.", "Inventory records will appear once added by an administrator.")}</td></tr>`;
+        if (resultCount) resultCount.textContent = "0 materials";
+        if (tableFooter) tableFooter.hidden = true;
         return;
     }
 
     const filtered = getFilteredSortedMaterials();
 
-    resultCount.textContent = `${filtered.length} of ${state.materials.length} materials`;
+    if (resultCount) resultCount.textContent = `${filtered.length} of ${state.materials.length} materials`;
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8">${emptyStateHtml("No materials match your search.", "Try adjusting your search or filters.")}</td></tr>`;
-        tableFooter.hidden = true;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8">${emptyStateHtml("No materials match your search.", "Try adjusting your search or filters.")}</td></tr>`;
+        if (tableFooter) tableFooter.hidden = true;
         return;
     }
 
@@ -378,42 +352,47 @@ function renderTable() {
     const startIdx = (state.page - 1) * state.rowsPerPage;
     const pageItems = filtered.slice(startIdx, startIdx + state.rowsPerPage);
 
-    tbody.innerHTML = pageItems.map((m) => {
-        const st = statusInfo(m.status);
-        return `
-            <tr>
-                <td data-label="Material"><strong>${escapeHtml(m.materialName)}</strong></td>
-                <td data-label="Category">${escapeHtml(m.category)}</td>
-                <td data-label="Current Stock"><strong>${escapeHtml(formatQty(m.quantity, m.unit))}</strong></td>
-                <td data-label="Unit">${escapeHtml(m.unit || "—")}</td>
-                <td data-label="Minimum Stock">${m.minStock !== undefined ? escapeHtml(formatQty(m.minStock, m.unit)) : "—"}</td>
-                <td data-label="Supplier">${escapeHtml(m.supplierName || m.supplier || "Standard Supplier")}</td>
-                <td data-label="Status"><span class="status ${st.cls}">${st.label}</span></td>
-                <td data-label="Details">
-                    <button type="button" class="btn-outline-sm view-detail-btn" data-id="${m.id}">View Details</button>
-                </td>
-            </tr>
-        `;
-    }).join("");
+    if (tbody) {
+        tbody.innerHTML = pageItems.map((m) => {
+            const st = statusInfo(m.status);
+            return `
+                <tr>
+                    <td data-label="Material">
+                        <strong>${escapeHtml(m.materialName)}</strong>
+                        ${m.itemCode ? `<br><small class="text-muted" style="color:var(--text-muted, #64748b);">${escapeHtml(m.itemCode)}</small>` : ""}
+                    </td>
+                    <td data-label="Category">${escapeHtml(m.category || "—")}</td>
+                    <td data-label="Current Stock"><strong>${escapeHtml(formatQty(m.quantity, m.unit))}</strong></td>
+                    <td data-label="Unit">${escapeHtml(m.unit || "—")}</td>
+                    <td data-label="Minimum Stock">${m.minStock !== null && m.minStock !== undefined ? escapeHtml(formatQty(m.minStock, m.unit)) : "—"}</td>
+                    <td data-label="Supplier">${escapeHtml(m.description || "Standard Catalog")}</td>
+                    <td data-label="Status"><span class="status ${st.cls}">${st.label}</span></td>
+                    <td data-label="Details">
+                        <button type="button" class="btn-outline-sm view-detail-btn" data-id="${escapeHtml(m.id)}">View Details</button>
+                    </td>
+                </tr>
+            `;
+        }).join("");
 
-    tbody.querySelectorAll(".view-detail-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const mat = state.materials.find(x => x.id === btn.dataset.id);
-            if (mat) openDetailModal(mat);
+        tbody.querySelectorAll(".view-detail-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mat = state.materials.find(x => x.id === btn.dataset.id);
+                if (mat) openDetailModal(mat);
+            });
         });
-    });
+    }
 
-    tableFooter.hidden = false;
+    if (tableFooter) tableFooter.hidden = false;
     renderPagination(filtered.length, totalPages, startIdx, pageItems.length);
-
 }
 
 function renderPagination(totalItems, totalPages, startIdx, pageItemCount) {
-
     const pageInfo = document.getElementById("pageInfo");
     const pageNumbers = document.getElementById("pageNumbers");
     const prevBtn = document.getElementById("prevPageBtn");
     const nextBtn = document.getElementById("nextPageBtn");
+
+    if (!pageInfo || !pageNumbers || !prevBtn || !nextBtn) return;
 
     const from = totalItems === 0 ? 0 : startIdx + 1;
     const to = startIdx + pageItemCount;
@@ -438,171 +417,27 @@ function renderPagination(totalItems, totalPages, startIdx, pageItemCount) {
             renderTable();
         });
     });
-
 }
 
 function paginationWindow(current, total) {
-
     if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-
     const pages = new Set([1, total, current, current - 1, current + 1]);
     const sorted = [...pages].filter(p => p >= 1 && p <= total).sort((a, b) => a - b);
-
-    const result = [];
-    let prev = 0;
-
-    sorted.forEach((p) => {
-        if (prev && p - prev > 1) result.push("…");
-        result.push(p);
-        prev = p;
-    });
-
-    return result;
-
+    const res = [];
+    for (let i = 0; i < sorted.length; i++) {
+        if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+            res.push("…");
+        }
+        res.push(sorted[i]);
+    }
+    return res;
 }
 
 function wireRetryButton() {
-    const btn = document.getElementById("inventoryRetryBtn");
-    if (btn) {
-        btn.addEventListener("click", () => location.reload());
-    }
-}
-
-/* ==========================
-   ACTIVITY DETAILS TOGGLE
-========================== */
-
-function syncActivityToggleUI() {
-
-    const btn = document.getElementById("activityToggleBtn");
-    const label = document.getElementById("activityToggleLabel");
-
-    btn.setAttribute("aria-expanded", state.expanded ? "true" : "false");
-    label.textContent = state.expanded
-        ? "Hide Receive & Disbursement Details"
-        : "Show Receive & Disbursement Details";
-
-}
-
-document.getElementById("activityToggleBtn")?.addEventListener("click", () => {
-
-    state.expanded = !state.expanded;
-
-    try {
-        sessionStorage.setItem(STORAGE_KEY, state.expanded ? "1" : "0");
-    } catch (err) {
-        // sessionStorage unavailable — safe to ignore, state still holds in-memory
-    }
-
-    syncActivityToggleUI();
-    renderTable();
-
-});
-
-/* ==========================
-   SEARCH / FILTERS / SORT / PAGE SIZE
-========================== */
-
-document.getElementById("searchInput")?.addEventListener("input", function () {
-    state.search = this.value;
-    state.page = 1;
-    renderTable();
-    syncFilterClearButton();
-});
-
-document.getElementById("categoryFilter")?.addEventListener("change", function () {
-    state.category = this.value;
-    state.page = 1;
-    renderTable();
-    syncFilterClearButton();
-});
-
-document.getElementById("statusFilter")?.addEventListener("change", function () {
-    state.status = this.value;
-    state.page = 1;
-    renderTable();
-    syncFilterClearButton();
-});
-
-document.getElementById("unitFilter")?.addEventListener("change", function () {
-    state.unit = this.value;
-    state.page = 1;
-    renderTable();
-    syncFilterClearButton();
-});
-
-document.getElementById("filterClearBtn")?.addEventListener("click", () => {
-
-    state.search = "";
-    state.category = "";
-    state.status = "";
-    state.unit = "";
-    state.page = 1;
-
-    const sIn = document.getElementById("searchInput"); if (sIn) sIn.value = "";
-    const cFi = document.getElementById("categoryFilter"); if (cFi) cFi.value = "";
-    const stFi = document.getElementById("statusFilter"); if (stFi) stFi.value = "";
-    const uFi = document.getElementById("unitFilter"); if (uFi) uFi.value = "";
-
-    renderTable();
-    syncFilterClearButton();
-
-});
-
-function syncFilterClearButton() {
-    const btn = document.getElementById("filterClearBtn");
-    const active = !!(state.search || state.category || state.status || state.unit);
-    btn.hidden = !active;
-}
-
-document.getElementById("rowsPerPageSelect").addEventListener("change", function () {
-    state.rowsPerPage = Number(this.value) || 10;
-    state.page = 1;
-    renderTable();
-});
-
-document.getElementById("prevPageBtn").addEventListener("click", () => {
-    if (state.page > 1) {
-        state.page -= 1;
-        renderTable();
-    }
-});
-
-document.getElementById("nextPageBtn").addEventListener("click", () => {
-    state.page += 1; // renderTable() clamps to the last valid page
-    renderTable();
-});
-
-document.querySelectorAll("#inventoryTable th.sortable").forEach((th) => {
-
-    th.addEventListener("click", () => {
-
-        const field = th.dataset.sort;
-
-        if (state.sortField === field) {
-            state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-        } else {
-            state.sortField = field;
-            state.sortDir = "asc";
-        }
-
-        document.querySelectorAll("#inventoryTable th.sortable").forEach((h) => {
-            h.classList.remove("sort-active");
-            const arrow = h.querySelector(".sort-arrow");
-            if (arrow) arrow.remove();
-        });
-
-        th.classList.add("sort-active");
-        const arrow = document.createElement("span");
-        arrow.className = "sort-arrow";
-        arrow.textContent = state.sortDir === "asc" ? "▲" : "▼";
-        th.appendChild(arrow);
-
-        renderTable();
-
+    document.getElementById("inventoryRetryBtn")?.addEventListener("click", () => {
+        loadInventory();
     });
-
-});
+}
 
 /* ==========================
    VIEW DETAIL MODAL
@@ -622,13 +457,14 @@ function openDetailModal(mat) {
     if (bodyEl) {
         bodyEl.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:12px; font-size:0.9rem;">
-                <div><strong>Material ID:</strong> ${escapeHtml(mat.id)}</div>
-                <div><strong>Current Quantity:</strong> ${escapeHtml(formatQty(mat.quantity, mat.unit))}</div>
-                <div><strong>Minimum Target:</strong> ${mat.minStock !== undefined ? escapeHtml(formatQty(mat.minStock, mat.unit)) : "—"}</div>
-                <div><strong>Supplier:</strong> ${escapeHtml(mat.supplierName || mat.supplier || "Standard Supplier")}</div>
+                <div><strong>Item Code:</strong> ${escapeHtml(mat.itemCode || "—")}</div>
+                <div><strong>Current Stock:</strong> ${escapeHtml(formatQty(mat.quantity, mat.unit))}</div>
+                <div><strong>Minimum Target:</strong> ${mat.minStock !== null && mat.minStock !== undefined ? escapeHtml(formatQty(mat.minStock, mat.unit)) : "—"}</div>
+                <div><strong>Reorder Quantity:</strong> ${mat.reorderQty !== null && mat.reorderQty !== undefined ? escapeHtml(formatQty(mat.reorderQty, mat.unit)) : "—"}</div>
+                <div><strong>Lead Time:</strong> ${mat.leadTimeDays !== null && mat.leadTimeDays !== undefined ? `${escapeHtml(mat.leadTimeDays)} days` : "—"}</div>
                 <div><strong>Status:</strong> <span class="status ${statusInfo(mat.status).cls}">${statusInfo(mat.status).label}</span></div>
-                <div><strong>Total Received (Recorded):</strong> +${escapeHtml(formatQty(mat.received, mat.unit))}</div>
-                <div><strong>Total Disbursed (Recorded):</strong> −${escapeHtml(formatQty(mat.disbursed, mat.unit))}</div>
+                <div><strong>Total Inflow (Recorded):</strong> +${escapeHtml(formatQty(mat.received, mat.unit))}</div>
+                <div><strong>Total Outflow (Recorded):</strong> −${escapeHtml(formatQty(mat.disbursed, mat.unit))}</div>
                 <div><strong>Last Stock Activity:</strong> ${escapeHtml(formatDateTime(mat.lastActivityMs))}</div>
             </div>
         `;
@@ -643,3 +479,71 @@ document.getElementById("detailModalClose")?.addEventListener("click", () => {
 document.getElementById("detailModalCancel")?.addEventListener("click", () => {
     document.getElementById("detailModalOverlay")?.classList.remove("active");
 });
+document.getElementById("detailModalOverlay")?.addEventListener("click", (e) => {
+    if (e.target === document.getElementById("detailModalOverlay")) {
+        document.getElementById("detailModalOverlay")?.classList.remove("active");
+    }
+});
+
+/* ==========================
+   EVENT LISTENERS & BINDINGS
+========================== */
+
+document.getElementById("searchInput")?.addEventListener("input", function () {
+    state.search = this.value;
+    state.page = 1;
+    syncFilterClearButton();
+    renderTable();
+});
+
+document.getElementById("categoryFilter")?.addEventListener("change", function () {
+    state.category = this.value;
+    state.page = 1;
+    syncFilterClearButton();
+    renderTable();
+});
+
+document.getElementById("statusFilter")?.addEventListener("change", function () {
+    state.status = this.value;
+    state.page = 1;
+    syncFilterClearButton();
+    renderTable();
+});
+
+document.getElementById("filterClearBtn")?.addEventListener("click", () => {
+    state.search = "";
+    state.category = "";
+    state.status = "";
+    state.unit = "";
+    const sIn = document.getElementById("searchInput"); if (sIn) sIn.value = "";
+    const cFi = document.getElementById("categoryFilter"); if (cFi) cFi.value = "";
+    const stFi = document.getElementById("statusFilter"); if (stFi) stFi.value = "";
+    syncFilterClearButton();
+    state.page = 1;
+    renderTable();
+});
+
+function syncFilterClearButton() {
+    const btn = document.getElementById("filterClearBtn");
+    if (!btn) return;
+    const active = !!(state.search || state.category || state.status || state.unit);
+    btn.hidden = !active;
+}
+
+document.getElementById("overviewCards")?.addEventListener("click", (e) => {
+    const card = e.target.closest("[data-filter]");
+    if (!card) return;
+    const filter = card.dataset.filter;
+    state.status = filter === "all" ? "" : filter;
+    const statusFilter = document.getElementById("statusFilter");
+    if (statusFilter) statusFilter.value = state.status;
+    syncFilterClearButton();
+    state.page = 1;
+    renderTable();
+});
+
+document.getElementById("refreshBtn")?.addEventListener("click", () => {
+    loadInventory();
+});
+
+window.addEventListener("rmims:inventory-changed", loadInventory);

@@ -10,8 +10,7 @@
 // (trg_prevent_last_admin_removal). A button being hidden or
 // disabled here never substitutes for that.
 
-import { auth, db } from "../supabase/supabase-config.js";
-import { doc, getDoc, collection, getDocs } from "../supabase/db-compat.js";
+import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 import { initBackupRestore, loadDataSummary as reloadDataSummary } from "./backup-restore.js";
 import { initDataReset } from "./data-reset.js";
@@ -28,14 +27,14 @@ let currentUser = null; // { uid, fullName, email, role, status }
 
 function fmtDate(ts) {
     if (!ts) return "—";
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return "—";
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function fmtDateTime(ts) {
     if (!ts) return "—";
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return "—";
     return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
 }
@@ -61,22 +60,18 @@ function showToast(message, type = "success") {
     el.querySelector("span:last-child").textContent = message;
     toastStack.appendChild(el);
     setTimeout(() => {
-        el.classList.add("leaving");
-        setTimeout(() => el.remove(), 250);
-    }, 3800);
+        el.style.opacity = "0";
+        el.style.transform = "translateY(8px)";
+        setTimeout(() => el.remove(), 200);
+    }, 3200);
 }
 
 /* ==========================================================
    MODAL HELPERS
    ========================================================== */
 
-function openModal(id) {
-    document.getElementById(id).classList.add("open");
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.remove("open");
-}
+function openModal(id) { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
 
 document.querySelectorAll("[data-close-modal]").forEach(btn => {
     btn.addEventListener("click", () => closeModal(btn.dataset.closeModal));
@@ -89,7 +84,7 @@ document.querySelectorAll(".modal-overlay").forEach(overlay => {
 });
 
 /* ==========================================================
-   ROLE GUARD + LOAD USER INFORMATION
+   ROLE GUARD & LOAD ACCOUNT
    ========================================================== */
 
 const profileBtn = document.getElementById("profileBtn");
@@ -98,21 +93,22 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "../login.html"; return; }
 
     try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, email, role, status, created_at, updated_at")
+            .eq("id", user.uid)
+            .maybeSingle();
 
-        if (!userDoc.exists()) { window.location.href = "../login.html"; return; }
-
-        const data = userDoc.data();
-
-        if (data.status !== "active") { window.location.href = "../login.html"; return; }
-        if (data.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
+        if (error || !profile) { window.location.href = "../login.html"; return; }
+        if (profile.status !== "active") { window.location.href = "../login.html"; return; }
+        if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
 
         currentUser = {
             uid: user.uid,
-            fullName: data.fullName || "",
-            email: data.email || user.email || "",
-            role: data.role || "user",
-            status: data.status || "inactive"
+            fullName: profile.full_name || "",
+            email: profile.email || user.email || "",
+            role: profile.role || "user",
+            status: profile.status || "inactive"
         };
 
         if (profileBtn) {
@@ -130,8 +126,8 @@ onAuthStateChanged(auth, async (user) => {
         statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";
         document.getElementById("statusDot").classList.toggle("inactive", currentUser.status !== "active");
 
-        document.getElementById("accountCreated").textContent = fmtDate(data.createdAt);
-        document.getElementById("accountLastLogin").textContent = fmtDateTime(data.lastActivityAt);
+        document.getElementById("accountCreated").textContent = fmtDate(profile.created_at);
+        document.getElementById("accountLastLogin").textContent = fmtDateTime(profile.updated_at);
 
         loadSessionInfo();
 
@@ -291,10 +287,13 @@ document.getElementById("openDeleteAccountBtn").addEventListener("click", async 
         let isLastActiveAdmin = false;
 
         if (currentUser.role === "admin" && currentUser.status === "active") {
-            const snap = await getDocs(collection(db, "users"));
-            const otherActiveAdmins = snap.docs
-                .map(d => ({ id: d.id, ...d.data() }))
-                .filter(u => u.id !== currentUser.uid && u.role === "admin" && u.status === "active");
+            const { data: activeAdmins } = await supabase
+                .from("user_profiles")
+                .select("id, role, status")
+                .eq("role", "admin")
+                .eq("status", "active");
+            const otherActiveAdmins = (activeAdmins || [])
+                .filter(u => u.id !== currentUser.uid);
             isLastActiveAdmin = otherActiveAdmins.length === 0;
         }
 

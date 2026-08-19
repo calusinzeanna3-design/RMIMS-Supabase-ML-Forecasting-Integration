@@ -16,8 +16,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // up a short-lived, non-persisted secondary client for Admin-driven
 // account creation — see the comment above createAuthAccount() there
 // for why a second client is needed instead of reusing this one.
-export const SUPABASE_URL = "https://zdslycwczwfsjdxkwokt.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpkc2x5Y3djendmc2pkeGt3b2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNDQ4NzUsImV4cCI6MjEwMTcyMDg3NX0.ov_FvAiAuMmr651Yy2kf9Tnp6qctIHYddRVx9HathU0";
+export const SUPABASE_URL = "https://hgandqozgcpytxebhvtn.supabase.co";
+export const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY || window.ENV_SUPABASE_KEY || "sb_publishable_cJn9GulDOqIYoNTbdDCkOw_2PNzlr5-";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {

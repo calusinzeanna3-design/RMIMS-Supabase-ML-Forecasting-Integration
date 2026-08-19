@@ -15,6 +15,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="../js/chart.js"></script>
 
 <link rel="stylesheet" href="../css/rmims-unified.css">
 </head>
@@ -255,23 +256,68 @@
 
         <!-- VISUAL ANALYTICS GRID (STOCK HEALTH DISTRIBUTION & RECEIVED VS USED MOVEMENT) -->
         <section class="inventory-analytics-duo-grid fade-in" style="margin-bottom: 32px;">
-            <div class="panel glass">
-                <div class="panel-header">
-                    <h3 style="margin:0; font-size: 16px; font-weight: 700;">Stock Health Distribution</h3>
-                    <p style="font-size: 12px; color: var(--rm-ink-dim); margin: 2px 0 10px;">Overview of Available vs Low Stock vs Out of Stock materials.</p>
+            <div class="panel glass" id="stockHealthPanel">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h3 style="margin:0; font-size: 16px; font-weight: 700;">Stock Health Distribution</h3>
+                        <p id="stockHealthSubtitle" style="font-size: 12px; color: var(--rm-ink-dim); margin: 2px 0 10px;">Current stock condition across all raw materials.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <label for="stockHealthFilter" style="font-size: 12px; font-weight: 600; color: var(--rm-ink-dim);">View:</label>
+                        <select id="stockHealthFilter" class="chart-header-select" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-soft, #E2E8F0); background: #ffffff; color: var(--rm-ink, #0F172A); font-weight: 600; cursor: pointer;">
+                            <option value="all" selected>All Materials</option>
+                            <option value="category">By Category</option>
+                            <option value="unit">By Unit</option>
+                            <option value="low">Low Stock Only</option>
+                            <option value="out">Out of Stock Only</option>
+                        </select>
+                        <select id="stockHealthCategorySelect" class="chart-header-select" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-soft, #E2E8F0); background: #ffffff; color: var(--rm-ink, #0F172A); font-weight: 600; cursor: pointer; display: none;">
+                            <option value="">All Categories</option>
+                        </select>
+                        <select id="stockHealthUnitSelect" class="chart-header-select" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-soft, #E2E8F0); background: #ffffff; color: var(--rm-ink, #0F172A); font-weight: 600; cursor: pointer; display: none;">
+                            <option value="">All Units</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="chart-container" style="position: relative; height: 210px; display: flex; align-items: center; justify-content: center;">
                     <canvas id="invStatusDonutChart"></canvas>
+                    <div id="stockHealthEmptyState" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--rm-ink-dim, #64748B); text-align: center; padding: 16px;">
+                        No materials match this view.
+                    </div>
                 </div>
             </div>
 
-            <div class="panel glass">
-                <div class="panel-header">
-                    <h3 style="margin:0; font-size: 16px; font-weight: 700;">Received vs Used Movement</h3>
-                    <p style="font-size: 12px; color: var(--rm-ink-dim); margin: 2px 0 10px;">Comparison of stock received and recorded consumption.</p>
+            <div class="panel glass" id="movementPanel">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h3 style="margin:0; font-size: 16px; font-weight: 700;">Received vs Used Movement</h3>
+                        <p id="movementSubtitle" style="font-size: 12px; color: var(--rm-ink-dim); margin: 2px 0 10px;">Raw-material movement for the last 7 days.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <label for="movementPeriodSelect" style="font-size: 12px; font-weight: 600; color: var(--rm-ink-dim);">Period:</label>
+                        <select id="movementPeriodSelect" class="chart-header-select" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-soft, #E2E8F0); background: #ffffff; color: var(--rm-ink, #0F172A); font-weight: 600; cursor: pointer;">
+                            <option value="today">Today</option>
+                            <option value="last7" selected>Last 7 Days</option>
+                            <option value="last30">Last 30 Days</option>
+                            <option value="month">This Month</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                        <div id="movementCustomDateWrap" style="display: none; align-items: center; gap: 4px;">
+                            <input type="date" id="movementStartDate" style="font-size: 11px; padding: 3px 6px; border: 1px solid var(--line-soft, #E2E8F0); border-radius: 6px;">
+                            <span style="font-size: 11px; color: var(--rm-ink-dim);">–</span>
+                            <input type="date" id="movementEndDate" style="font-size: 11px; padding: 3px 6px; border: 1px solid var(--line-soft, #E2E8F0); border-radius: 6px;">
+                        </div>
+                        <label for="movementUnitSelect" style="font-size: 12px; font-weight: 600; color: var(--rm-ink-dim);">Unit:</label>
+                        <select id="movementUnitSelect" class="chart-header-select" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-soft, #E2E8F0); background: #ffffff; color: var(--rm-ink, #0F172A); font-weight: 600; cursor: pointer;">
+                            <option value="all" selected>All Units</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="chart-container" style="position: relative; height: 210px; display: flex; align-items: center; justify-content: center;">
                     <canvas id="invReceivedVsUsedChart"></canvas>
+                    <div id="movementEmptyState" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--rm-ink-dim, #64748B); text-align: center; padding: 16px;">
+                        No movement recorded for this period.
+                    </div>
                 </div>
             </div>
         </section>
@@ -1014,6 +1060,6 @@ if(menuToggle && sidebarEl){
 })();
 </script>
 
-<script src="../js/rmsme-shell.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 </html>

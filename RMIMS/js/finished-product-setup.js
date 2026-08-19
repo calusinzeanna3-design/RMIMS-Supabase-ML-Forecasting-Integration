@@ -1,18 +1,18 @@
-// Finished Product Setup — inside Inventory Management only.
-// No ML, forecasting, REST API, or external model integration.
-// Finished-product data stays linked to the existing Inventory materials.
+// RMIMS V2 — Finished Product Support Module (Inside Inventory Management)
+// Supporting context for raw material consumption.
+// Authoritative data source: public.material_disbursements (finished_product_name, material_id, consumed_quantity, unit).
+// Master raw material reference: public.raw_materials.
+// Transaction Authority: record_material_disbursement_v2().
+// ZERO automatic BOM recipe deductions, NO price/cost logic, NO fake product data.
 
-import { auth, db } from "../supabase/supabase-config.js";
-import {
-    collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, where
-} from "../supabase/db-compat.js";
+import { auth, supabase } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
 let materials = [];
 let finishedProducts = [];
-let requirementsByProduct = new Map();
+let consumptionByProduct = new Map(); // productName -> [{ materialId, materialName, totalConsumed, unit, currentStock, status }]
 let editingRequirements = [];
-let pendingDeleteId = null;
+let pendingDeleteName = null;
 let selectedImageData = null;
 let importDataRows = [];
 let importImages = [];
@@ -81,7 +81,7 @@ function setImportGuideStep(step) {
 
 function escapeHtml(str) {
     return String(str ?? "").replace(/[&<>"']/g, (c) => ({
-        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
 }
 
@@ -133,53 +133,114 @@ function productImageHtml(p, large = false) {
     return `<div class="${avatarCls}" aria-label="Product avatar for ${escapeHtml(name)}"><span>${escapeHtml(productInitials(name))}</span></div>`;
 }
 
-function computeProductStatus(productId) {
-    const reqs = requirementsByProduct.get(productId) || [];
-    if (!reqs.length) return { label: "No Materials Set", cls: "" };
+function computeProductStatus(productName) {
+    const consumedMats = consumptionByProduct.get(productName) || [];
+    if (!consumedMats.length) return { label: "No Usage Recorded", cls: "" };
 
-    let insufficient = false;
-    let low = false;
-    for (const r of reqs) {
-        const mat = materials.find((m) => m.id === r.materialId);
-        if (!mat || Number(mat.quantity) < Number(r.requiredQuantity)) {
-            insufficient = true;
-            continue;
+    let hasCritical = false;
+    let hasLow = false;
+    for (const item of consumedMats) {
+        const mat = materials.find(m => m.id === item.materialId);
+        if (!mat || Number(mat.current_stock) <= 0) {
+            hasCritical = true;
+        } else if (mat.minimum_threshold !== null && Number(mat.current_stock) < Number(mat.minimum_threshold)) {
+            hasLow = true;
         }
-        if (mat.status === "Low" || mat.status === "Critical") low = true;
     }
-    if (insufficient) return { label: "Needs Restocking", cls: "out" };
-    if (low) return { label: "Running Low", cls: "low" };
+    if (hasCritical) return { label: "Needs Restocking", cls: "out" };
+    if (hasLow) return { label: "Running Low", cls: "low" };
     return { label: "Good", cls: "available" };
 }
 
+/* ==========================================================
+   DATA LOAD (DERIVED FROM AUTHORITATIVE V2 DISBURSEMENTS)
+   ========================================================== */
+
 async function loadAll() {
     try {
-        const [matSnap, productSnap, reqSnap] = await Promise.all([
-            getDocs(collection(db, "materials")),
-            getDocs(collection(db, "finishedProducts")),
-            getDocs(collection(db, "productMaterialRequirements"))
+        const [matRes, useRes] = await Promise.all([
+            supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, description").order("name"),
+            supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("created_at", { ascending: false })
         ]);
 
-        materials = matSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        finishedProducts = productSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (matRes.error) throw matRes.error;
+        if (useRes.error) console.warn("Disbursements query notice:", useRes.error);
 
-        requirementsByProduct = new Map();
-        reqSnap.docs.forEach((d) => {
-            const data = { id: d.id, ...d.data() };
-            const list = requirementsByProduct.get(data.productId) || [];
-            list.push(data);
-            requirementsByProduct.set(data.productId, list);
+        materials = (matRes.data || []).map(m => ({
+            id: m.id,
+            itemCode: m.item_code,
+            materialName: m.name,
+            unit: m.unit_of_measure || "kg",
+            current_stock: Number(m.current_stock) || 0,
+            minimum_threshold: m.minimum_threshold !== null ? Number(m.minimum_threshold) : null,
+            description: m.description || ""
+        }));
+
+        const disbursements = useRes.data || [];
+
+        // Group actual consumption by finished product name
+        consumptionByProduct = new Map();
+        const productMetadata = new Map(); // productName -> { category, unit, description, status }
+
+        disbursements.forEach(d => {
+            const rawProdName = d.finished_product_name ? d.finished_product_name.trim() : "";
+            if (!rawProdName || rawProdName === "General Usage") return;
+
+            if (!consumptionByProduct.has(rawProdName)) {
+                consumptionByProduct.set(rawProdName, []);
+                productMetadata.set(rawProdName, {
+                    category: rawProdName.includes("Bread") || rawProdName === "Pandesal" ? "Bakery" : rawProdName.includes("Chips") ? "Snacks" : "Production",
+                    unit: "batches",
+                    description: `Production records for ${rawProdName}`,
+                    status: "Active"
+                });
+            }
+
+            const list = consumptionByProduct.get(rawProdName);
+            const mat = materials.find(m => m.id === d.material_id);
+            const qty = Number(d.consumed_quantity) || 0;
+            const unit = d.unit || (mat ? mat.unit : "kg");
+
+            const existingMat = list.find(item => item.materialId === d.material_id && item.unit === unit);
+            if (existingMat) {
+                existingMat.totalConsumed += qty;
+            } else {
+                list.push({
+                    materialId: d.material_id,
+                    materialName: mat ? mat.materialName : "Raw Material",
+                    totalConsumed: qty,
+                    unit,
+                    currentStock: mat ? mat.current_stock : 0
+                });
+            }
+        });
+
+        // Build list of finished products
+        finishedProducts = Array.from(consumptionByProduct.keys()).sort().map(name => {
+            const meta = productMetadata.get(name) || {};
+            return {
+                id: name,
+                productName: name,
+                category: meta.category || "Production",
+                unit: meta.unit || "batches",
+                description: meta.description || "",
+                status: meta.status || "Active",
+                imageUrl: null
+            };
         });
 
         renderCategoryOptions();
         renderTable();
     } catch (err) {
         console.error("Finished Product Setup load failed:", err);
-        fpsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><strong>Unable to load finished products.</strong><span>Check the database setup and try again.</span></div></td></tr>`;
+        if (fpsTableBody) {
+            fpsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><strong>Unable to load finished products.</strong><span>Check the database connection and try again.</span></div></td></tr>`;
+        }
     }
 }
 
 function renderCategoryOptions() {
+    if (!fpCategory) return;
     const categories = [...new Set(finishedProducts.map(p => p.category).filter(Boolean))].sort();
     const current = fpCategory.value;
     fpCategory.innerHTML =
@@ -190,22 +251,24 @@ function renderCategoryOptions() {
 }
 
 function renderTable() {
-    fpsResultCount.textContent = `${finishedProducts.length} finished product${finishedProducts.length === 1 ? "" : "s"}`;
+    if (!fpsTableBody) return;
+    if (fpsResultCount) {
+        fpsResultCount.textContent = `${finishedProducts.length} finished product${finishedProducts.length === 1 ? "" : "s"}`;
+    }
 
     if (!finishedProducts.length) {
-        fpsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p>No finished products set up yet. Click "Add Finished Product" or "Import" to get started.</p></div></td></tr>`;
+        fpsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><strong>No finished-product usage records yet.</strong><span>Finished product insights will appear here once raw material consumption is recorded under specific finished products.</span></div></td></tr>`;
         return;
     }
 
-    fpsTableBody.innerHTML = finishedProducts.map((p, index) => {
-        const reqs = requirementsByProduct.get(p.id) || [];
-        const status = computeProductStatus(p.id);
-        const chips = reqs.length
-            ? reqs.map(r => {
-                const mat = materials.find(m => m.id === r.materialId);
-                return `<span class="fps-material-chip"><strong>${escapeHtml(mat?.materialName || "Missing material")}</strong> ${escapeHtml(formatQty(r.requiredQuantity, r.unit || mat?.unit || ""))}</span>`;
+    fpsTableBody.innerHTML = finishedProducts.map((p) => {
+        const consumedMats = consumptionByProduct.get(p.productName) || [];
+        const status = computeProductStatus(p.productName);
+        const chips = consumedMats.length
+            ? consumedMats.map(r => {
+                return `<span class="fps-material-chip"><strong>${escapeHtml(r.materialName)}</strong> ${escapeHtml(formatQty(r.totalConsumed, r.unit))}</span>`;
             }).join("")
-            : `<span class="fps-empty-chip">No raw materials assigned</span>`;
+            : `<span class="fps-empty-chip">No consumption recorded</span>`;
 
         return `
         <tr class="fp-main-row" data-id="${escapeHtml(p.id)}">
@@ -214,7 +277,7 @@ function renderTable() {
                     ${productImageHtml(p)}
                     <span class="fp-product-copy">
                         <strong>${escapeHtml(p.productName)}</strong>
-                        <small>${escapeHtml(p.description || "No description")}</small>
+                        <small>${escapeHtml(p.description || "Consumption Context")}</small>
                     </span>
                 </button>
             </td>
@@ -222,53 +285,52 @@ function renderTable() {
             <td><div class="fps-materials-cell">${chips}</div></td>
             <td><span class="status ${status.cls}">${escapeHtml(status.label)}</span></td>
             <td class="fp-actions-cell">
-                <button type="button" class="btn-secondary btn-sm fp-view-btn" data-action="toggle" data-id="${escapeHtml(p.id)}" title="View raw materials">View</button>
-                <button type="button" class="btn-secondary btn-sm fp-edit-btn" data-action="edit" data-id="${escapeHtml(p.id)}">Edit</button>
-                <button type="button" class="btn-secondary btn-sm fp-delete-btn" data-action="delete" data-id="${escapeHtml(p.id)}">Remove</button>
+                <button type="button" class="btn-secondary btn-sm fp-view-btn" data-action="toggle" data-id="${escapeHtml(p.id)}" title="View raw materials consumed">View</button>
+                <button type="button" class="btn-secondary btn-sm fp-edit-btn" data-action="edit" data-id="${escapeHtml(p.id)}">Log Usage</button>
             </td>
         </tr>`;
     }).join("");
 
-    // Keep one expansion at a time and render detail rows.
     fpsTableBody.querySelectorAll(".fp-detail-row").forEach(el => el.remove());
 }
 
-function renderExpandedProduct(productId, trigger) {
-    const existing = fpsTableBody.querySelector(`.fp-detail-row[data-for="${CSS.escape(productId)}"]`);
+function renderExpandedProduct(productName, trigger) {
+    const existing = fpsTableBody.querySelector(`.fp-detail-row[data-for="${CSS.escape(productName)}"]`);
     if (existing) {
         existing.remove();
         if (trigger) trigger.setAttribute("aria-expanded", "false");
         return;
     }
 
-    // Remove any other expanded product.
     fpsTableBody.querySelectorAll(".fp-detail-row").forEach(el => el.remove());
     fpsTableBody.querySelectorAll(".fp-product-trigger, .fp-view-btn").forEach(el => el.setAttribute("aria-expanded", "false"));
 
-    const product = finishedProducts.find(p => p.id === productId);
+    const product = finishedProducts.find(p => p.productName === productName);
     if (!product) return;
 
-    const reqs = requirementsByProduct.get(productId) || [];
+    const consumedMats = consumptionByProduct.get(productName) || [];
     const detail = document.createElement("tr");
     detail.className = "fp-detail-row";
-    detail.dataset.for = productId;
+    detail.dataset.for = productName;
 
-    const rows = reqs.length ? reqs.map(r => {
+    const rows = consumedMats.length ? consumedMats.map(r => {
         const mat = materials.find(m => m.id === r.materialId);
-        const required = Number(r.requiredQuantity) || 0;
-        const stock = mat ? Number(mat.quantity) || 0 : 0;
-        const available = mat && stock >= required;
-        const stockState = !mat ? "Out of Stock" : stock <= 0 ? "Out of Stock" : available ? "Available" : "Insufficient";
-        const cls = stockState === "Available" ? "available" : "out";
+        const stock = mat ? Number(mat.current_stock) : 0;
+        const minThreshold = mat?.minimum_threshold !== null ? Number(mat?.minimum_threshold) : null;
+        let stockState = "Available";
+        if (stock <= 0) stockState = "Out of Stock";
+        else if (minThreshold !== null && stock < minThreshold) stockState = "Low Stock";
+        const cls = stockState === "Available" ? "available" : stockState === "Low Stock" ? "low" : "out";
+
         return `<tr>
-            <td><strong>${escapeHtml(mat?.materialName || "Missing material")}</strong></td>
-            <td>${escapeHtml(mat?.category || "—")}</td>
-            <td>${escapeHtml(formatQty(required))}</td>
-            <td>${escapeHtml(r.unit || mat?.unit || "—")}</td>
-            <td>${escapeHtml(formatQty(stock, mat?.unit || r.unit || ""))}</td>
+            <td><strong>${escapeHtml(r.materialName)}</strong></td>
+            <td>${escapeHtml(mat?.description || "—")}</td>
+            <td>${escapeHtml(formatQty(r.totalConsumed, r.unit))}</td>
+            <td>${escapeHtml(r.unit || "—")}</td>
+            <td>${escapeHtml(formatQty(stock, r.unit))}</td>
             <td><span class="status ${cls}">${escapeHtml(stockState)}</span></td>
         </tr>`;
-    }).join("") : `<tr><td colspan="6"><div class="empty-state"><span>No raw materials have been assigned to this product yet.</span></div></td></tr>`;
+    }).join("") : `<tr><td colspan="6"><div class="empty-state"><span>No raw materials recorded for this product yet.</span></div></td></tr>`;
 
     detail.innerHTML = `<td colspan="5">
         <div class="fp-expanded-panel">
@@ -276,22 +338,22 @@ function renderExpandedProduct(productId, trigger) {
                 ${productImageHtml(product, true)}
                 <div class="fp-expanded-copy">
                     <h4>${escapeHtml(product.productName)}</h4>
-                    <p>${escapeHtml(product.description || "No description provided.")}</p>
+                    <p>${escapeHtml(product.description || "Historical raw-material consumption context.")}</p>
                     <div class="fp-meta-line">
-                        <span>${escapeHtml(product.category || "Uncategorized")}</span>
-                        <span>${escapeHtml(product.unit || "No unit")}</span>
+                        <span>${escapeHtml(product.category || "Production")}</span>
+                        <span>${escapeHtml(product.unit || "batches")}</span>
                         <span class="status ${product.status === "Active" ? "available" : "low"}">${escapeHtml(product.status || "Active")}</span>
                     </div>
                 </div>
             </div>
             <div class="fp-expanded-materials">
                 <div class="fp-expanded-title">
-                    <strong>Raw Materials Required</strong>
-                    <span>${reqs.length} material${reqs.length === 1 ? "" : "s"}</span>
+                    <strong>Actual Raw Materials Consumed</strong>
+                    <span>${consumedMats.length} material${consumedMats.length === 1 ? "" : "s"} used</span>
                 </div>
                 <div class="table-scroll">
                     <table>
-                        <thead><tr><th>Raw Material</th><th>Category</th><th>Required Qty</th><th>Unit</th><th>Current Stock</th><th>Availability</th></tr></thead>
+                        <thead><tr><th>Raw Material</th><th>Category</th><th>Total Consumed</th><th>Unit</th><th>Current Stock Balance</th><th>Stock Status</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </div>
@@ -299,19 +361,22 @@ function renderExpandedProduct(productId, trigger) {
         </div>
     </td>`;
 
-    const mainRow = fpsTableBody.querySelector(`.fp-main-row[data-id="${CSS.escape(productId)}"]`);
+    const mainRow = fpsTableBody.querySelector(`.fp-main-row[data-id="${CSS.escape(productName)}"]`);
     mainRow?.after(detail);
     trigger?.setAttribute("aria-expanded", "true");
 }
 
 function resetImagePicker() {
     selectedImageData = null;
-    fpImageFile.value = "";
-    fpImagePreview.hidden = true;
-    fpImagePreview.innerHTML = "";
+    if (fpImageFile) fpImageFile.value = "";
+    if (fpImagePreview) {
+        fpImagePreview.hidden = true;
+        fpImagePreview.innerHTML = "";
+    }
 }
 
 function renderImagePreview(dataUrl) {
+    if (!fpImagePreview) return;
     if (!dataUrl) {
         fpImagePreview.hidden = true;
         fpImagePreview.innerHTML = "";
@@ -322,39 +387,35 @@ function renderImagePreview(dataUrl) {
 }
 
 function openModal(mode, product) {
-    fpModalTitle.textContent = mode === "edit" ? "Edit Finished Product" : "Add Finished Product";
-    fpModalSubtitle.textContent = mode === "edit"
-        ? "Update the product, image, and required raw materials."
-        : "Define a finished product and the raw materials it needs.";
+    if (!fpModalOverlay) return;
+    fpModalTitle.textContent = mode === "edit" ? `Record Usage for ${product?.productName || "Product"}` : "Add Finished Product Consumption";
+    fpModalSubtitle.textContent = "Log actual raw-material consumption under this finished product context.";
 
-    fpId.value = product?.id || "";
+    fpId.value = product?.productName || "";
     fpName.value = product?.productName || "";
-    fpCategoryNewWrap.hidden = true;
-    fpCategoryNew.value = "";
-    fpUnit.value = product?.unit || "";
-    fpDescription.value = product?.description || "";
-    fpStatus.value = product?.status || "Active";
-    fpNameError.textContent = "";
+    if (fpCategoryNewWrap) fpCategoryNewWrap.hidden = true;
+    if (fpCategoryNew) fpCategoryNew.value = "";
+    if (fpUnit) fpUnit.value = product?.unit || "batches";
+    if (fpDescription) fpDescription.value = product?.description || "";
+    if (fpStatus) fpStatus.value = product?.status || "Active";
+    if (fpNameError) fpNameError.textContent = "";
     selectedImageData = product?.imageUrl || null;
-    fpImageFile.value = "";
+    if (fpImageFile) fpImageFile.value = "";
     renderImagePreview(selectedImageData);
 
     renderCategoryOptions();
-    fpCategory.value = product?.category && [...fpCategory.options].some(o => o.value === product.category)
-        ? product.category : "";
+    if (fpCategory) {
+        fpCategory.value = product?.category && [...fpCategory.options].some(o => o.value === product.category)
+            ? product.category : "";
+    }
 
-    editingRequirements = product
-        ? (requirementsByProduct.get(product.id) || []).map(r => ({
-            materialId: r.materialId, requiredQuantity: r.requiredQuantity
-        }))
-        : [];
-
+    editingRequirements = [];
     renderRequirementsList();
     fpModalOverlay.classList.add("open");
 }
 
 function closeModal() {
-    fpModalOverlay.classList.remove("open");
+    if (fpModalOverlay) fpModalOverlay.classList.remove("open");
     resetImagePicker();
 }
 
@@ -364,6 +425,7 @@ function availableMaterialsFor(rowIndex) {
 }
 
 function renderRequirementsList() {
+    if (!fpRequirementsList || !fpRequirementsEmpty) return;
     fpRequirementsEmpty.hidden = editingRequirements.length > 0;
     fpRequirementsList.querySelectorAll(".fps-req-row").forEach(el => el.remove());
 
@@ -371,7 +433,7 @@ function renderRequirementsList() {
         const row = document.createElement("div");
         row.className = "fps-req-row";
         const options = availableMaterialsFor(index).map(m =>
-            `<option value="${escapeHtml(m.id)}" ${m.id === req.materialId ? "selected" : ""}>${escapeHtml(m.materialName)}</option>`
+            `<option value="${escapeHtml(m.id)}" ${m.id === req.materialId ? "selected" : ""}>${escapeHtml(m.materialName)} (Stock: ${m.current_stock} ${m.unit})</option>`
         ).join("");
         const selected = materials.find(m => m.id === req.materialId);
 
@@ -379,15 +441,15 @@ function renderRequirementsList() {
             <div class="input-group">
                 <label>Raw Material</label>
                 <select class="fp-req-material">
-                    <option value="">Select material</option>${options}
+                    <option value="">Select raw material</option>${options}
                 </select>
             </div>
             <div class="input-group">
-                <label>Required Quantity</label>
+                <label>Quantity to Disburse</label>
                 <input type="number" min="0.01" step="any" class="fp-req-qty" value="${escapeHtml(req.requiredQuantity ?? "")}" placeholder="0">
             </div>
-            <div class="fps-req-unit">${escapeHtml(selected?.unit || "")}</div>
-            <button type="button" class="fps-req-remove" title="Remove material">
+            <div class="fps-req-unit">${escapeHtml(selected?.unit || "kg")}</div>
+            <button type="button" class="fps-req-remove" title="Remove row">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </button>`;
 
@@ -406,33 +468,39 @@ function renderRequirementsList() {
     });
 }
 
-fpAddRequirementBtn.addEventListener("click", () => {
-    if (!materials.length) {
-        showToast("Add raw materials in Inventory first.", "warn");
-        return;
-    }
-    editingRequirements.push({ materialId: null, requiredQuantity: "" });
-    renderRequirementsList();
-});
+if (fpAddRequirementBtn) {
+    fpAddRequirementBtn.addEventListener("click", () => {
+        if (!materials.length) {
+            showToast("No raw materials found in catalog. Add materials in Inventory first.", "warn");
+            return;
+        }
+        editingRequirements.push({ materialId: null, requiredQuantity: "" });
+        renderRequirementsList();
+    });
+}
 
-fpCategory.addEventListener("change", () => {
-    fpCategoryNewWrap.hidden = fpCategory.value !== "__new__";
-});
+if (fpCategory) {
+    fpCategory.addEventListener("change", () => {
+        if (fpCategoryNewWrap) fpCategoryNewWrap.hidden = fpCategory.value !== "__new__";
+    });
+}
 
-fpImageFile.addEventListener("change", async () => {
-    const file = fpImageFile.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-        showToast("Please choose a valid image file.", "error");
-        return;
-    }
-    try {
-        selectedImageData = await compressImage(file);
-        renderImagePreview(selectedImageData);
-    } catch (err) {
-        showToast("Could not read the image.", "error");
-    }
-});
+if (fpImageFile) {
+    fpImageFile.addEventListener("change", async () => {
+        const file = fpImageFile.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            showToast("Please choose a valid image file.", "error");
+            return;
+        }
+        try {
+            selectedImageData = await compressImage(file);
+            renderImagePreview(selectedImageData);
+        } catch (err) {
+            showToast("Could not read the image.", "error");
+        }
+    });
+}
 
 async function compressImage(file, maxSize = 1000, quality = 0.82) {
     const dataUrl = await new Promise((resolve, reject) => {
@@ -456,202 +524,183 @@ async function compressImage(file, maxSize = 1000, quality = 0.82) {
     return canvas.toDataURL("image/jpeg", quality);
 }
 
-fpModalSave.addEventListener("click", async () => {
-    fpNameError.textContent = "";
-    const name = fpName.value.trim();
-    if (!name) {
-        fpNameError.textContent = "Finished product name is required.";
-        return;
-    }
+if (fpModalSave) {
+    fpModalSave.addEventListener("click", async () => {
+        if (fpNameError) fpNameError.textContent = "";
+        const name = fpName.value.trim();
+        if (!name) {
+            if (fpNameError) fpNameError.textContent = "Finished product name is required.";
+            return;
+        }
 
-    const duplicate = finishedProducts.find(p =>
-        String(p.productName || "").trim().toLowerCase() === name.toLowerCase() && p.id !== fpId.value
-    );
-    if (duplicate) {
-        fpNameError.textContent = "A finished product with this name already exists.";
-        return;
-    }
-
-    const cleanReqs = [];
-    const seen = new Set();
-    for (const r of editingRequirements) {
-        if (!r.materialId) {
-            if (r.requiredQuantity) {
-                showToast("Select a raw material for every requirement row.", "error");
+        const cleanDisbursements = [];
+        const seen = new Set();
+        for (const r of editingRequirements) {
+            if (!r.materialId) {
+                if (r.requiredQuantity) {
+                    showToast("Select a raw material for every row.", "error");
+                    return;
+                }
+                continue;
+            }
+            const qty = Number(r.requiredQuantity);
+            if (!Number.isFinite(qty) || qty <= 0) {
+                showToast("Disbursed quantity must be greater than 0.", "error");
                 return;
             }
-            continue;
+            if (seen.has(r.materialId)) {
+                showToast("A raw material can only be assigned once per entry.", "error");
+                return;
+            }
+            seen.add(r.materialId);
+            const mat = materials.find(m => m.id === r.materialId);
+            if (mat && qty > mat.current_stock) {
+                showToast(`Cannot disburse ${qty} ${mat.unit} of ${mat.materialName}. Current stock is only ${mat.current_stock} ${mat.unit}.`, "error");
+                return;
+            }
+            cleanDisbursements.push({
+                materialId: r.materialId,
+                quantity: qty,
+                unit: mat?.unit || "kg"
+            });
         }
-        const qty = Number(r.requiredQuantity);
-        if (!Number.isFinite(qty) || qty <= 0) {
-            showToast("Each required raw material needs a quantity greater than 0.", "error");
+
+        if (!cleanDisbursements.length) {
+            showToast("Please add at least one raw material to record consumption.", "warn");
             return;
         }
-        if (seen.has(r.materialId)) {
-            showToast("A raw material can only be assigned once to a product.", "error");
-            return;
+
+        fpModalSave.disabled = true;
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            for (const d of cleanDisbursements) {
+                const { error: rpcErr } = await supabase.rpc("record_material_disbursement_v2", {
+                    p_material_id: d.materialId,
+                    p_usage_date: today,
+                    p_quantity: d.quantity,
+                    p_unit: d.unit,
+                    p_activity_type: "Production",
+                    p_finished_product_name: name
+                });
+                if (rpcErr) throw rpcErr;
+            }
+
+            showToast(`Recorded consumption for ${name} successfully.`);
+            closeModal();
+            await loadAll();
+            window.dispatchEvent(new CustomEvent("rmims:inventory-changed"));
+        } catch (err) {
+            console.error(err);
+            showToast(err.message || "Could not record consumption.", "error");
+        } finally {
+            fpModalSave.disabled = false;
         }
-        seen.add(r.materialId);
-        const mat = materials.find(m => m.id === r.materialId);
-        cleanReqs.push({ materialId: r.materialId, requiredQuantity: qty, unit: mat?.unit || "" });
-    }
+    });
+}
 
-    const category = fpCategory.value === "__new__" ? fpCategoryNew.value.trim() : fpCategory.value;
-    const payload = {
-        productName: name,
-        category: category || null,
-        unit: fpUnit.value.trim() || null,
-        description: fpDescription.value.trim() || null,
-        imageUrl: selectedImageData || null,
-        status: fpStatus.value || "Active"
-    };
-
-    fpModalSave.disabled = true;
-    try {
-        let productId = fpId.value;
-        if (productId) {
-            await updateDoc(doc(db, "finishedProducts", productId), payload);
-        } else {
-            productId = (await addDoc(collection(db, "finishedProducts"), payload)).id;
+if (fpsTableBody) {
+    fpsTableBody.addEventListener("click", e => {
+        const action = e.target.closest("[data-action]");
+        if (!action) return;
+        const id = action.dataset.id;
+        if (action.dataset.action === "toggle") {
+            renderExpandedProduct(id, action);
+        } else if (action.dataset.action === "edit") {
+            const product = finishedProducts.find(p => p.productName === id);
+            if (product) openModal("edit", product);
         }
+    });
+}
 
-        const existing = requirementsByProduct.get(productId) || [];
-        await Promise.all(existing.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
-        await Promise.all(cleanReqs.map(r => addDoc(collection(db, "productMaterialRequirements"), {
-            productId, materialId: r.materialId, requiredQuantity: r.requiredQuantity, unit: r.unit
-        })));
+if (fpModalClose) fpModalClose.addEventListener("click", closeModal);
+if (fpModalCancel) fpModalCancel.addEventListener("click", closeModal);
+if (fpModalOverlay) fpModalOverlay.addEventListener("click", e => { if (e.target === fpModalOverlay) closeModal(); });
+if (addProductBtn) addProductBtn.addEventListener("click", () => openModal("add", null));
 
-        showToast(fpId.value ? "Finished product updated." : "Finished product added.");
-        closeModal();
-        await loadAll();
-    } catch (err) {
-        console.error(err);
-        showToast(err.message || "Could not save the finished product.", "error");
-    } finally {
-        fpModalSave.disabled = false;
-    }
-});
-
-fpsTableBody.addEventListener("click", e => {
-    const action = e.target.closest("[data-action]");
-    if (!action) return;
-    const id = action.dataset.id;
-    if (action.dataset.action === "toggle") {
-        renderExpandedProduct(id, action);
-    } else if (action.dataset.action === "edit") {
-        const product = finishedProducts.find(p => p.id === id);
-        if (product) openModal("edit", product);
-    } else if (action.dataset.action === "delete") {
-        pendingDeleteId = id;
-        fpConfirmModalOverlay.classList.add("open");
-    }
-});
-
-fpConfirmCancelBtn.addEventListener("click", () => {
-    pendingDeleteId = null;
-    fpConfirmModalOverlay.classList.remove("open");
-});
-
-fpConfirmOkBtn.addEventListener("click", async () => {
-    if (!pendingDeleteId) return;
-    fpConfirmOkBtn.disabled = true;
-    try {
-        const reqs = requirementsByProduct.get(pendingDeleteId) || [];
-        await Promise.all(reqs.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
-        await deleteDoc(doc(db, "finishedProducts", pendingDeleteId));
-        showToast("Finished product removed.");
-        fpConfirmModalOverlay.classList.remove("open");
-        pendingDeleteId = null;
-        await loadAll();
-    } catch (err) {
-        console.error(err);
-        showToast(err.message || "Could not remove this product.", "error");
-    } finally {
-        fpConfirmOkBtn.disabled = false;
-    }
-});
-
-fpModalClose.addEventListener("click", closeModal);
-fpModalCancel.addEventListener("click", closeModal);
-fpModalOverlay.addEventListener("click", e => { if (e.target === fpModalOverlay) closeModal(); });
-addProductBtn.addEventListener("click", () => openModal("add", null));
-
-fpsToggle.addEventListener("click", () => {
-    const expanded = fpsToggle.getAttribute("aria-expanded") === "true";
-    fpsToggle.setAttribute("aria-expanded", String(!expanded));
-    fpsBody.hidden = expanded;
-    if (!expanded) loadAll();
-});
+if (fpsToggle) {
+    fpsToggle.addEventListener("click", () => {
+        const expanded = fpsToggle.getAttribute("aria-expanded") === "true";
+        fpsToggle.setAttribute("aria-expanded", String(!expanded));
+        if (fpsBody) fpsBody.hidden = expanded;
+        if (!expanded) loadAll();
+    });
+}
 
 /* ==========================================================
-   BULK IMPORT
+   BULK IMPORT FINISHED PRODUCT CONSUMPTION
    ========================================================== */
 
 function resetImportState() {
     importDataRows = [];
     importImages = [];
     importImageMap = new Map();
-    fpImportDataFile.value = "";
-    fpImportImagesFiles.value = "";
-    fpImportDataName.textContent = "No data file selected.";
-    fpImportImagesName.textContent = "No images selected.";
-    fpImportImageMatches.innerHTML = "";
-    fpImportPreviewSection.hidden = true;
-    fpImportSummary.innerHTML = "";
-    fpImportWarnings.innerHTML = "";
-    fpImportPreviewBody.innerHTML = "";
-    fpImportConfirmBtn.disabled = true;
+    if (fpImportDataFile) fpImportDataFile.value = "";
+    if (fpImportImagesFiles) fpImportImagesFiles.value = "";
+    if (fpImportDataName) fpImportDataName.textContent = "No data file selected.";
+    if (fpImportImagesName) fpImportImagesName.textContent = "No images selected.";
+    if (fpImportImageMatches) fpImportImageMatches.innerHTML = "";
+    if (fpImportPreviewSection) fpImportPreviewSection.hidden = true;
+    if (fpImportSummary) fpImportSummary.innerHTML = "";
+    if (fpImportWarnings) fpImportWarnings.innerHTML = "";
+    if (fpImportPreviewBody) fpImportPreviewBody.innerHTML = "";
+    if (fpImportConfirmBtn) fpImportConfirmBtn.disabled = true;
     setImportGuideStep(1);
 }
 
 function openImportModal() {
     resetImportState();
-    fpImportModalOverlay.classList.add("open");
+    if (fpImportModalOverlay) fpImportModalOverlay.classList.add("open");
 }
 
 function closeImportModal() {
-    fpImportModalOverlay.classList.remove("open");
+    if (fpImportModalOverlay) fpImportModalOverlay.classList.remove("open");
 }
 
-fpsImportBtn.addEventListener("click", openImportModal);
-fpImportModalClose.addEventListener("click", closeImportModal);
-fpImportCancelBtn.addEventListener("click", closeImportModal);
-fpImportModalOverlay.addEventListener("click", e => {
-    if (e.target === fpImportModalOverlay) closeImportModal();
-});
-fpChooseDataBtn.addEventListener("click", () => fpImportDataFile.click());
-fpChooseImagesBtn.addEventListener("click", () => fpImportImagesFiles.click());
+if (fpsImportBtn) fpsImportBtn.addEventListener("click", openImportModal);
+if (fpImportModalClose) fpImportModalClose.addEventListener("click", closeImportModal);
+if (fpImportCancelBtn) fpImportCancelBtn.addEventListener("click", closeImportModal);
+if (fpImportModalOverlay) {
+    fpImportModalOverlay.addEventListener("click", e => {
+        if (e.target === fpImportModalOverlay) closeImportModal();
+    });
+}
+if (fpChooseDataBtn) fpChooseDataBtn.addEventListener("click", () => fpImportDataFile?.click());
+if (fpChooseImagesBtn) fpChooseImagesBtn.addEventListener("click", () => fpImportImagesFiles?.click());
 
-fpImportDataFile.addEventListener("change", async () => {
-    const file = fpImportDataFile.files?.[0];
-    if (!file) return;
-    fpImportDataName.textContent = file.name;
-    try {
-        importDataRows = await parseImportFile(file);
-        showToast(`${importDataRows.length} data row${importDataRows.length === 1 ? "" : "s"} loaded successfully.`, "success");
-        setImportGuideStep(2);
-        runImportPreviewUI();
-    } catch (err) {
-        importDataRows = [];
-        showToast(err.message || "Could not read the import file.", "error");
-        runImportPreviewUI();
-    }
-});
-
-fpImportImagesFiles.addEventListener("change", async () => {
-    importImages = [...(fpImportImagesFiles.files || [])];
-    fpImportImagesName.textContent = `${importImages.length} image${importImages.length === 1 ? "" : "s"} selected.`;
-    importImageMap = new Map();
-    for (const file of importImages) {
+if (fpImportDataFile) {
+    fpImportDataFile.addEventListener("change", async () => {
+        const file = fpImportDataFile.files?.[0];
+        if (!file) return;
+        if (fpImportDataName) fpImportDataName.textContent = file.name;
         try {
-            importImageMap.set(normalizeName(fileNameWithoutExtension(file.name)), await compressImage(file));
+            importDataRows = await parseImportFile(file);
+            showToast(`${importDataRows.length} data row${importDataRows.length === 1 ? "" : "s"} loaded successfully.`, "success");
+            setImportGuideStep(2);
+            runImportPreviewUI();
         } catch (err) {
-            console.warn("Image skipped:", file.name, err);
+            importDataRows = [];
+            showToast(err.message || "Could not read the import file.", "error");
+            runImportPreviewUI();
         }
-    }
-    setImportGuideStep(3);
-    runImportPreviewUI();
-});
+    });
+}
+
+if (fpImportImagesFiles) {
+    fpImportImagesFiles.addEventListener("change", async () => {
+        importImages = [...(fpImportImagesFiles.files || [])];
+        if (fpImportImagesName) fpImportImagesName.textContent = `${importImages.length} image${importImages.length === 1 ? "" : "s"} selected.`;
+        importImageMap = new Map();
+        for (const file of importImages) {
+            try {
+                importImageMap.set(normalizeName(fileNameWithoutExtension(file.name)), await compressImage(file));
+            } catch (err) {
+                console.warn("Image skipped:", file.name, err);
+            }
+        }
+        setImportGuideStep(3);
+        runImportPreviewUI();
+    });
+}
 
 async function parseImportFile(file) {
     if (typeof XLSX === "undefined") throw new Error("Spreadsheet importer is unavailable.");
@@ -698,7 +747,7 @@ async function parseImportFile(file) {
                     prod: prodIdx,
                     mat: matIdx,
                     cat: rowVals.findIndex(h => h.includes("category")),
-                    qty: rowVals.findIndex(h => h.includes("quantity") || h.includes("qty") || h.includes("used") || h.includes("amount")),
+                    qty: rowVals.findIndex(h => h.includes("quantity") || h.includes("qty") || h.includes("used") || h.includes("amount") || h.includes("consumed")),
                     unit: rowVals.findIndex(h => h.includes("unit")),
                     supplier: rowVals.findIndex(h => h.includes("supplier"))
                 };
@@ -792,7 +841,7 @@ function buildImportGroups() {
             });
         }
         const g = groups.get(key);
-        const qty = Number(value(row, "required quantity", "quantity", "required qty")) || 1;
+        const qty = Number(value(row, "required quantity", "quantity", "required qty", "consumed quantity", "used")) || 1;
         g.materials.push({
             name: materialName,
             category: value(row, "raw material category", "material category"),
@@ -810,8 +859,8 @@ function buildImportGroups() {
 
 function renderImageMatchPreview() {
     const groups = buildImportGroups();
-    if (!groups.length || !importImageMap.size) {
-        fpImportImageMatches.innerHTML = "";
+    if (!groups.length || !importImageMap.size || !fpImportImageMatches) {
+        if (fpImportImageMatches) fpImportImageMatches.innerHTML = "";
         return;
     }
     const html = groups.map(g => {
@@ -840,14 +889,12 @@ function buildImportPreview() {
 
     groups.forEach(g => {
         const image = getImageForProduct(g.productName);
-        if (image) {
-            matchedImages++;
-        }
+        if (image) matchedImages++;
 
         const seen = new Set();
         g.materials.forEach(m => {
             materialEntries++;
-            if (!Number.isFinite(m.quantity) || m.quantity <= 0) warnings.push(`${g.productName}: invalid required quantity for ${m.name}.`);
+            if (!Number.isFinite(m.quantity) || m.quantity <= 0) warnings.push(`${g.productName}: invalid consumption quantity for ${m.name}.`);
             const existing = inventoryMatch(m.name);
             if (!existing) missingMaterials++;
             const k = normalizeName(m.name);
@@ -862,8 +909,8 @@ function buildImportPreview() {
         }
     }
 
-    if (unmatchedImages) warnings.push(`${unmatchedImages} uploaded image${unmatchedImages === 1 ? "" : "s"} did not match a product name in this file.`);
-    if (missingMaterials) warnings.push(`${missingMaterials} raw-material reference${missingMaterials === 1 ? "" : "s"} will be auto-linked or created in Inventory.`);
+    if (unmatchedImages) warnings.push(`${unmatchedImages} uploaded image${unmatchedImages === 1 ? "" : "s"} did not match a product name.`);
+    if (missingMaterials) warnings.push(`${missingMaterials} raw-material reference${missingMaterials === 1 ? "" : "s"} must exist in Inventory before logging consumption.`);
     if (!groups.length) warnings.push("No valid finished-product rows were found.");
     return { groups, warnings, materialEntries, missingMaterials, matchedImages, unmatchedImages };
 }
@@ -872,149 +919,104 @@ function runImportPreviewUI() {
     setImportGuideStep(3);
     const preview = buildImportPreview();
     if (!preview.groups.length) {
-        fpImportConfirmBtn.disabled = true;
-        fpImportPreviewSection.hidden = false;
-        fpImportSummary.innerHTML = `<div class="fp-import-stat error"><strong>0</strong><span>finished products</span></div>`;
-        fpImportWarnings.innerHTML = `<div class="field-error">${escapeHtml(preview.warnings[0] || "No valid data found.")}</div>`;
-        fpImportPreviewBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px 0; color:var(--rm-ink-dim);">No finished product preview rows generated. Please select a valid Excel file.</td></tr>`;
+        if (fpImportConfirmBtn) fpImportConfirmBtn.disabled = true;
+        if (fpImportPreviewSection) fpImportPreviewSection.hidden = false;
+        if (fpImportSummary) fpImportSummary.innerHTML = `<div class="fp-import-stat error"><strong>0</strong><span>finished products</span></div>`;
+        if (fpImportWarnings) fpImportWarnings.innerHTML = `<div class="field-error">${escapeHtml(preview.warnings[0] || "No valid data found.")}</div>`;
+        if (fpImportPreviewBody) fpImportPreviewBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px 0; color:var(--rm-ink-dim);">No finished product preview rows generated.</td></tr>`;
         return;
     }
 
-    fpImportPreviewSection.hidden = false;
-    fpImportConfirmBtn.disabled = false;
-    fpImportSummary.innerHTML = `
-        <div class="fp-import-stat"><strong>${preview.groups.length}</strong><span>finished products</span></div>
-        <div class="fp-import-stat"><strong>${preview.materialEntries}</strong><span>raw-material entries</span></div>
-        <div class="fp-import-stat"><strong>${preview.matchedImages}</strong><span>images matched</span></div>
-        <div class="fp-import-stat"><strong>${preview.missingMaterials}</strong><span>materials to add</span></div>`;
+    if (fpImportPreviewSection) fpImportPreviewSection.hidden = false;
+    if (fpImportConfirmBtn) fpImportConfirmBtn.disabled = false;
+    if (fpImportSummary) {
+        fpImportSummary.innerHTML = `
+            <div class="fp-import-stat"><strong>${preview.groups.length}</strong><span>finished products</span></div>
+            <div class="fp-import-stat"><strong>${preview.materialEntries}</strong><span>raw-material entries</span></div>
+            <div class="fp-import-stat"><strong>${preview.matchedImages}</strong><span>images matched</span></div>
+            <div class="fp-import-stat"><strong>${preview.missingMaterials}</strong><span>unmatched materials</span></div>`;
+    }
 
-    fpImportWarnings.innerHTML = preview.warnings.length
-        ? preview.warnings.map(w => `<div class="fp-import-warning">⚠ ${escapeHtml(w)}</div>`).join("")
-        : `<div class="fp-import-success">✓ No validation issues found. All records ready for import.</div>`;
+    if (fpImportWarnings) {
+        fpImportWarnings.innerHTML = preview.warnings.length
+            ? preview.warnings.map(w => `<div class="fp-import-warning">⚠ ${escapeHtml(w)}</div>`).join("")
+            : `<div class="fp-import-success">✓ Ready to record finished-product consumption.</div>`;
+    }
 
-    fpImportPreviewBody.innerHTML = preview.groups.flatMap(g => g.materials.map(m => {
-        const existing = inventoryMatch(m.name);
-        const image = getImageForProduct(g.productName);
-        return `<tr>
-            <td>${image ? `<img class="fp-import-mini-image" src="${escapeHtml(image)}" alt="${escapeHtml(g.productName)}">` : `<span class="fp-product-avatar fp-product-avatar-mini" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></span>`}</td>
-            <td><strong>${escapeHtml(g.productName)}</strong></td>
-            <td>${escapeHtml(g.category || "—")}</td>
-            <td>${escapeHtml(m.name)}</td>
-            <td>${escapeHtml(formatQty(m.quantity, m.unit))}</td>
-            <td>${existing ? `<span class="status available">Link existing</span>` : `<span class="status low">Add to Inventory</span>`}</td>
-        </tr>`;
-    })).join("");
+    if (fpImportPreviewBody) {
+        fpImportPreviewBody.innerHTML = preview.groups.flatMap(g => g.materials.map(m => {
+            const existing = inventoryMatch(m.name);
+            const image = getImageForProduct(g.productName);
+            return `<tr>
+                <td>${image ? `<img class="fp-import-mini-image" src="${escapeHtml(image)}" alt="${escapeHtml(g.productName)}">` : `<span class="fp-product-avatar fp-product-avatar-mini" aria-label="Product avatar"><span>${escapeHtml(productInitials(g.productName))}</span></span>`}</td>
+                <td><strong>${escapeHtml(g.productName)}</strong></td>
+                <td>${escapeHtml(g.category || "—")}</td>
+                <td>${escapeHtml(m.name)}</td>
+                <td>${escapeHtml(formatQty(m.quantity, m.unit))}</td>
+                <td>${existing ? `<span class="status available">Disburse from stock</span>` : `<span class="status low">Material not in Catalog</span>`}</td>
+            </tr>`;
+        })).join("");
+    }
 
     renderImageMatchPreview();
     setImportGuideStep(4);
 }
 
-fpImportPreviewBtn.addEventListener("click", runImportPreviewUI);
+if (fpImportPreviewBtn) fpImportPreviewBtn.addEventListener("click", runImportPreviewUI);
 
-fpImportConfirmBtn.addEventListener("click", async () => {
-    const preview = buildImportPreview();
-    if (!preview.groups.length || preview.warnings.some(w => /invalid required quantity/i.test(w))) return;
+if (fpImportConfirmBtn) {
+    fpImportConfirmBtn.addEventListener("click", async () => {
+        const preview = buildImportPreview();
+        if (!preview.groups.length || preview.warnings.some(w => /invalid consumption quantity/i.test(w))) return;
 
-    fpImportConfirmBtn.disabled = true;
-    try {
-        // 1. Create missing inventory materials first.
-        const materialByName = new Map(materials.map(m => [normalizeName(m.materialName), m]));
-        for (const g of preview.groups) {
-            for (const m of g.materials) {
-                const key = normalizeName(m.name);
-                if (materialByName.has(key)) continue;
+        fpImportConfirmBtn.disabled = true;
+        let successCount = 0;
+        let errorCount = 0;
+        const today = new Date().toISOString().slice(0, 10);
 
-                const created = await addDoc(collection(db, "materials"), {
-                    materialName: m.name,
-                    category: m.category || "Uncategorized",
-                    unit: m.unit || "pcs",
-                    quantity: 0,
-                    minimumThreshold: Math.max(0, m.minimum),
-                    supplier: m.supplier || null,
-                    storageLocation: m.storageLocation || null,
-                    notes: m.notes || null,
-                    status: "Available"
-                });
-                materialByName.set(key, {
-                    id: created.id,
-                    materialName: m.name,
-                    category: m.category || "Uncategorized",
-                    unit: m.unit || "pcs",
-                    quantity: 0,
-                    minimumThreshold: Math.max(0, m.minimum),
-                    status: "Available"
-                });
-            }
-        }
-
-        // 2. Upsert finished products by name (case-insensitive).
-        for (const g of preview.groups) {
-            const existing = finishedProducts.find(p => normalizeName(p.productName) === normalizeName(g.productName));
-            const image = getImageForProduct(g.productName);
-            const payload = {
-                productName: g.productName,
-                category: g.category || null,
-                unit: g.unit || null,
-                status: g.status === "Inactive" ? "Inactive" : "Active"
-            };
-
-            if (g.description) payload.description = g.description;
-            const finalImage = image || existing?.imageUrl;
-            if (finalImage) payload.imageUrl = finalImage;
-
-            let productId;
-            try {
-                if (existing) {
-                    await updateDoc(doc(db, "finishedProducts", existing.id), payload);
-                    productId = existing.id;
-                    const oldReqs = requirementsByProduct.get(productId) || [];
-                    await Promise.all(oldReqs.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
-                } else {
-                    productId = (await addDoc(collection(db, "finishedProducts"), payload)).id;
-                }
-            } catch (saveErr) {
-                if (saveErr && saveErr.message && saveErr.message.includes("description")) {
-                    const fallbackPayload = { ...payload };
-                    delete fallbackPayload.description;
-                    if (existing) {
-                        await updateDoc(doc(db, "finishedProducts", existing.id), fallbackPayload);
-                        productId = existing.id;
-                        const oldReqs = requirementsByProduct.get(productId) || [];
-                        await Promise.all(oldReqs.map(r => deleteDoc(doc(db, "productMaterialRequirements", r.id))));
-                    } else {
-                        productId = (await addDoc(collection(db, "finishedProducts"), fallbackPayload)).id;
+        try {
+            for (const g of preview.groups) {
+                for (const m of g.materials) {
+                    const mat = inventoryMatch(m.name);
+                    if (!mat) {
+                        errorCount++;
+                        continue;
                     }
-                } else {
-                    throw saveErr;
+
+                    const { error: rpcErr } = await supabase.rpc("record_material_disbursement_v2", {
+                        p_material_id: mat.id,
+                        p_usage_date: today,
+                        p_quantity: m.quantity,
+                        p_unit: mat.unit || m.unit || "kg",
+                        p_activity_type: "Production",
+                        p_finished_product_name: g.productName
+                    });
+
+                    if (rpcErr) {
+                        console.warn("Disbursement import error:", rpcErr);
+                        errorCount++;
+                    } else {
+                        successCount++;
+                    }
                 }
             }
 
-            const seen = new Set();
-            for (const m of g.materials) {
-                const mat = materialByName.get(normalizeName(m.name));
-                if (!mat || seen.has(mat.id)) continue;
-                seen.add(mat.id);
-                await addDoc(collection(db, "productMaterialRequirements"), {
-                    productId,
-                    materialId: mat.id,
-                    requiredQuantity: m.quantity,
-                    unit: mat.unit || m.unit || ""
-                });
-            }
+            showToast(`Imported consumption: ${successCount} entries processed${errorCount > 0 ? `, ${errorCount} errors` : ""}.`);
+            closeImportModal();
+            await loadAll();
+            window.dispatchEvent(new CustomEvent("rmims:inventory-changed"));
+        } catch (err) {
+            console.error(err);
+            showToast(err.message || "Import failed.", "error");
+        } finally {
+            fpImportConfirmBtn.disabled = false;
         }
+    });
+}
 
-        showToast(`Imported ${preview.groups.length} finished product${preview.groups.length === 1 ? "" : "s"} successfully.`);
-        closeImportModal();
-        await loadAll();
-        // Inventory table refresh is handled by the main inventory page listener/refresh.
-        window.dispatchEvent(new CustomEvent("rmims:inventory-changed"));
-    } catch (err) {
-        console.error(err);
-        showToast(err.message || "Import failed. No further records were processed.", "error");
-    } finally {
-        fpImportConfirmBtn.disabled = false;
-    }
-});
+/* ==========================================================
+   ROLE GUARD
+   ========================================================== */
 
 onAuthStateChanged(auth, async user => {
     if (!user) {
@@ -1022,9 +1024,13 @@ onAuthStateChanged(auth, async user => {
         return;
     }
     try {
-        const snap = await getDocs(collection(db, "users"));
-        const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
-        if (!profile || profile.status !== "active") {
+        const { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, role, status")
+            .eq("id", user.uid)
+            .single();
+
+        if (error || !profile || profile.status !== "active") {
             window.location.href = "../login.html";
             return;
         }

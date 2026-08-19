@@ -1,16 +1,16 @@
+import os
+import re
+import json
+import math
+import joblib
+import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from supabase import create_client
-import joblib
-import json
-import math
-import os
-import pandas as pd
 from statsmodels.tsa.ar_model import AutoReg
 
-
 # ============================================================
-# FLASK APPLICATION
+# FLASK APPLICATION CONFIGURATION
 # ============================================================
 
 app = Flask(__name__)
@@ -20,83 +20,180 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # ============================================================
-# SUPABASE CONFIGURATION
+# SUPABASE CONFIGURATION (STRICT ENVIRONMENT VARIABLES ONLY)
+# ============================================================
+# Per RMIMS V2 Phase 7 Security Rules: No hardcoded credentials in source code.
+# The server must obtain credentials from environment variables and fail clearly if missing.
+
+# Read environment configuration if available
+env_path = os.path.join(os.path.dirname(BASE_DIR), ".env")
+if os.path.exists(env_path):
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+    except Exception:
+        pass
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "CRITICAL CONFIGURATION ERROR: 'SUPABASE_URL' and 'SUPABASE_KEY' (or 'SUPABASE_ANON_KEY') "
+        "environment variables must be set. Hardcoded credential fallbacks are strictly prohibited."
+    )
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+# ============================================================
+# AUTHORITATIVE PHASE 6 MATERIAL REGISTRY (NON-ALPHABETICAL)
 # ============================================================
 
-DEFAULT_SUPABASE_URL = "https://zdslycwczwfsjdxkwokt.supabase.co"
-DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpkc2x5Y3djendmc2pkeGt3b2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNDQ4NzUsImV4cCI6MjEwMTcyMDg3NX0.ov_FvAiAuMmr651Yy2kf9Tnp6qctIHYddRVx9HathU0"
+AUTHORITATIVE_MATERIALS = [
+    {"material_id": "RM001", "raw_material_name": "Chiton", "unit": "kg"},
+    {"material_id": "RM002", "raw_material_name": "Salt", "unit": "kg"},
+    {"material_id": "RM003", "raw_material_name": "Ground Pepper", "unit": "kg"},
+    {"material_id": "RM004", "raw_material_name": "Crushed Garlic", "unit": "kg"},
+    {"material_id": "RM005", "raw_material_name": "Optional Spices or Flavorings", "unit": "kg"},
+    {"material_id": "RM006", "raw_material_name": "Cooking Oil", "unit": "L"},
+    {"material_id": "RM007", "raw_material_name": "Small Shrimp", "unit": "kg"},
+    {"material_id": "RM008", "raw_material_name": "Garlic", "unit": "kg"},
+    {"material_id": "RM009", "raw_material_name": "Onion", "unit": "kg"},
+    {"material_id": "RM010", "raw_material_name": "Spring Onion", "unit": "kg"},
+    {"material_id": "RM011", "raw_material_name": "Cabbage", "unit": "kg"},
+    {"material_id": "RM012", "raw_material_name": "Carrots", "unit": "kg"},
+    {"material_id": "RM013", "raw_material_name": "Bell Pepper", "unit": "kg"},
+    {"material_id": "RM014", "raw_material_name": "Soy Sauce", "unit": "L"},
+    {"material_id": "RM015", "raw_material_name": "Sesame Oil", "unit": "L"},
+    {"material_id": "RM016", "raw_material_name": "Oyster Sauce", "unit": "L"},
+    {"material_id": "RM017", "raw_material_name": "Chicken", "unit": "kg"},
+    {"material_id": "RM018", "raw_material_name": "Pork", "unit": "kg"},
+    {"material_id": "RM019", "raw_material_name": "Loaf Bread", "unit": "loaf"},
+    {"material_id": "RM020", "raw_material_name": "Butter or Margarine", "unit": "kg"},
+    {"material_id": "RM021", "raw_material_name": "Sugar", "unit": "kg"},
+    {"material_id": "RM022", "raw_material_name": "Pork Skin", "unit": "kg"},
+    {"material_id": "RM023", "raw_material_name": "Raw Bananas", "unit": "kg"},
+    {"material_id": "RM024", "raw_material_name": "Turmeric Powder", "unit": "kg"},
+    {"material_id": "RM025", "raw_material_name": "Water", "unit": "L"},
+    {"material_id": "RM026", "raw_material_name": "White Sugar", "unit": "kg"},
+    {"material_id": "RM027", "raw_material_name": "Peanuts", "unit": "kg"},
+    {"material_id": "RM028", "raw_material_name": "Sea Salt", "unit": "kg"},
+    {"material_id": "RM029", "raw_material_name": "Honey", "unit": "L"},
+    {"material_id": "RM030", "raw_material_name": "Oil", "unit": "L"},
+]
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", DEFAULT_SUPABASE_KEY)
-
-print("Flask Supabase URL:", SUPABASE_URL)
-print("Flask Supabase key length:", len(SUPABASE_KEY))
-
-supabase = create_client(
-    SUPABASE_URL,
-    SUPABASE_KEY
-)
+EXPECTED_MODELS_COUNT = 30
+EXPECTED_TRAINING_START = "2025-01-01"
+EXPECTED_TRAINING_END = "2026-08-09"
+SUPPORTED_UNITS = ["kg", "L", "loaf"]
 
 
 # ============================================================
-# AUTOREG PRODUCTION MODEL PACKAGE LOADER
+# FAIL-FAST MODEL REGISTRY & LOADER (RMIMS_FINAL_MODELS ONLY)
 # ============================================================
 
-AUTOREG_DIR = os.path.join(BASE_DIR, "models", "autoreg")
-METADATA_PATH = os.path.join(AUTOREG_DIR, "model_metadata.json")
-CONFIG_PATH = os.path.join(AUTOREG_DIR, "RMIMS_training_config.json")
+FINAL_MODELS_DIR = os.path.join(BASE_DIR, "models", "RMIMS_FINAL_MODELS")
 
-# Load training configuration and metadata
-training_config = {}
-if os.path.exists(CONFIG_PATH):
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        training_config = json.load(f)
+if not os.path.exists(FINAL_MODELS_DIR):
+    raise RuntimeError(
+        f"CRITICAL ERROR: Approved model directory missing at '{FINAL_MODELS_DIR}'. "
+        f"Legacy 'models/autoreg' is NOT used as fallback."
+    )
 
-model_metadata = {}
-if os.path.exists(METADATA_PATH):
-    with open(METADATA_PATH, "r", encoding="utf-8") as f:
-        model_metadata = json.load(f)
-
-# In-memory model cache for the 30 AutoReg models
 autoreg_models = {}
+model_registry_list = []
 
-for material_key, meta in model_metadata.items():
-    rel_file = meta.get("model_file", "")
-    filename = os.path.basename(rel_file)
-    pkl_path = os.path.join(AUTOREG_DIR, filename)
+for item in AUTHORITATIVE_MATERIALS:
+    rm_id = item["material_id"]
+    mat_name = item["raw_material_name"]
+    unit = item["unit"]
+    filename = f"{rm_id}_AutoReg.pkl"
+    pkl_path = os.path.join(FINAL_MODELS_DIR, filename)
 
-    if os.path.exists(pkl_path):
-        try:
-            model_obj = joblib.load(pkl_path)
-            trend_setting = getattr(model_obj.model, "trend", "ct")
-            entry = {
-                "material": meta.get("material", material_key),
-                "unit": meta.get("unit", "kg"),
-                "model_name": meta.get("model", "AutoReg"),
-                "lags": meta.get("lags", 7),
-                "trend": trend_setting,
-                "frequency": meta.get("frequency", "weekly"),
-                "training_start": meta.get("training_start", "2025-01-05"),
-                "training_end": meta.get("training_end", "2026-08-16"),
-                "observations": meta.get("observations", 85),
-                "model": model_obj
-            }
-            autoreg_models[material_key] = entry
-            autoreg_models[material_key.lower().strip()] = entry
-        except Exception as e:
-            print(f"Warning: Failed to load model for {material_key} from {pkl_path}: {e}")
-    else:
-        print(f"Warning: Model file not found for {material_key} at {pkl_path}")
+    if not os.path.exists(pkl_path):
+        raise RuntimeError(
+            f"CRITICAL ERROR: Expected final model file '{filename}' for {rm_id} ({mat_name}) "
+            f"not found in '{FINAL_MODELS_DIR}'. Fail-fast engaged."
+        )
 
-print(f"AutoReg Production Package loaded successfully. Cached models: {len(model_metadata)}")
+    try:
+        model_obj = joblib.load(pkl_path)
+    except Exception as e:
+        raise RuntimeError(
+            f"CRITICAL ERROR: Failed to deserialize final model '{filename}' for {rm_id}: {e}"
+        )
+
+    cls_name = model_obj.__class__.__name__
+    if cls_name != "AutoRegResultsWrapper":
+        raise RuntimeError(
+            f"CRITICAL ERROR: Model '{filename}' for {rm_id} is '{cls_name}', expected 'AutoRegResultsWrapper'."
+        )
+
+    endog = model_obj.model.data.orig_endog
+    obs_count = len(endog)
+    start_dt = str(endog.index[0])[:10]
+    end_dt = str(endog.index[-1])[:10]
+
+    if end_dt != EXPECTED_TRAINING_END:
+        raise RuntimeError(
+            f"CRITICAL ERROR: Model '{filename}' training end date is '{end_dt}', expected '{EXPECTED_TRAINING_END}'."
+        )
+
+    lags_params = [k for k in model_obj.params.index if "quantity_consumed.L" in k]
+    lag_count = len(lags_params) if lags_params else 7
+    trend_setting = "ct" if ("const" in model_obj.params and "trend" in model_obj.params) else "c"
+
+    entry = {
+        "material_id": rm_id,
+        "item_code": rm_id,
+        "material": mat_name,
+        "raw_material_name": mat_name,
+        "unit": unit,
+        "model_type": "AutoReg",
+        "lags": lag_count,
+        "trend": trend_setting,
+        "training_start": start_dt,
+        "training_end": end_dt,
+        "observations": obs_count,
+        "model_status": "trained",
+        "model": model_obj,
+    }
+
+    autoreg_models[rm_id] = entry
+    autoreg_models[rm_id.lower()] = entry
+    autoreg_models[mat_name] = entry
+    autoreg_models[mat_name.lower().strip()] = entry
+
+    model_registry_list.append({
+        "material_id": rm_id,
+        "raw_material_name": mat_name,
+        "unit": unit,
+        "model_status": "trained",
+        "lags": lag_count,
+        "training_start": start_dt,
+        "training_end": end_dt,
+        "observations": obs_count,
+    })
+
+if len(model_registry_list) != EXPECTED_MODELS_COUNT:
+    raise RuntimeError(
+        f"CRITICAL ERROR: Expected {EXPECTED_MODELS_COUNT} models, loaded {len(model_registry_list)}."
+    )
+
+print(
+    f"[SUCCESS] RMIMS V2 Model Registry: {len(model_registry_list)}/{EXPECTED_MODELS_COUNT} "
+    f"AutoReg models loaded from RMIMS_FINAL_MODELS (Training Cutoff: {EXPECTED_TRAINING_END})."
+)
 
 
 # ============================================================
 # HELPER & VALIDATION FUNCTIONS
 # ============================================================
-
-SUPPORTED_UNITS = ["kg", "L", "loaf"]
-
 
 def normalize_unit(unit_str):
     """Normalize common unit variants into standard model units (kg, L, loaf)."""
@@ -114,21 +211,39 @@ def normalize_unit(unit_str):
 
 def is_unit_compatible(received_unit, expected_unit):
     """Check if received material unit matches expected trained model unit."""
-    norm_rec = normalize_unit(received_unit)
-    norm_exp = normalize_unit(expected_unit)
-    return norm_rec == norm_exp
+    return normalize_unit(received_unit) == normalize_unit(expected_unit)
 
 
-def get_material_model(material_name):
-    """Retrieve the AutoReg model entry for a material name."""
-    if not material_name:
+def get_material_model(query_identifier):
+    """
+    Retrieve model entry dynamically by material_id (RM001..RM030), material name,
+    or composite identifier (e.g. 'Sugar (RM021)').
+    """
+    if not query_identifier:
         return None
-    key = str(material_name).strip()
-    if key in autoreg_models:
-        return autoreg_models[key]
-    key_lower = key.lower()
-    if key_lower in autoreg_models:
-        return autoreg_models[key_lower]
+    q = str(query_identifier).strip()
+
+    # 1. Exact match
+    if q in autoreg_models:
+        return autoreg_models[q]
+    q_lower = q.lower()
+    if q_lower in autoreg_models:
+        return autoreg_models[q_lower]
+
+    # 2. Extract embedded RM-code (e.g. from 'Sugar (RM021)' -> 'RM021')
+    m_code = re.search(r"\b(RM\d{3})\b", q, re.IGNORECASE)
+    if m_code:
+        rm_id = m_code.group(1).upper()
+        if rm_id in autoreg_models:
+            return autoreg_models[rm_id]
+
+    # 3. Extract clean name by stripping parenthetical text (e.g. 'Sugar (RM021)' -> 'Sugar')
+    clean_name = re.sub(r"\s*\(.*?\)", "", q).strip()
+    if clean_name in autoreg_models:
+        return autoreg_models[clean_name]
+    if clean_name.lower() in autoreg_models:
+        return autoreg_models[clean_name.lower()]
+
     return None
 
 
@@ -152,67 +267,89 @@ def get_authenticated_client():
         return None, str(e)
 
 
-def get_inventory(material_name, authenticated_supabase):
-    """Get actual material inventory record from Supabase."""
+def get_inventory(material_identifier, authenticated_supabase):
+    """
+    Retrieve material master and recorded stock balance from Supabase public.raw_materials.
+    Supports lookup by id (UUID), item_code (RM001), or name.
+    """
     try:
-        response = (
+        # 1. Try lookup by item_code
+        res = (
             authenticated_supabase
-            .table("materials")
-            .select("id, material_name, unit, quantity, minimum_threshold, status")
-            .eq("material_name", material_name)
+            .table("raw_materials")
+            .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
+            .eq("item_code", material_identifier)
             .execute()
         )
-        if not response.data:
-            response = (
-                authenticated_supabase
-                .table("materials")
-                .select("id, material_name, unit, quantity, minimum_threshold, status")
-                .ilike("material_name", material_name)
-                .execute()
-            )
-        return response.data[0] if response.data else None
+        if res.data:
+            return res.data[0]
+
+        # 2. Try lookup by exact name
+        res = (
+            authenticated_supabase
+            .table("raw_materials")
+            .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
+            .eq("name", material_identifier)
+            .execute()
+        )
+        if res.data:
+            return res.data[0]
+
+        # 3. Try lookup by case-insensitive name
+        res = (
+            authenticated_supabase
+            .table("raw_materials")
+            .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
+            .ilike("name", material_identifier)
+            .execute()
+        )
+        return res.data[0] if res.data else None
     except Exception as e:
-        print(f"Inventory query notice for {material_name}: {e}")
+        print(f"Inventory query notice for '{material_identifier}': {e}")
         return None
 
 
-def get_historical_usage_records(material_name, authenticated_supabase):
-    """Fetch live consumption records for the material from Supabase."""
+def get_historical_usage_records(material_id_or_name, authenticated_supabase):
+    """
+    Retrieve operational disbursement records from Supabase public.material_disbursements.
+    """
     try:
-        response = (
+        res = (
             authenticated_supabase
-            .table("usage_records")
-            .select("usage_date, created_at, used_quantity, unit")
-            .ilike("material_name", material_name)
+            .table("material_disbursements")
+            .select("usage_date, consumed_quantity, unit, material_id")
             .order("usage_date", desc=False)
             .execute()
         )
-        return response.data or []
+        return res.data or []
     except Exception as e:
-        print(f"Historical usage fetch notice for {material_name}: {e}")
+        print(f"Historical usage fetch notice for '{material_id_or_name}': {e}")
         return []
 
 
 def build_current_weekly_series(material_info, usage_records_data=None):
     """
-    Build current weekly time-series combining the model's locked baseline series
-    with actual consumption records retrieved from Supabase. Handles empty Supabase cleanly.
+    Build current weekly time-series combining the model's locked baseline series (ending 2026-08-09)
+    with actual consumption records retrieved from Supabase.
     """
     model_obj = material_info["model"]
     baseline_vals = model_obj.model.data.orig_endog.values
-    training_end_str = material_info.get("training_end", "2026-08-16")
+    training_end_str = material_info.get("training_end", EXPECTED_TRAINING_END)
 
-    # Generate baseline W-SUN weekly dates ending at training_end (85 observations)
-    dates = pd.date_range(end=training_end_str, periods=len(baseline_vals), freq="W-SUN")
-    series = pd.Series(baseline_vals, index=dates, name="quantity_consumed", dtype=float)
+    # Daily baseline series ending on 2026-08-09
+    dates = pd.date_range(end=training_end_str, periods=len(baseline_vals), freq="D")
+    daily_series = pd.Series(baseline_vals, index=dates, name="quantity_consumed", dtype=float)
+
+    # Resample baseline to Weekly (W-SUN)
+    weekly_series = daily_series.resample("W-SUN").sum()
 
     if not usage_records_data:
-        return series
+        return weekly_series
 
-    # Process and validate Supabase usage records
+    # Process and aggregate any runtime usage records from Supabase
     valid_records = []
     for r in usage_records_data:
-        qty = r.get("used_quantity") if r.get("used_quantity") is not None else r.get("quantity")
+        qty = r.get("consumed_quantity") if r.get("consumed_quantity") is not None else r.get("quantity")
         raw_date = r.get("usage_date") or r.get("created_at")
         unit = r.get("unit")
 
@@ -222,62 +359,47 @@ def build_current_weekly_series(material_info, usage_records_data=None):
                 if num_qty >= 0 and (not unit or is_unit_compatible(unit, material_info["unit"])):
                     valid_records.append({
                         "date": pd.to_datetime(raw_date),
-                        "quantity": num_qty
+                        "quantity": num_qty,
                     })
             except Exception:
                 continue
 
     if not valid_records:
-        return series
+        return weekly_series
 
     df_supa = pd.DataFrame(valid_records)
     supa_weekly = df_supa.resample("W-SUN", on="date")["quantity"].sum()
 
-    # NO DOUBLE COUNTING:
-    # Update existing weeks or append new weeks to series
     for dt, val in supa_weekly.items():
-        series[dt] = float(val)
+        weekly_series[dt] = float(val)
 
-    series = series.sort_index()
-    return series
+    weekly_series = weekly_series.sort_index()
+    return weekly_series
 
 
 def generate_autoreg_forecasts(material_info, usage_records_data=None):
     """
-    Generate 7-day operational and 4-week monthly planning forecasts
-    by fitting an AutoReg(lags=7) runtime model directly on the current
-    Supabase-derived weekly time-series (or trained baseline when Supabase is empty).
+    Generate Weekly (7-day) and Monthly (4-week) forecasts dynamically using runtime AutoReg.
     """
-    # 1. Build current weekly time-series incorporating Supabase consumption data
-    current_weekly_series = build_current_weekly_series(material_info, usage_records_data)
-    obs_count = len(current_weekly_series)
-    lags = material_info.get("lags", 7)
+    weekly_series = build_current_weekly_series(material_info, usage_records_data)
+    obs_count = len(weekly_series)
+    lags = min(material_info.get("lags", 7), max(1, obs_count - 1))
     trend = material_info.get("trend", "ct")
 
-    # 2. Re-instantiate runtime AutoReg model with locked specification (AutoReg, lags=7, trend)
-    runtime_model = AutoReg(current_weekly_series, lags=lags, trend=trend).fit()
+    runtime_model = AutoReg(weekly_series, lags=lags, trend=trend).fit()
 
-    # 3. Generate 7-day forecast (Step 1 ahead)
+    # Step 1: 7-Day Operational Forecast
     pred_step1 = runtime_model.predict(start=obs_count, end=obs_count)
     qty_7day = float(pred_step1.iloc[0]) if hasattr(pred_step1, "iloc") else float(pred_step1[0])
 
-    # 4. Generate 4-week / 1-month forecast (Steps 1 to 4 ahead)
+    # Steps 1 to 4: 4-Week Monthly Planning Forecast
     pred_step4 = runtime_model.predict(start=obs_count, end=obs_count + 3)
     qty_1month = float(pred_step4.sum()) if hasattr(pred_step4, "sum") else sum(float(x) for x in pred_step4)
 
-    # 5. Enforce non-negative, finite, numeric bounds
-    if math.isnan(qty_7day) or math.isinf(qty_7day):
-        qty_7day = 0.0
-    else:
-        qty_7day = max(0.0, qty_7day)
+    qty_7day = 0.0 if (math.isnan(qty_7day) or math.isinf(qty_7day)) else max(0.0, qty_7day)
+    qty_1month = 0.0 if (math.isnan(qty_1month) or math.isinf(qty_1month)) else max(0.0, qty_1month)
 
-    if math.isnan(qty_1month) or math.isinf(qty_1month):
-        qty_1month = 0.0
-    else:
-        qty_1month = max(0.0, qty_1month)
-
-    # 6. Calculate dynamic dates based on the latest date in the current series
-    latest_date = current_weekly_series.index[-1]
+    latest_date = weekly_series.index[-1]
     anchor_date = pd.Timestamp(latest_date)
 
     forecast_start = anchor_date + pd.Timedelta(days=1)
@@ -287,19 +409,19 @@ def generate_autoreg_forecasts(material_info, usage_records_data=None):
     return {
         "historicalEnd": anchor_date.date().isoformat(),
         "seriesLength": obs_count,
-        "latestWeeklyValue": float(current_weekly_series.iloc[-1]),
+        "latestWeeklyValue": round(float(weekly_series.iloc[-1]), 2),
         "forecast7Day": {
             "start": forecast_start.date().isoformat(),
             "end": forecast_7day_end.date().isoformat(),
             "quantity": round(qty_7day, 2),
-            "unit": material_info["unit"]
+            "unit": material_info["unit"],
         },
         "forecast1Month": {
             "start": forecast_start.date().isoformat(),
             "end": forecast_1month_end.date().isoformat(),
             "quantity": round(qty_1month, 2),
-            "unit": material_info["unit"]
-        }
+            "unit": material_info["unit"],
+        },
     }
 
 
@@ -309,91 +431,59 @@ def generate_autoreg_forecasts(material_info, usage_records_data=None):
 
 @app.get("/api/ml/status")
 def ml_status():
-    """Return backend status and AutoReg model metadata."""
-    unique_materials = set(meta["material"] for meta in model_metadata.values())
+    """Report model service health without exposing internal filesystem paths."""
     return jsonify({
-        "status": "connected",
-        "model": "AutoReg Time-Series",
-        "model_version": "production_autoreg",
-        "raw_material_models": len(unique_materials),
-        "forecast_frequency": training_config.get("frequency", "weekly"),
-        "lags": training_config.get("lags", 7),
-        "training_period": f"{training_config.get('training_start', '2025-01-01')} to {training_config.get('training_end', '2026-08-16')}",
-        "supported_units": SUPPORTED_UNITS
+        "status": "healthy",
+        "model_type": "AutoReg",
+        "models_loaded": len(model_registry_list),
+        "expected_models": EXPECTED_MODELS_COUNT,
+        "training_start": EXPECTED_TRAINING_START,
+        "training_end": EXPECTED_TRAINING_END,
+        "holdout_period": "2026-08-10 to 2026-08-17",
+        "forecast_target": "2026-08-18 onward",
+        "supported_units": SUPPORTED_UNITS,
     })
 
 
-@app.route("/api/ml/materials", methods=["GET"])
-def forecast_materials():
-    """Return list of all trained materials with model metadata and units."""
-    unique_materials = sorted(list(set(meta["material"] for meta in model_metadata.values())))
-    models_summary = []
-    seen = set()
-    for meta in model_metadata.values():
-        mat_name = meta["material"]
-        if mat_name not in seen:
-            seen.add(mat_name)
-            models_summary.append({
-                "material": mat_name,
-                "name": mat_name,
-                "unit": meta.get("unit", "kg"),
-                "lags": meta.get("lags", 7),
-                "frequency": meta.get("frequency", "weekly")
-            })
+@app.get("/api/ml/materials")
+def get_materials_catalog():
+    """Return the authoritative 30-material registry with model status and parameters."""
     return jsonify({
-        "materials": unique_materials,
-        "count": len(unique_materials),
-        "models": models_summary
+        "status": "success",
+        "count": len(model_registry_list),
+        "materials": model_registry_list,
     })
 
 
 @app.route("/api/ml/forecast", methods=["GET", "POST"])
 def generic_forecast():
-    """Support both GET/POST for material forecasting with query param or body."""
-    material_name = "Sugar"
+    """Support dynamic GET/POST forecasting for any material_id or raw_material_name."""
+    material_query = None
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
-        material_name = data.get("material") or data.get("raw_material_name") or "Sugar"
+        material_query = data.get("material_id") or data.get("material") or data.get("raw_material_name")
     else:
-        material_name = request.args.get("material") or request.args.get("raw_material_name") or "Sugar"
-    return material_forecast_inventory(material_name)
+        material_query = request.args.get("material_id") or request.args.get("material") or request.args.get("raw_material_name")
+
+    if not material_query:
+        return jsonify({
+            "status": "error",
+            "message": "Missing material query identifier ('material_id' or 'raw_material_name').",
+        }), 400
+
+    return material_forecast_inventory(material_query)
 
 
-@app.route("/api/ml/inventory/<material_name>", methods=["GET"])
-def material_inventory(material_name):
-    """Retrieve raw inventory data from Supabase for a material."""
+@app.route("/api/ml/forecast/<path:material_identifier>", methods=["GET", "POST"])
+def material_forecast_baseline(material_identifier):
+    """Generate AutoReg weekly and monthly forecast from trained baseline."""
     try:
-        authenticated_supabase, auth_error = get_authenticated_client()
-        if auth_error:
-            return jsonify({"error": auth_error}), 401
-
-        inventory = get_inventory(material_name, authenticated_supabase)
-        if inventory is None:
-            return jsonify({"error": f"{material_name} inventory record not found."}), 404
-
-        return jsonify({"rows": [inventory]})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/ml/inventory/sugar", methods=["GET"])
-def sugar_inventory():
-    return material_inventory("Sugar")
-
-
-@app.route("/api/ml/forecast/<material_name>", methods=["GET", "POST"])
-def material_forecast(material_name):
-    """
-    Generate AutoReg 7-day and 1-month forecasts for a material.
-    Supports empty Supabase database cleanly using trained historical baseline.
-    """
-    try:
-        material_info = get_material_model(material_name)
+        material_info = get_material_model(material_identifier)
         if material_info is None:
             return jsonify({
                 "status": "unavailable",
-                "message": "Forecast unavailable: insufficient trained historical data for this material.",
-                "available_materials": sorted(list(set(meta["material"] for meta in model_metadata.values())))
+                "message": f"Forecast unavailable: no trained AutoReg model found for '{material_identifier}'.",
+                "available_materials": [m["material_id"] for m in AUTHORITATIVE_MATERIALS],
             }), 404
 
         forecast_res = generate_autoreg_forecasts(material_info)
@@ -401,164 +491,146 @@ def material_forecast(material_name):
         f1m = forecast_res["forecast1Month"]
 
         return jsonify({
-            "material": material_info["material"],
-            "raw_material_name": material_info["material"],
+            "status": "success",
+            "material_id": material_info["material_id"],
+            "raw_material_name": material_info["raw_material_name"],
             "unit": material_info["unit"],
             "historicalEnd": forecast_res["historicalEnd"],
             "forecast7Day": f7,
             "forecast1Month": f1m,
-            "forecast_period_start": f7["start"],
-            "forecast_period_end": f7["end"],
-            "forecast_quantity": f7["quantity"],
             "model": {
                 "type": "AutoReg",
                 "frequency": "weekly",
                 "lags": material_info["lags"],
-                "status": "trained"
-            }
+                "training_end": material_info["training_end"],
+                "status": "trained",
+            },
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@app.get("/api/ml/forecast/sugar")
-def sugar_forecast():
-    return material_forecast("Sugar")
-
-
-@app.route("/api/ml/forecast/<material_name>/inventory", methods=["GET", "POST"])
-def material_forecast_inventory(material_name):
+@app.route("/api/ml/forecast/<path:material_identifier>/inventory", methods=["GET", "POST"])
+def material_forecast_inventory(material_identifier):
     """
-    Generate forecast using live Supabase consumption history and compare against current inventory.
-    Handles empty Supabase inventory/usage tables cleanly without crashing.
+    Generate dynamic forecast comparing current recorded inventory against AutoReg predictions
+    and producing system-generated decision-support insights.
     """
     try:
-        # 1. Authenticate with Supabase if Bearer header present
+        material_info = get_material_model(material_identifier)
+        if material_info is None:
+            return jsonify({
+                "status": "unavailable",
+                "message": f"Forecast unavailable: no trained model for '{material_identifier}'.",
+                "available_materials": [m["material_id"] for m in AUTHORITATIVE_MATERIALS],
+            }), 404
+
+        # Authenticate with Supabase if Bearer token present
         authenticated_supabase = None
         auth_header = request.headers.get("Authorization")
         if auth_header:
             try:
-                authenticated_supabase, auth_error = get_authenticated_client()
-                if auth_error or not authenticated_supabase:
-                    authenticated_supabase = supabase
+                authenticated_supabase, _ = get_authenticated_client()
             except Exception:
                 authenticated_supabase = supabase
         else:
             authenticated_supabase = supabase
 
-        # 2. Check trained model availability
-        material_info = get_material_model(material_name)
-        if material_info is None:
-            return jsonify({
-                "status": "unavailable",
-                "message": "Forecast unavailable: insufficient trained historical data for this material.",
-                "available_materials": sorted(list(set(meta["material"] for meta in model_metadata.values())))
-            }), 404
-
-        # 3. Retrieve real inventory record from Supabase (or handle empty inventory cleanly)
-        inventory = get_inventory(material_name, authenticated_supabase)
+        # Retrieve inventory from public.raw_materials
+        inventory = get_inventory(material_info["raw_material_name"], authenticated_supabase)
         has_inventory = inventory is not None
 
         if has_inventory:
-            received_unit = str(inventory.get("unit", "")).strip()
-            # 4. Strict Unit Validation
-            if not is_unit_compatible(received_unit, material_info["unit"]):
+            received_unit = str(inventory.get("unit_of_measure") or inventory.get("unit") or "").strip()
+            if received_unit and not is_unit_compatible(received_unit, material_info["unit"]):
                 return jsonify({
                     "status": "invalid",
-                    "message": "The material unit does not match the trained forecasting model.",
+                    "message": "Recorded material unit does not match the trained forecasting model.",
                     "expected_unit": material_info["unit"],
-                    "received_unit": received_unit
+                    "received_unit": received_unit,
                 }), 400
-            current_stock = float(inventory.get("quantity", 0))
-            inv_threshold = inventory.get("minimum_threshold", 0)
-            inv_status_raw = inventory.get("status", "Available")
+
+            current_stock = float(inventory.get("current_stock") if inventory.get("current_stock") is not None else inventory.get("quantity", 0))
+            min_thresh = inventory.get("minimum_threshold")
+            reorder_qty = inventory.get("reorder_quantity")
+            lead_time = inventory.get("lead_time_days")
         else:
             received_unit = material_info["unit"]
             current_stock = 0.0
-            inv_threshold = 0
-            inv_status_raw = "Inventory data unavailable"
+            min_thresh = None
+            reorder_qty = None
+            lead_time = None
 
-        # 5. Retrieve live usage records for this material from Supabase
-        usage_records_data = get_historical_usage_records(material_info["material"], authenticated_supabase)
+        # Fetch recent usage records from Supabase
+        usage_records = get_historical_usage_records(material_info["raw_material_name"], authenticated_supabase)
 
-        # 6. Generate dynamic 7-day and 1-month forecasts fitting AutoReg on series
-        forecast_res = generate_autoreg_forecasts(material_info, usage_records_data)
+        # Generate forecasts
+        forecast_res = generate_autoreg_forecasts(material_info, usage_records)
         f7 = forecast_res["forecast7Day"]
         f1m = forecast_res["forecast1Month"]
+        forecast_7d_qty = f7["quantity"]
 
-        forecast_qty_7day = f7["quantity"]
-
-        # 7. Compare current stock against 7-day forecast if inventory available
+        # Calculate Decision Support
         if has_inventory:
-            diff = current_stock - forecast_qty_7day
+            diff = current_stock - forecast_7d_qty
             if diff < 0:
                 decision_status = "Potential Shortage"
-                potential_shortage = abs(diff)
+                insight = (
+                    f"Current recorded stock ({current_stock} {material_info['unit']}) is below the "
+                    f"7-day forecasted requirement ({forecast_7d_qty} {material_info['unit']}). Review material requirements."
+                )
             elif diff == 0:
                 decision_status = "Sufficient for Forecasted Requirement"
-                potential_shortage = 0.0
+                insight = "Current recorded stock exactly matches the 7-day forecasted requirement."
             else:
                 decision_status = "Potential Excess"
-                potential_shortage = 0.0
+                insight = (
+                    f"Current recorded stock ({current_stock} {material_info['unit']}) is sufficient for "
+                    f"the upcoming forecasted requirement ({forecast_7d_qty} {material_info['unit']})."
+                )
         else:
-            diff = 0.0
+            diff = None
             decision_status = "Inventory data unavailable"
-            potential_shortage = 0.0
+            insight = "Inventory records not found in database. Forecast computed from trained historical baseline."
 
-        # 8. Construct complete API response
+        # Reorder Decision Support (Optional Fields)
+        reorder_recommended = False
+        if min_thresh is not None and has_inventory:
+            if current_stock <= float(min_thresh):
+                reorder_recommended = True
+
         return jsonify({
-            "material": material_info["material"],
-            "raw_material_name": material_info["material"],
+            "status": "success",
+            "material_id": material_info["material_id"],
+            "raw_material_name": material_info["raw_material_name"],
             "unit": material_info["unit"],
             "historicalEnd": forecast_res["historicalEnd"],
-
             "forecast7Day": f7,
             "forecast1Month": f1m,
-
             "current_inventory": {
-                "quantity": current_stock,
+                "current_stock": current_stock if has_inventory else None,
                 "unit": received_unit,
-                "minimum_threshold": inv_threshold,
-                "status": inv_status_raw
+                "minimum_threshold": min_thresh,
+                "reorder_quantity": reorder_qty,
+                "lead_time_days": lead_time,
+                "recorded_in_db": has_inventory,
             },
-
-            "forecast": {
-                "period_start": f7["start"],
-                "period_end": f7["end"],
-                "quantity": f7["quantity"],
-                "unit": material_info["unit"],
-                "model": "AutoReg",
-                "model_version": "production_autoreg"
-            },
-
-            "comparison": {
-                "inventory_quantity_kg": current_stock if normalize_unit(received_unit) == "kg" else None,
-                "inventory_quantity": current_stock,
-                "difference_kg": round(diff, 2) if normalize_unit(received_unit) == "kg" else None,
-                "difference": round(diff, 2) if has_inventory else None,
+            "decision_support": {
+                "difference": round(diff, 2) if diff is not None else None,
                 "decision_status": decision_status,
-                "potential_shortage_kg": round(potential_shortage, 2) if normalize_unit(received_unit) == "kg" else None,
-                "potential_shortage": round(potential_shortage, 2) if has_inventory else None,
-                "unit": material_info["unit"]
+                "system_insight": insight,
+                "reorder_recommended": reorder_recommended,
             },
-
             "model": {
                 "type": "AutoReg",
                 "frequency": "weekly",
                 "lags": material_info["lags"],
-                "status": "trained"
-            }
+                "training_end": material_info["training_end"],
+                "status": "trained",
+            },
         })
-
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.get("/api/ml/forecast/sugar/inventory")
-def sugar_forecast_inventory():
-    return material_forecast_inventory("Sugar")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # ============================================================
@@ -569,5 +641,5 @@ if __name__ == "__main__":
     app.run(
         host="127.0.0.1",
         port=5000,
-        debug=True
+        debug=True,
     )

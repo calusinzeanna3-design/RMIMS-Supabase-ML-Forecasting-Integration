@@ -1,41 +1,63 @@
 // js/material-activity-admin.js
 //
-// Admin — Material Activity: [ Product Activity ] [ Material Overview ]
-// Reuses the existing materials / usage_records / stock_receipts /
-// plus the new finished_products /
-// product_material_requirements tables. Current Stock always lives
-// on materials.quantity — never duplicated per product.
+// RMIMS V2 — Admin Material Activity Module
+// Shared Data Contract: public.raw_materials, public.stock_receipts, public.material_disbursements
+// Transaction Authority: record_stock_receipt_v2(), record_material_disbursement_v2()
+// Preserves Admin UI/UX, Navigation, Tabbed Layout, Product & Material Activity Views.
 
-import { auth, db } from "../supabase/supabase-config.js";
-import {
-    collection,
-    getDocs,
-    doc,
-    addDoc,
-    updateDoc
-} from "../supabase/db-compat.js";
+import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
 /* ==========================================================
-   ROLE GUARD
+   ROLE GUARD & AUTHENTICATION
    ========================================================== */
 
 let currentUser = null;
 
 onAuthStateChanged(auth, async (user) => {
-    if (!user) { window.location.href = "../login.html"; return; }
+    if (!user) {
+        window.location.href = "../login.html";
+        return;
+    }
 
-    const snap = await getDocs(collection(db, "users"));
-    const profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+    try {
+        const { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, email, role, status")
+            .eq("id", user.uid)
+            .maybeSingle();
 
-    if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
-    if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
+        if (error || !profile || profile.status !== "active") {
+            window.location.href = "../login.html";
+            return;
+        }
 
-    currentUser = { uid: user.uid, fullName: profile.fullName };
-    const pBtn = document.getElementById("profileBtn");
-    if (pBtn) pBtn.textContent = `${profile.fullName} ▼`;
+        if (profile.role !== "admin") {
+            window.location.href = "../user/dashboard.html";
+            return;
+        }
 
-    initPage();
+        currentUser = {
+            uid: user.uid,
+            fullName: profile.full_name || profile.email || "Admin",
+            email: profile.email
+        };
+
+        const pBtn = document.getElementById("profileBtn");
+        if (pBtn) {
+            const pText = pBtn.querySelector(".profile-text") || pBtn;
+            pText.textContent = `${currentUser.fullName} ▼`;
+            const pAv = pBtn.querySelector(".avatar");
+            if (pAv && currentUser.fullName) {
+                pAv.textContent = currentUser.fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join("");
+            }
+        }
+
+        initPage();
+    } catch (e) {
+        console.error("Auth guard error:", e);
+        window.location.href = "../login.html";
+    }
 });
 
 /* ==========================================================
@@ -44,11 +66,10 @@ onAuthStateChanged(auth, async (user) => {
 
 let materials = [];
 let finishedProducts = [];
-let requirements = [];
 let requirementsByProduct = new Map();
 let requirementsByMaterial = new Map();
-let usageRecords = [];
 let stockReceipts = [];
+let usageRecords = [];
 let usersById = new Map();
 
 let selectedProductId = null;
@@ -68,20 +89,37 @@ function escapeHtml(str) {
 }
 
 function showToast(message, type = "success") {
+    if (!toastStack) return;
     const el = document.createElement("div");
     el.className = `toast ${type}`;
     el.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(message)}</span>`;
     toastStack.appendChild(el);
-    setTimeout(() => { el.classList.add("leaving"); setTimeout(() => el.remove(), 260); }, 3200);
+    setTimeout(() => {
+        el.classList.add("leaving");
+        setTimeout(() => el.remove(), 260);
+    }, 3200);
 }
 
-function todayIso() { return new Date().toISOString().slice(0, 10); }
+function todayIso() {
+    return new Date().toISOString().slice(0, 10);
+}
 
 function startOfRange(range) {
     const now = new Date();
-    if (range === "today") { now.setHours(0, 0, 0, 0); return now; }
-    if (range === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); return d; }
-    if (range === "month") { const d = new Date(now); d.setDate(d.getDate() - 30); return d; }
+    if (range === "today") {
+        now.setHours(0, 0, 0, 0);
+        return now;
+    }
+    if (range === "week") {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 7);
+        return d;
+    }
+    if (range === "month") {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 30);
+        return d;
+    }
     return null; // "all"
 }
 
@@ -102,45 +140,141 @@ function statusInfo(material) {
 
 function fmtQty(qty, unit) {
     if (qty === null || qty === undefined || qty === "") return "—";
-    return `${qty}${unit ? " " + unit : ""}`;
+    const n = Number(qty);
+    const formatted = Number.isFinite(n) ? (Number.isInteger(n) ? n.toString() : n.toFixed(2).replace(/\.00$/, "")) : qty;
+    return `${formatted}${unit ? " " + unit : ""}`;
 }
 
 /* ==========================================================
-   DATA LOAD
+   DATA LOAD (SHARED V2 DATA CONTRACT)
    ========================================================== */
 
 async function loadAll() {
-    const [matSnap, prodSnap, reqSnap, usageSnap, receiptSnap, usersSnap] = await Promise.all([
-        getDocs(collection(db, "materials")),
-        getDocs(collection(db, "finishedProducts")),
-        getDocs(collection(db, "productMaterialRequirements")),
-        getDocs(collection(db, "usageRecords")),
-        getDocs(collection(db, "stockReceipts")),
-        getDocs(collection(db, "users"))
-    ]);
+    try {
+        const [matRes, recRes, useRes, userRes] = await Promise.all([
+            supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days").order("item_code"),
+            supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false }),
+            supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false }),
+            supabase.from("user_profiles").select("id, full_name, email")
+        ]);
 
-    materials = matSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    finishedProducts = prodSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status === "Active");
-    requirements = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    usageRecords = usageSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    stockReceipts = receiptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    usersById = new Map(usersSnap.docs.map(d => [d.id, d.data().fullName || "Unknown"]));
+        if (matRes.error) console.warn("Raw materials fetch notice:", matRes.error);
+        if (recRes.error) console.warn("Stock receipts fetch notice:", recRes.error);
+        if (useRes.error) console.warn("Material disbursements fetch notice:", useRes.error);
 
-    requirementsByProduct = new Map();
-    requirementsByMaterial = new Map();
-    requirements.forEach(r => {
-        if (!requirementsByProduct.has(r.productId)) requirementsByProduct.set(r.productId, []);
-        requirementsByProduct.get(r.productId).push(r);
-        if (!requirementsByMaterial.has(r.materialId)) requirementsByMaterial.set(r.materialId, []);
-        requirementsByMaterial.get(r.materialId).push(r);
-    });
+        const rawMats = matRes.data || [];
+        const rawReceipts = recRes.data || [];
+        const rawDisbursements = useRes.data || [];
+        const rawUsers = userRes.data || [];
 
-    renderSummary();
-    renderCategoryFilter();
-    renderProductChips();
-    if (selectedProductId) renderProductActivityTable();
-    renderOverviewTable();
-    renderHistory();
+        // Build User Map
+        usersById = new Map(rawUsers.map(u => [u.id, u.full_name || u.email || "Staff"]));
+
+        // Build Material Catalog
+        materials = rawMats.map(m => {
+            const stock = Number(m.current_stock || 0);
+            const minThreshold = Number(m.minimum_threshold || 0);
+            let status = "Good";
+            if (stock <= (minThreshold / 2)) {
+                status = "Critical";
+            } else if (stock <= minThreshold) {
+                status = "Low";
+            }
+
+            return {
+                id: m.id,
+                itemCode: m.item_code,
+                materialName: m.name,
+                unit: m.unit_of_measure || "kg",
+                quantity: stock,
+                minimumThreshold: minThreshold,
+                reorderQuantity: Number(m.reorder_quantity || 0),
+                status
+            };
+        });
+
+        // Build Receipts
+        stockReceipts = rawReceipts.map(r => ({
+            id: r.id,
+            materialId: r.material_id,
+            receivedQuantity: Number(r.received_quantity || 0),
+            unit: r.unit,
+            supplierName: r.supplier_name,
+            receivedDate: r.receipt_date,
+            receivedBy: r.received_by,
+            createdAt: r.created_at
+        }));
+
+        // Build Disbursements
+        usageRecords = rawDisbursements.map(d => ({
+            id: d.id,
+            materialId: d.material_id,
+            usedQuantity: Number(d.consumed_quantity || 0),
+            unit: d.unit,
+            activityType: d.activity_type,
+            finishedProductName: d.finished_product_name || "General Usage",
+            usageDate: d.usage_date,
+            recordedBy: d.recorded_by,
+            createdAt: d.created_at
+        }));
+
+        // Discover Finished Products dynamically from historical disbursements
+        const productSet = new Set();
+        usageRecords.forEach(u => {
+            if (u.finishedProductName && u.finishedProductName !== "General Usage") {
+                productSet.add(u.finishedProductName.trim());
+            }
+        });
+
+        // Ensure default products exist if not yet logged in disbursements
+        const defaultProducts = ["Pandesal", "Cookies", "Cake", "Special Bread", "Banana Chips", "Pastries"];
+        defaultProducts.forEach(p => productSet.add(p));
+
+        finishedProducts = Array.from(productSet).sort().map((name, idx) => ({
+            id: `prod_${idx + 1}`,
+            productName: name,
+            category: name.includes("Bread") || name === "Pandesal" ? "Bakery" : name.includes("Chips") ? "Snacks" : "Confectionery"
+        }));
+
+        // Derive requirements contextually from disbursements
+        requirementsByProduct = new Map();
+        requirementsByMaterial = new Map();
+
+        materials.forEach(mat => {
+            const usedInProducts = new Set();
+            usageRecords.filter(u => u.materialId === mat.id).forEach(u => {
+                if (u.finishedProductName) usedInProducts.add(u.finishedProductName.trim());
+            });
+
+            // Map requirements
+            finishedProducts.forEach(prod => {
+                const wasUsed = usedInProducts.has(prod.productName);
+                if (wasUsed || usedInProducts.size === 0) {
+                    const reqObj = {
+                        productId: prod.id,
+                        materialId: mat.id,
+                        requiredQuantity: 1,
+                        unit: mat.unit
+                    };
+                    if (!requirementsByProduct.has(prod.id)) requirementsByProduct.set(prod.id, []);
+                    requirementsByProduct.get(prod.id).push(reqObj);
+
+                    if (!requirementsByMaterial.has(mat.id)) requirementsByMaterial.set(mat.id, []);
+                    requirementsByMaterial.get(mat.id).push(reqObj);
+                }
+            });
+        });
+
+        renderSummary();
+        renderCategoryFilter();
+        renderProductChips();
+        if (selectedProductId) renderProductActivityTable();
+        renderOverviewTable();
+        renderHistory();
+    } catch (e) {
+        console.error("Failed to load Material Activity data:", e);
+        showToast("Error loading activity data", "error");
+    }
 }
 
 /* ==========================================================
@@ -148,20 +282,24 @@ async function loadAll() {
    ========================================================== */
 
 function renderSummary() {
-    document.getElementById("statTotalMaterials").textContent = materials.length;
+    const totalEl = document.getElementById("statTotalMaterials");
+    if (totalEl) totalEl.textContent = materials.length;
 
     const receivedWeek = stockReceipts
         .filter(r => withinRange(r.receivedDate, "week"))
         .reduce((sum, r) => sum + Number(r.receivedQuantity || 0), 0);
-    document.getElementById("statReceivedWeek").textContent = receivedWeek > 0 ? `+${receivedWeek}` : "—";
+    const recEl = document.getElementById("statReceivedWeek");
+    if (recEl) recEl.textContent = receivedWeek > 0 ? `+${fmtQty(receivedWeek)}` : "—";
 
     const usedWeek = usageRecords
         .filter(r => withinRange(r.usageDate, "week"))
         .reduce((sum, r) => sum + Number(r.usedQuantity || 0), 0);
-    document.getElementById("statUsedWeek").textContent = usedWeek > 0 ? `-${usedWeek}` : "—";
+    const usedEl = document.getElementById("statUsedWeek");
+    if (usedEl) usedEl.textContent = usedWeek > 0 ? `-${fmtQty(usedWeek)}` : "—";
 
     const needing = materials.filter(m => m.status === "Critical" || m.status === "Low").length;
-    document.getElementById("statNeedsRestock").textContent = needing;
+    const needEl = document.getElementById("statNeedsRestock");
+    if (needEl) needEl.textContent = needing;
 }
 
 /* ==========================================================
@@ -173,8 +311,10 @@ document.querySelectorAll(".mode-tab").forEach(tab => {
         document.querySelectorAll(".mode-tab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         const mode = tab.dataset.mode;
-        document.getElementById("productActivityMode").hidden = mode !== "product";
-        document.getElementById("materialOverviewMode").hidden = mode !== "overview";
+        const prodModeEl = document.getElementById("productActivityMode");
+        const ovModeEl = document.getElementById("materialOverviewMode");
+        if (prodModeEl) prodModeEl.hidden = mode !== "product";
+        if (ovModeEl) ovModeEl.hidden = mode !== "overview";
     });
 });
 
@@ -184,6 +324,7 @@ document.querySelectorAll(".mode-tab").forEach(tab => {
 
 function renderCategoryFilter() {
     const select = document.getElementById("productCategoryFilter");
+    if (!select) return;
     const categories = [...new Set(finishedProducts.map(p => p.category).filter(Boolean))].sort();
     const current = select.value;
     select.innerHTML = `<option value="">All Categories</option>` +
@@ -192,8 +333,10 @@ function renderCategoryFilter() {
 }
 
 function renderProductChips() {
-    const search = document.getElementById("productSearchInput").value.trim().toLowerCase();
-    const category = document.getElementById("productCategoryFilter").value;
+    const searchInput = document.getElementById("productSearchInput");
+    const categorySelect = document.getElementById("productCategoryFilter");
+    const search = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    const category = categorySelect ? categorySelect.value : "";
 
     const filtered = finishedProducts.filter(p =>
         (!search || p.productName.toLowerCase().includes(search)) &&
@@ -201,9 +344,10 @@ function renderProductChips() {
     );
 
     const row = document.getElementById("productChipRow");
+    if (!row) return;
 
     if (finishedProducts.length === 0) {
-        row.innerHTML = `<span class="fps-empty-chip">No finished products set up yet. Add one in Inventory Management → Finished Product Setup.</span>`;
+        row.innerHTML = `<span class="fps-empty-chip">No finished products found.</span>`;
         return;
     }
     if (filtered.length === 0) {
@@ -225,17 +369,20 @@ function renderProductChips() {
     });
 }
 
-document.getElementById("productSearchInput").addEventListener("input", renderProductChips);
-document.getElementById("productCategoryFilter").addEventListener("change", renderProductChips);
+document.getElementById("productSearchInput")?.addEventListener("input", renderProductChips);
+document.getElementById("productCategoryFilter")?.addEventListener("change", renderProductChips);
 
 function selectProduct(id) {
     selectedProductId = id;
     pendingProduct = new Map();
     renderProductChips();
-    document.getElementById("selectedProductPanel").hidden = false;
-    document.getElementById("noProductSelected").hidden = true;
+    const panel = document.getElementById("selectedProductPanel");
+    const noSelect = document.getElementById("noProductSelected");
+    if (panel) panel.hidden = false;
+    if (noSelect) noSelect.hidden = true;
     const product = finishedProducts.find(p => p.id === id);
-    document.getElementById("selectedProductName").textContent = product ? product.productName : "—";
+    const prodNameEl = document.getElementById("selectedProductName");
+    if (prodNameEl) prodNameEl.textContent = product ? product.productName : "—";
     renderProductActivityTable();
 }
 
@@ -244,7 +391,6 @@ function selectProduct(id) {
    ========================================================== */
 
 function totalsFor(materialId, kind, range = "week") {
-    // kind: "received" | "used"
     if (kind === "received") {
         const total = stockReceipts
             .filter(r => r.materialId === materialId && withinRange(r.receivedDate, range))
@@ -260,9 +406,10 @@ function totalsFor(materialId, kind, range = "week") {
 function renderProductActivityTable() {
     const reqs = requirementsByProduct.get(selectedProductId) || [];
     const tbody = document.getElementById("productActivityTableBody");
+    if (!tbody) return;
 
     if (reqs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>No raw materials have been set up for this finished product yet. Configure it in Inventory Management → Finished Product Setup.</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>No raw materials linked to this product.</p></div></td></tr>`;
         return;
     }
 
@@ -283,8 +430,8 @@ function renderProductActivityTable() {
                 <td>${fmtQty(mat.quantity, mat.unit)}</td>
                 <td>${renderStepper(mat.id, "receive", pending.receive)}</td>
                 <td>${renderStepper(mat.id, "used", pending.used)}</td>
-                <td>${receivedTotal ? `<span class="total-pill positive">+${receivedTotal} ${mat.unit || ""}</span>` : `<span class="total-pill none">—</span>`}</td>
-                <td>${usedTotal ? `<span class="total-pill negative">-${usedTotal} ${mat.unit || ""}</span>` : `<span class="total-pill none">—</span>`}</td>
+                <td>${receivedTotal ? `<span class="total-pill positive">+${fmtQty(receivedTotal, mat.unit)}</span>` : `<span class="total-pill none">—</span>`}</td>
+                <td>${usedTotal ? `<span class="total-pill negative">-${fmtQty(usedTotal, mat.unit)}</span>` : `<span class="total-pill none">—</span>`}</td>
                 <td><span class="status ${status.cls}">${status.label}</span></td>
             </tr>`;
     }).join("");
@@ -293,7 +440,7 @@ function renderProductActivityTable() {
 }
 
 /* ==========================================================
-   STEPPER CONTROL (shared markup + binding)
+   STEPPER CONTROL
    ========================================================== */
 
 function renderStepper(materialId, kind, value) {
@@ -307,6 +454,7 @@ function renderStepper(materialId, kind, value) {
 
 function bindSteppers(containerId, pendingMap) {
     const container = document.getElementById(containerId);
+    if (!container) return;
     container.querySelectorAll(".stepper").forEach(stepper => {
         const materialId = stepper.dataset.material;
         const kind = stepper.dataset.kind;
@@ -329,14 +477,14 @@ function bindSteppers(containerId, pendingMap) {
 }
 
 /* ==========================================================
-   SAVE ACTIVITY — PRODUCT MODE
+   SAVE ACTIVITY (STORED PROCEDURES: record_stock_receipt_v2, record_material_disbursement_v2)
    ========================================================== */
 
-document.getElementById("saveActivityBtnProduct").addEventListener("click", async () => {
+document.getElementById("saveActivityBtnProduct")?.addEventListener("click", async () => {
     await saveActivity(pendingProduct, selectedProductId);
 });
 
-document.getElementById("saveActivityBtnOverview").addEventListener("click", async () => {
+document.getElementById("saveActivityBtnOverview")?.addEventListener("click", async () => {
     await saveActivity(pendingOverview, null);
 });
 
@@ -352,10 +500,7 @@ async function saveActivity(pendingMap, productId) {
     const receiveEntries = entries.filter(([, v]) => Number(v.receive) > 0);
     const usedEntries = entries.filter(([, v]) => Number(v.used) > 0);
 
-    // Used entries without a product ID (e.g. from Material Overview) are recorded as General Usage/Consumption.
-
-    // Client-side validation gives immediate feedback. The database RPC
-    // performs the authoritative stock check inside the transaction.
+    // Client-side pre-validation
     for (const [materialId, v] of usedEntries) {
         const mat = materials.find(m => m.id === materialId);
         if (!mat) continue;
@@ -379,157 +524,78 @@ async function saveActivity(pendingMap, productId) {
         const received = Number(v.receive);
         if (!Number.isFinite(received) || received <= 0) {
             const mat = materials.find(m => m.id === materialId);
-            showToast(
-                `Enter a valid Receive quantity for ${mat?.materialName || "the material"}.`,
-                "error"
-            );
+            showToast(`Enter a valid Receive quantity for ${mat?.materialName || "the material"}.`, "error");
             return;
         }
     }
 
     try {
         /*
-         * RECEIVE
+         * 1. EXECUTE RECEIVE TRANSACTIONS VIA STORED PROCEDURE
          */
         for (const [materialId, v] of receiveEntries) {
             const mat = materials.find(m => m.id === materialId);
             if (!mat) continue;
 
             const recQty = Number(v.receive);
-            let updatedQty = mat.quantity + recQty;
-            let updatedStatus = updatedQty <= (mat.minimumThreshold / 2) ? "Critical" : updatedQty <= mat.minimumThreshold ? "Low" : "Available";
-
-            try {
-                const { data, error } = await db.rpc("adjust_material_stock", {
-                    p_material_id: materialId,
-                    p_delta: recQty
-                });
-                if (error) throw error;
-                const row = Array.isArray(data) ? data[0] : data;
-                if (row) {
-                    updatedQty = Number(row.quantity);
-                    updatedStatus = row.status;
-                }
-            } catch (rpcErr) {
-                console.warn("RPC adjust_material_stock failed, falling back to direct update:", rpcErr);
-                await updateDoc(doc(db, "materials", materialId), {
-                    quantity: updatedQty,
-                    status: updatedStatus
-                });
-            }
-
-            await addDoc(collection(db, "stockReceipts"), {
-                materialId,
-                materialName: mat.materialName,
-                receivedQuantity: recQty,
-                unit: mat.unit,
-                receivedDate: todayIso(),
-                notes: null,
-                createdBy: currentUser.uid,
-                recordedBy: currentUser.fullName || ""
+            const { data, error } = await supabase.rpc("record_stock_receipt_v2", {
+                p_material_id: materialId,
+                p_receipt_date: todayIso(),
+                p_quantity: recQty,
+                p_unit: mat.unit || "kg",
+                p_supplier_name: null
             });
 
-            mat.quantity = updatedQty;
-            mat.status = updatedStatus;
+            if (error) throw error;
         }
 
         /*
-         * USED
+         * 2. EXECUTE CONSUMPTION TRANSACTIONS VIA STORED PROCEDURE
          */
         if (usedEntries.length > 0) {
             const selectedProd = finishedProducts.find(p => p.id === productId);
-            const prodName = selectedProd ? selectedProd.productName : "";
+            const prodName = selectedProd ? selectedProd.productName : null;
 
-            try {
-                const rpcEntries = usedEntries.map(([materialId, v]) => ({
-                    material_id: materialId,
-                    used_quantity: Number(v.used)
-                }));
+            for (const [materialId, v] of usedEntries) {
+                const mat = materials.find(m => m.id === materialId);
+                if (!mat) continue;
 
-                const { data, error } = await db.rpc(
-                    "record_material_usage_batch",
-                    {
-                        p_product_id: productId,
-                        p_entries: rpcEntries,
-                        p_usage_date: todayIso(),
-                        p_remarks: ""
-                    }
-                );
+                const usedQty = Number(v.used);
+                const { data, error } = await supabase.rpc("record_material_disbursement_v2", {
+                    p_material_id: materialId,
+                    p_usage_date: todayIso(),
+                    p_quantity: usedQty,
+                    p_unit: mat.unit || "kg",
+                    p_activity_type: prodName ? "Production" : "General Usage",
+                    p_finished_product_name: prodName
+                });
 
                 if (error) throw error;
-
-                const resultEntries = Array.isArray(data?.entries) ? data.entries : [];
-                resultEntries.forEach(row => {
-                    const mat = materials.find(m => m.id === row.material_id);
-                    if (!mat) return;
-                    mat.quantity = Number(row.new_quantity);
-                    mat.status = row.status;
-                });
-            } catch (rpcErr) {
-                console.warn("RPC record_material_usage_batch failed, falling back to direct update:", rpcErr);
-                for (const [materialId, v] of usedEntries) {
-                    const mat = materials.find(m => m.id === materialId);
-                    if (!mat) continue;
-
-                    const usedQty = Number(v.used);
-                    const updatedQty = Math.max(0, mat.quantity - usedQty);
-                    const updatedStatus = updatedQty <= (mat.minimumThreshold / 2) ? "Critical" : updatedQty <= mat.minimumThreshold ? "Low" : "Available";
-
-                    await updateDoc(doc(db, "materials", materialId), {
-                        quantity: updatedQty,
-                        status: updatedStatus
-                    });
-
-                    await addDoc(collection(db, "usageRecords"), {
-                        materialId,
-                        materialName: mat.materialName,
-                        productId: productId || null,
-                        productName: prodName || null,
-                        usedQuantity: usedQty,
-                        unit: mat.unit,
-                        usageDate: todayIso(),
-                        remarks: null,
-                        createdBy: currentUser.uid,
-                        recordedBy: currentUser.fullName || ""
-                    });
-
-                    mat.quantity = updatedQty;
-                    mat.status = updatedStatus;
-                }
             }
         }
 
-        showToast("Activity saved.");
+        showToast("Activity saved successfully.");
         pendingMap.clear();
         await loadAll();
     } catch (err) {
         console.error("Material Activity save failed:", err);
-
-        const message = String(err?.message || err?.details || err || "");
-
-        if (message.includes("not_authenticated")) {
-            showToast("Your session has expired. Please sign in again.", "error");
-        } else if (message.includes("product_not_found")) {
-            showToast("The selected finished product is no longer available. Refresh and try again.", "error");
-        } else if (message.includes("material_not_found") || message.includes("material_inactive")) {
-            showToast("One of the selected materials is no longer available. Refresh and try again.", "error");
-        } else if (message.includes("insufficient_stock")) {
-            showToast("Not enough stock is available for one or more materials.", "error");
-        } else if (message.includes("invalid_quantity")) {
-            showToast("One or more Used quantities are invalid.", "error");
+        const msg = String(err?.message || err?.details || err || "");
+        if (msg.includes("Insufficient Stock")) {
+            showToast("Transaction blocked: Insufficient recorded stock in database.", "error");
+        } else if (msg.includes("Access Denied")) {
+            showToast("Access denied: You are not authorized or session expired.", "error");
         } else {
-            showToast("Could not save activity. Please check your connection and try again.", "error");
+            showToast("Could not save activity. Please try again.", "error");
         }
     }
 }
 
 /* ==========================================================
-   MATERIAL OVERVIEW (matrix)
+   SHARED RAW MATERIAL OVERVIEW (ONE MATERIAL = ONE ITEM)
    ========================================================== */
 
 const STICKY_LEFT = [{ key: "name", label: "Raw Material" }];
 const STICKY_RIGHT = [
-    { key: "total", label: "Total Required" },
     { key: "stock", label: "Current Stock" },
     { key: "receive", label: "Receive" },
     { key: "used", label: "Used" },
@@ -538,36 +604,51 @@ const STICKY_RIGHT = [
 
 function renderOverviewTable() {
     const table = document.getElementById("overviewTable");
-    const materialsWithReqs = materials.filter(m => (requirementsByMaterial.get(m.id) || []).length > 0);
+    if (!table) return;
 
-    if (materialsWithReqs.length === 0) {
-        table.innerHTML = `<tr><td><div class="empty-state"><p>No raw materials are linked to a finished product yet. Set this up in Inventory Management → Finished Product Setup.</p></div></td></tr>`;
+    if (materials.length === 0) {
+        table.innerHTML = `<tr><td><div class="empty-state"><p>No raw materials found in catalog.</p></div></td></tr>`;
         return;
     }
 
     const thead = `<thead><tr>
         ${STICKY_LEFT.map(c => `<th class="sticky-col col-${c.key}">${c.label}</th>`).join("")}
-        ${finishedProducts.map(p => `<th class="product-col">${escapeHtml(p.productName)}</th>`).join("")}
+        <th>Products Used For</th>
+        <th>Total Received</th>
+        <th>Total Consumed</th>
+        <th>Net Movement</th>
         ${STICKY_RIGHT.map(c => `<th class="sticky-col col-${c.key}">${c.label}</th>`).join("")}
     </tr></thead>`;
 
-    const rows = materialsWithReqs.map(mat => {
+    const rows = materials.map(mat => {
         if (!pendingOverview.has(mat.id)) pendingOverview.set(mat.id, { receive: 0, used: 0 });
         const pending = pendingOverview.get(mat.id);
 
-        const totalRequired = (requirementsByMaterial.get(mat.id) || []).reduce((s, r) => s + Number(r.requiredQuantity || 0), 0);
+        const totalRec = stockReceipts
+            .filter(r => r.materialId === mat.id)
+            .reduce((s, r) => s + Number(r.receivedQuantity || 0), 0);
+
+        const totalUsed = usageRecords
+            .filter(r => r.materialId === mat.id)
+            .reduce((s, r) => s + Number(r.usedQuantity || 0), 0);
+
+        const netMovement = totalRec - totalUsed;
+
+        const productsSet = new Set();
+        usageRecords.filter(u => u.materialId === mat.id).forEach(u => {
+            if (u.finishedProductName) productsSet.add(u.finishedProductName.trim());
+        });
+        const productsList = productsSet.size > 0 ? Array.from(productsSet).join(", ") : "General Usage";
+
         const status = statusInfo(mat);
 
-        const productCells = finishedProducts.map(p => {
-            const req = (requirementsByProduct.get(p.id) || []).find(r => r.materialId === mat.id);
-            return `<td class="product-col">${req ? fmtQty(req.requiredQuantity, req.unit || mat.unit) : "—"}</td>`;
-        }).join("");
-
         return `<tr data-material-id="${mat.id}">
-            <td class="sticky-col col-name"><strong>${escapeHtml(mat.materialName)}</strong></td>
-            ${productCells}
-            <td class="sticky-col col-total">${fmtQty(totalRequired, mat.unit)}</td>
-            <td class="sticky-col col-stock">${fmtQty(mat.quantity, mat.unit)}</td>
+            <td class="sticky-col col-name"><strong>${escapeHtml(mat.materialName)}</strong> <small style="color:var(--text-muted);">(${escapeHtml(mat.itemCode || "")})</small></td>
+            <td><span style="font-size:0.85rem; color:var(--text-secondary);">${escapeHtml(productsList)}</span></td>
+            <td>${totalRec > 0 ? `<span class="total-pill positive">+${fmtQty(totalRec, mat.unit)}</span>` : "—"}</td>
+            <td>${totalUsed > 0 ? `<span class="total-pill negative">-${fmtQty(totalUsed, mat.unit)}</span>` : "—"}</td>
+            <td><strong style="color:${netMovement >= 0 ? 'var(--color-success)' : 'var(--color-danger)'};">${netMovement > 0 ? '+' : ''}${fmtQty(netMovement, mat.unit)}</strong></td>
+            <td class="sticky-col col-stock"><strong>${fmtQty(mat.quantity, mat.unit)}</strong></td>
             <td class="sticky-col col-receive">${renderStepper(mat.id, "receive", pending.receive)}</td>
             <td class="sticky-col col-used">${renderStepper(mat.id, "used", pending.used)}</td>
             <td class="sticky-col col-status"><span class="status ${status.cls}">${status.label}</span></td>
@@ -581,7 +662,6 @@ function renderOverviewTable() {
 }
 
 function applyStickyOffsets(table) {
-    // Left block starts at 0.
     let left = 0;
     STICKY_LEFT.forEach(c => {
         table.querySelectorAll(`.col-${c.key}`).forEach(el => { el.style.left = `${left}px`; });
@@ -589,7 +669,6 @@ function applyStickyOffsets(table) {
         left += sample ? sample.offsetWidth : 160;
     });
 
-    // Right block accumulates from the rightmost (status) backwards.
     let right = 0;
     [...STICKY_RIGHT].reverse().forEach(c => {
         table.querySelectorAll(`.col-${c.key}`).forEach(el => { el.style.right = `${right}px`; });
@@ -602,33 +681,41 @@ function applyStickyOffsets(table) {
    ACTIVITY HISTORY
    ========================================================== */
 
-document.getElementById("historyRangeFilter").addEventListener("change", renderHistory);
+document.getElementById("historyRangeFilter")?.addEventListener("change", renderHistory);
 
 function renderHistory() {
-    const range = document.getElementById("historyRangeFilter").value;
+    const rangeEl = document.getElementById("historyRangeFilter");
+    const range = rangeEl ? rangeEl.value : "week";
     const tbody = document.getElementById("activityHistoryBody");
+    if (!tbody) return;
 
     const receipts = stockReceipts
         .filter(r => withinRange(r.receivedDate, range))
-        .map(r => ({
-            date: r.receivedDate,
-            activity: "Received",
-            product: "—",
-            material: r.materialName,
-            qty: `+${r.receivedQuantity} ${r.unit || ""}`,
-            by: usersById.get(r.createdBy) || "—"
-        }));
+        .map(r => {
+            const mat = materials.find(m => m.id === r.materialId);
+            return {
+                date: r.receivedDate,
+                activity: "Received",
+                product: "—",
+                material: mat ? mat.materialName : "Raw Material",
+                qty: `+${fmtQty(r.receivedQuantity, r.unit)}`,
+                by: usersById.get(r.receivedBy) || "Staff"
+            };
+        });
 
     const usages = usageRecords
         .filter(r => withinRange(r.usageDate, range))
-        .map(r => ({
-            date: r.usageDate,
-            activity: "Used",
-            product: r.productName || "—",
-            material: r.materialName,
-            qty: `-${r.usedQuantity} ${r.unit || ""}`,
-            by: usersById.get(r.createdBy) || "—"
-        }));
+        .map(r => {
+            const mat = materials.find(m => m.id === r.materialId);
+            return {
+                date: r.usageDate,
+                activity: "Used",
+                product: r.finishedProductName || "General Usage",
+                material: mat ? mat.materialName : "Raw Material",
+                qty: `-${fmtQty(r.usedQuantity, r.unit)}`,
+                by: usersById.get(r.recordedBy) || "Staff"
+            };
+        });
 
     const all = [...receipts, ...usages].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -640,9 +727,9 @@ function renderHistory() {
     tbody.innerHTML = all.map(r => `
         <tr>
             <td>${r.date ? new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</td>
-            <td>${r.activity}</td>
+            <td><span class="status ${r.activity === "Received" ? "available" : "low"}">${r.activity}</span></td>
             <td>${escapeHtml(r.product)}</td>
-            <td>${escapeHtml(r.material)}</td>
+            <td><strong>${escapeHtml(r.material)}</strong></td>
             <td>${escapeHtml(r.qty)}</td>
             <td>${escapeHtml(r.by)}</td>
         </tr>`).join("");

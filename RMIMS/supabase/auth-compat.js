@@ -73,18 +73,46 @@ export async function updateProfile(user, { displayName }) {
     if (error) throw error;
 }
 
-// onAuthStateChanged(auth, callback) — fires immediately with the
-// current session, then
-// on every future sign-in/sign-out.
-export function onAuthStateChanged(auth, callback) {
-    auth.auth.getSession().then(({ data }) => {
-        callback(toSupabaseUser(data.session?.user, auth));
+// onAuthStateChanged(auth, callback) — fires once session is initialized,
+// then on every future sign-in/sign-out state transition.
+export function onAuthStateChanged(authClient, callback) {
+    let initialResolved = false;
+    let currentUserId = undefined;
+
+    // Authoritatively resolve the initial restored session from localStorage first
+    authClient.auth.getSession().then(({ data, error }) => {
+        initialResolved = true;
+        const user = (!error && data?.session?.user) ? toSupabaseUser(data.session.user, authClient) : null;
+        currentUserId = user?.uid || null;
+        callback(user);
+    }).catch(() => {
+        initialResolved = true;
+        currentUserId = null;
+        callback(null);
     });
 
-    const { data: sub } = auth.auth.onAuthStateChange((_event, session) => {
-        callback(toSupabaseUser(session?.user, auth));
+    // Subscribe to future auth state changes (sign-in, sign-out, user changes)
+    const { data: sub } = authClient.auth.onAuthStateChange((event, session) => {
+        if (event === "INITIAL_SESSION") {
+            if (!initialResolved && session?.user) {
+                initialResolved = true;
+                const user = toSupabaseUser(session.user, authClient);
+                currentUserId = user?.uid || null;
+                callback(user);
+            }
+            return;
+        }
+
+        if (initialResolved) {
+            const newUserId = session?.user?.id || null;
+            // Only fire callback if authentication status or user identity genuinely changed
+            if (newUserId !== currentUserId || event === "SIGNED_OUT") {
+                currentUserId = newUserId;
+                callback(toSupabaseUser(session?.user, authClient));
+            }
+        }
     });
 
     // Returns an unsubscribe function.
-    return () => sub.subscription.unsubscribe();
+    return () => sub?.subscription?.unsubscribe?.();
 }

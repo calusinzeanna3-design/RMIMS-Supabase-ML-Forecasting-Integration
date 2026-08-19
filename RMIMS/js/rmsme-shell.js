@@ -163,8 +163,18 @@
   profileBtn?.addEventListener('click', () => { const open = profile.hidden; closeMenus(profile); profile.hidden = !open; profileBtn.setAttribute('aria-expanded', String(open)); });
   notifBtn?.addEventListener('click', () => { const open = notif.hidden; closeMenus(notif); notif.hidden = !open; });
   helpBtn?.addEventListener('click', () => { const open = help.hidden; closeMenus(help); help.hidden = !open; });
-  document.addEventListener('click', (e) => { if (!e.target.closest('.rmsme-header-actions')) closeMenus(null); });
-  document.getElementById('rmsmeLogout')?.addEventListener('click', () => { localStorage.removeItem('rmsmeNotificationRead'); location.href = '../login.html'; });
+  document.getElementById('rmsmeLogout')?.addEventListener('click', async () => {
+    localStorage.removeItem('rmsmeNotificationRead');
+    localStorage.removeItem('rmsmeCurrentUser');
+    try {
+      const { supabase } = await import('../supabase/supabase-config.js');
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Sign out notice:", err);
+    }
+    const isUser = location.pathname.includes('/user/');
+    location.href = isUser ? '../user-signin.html' : '../login.html';
+  });
 
   // System Guide & About Modal
   function showHelpModal(title, bodyHtml) {

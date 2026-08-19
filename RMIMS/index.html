@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RMSME — Raw Materials Inventory Management System</title>
-<meta name="description" content="RMSME helps small and medium businesses track raw materials, log every check-in and check-out, — all from one system.">
+<title>RM(S)ME — Raw Materials Inventory Management System</title>
+<meta name="description" content="RM(S)ME helps micro, small, and medium enterprises manage raw materials, monitor inventory movement, analyze consumption patterns, and use AI-based forecasting to support better inventory decisions.">
 <link rel="icon" href="assets/favicon-64.png" type="image/png">
 
 <link rel="stylesheet" href="css/rmims-theme.css">
@@ -15,307 +15,515 @@
 </head>
 <body class="rmsme-landing">
 
-<!-- ===================== HEADER ===================== -->
+<!-- ===================== HEADER (FIXED STICKY BAR) ===================== -->
 <header class="site-header" id="siteHeader">
   <div class="header-inner">
-    <a class="brand-mark" href="#top">
-      <span class="brand-icon brand-icon--logo">
-        <img src="assets/logo-icon.png" alt="RMsme logo">
+    <a class="brand-mark" href="#home" data-view-target="home" id="headerBrandMark" aria-label="RM(S)ME Home">
+      <span class="brand-icon">
+        <img src="assets/logo-icon.png" alt="RMSME logo">
       </span>
       <span class="brand-word">RMSME</span>
     </a>
 
     <nav class="main-nav" id="mainNav">
-      <a href="#platform" class="nav-link">Platform</a>
-      <a href="#solutions" class="nav-link">Solutions</a>
-      <a href="#how-it-works" class="nav-link">How it Works</a>
-      <a href="#faqs" class="nav-link">FAQs</a>
+      <button type="button" class="nav-link active" data-view-target="home">Home</button>
+      <button type="button" class="nav-link" data-view-target="about">About</button>
+      <button type="button" class="nav-link" data-view-target="features">Features</button>
+      <button type="button" class="nav-link" data-view-target="how-it-works">How It Works</button>
+      <button type="button" class="nav-link" data-view-target="benefits">Benefits</button>
+      <button type="button" class="nav-link" data-view-target="connect">Connect / FAQs</button>
     </nav>
 
     <div class="header-actions">
-      <a class="btn btn-primary btn-sm" href="login.html?role=admin">Sign in</a>
-      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
+      <a class="btn btn-secondary btn-sm" href="login.html">Sign In</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Open navigation menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>
   </div>
 </header>
 
-<main id="top">
+<!-- ===================== MAIN VIEWS STAGE ===================== -->
+<main class="views-stage" id="viewsStage">
 
-  <!-- ===================== HERO / PLATFORM ===================== -->
-  <section class="hero-section" id="platform">
-    <svg class="material-illustration" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <g class="cluster-back" opacity="0.7">
-        <path class="m-shape" d="M260 860 L260 260 M520 860 L520 220 M1080 860 L1080 220 M1340 860 L1340 260" stroke-width="1.2"/>
-        <path class="m-shape" d="M220 320 L1380 320 M220 480 L1380 480 M220 640 L1380 640" stroke-width="1.2"/>
-        <rect class="m-shape" x="330" y="270" width="70" height="42" rx="4" stroke-width="1.2"/>
-        <rect class="m-shape" x="640" y="430" width="70" height="42" rx="4" stroke-width="1.2"/>
-        <rect class="m-shape" x="960" y="270" width="70" height="42" rx="4" stroke-width="1.2"/>
-        <rect class="m-shape" x="1180" y="590" width="70" height="42" rx="4" stroke-width="1.2"/>
-      </g>
-      <g class="cluster-left">
-        <rect class="m-shape fill-soft" x="120" y="470" width="130" height="110" rx="8"/>
-        <path class="m-shape" d="M120 470 L185 420 L250 470 M185 420 L185 470" stroke-width="1.4"/>
-        <path class="m-shape" d="M185 470 L185 580 M120 525 L250 525" stroke-width="1.2"/>
-        <rect class="m-shape" x="70" y="600" width="86" height="60" rx="6"/>
-        <rect class="m-shape" x="70" y="600" width="86" height="16" rx="4" opacity="0.4"/>
-        <rect class="m-shape" x="190" y="618" width="70" height="52" rx="6" transform="rotate(-4 190 618)"/>
-        <circle class="m-dot" cx="300" cy="560" r="4"/>
-        <circle class="m-dot" cx="95" cy="440" r="3"/>
-      </g>
-      <g class="cluster-right">
-        <path class="m-shape fill-soft" d="M1290 470 C1260 470 1246 500 1250 540 C1254 590 1272 630 1310 630 C1348 630 1366 590 1370 540 C1374 500 1360 470 1330 470 C1322 458 1298 458 1290 470 Z"/>
-        <path class="m-shape" d="M1300 470 C1305 460 1315 460 1320 470" stroke-width="1.3"/>
-        <path class="m-shape" d="M1268 540 C1300 552 1320 552 1352 540 M1268 575 C1300 587 1320 587 1352 575" stroke-width="1.1" opacity="0.6"/>
-        <path class="m-shape" d="M1420 560 C1400 560 1390 580 1393 608 C1396 640 1408 664 1432 664 C1456 664 1468 640 1471 608 C1474 580 1464 560 1444 560 Z" transform="scale(0.72) translate(560 250)"/>
-        <path class="m-shape" d="M1200 640 L1200 690 M1260 640 L1260 690 M1200 690 L1260 690" stroke-width="1.3"/>
-        <circle class="m-shape" cx="1230" cy="618" r="20" stroke-width="1.3"/>
-        <circle class="m-dot" cx="1400" cy="480" r="3"/>
-        <circle class="m-dot" cx="1245" cy="700" r="4"/>
-      </g>
-      <g class="cluster-top" opacity="0.8">
-        <rect class="m-shape" x="760" y="120" width="60" height="46" rx="6" transform="rotate(6 760 120)"/>
-        <path class="m-shape" d="M900 150 L940 150 L940 190 L900 190 Z M900 150 L920 168 L940 150" stroke-width="1.2"/>
-        <circle class="m-dot" cx="1000" cy="130" r="3"/>
-      </g>
-    </svg>
+  <!-- ===================== VIEW 1: HOME (HERO) ===================== -->
+  <section class="view-panel is-active" id="view-home" data-view-id="home">
+    <div class="view-inner-container">
+      <div class="hero-view-grid">
+        <div class="hero-text-col">
+          <h1 class="hero-title">
+            Manage Raw Materials.<br>
+            Understand Consumption.<br>
+            <span class="text-emerald">Plan Ahead.</span>
+          </h1>
+          <p class="hero-supporting">
+            A System for Advanced Inventory Management.
+          </p>
+          <p class="hero-sub">
+            Smarter Raw Material Inventory Management for MSMEs.
+          </p>
+          <p class="hero-desc">
+            Record, monitor, analyze, and forecast raw material requirements to support better inventory planning and decisions.
+          </p>
 
-    <div class="section-inner hero-inner">
-      <p class="eyebrow">Raw Materials Inventory Management System</p>
-      <h1 class="reveal">Know exactly what's<br>in stock — before it runs out.</h1>
-      <p class="hero-sub reveal">RMSME helps small and medium businesses track raw materials, log every check-in and check-out at the front desk, — all from one simple system for the counter and the back office alike.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="portal.html">
+              Get Started →
+            </a>
+            <button type="button" class="btn btn-secondary btn-lg" data-view-target="about">
+              Learn More →
+            </button>
+          </div>
 
-      <div class="hero-cta reveal">
-        <a class="btn btn-primary btn-lg" href="portal.html">
-          Get Started
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-      </div>
+          <div class="hero-indicators">
+            <span><strong class="indicator-check">✓</strong> Inventory Management</span>
+            <span><strong class="indicator-check">✓</strong> Consumption Analytics</span>
+            <span><strong class="indicator-check">✓</strong> AI-Based Forecasting</span>
+          </div>
+        </div>
 
-      <div class="hero-badges reveal">
-        <span class="badge"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12L10 18L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Built for MSMEs</span>
-        <span class="badge"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12L10 18L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Real-time stock visibility</span>
-        <span class="badge"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12L10 18L20 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Consumption analytics</span>
-      </div>
-    </div>
+        <!-- 3D RMSME LOGO COMPOSITION WITH SATELLITE CARDS -->
+        <div class="hero-visual-stage">
+          <div class="logo-popup-card" id="logoPopupCard" tabindex="0" role="region" aria-label="RMSME 3D Interactive Brand Visual">
+            <img src="assets/rmsme-3d-logo.png" alt="RMSME — Raw Materials MSME" class="logo-3d-img" loading="eager">
+          </div>
 
-    <a class="scroll-cue" href="#solutions" aria-label="Scroll to solutions">
-      <span></span>
-    </a>
-  </section>
-
-  <!-- ===================== SOLUTIONS ===================== -->
-  <section class="solutions-section" id="solutions">
-    <div class="section-inner">
-      <p class="eyebrow eyebrow--dark">What RMSME gives you</p>
-      <h2>Every part of raw material<br>handling, covered.</h2>
-      <p class="section-lead">One system replaces the notebook at the counter, the spreadsheet in the back office, and the guesswork about what to reorder.</p>
-
-      <div class="solutions-grid">
-
-        <article class="solution-card">
-          <span class="s-icon">
-            <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="7" width="17" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 7V5.5C8 4.11929 9.11929 3 10.5 3H13.5C14.8807 3 16 4.11929 16 5.5V7" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 11.5H20.5" stroke="currentColor" stroke-width="1.6"/></svg>
-          </span>
-          <h3>Inventory Tracking</h3>
-          <p>Real-time stock levels for every raw material, down to the last unit — organized by category with thresholds you set.</p>
-        </article>
-
-        <article class="solution-card">
-          <span class="s-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5V19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <h3>Check-In / Check-Out Logging</h3>
-          <p>Every drop-off and pick-up is logged at the front desk in a few taps, tied to the right material, quantity, and person.</p>
-        </article>
-
-        <article class="solution-card">
-          <span class="s-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 19L9 12L13 15L20 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 6H20V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </span>
-          <h3>Consumption Analytics</h3>
-          <p>The analytics module helps users understand raw-material usage patterns.</p>
-        </article>
-
-        <article class="solution-card">
-          <span class="s-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5C4 3.89543 4.89543 3 6 3H15L20 8V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 12H16M8 16H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <h3>Reports &amp; Usage Records</h3>
-          <p>Pull complete usage history and stock reports whenever you need them — for audits, restocking, or year-end reviews.</p>
-        </article>
-
-        <article class="solution-card">
-          <span class="s-icon">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 19C3.5 15.6863 6.13401 13 9.5 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15 12C16.6569 12 18 10.6569 18 9C18 7.34315 16.6569 6 15 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13.5 19C13.5 15.9624 15.9624 13.5 19 13.5C20 13.5 20.5 14 20.5 15V19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <h3>Role-Based Access</h3>
-          <p>Separate admin and staff views, so managers get full control while staff see only the check-in tools they need.</p>
-        </article>
-
-        <article class="solution-card">
-          <span class="s-icon">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20V13M22 20V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <h3>Analytics Dashboard</h3>
-          <p>A visual breakdown of stock movement, compliance tracking, and engagement — read at a glance from the dashboard.</p>
-        </article>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== PURPOSE ===================== -->
-  <section class="purpose-section" id="purpose">
-    <div class="section-inner purpose-inner">
-      <div class="purpose-copy">
-        <p class="eyebrow">Why we built this</p>
-        <h2>Made for the way small businesses actually work.</h2>
-        <p>Most MSMEs still track raw materials on paper logs or scattered spreadsheets — until a shortage shows up with no warning, or nobody can say what came in and out last week.</p>
-        <p>RMSME exists to close that gap without the overhead of an enterprise system: a front desk that logs every material as it moves, and a back office that always knows what's on the shelf and what's running low.</p>
-        <a class="text-link" href="#how-it-works">See how it works
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-      </div>
-      <div class="purpose-visual" aria-hidden="true">
-        <div class="crate-stack">
-          <div class="crate crate-1"></div>
-          <div class="crate crate-2"></div>
-          <div class="crate crate-3"></div>
+          <!-- Floating Satellite Conceptual Cards -->
+          <div class="satellite-card satellite-1" data-view-target="features">
+            <span>📦</span> <span>Inventory Management</span>
+          </div>
+          <div class="satellite-card satellite-2" data-view-target="features">
+            <span>📊</span> <span>Consumption Analytics</span>
+          </div>
+          <div class="satellite-card satellite-3" data-view-target="features">
+            <span>🤖</span> <span>AI Forecasting</span>
+          </div>
+          <div class="satellite-card satellite-4" data-view-target="features">
+            <span>💡</span> <span>Decision Support</span>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ===================== HOW IT WORKS ===================== -->
-  <section class="flow-section" id="how-it-works">
-    <div class="section-inner">
-      <p class="eyebrow eyebrow--dark">How it works</p>
-      <h2>One system, two everyday jobs.</h2>
-      <p class="section-lead">Admins set the system up and keep watch. Staff log what moves through the door. Here's the generic path each one follows.</p>
+  <!-- ===================== VIEW 2: ABOUT / PURPOSE (SPACIOUS & WIDE) ===================== -->
+  <section class="view-panel" id="view-about" data-view-id="about">
+    <!-- Subtle Background Inventory Grid & Chart Skeletons -->
+    <div class="about-bg-decoration" aria-hidden="true">
+      <svg width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="inventoryGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(16, 185, 129, 0.08)" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#inventoryGrid)"/>
+        <!-- Abstract Trend Line -->
+        <path d="M 50 450 Q 300 200 600 320 T 1200 150" stroke="rgba(16, 185, 129, 0.15)" stroke-width="2" stroke-dasharray="6 6"/>
+      </svg>
+    </div>
 
-      <div class="flow-tabs" role="tablist">
-        <button class="flow-tab is-active" data-track="admin" role="tab" aria-selected="true">For Admins &amp; Managers</button>
-        <button class="flow-tab" data-track="staff" role="tab" aria-selected="false">For Staff &amp; Users</button>
-      </div>
+    <div class="view-inner-container about-wide-container">
+      <div class="about-view-layout">
+        
+        <!-- LEFT: WHAT IS RM(S)ME? PANEL WITH 3D LOGO -->
+        <div class="about-left-col">
+          <div class="about-primary-panel">
+            <div class="view-heading-wrap">
+              <span class="view-eyebrow">ABOUT RM(S)ME</span>
+              <h2 class="view-main-title">What is RM(S)ME?</h2>
+            </div>
+            
+            <div class="about-panel-body">
+              <p class="about-desc-text">
+                RM(S)ME is a web-based raw materials inventory management system designed to help micro, small, and medium enterprises record inventory data, monitor material movement, understand consumption patterns, and use AI-based forecasting for better inventory planning.
+              </p>
 
-      <div class="flow-carousel">
-        <button class="flow-arrow flow-arrow--prev" id="flowPrev" aria-label="Previous step">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-
-        <div class="flow-track-wrap">
-          <div class="flow-track" id="flowTrack">
-            <!-- ADMIN TRACK -->
-            <div class="flow-slide" data-track="admin" data-step="0">
-              <span class="flow-step-tag">Step 1 of 4</span>
-              <h3>Set up your inventory</h3>
-              <p>Add your raw materials, organize them into categories, and set the reorder thresholds that matter to your business.</p>
-            </div>
-            <div class="flow-slide" data-track="admin" data-step="1">
-              <span class="flow-step-tag">Step 2 of 4</span>
-              <h3>Add your team</h3>
-              <p>Create staff accounts and assign roles, so each person sees exactly the tools relevant to their job.</p>
-            </div>
-            <div class="flow-slide" data-track="admin" data-step="2">
-              <span class="flow-step-tag">Step 3 of 4</span>
-              <h3>Monitor in real time</h3>
-              <p>Watch stock levels and material activity from the dashboard as material moves.</p>
-            </div>
-            <div class="flow-slide" data-track="admin" data-step="3">
-              <span class="flow-step-tag">Step 4 of 4</span>
-              <h3>Review &amp; report</h3>
-              <p>Pull usage records and reports whenever you need them, for restocking decisions or audits.</p>
-            </div>
-
-            <!-- STAFF TRACK -->
-            <div class="flow-slide" data-track="staff" data-step="0">
-              <span class="flow-step-tag">Step 1 of 4</span>
-              <h3>Check in</h3>
-              <p>Tap in at the front desk when you arrive with material to drop off or pick up.</p>
-            </div>
-            <div class="flow-slide" data-track="staff" data-step="1">
-              <span class="flow-step-tag">Step 2 of 4</span>
-              <h3>Log the material</h3>
-              <p>Record the drop-off or pick-up in a few taps — pick the material, enter the quantity, done.</p>
-            </div>
-            <div class="flow-slide" data-track="staff" data-step="2">
-              <span class="flow-step-tag">Step 3 of 4</span>
-              <h3>Confirm the details</h3>
-              <p>Double-check the quantity and material before submitting, so the record is right the first time.</p>
-            </div>
-            <div class="flow-slide" data-track="staff" data-step="3">
-              <span class="flow-step-tag">Step 4 of 4</span>
-              <h3>You're routed</h3>
-              <p>Get sent to the right desk or task automatically — no waiting on someone to look it up.</p>
+              <div class="about-logo-visual">
+                <img src="assets/rmsme-3d-logo.png" alt="RMSME 3D Brand Visual" class="about-3d-logo-img" loading="lazy">
+              </div>
             </div>
           </div>
         </div>
 
-        <button class="flow-arrow flow-arrow--next" id="flowNext" aria-label="Next step">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
+        <!-- RIGHT: CORE SYSTEM OBJECTIVES (2 x 3 GRID OF LARGE CARDS) -->
+        <div class="about-right-col">
+          <div class="view-heading-wrap">
+            <span class="view-eyebrow" style="color: var(--color-emerald-light);">CORE SYSTEM OBJECTIVES</span>
+            <h3 class="about-obj-heading">
+              What RM(S)ME Helps You Do
+            </h3>
+          </div>
 
-      <div class="flow-dots" id="flowDots"></div>
+          <div class="objectives-grid">
+            <div class="objective-card">
+              <div class="obj-card-header">
+                <span class="obj-number">01</span>
+                <span class="obj-icon">📁</span>
+              </div>
+              <h4 class="obj-card-title">Maintain organized raw material records</h4>
+            </div>
+
+            <div class="objective-card">
+              <div class="obj-card-header">
+                <span class="obj-number">02</span>
+                <span class="obj-icon">🔄</span>
+              </div>
+              <h4 class="obj-card-title">Monitor received and consumed materials</h4>
+            </div>
+
+            <div class="objective-card">
+              <div class="obj-card-header">
+                <span class="obj-number">03</span>
+                <span class="obj-icon">📊</span>
+              </div>
+              <h4 class="obj-card-title">Understand consumption patterns</h4>
+            </div>
+
+            <div class="objective-card">
+              <div class="obj-card-header">
+                <span class="obj-number">04</span>
+                <span class="obj-icon">🎯</span>
+              </div>
+              <h4 class="obj-card-title">Support inventory planning</h4>
+            </div>
+
+            <div class="objective-card">
+              <div class="obj-card-header">
+                <span class="obj-number">05</span>
+                <span class="obj-icon">🤖</span>
+              </div>
+              <h4 class="obj-card-title">Forecast future raw material requirements</h4>
+            </div>
+
+            <div class="objective-card">
+              <div class="obj-card-header">
+                <span class="obj-number">06</span>
+                <span class="obj-icon">💡</span>
+              </div>
+              <h4 class="obj-card-title">Support better operational decisions</h4>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
-  <!-- ===================== FAQS ===================== -->
-  <section class="faq-section" id="faqs">
-    <div class="section-inner faq-inner">
-      <p class="eyebrow eyebrow--dark">Questions</p>
-      <h2>Frequently asked questions</h2>
+  <!-- ===================== VIEW 3: FEATURES (CAPABILITIES) ===================== -->
+  <section class="view-panel" id="view-features" data-view-id="features">
+    <div class="view-inner-container">
+      <div class="view-heading-wrap" style="text-align: center; margin-bottom: 24px;">
+        <span class="view-eyebrow">SYSTEM CAPABILITIES</span>
+        <h2 class="view-main-title">Explore RM(S)ME Capabilities</h2>
+        <p style="font-size: 14px; color: var(--color-text-muted); margin-top: 6px;">
+          Everything you need to understand and manage raw material inventory. Tap any card to view details.
+        </p>
+      </div>
 
-      <div class="faq-list">
+      <div class="features-view-grid">
+        <article class="feature-card" data-feature-id="1" tabindex="0" role="button" aria-expanded="false">
+          <div class="feature-card-icon">📦</div>
+          <span class="feature-card-num">01 Capability</span>
+          <h3 class="feature-card-title">Inventory Management</h3>
+          <p class="feature-card-desc">Record and monitor raw materials and current stock levels with structured cataloging.</p>
+          <span class="feature-expand-badge">Tap to Expand ↗</span>
+        </article>
 
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">
-            What is RMSME?
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-a"><p>RMSME (Raw Materials MSME) is an inventory management system built for small and medium businesses. It tracks raw materials from check-in to check-out, with consumption analytics and reporting built in.</p></div>
+        <article class="feature-card" data-feature-id="2" tabindex="0" role="button" aria-expanded="false">
+          <div class="feature-card-icon">📋</div>
+          <span class="feature-card-num">02 Capability</span>
+          <h3 class="feature-card-title">Material Activity</h3>
+          <p class="feature-card-desc">Track received and consumed material movement with immutable audit trails.</p>
+          <span class="feature-expand-badge">Tap to Expand ↗</span>
+        </article>
+
+        <article class="feature-card" data-feature-id="3" tabindex="0" role="button" aria-expanded="false">
+          <div class="feature-card-icon">📊</div>
+          <span class="feature-card-num">03 Capability</span>
+          <h3 class="feature-card-title">Consumption Analytics</h3>
+          <p class="feature-card-desc">Understand which materials are being used and how consumption changes over time.</p>
+          <span class="feature-expand-badge">Tap to Expand ↗</span>
+        </article>
+
+        <article class="feature-card" data-feature-id="4" tabindex="0" role="button" aria-expanded="false">
+          <div class="feature-card-icon">📑</div>
+          <span class="feature-card-num">04 Capability</span>
+          <h3 class="feature-card-title">Reports</h3>
+          <p class="feature-card-desc">View organized inventory ledgers and stock movement information on demand.</p>
+          <span class="feature-expand-badge">Tap to Expand ↗</span>
+        </article>
+
+        <article class="feature-card" data-feature-id="5" tabindex="0" role="button" aria-expanded="false">
+          <div class="feature-card-icon">🤖</div>
+          <span class="feature-card-num">05 Capability</span>
+          <h3 class="feature-card-title">AI-Based Forecasting</h3>
+          <p class="feature-card-desc">Use historical consumption data to estimate future raw material requirements.</p>
+          <span class="feature-expand-badge">Tap to Expand ↗</span>
+        </article>
+
+        <article class="feature-card" data-feature-id="6" tabindex="0" role="button" aria-expanded="false">
+          <div class="feature-card-icon">💡</div>
+          <span class="feature-card-num">06 Capability</span>
+          <h3 class="feature-card-title">Decision Support</h3>
+          <p class="feature-card-desc">Turn inventory, consumption, and forecast information into practical planning guidance.</p>
+          <span class="feature-expand-badge">Tap to Expand ↗</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VIEW 4: HOW IT WORKS (STRETCHED 2-COLUMN) ===================== -->
+  <section class="view-panel" id="view-how-it-works" data-view-id="how-it-works">
+    <div class="view-inner-container">
+      <div class="view-heading-wrap" style="margin-bottom: 20px;">
+        <span class="view-eyebrow">INTERACTIVE PROCESS FLOW</span>
+        <h2 class="view-main-title">How RM(S)ME Works</h2>
+        <p style="font-size: 14px; color: var(--color-text-sub); margin-top: 4px;">
+          From recorded materials to better inventory decisions.
+        </p>
+      </div>
+
+      <div class="how-view-layout">
+        <!-- LEFT: 5 STACKED STAGES -->
+        <div class="process-steps-list" id="processStepsList">
+          <div class="process-step-pill is-active-step" data-step-index="0" tabindex="0" role="button">
+            <span class="step-badge">01</span>
+            <div class="step-content-wrap">
+              <h4 class="step-info-title">Record</h4>
+              <p class="step-info-desc">Record raw material inventory and stock transactions.</p>
+            </div>
+          </div>
+          <div class="process-step-pill" data-step-index="1" tabindex="0" role="button">
+            <span class="step-badge">02</span>
+            <div class="step-content-wrap">
+              <h4 class="step-info-title">Monitor</h4>
+              <p class="step-info-desc">Monitor stock levels and material movement.</p>
+            </div>
+          </div>
+          <div class="process-step-pill" data-step-index="2" tabindex="0" role="button">
+            <span class="step-badge">03</span>
+            <div class="step-content-wrap">
+              <h4 class="step-info-title">Analyze</h4>
+              <p class="step-info-desc">Analyze recorded consumption patterns.</p>
+            </div>
+          </div>
+          <div class="process-step-pill" data-step-index="3" tabindex="0" role="button">
+            <span class="step-badge">04</span>
+            <div class="step-content-wrap">
+              <h4 class="step-info-title">Forecast</h4>
+              <p class="step-info-desc">Estimate future raw material requirements using AI-based time-series forecasting.</p>
+            </div>
+          </div>
+          <div class="process-step-pill" data-step-index="4" tabindex="0" role="button">
+            <span class="step-badge">05</span>
+            <div class="step-content-wrap">
+              <h4 class="step-info-title">Plan</h4>
+              <p class="step-info-desc">Use the information to support better inventory planning.</p>
+            </div>
+          </div>
         </div>
 
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">
-            Who is it for — admins or staff?
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-a"><p>Both. Admins and managers get full control over inventory, staff accounts, and reports. Staff and everyday users get a simple check-in flow for logging drop-offs and pick-ups.</p></div>
+        <!-- RIGHT: FULL-HEIGHT DYNAMIC DETAIL CARD WITH FLOATING SENTENCES & QUICK CHECK -->
+        <div class="how-visual-card" id="howVisualCard">
+          <div class="how-stage-header">
+            <span class="how-stage-badge" id="howActiveStepNum">STAGE 01</span>
+            <h3 class="how-stage-title" id="howActiveStepTitle">Record Raw Materials & Deliveries</h3>
+            <p class="how-stage-desc" id="howActiveStepDesc">
+              Enter raw material specifications, units of measure, minimum thresholds, and log delivery receipts directly into an immutable inventory ledger.
+            </p>
+          </div>
+
+          <!-- Staggered Floating Supporting Information Items -->
+          <div class="how-info-items" id="howInfoItems">
+            <div class="info-pill-item">
+              <span class="info-pill-icon">✓</span>
+              <span class="info-pill-text" id="infoPill1">Raw material catalog and specifications can be recorded.</span>
+            </div>
+            <div class="info-pill-item">
+              <span class="info-pill-icon">✓</span>
+              <span class="info-pill-text" id="infoPill2">Received delivery shipments are logged in real time.</span>
+            </div>
+            <div class="info-pill-item">
+              <span class="info-pill-icon">✓</span>
+              <span class="info-pill-text" id="infoPill3">Accurate records eliminate manual ledger discrepancies.</span>
+            </div>
+          </div>
+
+          <!-- Interactive Quick Check Knowledge Module -->
+          <div class="how-quick-check" id="howQuickCheck">
+            <div class="quick-check-header">
+              <span class="quick-check-label">⚡ Quick Check</span>
+              <span class="quick-check-question" id="qcQuestion">What happens when a new shipment arrives?</span>
+            </div>
+            <div class="quick-check-options" id="qcOptions">
+              <button type="button" class="qc-btn" data-choice="A" id="qcOptA">A. Delivery quantity and receipt details are recorded</button>
+              <button type="button" class="qc-btn" data-choice="B" id="qcOptB">B. The system automatically purchases products</button>
+              <button type="button" class="qc-btn" data-choice="C" id="qcOptC">C. Existing database records are cleared</button>
+            </div>
+            <div class="quick-check-feedback" id="qcFeedback" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VIEW 5: BENEFITS ===================== -->
+  <section class="view-panel" id="view-benefits" data-view-id="benefits">
+    <div class="view-inner-container">
+      <div class="view-heading-wrap" style="text-align: center; margin-bottom: 24px;">
+        <span class="view-eyebrow">VALUE PROPOSITION</span>
+        <h2 class="view-main-title">Better Inventory. Smarter Decisions.</h2>
+        <p style="font-size: 14px; color: var(--color-text-muted); margin-top: 6px;">
+          Practical operational advantages designed specifically for MSME raw material management.
+        </p>
+      </div>
+
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="benefit-icon">📁</div>
+          <h3 class="benefit-title">Organized Records</h3>
+          <p class="benefit-desc">Maintain clean, standardized raw material specifications, units of measure, and safety thresholds.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">🔄</div>
+          <h3 class="benefit-title">Clear Material Movement</h3>
+          <p class="benefit-desc">Track receipts and disbursements with complete audit-logged movement history.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">📈</div>
+          <h3 class="benefit-title">Consumption Visibility</h3>
+          <p class="benefit-desc">Understand material velocity and usage patterns across your product catalog.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">🎯</div>
+          <h3 class="benefit-title">Forecast-Supported Planning</h3>
+          <p class="benefit-desc">Estimate 7-day and 4-week future material needs using historical time-series data.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">📑</div>
+          <h3 class="benefit-title">Audit-Ready Reporting</h3>
+          <p class="benefit-desc">Generate organized inventory ledgers and movement summaries on demand for management review.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">🔒</div>
+          <h3 class="benefit-title">Role-Based Access</h3>
+          <p class="benefit-desc">Enforce strict security role separation for Admin management and Staff operations.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VIEW 6: CONNECT / FAQS (2 BALANCED CARDS) ===================== -->
+  <section class="view-panel" id="view-connect" data-view-id="connect">
+    <div class="view-inner-container">
+      <div class="connect-faq-grid">
+        
+        <!-- LEFT: CONNECT CARD -->
+        <div class="connect-card">
+          <span class="view-eyebrow" style="margin-bottom: 8px;">GET IN TOUCH</span>
+          <h3 class="connect-card-title">Connect With RM(S)ME</h3>
+          <p class="connect-card-desc">
+            RM(S)ME is designed to support micro, small, and medium enterprises in organizing raw material inventory records, monitoring material movement, understanding consumption patterns, and supporting better inventory planning.
+          </p>
+          <div class="connect-access-box">
+            <h4 style="font-size: 15px; font-weight: 700; color: #FFFFFF; margin-bottom: 6px;">Need system access?</h4>
+            <p style="font-size: 13.5px; color: var(--color-text-sub); line-height: 1.55; margin-bottom: 20px;">
+              Sign in using your authorized account or contact your system administrator if you need access credentials.
+            </p>
+            <a class="btn btn-primary btn-lg" href="login.html" style="width: 100%;">
+              Sign In to Portal →
+            </a>
+          </div>
         </div>
 
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">
-            Do I need technical experience to use it?
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-a"><p>No. Checking in at the front desk takes a few taps, and the admin dashboard is laid out to be used without any training.</p></div>
-        </div>
+        <!-- RIGHT: FAQ ACCORDION CARD -->
+        <div class="faq-card">
+          <span class="view-eyebrow" style="margin-bottom: 8px;">KNOWLEDGE BASE</span>
+          <h3 class="connect-card-title" style="margin-bottom: 16px;">Frequently Asked Questions</h3>
+          
+          <div class="faq-accordion" id="faqAccordion">
+            
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>What is RM(S)ME?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>RM(S)ME is a web-based raw materials inventory management system designed specifically for micro, small, and medium enterprises to record stock data, track material movements, analyze usage patterns, and support planning through AI-based forecasting.</p>
+              </div>
+            </div>
 
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">
-            Can I track more than one type of raw material?
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-a"><p>Yes. Organize materials into categories, each with its own stock thresholds so you know exactly when something needs reordering.</p></div>
-        </div>
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>What can RM(S)ME manage?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>RM(S)ME manages raw material catalogs, minimum safety thresholds, units of measure, stock receipts from suppliers, material disbursements into production, and historical usage ledgers.</p>
+              </div>
+            </div>
 
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">
-            Does it tell me what to reorder?
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-a"><p>Yes. The system analyzes recorded raw-material usage patterns.</p></div>
-        </div>
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>Does RM(S)ME provide raw material forecasting?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>Yes. The system applies trained AutoReg statistical time-series models to historical consumption data to estimate projected material requirements over 7-day and 4-week planning horizons.</p>
+              </div>
+            </div>
 
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">
-            Can staff see everything admins see?
-            <svg viewBox="0 0 24 24" fill="none"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-a"><p>No. Access is role-based, so admin tools and staff check-in tools stay separate — each person only sees what's relevant to their job.</p></div>
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>Who can use the system?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>RM(S)ME is built for enterprise administrators and operational staff. Staff members record daily receipts and disbursements, while administrators manage thresholds, review advanced analytics, and configure settings.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>Can users access administrative functions?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>No. Access is strictly controlled through database-level Row Level Security (RLS) and role-based route guards. Only authenticated administrator accounts can access administrative functions.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>Does RM(S)ME automatically purchase materials?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>No. RM(S)ME provides decision support and replenishment guidance based on projected shortages, empowering human managers to make informed purchasing decisions without autonomous buying.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>Does the system manage product recipes or BOMs?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>RM(S)ME allows administrators to define raw material ratios required per finished product unit in order to accurately compute and monitor material consumption during disbursements.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button type="button" class="faq-question" aria-expanded="false">
+                <span>How do I access the system?</span>
+                <span class="faq-chevron">▾</span>
+              </button>
+              <div class="faq-answer">
+                <p>Click the "Sign In" button in the navigation header or the "Sign In to Portal →" button to log into your authorized account with your registered credentials.</p>
+              </div>
+            </div>
+
+          </div>
         </div>
 
       </div>
@@ -324,39 +532,43 @@
 
 </main>
 
-<!-- ===================== FOOTER ===================== -->
-<footer class="site-footer">
-  <div class="section-inner footer-inner">
+<!-- ===================== FIXED FOOTER BAR ===================== -->
+<footer class="site-footer" id="siteFooter">
+  <div class="footer-inner">
     <div class="footer-brand">
-      <div class="brand-mark">
-        <span class="brand-icon brand-icon--logo">
-          <img src="assets/logo-icon.png" alt="RMsme logo">
-        </span>
-        <span class="brand-word">RMSME</span>
-      </div>
-      <p>Transforming raw material management through consumption analytics.</p>
+      <img src="assets/logo-icon.png" alt="RMSME logo" style="width: 20px; height: 20px;">
+      <span>RM(S)ME — Raw Materials Inventory Management System</span>
     </div>
-
-    <div class="footer-col">
-      <p class="footer-heading">Site</p>
-      <a href="#platform">Platform</a>
-      <a href="#solutions">Solutions</a>
-      <a href="#how-it-works">How it Works</a>
-      <a href="#faqs">FAQs</a>
+    <div>
+      © 2025 RM(S)ME. All rights reserved.
     </div>
-
-    <div class="footer-col">
-      <p class="footer-heading">Access</p>
-      <a href="login.html?role=admin">Sign in</a>
-    </div>
-  </div>
-
-  <div class="footer-bottom">
-    <span>© <span id="footerYear">2026</span> RMsme. All rights reserved.</span>
-    <span>Powered by <strong>RMsme</strong></span>
   </div>
 </footer>
 
-<script src="js/landing.js"></script>
+<!-- ===================== FEATURE EXPANSION DRAWER / MODAL ===================== -->
+<div class="feature-expansion-drawer" id="featureExpansionDrawer" aria-hidden="true">
+  <div class="expansion-card-content">
+    <button type="button" class="expansion-close-btn" id="expansionCloseBtn" aria-label="Close details">×</button>
+    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+      <div style="font-size: 32px;" id="expIcon">📦</div>
+      <div>
+        <span style="font-size: 11px; font-weight: 700; color: var(--color-emerald-light); text-transform: uppercase;" id="expNum">01 Capability</span>
+        <h3 style="font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; color: #FFFFFF;" id="expTitle">Inventory Management</h3>
+      </div>
+    </div>
+    
+    <div class="exp-box">
+      <span class="exp-label">What it does</span>
+      <p class="exp-text" id="expDoes">Record and monitor raw materials and current stock levels with structured cataloging.</p>
+    </div>
+
+    <div class="exp-box" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.08);">
+      <span class="exp-label">Why it matters</span>
+      <p class="exp-text" id="expMatters">Maintains accurate real-time inventory balances and prevents unexpected shortages or stockouts across production runs.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/landing.js"></script>
 </body>
 </html>

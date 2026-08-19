@@ -1,31 +1,15 @@
-import { auth, db } from "../supabase/supabase-config.js";
-import { doc, getDoc, collection, getDocs } from "../supabase/db-compat.js";
+import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 
 const $ = id => document.getElementById(id);
 let currentUser = null;
 let logoutInProgress = false;
 
-function fmtDate(ts) {
-    if (!ts) return "—";
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+/* ==========================================================
+   HELPERS & TOASTS
+   ========================================================== */
 
-function fmtDateTime(ts) {
-    if (!ts) return "—";
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    if (Number.isNaN(d.getTime())) return "—";
-    return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
-}
-
-function initials(name) {
-    if (!name) return "U";
-    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "U";
-}
-
-const toastStack = document.getElementById("toastStack");
+const toastStack = $("toastStack");
 function showToast(message, type = "success") {
     if (!toastStack) return;
     const el = document.createElement("div");
@@ -33,20 +17,33 @@ function showToast(message, type = "success") {
     el.innerHTML = `<span class="toast-dot"></span><span>${message}</span>`;
     toastStack.appendChild(el);
     setTimeout(() => {
-        el.classList.add("leaving");
-        setTimeout(() => el.remove(), 250);
-    }, 3800);
+        el.style.opacity = "0";
+        el.style.transform = "translateY(8px)";
+        setTimeout(() => el.remove(), 200);
+    }, 3200);
 }
 
-function openModal(id) {
-    const m = $(id);
-    if (m) m.classList.add("open");
+function fmtDate(ts) {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function closeModal(id) {
-    const m = $(id);
-    if (m) m.classList.remove("open");
+function fmtDateTime(ts) {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return "—";
+    return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
 }
+
+function initials(name) {
+    if (!name) return "US";
+    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "US";
+}
+
+function openModal(id) { $(id)?.classList.add("open"); }
+function closeModal(id) { $(id)?.classList.remove("open"); }
 
 document.querySelectorAll("[data-close-modal]").forEach(btn => {
     btn.addEventListener("click", () => closeModal(btn.dataset.closeModal));
@@ -63,22 +60,25 @@ document.querySelectorAll(".modal-overlay").forEach(overlay => {
    ========================================================== */
 
 onAuthStateChanged(auth, async (user) => {
-    if (!user) { window.location.href = "../login.html"; return; }
+    if (!user) { window.location.href = "../user-signin.html"; return; }
 
     try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (!userDoc.exists()) { window.location.href = "../login.html"; return; }
+        const { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, email, role, status, created_at, updated_at")
+            .eq("id", user.uid)
+            .maybeSingle();
 
-        const data = userDoc.data();
-        if (data.status !== "active") { window.location.href = "../login.html"; return; }
-        if (data.role !== "user") { window.location.href = "../admin/dashboard.html"; return; }
+        if (error || !profile) { window.location.href = "../user-signin.html"; return; }
+        if (profile.status !== "active") { window.location.href = "../user-signin.html"; return; }
+        if (profile.role !== "user") { window.location.href = "../admin/dashboard.html"; return; }
 
         currentUser = {
             uid: user.uid,
-            fullName: data.fullName || "",
-            email: data.email || user.email || "",
-            role: data.role || "user",
-            status: data.status || "inactive"
+            fullName: profile.full_name || "",
+            email: profile.email || user.email || "",
+            role: profile.role || "user",
+            status: profile.status || "inactive"
         };
 
         const profileBtn = $("profileBtn");
@@ -97,13 +97,14 @@ onAuthStateChanged(auth, async (user) => {
         if (statusEl) statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";
         if ($("statusDot")) $("statusDot").classList.toggle("inactive", currentUser.status !== "active");
 
-        if ($("accountCreated")) $("accountCreated").textContent = fmtDate(data.createdAt);
-        if ($("accountLastLogin")) $("accountLastLogin").textContent = fmtDateTime(data.lastActivityAt);
+        if ($("accountCreated")) $("accountCreated").textContent = fmtDate(profile.created_at);
+        if ($("accountLastLogin")) $("accountLastLogin").textContent = fmtDateTime(profile.updated_at);
 
         loadSessionInfo();
         loadDataSummary();
     } catch (error) {
         console.error("Error loading user account:", error);
+        window.location.href = "../user-signin.html";
     }
 });
 
@@ -226,16 +227,16 @@ if (changePasswordForm) {
 
 async function loadDataSummary() {
     try {
-        const [mSnap, rSnap, uSnap] = await Promise.all([
-            getDocs(collection(db, "materials")),
-            getDocs(collection(db, "stockReceipts")),
-            getDocs(collection(db, "usageRecords"))
+        const [mRes, rRes, uRes] = await Promise.all([
+            supabase.from("raw_materials").select("id", { count: "exact", head: true }),
+            supabase.from("stock_receipts").select("id", { count: "exact", head: true }),
+            supabase.from("material_disbursements").select("id", { count: "exact", head: true })
         ]);
-        if ($("summaryMaterials")) $("summaryMaterials").textContent = mSnap.docs.length;
-        if ($("summaryStockReceipts")) $("summaryStockReceipts").textContent = rSnap.docs.length;
-        if ($("summaryUsageRecords")) $("summaryUsageRecords").textContent = uSnap.docs.length;
+        if ($("summaryMaterials")) $("summaryMaterials").textContent = mRes.count ?? 0;
+        if ($("summaryStockReceipts")) $("summaryStockReceipts").textContent = rRes.count ?? 0;
+        if ($("summaryUsageRecords")) $("summaryUsageRecords").textContent = uRes.count ?? 0;
     } catch (err) {
-        console.error(err);
+        console.error("Data summary load notice:", err);
     }
 }
 
@@ -244,15 +245,15 @@ if (createBackupBtn) {
     createBackupBtn.addEventListener("click", async () => {
         showToast("Generating user activity backup…");
         try {
-            const [uSnap, rSnap] = await Promise.all([
-                getDocs(collection(db, "usageRecords")),
-                getDocs(collection(db, "stockReceipts"))
+            const [uRes, rRes] = await Promise.all([
+                supabase.from("material_disbursements").select("*"),
+                supabase.from("stock_receipts").select("*")
             ]);
             const payload = {
                 exportDate: new Date().toISOString(),
                 user: currentUser?.email || "User",
-                usageRecords: uSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-                stockReceipts: rSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                usageRecords: uRes.data || [],
+                stockReceipts: rRes.data || []
             };
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -290,7 +291,7 @@ if (confirmDeleteAccountBtn) {
         }
         showToast("Account deletion request submitted.");
         closeModal("deleteAccountModal");
-        setTimeout(() => signOut(auth).then(() => window.location.href = "../login.html"), 1200);
+        setTimeout(() => supabase.auth.signOut().then(() => window.location.href = "../user-signin.html"), 1200);
     });
 }
 
@@ -305,8 +306,8 @@ if (logoutBtn) {
         if (!confirm("Are you sure you want to log out of RMIMS?")) return;
         logoutInProgress = true;
         try {
-            await signOut(auth);
-            window.location.href = "../login.html";
+            await supabase.auth.signOut();
+            window.location.href = "../user-signin.html";
         } catch (err) {
             logoutInProgress = false;
             showToast("Logout failed. Please try again.", "error");

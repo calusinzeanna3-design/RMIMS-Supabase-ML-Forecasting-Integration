@@ -1,9 +1,11 @@
-// Admin Dashboard — current RMIMS base.
-// Dashboard-only visual result interaction. Existing inventory/usage data flow is preserved.
+// js/dashboard.js
+// RMIMS V2 — ADMIN DASHBOARD RESTRUCTURE
+// Live data from public.raw_materials, public.stock_receipts, public.material_disbursements, public.user_profiles.
+// Strictly READ-ONLY. Zero direct stock mutations. Zero mock data.
 
-import { auth, db } from "../supabase/supabase-config.js";
-import { collection, getDocs, doc, getDoc } from "../supabase/db-compat.js";
+import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
+import { checkAndShowOnboarding } from "./onboarding.js";
 
 const $ = id => document.getElementById(id);
 
@@ -19,2698 +21,1346 @@ const esc = v =>
     }[c])
   );
 
-
 // ============================================================
-// TOAST
+// TOAST NOTIFICATIONS
 // ============================================================
 
 function toast(message, type = "success") {
-
   const s = $("toastStack");
-
   if (!s) return;
-
   const el = document.createElement("div");
-
   el.className = `toast ${type}`;
-
   el.innerHTML = `
     <span class="toast-dot"></span>
     <span>${esc(message)}</span>
   `;
-
   s.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("leaving");
+    setTimeout(() => el.remove(), 260);
+  }, 3000);
+}
+
+// ============================================================
+// STATE & INSTANCES
+// ============================================================
+
+let dashboardLoading = false;
+let catalogMaterials = [];
+let usageRecords = [];
+let receiptRecords = [];
+
+// Chart instances
+let consumptionChartInstance = null;
+let rawMaterialsTrendChartInstance = null;
+
+// Flask API Base for live ML forecasting
+const FLASK_API_BASE = window.ENV_FLASK_API_BASE || (window.location.protocol.startsWith("http") ? "" : "http://127.0.0.1:5000");
+
+// Raw Materials Trend State
+let currentTrendMaterial = "all";
+let currentTrendGranularity = "general";
+let trendControlsBound = false;
+
+// Rotation timers & state
+let card2TickerTimer = null;
+let card3TickerTimer = null;
+let card2TickerIndex = 0;
+let card3TickerIndex = 0;
+let card2IsHovered = false;
+let card3IsHovered = false;
+let card2MaterialsList = [];
+let card3MaterialsList = [];
+
+// Modal 2 Filter State
+let currentModalGranularity = "general";
+let currentModalCategory = "general";
+
+// Guaranteed unique series colors palette for Chart.js
+const SERIES_PALETTE = [
+  "#10B981", // Emerald
+  "#3B82F6", // Blue
+  "#F59E0B", // Amber
+  "#8B5CF6", // Purple
+  "#EC4899", // Pink
+  "#06B6D4", // Cyan
+  "#14B8A6", // Teal
+  "#F97316", // Orange
+  "#6366F1", // Indigo
+  "#84CC16"  // Lime
+];
+
+// ============================================================
+// MODAL CONTROLLER (BLUR, DIM & ACCESSIBILITY)
+// ============================================================
+
+function openAdminModal(modalId) {
+  const backdrop = $("adminModalBackdrop");
+  const modal = $(modalId);
+  if (!backdrop || !modal) return;
+
+  // Hide all modals first
+  document.querySelectorAll(".admin-modal-panel").forEach(p => {
+    p.hidden = true;
+    p.classList.remove("active");
+  });
+
+  backdrop.hidden = false;
+  modal.hidden = false;
+  requestAnimationFrame(() => {
+    backdrop.classList.add("active");
+    modal.classList.add("active");
+  });
+  document.body.classList.add("modal-open");
+
+  // Trigger modal specific renders
+  if (modalId === "modalRawMaterialStatus") {
+    renderRawMaterialsTable();
+    const searchInput = $("rawMaterialSearch");
+    if (searchInput) searchInput.focus();
+  } else if (modalId === "modalConsumptionAnalytics") {
+    renderModalConsumptionChart();
+  } else if (modalId === "modalOutOfStock") {
+    renderOutOfStockTiles();
+  }
+}
+
+function closeAdminModals() {
+  const backdrop = $("adminModalBackdrop");
+  if (!backdrop) return;
+
+  backdrop.classList.remove("active");
+  document.querySelectorAll(".admin-modal-panel").forEach(p => {
+    p.classList.remove("active");
+    setTimeout(() => {
+      p.hidden = true;
+    }, 200);
+  });
 
   setTimeout(() => {
-
-    el.classList.add("leaving");
-
-    setTimeout(
-      () => el.remove(),
-      260
-    );
-
-  }, 3000);
-
+    backdrop.hidden = true;
+    document.body.classList.remove("modal-open");
+  }, 200);
 }
 
+// Global Modal Key & Click Listeners
+window.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeAdminModals();
+  }
+});
 
-// ============================================================
-// INVENTORY STATUS
-// ============================================================
-
-function status(m) {
-
-  const q =
-    Number(m.quantity) || 0;
-
-  const min =
-    Number(m.minimumThreshold) || 0;
-
-  if (q <= 0)
-    return "Out of Stock";
-
-  if (
-    m.status === "Critical" ||
-    q < min
-  )
-    return "Low Stock";
-
-  return "Available";
-
+const adminBackdropEl = $("adminModalBackdrop");
+if (adminBackdropEl) {
+  adminBackdropEl.addEventListener("click", closeAdminModals);
 }
 
+const closeRawBtn = $("closeModalRawMaterials");
+if (closeRawBtn) closeRawBtn.addEventListener("click", closeAdminModals);
+
+const closeConsBtn = $("closeModalConsumption");
+if (closeConsBtn) closeConsBtn.addEventListener("click", closeAdminModals);
+
+const closeOosBtn = $("closeModalOutOfStock");
+if (closeOosBtn) closeOosBtn.addEventListener("click", closeAdminModals);
 
 // ============================================================
-// LOAD DASHBOARD
+// LOAD DASHBOARD DATA (LIVE SUPABASE QUERIES)
 // ============================================================
 
 async function loadDashboard() {
+  if (dashboardLoading) return;
+  dashboardLoading = true;
 
   try {
+    // 1. Fetch raw_materials master catalog
+    const matRes = await supabase
+      .from("raw_materials")
+      .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
+      .order("name");
 
-    const [ms, us, rs] =
-      await Promise.all([
-
-        getDocs(
-          collection(
-            db,
-            "materials"
-          )
-        ),
-
-        getDocs(
-          collection(
-            db,
-            "usageRecords"
-          )
-        ),
-
-        getDocs(
-          collection(
-            db,
-            "stockReceipts"
-          )
-        )
-
-      ]);
-
-
-    const materials =
-      ms.docs.map(
-        d => ({
-          id: d.id,
-          ...d.data()
-        })
-      );
-
-
-    const usage =
-      us.docs.map(
-        d => ({
-          id: d.id,
-          ...d.data()
-        })
-      );
-
-
-    const receipts =
-      rs.docs.map(
-        d => ({
-          id: d.id,
-          ...d.data()
-        })
-      );
-
-
-    const totalMat = materials.length;
-    const availMat = materials.filter(m => status(m) === "Available").length;
-    const lowMat = materials.filter(m => status(m) === "Low Stock").length;
-    const outMat = materials.filter(m => status(m) === "Out of Stock").length;
-
-    if ($("dashTotalMaterials")) $("dashTotalMaterials").textContent = totalMat;
-    if ($("dashAvailable")) $("dashAvailable").textContent = availMat;
-    if ($("dashLowStock")) $("dashLowStock").textContent = lowMat;
-    if ($("dashOutOfStock")) $("dashOutOfStock").textContent = outMat;
-
-    renderDashConsumptionChart(usage);
-    renderDashForecastChart();
-
-    // Load live Forecast summary for Dashboard Priority #2
-    const forecastBox = $("dashForecastAnalytics");
-    if (forecastBox) {
-      fetch("http://127.0.0.1:5000/api/ml/status")
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) {
-            forecastBox.innerHTML = `
-              <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 180px; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px;">
-                  <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #166534;">7-Day Requirement</span>
-                  <div style="font-size: 20px; font-weight: 800; color: #14532D; margin-top: 2px;">Active (${data.total_models || 30} Raw Materials)</div>
-                  <small style="color: #15803D;">Weekly Operational Forecast Active</small>
-                </div>
-                <div style="flex: 1; min-width: 180px; padding: 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px;">
-                  <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #1E40AF;">1-Month Aggregate</span>
-                  <div style="font-size: 20px; font-weight: 800; color: #1E3A8A; margin-top: 2px;">4-Week Expected Horizon</div>
-                  <small style="color: #2563EB;">Monthly Planning Horizon</small>
-                </div>
-              </div>`;
-          } else {
-            forecastBox.innerHTML = `<div class="inline-notice warning"><span>Forecast information is temporarily unavailable.</span></div>`;
-          }
-        })
-        .catch(() => {
-          forecastBox.innerHTML = `<div class="inline-notice warning"><span>Forecast information is temporarily unavailable.</span></div>`;
-        });
+    if (matRes.error) {
+      console.error("raw_materials fetch error:", matRes.error);
+      toast("Unable to load raw materials: " + matRes.error.message, "bad");
+      return;
     }
 
-    // ========================================================
-    // RECENT ACTIVITIES (COMPACT FEED)
-    // ========================================================
+    // 2. Fetch disbursements (usage)
+    const useRes = await supabase
+      .from("material_disbursements")
+      .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
+      .order("usage_date", { ascending: false });
 
-    const events = [
+    if (useRes.error) {
+      console.warn("material_disbursements query notice:", useRes.error);
+    }
 
-      ...receipts.map(
-        r => ({
-          date:
-            r.createdAt ||
-            r.receivedDate,
+    // 3. Fetch stock receipts (inflow)
+    const recRes = await supabase
+      .from("stock_receipts")
+      .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
+      .order("receipt_date", { ascending: false });
 
-          type:
-            "Received",
+    if (recRes.error) {
+      console.warn("stock_receipts query notice:", recRes.error);
+    }
 
-          material:
-            r.materialName,
+    const rawMats = matRes.data || [];
+    const rawUsage = useRes.data || [];
+    const rawReceipts = recRes.data || [];
 
-          qty:
-            r.receivedQuantity,
-
-          unit:
-            r.unit
-        })
-      ),
-
-      ...usage.map(
-        u => ({
-          date:
-            u.createdAt ||
-            u.usageDate,
-
-          type:
-            u.productName
-              ? "Used"
-              : "Consumed",
-
-          material:
-            u.materialName,
-
-          qty:
-            u.usedQuantity,
-
-          unit:
-            u.unit,
-
-          product:
-            u.productName
-        })
-      )
-
-    ]
-      .sort(
-        (a, b) =>
-          new Date(
-            b.date || 0
-          ) -
-          new Date(
-            a.date || 0
-          )
-      )
-      .slice(0, 6);
-
-
-    if ($("activitiesCount")) $("activitiesCount").textContent = events.length;
-
-
-    $("activityFeed").innerHTML =
-      events.length
-
-        ? events.map(
-            e => `
-
-              <button
-                type="button"
-                class="activity-row"
-              >
-
-                <span
-                  class="activity-dot"
-                ></span>
-
-                <span
-                  class="activity-main"
-                >
-
-                  <strong>
-                    ${esc(e.type)}
-                    —
-                    ${esc(e.material)}
-                  </strong>
-
-                  <small>
-                    ${
-                      e.product
-                        ? `For ${esc(e.product)} · `
-                        : ""
-                    }
-
-                    ${esc(e.qty)}
-                    ${esc(e.unit || "")}
-                  </small>
-
-                </span>
-
-                <span
-                  class="activity-time"
-                >
-                  ${
-                    e.date
-                      ? esc(
-                          new Date(
-                            e.date
-                          ).toLocaleDateString()
-                        )
-                      : "—"
-                  }
-                </span>
-
-              </button>
-
-            `
-          ).join("")
-
-        : `
-
-          <div class="empty-state">
-
-            <strong>
-              No recent activity
-            </strong>
-
-            <span>
-              Inventory activity will appear here
-              after records are added.
-            </span>
-
-          </div>
-
-        `;
-
-
-    let dashConsumptionChartInstance = null;
-    let dashForecastChartInstance = null;
-
-    function renderDashConsumptionChart(usageRecords) {
-      const canvas = $("dashConsumptionChart");
-      if (!canvas || typeof Chart === "undefined") return;
-
-      const ctx = canvas.getContext("2d");
-      if (dashConsumptionChartInstance) dashConsumptionChartInstance.destroy();
-
-      const dateMap = new Map();
-      (usageRecords || []).forEach(u => {
-        const dt = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : (u.usageDate || "Recent");
-        const qty = Number(u.usedQuantity || u.quantity || 0);
-        dateMap.set(dt, (dateMap.get(dt) || 0) + qty);
-      });
-
-      let labels = [...dateMap.keys()].slice(-7);
-      let dataPoints = labels.map(k => dateMap.get(k));
-
-      if (!labels.length) {
-        const now = new Date();
-        labels = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(now);
-          d.setDate(d.getDate() - (6 - i));
-          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        });
-        dataPoints = [0, 0, 0, 0, 0, 0, 0];
+    // Normalize materials
+    catalogMaterials = rawMats.map(m => {
+      const stock = Number(m.current_stock || 0);
+      const minThreshold = m.minimum_threshold !== null ? Number(m.minimum_threshold) : null;
+      let matStatus = "Available";
+      if (stock <= 0) {
+        matStatus = "Out of Stock";
+      } else if (minThreshold !== null && stock <= minThreshold) {
+        matStatus = "Might Restock";
+      } else {
+        matStatus = "Good for 7 days";
       }
 
-      dashConsumptionChartInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: labels,
-          datasets: [{
-            label: "Recorded Consumption",
-            data: dataPoints,
-            borderColor: "#10B981",
-            backgroundColor: "rgba(16, 185, 129, 0.12)",
-            fill: true,
-            tension: 0.35,
-            borderWidth: 2.5,
-            pointBackgroundColor: "#10B981"
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: true, position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { mode: "index", intersect: false }
-          },
-          scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-            y: { beginAtZero: true, ticks: { font: { size: 11 } } }
-          }
-        }
-      });
-    }
-
-    function renderDashForecastChart() {
-      const canvas = $("dashForecastChart");
-      if (!canvas || typeof Chart === "undefined") return;
-
-      const ctx = canvas.getContext("2d");
-      if (dashForecastChartInstance) dashForecastChartInstance.destroy();
-
-      fetch("http://127.0.0.1:5000/api/ml/forecast/Sugar/inventory", {
-        method: "GET",
-        headers: { "Accept": "application/json" }
-      })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        let weekValues = [0, 0, 0, 0];
-        let materialUnit = "kg";
-        if (data) {
-          materialUnit = data.unit || "kg";
-          const f7 = Number(data.forecast7Day?.quantity || data.forecast?.quantity) || 0;
-          const f1m = Number(data.forecast1Month?.quantity) || (f7 * 4);
-          if (Array.isArray(data.forecast1Month?.values) && data.forecast1Month.values.length >= 4) {
-            weekValues = data.forecast1Month.values.slice(0, 4).map(v => Math.round(Number(v) || 0));
-          } else if (f7 > 0) {
-            const w1 = Math.round(f7);
-            const w2 = Math.round(f7 * 0.98);
-            const w3 = Math.round(f7 * 1.02);
-            const w4 = Math.max(0, Math.round(f1m - (w1 + w2 + w3)));
-            weekValues = [w1, w2, w3, w4];
-          }
-        }
-
-        dashForecastChartInstance = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-            datasets: [{
-              label: `Forecast Requirement (${materialUnit})`,
-              data: weekValues,
-              backgroundColor: ["rgba(59, 130, 246, 0.75)", "rgba(59, 130, 246, 0.85)", "rgba(59, 130, 246, 0.75)", "rgba(59, 130, 246, 0.9)"],
-              borderColor: "#2563EB",
-              borderWidth: 1,
-              borderRadius: 6
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: true, position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
-              tooltip: { mode: "index", intersect: false }
-            },
-            scales: {
-              x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-              y: { beginAtZero: true, ticks: { font: { size: 11 } } }
-            }
-          }
-        });
-      })
-      .catch(() => {
-        dashForecastChartInstance = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-            datasets: [{
-              label: "Expected Requirement (4-Week)",
-              data: [0, 0, 0, 0],
-              backgroundColor: "rgba(59, 130, 246, 0.4)",
-              borderColor: "#2563EB",
-              borderWidth: 1
-            }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } }
-          }
-        });
-      });
-    }
-
-    // ========================================================
-    // CONSUMPTION TOTALS
-    // ========================================================
-
-    const totalUsed =
-      usage.reduce(
-        (s, u) =>
-          s +
-          (
-            Number(
-              u.usedQuantity
-            ) || 0
-          ),
-        0
-      );
-
-
-    const totalReceived =
-      receipts.reduce(
-        (s, r) =>
-          s +
-          (
-            Number(
-              r.receivedQuantity
-            ) || 0
-          ),
-        0
-      );
-
-
-    $("consumptionNarrative").textContent =
-      usage.length
-
-        ? `${usage.length} consumption record${
-            usage.length === 1
-              ? ""
-              : "s"
-          } have been recorded, with ${
-            totalUsed.toLocaleString()
-          } total quantity used.`
-
-        : "No consumption records have been recorded yet.";
-
-
-    // ========================================================
-    // CONSUMPTION HISTORY
-    // ========================================================
-
-    const history =
-      usage
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(
-              b.usageDate ||
-              b.createdAt ||
-              0
-            ) -
-            new Date(
-              a.usageDate ||
-              a.createdAt ||
-              0
-            )
-        )
-        .slice(0, 6);
-
-
-    $("consumptionHistory").innerHTML =
-      history.length
-
-        ? history.map(
-            u => `
-
-              <div
-                class="history-row"
-              >
-
-                <strong>
-                  ${esc(
-                    u.materialName
-                  )}
-                </strong>
-
-                <span>
-                  -
-                  ${esc(
-                    u.usedQuantity
-                  )}
-                  ${esc(
-                    u.unit || ""
-                  )}
-                </span>
-
-              </div>
-
-            `
-          ).join("")
-
-        : `
-
-          <div class="empty-state">
-
-            <span>
-              No consumption history yet.
-            </span>
-
-          </div>
-
-        `;
-
-
-    // ========================================================
-    // SUGAR / LOW STOCK RESULTS
-    // ========================================================
-
-    const sugar =
-      materials.find(
-        m =>
-          String(
-            m.materialName || ""
-          )
-            .trim()
-            .toLowerCase() ===
-          "sugar"
-      );
-
-
-    const resultMaterials = [];
-
-
-    if (sugar) {
-
-      resultMaterials.push(
-        sugar
-      );
-
-    }
-
-
-    low.forEach(m => {
-
-      if (
-        !resultMaterials.some(
-          x =>
-            x.id === m.id
-        )
-      ) {
-
-        resultMaterials.push(
-          m
-        );
-
-      }
-
+      return {
+        id: m.id,
+        itemCode: m.item_code || "RM-CAT",
+        materialName: m.name,
+        unit: (m.unit_of_measure || "kg").trim(),
+        currentStock: stock,
+        minimumThreshold: minThreshold,
+        reorderQuantity: m.reorder_quantity ? Number(m.reorder_quantity) : null,
+        leadTimeDays: m.lead_time_days ? Number(m.lead_time_days) : null,
+        description: m.description || "",
+        status: matStatus
+      };
     });
 
+    const matMap = new Map(catalogMaterials.map(m => [m.id, m]));
 
-    $("recommendationChips").innerHTML =
-      resultMaterials.length
+    // Normalize usage
+    usageRecords = rawUsage.map(d => {
+      const mat = matMap.get(d.material_id);
+      return {
+        id: d.id,
+        materialId: d.material_id,
+        materialName: mat ? mat.materialName : "Raw Material",
+        consumedQuantity: Math.abs(Number(d.consumed_quantity || 0)),
+        unit: (d.unit || (mat ? mat.unit : "kg")).trim(),
+        usageDate: d.usage_date || (d.created_at ? d.created_at.split("T")[0] : null),
+        activityType: d.activity_type || "Disbursement",
+        createdAt: d.created_at
+      };
+    });
 
-        ? resultMaterials
-            .slice(0, 5)
-            .map(
-              m => `
+    // Normalize receipts
+    receiptRecords = rawReceipts.map(r => {
+      const mat = matMap.get(r.material_id);
+      return {
+        id: r.id,
+        materialId: r.material_id,
+        materialName: mat ? mat.materialName : "Raw Material",
+        receivedQuantity: Math.abs(Number(r.received_quantity || 0)),
+        unit: (r.unit || (mat ? mat.unit : "kg")).trim(),
+        receiptDate: r.receipt_date || (r.created_at ? r.created_at.split("T")[0] : null),
+        supplierName: r.supplier_name || "Supplier",
+        createdAt: r.created_at
+      };
+    });
 
-                <div
-                  class="recommendation-result"
-                >
+    // Render the 3 Primary Summary Cards (Frozen)
+    renderCard1RawMaterials();
+    renderCard2TotalConsumed();
+    renderCard3OutOfStock();
 
-                  <div
-                    class="recommendation-result-main"
-                  >
+    // Populate category dropdown for Modal 2
+    populateModalCategories();
 
-                    <span
-                      class="recommendation-result-dot"
-                    ></span>
-
-                    <span
-                      class="recommendation-result-copy"
-                    >
-
-                      <strong>
-                        ${esc(
-                          m.materialName
-                        )}
-                      </strong>
-
-                      <span>
-                        ${esc(
-                          status(m)
-                        )}
-                      </span>
-
-                    </span>
-
-                  </div>
-
-
-                  <button
-                    type="button"
-                    class="view-result-btn"
-                    data-material-id="${esc(
-                      m.id
-                    )}"
-                    aria-label="View ${esc(
-                      m.materialName
-                    )} result"
-                  >
-
-                    View
-
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-
-                      <path
-                        d="M5 12H19M13 6L19 12L13 18"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-
-                    </svg>
-
-                  </button>
-
-                </div>
-
-              `
-            )
-            .join("")
-
-        : `
-
-          <div
-            class="recommendation-result stable-result"
-          >
-
-            <div
-              class="recommendation-result-main"
-            >
-
-              <span
-                class="recommendation-result-dot"
-              ></span>
-
-              <span
-                class="recommendation-result-copy"
-              >
-
-                <strong>
-                  Inventory looks stable
-                </strong>
-
-                <span>
-                  No low-stock materials detected.
-                </span>
-
-              </span>
-
-            </div>
-
-
-            <button
-              type="button"
-              class="view-result-btn"
-              data-material-name="Sugar"
-            >
-              View
-            </button>
-
-          </div>
-
-        `;
-
-
-    // ========================================================
-    // SAVE DASHBOARD DATA
-    // ========================================================
-
-    window.__rmimsDashboardData = {
-
-      materials,
-
-      usage,
-
-      receipts,
-
-      totalReceived,
-
-      totalUsed
-
-    };
-
+    // Initialize & render the Raw Materials Trend Chart
+    populateTrendMaterialSelect();
+    setupTrendControls();
+    await renderRawMaterialsTrendChart();
 
   } catch (err) {
-
-    console.error(err);
-
-    toast(
-      "Could not load dashboard data.",
-      "error"
-    );
-
+    console.error("Dashboard initialization error:", err);
+    toast("Dashboard load error: " + err.message, "bad");
+  } finally {
+    dashboardLoading = false;
   }
-
 }
 
+// ============================================================
+// CARD 1: RAW MATERIALS (LIVE AVAILABLE COUNT & HOVER TOOLTIP)
+// ============================================================
+
+function renderCard1RawMaterials() {
+  const totalCatalog = catalogMaterials.length;
+  const outOfStockMats = catalogMaterials.filter(m => m.currentStock <= 0);
+  const outOfStockCount = outOfStockMats.length;
+  const availableCount = Math.max(0, totalCatalog - outOfStockCount);
+
+  const valEl = $("availableMaterialsCount");
+  if (valEl) valEl.textContent = availableCount;
+
+  const subEl = $("rawMaterialsSubtitle");
+  if (subEl) {
+    if (outOfStockCount > 0) {
+      subEl.textContent = `${outOfStockCount} currently out of stock`;
+      subEl.style.color = "var(--warn, #f59e0b)";
+    } else {
+      subEl.textContent = "All materials currently available";
+      subEl.style.color = "var(--good, #10b981)";
+    }
+  }
+
+  // Tooltip content
+  const ahtTotal = $("ahtTotalCatalog");
+  if (ahtTotal) ahtTotal.textContent = totalCatalog;
+
+  const ahtAvail = $("ahtAvailable");
+  if (ahtAvail) ahtAvail.textContent = availableCount;
+
+  const ahtOos = $("ahtOutOfStock");
+  if (ahtOos) ahtOos.textContent = outOfStockCount;
+
+  // Click card to open modal
+  const cardEl = $("cardRawMaterials");
+  if (cardEl) {
+    cardEl.onclick = () => openAdminModal("modalRawMaterialStatus");
+    cardEl.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openAdminModal("modalRawMaterialStatus");
+      }
+    };
+  }
+}
 
 // ============================================================
-// GET MATERIAL RESULT
+// CARD 1 MODAL: RAW MATERIAL STATUS TABLE (SEARCH & FILTER)
 // ============================================================
 
-function getMaterialResult(material) {
+function renderRawMaterialsTable() {
+  const tbody = $("rawMaterialsTableBody");
+  const countNote = $("rawMaterialsCountNote");
+  const searchInput = $("rawMaterialSearch");
+  const filterSelect = $("rawMaterialFilter");
+  if (!tbody) return;
 
-  const data =
-    window.__rmimsDashboardData ||
-    {};
+  const query = (searchInput?.value || "").toLowerCase().trim();
+  const filterVal = filterSelect?.value || "all";
 
-  const materialId =
-    material?.id;
+  // Build latest activity for each material
+  const rows = catalogMaterials.map(m => {
+    // Find latest receipt for this material
+    const latestRec = receiptRecords.find(r => r.materialId === m.id);
+    // Find latest disbursement for this material
+    const latestUse = usageRecords.find(u => u.materialId === m.id);
 
-  const materialName =
-    String(
-      material?.materialName ||
-      "Sugar"
-    );
+    let recentQty = `${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${m.unit}`;
+    let activity = "Initial Stock";
+    let activityDate = null;
+    let activityClass = "act-initial";
 
+    if (latestRec && latestUse) {
+      const recTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime();
+      const useTime = new Date(latestUse.createdAt || latestUse.usageDate).getTime();
+      if (recTime >= useTime) {
+        recentQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
+        activity = "Received";
+        activityDate = latestRec.receiptDate;
+        activityClass = "act-received";
+      } else {
+        recentQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
+        activity = "Disbursement";
+        activityDate = latestUse.usageDate;
+        activityClass = "act-disbursement";
+      }
+    } else if (latestRec) {
+      recentQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
+      activity = "Received";
+      activityDate = latestRec.receiptDate;
+      activityClass = "act-received";
+    } else if (latestUse) {
+      recentQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
+      activity = "Disbursement";
+      activityDate = latestUse.usageDate;
+      activityClass = "act-disbursement";
+    }
 
-  const isSugar =
-    materialName
-      .trim()
-      .toLowerCase() ===
-    "sugar";
-
-
-  // ==========================================================
-  // SUGAR — REAL TIME-SERIES ML RESULT
-  // ==========================================================
-
-  if (
-    isSugar &&
-    window.__sugarMLResult
-  ) {
-
-    const ml =
-      window.__sugarMLResult;
-
-
-    const inventory =
-      ml.current_inventory ||
-      {};
-
-
-    const forecast =
-      ml.forecast ||
-      {};
-
-
-    const comparison =
-      ml.comparison ||
-      {};
-
+    let statusCls = "status-good";
+    if (m.status === "Out of Stock") statusCls = "status-bad";
+    else if (m.status === "Might Restock") statusCls = "status-warn";
 
     return {
-
-      materialName:
-        "Sugar",
-
-
-      currentStock:
-        Number(
-          inventory.quantity
-        ) || 0,
-
-
-      minimumStock:
-        Number(
-          inventory.minimum_threshold
-        ) || 0,
-
-
-      unit:
-        inventory.unit ||
-        "G",
-
-
-      inventoryStatus:
-        inventory.status ||
-        "",
-
-
-      // ------------------------------------------------------
-      // REAL FORECAST
-      // ------------------------------------------------------
-
-      forecastQuantity:
-        Number(
-          forecast.quantity
-        ) || 0,
-
-
-      forecastUnit:
-        forecast.unit ||
-        "kg",
-
-
-      forecastPeriodStart:
-        forecast.period_start ||
-        "",
-
-
-      forecastPeriodEnd:
-        forecast.period_end ||
-        "",
-
-
-      forecastModel:
-        forecast.model ||
-        "Time-Series",
-
-
-      // ------------------------------------------------------
-      // REAL COMPARISON
-      // ------------------------------------------------------
-
-      inventoryQuantityKg:
-        Number(
-          comparison.inventory_quantity_kg
-        ) || 0,
-
-
-      currentStockKg:
-        Number(
-          comparison.inventory_quantity_kg
-        ) || 0,
-
-
-      differenceKg:
-        Number(
-          comparison.difference_kg
-        ) || 0,
-
-
-      decisionStatus:
-        comparison.decision_status ||
-        "No decision available",
-
-
-      potentialShortageKg:
-        Number(
-          comparison.potential_shortage_kg
-        ) || 0,
-
-
-      mlResult:
-        true
-
+      id: m.id,
+      itemCode: m.itemCode,
+      name: m.materialName,
+      unit: m.unit,
+      currentStock: m.currentStock,
+      recentQty,
+      activity,
+      activityDate,
+      activityClass,
+      status: m.status,
+      statusCls
     };
-
-  }
-
-
-  // ==========================================================
-  // OTHER MATERIALS — EXISTING LOGIC
-  // ==========================================================
-
-  const relatedUsage =
-    (data.usage || []).filter(
-      u =>
-        String(
-          u.materialId || ""
-        ) ===
-          String(
-            materialId || ""
-          )
-
-        ||
-
-        String(
-          u.materialName || ""
-        )
-          .trim()
-          .toLowerCase() ===
-        materialName
-          .trim()
-          .toLowerCase()
-    );
-
-
-  const quantities =
-    relatedUsage
-      .map(
-        u =>
-          Number(
-            u.usedQuantity
-          ) || 0
-      )
-      .filter(
-        v => v > 0
-      );
-
-
-  const totalConsumed =
-    quantities.reduce(
-      (a, b) =>
-        a + b,
-      0
-    );
-
-
-  const averageUsage =
-    quantities.length
-      ? totalConsumed /
-        quantities.length
-      : 0;
-
-
-  const currentStock =
-    Number(
-      material?.quantity
-    ) || 0;
-
-
-  const minimumStock =
-    Number(
-      material?.minimumThreshold
-    ) || 0;
-
-
-  const projectedRequirement =
-    averageUsage > 0
-      ? averageUsage
-      : minimumStock;
-
-
-  const additionalNeeded =
-    Math.max(
-      0,
-      projectedRequirement -
-      currentStock
-    );
-
-
-  return {
-
-    materialName,
-
-    currentStock,
-
-    minimumStock,
-
-    totalConsumed,
-
-    averageUsage,
-
-    projectedRequirement,
-
-    additionalNeeded,
-
-    usageCount:
-      quantities.length,
-
-    unit:
-      material?.unit ||
-      relatedUsage[0]?.unit ||
-      "unit",
-
-    mlResult:
-      false
-
-  };
-
-}
-
-
-// ============================================================
-// OPEN MATERIAL RESULT
-// ============================================================
-
-function openMaterialResult(material) {
-
-  const r =
-    getMaterialResult(
-      material
-    );
-
-
-  $("recModalTitle").textContent =
-    `${r.materialName} — Result`;
-
-
-  // ==========================================================
-  // SUGAR — REAL TIME-SERIES ML RESULT
-  // ==========================================================
-
-  if (r.mlResult) {
-
-    $("recModalConfidence").textContent =
-      `${r.forecastModel} Forecast · ${
-        r.forecastPeriodStart
-      } to ${
-        r.forecastPeriodEnd
-      }`;
-
-
-    // ========================================================
-    // CURRENT CONSUMPTION SIGNAL
-    // ========================================================
-
-    const dashboardData =
-      window.__rmimsDashboardData || {};
-
-    const usage =
-      dashboardData.usage || [];
-
-    const sugarUsage =
-      usage.filter(
-        u =>
-          String(
-            u.materialName || ""
-          )
-            .trim()
-            .toLowerCase() ===
-          "sugar"
-      );
-
-    const sugarConsumed =
-      sugarUsage.reduce(
-        (sum, u) =>
-          sum +
-          (
-            Number(
-              u.usedQuantity
-            ) || 0
-          ),
-        0
-      );
-
-
-    const displayUnit =
-      r.unit || "G";
-
-
-    const currentStock =
-      Number(
-        r.currentStock
-      ) || 0;
-
-
-    const currentStockKg =
-      Number(
-        r.inventoryQuantityKg
-      ) || 0;
-
-
-    const forecastQuantity =
-      Number(
-        r.forecastQuantity
-      ) || 0;
-
-
-    const shortage =
-      Number(
-        r.potentialShortageKg
-      ) || 0;
-
-
-    const difference =
-      Number(
-        r.differenceKg
-      ) || 0;
-
-
-    const decision =
-      r.decisionStatus ||
-      "No decision available";
-
-
-    // ========================================================
-    // 3D RESULT VIEW
-    // ========================================================
-
-    $("recModalBody").innerHTML = `
-
-      <div class="result-hero">
-
-        <div class="result-hero-orb">
-
-          <span>
-            ${esc(
-              r.materialName
-                .slice(0, 1)
-                .toUpperCase()
-            )}
-          </span>
-
-        </div>
-
-
-        <div>
-
-          <span class="result-eyebrow">
-            RAW MATERIAL RESULT
-          </span>
-
-
-          <h5>
-            ${esc(
-              r.materialName
-            )}
-          </h5>
-
-
-          <p>
-            Follow the material from its current
-            inventory through consumption to the
-            Time-Series forecast and final result.
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <!-- ====================================================
-           3D PROCESS
-      ===================================================== -->
-
-      <div
-        class="process-3d"
-        aria-label="${esc(
-          r.materialName
-        )} inventory process"
-      >
-
-        <div class="process-line"></div>
-
-
-        <!-- INVENTORY -->
-
-        <button
-          type="button"
-          class="process-node active"
-          data-process-step="0"
-        >
-
-          <span
-            class="process-node-index"
-          >
-            01
-          </span>
-
-
-          <span
-            class="process-node-icon"
-          >
-            ▣
-          </span>
-
-
-          <strong>
-            Inventory
-          </strong>
-
-
-          <small>
-  ${currentStockKg.toLocaleString(
-    undefined,
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }
-  )}
-  KG
-</small>
-
-        </button>
-
-
-        <!-- CONSUMPTION -->
-
-        <button
-          type="button"
-          class="process-node"
-          data-process-step="1"
-        >
-
-          <span
-            class="process-node-index"
-          >
-            02
-          </span>
-
-
-          <span
-            class="process-node-icon"
-          >
-            ↘
-          </span>
-
-
-          <strong>
-            Consumption
-          </strong>
-
-
-          <small>
-            ${sugarConsumed.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 2
-              }
-            )}
-            ${esc(displayUnit)}
-          </small>
-
-        </button>
-
-
-        <!-- FORECAST -->
-
-        <button
-          type="button"
-          class="process-node"
-          data-process-step="2"
-        >
-
-          <span
-            class="process-node-index"
-          >
-            03
-          </span>
-
-
-          <span
-            class="process-node-icon"
-          >
-            ◌
-          </span>
-
-
-          <strong>
-            Forecast
-          </strong>
-
-
-          <small>
-            ${forecastQuantity.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 2
-              }
-            )}
-            ${esc(
-              r.forecastUnit
-            )}
-          </small>
-
-        </button>
-
-
-        <!-- RESULT -->
-
-        <button
-          type="button"
-          class="process-node"
-          data-process-step="3"
-        >
-
-          <span
-            class="process-node-index"
-          >
-            04
-          </span>
-
-
-          <span
-            class="process-node-icon"
-          >
-            ✓
-          </span>
-
-
-          <strong>
-            Result
-          </strong>
-
-
-          <small>
-            ${
-              shortage > 0
-                ? `${shortage.toLocaleString(
-                    undefined,
-                    {
-                      maximumFractionDigits: 2
-                    }
-                  )} KG shortage`
-                : "Sufficient"
-            }
-          </small>
-
-        </button>
-
-      </div>
-
-
-      <!-- ====================================================
-           PROCESS DETAIL
-      ===================================================== -->
-
-      <div
-        class="process-detail"
-        id="processDetail"
-      >
-
-        <span
-          class="process-detail-label"
-        >
-          CURRENT INVENTORY
-        </span>
-
-
-        <strong>
-
-          ${currentStock.toLocaleString()}
-          ${esc(displayUnit)}
-
-        </strong>
-
-
-        <p>
-
-          Current ${esc(
-            r.materialName
-          )} inventory recorded in RMIMS.
-
-        </p>
-
-      </div>
-
-
-      <!-- ====================================================
-           RESULT STATISTICS
-      ===================================================== -->
-
-      <div
-        class="result-stat-grid"
-      >
-
-        <div>
-
-          <span>
-            Current Stock
-          </span>
-
-
-          <strong>
-
-            ${currentStock.toLocaleString()}
-            ${esc(displayUnit)}
-
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          <span>
-            Forecast
-          </span>
-
-
-          <strong>
-
-            ${forecastQuantity.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 2
-              }
-            )}
-
-            ${esc(
-              r.forecastUnit
-            )}
-
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          <span>
-            Forecast Period
-          </span>
-
-
-          <strong>
-
-            ${esc(
-              r.forecastPeriodStart
-            )}
-
-            –
-
-            ${esc(
-              r.forecastPeriodEnd
-            )}
-
-          </strong>
-
-        </div>
-
-
-        <div>
-
-          <span>
-            Potential Shortage
-          </span>
-
-
-          <strong>
-
-            ${shortage.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 2
-              }
-            )}
-
-            KG
-
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <!-- ====================================================
-           DECISION RESULT
-      ===================================================== -->
-
-      <div
-        class="result-message"
-      >
-
-        <strong>
-          ${esc(decision)}
-        </strong>
-
-
-        <span>
-
-          The Time-Series forecast indicates
-          a requirement of approximately
-
-          <strong>
-            ${forecastQuantity.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 2
-              }
-            )}
-            ${esc(r.forecastUnit)}
-          </strong>
-
-          for the forecast period.
-
-          Current ${esc(
-            r.materialName
-          )} inventory is
-
-          <strong>
-            ${currentStockKg.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 4
-              }
-            )}
-            KG
-          </strong>.
-
-          ${
-            shortage > 0
-
-              ? `This indicates a potential shortage of approximately
-                 ${shortage.toLocaleString(
-                   undefined,
-                   {
-                     maximumFractionDigits: 2
-                   }
-                 )}
-                 KG.`
-
-              : "The current inventory is sufficient for the forecasted requirement."
-          }
-
-        </span>
-
-      </div>
-
-    `;
-
-
-    $("recModalOverlay")
-      .classList
-      .add("open");
-
-
-    requestAnimationFrame(() => {
-
-      document
-        .querySelectorAll(
-          ".process-node"
-        )
-        .forEach(
-          node =>
-            node.addEventListener(
-              "click",
-              () =>
-                showMLProcessStep(
-                  node,
-                  r
-                )
-            )
-        );
-
-    });
-
-
-    return;
-
-  }
-
-
-  // ==========================================================
-  // OTHER MATERIALS — EXISTING RESULT
-  // ==========================================================
-
-  $("recModalConfidence").textContent =
-    r.usageCount
-
-      ? `${r.usageCount} recorded consumption ${
-          r.usageCount === 1
-            ? "entry"
-            : "entries"
-        }`
-
-      : "Using available inventory threshold";
-
-
-  $("recModalBody").innerHTML = `
-
-    <div class="result-hero">
-
-      <div class="result-hero-orb">
-
-        <span>
-          ${esc(
-            r.materialName
-              .slice(0, 1)
-              .toUpperCase()
-          )}
-        </span>
-
-      </div>
-
-
-      <div>
-
-        <span class="result-eyebrow">
-          RAW MATERIAL RESULT
-        </span>
-
-
-        <h5>
-          ${esc(
-            r.materialName
-          )}
-        </h5>
-
-
-        <p>
-          Follow the material from its current
-          stock through consumption to the
-          requirement result.
-        </p>
-
-      </div>
-
-    </div>
-
-
-    <div
-      class="process-3d"
-      aria-label="${esc(
-        r.materialName
-      )} inventory process"
-    >
-
-      <div
-        class="process-line"
-      ></div>
-
-
-      <button
-        type="button"
-        class="process-node active"
-        data-process-step="0"
-      >
-
-        <span
-          class="process-node-index"
-        >
-          01
-        </span>
-
-        <span
-          class="process-node-icon"
-        >
-          ▣
-        </span>
-
-        <strong>
-          Inventory
-        </strong>
-
-        <small>
-          ${r.currentStock.toLocaleString()}
-          ${esc(r.unit)}
-        </small>
-
-      </button>
-
-
-      <button
-        type="button"
-        class="process-node"
-        data-process-step="1"
-      >
-
-        <span
-          class="process-node-index"
-        >
-          02
-        </span>
-
-        <span
-          class="process-node-icon"
-        >
-          ↘
-        </span>
-
-        <strong>
-          Consumption
-        </strong>
-
-        <small>
-          ${r.totalConsumed.toLocaleString()}
-          ${esc(r.unit)}
-        </small>
-
-      </button>
-
-
-      <button
-        type="button"
-        class="process-node"
-        data-process-step="2"
-      >
-
-        <span
-          class="process-node-index"
-        >
-          03
-        </span>
-
-        <span
-          class="process-node-icon"
-        >
-          ◌
-        </span>
-
-        <strong>
-          Forecast
-        </strong>
-
-        <small>
-          ${r.projectedRequirement.toLocaleString(
-            undefined,
-            {
-              maximumFractionDigits: 2
-            }
-          )}
-          ${esc(r.unit)}
-        </small>
-
-      </button>
-
-
-      <button
-        type="button"
-        class="process-node"
-        data-process-step="3"
-      >
-
-        <span
-          class="process-node-index"
-        >
-          04
-        </span>
-
-        <span
-          class="process-node-icon"
-        >
-          ✓
-        </span>
-
-        <strong>
-          Result
-        </strong>
-
-        <small>
-          ${r.additionalNeeded.toLocaleString(
-            undefined,
-            {
-              maximumFractionDigits: 2
-            }
-          )}
-          ${esc(r.unit)}
-          needed
-        </small>
-
-      </button>
-
-    </div>
-
-
-    <div
-      class="process-detail"
-      id="processDetail"
-    >
-
-      <span
-        class="process-detail-label"
-      >
-        CURRENT INVENTORY
-      </span>
-
-
-      <strong>
-        ${r.currentStock.toLocaleString()}
-        ${esc(r.unit)}
-      </strong>
-
-
-      <p>
-        ${
-          r.currentStock <=
-          r.minimumStock
-
-            ? "Stock is at or below the minimum threshold and needs attention."
-
-            : "Current stock is above the minimum threshold."
-        }
-      </p>
-
-    </div>
-
-
-    <div
-      class="result-stat-grid"
-    >
-
-      <div>
-
-        <span>
-          Current Stock
-        </span>
-
-        <strong>
-          ${r.currentStock.toLocaleString()}
-          ${esc(r.unit)}
-        </strong>
-
-      </div>
-
-
-      <div>
-
-        <span>
-          Consumed
-        </span>
-
-        <strong>
-          ${r.totalConsumed.toLocaleString()}
-          ${esc(r.unit)}
-        </strong>
-
-      </div>
-
-
-      <div>
-
-        <span>
-          Projected Requirement
-        </span>
-
-        <strong>
-          ${r.projectedRequirement.toLocaleString(
-            undefined,
-            {
-              maximumFractionDigits: 2
-            }
-          )}
-          ${esc(r.unit)}
-        </strong>
-
-      </div>
-
-
-      <div>
-
-        <span>
-          Additional Needed
-        </span>
-
-        <strong>
-          ${r.additionalNeeded.toLocaleString(
-            undefined,
-            {
-              maximumFractionDigits: 2
-            }
-          )}
-          ${esc(r.unit)}
-        </strong>
-
-      </div>
-
-    </div>
-
-
-    <div
-      class="result-message"
-    >
-
-      <strong>
-        ${esc(
-          r.materialName
-        )}
-        result
-      </strong>
-
-
-      <span>
-
-        ${
-          r.additionalNeeded > 0
-
-            ? `Based on the available consumption signal, approximately
-               ${r.additionalNeeded.toLocaleString(
-                 undefined,
-                 {
-                   maximumFractionDigits: 2
-                 }
-               )}
-               ${esc(r.unit)}
-               may be needed beyond the current stock.`
-
-            : "Current stock is sufficient for the projected requirement based on the available dashboard data."
-        }
-
-      </span>
-
-    </div>
-
-  `;
-
-
-  $("recModalOverlay")
-    .classList
-    .add("open");
-
-
-  requestAnimationFrame(() => {
-
-    document
-      .querySelectorAll(
-        ".process-node"
-      )
-      .forEach(
-        node =>
-          node.addEventListener(
-            "click",
-            () =>
-              showProcessStep(
-                node,
-                r
-              )
-          )
-      );
-
   });
 
+  // Filter rows
+  const filtered = rows.filter(r => {
+    // Search query
+    const matchQuery = !query || r.name.toLowerCase().includes(query) || r.itemCode.toLowerCase().includes(query);
+    if (!matchQuery) return false;
+
+    // Activity filter
+    if (filterVal === "received") return r.activity === "Received";
+    if (filterVal === "disbursement") return r.activity === "Disbursement";
+    return true;
+  });
+
+  if (countNote) {
+    countNote.textContent = `Showing ${filtered.length} of ${catalogMaterials.length} catalog materials`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" class="amp-table-empty">
+          <strong>No matching raw materials found.</strong>
+          <span>Try adjusting your search term or activity filter.</span>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td>
+        <div class="amp-mat-name">
+          <strong>${esc(r.name)}</strong>
+          <span class="amp-mat-code">${esc(r.itemCode)}</span>
+        </div>
+      </td>
+      <td>
+        <span class="amp-qty-val">${esc(r.recentQty)}</span>
+      </td>
+      <td>
+        <span class="amp-activity-pill ${r.activityClass}">
+          ${esc(r.activity)}
+          ${r.activityDate ? `<small>${esc(r.activityDate)}</small>` : ""}
+        </span>
+      </td>
+      <td>
+        <span class="amp-status-badge ${r.statusCls}">
+          <span class="status-dot"></span>
+          ${esc(r.status)}
+        </span>
+      </td>
+    </tr>
+  `).join("");
 }
 
+// Bind search and filter events
+const rawSearchEl = $("rawMaterialSearch");
+if (rawSearchEl) {
+  rawSearchEl.addEventListener("input", renderRawMaterialsTable);
+}
+const rawFilterEl = $("rawMaterialFilter");
+if (rawFilterEl) {
+  rawFilterEl.addEventListener("change", renderRawMaterialsTable);
+}
 
 // ============================================================
-// ML PROCESS STEP
+// CARD 2: TOTAL CONSUMED (FADE TICKER, HOVER SUMMARY, MoM COMP)
 // ============================================================
 
-function showMLProcessStep(
-  node,
-  r
-) {
+function renderCard2TotalConsumed() {
+  // 1. Group consumption by unit (Unit Safety: never sum kg + L + loaf)
+  const unitTotals = {};
+  usageRecords.forEach(u => {
+    const un = u.unit || "kg";
+    unitTotals[un] = (unitTotals[un] || 0) + u.consumedQuantity;
+  });
 
-  document
-    .querySelectorAll(
-      ".process-node"
-    )
-    .forEach(
-      n =>
-        n.classList.remove(
-          "active"
-        )
-    );
+  // Format unit breakdown string
+  const unitKeys = Object.keys(unitTotals);
+  const unitSummaryStr = unitKeys.length > 0
+    ? unitKeys.map(k => `${unitTotals[k].toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${k}`).join(" • ")
+    : "No consumption logged";
 
+  // 2. Group by material for rotating ticker
+  const matTotalsMap = new Map();
+  usageRecords.forEach(u => {
+    const prev = matTotalsMap.get(u.materialName) || { name: u.materialName, qty: 0, unit: u.unit };
+    prev.qty += u.consumedQuantity;
+    matTotalsMap.set(u.materialName, prev);
+  });
 
-  node.classList.add(
-    "active"
-  );
+  card2MaterialsList = Array.from(matTotalsMap.values()).sort((a, b) => b.qty - a.qty);
 
+  // 3. Full summary for hover
+  const fullSumEl = $("consumedFullSummary");
+  if (fullSumEl) {
+    if (unitKeys.length > 0) {
+      fullSumEl.innerHTML = `
+        <div class="cfs-title">Total Consumption Summary</div>
+        <div class="cfs-units">${unitKeys.map(k => `<span class="cfs-unit-pill"><strong>${unitTotals[k].toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</strong> ${k}</span>`).join("")}</div>
+        <div class="cfs-meta">${usageRecords.length} live disbursement records logged</div>
+      `;
+    } else {
+      fullSumEl.innerHTML = `<div class="cfs-meta">No consumption records available.</div>`;
+    }
+  }
 
-  const step =
-    Number(
-      node.dataset.processStep
-    );
+  // 4. Month-over-Month comparison
+  const compEl = $("consumedComparison");
+  if (compEl) {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
 
+    const prevMonth = curMonth === 0 ? 11 : curMonth - 1;
+    const prevYear = curMonth === 0 ? curYear - 1 : curYear;
 
-  const detail =
-    $("processDetail");
+    let curMonthQty = 0;
+    let prevMonthQty = 0;
 
+    usageRecords.forEach(u => {
+      if (!u.usageDate) return;
+      const d = new Date(u.usageDate);
+      if (isNaN(d.getTime())) return;
+      const y = d.getFullYear();
+      const m = d.getMonth();
 
-  if (!detail)
+      if (y === curYear && m === curMonth) {
+        curMonthQty += u.consumedQuantity;
+      } else if (y === prevYear && m === prevMonth) {
+        prevMonthQty += u.consumedQuantity;
+      }
+    });
+
+    if (prevMonthQty > 0) {
+      const pct = ((curMonthQty - prevMonthQty) / prevMonthQty) * 100;
+      const isPositive = pct > 0;
+      const sign = isPositive ? "+" : "";
+      compEl.innerHTML = `
+        <span class="comp-badge ${isPositive ? "comp-up" : "comp-down"}">
+          ${sign}${pct.toFixed(1)}%
+        </span>
+        <span class="comp-label">from last month</span>
+      `;
+    } else if (curMonthQty > 0) {
+      compEl.innerHTML = `
+        <span class="comp-badge comp-up">Current Month Active</span>
+        <span class="comp-label">No previous-month comparison available</span>
+      `;
+    } else {
+      compEl.innerHTML = `
+        <span class="comp-label">No previous-month comparison available.</span>
+      `;
+    }
+  }
+
+  // 5. Start smooth material rotation
+  startCard2Ticker();
+
+  // 6. Hover and click interactions
+  const cardEl = $("cardTotalConsumed");
+  if (cardEl) {
+    cardEl.onmouseenter = () => {
+      card2IsHovered = true;
+      cardEl.classList.add("hovered-expanded");
+    };
+    cardEl.onmouseleave = () => {
+      card2IsHovered = false;
+      cardEl.classList.remove("hovered-expanded");
+    };
+    cardEl.onclick = () => openAdminModal("modalConsumptionAnalytics");
+    cardEl.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openAdminModal("modalConsumptionAnalytics");
+      }
+    };
+  }
+}
+
+function startCard2Ticker() {
+  if (card2TickerTimer) clearInterval(card2TickerTimer);
+
+  const tickerTextEl = $("consumedTickerText");
+  if (!tickerTextEl) return;
+
+  if (card2MaterialsList.length === 0) {
+    tickerTextEl.textContent = "No consumption recorded";
     return;
+  }
 
+  const updateTicker = () => {
+    if (card2IsHovered) return; // Pause on hover
 
-  const steps = [
+    const item = card2MaterialsList[card2TickerIndex % card2MaterialsList.length];
+    card2TickerIndex++;
 
-    {
+    // Smooth fade transition
+    tickerTextEl.style.opacity = "0";
+    tickerTextEl.style.transform = "translateY(-4px)";
 
-      label:
-        "CURRENT INVENTORY",
+    setTimeout(() => {
+      tickerTextEl.textContent = `${item.name} — ${item.qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${item.unit}`;
+      tickerTextEl.style.opacity = "1";
+      tickerTextEl.style.transform = "translateY(0)";
+    }, 220);
+  };
 
-      value:
-        `${r.currentStock} ${esc(
-          r.unit
-        )}`,
+  // Initial display
+  const first = card2MaterialsList[0];
+  tickerTextEl.textContent = `${first.name} — ${first.qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${first.unit}`;
 
-      text:
-        `RMIMS currently records ${r.currentStock} ${esc(
-          r.unit
-        )} of Sugar.`
+  // Rotate every 3.5 seconds (respects subtle reading pace)
+  card2TickerTimer = setInterval(updateTicker, 3500);
+}
 
+// ============================================================
+// CARD 2 MODAL: CONSUMPTION ANALYTICS (CHART & MULTI-SERIES)
+// ============================================================
+
+function populateModalCategories() {
+  const select = $("modalCategoryFilter");
+  if (!select) return;
+
+  select.innerHTML = `<option value="general">General (Top 5 Consumed)</option>`;
+
+  // List all distinct catalog materials that have consumption
+  const matsWithUsage = catalogMaterials.slice().sort((a, b) => a.materialName.localeCompare(b.materialName));
+
+  matsWithUsage.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = `${m.materialName} (${m.unit})`;
+    select.appendChild(opt);
+  });
+}
+
+function renderModalConsumptionChart() {
+  const canvas = $("modalConsumptionChart");
+  const legendBox = $("modalChartLegend");
+  const insightsBox = $("modalChartInsights");
+  if (!canvas || typeof Chart === "undefined") return;
+
+  if (consumptionChartInstance) {
+    consumptionChartInstance.destroy();
+    consumptionChartInstance = null;
+  }
+
+  // 1. Build date range and labels based on granularity
+  const now = new Date();
+  let labels = [];
+  let dateBuckets = [];
+
+  if (currentModalGranularity === "month") {
+    // 12 Months: Jan - Dec of current year
+    labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const curYear = now.getFullYear();
+    dateBuckets = labels.map((_, i) => ({
+      label: labels[i],
+      filter: d => d.getFullYear() === curYear && d.getMonth() === i
+    }));
+  } else if (currentModalGranularity === "week") {
+    // 4 Weeks of current month
+    labels = ["Week 1 (1-7)", "Week 2 (8-14)", "Week 3 (15-21)", "Week 4 (22+)"];
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
+    dateBuckets = [
+      { label: labels[0], filter: d => d.getFullYear() === curYear && d.getMonth() === curMonth && d.getDate() <= 7 },
+      { label: labels[1], filter: d => d.getFullYear() === curYear && d.getMonth() === curMonth && d.getDate() > 7 && d.getDate() <= 14 },
+      { label: labels[2], filter: d => d.getFullYear() === curYear && d.getMonth() === curMonth && d.getDate() > 14 && d.getDate() <= 21 },
+      { label: labels[3], filter: d => d.getFullYear() === curYear && d.getMonth() === curMonth && d.getDate() > 21 }
+    ];
+  } else {
+    // General (Recent 7 days or recorded dates)
+    const distinctDates = Array.from(new Set(usageRecords.map(u => u.usageDate).filter(Boolean))).sort();
+    if (distinctDates.length >= 7) {
+      const recentDates = distinctDates.slice(-7);
+      labels = recentDates.map(ds => new Date(ds).toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+      dateBuckets = recentDates.map((ds, i) => ({
+        label: labels[i],
+        filter: d => d.toISOString().split("T")[0] === ds
+      }));
+    } else {
+      // Last 7 days from today
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const ds = d.toISOString().split("T")[0];
+        labels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+        dateBuckets.push({
+          label: labels[labels.length - 1],
+          filter: itemDate => itemDate.toISOString().split("T")[0] === ds
+        });
+      }
+    }
+  }
+
+  // 2. Select materials to display (General = Top 5, or Specific material)
+  let seriesMats = [];
+  if (currentModalCategory === "general") {
+    // Top 5 consumed materials
+    seriesMats = card2MaterialsList.slice(0, 5);
+    if (seriesMats.length === 0 && catalogMaterials.length > 0) {
+      seriesMats = catalogMaterials.slice(0, 5).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
+    }
+  } else {
+    const selected = catalogMaterials.find(m => m.id === currentModalCategory);
+    if (selected) {
+      seriesMats = [{ name: selected.materialName, unit: selected.unit, id: selected.id }];
+    }
+  }
+
+  // 3. Build datasets with STRICT UNIQUE COLORS (No duplicate series colors)
+  let maxVal = 0;
+  let highestMaterial = "";
+  let highestPeriod = "";
+
+  const datasets = seriesMats.map((mat, idx) => {
+    const color = SERIES_PALETTE[idx % SERIES_PALETTE.length];
+    const data = dateBuckets.map(b => {
+      let sum = 0;
+      usageRecords.forEach(u => {
+        if ((u.materialId === mat.id || u.materialName === mat.name) && u.usageDate) {
+          const d = new Date(u.usageDate);
+          if (!isNaN(d.getTime()) && b.filter(d)) {
+            sum += u.consumedQuantity;
+          }
+        }
+      });
+      if (sum > maxVal) {
+        maxVal = sum;
+        highestMaterial = mat.name;
+        highestPeriod = b.label;
+      }
+      return sum;
+    });
+
+    return {
+      label: `${mat.name} (${mat.unit || "kg"})`,
+      data,
+      borderColor: color,
+      backgroundColor: color + "1A", // subtle 10% fill
+      borderWidth: 2.4,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: color,
+      pointBorderColor: "#FFFFFF",
+      pointBorderWidth: 1.5,
+      tension: 0.35,
+      fill: true
+    };
+  });
+
+  // 4. Render Chart.js
+  consumptionChartInstance = new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels,
+      datasets
     },
-
-
-    {
-
-      label:
-        "AI TIME-SERIES FORECAST",
-
-      value:
-        `${r.forecastQuantity.toLocaleString(
-          undefined,
-          {
-            maximumFractionDigits: 2
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      plugins: {
+        legend: { display: false }, // Custom legend used below
+        tooltip: {
+          backgroundColor: "#0B132B",
+          titleColor: "#FFFFFF",
+          bodyColor: "#D7E0EA",
+          borderColor: "rgba(255,255,255,0.16)",
+          borderWidth: 1,
+          padding: 10,
+          boxPadding: 4,
+          callbacks: {
+            label: context => {
+              const val = context.parsed.y || 0;
+              return ` ${context.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}`;
+            }
           }
-        )} ${esc(
-          r.forecastUnit
-        )}`,
-
-      text:
-        `The Time-Series model forecasts approximately ${r.forecastQuantity.toLocaleString(
-          undefined,
-          {
-            maximumFractionDigits: 2
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: "rgba(148, 180, 224, 0.08)",
+            drawBorder: false
+          },
+          ticks: {
+            color: "#7C92B3",
+            font: { family: "Inter", size: 11 }
           }
-        )} ${esc(
-          r.forecastUnit
-        )} from ${esc(
-          r.forecastPeriodStart
-        )} to ${esc(
-          r.forecastPeriodEnd
-        )}.`
-
-    },
-
-
-    {
-
-      label:
-        "INVENTORY COMPARISON",
-
-      value:
-        `${Math.abs(
-          r.differenceKg
-        ).toLocaleString(
-          undefined,
-          {
-            maximumFractionDigits: 2
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "rgba(148, 180, 224, 0.12)",
+            drawBorder: false
+          },
+          ticks: {
+            color: "#7C92B3",
+            font: { family: "Inter", size: 11 },
+            callback: value => value.toLocaleString("en-US")
           }
-        )} KG`,
+        }
+      }
+    }
+  });
 
-      text:
-        `Current inventory is ${r.inventoryQuantityKg.toLocaleString(
-          undefined,
-          {
-            maximumFractionDigits: 4
-          }
-        )} KG compared with the forecasted requirement of ${r.forecastQuantity.toLocaleString(
-          undefined,
-          {
-            maximumFractionDigits: 2
-          }
-        )} KG.`
+  // 5. Render custom legend with colored circles
+  if (legendBox) {
+    legendBox.innerHTML = datasets.map(ds => `
+      <div class="amp-legend-pill">
+        <span class="legend-circle" style="background-color: ${ds.borderColor};"></span>
+        <span class="legend-name">${esc(ds.label)}</span>
+      </div>
+    `).join("");
+  }
 
-    },
+  // 6. Update authentic insights
+  if (insightsBox) {
+    if (maxVal > 0 && highestMaterial) {
+      insightsBox.textContent = `Peak disbursement: ${highestMaterial} with ${maxVal.toFixed(1)} consumed in ${highestPeriod}.`;
+    } else {
+      insightsBox.textContent = `Displaying live consumption records across ${labels.length} intervals.`;
+    }
+  }
+}
 
+// Bind Category & Granularity events in Modal 2
+const modalCategoryEl = $("modalCategoryFilter");
+if (modalCategoryEl) {
+  modalCategoryEl.addEventListener("change", e => {
+    currentModalCategory = e.target.value;
+    renderModalConsumptionChart();
+  });
+}
 
-    {
+const granGroupEl = $("modalGranularityGroup");
+if (granGroupEl) {
+  granGroupEl.querySelectorAll(".amp-gran-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      granGroupEl.querySelectorAll(".amp-gran-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentModalGranularity = btn.getAttribute("data-gran");
+      renderModalConsumptionChart();
+    });
+  });
+}
 
-      label:
-        "DECISION SUPPORT RESULT",
+// ============================================================
+// CARD 3: OUT OF STOCK (ROTATING TICKER, HOVER LIST & TILES)
+// ============================================================
 
-      value:
-        esc(
-          r.decisionStatus
-        ),
+function renderCard3OutOfStock() {
+  const oosList = catalogMaterials.filter(m => m.currentStock <= 0);
+  card3MaterialsList = oosList;
 
-      text:
-        r.potentialShortageKg > 0
+  const countEl = $("outOfStockCount");
+  if (countEl) countEl.textContent = oosList.length;
 
-          ? `The forecast indicates a potential shortage of approximately ${r.potentialShortageKg.toLocaleString(
-              undefined,
-              {
-                maximumFractionDigits: 2
-              }
-            )} KG.`
+  const fullSumEl = $("outOfStockFullSummary");
+  if (fullSumEl) {
+    if (oosList.length > 0) {
+      fullSumEl.innerHTML = `
+        <div class="cfs-title text-warn">${oosList.length} raw materials need attention</div>
+        <div class="cfs-list">${oosList.map(m => `<span class="cfs-item"><strong>${esc(m.materialName)}</strong> (0 ${esc(m.unit)})</span>`).join(", ")}</div>
+      `;
+    } else {
+      fullSumEl.innerHTML = `<div class="cfs-meta text-good">All catalog materials have healthy inventory standing.</div>`;
+    }
+  }
 
-          : "The current inventory is sufficient for the forecasted requirement."
+  startCard3Ticker();
 
+  // Hover & click interactions
+  const cardEl = $("cardOutOfStock");
+  if (cardEl) {
+    cardEl.onmouseenter = () => {
+      card3IsHovered = true;
+      cardEl.classList.add("hovered-expanded");
+    };
+    cardEl.onmouseleave = () => {
+      card3IsHovered = false;
+      cardEl.classList.remove("hovered-expanded");
+    };
+    cardEl.onclick = () => openAdminModal("modalOutOfStock");
+    cardEl.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openAdminModal("modalOutOfStock");
+      }
+    };
+  }
+}
+
+function startCard3Ticker() {
+  if (card3TickerTimer) clearInterval(card3TickerTimer);
+
+  const tickerTextEl = $("outOfStockTickerText");
+  if (!tickerTextEl) return;
+
+  if (card3MaterialsList.length === 0) {
+    tickerTextEl.textContent = "All materials in stock";
+    return;
+  }
+
+  const updateTicker = () => {
+    if (card3IsHovered) return;
+
+    const item = card3MaterialsList[card3TickerIndex % card3MaterialsList.length];
+    card3TickerIndex++;
+
+    tickerTextEl.style.opacity = "0";
+    tickerTextEl.style.transform = "translateY(-4px)";
+
+    setTimeout(() => {
+      tickerTextEl.textContent = item.materialName;
+      tickerTextEl.style.opacity = "1";
+      tickerTextEl.style.transform = "translateY(0)";
+    }, 220);
+  };
+
+  const first = card3MaterialsList[0];
+  tickerTextEl.textContent = first.materialName;
+
+  // Rotate every 3 seconds
+  card3TickerTimer = setInterval(updateTicker, 3000);
+}
+
+// ============================================================
+// CARD 3 MODAL: OUT OF STOCK WARNING TILES
+// ============================================================
+
+function renderOutOfStockTiles() {
+  const container = $("outOfStockTilesList");
+  const noteEl = $("outOfStockCountNote");
+  if (!container) return;
+
+  const oosList = catalogMaterials.filter(m => m.currentStock <= 0);
+
+  if (noteEl) {
+    noteEl.textContent = `${oosList.length} depleted materials detected`;
+  }
+
+  if (oosList.length === 0) {
+    container.innerHTML = `
+      <div class="amp-empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8 12L11 15L16 9"/></svg>
+        <strong>All materials in stock</strong>
+        <span>All catalog raw materials are currently above zero balance.</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = oosList.map(m => `
+    <div class="amp-oos-tile">
+      <div class="amp-oos-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z"/></svg>
+      </div>
+      <div class="amp-oos-content">
+        <h4>${esc(m.materialName)} <span class="amp-mat-code">${esc(m.itemCode)}</span></h4>
+        <p>You have 0 ${esc(m.unit)} remaining. Restock immediately to prevent operational interruption.</p>
+        ${m.reorderQuantity ? `<small class="amp-reorder-hint">Standard reorder quantity: ${m.reorderQuantity} ${esc(m.unit)}</small>` : ""}
+      </div>
+      <div class="amp-oos-badge">
+        Out of Stock
+      </div>
+    </div>
+  `).join("");
+}
+
+// ============================================================
+// RAW MATERIALS TREND CHART (LIVE CONSUMPTION & AUTO-REG ML FORECAST)
+// ============================================================
+
+function populateTrendMaterialSelect() {
+  const select = $("trendMaterialSelect");
+  if (!select) return;
+
+  const currentVal = select.value || "all";
+  select.innerHTML = `<option value="all">All Materials</option>`;
+
+  const sorted = catalogMaterials.slice().sort((a, b) => a.materialName.localeCompare(b.materialName));
+  sorted.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = `${m.materialName} (${m.unit})`;
+    select.appendChild(opt);
+  });
+
+  if (sorted.some(m => m.id === currentVal)) {
+    select.value = currentVal;
+  } else {
+    select.value = "all";
+  }
+}
+
+function setupTrendControls() {
+  if (trendControlsBound) return;
+  trendControlsBound = true;
+
+  const select = $("trendMaterialSelect");
+  if (select) {
+    select.addEventListener("change", async () => {
+      currentTrendMaterial = select.value;
+      await renderRawMaterialsTrendChart();
+    });
+  }
+
+  const granGroup = $("trendGranularityGroup");
+  if (granGroup) {
+    granGroup.querySelectorAll(".trend-gran-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        granGroup.querySelectorAll(".trend-gran-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentTrendGranularity = btn.getAttribute("data-gran") || "general";
+        await renderRawMaterialsTrendChart();
+      });
+    });
+  }
+}
+
+async function fetchForecastDataForMaterial(matNameOrId) {
+  try {
+    const { data: sessData } = await auth.auth.getSession();
+    const headers = { "Accept": "application/json" };
+    if (sessData?.session?.access_token) {
+      headers["Authorization"] = `Bearer ${sessData.session.access_token}`;
+    }
+    const encoded = encodeURIComponent(matNameOrId);
+    const res = await fetch(`${FLASK_API_BASE}/api/ml/forecast/${encoded}/inventory`, {
+      method: "GET",
+      headers
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.status === "success" ? data : null;
+  } catch (err) {
+    console.warn("Forecast fetch notice:", err);
+    return null;
+  }
+}
+
+async function renderRawMaterialsTrendChart() {
+  const canvas = $("rawMaterialsTrendChart");
+  if (!canvas) return;
+
+  if (typeof Chart === "undefined") {
+    console.warn("Chart.js not loaded on page.");
+    return;
+  }
+
+  const selectedId = currentTrendMaterial;
+  const selectedMat = catalogMaterials.find(m => m.id === selectedId);
+  const primaryUnit = selectedMat ? selectedMat.unit : "kg";
+  const matDisplayName = selectedMat ? selectedMat.materialName : "All Raw Materials";
+
+  // Filter usage records
+  let filteredUsage = usageRecords;
+  if (selectedId !== "all") {
+    filteredUsage = usageRecords.filter(u => u.materialId === selectedId);
+  } else {
+    // For "all", maintain unit safety by taking primary unit records (kg)
+    filteredUsage = usageRecords.filter(u => (u.unit || "").toLowerCase() === "kg");
+  }
+
+  // Generate date labels and data buckets based on granularity
+  let labels = [];
+  let consumedData = [];
+  let forecastData = [];
+
+  const now = new Date();
+  const currentMonthIdx = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  // Fetch live ML forecast
+  let forecastResult = null;
+  if (selectedMat) {
+    forecastResult = await fetchForecastDataForMaterial(selectedMat.materialName);
+  } else if (catalogMaterials.length > 0) {
+    // For 'All', query representative material forecast
+    forecastResult = await fetchForecastDataForMaterial("Sugar") || await fetchForecastDataForMaterial(catalogMaterials[0].materialName);
+  }
+
+  const f7Qty = forecastResult?.forecast7Day?.quantity ? Number(forecastResult.forecast7Day.quantity) : null;
+  const f1mQty = forecastResult?.forecast1Month?.quantity ? Number(forecastResult.forecast1Month.quantity) : null;
+
+  if (currentTrendGranularity === "weekly") {
+    labels = ["Week 1 (1-7)", "Week 2 (8-14)", "Week 3 (15-21)", "Week 4 (22+)"];
+    consumedData = [0, 0, 0, 0];
+
+    filteredUsage.forEach(u => {
+      if (!u.usageDate) return;
+      const d = new Date(u.usageDate);
+      if (d.getMonth() === currentMonthIdx && d.getFullYear() === currentYear) {
+        const day = d.getDate();
+        if (day <= 7) consumedData[0] += u.consumedQuantity;
+        else if (day <= 14) consumedData[1] += u.consumedQuantity;
+        else if (day <= 21) consumedData[2] += u.consumedQuantity;
+        else consumedData[3] += u.consumedQuantity;
+      }
+    });
+
+    if (f1mQty !== null) {
+      const weeklyForecast = f1mQty / 4;
+      forecastData = [
+        Number(weeklyForecast.toFixed(2)),
+        Number(weeklyForecast.toFixed(2)),
+        Number(weeklyForecast.toFixed(2)),
+        Number(weeklyForecast.toFixed(2))
+      ];
+    } else {
+      forecastData = [null, null, null, null];
     }
 
-  ];
+  } else if (currentTrendGranularity === "monthly") {
+    labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    consumedData = new Array(12).fill(0);
 
-
-  const current =
-    steps[step];
-
-
-  if (!current)
-    return;
-
-
-  detail.innerHTML = `
-
-    <span
-      class="process-detail-label"
-    >
-      ${current.label}
-    </span>
-
-
-    <strong>
-      ${current.value}
-    </strong>
-
-
-    <p>
-      ${current.text}
-    </p>
-
-  `;
-
-}
-
-
-// ============================================================
-// EXISTING PROCESS STEP
-// ============================================================
-
-function showProcessStep(
-  node,
-  r
-) {
-
-  document
-    .querySelectorAll(
-      ".process-node"
-    )
-    .forEach(
-      n =>
-        n.classList.remove(
-          "active"
-        )
-    );
-
-
-  node.classList.add(
-    "active"
-  );
-
-
-  const step =
-    Number(
-      node.dataset.processStep
-    );
-
-
-  const detail =
-    $("processDetail");
-
-
-  if (!detail)
-    return;
-
-
-  const copy = [
-
-    [
-
-      "CURRENT INVENTORY",
-
-      `${r.currentStock.toLocaleString()} ${esc(
-        r.unit
-      )}`,
-
-      r.currentStock <=
-      r.minimumStock
-
-        ? "Stock is at or below the minimum threshold and needs attention."
-
-        : "Current stock is above the minimum threshold."
-
-    ],
-
-
-    [
-
-      "CONSUMPTION SIGNAL",
-
-      `${r.totalConsumed.toLocaleString()} ${esc(
-        r.unit
-      )}`,
-
-      r.usageCount
-
-        ? `Calculated from ${r.usageCount} recorded consumption ${
-            r.usageCount === 1
-              ? "entry"
-              : "entries"
-          }.`
-
-        : "No consumption history is available yet."
-
-    ],
-
-
-    [
-
-      "PROJECTED REQUIREMENT",
-
-      `${r.projectedRequirement.toLocaleString(
-        undefined,
-        {
-          maximumFractionDigits: 2
+    filteredUsage.forEach(u => {
+      if (!u.usageDate) return;
+      const d = new Date(u.usageDate);
+      if (d.getFullYear() === currentYear) {
+        const m = d.getMonth();
+        if (m >= 0 && m < 12) {
+          consumedData[m] += u.consumedQuantity;
         }
-      )} ${esc(r.unit)}`,
+      }
+    });
 
-      r.usageCount
+    forecastData = new Array(12).fill(null);
+    if (f1mQty !== null) {
+      for (let i = currentMonthIdx; i < 12; i++) {
+        forecastData[i] = Number(f1mQty.toFixed(2));
+      }
+    }
 
-        ? "The dashboard uses the available consumption signal to show the projected requirement."
+  } else {
+    // "general": Show actual recorded dates or recent 7 calendar days
+    const dateMap = new Map();
+    filteredUsage.forEach(u => {
+      if (!u.usageDate) return;
+      dateMap.set(u.usageDate, (dateMap.get(u.usageDate) || 0) + u.consumedQuantity);
+    });
 
-        : "The available minimum-stock threshold is used as the requirement reference."
+    let distinctDates = Array.from(dateMap.keys()).sort();
+    if (distinctDates.length === 0) {
+      // Create past 7 calendar days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        distinctDates.push(d.toISOString().split("T")[0]);
+      }
+    }
 
-    ],
+    labels = distinctDates.map(ds => {
+      const dt = new Date(ds + "T00:00:00");
+      return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    });
 
+    consumedData = distinctDates.map(ds => Number((dateMap.get(ds) || 0).toFixed(2)));
 
-    [
-
-      "RECOMMENDED RESULT",
-
-      `${r.additionalNeeded.toLocaleString(
-        undefined,
-        {
-          maximumFractionDigits: 2
-        }
-      )} ${esc(r.unit)} needed`,
-
-      r.additionalNeeded > 0
-
-        ? "Additional stock may be needed to cover the projected requirement."
-
-        : "Current stock covers the projected requirement based on the available dashboard data."
-
-    ]
-
-  ][step] || null;
-
-
-  if (copy) {
-
-    detail.innerHTML = `
-
-      <span
-        class="process-detail-label"
-      >
-        ${copy[0]}
-      </span>
-
-
-      <strong>
-        ${copy[1]}
-      </strong>
-
-
-      <p>
-        ${copy[2]}
-      </p>
-
-    `;
-
+    if (f7Qty !== null) {
+      const dailyForecast = f7Qty / 7;
+      forecastData = distinctDates.map(() => Number(dailyForecast.toFixed(2)));
+    } else {
+      forecastData = distinctDates.map(() => null);
+    }
   }
 
-}
-
-
-// ============================================================
-// MODALS
-// ============================================================
-
-function wireModals() {
-
-  const closeIds = [
-
-    "activityModalClose",
-
-    "activityModalCloseBtn",
-
-    "recModalClose",
-
-    "recModalCloseBtn"
-
-  ];
-
-
-  closeIds.forEach(
-    id =>
-
-      $(id)?.addEventListener(
-        "click",
-        () => {
-
-          const el =
-            $(id)?.closest(
-              ".modal-overlay"
-            );
-
-
-          if (el) {
-
-            el.classList.remove(
-              "open"
-            );
-
-          }
-
-        }
-      )
-  );
-
-
-  $("activityModalOverlay")
-    ?.addEventListener(
-      "click",
-      e => {
-
-        if (
-          e.target ===
-          $("activityModalOverlay")
-        ) {
-
-          $("activityModalOverlay")
-            .classList
-            .remove(
-              "open"
-            );
-
-        }
-
-      }
-    );
-
-
-  $("recModalOverlay")
-    ?.addEventListener(
-      "click",
-      e => {
-
-        if (
-          e.target ===
-          $("recModalOverlay")
-        ) {
-
-          $("recModalOverlay")
-            .classList
-            .remove(
-              "open"
-            );
-
-        }
-
-      }
-    );
-
-
-  $("recommendationChips")
-    ?.addEventListener(
-      "click",
-      e => {
-
-        const btn =
-          e.target.closest(
-            ".view-result-btn"
-          );
-
-
-        if (!btn)
-          return;
-
-
-        const data =
-          window.__rmimsDashboardData ||
-          {};
-
-
-        const material =
-          (data.materials || [])
-            .find(
-              m =>
-                String(m.id) ===
-                String(
-                  btn.dataset.materialId
-                )
-            );
-
-
-        openMaterialResult(
-
-          material || {
-
-            materialName:
-              btn.dataset.materialName ||
-              "Sugar"
-
-          }
-
-        );
-
-      }
-    );
-
-}
-
-
-// ============================================================
-// ML FORECAST CONNECTION
-// ============================================================
-
-let sugarForecastLoaded =
-  false;
-
-
-async function loadSugarForecastFromML() {
-
-  // Prevent duplicate ML requests.
-
-  if (
-    sugarForecastLoaded
-  ) {
-
-    return;
-
+  // Update Footer Meta text
+  const metaEl = $("trendFooterMeta");
+  if (metaEl) {
+    if (forecastResult) {
+      metaEl.textContent = `Showing live ${matDisplayName} disbursements & AutoReg ML forecast (${primaryUnit})`;
+    } else {
+      metaEl.textContent = `Showing live ${matDisplayName} disbursements (Forecast connecting to ML service)`;
+    }
   }
 
+  // Destroy previous chart instance if exists
+  if (rawMaterialsTrendChartInstance) {
+    rawMaterialsTrendChartInstance.destroy();
+    rawMaterialsTrendChartInstance = null;
+  }
 
-  sugarForecastLoaded =
-    true;
+  // Vertical Guide Line Plugin
+  const crosshairPlugin = {
+    id: "trendCrosshairLine",
+    afterDraw: (chartInstance) => {
+      if (chartInstance.tooltip?._active && chartInstance.tooltip._active.length) {
+        const activePoint = chartInstance.tooltip._active[0];
+        const ctx = chartInstance.ctx;
+        const x = activePoint.element.x;
+        const topY = chartInstance.scales.y.top;
+        const bottomY = chartInstance.scales.y.bottom;
 
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, topY);
+        ctx.lineTo(x, bottomY);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "rgba(148, 180, 224, 0.45)";
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  };
+
+  const ctx = canvas.getContext("2d");
+  rawMaterialsTrendChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Consumed",
+          data: consumedData,
+          borderColor: "#10B981",
+          backgroundColor: "rgba(16, 185, 129, 0.10)",
+          borderWidth: 2.6,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: "#10B981",
+          pointBorderColor: "#FFFFFF",
+          pointBorderWidth: 2
+        },
+        {
+          label: "Forecasted Raw Materials",
+          data: forecastData,
+          borderColor: "#3B82F6",
+          borderDash: [6, 6],
+          backgroundColor: "rgba(59, 130, 246, 0.06)",
+          borderWidth: 2.2,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointBackgroundColor: "#3B82F6",
+          pointBorderColor: "#FFFFFF",
+          pointBorderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0B132B",
+          titleColor: "#FFFFFF",
+          bodyColor: "#D7E0EA",
+          borderColor: "rgba(255, 255, 255, 0.16)",
+          borderWidth: 1,
+          padding: 12,
+          boxPadding: 6,
+          usePointStyle: true,
+          callbacks: {
+            title: items => items[0]?.label || "",
+            beforeBody: () => `Material: ${matDisplayName}`,
+            label: context => {
+              const val = context.parsed.y;
+              if (val === null || val === undefined || isNaN(val)) {
+                return ` ${context.dataset.label}: Forecast unavailable`;
+              }
+              return ` ${context.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: "rgba(148, 180, 224, 0.08)",
+            drawBorder: false
+          },
+          ticks: {
+            color: "#7C92B3",
+            font: { family: "Inter", size: 11, weight: 500 }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "rgba(148, 180, 224, 0.12)",
+            drawBorder: false
+          },
+          ticks: {
+            color: "#7C92B3",
+            font: { family: "Inter", size: 11 },
+            callback: v => `${v.toLocaleString("en-US")} ${primaryUnit}`
+          }
+        }
+      }
+    },
+    plugins: [crosshairPlugin]
+  });
+}
+
+// ============================================================
+// AUTHENTICATION GUARD & SESSION LIFECYCLE
+// ============================================================
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    window.location.href = "../login.html";
+    return;
+  }
 
   try {
+    const { data: profile, error } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, email, role, status")
+      .eq("id", user.uid)
+      .maybeSingle();
 
-    // Get the existing RMIMS Supabase session.
-
-    const {
-
-      data: sessionData,
-
-      error: sessionError
-
-    } =
-      await auth.auth.getSession();
-
-
-    if (
-      sessionError
-    ) {
-
-      throw sessionError;
-
-    }
-
-
-    const session =
-      sessionData?.session;
-
-
-    if (!session) {
-
-      console.warn(
-        "ML forecast skipped: no active Supabase session."
-      );
-
+    if (error || !profile || profile.status !== "active") {
+      window.location.href = "../login.html";
       return;
-
     }
 
-
-    const accessToken =
-      session.access_token;
-
-
-    console.log(
-      "Existing RMIMS Supabase session found."
-    );
-
-
-    console.log(
-      "Sending authenticated request to Flask ML backend..."
-    );
-
-
-    const response =
-      await fetch(
-
-        "http://127.0.0.1:5000/api/ml/forecast/sugar/inventory",
-
-        {
-
-          method:
-            "GET",
-
-          headers: {
-
-            "Authorization":
-              `Bearer ${accessToken}`
-
-          }
-
-        }
-
-      );
-
-
-    const result =
-      await response.json();
-
-
-    if (
-      !response.ok
-    ) {
-
-      throw new Error(
-        result.error ||
-        "ML forecast request failed."
-      );
-
+    if (profile.role !== "admin") {
+      window.location.href = "../login.html";
+      return;
     }
 
+    await checkAndShowOnboarding(profile, supabase);
 
-    console.log(
-      "REAL ML FORECAST RESULT:",
-      result
-    );
-
-
-    console.log(
-      "ML RESULT JSON:",
-      JSON.stringify(
-        result,
-        null,
-        2
-      )
-    );
-
-
-    // Store the real ML result so
-    // the Sugar Result modal can use it.
-
-    window.__sugarMLResult =
-      result;
-
-
-    return result;
-
-
-  } catch (error) {
-
-    console.error(
-      "ML forecast connection failed:",
-      error
-    );
-
+    const profileBtn = $("profileBtn");
+    if (profileBtn) {
+      const pText = profileBtn.querySelector(".profile-text") || profileBtn;
+      pText.textContent = profile.full_name || profile.email || "Admin";
+      const pAv = profileBtn.querySelector(".avatar");
+      if (pAv && profile.full_name) {
+        pAv.textContent = profile.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join("");
+      }
+    }
+  } catch (err) {
+    console.warn("Dashboard role check notice:", err);
   }
 
-}
-
-
-// ============================================================
-// AUTHENTICATION + DASHBOARD STARTUP
-// ============================================================
-
-onAuthStateChanged(
-
-  auth,
-
-  async user => {
-
-    if (!user) {
-
-      window.location.href =
-        "../login.html";
-
-      return;
-
-    }
-
-
-    try {
-
-      const profile =
-        await getDoc(
-
-          doc(
-            db,
-            "users",
-            user.uid
-          )
-
-        );
-
-
-      if (
-        !profile.exists() ||
-        profile.data().status !==
-          "active"
-      ) {
-
-        window.location.href =
-          "../login.html";
-
-        return;
-
-      }
-
-
-      if (
-        profile.data().role !==
-          "admin"
-      ) {
-
-        window.location.href =
-          "../user/dashboard.html";
-
-        return;
-
-      }
-
-
-      // profileBtn may not exist
-      // on every dashboard version.
-
-      const profileBtn =
-        $("profileBtn");
-
-
-      if (profileBtn) {
-
-        profileBtn.textContent =
-          profile.data().fullName ||
-          "Administrator";
-
-      }
-
-
-    } catch (err) {
-
-      console.warn(
-        "Dashboard role check failed",
-        err
-      );
-
-    }
-
-
-    wireModals();
-
-    await loadSugarForecastFromML();
-
-    await loadDashboard();
-
-    // ADDITIVE FORECASTING MODULE BRIDGE:
-    // When the Forecasting page asks to open the existing 3D result,
-    // reuse the current dashboard result/modal instead of creating a second UI.
-    try {
-      const forecastMaterialName = new URLSearchParams(location.search).get("openForecastResult");
-      if (forecastMaterialName) {
-        const data = window.__rmimsDashboardData || {};
-        const material = (data.materials || []).find(
-          m => String(m.materialName || "").trim().toLowerCase() === String(forecastMaterialName).trim().toLowerCase()
-        ) || { materialName: forecastMaterialName };
-        window.setTimeout(() => openMaterialResult(material), 80);
-        window.history.replaceState({}, document.title, location.pathname);
-      }
-    } catch (forecastBridgeError) {
-      console.warn("Forecasting 3D result bridge failed:", forecastBridgeError);
-    }
-
-  }
-
-);
+  // Load dashboard data from live Supabase
+  await loadDashboard();
+});

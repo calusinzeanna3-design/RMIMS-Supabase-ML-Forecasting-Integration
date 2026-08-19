@@ -23,11 +23,11 @@ const BUCKET = "rmims-backups";
 const BACKUP_VERSION = 1;
 
 const CATEGORIES = [
-    { key: "materials", label: "Raw Materials", table: "materials" },
+    { key: "raw_materials", label: "Raw Materials", table: "raw_materials" },
     { key: "finished_products", label: "Finished Products", table: "finished_products" },
     { key: "product_material_requirements", label: "Product Material Requirements", table: "product_material_requirements" },
     { key: "stock_receipts", label: "Material Activity — Receive", table: "stock_receipts" },
-    { key: "usage_records", label: "Material Activity — Used / Consumption Records", table: "usage_records" }
+    { key: "material_disbursements", label: "Material Activity — Used / Consumption Records", table: "material_disbursements" }
 ];
 
 let currentUser = null; // set by initBackupRestore()
@@ -106,12 +106,12 @@ export async function loadDataSummary() {
 
     try {
         const [materials, finishedProducts, stockReceipts, usageRecords, users, supplierRows] = await Promise.all([
-            countRows("materials"),
+            countRows("raw_materials"),
             countRows("finished_products"),
             countRows("stock_receipts"),
-            countRows("usage_records"),
-            countRows("users"),
-            db.from("materials").select("supplier").not("supplier", "is", null)
+            countRows("material_disbursements"),
+            countRows("user_profiles"),
+            db.from("raw_materials").select("supplier").not("supplier", "is", null)
         ]);
 
         const distinctSuppliers = new Set(

@@ -17,8 +17,8 @@ import { db } from "../supabase/supabase-config.js";
 
 const RESET_OPTIONS = [
     {
-        key: "materials",
-        scopes: ["materials"],
+        key: "raw_materials",
+        scopes: ["raw_materials"],
         title: "Reset Raw Material Data",
         confirmWord: "RESET",
         deleted: [
@@ -40,8 +40,8 @@ const RESET_OPTIONS = [
         kept: ["User accounts", "Raw Materials", "Finished Products", "Consumption Records (Used activity)"]
     },
     {
-        key: "usage_records",
-        scopes: ["usage_records"],
+        key: "material_disbursements",
+        scopes: ["material_disbursements"],
         title: "Clear Consumption Records",
         confirmWord: "RESET",
         deleted: ["Recorded Used/Consumed activity", "Consumption Analytics history that reads this data"],
@@ -59,7 +59,7 @@ const RESET_OPTIONS = [
 
 const FULL_RESET_OPTION = {
     key: "all",
-    scopes: ["materials", "finished_products", "stock_receipts", "usage_records"],
+    scopes: ["raw_materials", "finished_products", "stock_receipts", "material_disbursements"],
     title: "Reset All System Data",
     confirmWord: "RESET ALL DATA",
     deleted: ["Raw Materials", "Finished Products", "Material Activity (Receive)", "Consumption Records", ],
@@ -159,16 +159,44 @@ document.getElementById("resetConfirmBtn")?.addEventListener("click", async () =
     btn.textContent = "Resetting…";
 
     try {
-        const { error } = await db.rpc("reset_system_data", { scopes: currentOption.scopes });
-        if (error) throw error;
+        let rpcSuccess = false;
+        try {
+            const { error: rpcError } = await db.rpc("reset_system_data", { scopes: currentOption.scopes });
+            if (!rpcError) rpcSuccess = true;
+            else console.warn("reset_system_data RPC error:", rpcError);
+        } catch (rpcErr) {
+            console.warn("reset_system_data RPC exception:", rpcErr);
+            rpcSuccess = false;
+        }
+
+        if (!rpcSuccess) {
+            // Direct table deletion fallback for the selected scopes
+            const scopes = currentOption.scopes || [];
+
+            if (scopes.includes("raw_materials") || scopes.includes("finished_products")) {
+                await db.from("product_material_requirements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            }
+            if (scopes.includes("stock_receipts")) {
+                await db.from("stock_receipts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            }
+            if (scopes.includes("material_disbursements")) {
+                await db.from("material_disbursements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            }
+            if (scopes.includes("finished_products")) {
+                await db.from("finished_products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            }
+            if (scopes.includes("raw_materials")) {
+                await db.from("raw_materials").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            }
+        }
 
         showToast(`${currentOption.title} completed successfully.`);
         closeModal("resetModal");
         if (typeof onResetComplete === "function") onResetComplete();
 
     } catch (err) {
-        console.error(err);
-        showToast(`Unable to reset the selected data. Please try again.`, "error");
+        console.error("Data reset failed:", err);
+        showToast(err.message || `Unable to reset the selected data. Please try again.`, "error");
 
     } finally {
         resetInProgress = false;

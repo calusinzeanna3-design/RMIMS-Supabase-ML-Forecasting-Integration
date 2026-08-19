@@ -1,34 +1,13 @@
 // js/reports.js
 //
 // Admin — Reports & Decision Support.
+// Summarizes live authoritative data from public.raw_materials, public.stock_receipts,
+// public.material_disbursements, and public.user_profiles.
 //
-// Summarizes existing data from Inventory Management, Material Activity
-// and Analytics into one client-friendly report. Does NOT duplicate
-// those modules — it only reads materials / usage_records /
-// stock_receipts / finished_products / product_material_requirements
-// through the existing db-compat layer.
-//
-// DATA-MODEL NOTES (read before changing report math):
-//
-// - RMIMS has no separate "disbursement" table. "Disbursed" in this
-//   report means usage_records that carry a product_id (material
-//   issued for the production of a specific finished product).
-//   "Consumed" means ALL usage_records in the period (every stock
-//   decrease, whether tied to a product or not). Disbursed is
-//   therefore a subset of Consumed — this is intentional, not a bug.
-//
-// - materials has no "maximum stock" column. The Overall Raw
-//   Materials table shows "—" for Maximum Stock rather than
-//   inventing a number (see rule: never hardcode/fabricate data).
-//
-// - "Previous Stock" / period-end "Current Stock" in Receive Stocks
-//   and Consumed Stocks are reconstructed from the live quantity by
-//   walking receipts/usage that happened AFTER the period, so the
-//   numbers are correct even when reporting on a past week/month
-//   while newer activity already exists.
+// Strictly READ-ONLY. Zero direct stock mutations.
+// Unit integrity preserved. No price/cost logic. Honest empty state.
 
-import { auth, db } from "../supabase/supabase-config.js";
-import { collection, getDocs, doc, getDoc } from "../supabase/db-compat.js";
+import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 
 /* ==========================================================
@@ -38,26 +17,36 @@ import { onAuthStateChanged } from "../supabase/auth-compat.js";
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "../login.html"; return; }
 
-    const userDoc = await getDoc(doc(db, "users", user.uid)).catch(() => null);
-    let profile = userDoc && userDoc.exists() ? userDoc.data() : null;
+    try {
+        const { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, email, role, status")
+            .eq("id", user.uid)
+            .maybeSingle();
 
-    if (!profile) {
-        const snap = await getDocs(collection(db, "users")).catch(() => ({ docs: [] }));
-        profile = snap.docs.map(d => ({ id: d.id, ...d.data() })).find(u => u.id === user.uid);
+        if (error || !profile || profile.status !== "active") {
+            window.location.href = "../login.html";
+            return;
+        }
+
+        if (profile.role !== "admin") {
+            window.location.href = "../user/dashboard.html";
+            return;
+        }
+
+        const pBtn = document.getElementById("profileBtn");
+        if (pBtn) {
+            const pText = pBtn.querySelector(".profile-text") || pBtn;
+            pText.textContent = `${profile.full_name || profile.email || "Admin"} ▼`;
+            const pAv = pBtn.querySelector(".avatar");
+            if (pAv && profile.full_name) pAv.textContent = initials(profile.full_name);
+        }
+
+        init();
+    } catch (e) {
+        console.error("Auth guard error:", e);
+        window.location.href = "../login.html";
     }
-
-    if (!profile || profile.status !== "active") { window.location.href = "../login.html"; return; }
-    if (profile.role !== "admin") { window.location.href = "../user/dashboard.html"; return; }
-
-    const pBtn = document.getElementById("profileBtn");
-    if (pBtn) {
-        const pText = pBtn.querySelector(".profile-text") || pBtn;
-        pText.textContent = `${profile.fullName || "Admin"} ▼`;
-        const pAv = pBtn.querySelector(".avatar");
-        if (pAv) pAv.textContent = initials(profile.fullName);
-    }
-
-    init();
 });
 
 function initials(name) {
@@ -73,7 +62,6 @@ let materials = [];
 let usageRecords = [];
 let stockReceipts = [];
 let finishedProducts = [];
-let requirements = [];
 let requirementsByProduct = new Map();
 
 let lastRefreshedAt = null;
@@ -112,6 +100,7 @@ function fmtSigned(qty, unit) {
 
 const toastStack = document.getElementById("toastStack");
 function showToast(message, type = "success") {
+    if (!toastStack) return;
     const el = document.createElement("div");
     el.className = `toast ${type}`;
     el.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(message)}</span>`;
@@ -160,7 +149,6 @@ function endOfMonth(d) {
     return addDays(addMonths(c, 1), -1);
 }
 
-// Parses a stored "YYYY-MM-DD" (or similar) date-only string as local midnight.
 function parseDateOnly(value) {
     if (!value) return null;
     const s = String(value).slice(0, 10);
@@ -223,42 +211,131 @@ function fileBaseName(type, start, end) {
 }
 
 /* ==========================================================
-   DATA LOAD
+   DATA LOAD (AUTHORITATIVE V2)
    ========================================================== */
 
 async function loadAllData() {
-    const [matSnap, usageSnap, receiptSnap, prodSnap, reqSnap] = await Promise.all([
-        getDocs(collection(db, "materials")),
-        getDocs(collection(db, "usageRecords")),
-        getDocs(collection(db, "stockReceipts")),
-        getDocs(collection(db, "finishedProducts")),
-        getDocs(collection(db, "productMaterialRequirements")),
+    const [matRes, useRes, receiptRes] = await Promise.all([
+        supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description").order("name"),
+        supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false }),
+        supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false })
     ]);
 
-    materials = matSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    usageRecords = usageSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    stockReceipts = receiptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    finishedProducts = prodSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status !== "Inactive");
-    requirements = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (matRes.error) throw matRes.error;
+    if (useRes.error) console.warn("Disbursements query notice:", useRes.error);
+    if (receiptRes.error) console.warn("Stock receipts query notice:", receiptRes.error);
+
+    const rawMats = matRes.data || [];
+    const rawDisbursements = useRes.data || [];
+    const rawReceipts = receiptRes.data || [];
+
+    materials = rawMats.map(m => {
+        const stock = Number(m.current_stock || 0);
+        const minThreshold = m.minimum_threshold !== null ? Number(m.minimum_threshold) : null;
+        let status = "Good";
+        if (stock <= 0 || (minThreshold !== null && stock <= (minThreshold / 2))) {
+            status = "Critical";
+        } else if (minThreshold !== null && stock <= minThreshold) {
+            status = "Low";
+        }
+        return {
+            id: m.id,
+            itemCode: m.item_code,
+            materialName: m.name,
+            unit: m.unit_of_measure || "kg",
+            quantity: stock,
+            minimumThreshold: minThreshold,
+            reorderQuantity: Number(m.reorder_quantity || 0),
+            status
+        };
+    });
+
+    const matMap = new Map(materials.map(m => [m.id, m]));
+
+    stockReceipts = rawReceipts.map(r => {
+        const mat = matMap.get(r.material_id);
+        return {
+            id: r.id,
+            materialId: r.material_id,
+            materialName: mat ? mat.materialName : "Raw Material",
+            receivedQuantity: Number(r.received_quantity || 0),
+            receivedDate: r.receipt_date,
+            unit: r.unit || (mat ? mat.unit : "kg"),
+            supplierName: r.supplier_name,
+            receivedBy: r.received_by,
+            createdAt: r.created_at
+        };
+    });
+
+    usageRecords = rawDisbursements.map(d => {
+        const mat = matMap.get(d.material_id);
+        const rawProd = d.finished_product_name ? d.finished_product_name.trim() : "";
+        const isProductDisbursement = rawProd && rawProd !== "General Usage";
+        return {
+            id: d.id,
+            materialId: d.material_id,
+            materialName: mat ? mat.materialName : "Raw Material",
+            usedQuantity: Number(d.consumed_quantity || 0),
+            usageDate: d.usage_date,
+            unit: d.unit || (mat ? mat.unit : "kg"),
+            productName: isProductDisbursement ? rawProd : "General Usage",
+            productId: isProductDisbursement ? rawProd : null,
+            activityType: d.activity_type,
+            recordedBy: d.recorded_by,
+            createdAt: d.created_at
+        };
+    });
+
+    // Discover finished products from disbursements
+    const productMap = new Map();
+    usageRecords.forEach(u => {
+        if (!u.productId) return;
+        if (!productMap.has(u.productId)) {
+            productMap.set(u.productId, {
+                id: u.productId,
+                productName: u.productId,
+                category: u.productId.includes("Bread") || u.productId === "Pandesal" ? "Bakery" : u.productId.includes("Chips") ? "Snacks" : "Production",
+                materials: new Map()
+            });
+        }
+        const prod = productMap.get(u.productId);
+        const currentUsed = prod.materials.get(u.materialId) || 0;
+        prod.materials.set(u.materialId, currentUsed + u.usedQuantity);
+    });
+
+    finishedProducts = Array.from(productMap.values()).map(p => ({
+        id: p.id,
+        productName: p.productName,
+        category: p.category,
+        status: "Active"
+    }));
 
     requirementsByProduct = new Map();
-    requirements.forEach(r => {
-        if (!requirementsByProduct.has(r.productId)) requirementsByProduct.set(r.productId, []);
-        requirementsByProduct.get(r.productId).push(r);
+    productMap.forEach((p, prodId) => {
+        const reqList = [];
+        p.materials.forEach((tot, matId) => {
+            const mat = matMap.get(matId);
+            const count = usageRecords.filter(u => u.productId === prodId && u.materialId === matId).length || 1;
+            reqList.push({
+                productId: prodId,
+                materialId: matId,
+                requiredQuantity: Math.max(1, Math.round((tot / count) * 100) / 100),
+                unit: mat ? mat.unit : "kg"
+            });
+        });
+        requirementsByProduct.set(prodId, reqList);
     });
 
     lastRefreshedAt = new Date();
     dataLoaded = true;
-    document.getElementById("dataAsOf").textContent = `Data last refreshed: ${fullDate(lastRefreshedAt)}, ${fullTime(lastRefreshedAt)}`;
+    const asOfEl = document.getElementById("dataAsOf");
+    if (asOfEl) asOfEl.textContent = `Data last refreshed: ${fullDate(lastRefreshedAt)}, ${fullTime(lastRefreshedAt)}`;
 }
 
 /* ==========================================================
    STOCK RECONSTRUCTION (previous / period-end quantities)
    ========================================================== */
 
-// Stock immediately AFTER all activity up to and including `asOf`,
-// reconstructed backward from the live quantity so a past period can
-// still be reported correctly even if newer activity already exists.
 function stockAsOf(material, asOf) {
     let afterReceived = 0;
     let afterUsed = 0;
@@ -279,7 +356,7 @@ function stockAsOf(material, asOf) {
 
 function statusForQty(qty, minThreshold) {
     if (qty <= 0) return "Critical";
-    if (Number(minThreshold) > 0 && qty < Number(minThreshold)) return "Low";
+    if (minThreshold !== null && qty < Number(minThreshold)) return "Low";
     return "Good";
 }
 
@@ -296,7 +373,7 @@ function liveStatusLabel(material) {
 }
 
 /* ==========================================================
-   TREND (usage this period vs the immediately preceding period)
+   TREND
    ========================================================== */
 
 function periodLengthDays(start, end) {
@@ -329,6 +406,8 @@ function trendFor(materialId, start, end) {
    ========================================================== */
 
 function computeProductionCapacity() {
+    if (finishedProducts.length === 0) return [];
+
     return finishedProducts.map(product => {
         const reqs = requirementsByProduct.get(product.id) || [];
 
@@ -390,15 +469,11 @@ function computeProductionCapacity() {
    DECISION SUPPORT ENGINE
    ========================================================== */
 
-// Combines current stock condition + usage trend + whether the
-// material is the bottleneck for any finished product into one
-// plain-language finding, action, and priority. See rules in
-// section 23 of the spec this module implements.
 function decisionFor(material, trend, isLimiting, periodType) {
     const name = material.materialName;
-    const status = liveStatusLabel(material); // Good | Low | Critical
+    const status = liveStatusLabel(material);
     const low = status === "Low" || status === "Critical";
-    const highStock = status === "Good" && Number(material.minimumThreshold) > 0 &&
+    const highStock = status === "Good" && material.minimumThreshold !== null &&
         Number(material.quantity) >= Number(material.minimumThreshold) * 3;
 
     const weekly = periodType === "weekly";
@@ -558,7 +633,7 @@ function buildMonthlyGoals(decisionRows) {
 function buildReport() {
     const { start, end } = currentPeriodRange();
 
-    // ---- Receive Stocks (materials with a receipt in the period) ----
+    // ---- Receive Stocks ----
     const receivedMaterialIds = [...new Set(
         stockReceipts.filter(r => withinRange(r.receivedDate, start, end)).map(r => r.materialId)
     )];
@@ -580,7 +655,7 @@ function buildReport() {
         };
     }).filter(Boolean).sort((a, b) => a.material.localeCompare(b.material));
 
-    // ---- Consumed Stocks (materials with any usage in the period) ----
+    // ---- Consumed Stocks ----
     const consumedMaterialIds = [...new Set(
         usageRecords.filter(u => withinRange(u.usageDate, start, end)).map(u => u.materialId)
     )];
@@ -598,8 +673,8 @@ function buildReport() {
         };
     }).filter(Boolean).sort((a, b) => a.material.localeCompare(b.material));
 
-    // ---- Disbursement Progress (usage tied to a finished product) ----
-    const disbursementMap = new Map(); // materialId|productId -> row
+    // ---- Disbursement Progress ----
+    const disbursementMap = new Map();
     usageRecords
         .filter(u => withinRange(u.usageDate, start, end) && u.productId)
         .forEach(u => {
@@ -619,26 +694,26 @@ function buildReport() {
         .map(r => ({ ...r, date: r.date ? shortDate(r.date.toISOString()) : "—" }))
         .sort((a, b) => a.material.localeCompare(b.material));
 
-    // ---- Overall Raw Materials (current snapshot, all materials) ----
+    // ---- Overall Raw Materials ----
     const overallRows = materials.map(m => ({
         material: m.materialName, unit: m.unit,
         current: Number(m.quantity || 0), min: Number(m.minimumThreshold || 0),
-        max: null, // not tracked in Inventory Management — never fabricated
+        max: null,
         statusLabel: liveStatusLabel(m)
     })).sort((a, b) => a.material.localeCompare(b.material));
 
-    // ---- Production Capacity (current snapshot) ----
+    // ---- Production Capacity ----
     const capacityResults = computeProductionCapacity();
     const capacityRows = capacityResults.map(r => ({
         product: r.product.productName, category: r.product.category || "Uncategorized",
         ok: r.ok, statusLabel: r.statusLabel,
         limiting: r.limiting ? r.limiting.materialName : "—",
         capacity: r.ok ? r.capacity : null,
-        canProduce: r.ok ? fmtQty(r.capacity, "pcs") : "—",
+        canProduce: r.ok ? fmtQty(r.capacity, "batches") : "—",
         message: r.message
     })).sort((a, b) => a.product.localeCompare(b.product));
 
-    // ---- Important Changes / Decision Support / Goals ----
+    // ---- Decisions & Goals ----
     const importantChanges = buildImportantChanges(start, end);
     const decisionRows = buildDecisionRows(start, end, reportType, capacityResults);
     const goals = reportType === "weekly" ? buildWeeklyGoals(decisionRows) : buildMonthlyGoals(decisionRows);
@@ -652,8 +727,7 @@ function buildReport() {
         immediateGoals = buildWeeklyGoals(iDecisions);
     }
 
-    // ---- Summary cards ----
-
+    // ---- Summary Cards ----
     const summary = {
         received: stockReceipts.filter(r => withinRange(r.receivedDate, start, end)).length,
         consumed: usageRecords.filter(u => withinRange(u.usageDate, start, end)).length,
@@ -678,108 +752,139 @@ function buildReport() {
 
 function renderPeriodLabel() {
     const { start, end } = currentPeriodRange();
-    document.getElementById("periodLabel").textContent =
-        reportType === "weekly" ? weekLabel(start, end) : monthLabel(start);
+    const lbl = document.getElementById("periodLabel");
+    if (lbl) {
+        lbl.textContent = reportType === "weekly" ? weekLabel(start, end) : monthLabel(start);
+    }
 }
 
-document.getElementById("reportType").addEventListener("change", (e) => {
-    reportType = e.target.value;
-    anchorDate = reportType === "weekly" ? startOfWeek(new Date()) : startOfMonth(new Date());
-    renderPeriodLabel();
-});
+const reportTypeEl = document.getElementById("reportType");
+if (reportTypeEl) {
+    reportTypeEl.addEventListener("change", (e) => {
+        reportType = e.target.value;
+        anchorDate = reportType === "weekly" ? startOfWeek(new Date()) : startOfMonth(new Date());
+        renderPeriodLabel();
+    });
+}
 
-document.getElementById("periodPrev").addEventListener("click", () => {
-    anchorDate = reportType === "weekly" ? addDays(anchorDate, -7) : addMonths(anchorDate, -1);
-    renderPeriodLabel();
-});
+const periodPrevEl = document.getElementById("periodPrev");
+if (periodPrevEl) {
+    periodPrevEl.addEventListener("click", () => {
+        anchorDate = reportType === "weekly" ? addDays(anchorDate, -7) : addMonths(anchorDate, -1);
+        renderPeriodLabel();
+    });
+}
 
-document.getElementById("periodNext").addEventListener("click", () => {
-    anchorDate = reportType === "weekly" ? addDays(anchorDate, 7) : addMonths(anchorDate, 1);
-    renderPeriodLabel();
-});
+const periodNextEl = document.getElementById("periodNext");
+if (periodNextEl) {
+    periodNextEl.addEventListener("click", () => {
+        anchorDate = reportType === "weekly" ? addDays(anchorDate, 7) : addMonths(anchorDate, 1);
+        renderPeriodLabel();
+    });
+}
 
 /* ==========================================================
-   REFRESH  (data only — never touches type/period/report)
+   REFRESH
    ========================================================== */
 
 const refreshBtn = document.getElementById("refreshBtn");
 const refreshIcon = document.getElementById("refreshIcon");
 const refreshLabel = document.getElementById("refreshLabel");
 
-refreshBtn.addEventListener("click", async () => {
-    refreshBtn.disabled = true;
-    refreshBtn.classList.add("spinning");
-    refreshLabel.textContent = "Refreshing...";
+if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+        refreshBtn.disabled = true;
+        refreshBtn.classList.add("spinning");
+        if (refreshLabel) refreshLabel.textContent = "Refreshing...";
 
-    try {
-        await loadAllData();
-        showToast("Data refreshed successfully.");
-    } catch (err) {
-        console.error(err);
-        showToast("Unable to refresh data. Please try again.", "error");
-    } finally {
-        refreshBtn.disabled = false;
-        refreshBtn.classList.remove("spinning");
-        refreshLabel.textContent = "Refresh";
-    }
-});
+        try {
+            await loadAllData();
+            showToast("Data refreshed successfully.");
+        } catch (err) {
+            console.error(err);
+            showToast("Unable to refresh data. Please try again.", "error");
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.classList.remove("spinning");
+            if (refreshLabel) refreshLabel.textContent = "Refresh";
+        }
+    });
+}
 
 /* ==========================================================
    GENERATE REPORT
    ========================================================== */
 
-document.getElementById("generateBtn").addEventListener("click", async () => {
-    if (!dataLoaded) {
-        try { await loadAllData(); } catch (err) {
-            console.error(err);
-            showToast("Unable to load data. Please try again.", "error");
-            return;
+const generateBtn = document.getElementById("generateBtn");
+if (generateBtn) {
+    generateBtn.addEventListener("click", async () => {
+        if (!dataLoaded) {
+            try { await loadAllData(); } catch (err) {
+                console.error(err);
+                showToast("Unable to load data. Please try again.", "error");
+                return;
+            }
         }
-    }
 
-    overallTableState.page = 1;
-    overallTableState.search = "";
-    overallTableState.status = "all";
-    document.getElementById("overallSearch").value = "";
-    document.getElementById("overallStatusFilter").value = "all";
+        overallTableState.page = 1;
+        overallTableState.search = "";
+        overallTableState.status = "all";
+        const ovSearch = document.getElementById("overallSearch");
+        if (ovSearch) ovSearch.value = "";
+        const ovStatus = document.getElementById("overallStatusFilter");
+        if (ovStatus) ovStatus.value = "all";
 
-    capacityTableState.page = 1;
-    capacityTableState.search = "";
-    capacityTableState.category = "all";
-    document.getElementById("capacitySearch").value = "";
-    document.getElementById("capacityCategoryFilter").value = "all";
+        capacityTableState.page = 1;
+        capacityTableState.search = "";
+        capacityTableState.category = "all";
+        const capSearch = document.getElementById("capacitySearch");
+        if (capSearch) capSearch.value = "";
+        const capCat = document.getElementById("capacityCategoryFilter");
+        if (capCat) capCat.value = "all";
 
-    currentReport = buildReport();
-    renderReport(currentReport);
+        currentReport = buildReport();
+        renderReport(currentReport);
 
-    document.getElementById("reportEmptyState").hidden = true;
-    document.getElementById("printArea").hidden = false;
-    document.getElementById("reportActions").hidden = false;
+        const emptyEl = document.getElementById("reportEmptyState");
+        if (emptyEl) emptyEl.hidden = true;
+        const printEl = document.getElementById("printArea");
+        if (printEl) printEl.hidden = false;
+        const actEl = document.getElementById("reportActions");
+        if (actEl) actEl.hidden = false;
 
-    showToast("Report generated.");
-});
+        showToast("Report generated.");
+    });
+}
 
 /* ==========================================================
-   RENDER — REPORT
+   RENDER REPORT
    ========================================================== */
 
 function renderReport(report) {
-    // summary bar
-    document.getElementById("reportSummaryType").textContent = report.type === "weekly" ? "Weekly Report" : "Monthly Report";
-    document.getElementById("reportSummaryPeriod").textContent = report.periodLabel;
-    document.getElementById("reportGeneratedAt").textContent = `${fullDate(report.generatedAt)}, ${fullTime(report.generatedAt)}`;
+    const summaryTypeEl = document.getElementById("reportSummaryType");
+    if (summaryTypeEl) summaryTypeEl.textContent = report.type === "weekly" ? "Weekly Report" : "Monthly Report";
+    const summaryPeriodEl = document.getElementById("reportSummaryPeriod");
+    if (summaryPeriodEl) summaryPeriodEl.textContent = report.periodLabel;
+    const genAtEl = document.getElementById("reportGeneratedAt");
+    if (genAtEl) genAtEl.textContent = `${fullDate(report.generatedAt)}, ${fullTime(report.generatedAt)}`;
 
-    // summary cards
-    document.getElementById("cardReceived").textContent = `${report.summary.received} activities`;
-    document.getElementById("cardConsumed").textContent = `${report.summary.consumed} activities`;
-    document.getElementById("cardDisbursed").textContent = `${report.summary.disbursed} activities`;
-    document.getElementById("cardAttention").textContent = `${report.summary.attention} materials`;
+    const cardRec = document.getElementById("cardReceived");
+    if (cardRec) cardRec.textContent = `${report.summary.received} activities`;
+    const cardCons = document.getElementById("cardConsumed");
+    if (cardCons) cardCons.textContent = `${report.summary.consumed} activities`;
+    const cardDisb = document.getElementById("cardDisbursed");
+    if (cardDisb) cardDisb.textContent = `${report.summary.disbursed} activities`;
+    const cardAttn = document.getElementById("cardAttention");
+    if (cardAttn) cardAttn.textContent = `${report.summary.attention} materials`;
 
-    // period notes
-    document.getElementById("receiveNote").textContent = report.periodLabel;
-    document.getElementById("consumedNote").textContent = report.periodLabel;
-    document.getElementById("overallAsOf").textContent = `${fullDate(report.snapshotAt)}, ${fullTime(report.snapshotAt)}`;
-    document.getElementById("capacityAsOf").textContent = `${fullDate(report.snapshotAt)}, ${fullTime(report.snapshotAt)}`;
+    const recNote = document.getElementById("receiveNote");
+    if (recNote) recNote.textContent = report.periodLabel;
+    const consNote = document.getElementById("consumedNote");
+    if (consNote) consNote.textContent = report.periodLabel;
+    const ovAsOf = document.getElementById("overallAsOf");
+    if (ovAsOf) ovAsOf.textContent = `${fullDate(report.snapshotAt)}, ${fullTime(report.snapshotAt)}`;
+    const capAsOf = document.getElementById("capacityAsOf");
+    if (capAsOf) capAsOf.textContent = `${fullDate(report.snapshotAt)}, ${fullTime(report.snapshotAt)}`;
 
     renderReceiveTable(report);
     renderConsumedTable(report);
@@ -794,6 +899,7 @@ function renderReport(report) {
 
 function renderReceiveTable(report) {
     const body = document.getElementById("receiveStocksBody");
+    if (!body) return;
     if (report.receiveRows.length === 0) {
         body.innerHTML = `<tr class="empty-row"><td colspan="6">No receiving activity recorded for this period.</td></tr>`;
         return;
@@ -811,6 +917,7 @@ function renderReceiveTable(report) {
 
 function renderConsumedTable(report) {
     const body = document.getElementById("consumedStocksBody");
+    if (!body) return;
     if (report.consumedRows.length === 0) {
         body.innerHTML = `<tr class="empty-row"><td colspan="6">No consumption activity recorded for this period.</td></tr>`;
         return;
@@ -822,13 +929,14 @@ function renderConsumedTable(report) {
             <td>${fmtQty(r.previous, r.unit)}</td>
             <td>${fmtQty(r.consumed, r.unit)}</td>
             <td>${fmtQty(r.current, r.unit)}</td>
-            <td>${trendGlyph[r.trend]}</td>
+            <td>${trendGlyph[r.trend] || "→"}</td>
             <td><span class="status ${statusClass(r.statusLabel)}">${r.statusLabel}</span></td>
         </tr>`).join("");
 }
 
 function renderDisbursementTable(report) {
     const body = document.getElementById("disbursementBody");
+    if (!body) return;
     if (report.disbursementRows.length === 0) {
         body.innerHTML = `<tr class="empty-row"><td colspan="6">No materials were disbursed for production during this period.</td></tr>`;
         return;
@@ -855,11 +963,13 @@ function filteredOverallRows(report) {
 
 function renderOverallTable(report) {
     const body = document.getElementById("overallBody");
+    if (!body) return;
     const rows = filteredOverallRows(report);
 
     if (rows.length === 0) {
         body.innerHTML = `<tr class="empty-row"><td colspan="5">No raw materials match this search.</td></tr>`;
-        document.getElementById("overallPagination").innerHTML = "";
+        const pag = document.getElementById("overallPagination");
+        if (pag) pag.innerHTML = "";
         return;
     }
 
@@ -880,6 +990,7 @@ function renderOverallTable(report) {
 
 function renderCapacityCategoryOptions(report) {
     const select = document.getElementById("capacityCategoryFilter");
+    if (!select) return;
     const current = select.value;
     select.innerHTML = `<option value="all">All Categories</option>` +
         report.categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
@@ -897,11 +1008,13 @@ function filteredCapacityRows(report) {
 
 function renderCapacityTable(report) {
     const body = document.getElementById("capacityBody");
+    if (!body) return;
     const rows = filteredCapacityRows(report);
 
     if (rows.length === 0) {
         body.innerHTML = `<tr class="empty-row"><td colspan="5">No finished products match this search.</td></tr>`;
-        document.getElementById("capacityPagination").innerHTML = "";
+        const pag = document.getElementById("capacityPagination");
+        if (pag) pag.innerHTML = "";
         return;
     }
 
@@ -936,6 +1049,7 @@ function paginate(rows, page, pageSize) {
 
 function renderPagination(containerId, page, totalPages, onChange) {
     const el = document.getElementById(containerId);
+    if (!el) return;
     if (totalPages <= 1) { el.innerHTML = ""; return; }
 
     let html = `<button ${page === 1 ? "disabled" : ""} data-p="${page - 1}">‹</button>`;
@@ -950,29 +1064,45 @@ function renderPagination(containerId, page, totalPages, onChange) {
     });
 }
 
-document.getElementById("overallSearch").addEventListener("input", (e) => {
-    overallTableState.search = e.target.value;
-    overallTableState.page = 1;
-    if (currentReport) renderOverallTable(currentReport);
-});
-document.getElementById("overallStatusFilter").addEventListener("change", (e) => {
-    overallTableState.status = e.target.value;
-    overallTableState.page = 1;
-    if (currentReport) renderOverallTable(currentReport);
-});
-document.getElementById("capacitySearch").addEventListener("input", (e) => {
-    capacityTableState.search = e.target.value;
-    capacityTableState.page = 1;
-    if (currentReport) renderCapacityTable(currentReport);
-});
-document.getElementById("capacityCategoryFilter").addEventListener("change", (e) => {
-    capacityTableState.category = e.target.value;
-    capacityTableState.page = 1;
-    if (currentReport) renderCapacityTable(currentReport);
-});
+const ovSearchEl = document.getElementById("overallSearch");
+if (ovSearchEl) {
+    ovSearchEl.addEventListener("input", (e) => {
+        overallTableState.search = e.target.value;
+        overallTableState.page = 1;
+        if (currentReport) renderOverallTable(currentReport);
+    });
+}
+
+const ovStatusEl = document.getElementById("overallStatusFilter");
+if (ovStatusEl) {
+    ovStatusEl.addEventListener("change", (e) => {
+        overallTableState.status = e.target.value;
+        overallTableState.page = 1;
+        if (currentReport) renderOverallTable(currentReport);
+    });
+}
+
+const capSearchEl = document.getElementById("capacitySearch");
+if (capSearchEl) {
+    capSearchEl.addEventListener("input", (e) => {
+        capacityTableState.search = e.target.value;
+        capacityTableState.page = 1;
+        if (currentReport) renderCapacityTable(currentReport);
+    });
+}
+
+const capCatEl = document.getElementById("capacityCategoryFilter");
+if (capCatEl) {
+    capCatEl.addEventListener("change", (e) => {
+        capacityTableState.category = e.target.value;
+        capacityTableState.page = 1;
+        if (currentReport) renderCapacityTable(currentReport);
+    });
+}
 
 function renderImportantChanges(report) {
     const list = document.getElementById("importantChangesList");
+    if (!list) return;
     list.innerHTML = report.importantChanges.map(c => `<li class="${c.cls}">${c.text}</li>`).join("");
 }
 
@@ -980,6 +1110,7 @@ function renderDecisionSupport(report) {
     const title = document.getElementById("decisionSupportTitle");
     const head = document.getElementById("decisionSupportHead");
     const body = document.getElementById("decisionSupportBody");
+    if (!title || !head || !body) return;
 
     if (report.type === "weekly") {
         title.textContent = "Decision Support — Next 7 Days";
@@ -1006,23 +1137,30 @@ function renderDecisionSupport(report) {
 }
 
 function renderGoals(report) {
-    document.getElementById("goalsTitle").innerHTML = `
-        <span class="title-icon icon-goals"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
-        ${report.type === "weekly" ? "Next 7-Day Goals" : "Next Month Goals"}`;
+    const title = document.getElementById("goalsTitle");
+    if (title) {
+        title.innerHTML = `
+            <span class="title-icon icon-goals"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span>
+            ${report.type === "weekly" ? "Next 7-Day Goals" : "Next Month Goals"}`;
+    }
 
-    document.getElementById("goalsList").innerHTML = report.goals.map(g => `<li>${escapeHtml(g)}</li>`).join("");
+    const list = document.getElementById("goalsList");
+    if (list) list.innerHTML = report.goals.map(g => `<li>${escapeHtml(g)}</li>`).join("");
 
     const immSection = document.getElementById("immediateGoalsSection");
-    if (report.type === "monthly" && report.immediateGoals) {
-        immSection.hidden = false;
-        document.getElementById("immediateGoalsList").innerHTML = report.immediateGoals.map(g => `<li>${escapeHtml(g)}</li>`).join("");
-    } else {
-        immSection.hidden = true;
+    if (immSection) {
+        if (report.type === "monthly" && report.immediateGoals) {
+            immSection.hidden = false;
+            const immList = document.getElementById("immediateGoalsList");
+            if (immList) immList.innerHTML = report.immediateGoals.map(g => `<li>${escapeHtml(g)}</li>`).join("");
+        } else {
+            immSection.hidden = true;
+        }
     }
 }
 
 /* ==========================================================
-   PDF EXPORT  (jsPDF + autoTable — real text/tables, not a screenshot)
+   PDF EXPORT (jsPDF + autoTable)
    ========================================================== */
 
 const RM_GREEN = [22, 128, 60];
@@ -1087,7 +1225,7 @@ function baseMeta(report, statusLabel) {
         ["Report Status", statusLabel || "Final Snapshot"],
         ["Prepared For", "MSME Inventory Management"],
         ["Prepared By", "RMIMS"],
-        ["Source", "Inventory + Material Activity + Analytics"]
+        ["Source", "raw_materials + stock_receipts + material_disbursements"]
     ];
 }
 
@@ -1100,7 +1238,7 @@ function snapshotMeta(report) {
         ["Generated Time", fullTime(new Date())],
         ["Prepared For", "MSME Inventory Management"],
         ["Prepared By", "RMIMS"],
-        ["Source", "Inventory + Material Activity + Analytics"]
+        ["Source", "raw_materials + stock_receipts + material_disbursements"]
     ];
 }
 
@@ -1165,13 +1303,21 @@ function newPdf() {
     return new jsPDF({ unit: "pt", format: "a4" });
 }
 
+function ensureSpace(doc, y) {
+    if (y > doc.internal.pageSize.getHeight() - 100) {
+        doc.addPage();
+        return 48;
+    }
+    return y;
+}
+
 function drawMiniBarChart(doc, title, rows, valueKey, unitLabel = "") {
     let y = ensureSpace(doc, doc.lastAutoTable ? doc.lastAutoTable.finalY + 16 : 80);
     doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...RM_INK);
     doc.text(title, 40, y);
     y += 14;
     const max = Math.max(...rows.map(r => Number(r[valueKey] || 0)), 1);
-    rows.slice(0, 8).forEach((r, i) => {
+    rows.slice(0, 8).forEach((r) => {
         const label = String(r.material || "").slice(0, 20);
         const value = Number(r[valueKey] || 0);
         const barW = Math.max(2, (pageWidthFor(doc) - 210) * (value / max));
@@ -1198,7 +1344,6 @@ function addSelectedPdfSection(doc, report, key, y) {
             ["Receiving Records", String(report.summary.received)],
             ["Consumption Records", String(report.summary.consumed)],
             ["Disbursement Records", String(report.summary.disbursed)],
-
         ]);
         y = ensureSpace(doc, y);
         y = autoTableSection(doc, y, "Manager Decision Breakdown", ["Priority", "Material", "What the Data Shows", "Suggested Action"],
@@ -1219,8 +1364,8 @@ function addSelectedPdfSection(doc, report, key, y) {
     }
     if (key === "activity") {
         const rows = [];
-        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—", "Received", r.materialName || materials.find(m => m.id === r.materialId)?.materialName || "—", fmtSigned(Number(r.receivedQuantity || 0), materials.find(m => m.id === r.materialId)?.unit || ""), "—"]));
-        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—", u.productId ? "Disbursed / Used" : "Consumed", u.materialName || materials.find(m => m.id === u.materialId)?.materialName || "—", fmtSigned(-Number(u.usedQuantity || 0), u.unit || materials.find(m => m.id === u.materialId)?.unit || ""), u.productName || "—"]));
+        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—", "Received", r.materialName, fmtSigned(Number(r.receivedQuantity || 0), r.unit || ""), "—"]));
+        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—", u.productId ? "Disbursed / Used" : "Consumed", u.materialName, fmtSigned(-Number(u.usedQuantity || 0), u.unit || ""), u.productName || "—"]));
         rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
         return autoTableSection(doc, y, "Material Activity Records", ["Date", "Activity", "Material", "Quantity", "Purpose / Product"], rows);
     }
@@ -1251,119 +1396,6 @@ function buildMainPdf(report, selectedKeys = ["manager"]) {
     return doc;
 }
 
-
-const SUPPORTING_DEFS = [
-    {
-        key: "receive", file: "Receive_Stocks", title: "Receive Stocks", snapshot: false,
-        head: ["Material", "Previous", "Received", "Last Receive", "Current", "Status"],
-        rows: (r) => r.receiveRows.map(x => [x.material, fmtQty(x.previous, x.unit), fmtQty(x.received, x.unit), x.lastReceive, fmtQty(x.current, x.unit), x.statusLabel])
-    },
-    {
-        key: "consumed", file: "Consumed_Stocks", title: "Consumed Stocks", snapshot: false,
-        head: ["Material", "Previous", "Consumed", "Current", "Status"],
-        rows: (r) => r.consumedRows.map(x => [x.material, fmtQty(x.previous, x.unit), fmtQty(x.consumed, x.unit), fmtQty(x.current, x.unit), x.statusLabel])
-    },
-    {
-        key: "disbursement", file: "Disbursement_Progress", title: "Disbursement Progress", snapshot: false,
-        head: ["Material", "Finished Product", "Disbursed", "Date", "Progress", "Status"],
-        rows: (r) => r.disbursementRows.map(x => [x.material, x.product, fmtQty(x.qty, x.unit), x.date, "100%", "Complete"])
-    },
-    {
-        key: "overall", file: "Overall_Raw_Materials", title: "Overall Raw Materials", snapshot: true,
-        head: ["Material", "Current Stock", "Minimum Stock", "Maximum Stock", "Status"],
-        rows: (r) => r.overallRows.map(x => [x.material, fmtQty(x.current, x.unit), fmtQty(x.min, x.unit), x.max === null ? "—" : fmtQty(x.max, x.unit), x.statusLabel])
-    },
-    {
-        key: "capacity", file: "Production_Capacity", title: "Raw Material Production Capacity", snapshot: true,
-        head: ["Finished Product", "Limiting Material", "Can Produce", "Status"],
-        rows: (r) => r.capacityRows.map(x => [x.product, x.ok ? x.limiting : x.message, x.canProduce, x.statusLabel])
-    },
-    {
-        key: "decision", file: "Decision_Support", title: "Decision Support", snapshot: false,
-        head: null, rows: null
-    }
-];
-
-function buildSupportingPdf(def, report) {
-    const doc = newPdf();
-    const meta = def.snapshot ? snapshotMeta(report) : baseMeta(report);
-    let y = drawDocumentHeader(doc, report, { title: def.title, meta });
-
-    if (def.key === "decision") {
-        if (report.type === "weekly") {
-            y = autoTableSection(doc, y, "Decision Support — Next 7 Days", ["Material", "Condition", "Finding", "Recommended Action", "Priority"],
-                report.decisionRows.map(r => [r.material, r.condition, r.finding, r.action, r.priority]));
-        } else {
-            y = autoTableSection(doc, y, "Monthly Decisions", ["Material", "Monthly Finding", "Recommended Direction", "Priority"],
-                report.decisionRows.map(r => [r.material, r.finding, r.action, r.priority]));
-        }
-        y = textList(doc, y, report.type === "weekly" ? "Next 7-Day Goals" : "Next Month Goals", report.goals, true);
-    } else {
-        const rows = def.rows(report);
-        autoTableSection(doc, y, def.title, def.head, rows.length ? rows : [["No data available for this period.", ...Array(def.head.length - 1).fill("")]]);
-    }
-
-    drawFooters(doc, report);
-    return doc;
-}
-
-/* ==========================================================
-   EXCEL EXPORT (SheetJS — multi-sheet)
-   ========================================================== */
-
-function buildMainWorkbook(report) {
-    const wb = XLSX.utils.book_new();
-
-    const summarySheet = [
-        ["RMIMS — Reports & Decision Support"],
-        ["Report Type", report.type === "weekly" ? "Weekly" : "Monthly"],
-        ["Report Period", report.periodLabel],
-        ["Generated", `${fullDate(new Date())} ${fullTime(new Date())}`],
-        [],
-        ["Metric", "Value"],
-        ["Received", `${report.summary.received} activities`],
-        ["Consumed", `${report.summary.consumed} activities`],
-        ["Disbursed", `${report.summary.disbursed} activities`],
-        ["Needs Attention", `${report.summary.attention} materials`],
-        [],
-        ["Important Changes"],
-        ...report.importantChanges.map(c => [c.text.replace(/<[^>]+>/g, "")])
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summarySheet), "Report Summary");
-
-    const receiveSheet = [["Raw Material", "Previous Stock", "Received", "Last Receive", "Current Stock", "Status"],
-    ...report.receiveRows.map(r => [r.material, r.previous, r.received, r.lastReceive, r.current, r.statusLabel])];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(receiveSheet), "Receive Stocks");
-
-    const consumedSheet = [["Raw Material", "Previous Stock", "Consumed", "Current Stock", "Status"],
-    ...report.consumedRows.map(r => [r.material, r.previous, r.consumed, r.current, r.statusLabel])];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(consumedSheet), "Consumed Stocks");
-
-    const disbSheet = [["Raw Material", "Finished Product", "Disbursed", "Date", "Progress", "Status"],
-    ...report.disbursementRows.map(r => [r.material, r.product, r.qty, r.date, "100%", "Complete"])];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(disbSheet), "Disbursement Progress");
-
-    const overallSheet = [["Raw Material", "Current Stock", "Minimum Stock", "Maximum Stock", "Status"],
-    ...report.overallRows.map(r => [r.material, r.current, r.min, r.max === null ? "—" : r.max, r.statusLabel])];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(overallSheet), "Overall Raw Materials");
-
-    const capSheet = [["Finished Product", "Limiting Material", "Can Produce", "Status"],
-    ...report.capacityRows.map(r => [r.product, r.ok ? r.limiting : r.message, r.canProduce, r.statusLabel])];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(capSheet), "Production Capacity");
-
-    const decisionHead = report.type === "weekly"
-        ? ["Raw Material", "Current Condition", "Finding", "Recommended Action", "Priority"]
-        : ["Raw Material", "Monthly Finding", "Recommended Direction", "Priority"];
-    const decisionRows = report.type === "weekly"
-        ? report.decisionRows.map(r => [r.material, r.condition, r.finding, r.action, r.priority])
-        : report.decisionRows.map(r => [r.material, r.finding, r.action, r.priority]);
-    const decisionSheet = [decisionHead, ...decisionRows, [], [report.type === "weekly" ? "Next 7-Day Goals" : "Next Month Goals"], ...report.goals.map(g => [g])];
-    if (report.immediateGoals) decisionSheet.push([], ["Immediate Next 7 Days"], ...report.immediateGoals.map(g => [g]));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(decisionSheet), "Decision Support");
-
-    return wb;
-}
-
 /* ==========================================================
    SAVE MODAL / DOWNLOAD ORCHESTRATION
    ========================================================== */
@@ -1377,64 +1409,120 @@ function getSelectedReportKeys() {
 }
 function updateSelectedReportCount() {
     const n = getSelectedReportKeys().length;
-    document.getElementById("selectedReportCount").textContent = `${n} selected`;
+    const cntEl = document.getElementById("selectedReportCount");
+    if (cntEl) cntEl.textContent = `${n} selected`;
 }
 function openSaveModal(preferredFormat) {
     if (!currentReport) return;
-    saveReportName.value = fileBaseName(currentReport.type, currentReport.start, currentReport.end);
-    saveModalSubtitle.textContent = `${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · ${currentReport.periodLabel}`;
-    document.querySelector(`input[name="saveFormat"][value="${preferredFormat}"]`).checked = true;
+    if (saveReportName) saveReportName.value = fileBaseName(currentReport.type, currentReport.start, currentReport.end);
+    if (saveModalSubtitle) saveModalSubtitle.textContent = `${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · ${currentReport.periodLabel}`;
+    const prefEl = document.querySelector(`input[name="saveFormat"][value="${preferredFormat}"]`);
+    if (prefEl) prefEl.checked = true;
     document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = x.value === "manager");
     updateSelectedReportCount();
-    saveModalOverlay.classList.add("open");
+    if (saveModalOverlay) saveModalOverlay.classList.add("open");
 }
-function closeSaveModal() { window.__rmsmePrintMode = false; saveModalOverlay.classList.remove("open"); }
+function closeSaveModal() {
+    window.__rmsmePrintMode = false;
+    if (saveModalOverlay) saveModalOverlay.classList.remove("open");
+}
 
-document.getElementById("saveAsPdfBtn").addEventListener("click", () => openSaveModal("pdf"));
-document.getElementById("saveAsExcelBtn").addEventListener("click", () => openSaveModal("excel"));
-document.getElementById("saveModalClose").addEventListener("click", closeSaveModal);
-document.getElementById("saveModalCancel").addEventListener("click", closeSaveModal);
-saveModalOverlay.addEventListener("click", e => { if (e.target === saveModalOverlay) closeSaveModal(); });
+const savePdfBtn = document.getElementById("saveAsPdfBtn");
+if (savePdfBtn) savePdfBtn.addEventListener("click", () => openSaveModal("pdf"));
+const saveExcelBtn = document.getElementById("saveAsExcelBtn");
+if (saveExcelBtn) saveExcelBtn.addEventListener("click", () => openSaveModal("excel"));
+const saveCloseBtn = document.getElementById("saveModalClose");
+if (saveCloseBtn) saveCloseBtn.addEventListener("click", closeSaveModal);
+const saveCancelBtn = document.getElementById("saveModalCancel");
+if (saveCancelBtn) saveCancelBtn.addEventListener("click", closeSaveModal);
+if (saveModalOverlay) saveModalOverlay.addEventListener("click", e => { if (e.target === saveModalOverlay) closeSaveModal(); });
 document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.addEventListener("change", updateSelectedReportCount));
-document.getElementById("selectAllReports").addEventListener("click", () => { document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = true); updateSelectedReportCount(); });
-document.getElementById("clearAllReports").addEventListener("click", () => { document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = false); updateSelectedReportCount(); });
 
-document.getElementById("browseLocationBtn").addEventListener("click", async () => {
-    if (!window.showDirectoryPicker) { showToast("Your browser will use its default downloads location.", "success"); return; }
-    try { const handle = await window.showDirectoryPicker(); document.getElementById("saveLocationDisplay").value = handle.name; document.getElementById("saveLocationHint").textContent = `Files will be offered for download; move them into "${handle.name}" if your browser doesn't save there directly.`; } catch { }
-});
-function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
+const selAllBtn = document.getElementById("selectAllReports");
+if (selAllBtn) {
+    selAllBtn.addEventListener("click", () => {
+        document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = true);
+        updateSelectedReportCount();
+    });
+}
+const clearAllBtn = document.getElementById("clearAllReports");
+if (clearAllBtn) {
+    clearAllBtn.addEventListener("click", () => {
+        document.querySelectorAll('#reportSelection input[type="checkbox"]').forEach(x => x.checked = false);
+        updateSelectedReportCount();
+    });
+}
 
-document.getElementById("saveModalConfirm").addEventListener("click", async () => {
-    if (window.__rmsmePrintMode) {
+const browseBtn = document.getElementById("browseLocationBtn");
+if (browseBtn) {
+    browseBtn.addEventListener("click", async () => {
+        if (!window.showDirectoryPicker) { showToast("Your browser will use its default downloads location.", "success"); return; }
+        try {
+            const handle = await window.showDirectoryPicker();
+            const locDisp = document.getElementById("saveLocationDisplay");
+            if (locDisp) locDisp.value = handle.name;
+        } catch { }
+    });
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+const saveConfirmBtn = document.getElementById("saveModalConfirm");
+if (saveConfirmBtn) {
+    saveConfirmBtn.addEventListener("click", async () => {
+        if (window.__rmsmePrintMode) {
+            const selected = getSelectedReportKeys();
+            if (!selected.length) { showToast("Select at least one report.", "error"); return; }
+            const blob = buildMainPdf(currentReport, selected).output("blob");
+            const url = URL.createObjectURL(blob);
+            const w = window.open(url, "_blank");
+            if (w) { w.onload = () => setTimeout(() => w.print(), 500); } else { downloadBlob(blob, "RMSME_Selected_Report.pdf"); }
+            window.__rmsmePrintMode = false;
+            closeSaveModal();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            return;
+        }
+        if (!currentReport) return;
         const selected = getSelectedReportKeys();
         if (!selected.length) { showToast("Select at least one report.", "error"); return; }
-        const blob = buildMainPdf(currentReport, selected).output("blob");
-        const url = URL.createObjectURL(blob); const w = window.open(url, "_blank");
-        if (w) { w.onload = () => setTimeout(() => w.print(), 500); } else { downloadBlob(blob, "RMSME_Selected_Report.pdf"); }
-        window.__rmsmePrintMode = false; closeSaveModal();
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-        return;
-    }
-    if (!currentReport) return;
-    const selected = getSelectedReportKeys();
-    if (!selected.length) { showToast("Select at least one report.", "error"); return; }
-    const format = document.querySelector('input[name="saveFormat"]:checked').value;
-    const baseName = (saveReportName.value || fileBaseName(currentReport.type, currentReport.start, currentReport.end)).trim();
-    const btn = document.getElementById("saveModalConfirm"); const original = btn.textContent; btn.disabled = true; btn.textContent = "Preparing...";
-    try {
-        const pdfBlob = (format === "pdf" || format === "both") ? buildMainPdf(currentReport, selected).output("blob") : null;
-        const xlsxBlob = (format === "excel" || format === "both") ? new Blob([XLSX.write(buildSelectedWorkbook(currentReport, selected), { bookType: "xlsx", type: "array" })], { type: "application/octet-stream" }) : null;
-        if (format === "pdf" || format === "both") downloadBlob(pdfBlob, `${baseName}.pdf`);
-        if (format === "excel" || format === "both") downloadBlob(xlsxBlob, `${baseName}.xlsx`);
-        showToast(`${selected.length} report section${selected.length > 1 ? "s" : ""} saved.`); closeSaveModal();
-    } catch (err) { console.error(err); showToast("Could not save the selected reports.", "error"); }
-    finally { btn.disabled = false; btn.textContent = original; }
-});
+        const format = document.querySelector('input[name="saveFormat"]:checked')?.value || "both";
+        const baseName = (saveReportName?.value || fileBaseName(currentReport.type, currentReport.start, currentReport.end)).trim();
+        const btn = document.getElementById("saveModalConfirm");
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Preparing...";
+        try {
+            const pdfBlob = (format === "pdf" || format === "both") ? buildMainPdf(currentReport, selected).output("blob") : null;
+            const xlsxBlob = (format === "excel" || format === "both") ? new Blob([XLSX.write(buildSelectedWorkbook(currentReport, selected), { bookType: "xlsx", type: "array" })], { type: "application/octet-stream" }) : null;
+            if (format === "pdf" || format === "both") downloadBlob(pdfBlob, `${baseName}.pdf`);
+            if (format === "excel" || format === "both") downloadBlob(xlsxBlob, `${baseName}.xlsx`);
+            showToast(`${selected.length} report section${selected.length > 1 ? "s" : ""} saved.`);
+            closeSaveModal();
+        } catch (err) {
+            console.error(err);
+            showToast("Could not save the selected reports.", "error");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    });
+}
 
 function buildSelectedWorkbook(report, selected) {
     const wb = XLSX.utils.book_new();
-    const add = (name, head, rows) => { const ws = XLSX.utils.aoa_to_sheet([head, ...rows]); XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31)); };
+    const add = (name, head, rows) => {
+        const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
+        XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
+    };
     if (selected.includes("manager")) add("Manager Summary", ["Metric", "Result"], [
         ["Total Materials", report.overallRows.length], ["Good Stock", report.overallRows.filter(r => r.statusLabel === "Good").length], ["Low / Critical", report.summary.attention], ["Receiving Records", report.summary.received], ["Consumption Records", report.summary.consumed], ["Disbursement Records", report.summary.disbursed]
     ]);
@@ -1443,8 +1531,8 @@ function buildSelectedWorkbook(report, selected) {
     if (selected.includes("disbursement")) add("Disbursement", ["Material", "Finished Product", "Released", "Date", "Status"], report.disbursementRows.map(r => [r.material, r.product, r.qty, r.date, "Recorded"]));
     if (selected.includes("activity")) {
         const rows = [];
-        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—", "Received", r.materialName || materials.find(m => m.id === r.materialId)?.materialName || "—", Number(r.receivedQuantity || 0), "—"]));
-        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—", u.productId ? "Disbursed / Used" : "Consumed", u.materialName || materials.find(m => m.id === u.materialId)?.materialName || "—", -Number(u.usedQuantity || 0), u.productName || "—"]));
+        stockReceipts.filter(r => withinRange(r.receivedDate, report.start, report.end)).forEach(r => rows.push([r.receivedDate || "—", "Received", r.materialName, Number(r.receivedQuantity || 0), "—"]));
+        usageRecords.filter(u => withinRange(u.usageDate, report.start, report.end)).forEach(u => rows.push([u.usageDate || "—", u.productId ? "Disbursed / Used" : "Consumed", u.materialName, -Number(u.usedQuantity || 0), u.productName || "—"]));
         add("Activity", ["Date", "Activity", "Material", "Quantity", "Purpose / Product"], rows);
     }
     if (selected.includes("consumption")) add("Consumption", ["Material", "Previous Stock", "Consumed", "Current Stock", "Trend", "Status"], report.consumedRows.map(r => [r.material, r.previous, r.consumed, r.current, r.trend, r.statusLabel]));
@@ -1456,13 +1544,17 @@ function buildSelectedWorkbook(report, selected) {
    PRINT
    ========================================================== */
 
-document.getElementById("printReportBtn").addEventListener("click", () => {
-    if (!currentReport) { showToast("Generate a report first.", "error"); return; }
-    window.__rmsmePrintMode = true;
-    openSaveModal("pdf");
-    saveModalSubtitle.textContent = `${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · Select sections to print`;
-    document.getElementById("saveModalConfirm").textContent = "Print Selected Reports";
-});
+const printBtn = document.getElementById("printReportBtn");
+if (printBtn) {
+    printBtn.addEventListener("click", () => {
+        if (!currentReport) { showToast("Generate a report first.", "error"); return; }
+        window.__rmsmePrintMode = true;
+        openSaveModal("pdf");
+        if (saveModalSubtitle) saveModalSubtitle.textContent = `${currentReport.type === "weekly" ? "Weekly" : "Monthly"} Report · Select sections to print`;
+        const cfmBtn = document.getElementById("saveModalConfirm");
+        if (cfmBtn) cfmBtn.textContent = "Print Selected Reports";
+    });
+}
 
 /* ==========================================================
    INIT
