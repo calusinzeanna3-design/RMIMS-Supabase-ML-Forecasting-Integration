@@ -3,55 +3,18 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Inventory Overview | RMSME User</title>
+<title>Inventory Management | RMSME User</title>
 <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
 <link href="../css/inventory.css" rel="stylesheet"/>
+<link href="../css/finished-product-setup.css" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
 <body>
 <div class="container">
-<!-- SIDEBAR (USER) -->
-<aside class="sidebar">
-<div class="logo">
-<div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
-<div class="logo-text">
-                RMSME
-                <span>Raw Materials Inventory<br/>Management System</span>
-</div>
-</div>
-<div class="menu">
-<p class="section">MAIN</p>
-<a href="dashboard.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="14"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="14"></rect></svg>
-                Dashboard
-            </a>
-<p class="section">INVENTORY</p>
-<a class="active" href="inventory.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
-                Inventory Overview
-            </a>
-<a href="material-activity.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-                Material Activity
-            </a>
-<p class="section">ANALYTICS</p>
-<a href="analytics.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-                Consumption Analytics
-            </a>
-<p class="section">REPORTS</p>
-<a href="reports.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-                Reports
-            </a>
-<p class="section">ACCOUNT</p>
-<a href="settings.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"></circle><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path></svg>
-                Settings
-            </a>
-</div>
-</aside>
+<!-- SIDEBAR -->
+<aside class="sidebar" aria-label="Primary navigation"></aside>
+
 <!-- MAIN CONTENT -->
 <main class="content">
 <header class="topbar">
@@ -62,7 +25,7 @@
 <nav class="breadcrumb">
 <span>Inventory</span>
 <span class="crumb-sep">›</span>
-<span class="crumb-active">Overview</span>
+<span class="crumb-active" id="currentCrumb">Overview</span>
 </nav>
 </div>
 <div class="header-actions">
@@ -70,10 +33,6 @@
 <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
 <span></span>
 </div>
-<button aria-label="Toggle theme" class="icon-btn" id="themeToggleBtn" title="Toggle dark / light mode">
-<svg class="icon-sun" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"></circle><path d="M12 2.5V4.5M12 19.5V21.5M4.5 12H2.5M21.5 12H19.5M5.6 5.6L4.2 4.2M19.8 19.8L18.4 18.4M18.4 5.6L19.8 4.2M4.2 19.8L5.6 18.4" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-<svg class="icon-moon" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5C18.9 15 17.7 15.3 16.5 15.3C11.9 15.3 8.2 11.6 8.2 7C8.2 5.8 8.5 4.6 9 3.5C5.3 4.6 2.5 8.1 2.5 12.2C2.5 17.2 6.6 21.3 11.6 21.3C15.6 21.3 19 18.7 20 14.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
-</button>
 <button class="profile-btn" id="profileBtn">
 <span class="avatar">U</span>
 <span class="profile-text">Loading...</span>
@@ -81,130 +40,488 @@
 </button>
 </div>
 </header>
-<!-- PAGE ACTIONS -->
-<div class="page-title">
-<div class="page-actions">
-<button class="btn-icon-only" id="refreshBtn" title="Refresh Inventory">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"></path><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"></path></svg>
-</button>
-</div>
+
+<!-- PAGE TITLE + PRIMARY ACTIONS -->
+<div class="page-title" style="margin-top: 18px;">
+    <div class="page-title-text">
+        <h1>Inventory</h1>
+    </div>
+    <div class="page-actions">
+        <button id="refreshBtn" class="btn-icon-only" title="Refresh Live Data">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </div>
 </div>
 
-<!-- OVERVIEW CARDS -->
-<section class="overview-cards" id="overviewCards">
-<button class="ov-card fade-in" data-filter="all" id="totalCard" type="button">
-<span class="ov-icon icon-blue">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
-</span>
-<span class="ov-text">
-<span class="ov-label">Total Materials</span>
-<span class="ov-value" id="cardTotalCount">0</span>
-<span class="ov-desc">All tracked items</span>
-</span>
-</button>
-<button class="ov-card fade-in" data-filter="available" id="availableCard" type="button">
-<span class="ov-icon icon-green">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9.5 17.5L19 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</span>
-<span class="ov-text">
-<span class="ov-label">Available</span>
-<span class="ov-value" id="cardAvailableCount">0</span>
-<span class="ov-desc">Ready for production</span>
-</span>
-</button>
-<button class="ov-card fade-in" data-filter="low" id="lowStockCard" type="button">
-<span class="ov-icon icon-orange">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
-</span>
-<span class="ov-text">
-<span class="ov-label">Low Stock</span>
-<span class="ov-value" id="cardLowCount">0</span>
-<span class="ov-desc">Below minimum target</span>
-</span>
-</button>
-<button class="ov-card fade-in" data-filter="out" id="outOfStockCard" type="button">
-<span class="ov-icon icon-red">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-</span>
-<span class="ov-text">
-<span class="ov-label">Out of Stock</span>
-<span class="ov-value" id="cardOutCount">0</span>
-<span class="ov-desc">Zero stock remaining</span>
-</span>
-</button>
+<!-- COMPACT SUMMARY SECTION & STOCK STATUS BAR -->
+<section class="inv-summary-section fade-in">
+    <div class="inv-summary-grid">
+        <!-- Card 1: Total Raw Materials -->
+        <div class="inv-summary-card">
+            <div class="inv-summary-icon icon-blue">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="inv-summary-info">
+                <span class="inv-summary-label">Total Raw Materials</span>
+                <div class="inv-summary-value-row">
+                    <strong class="inv-summary-val" id="summaryTotalCount">0</strong>
+                    <span class="inv-summary-unit">Raw Materials</span>
+                </div>
+                <span class="inv-summary-sub">Registered catalog items</span>
+            </div>
+        </div>
+
+        <!-- Card 2: Raw Materials Overview Summary -->
+        <div class="inv-summary-card">
+            <div class="inv-summary-icon icon-emerald">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 8H17M7 12H17M7 16H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <div class="inv-summary-info">
+                <span class="inv-summary-label">Raw Materials</span>
+                <div class="inv-summary-value-row">
+                    <strong class="inv-summary-val" id="summaryActiveCount">0</strong>
+                    <span class="inv-summary-unit">Active Records</span>
+                </div>
+                <span class="inv-summary-sub">Active raw material catalog</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Status Bar -->
+    <div class="stock-status-bar-card">
+        <div class="stock-status-header">
+            <span class="stock-status-title">Stock Status</span>
+            <div class="stock-status-legend">
+                <span class="stock-legend-item legend-instock">
+                    <span class="stock-dot dot-green"></span>
+                    In Stock: <strong id="statInStockCount">0</strong>
+                </span>
+                <span class="stock-legend-item legend-lowstock">
+                    <span class="stock-dot dot-orange"></span>
+                    Low Stock: <strong id="statLowStockCount">0</strong>
+                </span>
+                <span class="stock-legend-item legend-outofstock">
+                    <span class="stock-dot dot-red"></span>
+                    Out of Stock: <strong id="statOutOfStockCount">0</strong>
+                </span>
+            </div>
+        </div>
+        <div class="stock-progress-track" id="stockStatusBarTrack" title="Stock Health Breakdown">
+            <div class="stock-progress-seg seg-green" id="segInStock" style="width: 0%;"></div>
+            <div class="stock-progress-seg seg-orange" id="segLowStock" style="width: 0%;"></div>
+            <div class="stock-progress-seg seg-red" id="segOutOfStock" style="width: 0%;"></div>
+        </div>
+    </div>
 </section>
 
-<!-- SEARCH & FILTER -->
-<section class="filter-bar fade-in">
-<div class="search-wrap">
-<svg class="search-icon" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-<input id="searchInput" placeholder="Search raw materials..." type="text"/>
-</div>
-<select id="categoryFilter">
-<option value="">All Categories</option>
-</select>
-<select id="statusFilter">
-<option value="">All Statuses</option>
-<option value="available">Available</option>
-<option value="low">Low Stock</option>
-<option value="out">Out of Stock</option>
-</select>
-<button class="filter-clear" hidden="" id="filterClearBtn" type="button">
-                Clear filters
-            </button>
+<!-- MAIN TABBED WORKSPACE -->
+<section class="panel glass inv-main-workspace fade-in" style="margin-top: 18px;">
+    <!-- ATTACHED TABS BAR -->
+    <div class="inv-tabs-bar" id="inventoryTabsBar">
+        <button type="button" class="inv-tab-btn active" id="tabBtnOverview" data-tab="overview">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+            Overview
+        </button>
+        <button type="button" class="inv-tab-btn" id="tabBtnReceive" data-tab="receive">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V15M12 15L8 11M12 15L16 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            Receive
+        </button>
+        <button type="button" class="inv-tab-btn" id="tabBtnDisbursement" data-tab="disbursement">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            Disbursement
+        </button>
+        <button type="button" class="inv-tab-btn" id="tabBtnOtherDetails" data-tab="other-details">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 12H15M9 16H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Other Details
+        </button>
+    </div>
+
+    <!-- ==========================================================
+         TAB PANE 1: OVERVIEW
+         ========================================================== -->
+    <div class="inv-tab-pane active" id="paneOverview">
+        <!-- OVERVIEW FILTER TOOLBAR -->
+        <div class="inv-filter-toolbar">
+            <div class="inv-search-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input type="text" id="invSearchInput" placeholder="Search by Material Name or Material ID (e.g. Sugar, RM021)...">
+            </div>
+
+            <div class="inv-filter-group">
+                <div class="inv-date-range-wrap">
+                    <label for="invDateFrom" class="filter-label">From:</label>
+                    <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date">
+                    <label for="invDateTo" class="filter-label">To:</label>
+                    <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date">
+                </div>
+
+                <select id="invActivityStatusFilter" class="inv-select" title="Filter by Activity Status">
+                    <option value="all">Activity: All</option>
+                    <option value="receive">Receive Only</option>
+                    <option value="disbursement">Disbursement Only</option>
+                </select>
+
+                <select id="invStatusFilter" class="inv-select" title="Filter by Stock Status">
+                    <option value="all">Status: All</option>
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                </select>
+
+                <select id="invSortFilter" class="inv-select" title="Sort order">
+                    <option value="latest">Sort: Latest</option>
+                    <option value="oldest">Sort: Oldest</option>
+                    <option value="az">Name: A–Z</option>
+                    <option value="za">Name: Z–A</option>
+                </select>
+
+                <button type="button" class="btn-secondary-sm" id="invClearFiltersBtn" hidden title="Clear all active filters">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN 11-COLUMN INVENTORY TABLE -->
+        <div class="table-scroll inv-table-scroll">
+            <table class="inv-main-table" id="overviewTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Raw Material Name</th>
+                        <th>Raw Material ID</th>
+                        <th>Minimum Stock</th>
+                        <th>Current Stock</th>
+                        <th>Unit</th>
+                        <th>Activity Status</th>
+                        <th>Activity Quantity</th>
+                        <th>Activity Unit</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="overviewTableBody">
+                    <!-- Injected dynamically via user-inventory.js -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- OVERVIEW PAGINATION -->
+        <div class="inv-pagination-bar">
+            <div class="inv-pagination-info">
+                <span id="overviewResultCount">Showing 0 of 0 raw materials</span>
+                <div class="page-size-selector">
+                    <label for="overviewPageSize">Rows per page:</label>
+                    <select id="overviewPageSize" class="inv-select-sm">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+            <div class="inv-pagination-controls" id="overviewPaginationBtns"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         TAB PANE 2: RECEIVE (LIVE STOCK RECEIPTS)
+         ========================================================== -->
+    <div class="inv-tab-pane" id="paneReceive" hidden>
+        <div class="inv-filter-toolbar">
+            <div class="inv-search-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input type="text" id="receiveSearchInput" placeholder="Search incoming receipts by material or supplier...">
+            </div>
+            <div class="inv-filter-group">
+                <div class="inv-date-range-wrap">
+                    <label for="receiveDateFrom" class="filter-label">From:</label>
+                    <input type="date" id="receiveDateFrom" class="inv-input-date">
+                    <label for="receiveDateTo" class="filter-label">To:</label>
+                    <input type="date" id="receiveDateTo" class="inv-input-date">
+                </div>
+                <button type="button" class="btn-primary-sm btn-visit-activity" id="btnVisitReceiveActivity" title="Visit Material Activity (Unlinked until Material Activity rebuild)">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"/><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>
+                    Visit Material Activity
+                </button>
+            </div>
+        </div>
+
+        <div class="table-scroll inv-table-scroll">
+            <table class="inv-main-table" id="receiveTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Raw Material Name</th>
+                        <th>Raw Material ID</th>
+                        <th>Received Quantity</th>
+                        <th>Unit</th>
+                        <th>Supplier</th>
+                        <th>Current Stock</th>
+                        <th>Minimum Stock</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="receiveTableBody">
+                    <!-- Injected dynamically via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="inv-pagination-bar">
+            <div class="inv-pagination-info">
+                <span id="receiveResultCount">Showing 0 receipts</span>
+            </div>
+            <div class="inv-pagination-controls" id="receivePaginationBtns"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         TAB PANE 3: DISBURSEMENT (LIVE MATERIAL CONSUMPTION)
+         ========================================================== -->
+    <div class="inv-tab-pane" id="paneDisbursement" hidden>
+        <div class="inv-filter-toolbar">
+            <div class="inv-search-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input type="text" id="disbursementSearchInput" placeholder="Search disbursements by material or product...">
+            </div>
+            <div class="inv-filter-group">
+                <div class="inv-date-range-wrap">
+                    <label for="disburseDateFrom" class="filter-label">From:</label>
+                    <input type="date" id="disburseDateFrom" class="inv-input-date">
+                    <label for="disburseDateTo" class="filter-label">To:</label>
+                    <input type="date" id="disburseDateTo" class="inv-input-date">
+                </div>
+                <button type="button" class="btn-primary-sm btn-visit-activity" id="btnVisitDisburseActivity" title="Visit Material Activity (Unlinked until Material Activity rebuild)">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"/><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>
+                    Visit Material Activity
+                </button>
+            </div>
+        </div>
+
+        <div class="table-scroll inv-table-scroll">
+            <table class="inv-main-table" id="disbursementTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Raw Material Name</th>
+                        <th>Raw Material ID</th>
+                        <th>Consumed Quantity</th>
+                        <th>Unit</th>
+                        <th>Finished Product / Usage Context</th>
+                        <th>Current Stock</th>
+                        <th>Minimum Stock</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="disbursementTableBody">
+                    <!-- Injected dynamically via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="inv-pagination-bar">
+            <div class="inv-pagination-info">
+                <span id="disbursementResultCount">Showing 0 disbursements</span>
+            </div>
+            <div class="inv-pagination-controls" id="disbursementPaginationBtns"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         TAB PANE 4: OTHER DETAILS (FINISHED PRODUCT CONTEXT)
+         ========================================================== -->
+    <div class="inv-tab-pane" id="paneOtherDetails" hidden>
+        <div class="fpc-header-bar">
+            <div class="fpc-header-text">
+                <h3>Finished Product Context</h3>
+                <p>Identify the raw materials associated with each finished product.</p>
+            </div>
+        </div>
+
+        <div class="inv-filter-toolbar" style="margin-top: 18px;">
+            <div class="inv-search-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <input type="text" id="fpcSearchInput" placeholder="Search by Finished Product, Raw Material, or Material ID...">
+            </div>
+            <div class="inv-filter-group">
+                <select id="fpcSortSelect" class="inv-select" title="Sort order">
+                    <option value="latest">Sort: Latest</option>
+                    <option value="oldest">Sort: Oldest</option>
+                    <option value="az">Name: A–Z</option>
+                    <option value="za">Name: Z–A</option>
+                </select>
+                <div class="page-size-selector">
+                    <label for="fpcPageSizeSelect" class="filter-label">Rows:</label>
+                    <select id="fpcPageSizeSelect" class="inv-select-sm">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="fpc-cards-grid" id="fpcCardsContainer">
+            <!-- Injected dynamically via user-inventory.js -->
+        </div>
+
+        <div class="inv-pagination-bar" id="fpcPaginationBar">
+            <div class="inv-pagination-info">
+                <span id="fpcResultCount">Showing 0 finished products</span>
+            </div>
+            <div class="inv-pagination-controls" id="fpcPaginationBtns"></div>
+        </div>
+    </div>
 </section>
 
-<!-- INVENTORY TABLE -->
-<section class="table-card fade-in">
-<div class="table-header">
-<h3>Raw Material Records</h3>
-<span class="result-count" id="resultCount"></span>
-</div>
-<div class="table-scroll">
-<table id="inventoryTable">
-<thead>
-<tr>
-<th>Material</th>
-<th>Category</th>
-<th>Current Stock</th>
-<th>Unit</th>
-<th>Minimum Stock</th>
-<th>Supplier</th>
-<th>Status</th>
-<th>Details</th>
-</tr>
-</thead>
-<tbody id="inventoryTableBody">
-</tbody>
-</table>
-</div>
-</section>
 </main>
 </div>
 
-<!-- VIEW DETAILS MODAL -->
+<!-- ==========================================================
+     MODALS
+     ========================================================== -->
+
+<!-- EDIT MATERIAL MODAL (USER/STAFF ACCESS) -->
+<div class="modal-overlay" id="editMaterialModalOverlay">
+    <div class="modal-sheet" role="dialog" aria-modal="true">
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <span class="modal-icon icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <div>
+                    <h4>Edit / Update Material</h4>
+                    <span class="modal-time" id="editModalSubtitle">Update raw material catalog details</span>
+                </div>
+            </div>
+            <button class="modal-close" id="editMaterialModalClose" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <form id="editMaterialForm" onsubmit="return false;">
+                <input type="hidden" id="editMatIdInternal">
+
+                <div class="form-grid">
+                    <div class="input-group span-2">
+                        <label for="editMatName">Raw Material Name <span class="required-star">*</span></label>
+                        <input type="text" id="editMatName" required>
+                        <span class="field-error" id="editMatNameError"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editMatCode">Raw Material ID (Locked)</label>
+                        <input type="text" id="editMatCode" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 700;">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editMatUnit">Unit (Locked)</label>
+                        <input type="text" id="editMatUnit" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 600;">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editMatCurrentStock">Current Stock (Locked)</label>
+                        <input type="text" id="editMatCurrentStock" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 700; color: var(--rm-ink, #0F172A);">
+                        <small class="field-help">Stock changes occur only through Material Activity</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editMatMinStock">Minimum Stock <span class="required-star">*</span></label>
+                        <input type="number" id="editMatMinStock" min="0" step="any" required>
+                        <span class="field-error" id="editMatMinStockError"></span>
+                    </div>
+
+                    <div class="input-group span-2">
+                        <label for="editMatDate">Catalog Date <span class="optional-tag">Optional</span></label>
+                        <input type="date" id="editMatDate">
+                    </div>
+
+                    <div class="input-group span-2">
+                        <label for="editMatNote">Note <span class="optional-tag">Optional</span></label>
+                        <textarea id="editMatNote" rows="2" placeholder="Update notes or details for this raw material..."></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-sticky-footer">
+            <button class="btn-secondary" id="editMaterialCancelBtn">Cancel</button>
+            <button class="btn-primary" id="editMaterialSaveBtn">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9.5 17.5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Update Material
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- READ-ONLY MATERIAL DETAIL VIEW MODAL -->
 <div class="modal-overlay" id="detailModalOverlay">
-<div class="modal-sheet">
-<div class="modal-sticky-header">
-<div class="modal-header-info">
-<div class="modal-icon icon-blue">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+    <div class="modal-sheet" style="max-width: 640px;">
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <div class="modal-icon icon-blue">
+                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                </div>
+                <div>
+                    <h4 id="detailMaterialName">Material Details</h4>
+                    <span class="modal-time" id="detailMaterialSubtitle">Raw Material</span>
+                </div>
+            </div>
+            <button aria-label="Close" class="modal-close" id="detailModalClose">
+                <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+            </button>
+        </div>
+        <div class="modal-body" id="detailModalBody" style="padding: 20px 22px;"></div>
+        <div class="modal-sticky-footer">
+            <button class="btn-outline-sm" id="detailModalCancel" type="button">Close</button>
+        </div>
+    </div>
 </div>
-<div>
-<h4 id="detailMaterialName">Material Details</h4>
-<span class="modal-time" id="detailCategory">Raw Material</span>
+
+<!-- VIEW FINISHED PRODUCT READ-ONLY DETAILS MODAL -->
+<div class="modal-overlay" id="fpcDetailsModalOverlay">
+    <div class="modal-sheet" style="max-width: 680px;">
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <div class="modal-icon" id="fpcDetailsAvatarWrap" style="background: none; border: none; padding: 0;">
+                    <div class="fpc-avatar"><span id="fpcDetailsInitials">FP</span></div>
+                </div>
+                <div>
+                    <h4 id="fpcDetailsName">Finished Product Details</h4>
+                    <span class="modal-time" id="fpcDetailsMatCount">0 Associated Raw Materials</span>
+                </div>
+            </div>
+            <button aria-label="Close" class="modal-close" id="fpcDetailsModalClose">
+                <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+            </button>
+        </div>
+        <div class="modal-body" style="padding: 16px 20px;">
+            <div class="table-scroll" style="border: 1px solid var(--rm-line, #E2E8F0); border-radius: 8px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Raw Material</th>
+                            <th>Item Code</th>
+                            <th>Current Stock</th>
+                            <th>Minimum Stock</th>
+                            <th>Unit</th>
+                            <th>Stock Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fpcDetailsTableBody">
+                        <!-- Injected dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-sticky-footer">
+            <button class="btn-outline-sm" id="fpcDetailsModalCancel" type="button">Close</button>
+        </div>
+    </div>
 </div>
-</div>
-<button aria-label="Close" class="modal-close" id="detailModalClose">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-</button>
-</div>
-<div class="modal-body" id="detailModalBody"></div>
-<div class="modal-sticky-footer">
-<button class="btn-outline-sm" id="detailModalCancel" type="button">Close</button>
-</div>
-</div>
-</div>
+
+<!-- TOAST STACK -->
+<div class="toast-stack" id="toastStack"></div>
 
 <script src="../js/user-inventory.js" type="module"></script>
 <script>
@@ -220,23 +537,6 @@ if(menuToggle && sidebarEl){
         sidebarEl.classList.toggle("open");
     });
 }
-
-(function(){
-    const root = document.documentElement;
-    const stored = localStorage.getItem("rmims-theme");
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = stored || (prefersDark ? "dark" : "light");
-    root.setAttribute("data-theme", initial);
-
-    const btn = document.getElementById("themeToggleBtn");
-    if(btn){
-        btn.addEventListener("click", ()=>{
-            const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-            root.setAttribute("data-theme", next);
-            localStorage.setItem("rmims-theme", next);
-        });
-    }
-})();
 </script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 </body>

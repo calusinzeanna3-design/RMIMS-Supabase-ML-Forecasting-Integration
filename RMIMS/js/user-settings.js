@@ -1,9 +1,14 @@
+// js/user-settings.js
+//
+// RMIMS USER — SETTINGS & PRIVACY
+// Two-Panel Workspace UI inherited from Admin Settings design.
+// Strictly User Scope & Permissions. Live Supabase Account Data. Pure Light UI.
+
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 
 const $ = id => document.getElementById(id);
 let currentUser = null;
-let logoutInProgress = false;
 
 /* ==========================================================
    HELPERS & TOASTS
@@ -34,12 +39,12 @@ function fmtDateTime(ts) {
     if (!ts) return "—";
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return "—";
-    return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+    return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
 }
 
 function initials(name) {
-    if (!name) return "US";
-    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "US";
+    if (!name) return "U";
+    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "U";
 }
 
 function openModal(id) { $(id)?.classList.add("open"); }
@@ -56,7 +61,58 @@ document.querySelectorAll(".modal-overlay").forEach(overlay => {
 });
 
 /* ==========================================================
-   ROLE GUARD & LOAD ACCOUNT
+   TWO-PANEL COMPILER NAVIGATION
+   ========================================================== */
+
+function initNav() {
+    const navItems = document.querySelectorAll(".settings-nav-item");
+    navItems.forEach(item => {
+        item.addEventListener("click", () => {
+            const navKey = item.dataset.nav;
+            if (!navKey) return;
+            switchSection(navKey);
+        });
+    });
+
+    // Check URL parameters for section
+    const params = new URLSearchParams(window.location.search);
+    const initialSection = params.get("section") || "profile";
+    switchSection(initialSection);
+}
+
+function switchSection(sectionKey) {
+    const validSections = ["profile", "security", "sessions", "data", "system", "danger"];
+    const target = validSections.includes(sectionKey) ? sectionKey : "profile";
+
+    // Update left nav buttons
+    document.querySelectorAll(".settings-nav-item").forEach(item => {
+        if (item.dataset.nav === target) item.classList.add("active");
+        else item.classList.remove("active");
+    });
+
+    // Update right views
+    document.querySelectorAll(".settings-panel-view").forEach(view => {
+        if (view.id === `view-${target}`) view.classList.add("active");
+        else view.classList.remove("active");
+    });
+
+    // Update Breadcrumb
+    const crumbEl = $("settingsCrumb");
+    if (crumbEl) {
+        const titles = {
+            profile: "Profile",
+            security: "Password & Security",
+            sessions: "Sessions & Devices",
+            data: "Backup & Restore",
+            system: "System Information",
+            danger: "Delete Account"
+        };
+        crumbEl.textContent = titles[target] || "Settings";
+    }
+}
+
+/* ==========================================================
+   ROLE GUARD & LOAD USER ACCOUNT
    ========================================================== */
 
 onAuthStateChanged(auth, async (user) => {
@@ -81,35 +137,338 @@ onAuthStateChanged(auth, async (user) => {
             status: profile.status || "inactive"
         };
 
-        const profileBtn = $("profileBtn");
-        if (profileBtn) {
-            const pText = profileBtn.querySelector(".profile-text") || profileBtn;
-            pText.textContent = `${currentUser.fullName} ▼`;
-            const pAv = profileBtn.querySelector(".avatar");
-            if (pAv) pAv.textContent = initials(currentUser.fullName);
-        }
+        // Populate Topbar Profile Button
+        updateUserDisplay(currentUser.fullName);
 
+        // Populate Form Fields
         if ($("fullName")) $("fullName").value = currentUser.fullName;
         if ($("email")) $("email").value = currentUser.email;
-        if ($("role")) $("role").value = "Staff / User";
+        if ($("role")) $("role").value = "Staff Member";
 
         const statusEl = $("accountStatus");
         if (statusEl) statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";
         if ($("statusDot")) $("statusDot").classList.toggle("inactive", currentUser.status !== "active");
 
         if ($("accountCreated")) $("accountCreated").textContent = fmtDate(profile.created_at);
-        if ($("accountLastLogin")) $("accountLastLogin").textContent = fmtDateTime(profile.updated_at);
+        if ($("accountLastLogin")) $("accountLastLogin").textContent = fmtDateTime(profile.updated_at || profile.created_at);
 
+        loadProfilePhoto();
         loadSessionInfo();
         loadDataSummary();
+        initNav();
+        initActions();
+
     } catch (error) {
         console.error("Error loading user account:", error);
         window.location.href = "../user-signin.html";
     }
 });
 
+function updateUserDisplay(name) {
+    const profileBtn = $("profileBtn");
+    if (profileBtn) {
+        const pText = profileBtn.querySelector(".profile-text") || profileBtn;
+        pText.textContent = name || "Staff Member";
+    }
+    const avPreview = $("profileAvatarPreview");
+    const topAv = $("topbarAvatar");
+    const initStr = initials(name);
+    if (avPreview && !avPreview.querySelector("img")) avPreview.textContent = initStr;
+    if (topAv && !topAv.querySelector("img")) topAv.textContent = initStr;
+}
+
 /* ==========================================================
-   SESSIONS & DEVICES
+   PROFILE AVATAR HANDLING
+   ========================================================== */
+
+function loadProfilePhoto() {
+    if (!currentUser) return;
+    const storedPhoto = localStorage.getItem(`rmims_user_avatar_${currentUser.uid}`);
+    const avPreview = $("profileAvatarPreview");
+    const topAv = $("topbarAvatar");
+
+    if (storedPhoto) {
+        if (avPreview) avPreview.innerHTML = `<img src="${storedPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"/>`;
+        if (topAv) topAv.innerHTML = `<img src="${storedPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"/>`;
+    } else {
+        updateUserDisplay(currentUser.fullName);
+    }
+}
+
+/* ==========================================================
+   ACTIONS & FORM HANDLERS
+   ========================================================== */
+
+function initActions() {
+    // Profile photo buttons
+    const uploadBtn = $("uploadProfilePhotoBtn");
+    const photoInput = $("profilePhotoInput");
+    const removeBtn = $("removeProfilePhotoBtn");
+
+    if (uploadBtn && photoInput) {
+        uploadBtn.addEventListener("click", () => photoInput.click());
+        photoInput.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                showToast("Image size must be less than 2MB.", "error");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                const dataUrl = re.target.result;
+                if (currentUser) localStorage.setItem(`rmims_user_avatar_${currentUser.uid}`, dataUrl);
+                loadProfilePhoto();
+                showToast("Profile avatar updated.", "success");
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            if (currentUser) localStorage.removeItem(`rmims_user_avatar_${currentUser.uid}`);
+            const avPreview = $("profileAvatarPreview");
+            const topAv = $("topbarAvatar");
+            if (avPreview) avPreview.innerHTML = initials(currentUser.fullName);
+            if (topAv) topAv.innerHTML = initials(currentUser.fullName);
+            showToast("Profile avatar removed.", "info");
+        });
+    }
+
+    // Edit Profile Form
+    const editProfileForm = $("editProfileForm");
+    if (editProfileForm) {
+        editProfileForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const nameInput = $("fullName");
+            const nameErr = $("fullNameError");
+            if (nameErr) nameErr.textContent = "";
+
+            const newName = nameInput ? nameInput.value.trim() : "";
+            if (!newName) {
+                if (nameErr) nameErr.textContent = "Full name cannot be empty.";
+                return;
+            }
+
+            const saveBtn = $("saveProfileChangesBtn");
+            const orig = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving...";
+
+            try {
+                const { error } = await supabase
+                    .from("user_profiles")
+                    .update({ full_name: newName, updated_at: new Date().toISOString() })
+                    .eq("id", currentUser.uid);
+
+                if (error) throw error;
+
+                currentUser.fullName = newName;
+                updateUserDisplay(newName);
+                showToast("Profile changes saved successfully.", "success");
+            } catch (err) {
+                console.error("Profile update error:", err);
+                showToast(err.message || "Failed to update profile.", "error");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = orig;
+            }
+        });
+    }
+
+    // Direct Change Password Form
+    const directPasswordForm = $("directChangePasswordForm");
+    if (directPasswordForm) {
+        directPasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const currentPass = $("directCurrentPassword")?.value || "";
+            const newPass = $("directNewPassword")?.value || "";
+            const confirmPass = $("directConfirmPassword")?.value || "";
+
+            const currentErr = $("directCurrentPasswordError");
+            const newErr = $("directNewPasswordError");
+            const confirmErr = $("directConfirmPasswordError");
+
+            if (currentErr) currentErr.textContent = "";
+            if (newErr) newErr.textContent = "";
+            if (confirmErr) confirmErr.textContent = "";
+
+            let hasError = false;
+            if (!currentPass) { if (currentErr) currentErr.textContent = "Current password is required."; hasError = true; }
+            if (!newPass || newPass.length < 8) { if (newErr) newErr.textContent = "New password must be at least 8 characters."; hasError = true; }
+            if (newPass && currentPass && newPass === currentPass) { if (newErr) newErr.textContent = "New password must be different from current password."; hasError = true; }
+            if (!confirmPass) { if (confirmErr) confirmErr.textContent = "Please confirm your new password."; hasError = true; }
+            else if (newPass !== confirmPass) { if (confirmErr) confirmErr.textContent = "Passwords do not match."; hasError = true; }
+
+            if (hasError) return;
+
+            const saveBtn = $("directSavePasswordBtn");
+            const orig = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Updating...";
+
+            try {
+                const { error: verifyError } = await auth.auth.signInWithPassword({
+                    email: currentUser.email,
+                    password: currentPass
+                });
+
+                if (verifyError) {
+                    if (currentErr) currentErr.textContent = "Current password is incorrect.";
+                    return;
+                }
+
+                const { error: updateError } = await auth.auth.updateUser({ password: newPass });
+                if (updateError) throw updateError;
+
+                showToast("Password updated successfully.", "success");
+                directPasswordForm.reset();
+            } catch (err) {
+                showToast(err.message || "Unable to update password.", "error");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = orig;
+            }
+        });
+    }
+
+    // Logout Button
+    const logoutBtn = $("logoutBtn");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", async () => {
+            try {
+                await signOut(auth);
+                window.location.href = "../user-signin.html";
+            } catch (e) {
+                window.location.href = "../user-signin.html";
+            }
+        });
+    }
+
+    // Sign out other sessions
+    const signOutOthersBtn = $("signOutOthersBtn");
+    if (signOutOthersBtn) {
+        signOutOthersBtn.addEventListener("click", async () => {
+            const original = signOutOthersBtn.textContent;
+            signOutOthersBtn.disabled = true;
+            signOutOthersBtn.textContent = "Signing Out…";
+            try {
+                const { error } = await auth.auth.signOut({ scope: "others" });
+                if (error) throw error;
+                showToast("Other device sessions have been revoked.", "success");
+            } catch (err) {
+                showToast(err.message || "Unable to sign out other sessions.", "error");
+            } finally {
+                signOutOthersBtn.disabled = false;
+                signOutOthersBtn.textContent = original;
+            }
+        });
+    }
+
+    // Create Backup Button
+    const createBackupBtn = $("createBackupBtn");
+    if (createBackupBtn) {
+        createBackupBtn.addEventListener("click", async () => {
+            showToast("Generating user activity backup…", "info");
+            try {
+                const [uRes, rRes] = await Promise.all([
+                    supabase.from("material_disbursements").select("*"),
+                    supabase.from("stock_receipts").select("*")
+                ]);
+
+                const backupData = {
+                    version: "2.0",
+                    exportedAt: new Date().toISOString(),
+                    exportedBy: currentUser ? currentUser.email : "user",
+                    receipts: rRes.data || [],
+                    disbursements: uRes.data || []
+                };
+
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `RMIMS_User_Activity_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+                link.click();
+                showToast("Activity backup downloaded successfully.", "success");
+            } catch (err) {
+                showToast("Failed to generate backup: " + err.message, "error");
+            }
+        });
+    }
+
+    // Restore Backup Button
+    const openRestoreBtn = $("openRestoreBtn");
+    const restoreFileInput = $("restoreFileInput");
+    if (openRestoreBtn && restoreFileInput) {
+        openRestoreBtn.addEventListener("click", () => restoreFileInput.click());
+        restoreFileInput.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                try {
+                    const parsed = JSON.parse(re.target.result);
+                    if (parsed.receipts && parsed.disbursements) {
+                        showToast(`Backup verified: ${parsed.receipts.length} receipts and ${parsed.disbursements.length} disbursements found.`, "success");
+                    } else {
+                        showToast("Invalid RMIMS activity backup file format.", "error");
+                    }
+                } catch (_) {
+                    showToast("Could not parse the selected backup file.", "error");
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    // Delete Account Modal Trigger
+    const openDeleteBtn = $("openDeleteAccountBtn");
+    if (openDeleteBtn) {
+        openDeleteBtn.addEventListener("click", () => {
+            const confirmInput = $("deleteConfirmText");
+            if (confirmInput) confirmInput.value = "";
+            openModal("deleteAccountModal");
+        });
+    }
+
+    // Confirm Delete Account
+    const confirmDeleteBtn = $("confirmDeleteAccountBtn");
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener("click", async () => {
+            const confirmInput = $("deleteConfirmText");
+            if (!confirmInput || confirmInput.value.trim() !== "DELETE") {
+                showToast("Please type DELETE to confirm account deactivation.", "error");
+                return;
+            }
+
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.textContent = "Deactivating...";
+
+            try {
+                if (currentUser) {
+                    await supabase
+                        .from("user_profiles")
+                        .update({ status: "inactive", updated_at: new Date().toISOString() })
+                        .eq("id", currentUser.uid);
+                }
+                await signOut(auth);
+                window.location.href = "../user-signin.html";
+            } catch (err) {
+                showToast(err.message || "Failed to deactive account.", "error");
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.textContent = "Confirm Deletion";
+            }
+        });
+    }
+}
+
+/* ==========================================================
+   DATA SUMMARY & SESSIONS LOAD
    ========================================================== */
 
 async function loadSessionInfo() {
@@ -117,113 +476,17 @@ async function loadSessionInfo() {
     if (!el) return;
     try {
         const { data, error } = await auth.auth.getSession();
-        if (error || !data.session) { el.textContent = "Session information unavailable."; return; }
+        if (error || !data.session) { el.textContent = "Session active on current device."; return; }
 
         const signedInAt = data.session.user?.last_sign_in_at
             ? fmtDateTime(data.session.user.last_sign_in_at)
-            : "Recently logged in";
+            : "Recently signed in";
 
         el.textContent = `Signed in since ${signedInAt} on this device.`;
-    } catch (err) {
-        console.error(err);
-        el.textContent = "Session information unavailable.";
+    } catch (_) {
+        el.textContent = "Session active on current device.";
     }
 }
-
-const signOutOthersBtn = $("signOutOthersBtn");
-if (signOutOthersBtn) {
-    signOutOthersBtn.addEventListener("click", async () => {
-        const original = signOutOthersBtn.textContent;
-        signOutOthersBtn.disabled = true;
-        signOutOthersBtn.textContent = "Signing Out…";
-        try {
-            const { error } = await auth.auth.signOut({ scope: "others" });
-            if (error) throw error;
-            showToast("Other sessions have been signed out.");
-        } catch (err) {
-            showToast(err.message || "Unable to sign out other sessions.", "error");
-        } finally {
-            signOutOthersBtn.disabled = false;
-            signOutOthersBtn.textContent = original;
-        }
-    });
-}
-
-/* ==========================================================
-   CHANGE PASSWORD MODAL
-   ========================================================== */
-
-const openChangePasswordBtn = $("openChangePasswordBtn");
-if (openChangePasswordBtn) {
-    openChangePasswordBtn.addEventListener("click", () => {
-        const form = $("changePasswordForm");
-        if (form) form.reset();
-        ["currentPasswordError", "newPasswordError", "confirmNewPasswordError"].forEach(id => {
-            if ($(id)) $(id).textContent = "";
-        });
-        openModal("changePasswordModal");
-    });
-}
-
-const changePasswordForm = $("changePasswordForm");
-if (changePasswordForm) {
-    changePasswordForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (!currentUser) return;
-
-        const currentPassword = $("currentPassword").value;
-        const newPassword = $("newPassword").value;
-        const confirmNewPassword = $("confirmNewPassword").value;
-
-        const currentErr = $("currentPasswordError");
-        const newErr = $("newPasswordError");
-        const confirmErr = $("confirmNewPasswordError");
-        if (currentErr) currentErr.textContent = "";
-        if (newErr) newErr.textContent = "";
-        if (confirmErr) confirmErr.textContent = "";
-
-        let hasError = false;
-        if (!currentPassword) { if (currentErr) currentErr.textContent = "Current password is required."; hasError = true; }
-        if (!newPassword || newPassword.length < 8) { if (newErr) newErr.textContent = "New password must be at least 8 characters."; hasError = true; }
-        if (newPassword && currentPassword && newPassword === currentPassword) { if (newErr) newErr.textContent = "New password must be different from current password."; hasError = true; }
-        if (!confirmNewPassword) { if (confirmErr) confirmErr.textContent = "Please confirm your new password."; hasError = true; }
-        else if (newPassword !== confirmNewPassword) { if (confirmErr) confirmErr.textContent = "Passwords do not match."; hasError = true; }
-
-        if (hasError) return;
-
-        const btn = $("savePasswordBtn");
-        const original = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = "Saving…";
-
-        try {
-            const { error: verifyError } = await auth.auth.signInWithPassword({
-                email: currentUser.email,
-                password: currentPassword
-            });
-
-            if (verifyError) {
-                if (currentErr) currentErr.textContent = "Current password is incorrect.";
-                return;
-            }
-
-            const { error: updateError } = await auth.auth.updateUser({ password: newPassword });
-            if (updateError) throw updateError;
-
-            showToast("Password updated successfully.");
-            closeModal("changePasswordModal");
-        } catch (err) {
-            showToast(err.message || "Unable to update password.", "error");
-        } finally {
-            btn.disabled = false;
-            btn.textContent = original;
-        }
-    });
-}
-
-/* ==========================================================
-   DATA SUMMARY & BACKUP / RESTORE
-   ========================================================== */
 
 async function loadDataSummary() {
     try {
@@ -236,127 +499,6 @@ async function loadDataSummary() {
         if ($("summaryStockReceipts")) $("summaryStockReceipts").textContent = rRes.count ?? 0;
         if ($("summaryUsageRecords")) $("summaryUsageRecords").textContent = uRes.count ?? 0;
     } catch (err) {
-        console.error("Data summary load notice:", err);
+        console.warn("Data summary load notice:", err);
     }
 }
-
-const createBackupBtn = $("createBackupBtn");
-if (createBackupBtn) {
-    createBackupBtn.addEventListener("click", async () => {
-        showToast("Generating user activity backup…");
-        try {
-            const [uRes, rRes] = await Promise.all([
-                supabase.from("material_disbursements").select("*"),
-                supabase.from("stock_receipts").select("*")
-            ]);
-            const payload = {
-                exportDate: new Date().toISOString(),
-                user: currentUser?.email || "User",
-                usageRecords: uRes.data || [],
-                stockReceipts: rRes.data || []
-            };
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `RMIMS_User_Activity_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast("User activity backup file created successfully.");
-        } catch (err) {
-            showToast("Unable to generate backup.", "error");
-        }
-    });
-}
-
-/* ==========================================================
-   DELETE ACCOUNT MODAL
-   ========================================================== */
-
-const openDeleteAccountBtn = $("openDeleteAccountBtn");
-if (openDeleteAccountBtn) {
-    openDeleteAccountBtn.addEventListener("click", () => {
-        if ($("deleteConfirmText")) $("deleteConfirmText").value = "";
-        openModal("deleteAccountModal");
-    });
-}
-
-const confirmDeleteAccountBtn = $("confirmDeleteAccountBtn");
-if (confirmDeleteAccountBtn) {
-    confirmDeleteAccountBtn.addEventListener("click", async () => {
-        const val = $("deleteConfirmText")?.value.trim();
-        if (val !== "DELETE") {
-            showToast("Please type DELETE to confirm.", "error");
-            return;
-        }
-        showToast("Account deletion request submitted.");
-        closeModal("deleteAccountModal");
-        setTimeout(() => supabase.auth.signOut().then(() => window.location.href = "../user-signin.html"), 1200);
-    });
-}
-
-/* ==========================================================
-   LOGOUT
-   ========================================================== */
-
-const logoutBtn = $("logoutBtn");
-if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-        if (logoutInProgress) return;
-        if (!confirm("Are you sure you want to log out of RMIMS?")) return;
-        logoutInProgress = true;
-        try {
-            await supabase.auth.signOut();
-            window.location.href = "../user-signin.html";
-        } catch (err) {
-            logoutInProgress = false;
-            showToast("Logout failed. Please try again.", "error");
-        }
-    });
-}
-
-/* ==========================================================
-   SETTINGS NAVIGATION
-   ========================================================== */
-
-(function initSettingsNavigation() {
-    const overview = document.getElementById('settings-overview');
-    const views = [...document.querySelectorAll('.settings-detail-view')];
-    if (!overview || !views.length) return;
-
-    const valid = new Set(['account', 'security', 'sessions', 'data', 'system', 'danger']);
-    function showView(section) {
-        const target = valid.has(section) ? section : null;
-        overview.style.display = target ? 'none' : '';
-        views.forEach(v => { v.style.display = v.dataset.settingsView === target ? '' : 'none'; });
-        const crumb = document.querySelector('.crumb-active');
-        if (crumb) crumb.textContent = target ? (target === 'sessions' ? 'Sessions & Devices' : target[0].toUpperCase() + target.slice(1)) : 'Settings';
-        window.scrollTo(0, 0);
-    }
-    function readSection() {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('section') || '';
-    }
-    showView(readSection());
-    document.querySelectorAll('[data-settings-link]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            const section = link.dataset.settingsLink;
-            if (!valid.has(section)) return;
-            e.preventDefault();
-            const url = new URL(window.location.href);
-            url.searchParams.set('section', section);
-            history.pushState({ section }, '', url);
-            showView(section);
-        });
-    });
-    window.addEventListener('popstate', () => showView(readSection()));
-    document.querySelectorAll('.settings-back-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const url = new URL(window.location.href);
-            url.searchParams.delete('section');
-            history.pushState({}, '', url);
-            showView('');
-        });
-    });
-})();

@@ -1,300 +1,539 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI-Based Forecasting | RMSME Admin</title>
-<link rel="icon" type="image/png" href="../assets/favicon-64.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../css/rmims-unified.css">
-<link rel="stylesheet" href="../css/forecasting.css">
-<script src="../js/chart.js"></script>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI-Based Forecasting | RMSME Admin</title>
+    <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <link href="../css/forecasting.css" rel="stylesheet"/>
+    <script src="../js/chart.js"></script>
 </head>
 <body class="admin-page">
 <div class="container">
-    <aside class="sidebar"></aside>
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Primary navigation"></aside>
 
+    <!-- MAIN CONTENT SHELL -->
     <main class="content">
+        <!-- GLOBAL TOPBAR -->
         <header class="topbar">
             <div class="topbar-left">
-                <button class="menu-toggle" aria-label="Toggle menu" type="button">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <button aria-label="Toggle menu" class="menu-toggle">
+                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+                    </svg>
+                </button>
+                <nav class="breadcrumb">
+                    <span>Analytics</span>
+                    <span class="crumb-sep">›</span>
+                    <span class="crumb-active">AI-Based Forecasting</span>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <div class="header-date" id="headerDate">
+                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect>
+                        <path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path>
+                        <path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+                    </svg>
+                    <span>—</span>
+                </div>
+                <button class="icon-btn" id="notificationBtn" title="Notifications">
+                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
+                        <path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+                    </svg>
+                    <span class="notif-badge" hidden="" id="notifBadge">0</span>
+                </button>
+                <button class="profile-btn" id="profileBtn">
+                    <span class="avatar">AU</span>
+                    <span class="profile-text">Administrator</span>
+                    <svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
                     </svg>
                 </button>
             </div>
-            <div class="header-actions">
-                <div class="header-date" id="headerDate"><span></span></div>
-                <button class="icon-btn" id="themeToggleBtn" type="button" aria-label="Toggle theme" title="Toggle dark / light mode">◐</button>
-            </div>
         </header>
 
-        <section class="forecast-page">
-            <div class="forecast-page-heading">
-                <div>
-                    <span class="forecast-kicker">INVENTORY FORECASTING</span>
-                    <h1>Raw Material Forecasting</h1>
-                    <p>Generate expected raw-material requirements from recorded consumption patterns for decision support.</p>
+        <!-- AI FORECASTING WORKSPACE -->
+        <div class="fc-dashboard-wrap">
+            
+            <!-- PAGE HEADER -->
+            <div class="fc-page-header">
+                <div class="fc-page-header-text">
+                    <h1 class="fc-page-title">AI-Based Forecasting</h1>
+                    <p class="fc-page-subtitle">Forecast future raw-material requirements from recorded consumption patterns for decision support.</p>
                 </div>
-                <div class="forecast-service-badge connected" id="serviceBadge">
-                    <span class="service-dot"></span>
-                    <span>Forecast Available</span>
+                <div class="fc-service-badge ready" id="serviceBadge">
+                    <span class="fc-service-dot"></span>
+                    <span id="serviceBadgeText">Forecast Ready</span>
                 </div>
             </div>
 
-            <!-- FORECAST OVERVIEW METRIC STRIP -->
-            <section class="overview-cards" id="forecastOverviewStrip" style="margin-bottom: 24px;">
-                <div class="ov-card ov-card-static fade-in" style="--delay:0ms">
-                    <span class="ov-icon icon-blue">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-                    </span>
-                    <span class="ov-text">
-                        <span class="ov-label">Forecastable Materials</span>
-                        <span class="ov-value" id="topMaterialsCount">30</span>
-                        <span class="ov-desc">Materials with trained models</span>
-                    </span>
+            <!-- TOP 4 SUMMARY CARDS -->
+            <section class="fc-kpi-grid" aria-label="Forecast Summary KPIs">
+                <!-- Card 1: Total Forecasted Requirement -->
+                <div class="fc-kpi-card" id="cardTotalForecast" title="Click to view detailed requirement breakdown">
+                    <div class="fc-kpi-content">
+                        <span class="fc-kpi-label">Total Forecasted Requirement</span>
+                        <div class="fc-kpi-value-wrap" id="kpiTotalForecastWrap">
+                            <div class="fc-kpi-unit-list" id="kpiTotalForecastList">
+                                <span class="fc-kpi-value">0</span>
+                            </div>
+                        </div>
+                        <span class="fc-kpi-subtext" id="kpiTotalForecastSub">Next 7 Days Projected</span>
+                    </div>
+                    <div class="fc-kpi-icon fc-icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    </div>
                 </div>
 
-                <div class="ov-card ov-card-static fade-in" style="--delay:40ms">
-                    <span class="ov-icon icon-green">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 7V3M16 7V3M3 11H21M5 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7C3 5.89543 3.89543 5 5 5Z" stroke="currentColor" stroke-width="1.6"/></svg>
-                    </span>
-                    <span class="ov-text">
-                        <span class="ov-label">7-Day Requirement</span>
-                        <span class="ov-value" id="top7DayReq">7 Days</span>
-                        <span class="ov-desc">Expected next 7 days</span>
-                    </span>
+                <!-- Card 2: Forecast Status -->
+                <div class="fc-kpi-card" id="cardForecastStatus" title="Click to view forecast status history">
+                    <div class="fc-kpi-content">
+                        <span class="fc-kpi-label">Forecast Status</span>
+                        <div class="fc-kpi-value-wrap">
+                            <span class="fc-kpi-value" id="kpiForecastStatusTitle" style="color: var(--fc-green-dark); font-size:1.35rem;">Forecast Ready</span>
+                        </div>
+                        <span class="fc-kpi-subtext" id="kpiForecastTimestamp">Last: Checking...</span>
+                    </div>
+                    <div class="fc-kpi-icon fc-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7V12L15 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </div>
                 </div>
 
-                <div class="ov-card ov-card-static fade-in" style="--delay:80ms">
-                    <span class="ov-icon icon-purple">
+                <!-- Card 3: Forecasted Raw Material Needs -->
+                <div class="fc-kpi-card" id="cardForecastNeeds" title="Click to view top material needs">
+                    <div class="fc-kpi-content">
+                        <span class="fc-kpi-label">Forecasted Material Needs</span>
+                        <div class="fc-kpi-value-wrap">
+                            <span class="fc-kpi-value" id="kpiTopNeedName" style="font-size: 1.35rem;">—</span>
+                        </div>
+                        <span class="fc-kpi-subtext" id="kpiTopNeedAdditional">Additional Need: 0 kg</span>
+                    </div>
+                    <div class="fc-kpi-icon fc-icon-orange">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </span>
-                    <span class="ov-text">
-                        <span class="ov-label">4-Week Requirement</span>
-                        <span class="ov-value" id="top4WeekReq">4 Weeks</span>
-                        <span class="ov-desc">Expected next 4 weeks</span>
-                    </span>
+                    </div>
                 </div>
 
-                <div class="ov-card ov-card-static fade-in" style="--delay:120ms">
-                    <span class="ov-icon icon-red">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                    </span>
-                    <span class="ov-text">
-                        <span class="ov-label">Potential Shortages</span>
-                        <span class="ov-value" id="topShortageCount">0</span>
-                        <span class="ov-desc">Materials needing attention</span>
-                    </span>
+                <!-- Card 4: Attention Needed -->
+                <div class="fc-kpi-card" id="cardAttentionNeeded" title="Click to view materials needing attention">
+                    <div class="fc-kpi-content">
+                        <span class="fc-kpi-label">Attention Needed</span>
+                        <div class="fc-kpi-value-wrap">
+                            <span class="fc-kpi-value" id="kpiAttentionCount" style="color: var(--fc-red);">0</span>
+                        </div>
+                        <span class="fc-kpi-subtext" id="kpiAttentionSubtitle">materials below forecast need</span>
+                    </div>
+                    <div class="fc-kpi-icon fc-icon-red">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </div>
                 </div>
             </section>
 
-            <section class="forecast-control-card">
-                <div class="control-field">
-                    <label for="materialSelect">Raw Material</label>
-                    <select id="materialSelect">
-                        <option value="Sugar">Sugar</option>
-                        <option value="Bell Pepper">Bell Pepper</option>
-                        <option value="Butter or Margarine">Butter or Margarine</option>
-                        <option value="Cabbage">Cabbage</option>
-                        <option value="Carrots">Carrots</option>
-                        <option value="Chicken">Chicken</option>
-                        <option value="Chiton">Chiton</option>
-                        <option value="Cooking Oil">Cooking Oil</option>
-                        <option value="Crushed Garlic">Crushed Garlic</option>
-                        <option value="Garlic">Garlic</option>
-                        <option value="Ground Pepper">Ground Pepper</option>
-                        <option value="Honey">Honey</option>
-                        <option value="Loaf Bread">Loaf Bread</option>
-                        <option value="Oil">Oil</option>
-                        <option value="Onion">Onion</option>
-                        <option value="Optional Spices or Flavorings">Optional Spices or Flavorings</option>
-                        <option value="Oyster Sauce">Oyster Sauce</option>
-                        <option value="Peanuts">Peanuts</option>
-                        <option value="Pork">Pork</option>
-                        <option value="Pork Skin">Pork Skin</option>
-                        <option value="Raw Bananas">Raw Bananas</option>
-                        <option value="Salt">Salt</option>
-                        <option value="Sea Salt">Sea Salt</option>
-                        <option value="Sesame Oil">Sesame Oil</option>
-                        <option value="Small Shrimp">Small Shrimp</option>
-                        <option value="Soy Sauce">Soy Sauce</option>
-                        <option value="Spring Onion">Spring Onion</option>
-                        <option value="Turmeric Powder">Turmeric Powder</option>
-                        <option value="Water">Water</option>
-                        <option value="White Sugar">White Sugar</option>
-                    </select>
-                </div>
-                <div class="control-field">
-                    <label for="forecastPeriodSelect">Forecast Period</label>
-                    <select id="forecastPeriodSelect">
-                        <option value="weekly">Weekly</option>
-                    </select>
-                </div>
-                <div class="control-field forecast-period-display">
-                    <label>Forecast Period</label>
-                    <div id="forecastPeriodValue" class="control-readonly">Waiting for forecast</div>
-                </div>
-                <button class="primary-btn" id="generateForecastBtn" type="button">
-                    Generate Selected Forecast
-                </button>
-            </section>
-
-            <div id="forecastMessage" class="forecast-message" hidden></div>
-
-            <section class="forecast-grid">
-                <!-- 1. INDIVIDUAL RAW MATERIAL FORECAST -->
-                <article class="forecast-card forecast-chart-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Raw Material Consumption &amp; Forecast</h2>
-                            <p>Recorded consumption is shown first; the model forecast is shown for the forecast period.</p>
-                        </div>
-                        <span class="chart-legend"><i class="legend-history"></i> Historical <i class="legend-forecast"></i> Forecast</span>
-                    </div>
-                    <div class="chart-wrap" id="forecastChartWrap" style="position: relative; height: 300px; width: 100%;">
-                        <canvas id="forecastChart"></canvas>
-                    </div>
-                </article>
-
-                <!-- 2. TOP 4 RAW MATERIAL FORECAST OVERVIEW -->
-                <article class="forecast-card forecast-chart-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Top 4 Raw Material Forecast Overview</h2>
-                            <p>Simultaneous requirement comparison across top raw materials.</p>
-                        </div>
-                        <div class="top4-pagination" style="display: flex; gap: 8px; align-items: center;">
-                            <button type="button" class="secondary-btn" id="prevTop4Btn" style="padding: 4px 10px; font-size: 12px;">← Prev</button>
-                            <span id="top4PageIndicator" style="font-size: 12px; color: var(--rm-muted, #64748b);">1 / 1</span>
-                            <button type="button" class="secondary-btn" id="nextTop4Btn" style="padding: 4px 10px; font-size: 12px;">Next →</button>
-                        </div>
-                    </div>
-                    <div class="chart-wrap" style="position: relative; height: 260px; width: 100%;">
-                        <canvas id="top4ForecastChart"></canvas>
-                    </div>
-                </article>
-
-                <!-- 3. FINISHED PRODUCT / BUNDLE FORECAST OVERVIEW -->
-                <article class="forecast-card forecast-chart-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Finished Product &amp; Bundle Forecast Overview</h2>
-                            <p>Overall expected raw material requirement for finished products over time.</p>
-                        </div>
-                    </div>
-                    <div class="chart-wrap" style="position: relative; height: 260px; width: 100%;">
-                        <canvas id="bundleForecastChart"></canvas>
-                    </div>
-                </article>
-
-                <!-- 4. 7-DAY & 4-WEEK HORIZON PROGRESSION -->
-                <article class="forecast-card forecast-chart-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>7-Day &amp; 4-Week Horizon Progression</h2>
-                            <p>Visual progression comparing immediate 7-day requirement vs 4-week horizon.</p>
-                        </div>
-                    </div>
-                    <div class="chart-wrap" style="position: relative; height: 260px; width: 100%;">
-                        <canvas id="horizonForecastChart"></canvas>
-                    </div>
-                </article>
-
-                <article class="forecast-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Forecast Requirement by Raw Material</h2>
-                            <p>Requirement comparison across raw materials with active forecasts.</p>
-                        </div>
-                    </div>
-                    <div id="forecastMaterialsList" class="forecast-material-list" style="margin-bottom: 12px;">
-                        <div class="empty-state compact">
-                            <span>Generate a forecast to view available model results.</span>
-                        </div>
-                    </div>
-                    <div class="chart-wrap" style="position: relative; height: 200px; width: 100%;">
-                        <canvas id="forecastRequirementBarChart"></canvas>
-                    </div>
-                </article>
-
-                <article class="forecast-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Forecast Decision Summary</h2>
-                            <p>Decision status is based on the model forecast compared with current inventory.</p>
-                        </div>
-                    </div>
-                    <div class="decision-grid" style="margin-bottom: 12px;">
-                        <div class="decision-card shortage">
-                            <span>Potential Shortage</span>
-                            <strong id="shortageCount">0</strong>
-                            <small>Materials</small>
-                        </div>
-                        <div class="decision-card sufficient">
-                            <span>Sufficient</span>
-                            <strong id="sufficientCount">0</strong>
-                            <small>Materials</small>
-                        </div>
-                        <div class="decision-card excess">
-                            <span>Potential Excess</span>
-                            <strong id="excessCount">0</strong>
-                            <small>Materials</small>
-                        </div>
-                    </div>
-                    <div class="chart-wrap" style="position: relative; height: 160px; width: 100%;">
-                        <canvas id="decisionDonutChart"></canvas>
-                    </div>
-                </article>
-
-                <article class="forecast-card forecast-details-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Forecast Details</h2>
-                            <p>Actual result returned by the authenticated Flask ML service.</p>
-                        </div>
-                    </div>
-                    <div id="forecastDetails" class="details-empty">
-                        Generate a forecast to view the model result.
-                    </div>
-                    <div class="details-actions">
-                        <button class="secondary-btn" id="view3dBtn" type="button" disabled>
-                            View Detailed Result (3D Process)
+            <!-- FORECAST CONTROLS & MODE TABS -->
+            <section class="fc-control-card" aria-label="Forecast Controls">
+                <div class="fc-control-top-row">
+                    <div class="fc-mode-tabs" id="forecastModeTabs">
+                        <button type="button" class="fc-mode-tab active" data-mode="automatic" id="tabAutoForecast">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px; height:15px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            <span>Automatic Forecast (Catalog Overview)</span>
+                        </button>
+                        <button type="button" class="fc-mode-tab" data-mode="manual" id="tabManualForecast">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:15px; height:15px;"><path d="M4 4V9H9M20 20V15H15M20 9C18.5 5.5 15.5 3 12 3C7.03 3 3 7.03 3 12C3 13.5 3.4 14.9 4.1 16.1M20 12C20 16.97 15.97 21 11 21C9.5 21 8.1 20.6 6.9 19.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Generate Material Forecast</span>
                         </button>
                     </div>
-                </article>
+                    <div style="font-size:0.78rem; color:var(--fc-text-dim); font-weight:600;" id="forecastModeStatusNote">
+                        Real-time demand projection &amp; stock evaluation
+                    </div>
+                </div>
+
+                <div class="fc-control-fields-row">
+                    <div class="fc-control-fields">
+                        <!-- Material Selector -->
+                        <div class="fc-control-group" style="min-width: 220px; flex: 1.2;">
+                            <label class="fc-control-label" for="materialSelect">Raw Material</label>
+                            <select class="fc-select" id="materialSelect">
+                                <option value="ALL">All Materials (Catalog Forecast)</option>
+                            </select>
+                        </div>
+
+                        <!-- Forecast Period Selector -->
+                        <div class="fc-control-group" style="min-width: 180px; flex: 1;">
+                            <label class="fc-control-label" for="forecastPeriodSelect">Forecast Period</label>
+                            <select class="fc-select" id="forecastPeriodSelect">
+                                <option value="weekly" selected>Weekly (Next 7 Days)</option>
+                                <option value="monthly">Monthly (Next 4 Weeks)</option>
+                                <option value="custom">Custom Date Range</option>
+                            </select>
+                        </div>
+
+                        <!-- Calendar Date Pickers -->
+                        <div class="fc-control-group" id="customDatePickers" style="min-width: 260px; flex: 1.2;">
+                            <label class="fc-control-label">Forecast Date Range</label>
+                            <div class="fc-date-range-group">
+                                <input type="date" class="fc-input" id="startDateInput" aria-label="Forecast Start Date"/>
+                                <span style="color:var(--fc-text-dim); font-size:0.8rem;">→</span>
+                                <input type="date" class="fc-input" id="endDateInput" aria-label="Forecast End Date"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Forecast Action Button -->
+                    <div>
+                        <button type="button" class="fc-btn-generate" id="generateForecastBtn">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4V9H9M20 20V15H15M20 9C18.5 5.5 15.5 3 12 3C7.03 3 3 7.03 3 12C3 13.5 3.4 14.9 4.1 16.1M20 12C20 16.97 15.97 21 11 21C9.5 21 8.1 20.6 6.9 19.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span id="generateBtnText">Generate Forecast</span>
+                        </button>
+                    </div>
+                </div>
             </section>
 
-            <section class="forecast-note">
-                <strong>Forecast Guidance</strong>
-                <span>The system estimates future raw-material requirements based on recorded consumption patterns to support reordering decisions.</span>
+            <!-- ROW 1: PRIMARY CONSUMPTION + FORECAST CHART & OVERVIEW CARD -->
+            <section class="fc-grid-row-1">
+                <!-- Primary Chart -->
+                <div class="fc-card">
+                    <div class="fc-card-header">
+                        <div class="fc-card-title-group">
+                            <h2 class="fc-card-title">Consumption &amp; Forecast</h2>
+                            <p class="fc-card-subtitle">Historical recorded consumption is shown first; the model forecast begins after the recorded period</p>
+                        </div>
+                    </div>
+                    <div class="fc-card-body">
+                        <div class="fc-chart-canvas-wrap">
+                            <canvas id="consumptionForecastChartCanvas"></canvas>
+                        </div>
+                        <div class="fc-chart-legend-custom">
+                            <div class="fc-legend-item">
+                                <span class="fc-legend-line-solid"></span>
+                                <span>Recorded Historical Consumption</span>
+                            </div>
+                            <div class="fc-legend-item">
+                                <span class="fc-legend-line-dashed"></span>
+                                <span>AutoReg Forecast Requirement</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right-Side Forecast Overview Card -->
+                <div class="fc-card">
+                    <div class="fc-card-header">
+                        <div class="fc-card-title-group">
+                            <h2 class="fc-card-title">Raw Material Forecast Overview</h2>
+                            <p class="fc-card-subtitle">Current stock vs projected period requirements</p>
+                        </div>
+                    </div>
+                    <div class="fc-card-body">
+                        <div class="fc-overview-list" id="forecastOverviewList">
+                            <!-- Populated via JS -->
+                        </div>
+                        <div class="fc-card-footer-action">
+                            <button type="button" class="fc-btn-link" id="viewAllNeedsBtn">
+                                View Detailed Requirements →
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </section>
-        </section>
+
+            <!-- ROW 2: REQUIREMENT VISUAL & AI DECISION SUPPORT -->
+            <section class="fc-grid-row-2">
+                <!-- Forecast Requirement Visual Card -->
+                <div class="fc-card">
+                    <div class="fc-card-header">
+                        <div class="fc-card-title-group">
+                            <h2 class="fc-card-title">Forecast Requirement by Raw Material</h2>
+                            <p class="fc-card-subtitle">Relative demand magnitude across active raw materials</p>
+                        </div>
+                    </div>
+                    <div class="fc-card-body">
+                        <div class="fc-req-bars-list" id="forecastRequirementBarsList">
+                            <!-- Populated via JS -->
+                        </div>
+                        <div class="fc-card-footer-action">
+                            <button type="button" class="fc-btn-link" id="viewAllReqBarsBtn">
+                                View All Raw Materials →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Forecast Decision Support Card -->
+                <div class="fc-card">
+                    <div class="fc-card-header">
+                        <div class="fc-card-title-group">
+                            <h2 class="fc-card-title">AI Forecast Decision Support</h2>
+                            <p class="fc-card-subtitle">Automated operational inventory recommendations in plain language</p>
+                        </div>
+                    </div>
+                    <div class="fc-card-body fc-decision-card-body" id="forecastDecisionContainer">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ROW 3: FULL-WIDTH RAW MATERIAL FORECAST TABLE -->
+            <section class="fc-card">
+                <div class="fc-card-header">
+                    <div class="fc-card-title-group">
+                        <h2 class="fc-card-title">Raw Material Forecast Table</h2>
+                        <p class="fc-card-subtitle">Authoritative operational ledger comparing current stock and upcoming forecasted demand</p>
+                    </div>
+                </div>
+
+                <!-- Table Toolbar -->
+                <div class="fc-table-toolbar">
+                    <div class="fc-search-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        <input type="text" class="fc-search-input" id="tableSearchInput" placeholder="Search by Material Name, ID, or Finished Product Context..."/>
+                    </div>
+
+                    <div class="fc-table-filters">
+                        <select class="fc-select" id="tableStatusFilter" aria-label="Filter by Status">
+                            <option value="ALL">All Statuses</option>
+                            <option value="ATTENTION">Needs Attention</option>
+                            <option value="SUFFICIENT">Sufficient Stock</option>
+                            <option value="UNAVAILABLE">Forecast Unavailable</option>
+                        </select>
+
+                        <select class="fc-select" id="tableUnitFilter" aria-label="Filter by Unit">
+                            <option value="ALL">All Units</option>
+                        </select>
+
+                        <select class="fc-select" id="tableSortSelect" aria-label="Sort Table">
+                            <option value="az">Material: A–Z</option>
+                            <option value="za">Material: Z–A</option>
+                            <option value="high_forecast" selected>Highest Forecast</option>
+                            <option value="low_forecast">Lowest Forecast</option>
+                            <option value="high_need">Highest Additional Need</option>
+                            <option value="low_stock">Lowest Stock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div class="fc-table-container">
+                    <table class="fc-table" id="forecastTable">
+                        <thead>
+                            <tr>
+                                <th>Raw Material</th>
+                                <th>ID</th>
+                                <th>Finished Product Context</th>
+                                <th>Unit</th>
+                                <th>Current Stock</th>
+                                <th>Recent Consumption</th>
+                                <th>Forecast Requirement</th>
+                                <th>Additional Need</th>
+                                <th>Status</th>
+                                <th>Forecast Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastTableBody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table Pagination -->
+                <div class="fc-table-pagination">
+                    <div class="fc-page-info" id="tablePageInfo">
+                        Showing 0 to 0 of 0 records
+                    </div>
+                    <div class="fc-table-filters" style="gap: 12px;">
+                        <div style="display:flex; align-items:center; gap: 6px;">
+                            <span style="font-size:0.75rem; color:var(--fc-text-muted); font-weight:600;">Rows:</span>
+                            <select class="fc-select" id="tableRowsPerPageSelect" style="padding: 4px 8px; font-size: 0.75rem;">
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div class="fc-page-controls" id="tablePaginationControls">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
     </main>
 </div>
 
-<script type="module" src="../js/forecasting.js?v=2"></script>
+<!-- ==========================================================
+     MODAL 1: TOTAL FORECASTED REQUIREMENT BREAKDOWN
+     ========================================================== -->
+<div class="fc-modal-overlay" id="modalTotalForecastOverlay" role="dialog" aria-modal="true">
+    <div class="fc-modal-sheet fc-modal-sheet-lg">
+        <div class="fc-modal-header">
+            <div class="fc-modal-header-info">
+                <div class="fc-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                </div>
+                <div>
+                    <h3 class="fc-modal-title">Total Forecasted Requirement Breakdown</h3>
+                    <p class="fc-modal-subtitle">Full operational demand ledger for the selected forecast period</p>
+                </div>
+            </div>
+            <button type="button" class="fc-modal-close" id="modalTotalForecastClose" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="fc-modal-body">
+            <div class="fc-table-container">
+                <table class="fc-table">
+                    <thead>
+                        <tr>
+                            <th>Raw Material</th>
+                            <th>ID</th>
+                            <th>Unit</th>
+                            <th>Finished Product Context</th>
+                            <th>Current Stock</th>
+                            <th>Recent Consumption</th>
+                            <th>Forecast Requirement</th>
+                            <th>Additional Need</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTotalForecastTableBody">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="fc-modal-footer">
+            <button type="button" class="fc-page-btn" id="modalTotalForecastDoneBtn" style="padding: 7px 16px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================================
+     MODAL 2: FORECAST STATUS & EXECUTION METADATA
+     ========================================================== -->
+<div class="fc-modal-overlay" id="modalForecastStatusOverlay" role="dialog" aria-modal="true">
+    <div class="fc-modal-sheet fc-modal-sheet-md">
+        <div class="fc-modal-header">
+            <div class="fc-modal-header-info">
+                <div class="fc-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7V12L15 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                    <h3 class="fc-modal-title">Forecast Service &amp; Model Metadata</h3>
+                    <p class="fc-modal-subtitle">Authoritative AutoReg ML execution timestamps and data freshness</p>
+                </div>
+            </div>
+            <button type="button" class="fc-modal-close" id="modalForecastStatusClose" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="fc-modal-body">
+            <div class="fc-detail-metrics-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Model Pipeline</div>
+                    <div class="fc-detail-metric-val">AutoReg (Weekly)</div>
+                </div>
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Active Models</div>
+                    <div class="fc-detail-metric-val" id="modalMetaModelsCount">30 Models</div>
+                </div>
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Last Successful Forecast</div>
+                    <div class="fc-detail-metric-val" id="modalMetaLastForecast" style="font-size:0.95rem;">—</div>
+                </div>
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Latest Data Freshness</div>
+                    <div class="fc-detail-metric-val" id="modalMetaDataFreshness" style="font-size:0.95rem;">—</div>
+                </div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--fc-card-border); border-radius: var(--fc-radius-sm); padding: 14px; font-size: 0.82rem; color: var(--fc-text-mid); line-height: 1.5;">
+                <strong>Automatic Trigger Rule:</strong> The forecasting pipeline compares the timestamp of the latest recorded consumption record against the last successful forecast generation. A fresh model prediction is evaluated whenever new consumption records are submitted.
+            </div>
+        </div>
+        <div class="fc-modal-footer">
+            <button type="button" class="fc-page-btn" id="modalForecastStatusDoneBtn" style="padding: 7px 16px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================================
+     MODAL 3: RAW MATERIAL DETAIL DEEP DIVE
+     ========================================================== -->
+<div class="fc-modal-overlay" id="modalMaterialDetailOverlay" role="dialog" aria-modal="true">
+    <div class="fc-modal-sheet fc-modal-sheet-md">
+        <div class="fc-modal-header">
+            <div class="fc-modal-header-info">
+                <div class="fc-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                </div>
+                <div>
+                    <h3 class="fc-modal-title" id="matDetailTitle">Material Forecast Detail</h3>
+                    <p class="fc-modal-subtitle" id="matDetailSubtitle">Item ID: RM—</p>
+                </div>
+            </div>
+            <button type="button" class="fc-modal-close" id="modalMaterialDetailClose" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="fc-modal-body">
+            <!-- Key Metrics Grid -->
+            <div class="fc-detail-metrics-grid">
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Current Stock</div>
+                    <div class="fc-detail-metric-val" id="matDetailCurrentStock">0 kg</div>
+                </div>
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Forecast Requirement</div>
+                    <div class="fc-detail-metric-val" id="matDetailForecastReq" style="color: var(--fc-blue);">0 kg</div>
+                </div>
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Additional Need</div>
+                    <div class="fc-detail-metric-val" id="matDetailAdditionalNeed" style="color: var(--fc-orange-dark);">0 kg</div>
+                </div>
+                <div class="fc-detail-metric-box">
+                    <div class="fc-detail-metric-label">Status</div>
+                    <div class="fc-detail-metric-val" id="matDetailStatus">—</div>
+                </div>
+            </div>
+
+            <!-- Operational Insight -->
+            <h4 class="fc-detail-section-title">Decision Support Insight</h4>
+            <div class="fc-decision-box" id="matDetailInsightBox" style="margin-bottom: 20px;">
+                <p class="fc-decision-text" id="matDetailInsightText">—</p>
+            </div>
+
+            <!-- Finished Product Context Breakdown -->
+            <h4 class="fc-detail-section-title">Associated Finished Products</h4>
+            <div class="fc-table-container">
+                <table class="fc-table">
+                    <thead>
+                        <tr>
+                            <th>Finished Product</th>
+                            <th>Recorded Consumption</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="matDetailProductsTableBody">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="fc-modal-footer">
+            <button type="button" class="fc-page-btn" id="modalMaterialDetailDoneBtn" style="padding: 7px 16px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="../js/forecasting.js"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 <script>
-(function(){
-    const root = document.documentElement;
-    const stored = localStorage.getItem("rmims-theme");
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    root.setAttribute("data-theme", stored || (prefersDark ? "dark" : "light"));
-    const btn = document.getElementById("themeToggleBtn");
-    if(btn) btn.addEventListener("click", ()=>{
-        const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        root.setAttribute("data-theme", next);
-        localStorage.setItem("rmims-theme", next);
-    });
-    const dateEl = document.querySelector("#headerDate span");
-    if(dateEl) dateEl.textContent = new Date().toLocaleDateString("en-US", {year:"numeric", month:"short", day:"numeric"});
-    const menuToggle = document.querySelector(".menu-toggle");
-    const sidebar = document.querySelector(".sidebar");
-    menuToggle?.addEventListener("click", ()=>sidebar?.classList.toggle("open"));
-})();
+    const headerDateEl = document.querySelector("#headerDate span");
+    if (headerDateEl) {
+        headerDateEl.textContent = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
 </script>
 </body>
 </html>

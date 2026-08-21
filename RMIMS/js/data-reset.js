@@ -173,21 +173,32 @@ document.getElementById("resetConfirmBtn")?.addEventListener("click", async () =
             // Direct table deletion fallback for the selected scopes
             const scopes = currentOption.scopes || [];
 
-            if (scopes.includes("raw_materials") || scopes.includes("finished_products")) {
-                await db.from("product_material_requirements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            // 1. Delete dependent transaction tables first to respect foreign keys
+            if (scopes.includes("raw_materials") || scopes.includes("material_disbursements") || scopes.includes("all") || currentOption.key === "all") {
+                const { error: disbErr } = await db.from("material_disbursements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                if (disbErr) console.warn("Disbursements reset warning:", disbErr);
             }
-            if (scopes.includes("stock_receipts")) {
-                await db.from("stock_receipts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            if (scopes.includes("raw_materials") || scopes.includes("stock_receipts") || scopes.includes("all") || currentOption.key === "all") {
+                const { error: recErr } = await db.from("stock_receipts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                if (recErr) console.warn("Stock receipts reset warning:", recErr);
             }
-            if (scopes.includes("material_disbursements")) {
-                await db.from("material_disbursements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            if (scopes.includes("raw_materials") || scopes.includes("finished_products") || scopes.includes("all") || currentOption.key === "all") {
+                const { error: reqErr } = await db.from("product_material_requirements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                if (reqErr) console.warn("Requirements reset warning:", reqErr);
             }
-            if (scopes.includes("finished_products")) {
-                await db.from("finished_products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            if (scopes.includes("finished_products") || scopes.includes("all") || currentOption.key === "all") {
+                const { error: fpErr } = await db.from("finished_products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                if (fpErr) console.warn("Finished products reset warning:", fpErr);
             }
-            if (scopes.includes("raw_materials")) {
-                await db.from("raw_materials").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            if (scopes.includes("raw_materials") || scopes.includes("all") || currentOption.key === "all") {
+                const { error: matErr } = await db.from("raw_materials").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                if (matErr) throw matErr;
             }
+
+            // 2. Clear local storage contexts
+            localStorage.removeItem("rmims_finished_product_context");
+            localStorage.removeItem("rmims_raw_materials_context");
+            localStorage.removeItem("rmims_inventory_cache");
         }
 
         showToast(`${currentOption.title} completed successfully.`);

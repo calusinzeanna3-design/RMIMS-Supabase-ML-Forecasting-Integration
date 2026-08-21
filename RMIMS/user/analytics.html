@@ -1,276 +1,541 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Consumption Analytics | RMSME User</title>
-<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
-<link href="../css/analytics.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Consumption Analytics | RMSME User</title>
+    <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <link href="../css/analytics.css" rel="stylesheet"/>
+    <script src="../js/chart.js"></script>
 </head>
 <body>
 <div class="container">
-<!-- SIDEBAR (USER) -->
-<aside class="sidebar">
-<div class="logo">
-<div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
-<div class="logo-text">
-                RMSME
-                <span>Raw Materials Inventory<br/>Management System</span>
-</div>
-</div>
-<div class="menu">
-<p class="section">MAIN</p>
-<a href="dashboard.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="3"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="3" y="14"></rect><rect height="7" rx="1.5" stroke="currentColor" stroke-width="1.6" width="7" x="14" y="14"></rect></svg>
-                Dashboard
-            </a>
-<p class="section">INVENTORY</p>
-<a href="inventory.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
-                Inventory Overview
-            </a>
-<a href="material-activity.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-                Material Activity
-            </a>
-<p class="section">ANALYTICS</p>
-<a class="active" href="analytics.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-                Consumption Analytics
-            </a>
-<p class="section">REPORTS</p>
-<a href="reports.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M14 3V8H19" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M8 13H16M8 17H13" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-                Reports
-            </a>
-<p class="section">ACCOUNT</p>
-<a href="settings.html">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"></circle><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4"></path></svg>
-                Settings
-            </a>
-</div>
-</aside>
-<!-- MAIN CONTENT -->
-<main class="content">
-<header class="topbar">
-<div class="topbar-left">
-<button aria-label="Toggle menu" class="menu-toggle">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-</button>
-<nav class="breadcrumb">
-<span>Analytics</span>
-<span class="crumb-sep">›</span>
-<span class="crumb-active">Consumption</span>
-</nav>
-</div>
-<div class="header-actions">
-<div class="header-date" id="headerDate">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-<span></span>
-</div>
-<button aria-label="Toggle theme" class="icon-btn" id="themeToggleBtn" title="Toggle dark / light mode">
-<svg class="icon-sun" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"></circle><path d="M12 2.5V4.5M12 19.5V21.5M4.5 12H2.5M21.5 12H19.5M5.6 5.6L4.2 4.2M19.8 19.8L18.4 18.4M18.4 5.6L19.8 4.2M4.2 19.8L5.6 18.4" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
-<svg class="icon-moon" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5C18.9 15 17.7 15.3 16.5 15.3C11.9 15.3 8.2 11.6 8.2 7C8.2 5.8 8.5 4.6 9 3.5C5.3 4.6 2.5 8.1 2.5 12.2C2.5 17.2 6.6 21.3 11.6 21.3C15.6 21.3 19 18.7 20 14.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
-</button>
-<button class="profile-btn" id="profileBtn">
-<span class="avatar">U</span>
-<span class="profile-text">Loading...</span>
-<svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-</button>
-</div>
-</header>
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Primary navigation"></aside>
 
-
-
-<!-- ANALYTICS FILTERS CARD -->
-<section class="filter-card">
-<div class="filter-grid">
-<div class="filter-item">
-<label for="searchInput">Search Raw Material</label>
-<div class="filter-input-wrap">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"></circle><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-<input class="filter-control" id="searchInput" placeholder="Search raw material..." type="text"/>
-</div>
-</div>
-<div class="filter-item">
-<label for="dateRangeSelect">Date Range</label>
-<select class="filter-control" id="dateRangeSelect">
-<option value="today">Today</option>
-<option selected="" value="week">This Week</option>
-<option value="month">This Month</option>
-<option value="last7">Last 7 Days</option>
-<option value="last30">Last 30 Days</option>
-</select>
-</div>
-<div class="filter-item" id="customDateWrap">
-<label>Custom Dates</label>
-<div class="date-range-group">
-<input class="date-control" id="startDateInput" type="date"/>
-<span style="color:#94a3b8;">–</span>
-<input class="date-control" id="endDateInput" type="date"/>
-<button class="clear-date-btn" hidden="" id="clearCustomDateBtn" title="Clear custom dates" type="button">✕</button>
-</div>
-</div>
-<div class="filter-item">
-<label for="categorySelect">Category</label>
-<select class="filter-control" id="categorySelect">
-<option value="">All Categories</option>
-</select>
-</div>
-<div class="filter-item">
-<label for="unitSelect">Unit</label>
-<select class="filter-control" id="unitSelect">
-<option value="">All Units</option>
-</select>
-</div>
-<div class="filter-item">
-<label for="statusSelect">Status</label>
-<select class="filter-control" id="statusSelect">
-<option value="">All Statuses</option>
-<option value="Available">Good</option>
-<option value="Low">Running Low</option>
-<option value="Critical">Needs Restocking</option>
-</select>
-</div>
-<div class="filter-item">
-<label> </label>
-<button class="reset-btn" id="resetFiltersBtn">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4V9H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M20 20V15H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M19.4 9A9 9 0 0 0 5.6 5.6L4 9M20 15L18.4 18.4A9 9 0 0 1 4.6 15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-                    Reset Filters
+    <!-- MAIN CONTENT SHELL -->
+    <main class="content">
+        <!-- GLOBAL TOPBAR -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button aria-label="Toggle menu" class="menu-toggle">
+                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+                    </svg>
                 </button>
-</div>
-</div>
-</section>
+                <nav class="breadcrumb">
+                    <span>Analytics</span>
+                    <span class="crumb-sep">›</span>
+                    <span class="crumb-active">Consumption</span>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <div class="header-date" id="headerDate">
+                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect>
+                        <path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path>
+                        <path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+                    </svg>
+                    <span>—</span>
+                </div>
+                <button class="profile-btn" id="profileBtn">
+                    <span class="avatar">U</span>
+                    <span class="profile-text">Staff Member</span>
+                    <svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
 
-<!-- KPI SUMMARY CARDS -->
-<section class="cards">
-<div class="card">
-<div class="card-text">
-<span>Total Used</span>
-<div class="unit-total-list" id="totalUsedValue">—</div>
-</div>
-<div class="card-icon icon-blue"><svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"></path></svg></div>
-</div>
-<div class="card">
-<div class="card-text">
-<span>Most Used Raw Material</span>
-<h2 class="text-stat" id="mostUsedMaterial">-</h2>
-<span class="card-subtext" id="mostUsedSubtext"></span>
-</div>
-<div class="card-icon icon-green"><svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M15 7H21V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg></div>
-</div>
-<div class="card">
-<div class="card-text">
-<span>Materials With Usage</span>
-<h2 id="materialsWithUsage">0</h2>
-<span class="card-subtext">raw materials with recorded consumption</span>
-</div>
-<div class="card-icon icon-purple"><svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg></div>
-</div>
-<div class="card">
-<div class="card-text">
-<span>Total Tracked Items</span>
-<h2 id="activeMaterialsCount">0</h2>
-<span class="card-subtext">raw materials in database</span>
-</div>
-<div class="card-icon icon-orange"><svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg></div>
-</div>
-</section>
+        <!-- CONSUMPTION ANALYTICS WORKSPACE -->
+        <div class="ca-dashboard-wrap">
+            
+            <!-- PAGE HEADER -->
+            <div class="ca-page-header">
+                <h1 class="ca-page-title">Consumption Analytics</h1>
+            </div>
 
-<!-- CONSUMPTION TREND CHART -->
-<section class="chart-card">
-<div class="card-header">
-<h3>
-<span class="title-icon icon-blue">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-</span>
-                Consumption Trend
-            </h3>
-<div class="period-toggle">
-<button class="period-btn active" data-period="Weekly" id="trendWeeklyBtn" type="button">Weekly</button>
-<button class="period-btn" data-period="Monthly" id="trendMonthlyBtn" type="button">Monthly</button>
-</div>
-</div>
-<div class="chart-container">
-<canvas id="trendChart"></canvas>
-</div>
-</section>
+            <!-- TOP SUMMARY KPI CARDS (4-GRID) -->
+            <section class="ca-kpi-grid" aria-label="Summary KPIs">
+                <!-- Card 1: Total Raw Materials -->
+                <div class="ca-kpi-card">
+                    <div class="ca-kpi-content">
+                        <span class="ca-kpi-label">Total Raw Materials</span>
+                        <div class="ca-kpi-value-wrap">
+                            <span class="ca-kpi-value" id="kpiTotalMaterials">0</span>
+                        </div>
+                        <span class="ca-kpi-subtext">Tracked raw materials</span>
+                    </div>
+                    <div class="ca-kpi-icon ca-icon-blue">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    </div>
+                </div>
 
-<!-- CONSUMPTION BREAKDOWN TABLE -->
-<section class="table-card">
-<div class="card-header">
-<h3>Raw Material Consumption Breakdown</h3>
-<span class="result-count" id="tableCount">Showing materials</span>
+                <!-- Card 2: Total Consumed (Unit-Safe) -->
+                <div class="ca-kpi-card">
+                    <div class="ca-kpi-content">
+                        <span class="ca-kpi-label">Total Consumed</span>
+                        <div class="ca-kpi-value-wrap" id="kpiTotalConsumedWrap">
+                            <div class="ca-kpi-unit-list" id="kpiTotalConsumedList">
+                                <span class="ca-kpi-value">0</span>
+                            </div>
+                        </div>
+                        <span class="ca-kpi-subtext" id="kpiTotalConsumedSub">Selected period usage</span>
+                    </div>
+                    <div class="ca-kpi-icon ca-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                </div>
+
+                <!-- Card 3: Materials With Usage -->
+                <div class="ca-kpi-card">
+                    <div class="ca-kpi-content">
+                        <span class="ca-kpi-label">Materials With Usage</span>
+                        <div class="ca-kpi-value-wrap">
+                            <span class="ca-kpi-value" id="kpiMaterialsWithUsage">0</span>
+                        </div>
+                        <span class="ca-kpi-subtext" id="kpiMaterialsWithUsageSub">of 0 materials</span>
+                    </div>
+                    <div class="ca-kpi-icon ca-icon-orange">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 4H8C6.89543 4 6 4.89543 6 6V18C6 19.1046 6.89543 20 8 20H16C17.1046 20 18 19.1046 18 18V6C18 4.89543 17.1046 4 16 4Z" stroke="currentColor" stroke-width="1.8"/><path d="M9 8H15M9 12H15M9 16H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </div>
+                </div>
+
+                <!-- Card 4: Low / Critical Materials -->
+                <div class="ca-kpi-card">
+                    <div class="ca-kpi-content">
+                        <span class="ca-kpi-label">Needs Attention</span>
+                        <div class="ca-kpi-value-wrap">
+                            <span class="ca-kpi-value" id="kpiNeedsAttention" style="color: var(--ca-red);">0</span>
+                        </div>
+                        <span class="ca-kpi-subtext">materials below minimum stock</span>
+                    </div>
+                    <div class="ca-kpi-icon ca-icon-red">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GLOBAL DATE CONTROLS BAR -->
+            <section class="ca-date-bar" aria-label="Date and Period Filters">
+                <div class="ca-date-bar-left">
+                    <span class="ca-date-bar-label">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 2V6M8 2V6M3 10H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        Date Range:
+                    </span>
+                    <select class="ca-select" id="datePresetSelect">
+                        <option value="today">Today</option>
+                        <option value="this_week" selected>This Week</option>
+                        <option value="this_month">This Month</option>
+                        <option value="last_month">Last Month</option>
+                        <option value="last_7_days">Last 7 Days</option>
+                        <option value="last_30_days">Last 30 Days</option>
+                        <option value="custom">Custom Date</option>
+                    </select>
+
+                    <div class="ca-date-pickers" id="customDatePickerWrap">
+                        <input type="date" class="ca-input" id="dateFromInput" aria-label="From date"/>
+                        <span class="ca-date-sep">—</span>
+                        <input type="date" class="ca-input" id="dateToInput" aria-label="To date"/>
+                        <button type="button" class="ca-btn-clear-date" id="clearDateBtn" title="Reset date filters">Clear</button>
+                    </div>
+                </div>
+
+                <div class="ca-date-bar-right">
+                    <span class="ca-date-status-tag" id="dateRangeStatusTag">This Week</span>
+                </div>
+            </section>
+
+            <!-- ROW 1: PRIMARY STOCK & CONSUMPTION TREND + RAW MATERIAL STOCK PROGRESS -->
+            <section class="ca-grid-row-1">
+                <!-- Large Primary Trend Chart -->
+                <div class="ca-card">
+                    <div class="ca-card-header">
+                        <div class="ca-card-title-group">
+                            <h2 class="ca-card-title">Raw Material Stock &amp; Consumption Overview</h2>
+                            <p class="ca-card-subtitle">Timeline tracking actual movement vs preferred minimum-stock target</p>
+                        </div>
+                        <div class="ca-card-controls">
+                            <select class="ca-select" id="chart1MaterialSelect" style="max-width: 180px;">
+                                <option value="ALL">All Materials</option>
+                            </select>
+                            <div class="ca-period-tabs" id="chart1PeriodTabs">
+                                <button type="button" class="ca-period-tab active" data-period="weekly">Weekly</button>
+                                <button type="button" class="ca-period-tab" data-period="monthly">Monthly</button>
+                                <button type="button" class="ca-period-tab" data-period="date_to_date">Date-to-Date</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ca-card-body">
+                        <div class="ca-chart-canvas-wrap">
+                            <canvas id="overviewTrendChartCanvas"></canvas>
+                        </div>
+                        <div class="ca-chart-legend-custom">
+                            <div class="ca-legend-item">
+                                <span class="ca-legend-line-solid"></span>
+                                <span>Actual Stock / Consumption</span>
+                            </div>
+                            <div class="ca-legend-item">
+                                <span class="ca-legend-line-dashed"></span>
+                                <span>Minimum Stock Target</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Progress Card: Raw Material Stock Progress -->
+                <div class="ca-card">
+                    <div class="ca-card-header">
+                        <div class="ca-card-title-group">
+                            <h2 class="ca-card-title">Raw Material Stock Progress</h2>
+                            <p class="ca-card-subtitle">Individual stock health vs target baseline</p>
+                        </div>
+                    </div>
+                    <div class="ca-card-body">
+                        <div class="ca-progress-list" id="stockProgressList">
+                            <!-- Populated via JS -->
+                        </div>
+                        <div class="ca-card-footer-action">
+                            <button type="button" class="ca-btn-link" id="viewAllProgressBtn">
+                                View All Raw Materials →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ROW 2: STOCK STATUS PROGRESS + RAW MATERIAL DISTRIBUTION -->
+            <section class="ca-grid-row-2">
+                <!-- Secondary Chart: Stock Status Progress -->
+                <div class="ca-card">
+                    <div class="ca-card-header">
+                        <div class="ca-card-title-group">
+                            <h2 class="ca-card-title">Stock Status Progress</h2>
+                            <p class="ca-card-subtitle">Historical inventory stock-health category distribution over time</p>
+                        </div>
+                    </div>
+                    <div class="ca-card-body">
+                        <div class="ca-chart-canvas-wrap">
+                            <canvas id="statusProgressChartCanvas"></canvas>
+                        </div>
+                        <div class="ca-chart-legend-custom">
+                            <div class="ca-legend-item">
+                                <span class="ca-legend-dot" style="background: var(--ca-green);"></span>
+                                <span>Good / Full Stock</span>
+                            </div>
+                            <div class="ca-legend-item">
+                                <span class="ca-legend-dot" style="background: var(--ca-blue);"></span>
+                                <span>Stable Stock</span>
+                            </div>
+                            <div class="ca-legend-item">
+                                <span class="ca-legend-dot" style="background: var(--ca-orange);"></span>
+                                <span>Low Stock</span>
+                            </div>
+                            <div class="ca-legend-item">
+                                <span class="ca-legend-dot" style="background: var(--ca-red);"></span>
+                                <span>Out of Stock</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Third Card: Raw Material Distribution -->
+                <div class="ca-card">
+                    <div class="ca-card-header">
+                        <div class="ca-card-title-group">
+                            <h2 class="ca-card-title">Raw Material Distribution</h2>
+                            <p class="ca-card-subtitle">Relative volume proportion across active catalog</p>
+                        </div>
+                    </div>
+                    <div class="ca-card-body">
+                        <div class="ca-donut-layout">
+                            <div class="ca-donut-wrap">
+                                <canvas id="distributionDonutCanvas"></canvas>
+                                <div class="ca-donut-center-label">
+                                    <div class="ca-donut-center-sub">TOTAL</div>
+                                    <div class="ca-donut-center-val" id="donutTotalCount">0</div>
+                                    <div class="ca-donut-center-sub">Materials</div>
+                                </div>
+                            </div>
+                            <div class="ca-dist-list" id="distributionListContainer">
+                                <!-- Populated dynamically with leading materials + Others -->
+                            </div>
+                        </div>
+                        <div class="ca-card-footer-action">
+                            <button type="button" class="ca-btn-link" id="viewAllDistBtn">
+                                View All Distribution →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ROW 3: OVERALL RAW MATERIAL STATUS TABLE -->
+            <section class="ca-card">
+                <div class="ca-card-header">
+                    <div class="ca-card-title-group">
+                        <h2 class="ca-card-title">Overall Raw Material Status</h2>
+                        <p class="ca-card-subtitle">Complete operational ledger of raw material inventory and period consumption</p>
+                    </div>
+                </div>
+
+                <!-- Table Toolbar -->
+                <div class="ca-table-toolbar">
+                    <div class="ca-search-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        <input type="text" class="ca-search-input" id="tableSearchInput" placeholder="Search by Material Name, ID, or Product Context..."/>
+                    </div>
+
+                    <div class="ca-table-filters">
+                        <select class="ca-select" id="tableStatusFilter" aria-label="Filter by Status">
+                            <option value="ALL">All Statuses</option>
+                            <option value="GOOD">Good Stock</option>
+                            <option value="STABLE">Stable Stock</option>
+                            <option value="LOW">Low Stock</option>
+                            <option value="OUT">Out of Stock</option>
+                        </select>
+
+                        <select class="ca-select" id="tableUnitFilter" aria-label="Filter by Unit">
+                            <option value="ALL">All Units</option>
+                        </select>
+
+                        <select class="ca-select" id="tableSortSelect" aria-label="Sort Table">
+                            <option value="latest">Sort: Latest</option>
+                            <option value="oldest">Sort: Oldest</option>
+                            <option value="az">Sort: A–Z</option>
+                            <option value="za">Sort: Z–A</option>
+                            <option value="high_consumed">Sort: Highest Consumption</option>
+                            <option value="low_consumed">Sort: Lowest Consumption</option>
+                            <option value="high_stock">Sort: Highest Stock</option>
+                            <option value="low_stock">Sort: Lowest Stock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div class="ca-table-container">
+                    <table class="ca-table" id="overallStatusTable">
+                        <thead>
+                            <tr>
+                                <th>RAW MATERIAL</th>
+                                <th>ID</th>
+                                <th>CURRENT STOCK</th>
+                                <th>UNIT</th>
+                                <th>MINIMUM STOCK</th>
+                                <th>STOCK PROGRESS</th>
+                                <th>CONSUMED</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overallStatusTableBody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table Pagination -->
+                <div class="ca-table-pagination">
+                    <div class="ca-page-info" id="tablePageInfo">
+                        Showing 0 to 0 of 0 materials
+                    </div>
+                    <div class="ca-table-filters" style="gap: 12px;">
+                        <div style="display:flex; align-items:center; gap: 6px;">
+                            <span style="font-size:0.75rem; color:var(--ca-text-muted); font-weight:600;">Rows:</span>
+                            <select class="ca-select" id="tableRowsPerPageSelect" style="padding: 4px 8px; font-size: 0.75rem;">
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div class="ca-page-controls" id="tablePaginationControls">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
 </div>
-<div class="table-scroll">
-<table>
-<thead>
-<tr>
-<th id="sortName">Raw Material Name ▲</th>
-<th id="sortCategory">Category</th>
-<th id="sortTotal">Total Consumed (Current) ▼</th>
-<th id="sortPrev">Previous Period</th>
-<th id="sortTrend">Trend</th>
-<th id="sortStock">Current Stock</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody id="usageTableBody"></tbody>
-</table>
+
+<!-- ==========================================================
+     MODAL 1: VIEW ALL RAW MATERIALS PROGRESS
+     ========================================================== -->
+<div class="ca-modal-overlay" id="allMaterialsModalOverlay" role="dialog" aria-modal="true">
+    <div class="ca-modal-sheet ca-modal-sheet-lg">
+        <div class="ca-modal-header">
+            <div class="ca-modal-header-info">
+                <div class="ca-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 19V6L21 3V16M9 19C9 20.6569 7.65685 22 6 22C4.34315 22 3 20.6569 3 19C3 17.3431 4.34315 16 6 16C7.65685 16 9 17.3431 9 19ZM21 16C21 17.6569 19.6569 19 18 19C16.3431 19 15 17.6569 15 16C15 14.3431 16.3431 13 18 13C19.6569 13 21 14.3431 21 16Z" stroke="currentColor" stroke-width="1.8"/></svg>
+                </div>
+                <div>
+                    <h3 class="ca-modal-title">All Raw Materials Stock Progress</h3>
+                    <p class="ca-modal-subtitle">Complete catalog stock health vs target baselines</p>
+                </div>
+            </div>
+            <button type="button" class="ca-modal-close" id="allMaterialsModalClose" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="ca-modal-body">
+            <div class="ca-table-container">
+                <table class="ca-table">
+                    <thead>
+                        <tr>
+                            <th>RAW MATERIAL</th>
+                            <th>ID</th>
+                            <th>CURRENT STOCK</th>
+                            <th>UNIT</th>
+                            <th>MINIMUM STOCK</th>
+                            <th>PROGRESS</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allMaterialsModalTableBody">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="ca-modal-footer">
+            <button type="button" class="ca-page-btn" id="allMaterialsModalDoneBtn" style="padding: 7px 16px;">Close</button>
+        </div>
+    </div>
 </div>
-<div class="table-pagination" id="paginationControls"></div>
-</section>
 
-<!-- OPERATIONAL INSIGHTS -->
-<section class="insights">
-<div class="card-header">
-<h3>
-<span class="title-icon icon-purple">
-<svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 20V10M12 4V6M6 20V14M6 10V4M18 20V16M18 12V4" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-</span>
-                Usage Insights &amp; Operational Takeaways
-            </h3>
+<!-- ==========================================================
+     MODAL 2: RAW MATERIAL DETAIL PROGRESS & CONSUMPTION
+     ========================================================== -->
+<div class="ca-modal-overlay" id="materialDetailModalOverlay" role="dialog" aria-modal="true">
+    <div class="ca-modal-sheet ca-modal-sheet-md">
+        <div class="ca-modal-header">
+            <div class="ca-modal-header-info">
+                <div class="ca-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                </div>
+                <div>
+                    <h3 class="ca-modal-title" id="matDetailTitle">Raw Material Detail</h3>
+                    <p class="ca-modal-subtitle" id="matDetailSubtitle">Item ID: RM—</p>
+                </div>
+            </div>
+            <button type="button" class="ca-modal-close" id="matDetailModalClose" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="ca-modal-body">
+            <!-- Key Metrics Grid -->
+            <div class="ca-detail-metrics-grid">
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">Stock Progress</div>
+                    <div class="ca-detail-metric-val" id="matDetailProgressVal">0%</div>
+                </div>
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">Current Stock</div>
+                    <div class="ca-detail-metric-val" id="matDetailCurrentStockVal">0 kg</div>
+                </div>
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">Minimum Stock</div>
+                    <div class="ca-detail-metric-val" id="matDetailMinStockVal">0 kg</div>
+                </div>
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">Status</div>
+                    <div class="ca-detail-metric-val" id="matDetailStatusVal">—</div>
+                </div>
+            </div>
+
+            <!-- Consumption Periods Grid -->
+            <h4 class="ca-detail-section-title">Consumption Breakdown</h4>
+            <div class="ca-detail-metrics-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">Selected Period</div>
+                    <div class="ca-detail-metric-val" id="matDetailPeriodUsageVal" style="color: var(--ca-orange-dark);">0 kg</div>
+                </div>
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">This Week</div>
+                    <div class="ca-detail-metric-val" id="matDetailWeekUsageVal">0 kg</div>
+                </div>
+                <div class="ca-detail-metric-box">
+                    <div class="ca-detail-metric-label">This Month</div>
+                    <div class="ca-detail-metric-val" id="matDetailMonthUsageVal">0 kg</div>
+                </div>
+            </div>
+
+            <!-- Finished Product Context Breakdown -->
+            <h4 class="ca-detail-section-title">Finished Product Usage Context</h4>
+            <div class="ca-table-container">
+                <table class="ca-table">
+                    <thead>
+                        <tr>
+                            <th>FINISHED PRODUCT CONTEXT</th>
+                            <th>QUANTITY USED</th>
+                            <th>UNIT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="matDetailProductsTableBody">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="ca-modal-footer">
+            <button type="button" class="ca-page-btn" id="matDetailDoneBtn" style="padding: 7px 16px;">Done</button>
+        </div>
+    </div>
 </div>
-<ul id="insightsList"></ul>
-</section>
-</main>
+
+<!-- ==========================================================
+     MODAL 3: VIEW ALL DISTRIBUTION
+     ========================================================== -->
+<div class="ca-modal-overlay" id="allDistributionModalOverlay" role="dialog" aria-modal="true">
+    <div class="ca-modal-sheet ca-modal-sheet-md">
+        <div class="ca-modal-header">
+            <div class="ca-modal-header-info">
+                <div class="ca-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M12 2V12L19.07 19.07" stroke="currentColor" stroke-width="1.8"/></svg>
+                </div>
+                <div>
+                    <h3 class="ca-modal-title">Complete Raw Material Distribution</h3>
+                    <p class="ca-modal-subtitle">Full catalog percentage proportion</p>
+                </div>
+            </div>
+            <button type="button" class="ca-modal-close" id="allDistributionModalClose" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="ca-modal-body">
+            <div class="ca-table-container">
+                <table class="ca-table">
+                    <thead>
+                        <tr>
+                            <th>RAW MATERIAL</th>
+                            <th>ID</th>
+                            <th>CURRENT STOCK</th>
+                            <th>PROPORTION %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allDistributionModalTableBody">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="ca-modal-footer">
+            <button type="button" class="ca-page-btn" id="allDistributionModalDoneBtn" style="padding: 7px 16px;">Close</button>
+        </div>
+    </div>
 </div>
 
-<script src="../js/user-analytics.js" type="module"></script>
-<script>
-const headerDateEl = document.querySelector("#headerDate span");
-if(headerDateEl){
-    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
-}
-
-const menuToggle = document.querySelector(".menu-toggle");
-const sidebarEl = document.querySelector(".sidebar");
-if(menuToggle && sidebarEl){
-    menuToggle.addEventListener("click", ()=>{
-        sidebarEl.classList.toggle("open");
-    });
-}
-
-(function(){
-    const root = document.documentElement;
-    const stored = localStorage.getItem("rmims-theme");
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = stored || (prefersDark ? "dark" : "light");
-    root.setAttribute("data-theme", initial);
-
-    const btn = document.getElementById("themeToggleBtn");
-    if(btn){
-        btn.addEventListener("click", ()=>{
-            const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-            root.setAttribute("data-theme", next);
-            localStorage.setItem("rmims-theme", next);
-        });
-    }
-})();
-</script>
+<!-- SCRIPTS -->
+<script type="module" src="../js/user-analytics.js"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
+<script>
+    const headerDateEl = document.querySelector("#headerDate span");
+    if (headerDateEl) {
+        headerDateEl.textContent = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
+</script>
 </body>
 </html>

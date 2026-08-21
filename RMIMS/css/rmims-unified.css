@@ -281,28 +281,6 @@ textarea:focus-visible {
   }
 }
 
-/* Preserve dark mode only where explicitly enabled, while retaining RMIMS green accents */
-[data-theme="dark"] .content,
-[data-theme="dark"] body {
-  background: #0d1b13 !important;
-  color: #ecfdf3 !important;
-}
-
-[data-theme="dark"] .topbar {
-  background: rgba(13, 27, 19, .94) !important;
-}
-
-[data-theme="dark"] .card,
-[data-theme="dark"] .table-card,
-[data-theme="dark"] .profile-btn {
-  background: #13271b !important;
-  border-color: rgba(187, 247, 208, .12) !important;
-}
-
-[data-theme="dark"] thead {
-  background: #173221 !important;
-}
-
 
 /* ==========================================================
    RMIMS MASTER UI/UX POLISH
@@ -1290,34 +1268,35 @@ body::after {
 }
 
 .rmsme-popover {
-  position: absolute;
-  right: 0;
-  top: 50px;
-  background: #fff;
-  border: 1px solid var(--rmsme-border);
-  border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(18, 99, 49, .14);
-  overflow: hidden;
-  z-index: 1200
+  position: absolute !important;
+  right: 0 !important;
+  top: 48px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--rmsme-border, #d1e7dd) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 40px rgba(18, 99, 49, .14) !important;
+  overflow: hidden !important;
+  z-index: 1200 !important;
 }
 
 .rmsme-popover[hidden] {
-  display: none !important
+  display: none !important;
 }
 
 .rmsme-notifications {
-  width: 340px
+  width: 360px !important;
+  max-width: calc(100vw - 24px) !important;
 }
 
 .rmsme-help {
-  width: 210px;
-  right: 50px;
-  padding: 8px
+  width: 230px !important;
+  right: 48px !important;
+  padding: 8px !important;
 }
 
 .rmsme-profile {
-  width: 280px;
-  right: 0
+  width: 280px !important;
+  right: 0 !important;
 }
 
 .rmsme-popover-head {
@@ -2538,4 +2517,450 @@ table {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
-}
+}
+
+/* ============================================================
+   RMIMS LIVE SHARED NOTIFICATIONS SYSTEM
+   ============================================================ */
+
+.rmsme-header-btn {
+  position: relative !important;
+}
+
+.rmsme-notif-badge {
+  position: absolute !important;
+  top: -3px !important;
+  right: -3px !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  border-radius: 9px !important;
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 4px !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  line-height: 1 !important;
+  z-index: 2 !important;
+}
+
+.rmsme-notif-icon.priority-success {
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+}
+
+.rmsme-notif-icon.priority-warning {
+  background: #fffbeb !important;
+  color: #d97706 !important;
+}
+
+.rmsme-notif-icon.priority-critical {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+.rmsme-notif-icon.priority-info {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.rmsme-notification-item {
+  position: relative !important;
+  padding: 10px 14px !important;
+  gap: 12px !important;
+  align-items: flex-start !important;
+  transition: all 0.15s ease !important;
+}
+
+.rmsme-notification-item.unread {
+  background: #f0fdf4 !important;
+}
+
+.rmsme-notification-item.unread strong {
+  color: #0f2a1b !important;
+  font-weight: 700 !important;
+}
+
+.rmsme-notification-item.read {
+  background: #ffffff !important;
+  opacity: 0.85 !important;
+}
+
+.rmsme-notification-item.read:hover {
+  background: #f8fafc !important;
+  opacity: 1 !important;
+}
+
+.rmsme-notif-content {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.rmsme-notif-title-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+}
+
+.rmsme-notif-title {
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+}
+
+.rmsme-notif-badge-new {
+  background: #16803c !important;
+  color: #ffffff !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  flex-shrink: 0 !important;
+}
+
+.rmsme-notif-desc {
+  font-size: 0.74rem !important;
+  color: #475569 !important;
+  line-height: 1.35 !important;
+  margin-top: 2px !important;
+  word-break: break-word !important;
+}
+
+.rmsme-notif-meta-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 0.68rem !important;
+  color: #94a3b8 !important;
+  margin-top: 4px !important;
+}
+
+.rmsme-notif-actor {
+  font-weight: 600 !important;
+  color: #64748b !important;
+}
+
+.rmsme-notif-sep {
+  color: #cbd5e1 !important;
+}
+
+.rmsme-notif-time {
+  color: #64748b !important;
+}
+
+/* Modal Overlay for "View all notifications" */
+.rmsme-all-notifs-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.rmsme-all-notifs-overlay.open {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.rmsme-all-notifs-card {
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  width: 100% !important;
+  max-width: 760px !important;
+  max-height: 85vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border: 1px solid #e2e8f0 !important;
+  transform: scale(0.96) !important;
+  transition: transform 0.2s ease !important;
+}
+
+.rmsme-all-notifs-overlay.open .rmsme-all-notifs-card {
+  transform: scale(1) !important;
+}
+
+.rmsme-all-notifs-header {
+  padding: 16px 20px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #f8fafc !important;
+}
+
+.rmsme-all-notifs-title-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.rmsme-all-notifs-title {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  margin: 0 !important;
+}
+
+.rmsme-all-notifs-count-pill {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 10px !important;
+}
+
+.rmsme-all-notifs-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.rmsme-btn-link-action {
+  background: none !important;
+  border: none !important;
+  color: #16803c !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  transition: background 0.15s !important;
+}
+
+.rmsme-btn-link-action:hover {
+  background: #ecfdf5 !important;
+}
+
+.rmsme-modal-close-btn {
+  background: transparent !important;
+  border: none !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #64748b !important;
+  font-size: 1.1rem !important;
+}
+
+.rmsme-modal-close-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.rmsme-all-notifs-toolbar {
+  padding: 12px 20px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  background: #ffffff !important;
+}
+
+.rmsme-notifs-search-box {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.rmsme-notifs-search-box svg {
+  position: absolute !important;
+  left: 12px !important;
+  width: 15px !important;
+  height: 15px !important;
+  color: #94a3b8 !important;
+  pointer-events: none !important;
+}
+
+.rmsme-notifs-search-input {
+  width: 100% !important;
+  padding: 8px 12px 8px 34px !important;
+  font-size: 0.82rem !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  outline: none !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  transition: border-color 0.15s, background 0.15s !important;
+}
+
+.rmsme-notifs-search-input:focus {
+  border-color: #16803c !important;
+  background: #ffffff !important;
+}
+
+.rmsme-notifs-filter-pills {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  overflow-x: auto !important;
+  padding-bottom: 2px !important;
+}
+
+.rmsme-filter-pill {
+  background: #f1f5f9 !important;
+  border: 1px solid transparent !important;
+  border-radius: 20px !important;
+  padding: 4px 12px !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.15s !important;
+}
+
+.rmsme-filter-pill:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.rmsme-filter-pill.active {
+  background: #16803c !important;
+  color: #ffffff !important;
+}
+
+.rmsme-all-notifs-body {
+  padding: 12px 20px !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.rmsme-modal-notif-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  transition: all 0.15s ease !important;
+}
+
+.rmsme-modal-notif-item.unread {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+}
+
+.rmsme-modal-notif-item:hover {
+  border-color: #94a3b8 !important;
+}
+
+.rmsme-modal-notif-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.rmsme-modal-notif-header-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.rmsme-modal-notif-title {
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.rmsme-category-badge {
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+.rmsme-category-badge.cat-receiving { background: #dcfce7; color: #15803d; }
+.rmsme-category-badge.cat-disbursement { background: #dbeafe; color: #1d4ed8; }
+.rmsme-category-badge.cat-inventory { background: #f1f5f9; color: #475569; }
+.rmsme-category-badge.cat-alert { background: #fef3c7; color: #b45309; }
+.rmsme-category-badge.cat-forecast { background: #ede9fe; color: #6d28d9; }
+.rmsme-category-badge.cat-login { background: #e0f2fe; color: #0369a1; }
+.rmsme-category-badge.cat-system { background: #f3f4f6; color: #374151; }
+
+.rmsme-modal-notif-desc {
+  font-size: 0.78rem !important;
+  color: #334155 !important;
+  line-height: 1.4 !important;
+  margin-top: 4px !important;
+}
+
+.rmsme-modal-notif-footer-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-top: 8px !important;
+  font-size: 0.7rem !important;
+  color: #64748b !important;
+}
+
+.rmsme-all-notifs-footer {
+  padding: 12px 20px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #f8fafc !important;
+  font-size: 0.78rem !important;
+  color: #64748b !important;
+}
+
+.rmsme-notifs-pagination {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.rmsme-page-btn {
+  padding: 4px 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  border-radius: 4px !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+}
+
+.rmsme-page-btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.rmsme-page-btn:not(:disabled):hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+

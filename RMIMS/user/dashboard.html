@@ -1,265 +1,521 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Dashboard | RMSME Staff Operations</title>
-<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
-<link href="../css/dashboard.css" rel="stylesheet"/>
-<script src="../js/chart.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Dashboard | RMSME Staff Operations</title>
+    <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+    <link href="../css/dashboard.css" rel="stylesheet"/>
+    <link href="../css/user-dashboard.css" rel="stylesheet"/>
+    <script src="../js/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
 <body class="user-page">
 <div class="container">
 
-<!-- SIDEBAR (USER) -->
-<aside class="sidebar">
-<div class="logo">
-    <div class="logo-icon"><img alt="RMSME logo" src="../assets/logo-icon.png"/></div>
-    <div class="logo-text">
-        RMSME
-        <span>Raw Materials Inventory<br/>Management System</span>
-    </div>
-</div>
-<div class="menu">
-    <p class="section">MAIN</p>
-    <a class="active" href="dashboard.html">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><rect height="7" rx="1.5" width="7" x="3" y="3"></rect><rect height="7" rx="1.5" width="7" x="14" y="3"></rect><rect height="7" rx="1.5" width="7" x="3" y="14"></rect><rect height="7" rx="1.5" width="7" x="14" y="14"></rect></svg>
-        Dashboard
-    </a>
-    <p class="section">OPERATIONS</p>
-    <a href="inventory.html">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"></path><path d="M12 2V22M3 7L12 12M21 7L12 12"></path></svg>
-        Inventory Overview
-    </a>
-    <a href="material-activity.html">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M4 6H20M4 12H20M4 18H14"></path><path d="M17 15L20 18L17 21"></path></svg>
-        Material Activity
-    </a>
-    <p class="section">ANALYTICS &amp; REPORTS</p>
-    <a href="analytics.html">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 17L9 11L13 15L21 7"></path><path d="M15 7H21V13"></path></svg>
-        Consumption Analytics
-    </a>
-    <a href="reports.html">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z"></path><path d="M14 3V8H19"></path><path d="M8 13H16M8 17H13"></path></svg>
-        Reports
-    </a>
-    <p class="section">ACCOUNT</p>
-    <a href="settings.html">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 13.5C19.5 13 19.5 12.5 19.4 12L21 10.5L19.5 8L17.5 8.5C17.1 8.1 16.6 7.8 16.1 7.6L15.5 5.5H12.5L11.9 7.6C11.4 7.8 10.9 8.1 10.5 8.5L8.5 8L7 10.5L8.6 12C8.5 12.5 8.5 13 8.6 13.5L7 15L8.5 17.5L10.5 17C10.9 17.4 11.4 17.7 11.9 17.9L12.5 20H15.5L16.1 17.9C16.6 17.7 17.1 17.4 17.5 17L19.5 17.5L21 15L19.4 13.5Z"></path></svg>
-        Settings
-    </a>
-</div>
-</aside>
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Primary navigation"></aside>
 
-<!-- MAIN CONTENT -->
-<main class="content">
+    <!-- MAIN CONTENT -->
+    <main class="content">
 
-<!-- TOPBAR -->
-<header class="topbar">
-<div class="topbar-left">
-    <button aria-label="Toggle menu" class="menu-toggle">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 6H21M3 12H21M3 18H21"></path></svg>
-    </button>
-    <nav class="breadcrumb">
-        <span>Staff Operations</span>
-        <span class="crumb-sep">›</span>
-        <span class="crumb-active">Daily Dashboard</span>
-    </nav>
-</div>
-<div class="header-actions">
-    <div class="header-date" id="headerDate">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><rect height="16" rx="2" width="18" x="3" y="5"></rect><path d="M3 9H21"></path><path d="M8 3V6M16 3V6"></path></svg>
-        <span></span>
-    </div>
-    <button aria-label="Toggle theme" class="icon-btn" id="themeToggleBtn" title="Toggle dark / light mode">
-        <svg class="icon-sun" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5V4.5M12 19.5V21.5M4.5 12H2.5M21.5 12H19.5M5.6 5.6L4.2 4.2M19.8 19.8L18.4 18.4M18.4 5.6L19.8 4.2M4.2 19.8L5.6 18.4"></path></svg>
-        <svg class="icon-moon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M20 14.5C18.9 15 17.7 15.3 16.5 15.3C11.9 15.3 8.2 11.6 8.2 7C8.2 5.8 8.5 4.6 9 3.5C5.3 4.6 2.5 8.1 2.5 12.2C2.5 17.2 6.6 21.3 11.6 21.3C15.6 21.3 19 18.7 20 14.5Z"></path></svg>
-    </button>
-    <button class="profile-btn" id="profileBtn">
-        <span class="avatar">U</span>
-        <span class="profile-text">Staff Member</span>
-        <svg class="chev" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M6 9L12 15L18 9"></path></svg>
-    </button>
-</div>
-</header>
+        <!-- HEADER -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" aria-label="Toggle menu">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </button>
+                <nav class="breadcrumb">
+                    <span>Staff Operations</span>
+                    <span class="crumb-sep">›</span>
+                    <span class="crumb-active">Overview</span>
+                </nav>
+            </div>
 
-<!-- PAGE TITLE & OPERATIONAL GREETING -->
-<div class="page-title fade-in">
-    <div class="page-title-text">
-        <h1 id="welcomeGreeting">Daily Inventory Operations</h1>
-        <p>Your real-time workspace for logging stock deliveries, recording ingredient usage, and checking stock standing.</p>
+            <div class="header-actions">
+                <div class="header-date" id="headerDate">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"/><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <span></span>
+                </div>
+                <button id="profileBtn" class="profile-btn" title="Account profile">
+                    <span class="avatar">U</span>
+                    <span class="profile-text">Staff Member</span>
+                    <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- PAGE TITLE & LIVE HEADER -->
+        <div class="page-title fade-in">
+            <div class="page-title-text">
+                <h1>Dashboard</h1>
+                <p id="welcomeGreeting" style="font-size: 0.84rem; color: #64748b; margin-top: 4px; font-weight: 500;">Welcome back! Here is your daily operational summary.</p>
+            </div>
+            <div class="page-actions">
+                <div class="live-pill" id="livePill">
+                    <span class="live-dot"></span>
+                    Live Data
+                </div>
+            </div>
+        </div>
+
+        <!-- THREE PRIMARY SUMMARY CARDS + VERTICAL STOCK HEALTH DISTRIBUTION + TREND -->
+        <section class="admin-primary-cards-grid" id="userPrimaryCardsGrid">
+
+            <!-- CARD 1: RAW MATERIALS -->
+            <div class="admin-summary-card card-interactive fade-in" id="cardRawMaterials" tabindex="0" role="button" aria-haspopup="dialog" aria-label="View raw material status">
+                <div class="asc-header">
+                    <span class="asc-title">Raw Materials</span>
+                    <span class="asc-icon icon-emerald">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke-linejoin="round"/></svg>
+                    </span>
+                </div>
+
+                <div class="asc-body">
+                    <div class="asc-value" id="availableMaterialsCount">--</div>
+                    <div class="asc-subtitle" id="rawMaterialsSubtitle">Loading materials...</div>
+                    <div class="asc-desc">Materials currently available</div>
+                </div>
+
+                <div class="asc-action-hint">Click for full status table ›</div>
+            </div>
+
+            <!-- CARD 2: TOTAL CONSUMED -->
+            <div class="admin-summary-card card-interactive fade-in" id="cardTotalConsumed" tabindex="0" role="button" aria-haspopup="dialog" aria-label="View consumption analytics">
+                <div class="asc-header">
+                    <span class="asc-title">Total Consumed</span>
+                    <span class="asc-icon icon-red">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7L9 13L13 9L21 17"/><path d="M15 17H21V11"/></svg>
+                    </span>
+                </div>
+
+                <div class="asc-body">
+                    <!-- ROTATING MATERIAL TICKER (PAUSES ON HOVER) -->
+                    <div class="asc-ticker-container" id="consumedTicker">
+                        <div class="asc-ticker-text" id="consumedTickerText">Loading consumption...</div>
+                    </div>
+                    
+                    <!-- FULL UNIT-SAFE SUMMARY (DISPLAYED ON HOVER) -->
+                    <div class="asc-full-summary" id="consumedFullSummary" aria-hidden="true"></div>
+
+                    <!-- PREVIOUS MONTH COMPARISON -->
+                    <div class="asc-comparison" id="consumedComparison">
+                        <span class="comp-loading">Calculating comparison...</span>
+                    </div>
+                </div>
+
+                <div class="asc-action-hint">Click for consumption chart ›</div>
+            </div>
+
+            <!-- CARD 3: OUT OF STOCK -->
+            <div class="admin-summary-card card-interactive fade-in" id="cardOutOfStock" tabindex="0" role="button" aria-haspopup="dialog" aria-label="View out of stock materials">
+                <div class="asc-header">
+                    <span class="asc-title">Out of Stock</span>
+                    <span class="asc-icon icon-orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8V12"/><path d="M12 16H12.01"/></svg>
+                    </span>
+                </div>
+
+                <div class="asc-body">
+                    <div class="asc-value" id="outOfStockCount">--</div>
+                    
+                    <!-- ROTATING DEPLETED MATERIAL NAMES (PAUSES ON HOVER) -->
+                    <div class="asc-ticker-container" id="outOfStockTicker">
+                        <div class="asc-ticker-text" id="outOfStockTickerText">Loading status...</div>
+                    </div>
+
+                    <!-- FULL OUT-OF-STOCK BREAKDOWN (DISPLAYED ON HOVER) -->
+                    <div class="asc-full-summary" id="outOfStockFullSummary" aria-hidden="true"></div>
+                </div>
+
+                <div class="asc-action-hint">Click for restock alerts ›</div>
+            </div>
+
+            <!-- VERTICAL CARD: RECEIVE RAW MATERIALS -->
+            <div class="admin-receive-raw-card fade-in" id="cardReceiveRawMaterials" aria-label="Receive raw materials summary">
+                <div class="rrc-header">
+                    <div class="rrc-title-group">
+                        <h3 class="rrc-title">Receive Raw Materials</h3>
+                        <div class="rrc-badges">
+                            <span class="rrc-badge-materials" id="rrcMaterialCountBadge">-- materials</span>
+                            <span class="rrc-badge-sub" id="rrcUnitBadge">Top Inflow</span>
+                        </div>
+                    </div>
+                    <a href="inventory.html" class="rrc-icon-btn" title="Open Inventory Management">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </a>
+                </div>
+
+                <div class="rrc-chart-section">
+                    <div class="rrc-pie-wrap">
+                        <canvas id="receivePieChart"></canvas>
+                    </div>
+                    <div class="rrc-legend-list" id="receiveLegendList">
+                        <!-- Injected by JS: Material Name + Percentage -->
+                    </div>
+                </div>
+
+                <div class="rrc-divider"></div>
+
+                <div class="rrc-top-section">
+                    <span class="rrc-section-label">TOP 5 RECEIVED</span>
+                    <div class="rrc-top-list" id="topReceivedList">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+
+                <div class="rrc-footer">
+                    <button type="button" class="rrc-view-all-btn" id="btnViewAllReceived">
+                        <span>View All</span>
+                        <span class="rrc-arrow-circle">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RAW MATERIALS TREND CARD (BELOW THE 3 SUMMARY CARDS) -->
+            <div class="admin-trend-card fade-in" id="adminTrendCard">
+                <div class="trend-header">
+                    <div class="trend-title-area">
+                        <h2 class="trend-title">Raw Materials Trend</h2>
+                        <div class="trend-legend-pills">
+                            <span class="trend-legend-pill pill-consumed">
+                                <span class="legend-indicator solid-emerald"></span>
+                                Consumed
+                            </span>
+                            <span class="trend-legend-pill pill-forecast">
+                                <span class="legend-indicator dashed-blue"></span>
+                                Forecasted Raw Materials
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="trend-controls-area">
+                        <select id="trendMaterialSelect" class="trend-select" aria-label="Select Raw Material">
+                            <option value="all">All Materials</option>
+                        </select>
+                        <div class="trend-granularity-group" id="trendGranularityGroup">
+                            <button type="button" class="trend-gran-btn active" data-gran="general">1Y</button>
+                            <button type="button" class="trend-gran-btn" data-gran="weekly">6M</button>
+                            <button type="button" class="trend-gran-btn" data-gran="monthly">1M</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="trend-chart-box">
+                    <canvas id="rawMaterialsTrendChart"></canvas>
+                </div>
+
+                <div class="trend-footer">
+                    <span class="trend-footer-meta" id="trendFooterMeta">Live disbursement records &amp; AutoReg ML forecast</span>
+                    <a href="analytics.html" class="trend-nav-arrow-btn" title="View Consumption Analytics">
+                        <span>View Consumption Analytics</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- LOWER DASHBOARD SECTION: AI FORECASTED SUPPORT -->
+        <section class="admin-lower-section fade-in" id="userLowerSection">
+            <div class="admin-panel-card ai-forecast-support-card" id="cardAiForecastSupport">
+                <div class="apc-header">
+                    <div class="apc-title-group">
+                        <div class="apc-icon-badge icon-blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="apc-title">AI Forecasted Support</h3>
+                            <p class="apc-subtitle">Automated demand projection &amp; operational decision support</p>
+                        </div>
+                    </div>
+                    <a href="reports.html" class="apc-view-all-btn" id="btnViewAiForecast" title="Open Forecast Reports">
+                        <span>View Forecast Reports</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+
+                <div class="forecast-support-grid" id="forecastSupportContainer">
+                    <div class="apc-loading-state">Evaluating forecast decision support...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADDITION #1: OPERATIONAL ATTENTION -->
+        <section class="admin-lower-section fade-in" id="userOperationalAttentionSection" style="margin-top: 24px;">
+            <div class="admin-panel-card" id="cardOperationalAttention">
+                <div class="apc-header">
+                    <div class="apc-title-group">
+                        <div class="apc-icon-badge icon-orange">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="apc-title">Operational Attention</h3>
+                            <p class="apc-subtitle">Materials that may require staff attention based on current inventory and the latest available forecast.</p>
+                        </div>
+                    </div>
+                    <a href="inventory.html" class="apc-view-all-btn" id="btnViewOperationalAttention" title="View Inventory Overview">
+                        <span>View Inventory</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+
+                <div class="operational-attention-grid" id="operationalAttentionContainer">
+                    <div class="apc-loading-state">Evaluating operational inventory requirements...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADDITION #2: RECENT CONSUMPTION ACTIVITY -->
+        <section class="admin-lower-section fade-in" id="userRecentActivitySection" style="margin-top: 24px;">
+            <div class="admin-panel-card" id="cardRecentMaterialActivity">
+                <div class="apc-header">
+                    <div class="apc-title-group">
+                        <div class="apc-icon-badge icon-emerald">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6H20M4 12H20M4 18H14" stroke-linecap="round"/><path d="M17 15L20 18L17 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="apc-title">Recent Consumption Activity</h3>
+                            <p class="apc-subtitle">Latest recorded raw-material consumption and disbursement activity.</p>
+                        </div>
+                    </div>
+                    <a href="analytics.html" class="apc-view-all-btn" id="btnViewRecentActivity" title="Open Consumption Analytics">
+                        <span>View Consumption Analytics</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+
+                <div class="recent-activity-table-wrap">
+                    <table class="recent-activity-table" id="recentActivityTable">
+                        <thead>
+                            <tr>
+                                <th>DATE</th>
+                                <th>FINISHED PRODUCT / CONTEXT</th>
+                                <th>RAW MATERIAL</th>
+                                <th>ACTIVITY</th>
+                                <th>QUANTITY</th>
+                                <th>CURRENT STOCK</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentActivityTableBody">
+                            <tr>
+                                <td colspan="7" class="apc-table-empty">Loading recent consumption activity...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<!-- ============================================================
+     USER MODAL SYSTEM (BLURRED & DIMMED DASHBOARD OVERLAY)
+     ============================================================ -->
+<div id="adminModalBackdrop" class="admin-modal-backdrop" hidden></div>
+
+<!-- MODAL 1: RAW MATERIAL STATUS -->
+<div class="admin-modal-panel" id="modalRawMaterialStatus" role="dialog" aria-modal="true" aria-labelledby="modalRawMaterialsTitle" hidden>
+    <div class="amp-header">
+        <div class="amp-title-group">
+            <h2 id="modalRawMaterialsTitle">Raw Material Status</h2>
+            <p class="amp-subtitle">Live status and recent transaction activities across the catalog</p>
+        </div>
+        <button class="amp-close-btn" id="closeModalRawMaterials" aria-label="Close dialog">✕</button>
     </div>
-    <div class="page-title-actions">
-        <div class="live-pill" id="livePill">
-            <span class="live-dot"></span>
-            Operational Live
+
+    <div class="amp-toolbar">
+        <div class="amp-search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
+            <input type="search" id="rawMaterialSearch" placeholder="Search by material name or item code..." aria-label="Search materials">
+        </div>
+        <div class="amp-filter-box">
+            <label for="rawMaterialFilter" class="amp-filter-label">Activity Filter:</label>
+            <select id="rawMaterialFilter" class="amp-select">
+                <option value="all">All</option>
+                <option value="received">Received</option>
+                <option value="disbursement">Disbursement</option>
+            </select>
         </div>
     </div>
+
+    <div class="amp-table-scroll">
+        <table class="amp-table">
+            <thead>
+                <tr>
+                    <th>Raw Material Name</th>
+                    <th>Recent Quantity</th>
+                    <th>Activity</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="rawMaterialsTableBody">
+                <tr>
+                    <td colspan="4" class="amp-table-empty">Loading raw materials catalog...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="amp-footer">
+        <span class="amp-footer-count" id="rawMaterialsCountNote">Showing live catalog</span>
+        <a href="inventory.html" class="amp-nav-arrow-btn" title="View Inventory Overview">
+            <span>View Inventory</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+    </div>
 </div>
 
-<!-- DAILY OPERATIONAL SHORTCUTS -->
-<section class="quick-actions-strip fade-in" id="userQuickActions">
-    <a href="inventory.html" class="quick-act-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4V20M12 4L6 10M12 4L18 10"/><path d="M4 20H20"/></svg>
-        <span>Receive Stock Delivery</span>
-    </a>
-    <a href="inventory.html" class="quick-act-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20V4M12 20L6 14M12 20L18 14"/><path d="M4 4H20"/></svg>
-        <span>Record Material Usage</span>
-    </a>
-    <a href="inventory.html" class="quick-act-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"/><path d="M12 2V22M3 7L12 12M21 7L12 12"/></svg>
-        <span>Browse Inventory Catalog</span>
-    </a>
-    <a href="material-activity.html" class="quick-act-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6H20M4 12H20M4 18H14"/><path d="M17 15L20 18L17 21"/></svg>
-        <span>View Movement Activity</span>
-    </a>
-</section>
-
-<!-- OPERATIONAL OVERVIEW STRIP (5 LIVE CARDS) -->
-<section class="overview-cards" id="userOverviewStrip">
-    <div class="ov-card ov-card-static fade-in" style="--delay:0ms">
-        <span class="ov-icon icon-blue">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"/><path d="M12 2V22M3 7L12 12M21 7L12 12"/></svg>
-        </span>
-        <span class="ov-text">
-            <span class="ov-label">Total Materials</span>
-            <span class="ov-value" id="userTotalMat">0</span>
-            <span class="ov-desc">Catalog active items</span>
-        </span>
-    </div>
-
-    <div class="ov-card ov-card-static fade-in" style="--delay:30ms">
-        <span class="ov-icon icon-green">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13L9.5 17.5L19 7"/></svg>
-        </span>
-        <span class="ov-text">
-            <span class="ov-label">Ready for Use</span>
-            <span class="ov-value" id="userAvailableMat">0</span>
-            <span class="ov-desc">Healthy stock levels</span>
-        </span>
-    </div>
-
-    <div class="ov-card ov-card-static fade-in" style="--delay:60ms">
-        <span class="ov-icon icon-orange">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z"/></svg>
-        </span>
-        <span class="ov-text">
-            <span class="ov-label">Needs Attention</span>
-            <span class="ov-value" id="userLowMat">0</span>
-            <span class="ov-desc">Running low in stock</span>
-        </span>
-    </div>
-
-    <div class="ov-card ov-card-static fade-in" style="--delay:90ms">
-        <span class="ov-icon icon-red">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6L18 18M18 6L6 18"/></svg>
-        </span>
-        <span class="ov-text">
-            <span class="ov-label">Out of Stock</span>
-            <span class="ov-value" id="userOutMat">0</span>
-            <span class="ov-desc">Restock needed</span>
-        </span>
-    </div>
-
-    <div class="ov-card ov-card-static fade-in" style="--delay:120ms">
-        <span class="ov-icon icon-purple">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7V12L15 15"/></svg>
-        </span>
-        <span class="ov-text">
-            <span class="ov-label">Recent Events</span>
-            <span class="ov-value" id="userActivityCount">0</span>
-            <span class="ov-desc">Receipts &amp; usage logs</span>
-        </span>
-    </div>
-</section>
-
-<!-- OPERATIONAL DASHBOARD GRID -->
-<section class="command-grid" style="grid-template-columns: 1fr 340px; gap: 20px; align-items: start;">
-
-<!-- PRIMARY COLUMN (TASK-ORIENTED GUIDANCE) -->
-<div class="command-main-col" style="display: flex; flex-direction: column; gap: 20px;">
-
-    <!-- 1. WHAT NEEDS ATTENTION TODAY -->
-    <div class="panel glass fade-in" style="--delay:140ms">
-        <div class="panel-header">
-            <h3>
-                <span class="panel-icon icon-orange">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z"/></svg>
-                </span>
-                What Needs Attention Today
-            </h3>
-            <span class="panel-badge" id="userAttentionBadge">Stock Alerts</span>
+<!-- MODAL 2: CONSUMPTION ANALYTICS -->
+<div class="admin-modal-panel admin-modal-wide" id="modalConsumptionAnalytics" role="dialog" aria-modal="true" aria-labelledby="modalConsumptionTitle" hidden>
+    <div class="amp-header">
+        <div class="amp-title-group">
+            <h2 id="modalConsumptionTitle">Consumption Analytics</h2>
+            <p class="amp-subtitle">Live time-series trajectory and multi-material disbursement trends</p>
         </div>
-        <p class="panel-subtext">Immediate items that require restocking or careful kitchen measuring</p>
-        <div class="user-attention-list" id="userAttentionContainer" style="margin-top: 10px;"></div>
+        <button class="amp-close-btn" id="closeModalConsumption" aria-label="Close dialog">✕</button>
     </div>
 
-    <!-- 2. UPCOMING REQUIREMENTS & SIMPLE FORECAST -->
-    <div class="panel glass fade-in" style="--delay:180ms">
-        <div class="panel-header">
-            <h3>
-                <span class="panel-icon icon-blue">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>
-                </span>
-                Upcoming Material Requirements
-            </h3>
-            <span class="panel-badge" id="userForecastBadge">Next 7 Days</span>
+    <div class="amp-toolbar amp-toolbar-split">
+        <div class="amp-filter-box">
+            <label for="modalCategoryFilter" class="amp-filter-label">Category / Material:</label>
+            <select id="modalCategoryFilter" class="amp-select">
+                <option value="general">General (Top 5 Consumed)</option>
+            </select>
         </div>
-        <p class="panel-subtext">Expected ingredient demand based on recent production schedules</p>
-        <div class="user-forecast-summary" id="userForecastContainer" style="margin-top: 10px;"></div>
-    </div>
 
-    <!-- 3. RECENT ACTIVITY LOG -->
-    <div class="panel glass activities-panel fade-in" style="--delay:220ms">
-        <div class="panel-header">
-            <h3>
-                <span class="panel-icon icon-green">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7V12L15 15"/></svg>
-                </span>
-                Recent Material Activity
-            </h3>
-            <span class="panel-badge" id="activitiesCount">0 Events</span>
+        <div class="amp-gran-group" id="modalGranularityGroup">
+            <button type="button" class="amp-gran-btn active" data-gran="general">General</button>
+            <button type="button" class="amp-gran-btn" data-gran="week">Week</button>
+            <button type="button" class="amp-gran-btn" data-gran="month">Month</button>
         </div>
-        <p class="panel-subtext">Live stream of recorded stock receipts and kitchen disbursements</p>
-        <div class="activity-feed" id="activityFeed"></div>
     </div>
 
+    <div class="amp-chart-wrap">
+        <canvas id="modalConsumptionChart"></canvas>
+    </div>
+
+    <div id="modalChartLegend" class="amp-chart-legend"></div>
+
+    <div class="amp-footer">
+        <span class="amp-footer-count" id="modalChartInsights">Hover over series data points for exact quantities and insights</span>
+        <a href="analytics.html" class="amp-nav-arrow-btn" title="View Consumption Analytics">
+            <span>View Consumption Analytics</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+    </div>
 </div>
 
-<!-- RIGHT SIDE COLUMN -->
-<div class="command-side-col" style="display: flex; flex-direction: column; gap: 20px;">
-
-    <!-- CONSUMPTION & USAGE HIGHLIGHTS -->
-    <div class="panel glass fade-in" style="--delay:260ms">
-        <div class="panel-header">
-            <h3>
-                <span class="panel-icon icon-purple">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 17L9 11L13 15L21 7"/><path d="M15 7H21V13"/></svg>
-                </span>
-                Usage Highlights
-            </h3>
+<!-- MODAL 3: OUT OF STOCK MATERIALS -->
+<div class="admin-modal-panel" id="modalOutOfStock" role="dialog" aria-modal="true" aria-labelledby="modalOutOfStockTitle" hidden>
+    <div class="amp-header">
+        <div class="amp-title-group">
+            <h2 id="modalOutOfStockTitle">Out of Stock Materials</h2>
+            <p class="amp-subtitle">Depleted inventory items requiring replenishment</p>
         </div>
-        <p class="panel-subtext">Summary of recently used ingredients</p>
-        <div class="consumption-narrative" id="consumptionNarrative" style="margin-top: 8px;"></div>
-        <div class="consumption-history" id="consumptionHistory" style="margin-top: 12px;"></div>
+        <button class="amp-close-btn" id="closeModalOutOfStock" aria-label="Close dialog">✕</button>
     </div>
 
+    <div class="amp-tiles-container" id="outOfStockTilesList">
+        <div class="amp-empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8 12L11 15L16 9"/></svg>
+            <strong>All materials in stock</strong>
+            <span>No depleted raw materials detected in the live database.</span>
+        </div>
+    </div>
+
+    <div class="amp-footer">
+        <span class="amp-footer-count" id="outOfStockCountNote">Live stock evaluation</span>
+        <a href="inventory.html" class="amp-nav-arrow-btn" title="View Inventory Overview">
+            <span>View Inventory</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+    </div>
 </div>
 
-</section>
+<!-- MODAL 4: RECEIVED RECORDS -->
+<div class="admin-modal-panel admin-modal-wide" id="modalReceivedRecords" role="dialog" aria-modal="true" aria-labelledby="modalReceivedTitle" hidden>
+    <div class="amp-header">
+        <div class="amp-title-group">
+            <h2 id="modalReceivedTitle">Received Raw Materials Records</h2>
+            <p class="amp-subtitle">Complete chronological history of material deliveries from public.stock_receipts</p>
+        </div>
+        <button class="amp-close-btn" id="closeModalReceived" aria-label="Close dialog">✕</button>
+    </div>
 
-</main>
+    <div class="amp-toolbar">
+        <div class="amp-search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
+            <input type="search" id="receivedSearchInput" placeholder="Search received material, code, or supplier..." aria-label="Search receiving records">
+        </div>
+    </div>
+
+    <div class="amp-table-scroll">
+        <table class="amp-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Raw Material Name</th>
+                    <th>Quantity Received</th>
+                    <th>Supplier</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="receivedModalTableBody">
+                <tr>
+                    <td colspan="5" class="amp-table-empty">Loading receiving transactions...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="amp-footer">
+        <span class="amp-footer-count" id="receivedModalCountNote">Showing live receiving records</span>
+        <a href="material-activity.html" class="amp-nav-arrow-btn" title="Open Material Activity">
+            <span>View Material Activity</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+    </div>
 </div>
 
-<!-- TOAST STACK -->
+<!-- MODAL 5: AI FORECAST DETAIL MODAL -->
+<div class="admin-modal-panel" id="modalForecastDetail" role="dialog" aria-modal="true" aria-labelledby="modalForecastDetailTitle" hidden>
+    <div class="amp-header">
+        <div class="amp-title-group">
+            <div class="amp-tag-row">
+                <span class="forecast-badge-pill">Next Week Forecast</span>
+                <span class="forecast-status-tag" id="mfdStatusTag">Evaluating</span>
+            </div>
+            <h2 id="modalForecastDetailTitle">Material Forecast Details</h2>
+            <p class="amp-subtitle" id="mfdSubtitle">Live forecast comparison &amp; decision support insight</p>
+        </div>
+        <button class="amp-close-btn" id="closeModalForecastDetail" aria-label="Close dialog">✕</button>
+    </div>
+
+    <div class="forecast-detail-content" id="forecastDetailContent">
+        <!-- Injected via JS -->
+    </div>
+
+    <div class="amp-footer">
+        <span class="amp-footer-count" id="mfdModelMeta">AutoReg ML Model &bull; Supabase Live Integration</span>
+        <a href="reports.html" class="amp-nav-arrow-btn" title="Open Reports">
+            <span>Open Reports</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+    </div>
+</div>
+
+<!-- TOASTS -->
 <div class="toast-stack" id="toastStack"></div>
 
-<script src="../js/user-dashboard.js" type="module"></script>
+<script type="module" src="../js/user-dashboard.js"></script>
+
 <script>
 const headerDateEl = document.querySelector("#headerDate span");
 if(headerDateEl){
@@ -274,6 +530,7 @@ if(menuToggle && sidebarEl){
     });
 }
 </script>
+
 <script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 </html>

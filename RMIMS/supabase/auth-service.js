@@ -75,6 +75,23 @@ export async function loginUser(email, password, expectedRole) {
         throw new Error("Access denied. Please use the Admin Sign In portal.");
     }
 
+    // Store authoritative current user session in localStorage
+    const sessionUser = {
+        id: profile.id,
+        fullName: profile.full_name || profile.email,
+        name: profile.full_name || profile.email,
+        email: profile.email,
+        role: profile.role,
+        status: profile.status
+    };
+    try {
+        localStorage.setItem("currentUser", JSON.stringify(sessionUser));
+        localStorage.setItem("rmimsCurrentUser", JSON.stringify(sessionUser));
+        localStorage.setItem("userProfile", JSON.stringify(sessionUser));
+        sessionStorage.setItem("rmims_login_session_id", `login-${profile.id}-${Date.now()}`);
+        sessionStorage.removeItem("rmims_session_login_recorded");
+    } catch (e) { }
+
     // Role-based destination routing
     const isRMIMSPath = window.location.pathname.toLowerCase().includes("/rmims");
     if (profile.role === "admin") {
@@ -90,6 +107,10 @@ export async function loginUser(email, password, expectedRole) {
  * Signs the user out of Supabase Auth.
  */
 export async function signOutUser() {
+    try {
+        sessionStorage.removeItem("rmims_login_session_id");
+        sessionStorage.removeItem("rmims_session_login_recorded");
+    } catch (e) { }
     const { error } = await supabase.auth.signOut();
     if (error) console.warn("Supabase signOut notice:", error);
 }

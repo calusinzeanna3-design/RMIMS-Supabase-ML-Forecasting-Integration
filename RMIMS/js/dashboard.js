@@ -53,6 +53,8 @@ let receiptRecords = [];
 // Chart instances
 let consumptionChartInstance = null;
 let rawMaterialsTrendChartInstance = null;
+let receivePieChartInstance = null;
+let currentForecastSupportItems = [];
 
 // Flask API Base for live ML forecasting
 const FLASK_API_BASE = window.ENV_FLASK_API_BASE || (window.location.protocol.startsWith("http") ? "" : "http://127.0.0.1:5000");
@@ -122,6 +124,10 @@ function openAdminModal(modalId) {
     renderModalConsumptionChart();
   } else if (modalId === "modalOutOfStock") {
     renderOutOfStockTiles();
+  } else if (modalId === "modalReceivedRecords") {
+    renderReceivedModalTable();
+    const searchInput = $("receivedSearchInput");
+    if (searchInput) searchInput.focus();
   }
 }
 
@@ -163,6 +169,17 @@ if (closeConsBtn) closeConsBtn.addEventListener("click", closeAdminModals);
 
 const closeOosBtn = $("closeModalOutOfStock");
 if (closeOosBtn) closeOosBtn.addEventListener("click", closeAdminModals);
+
+const closeRecBtn = $("closeModalReceived");
+if (closeRecBtn) closeRecBtn.addEventListener("click", closeAdminModals);
+
+const closeForecastBtn = $("closeModalForecastDetail");
+if (closeForecastBtn) closeForecastBtn.addEventListener("click", closeAdminModals);
+
+const recSearchInput = $("receivedSearchInput");
+if (recSearchInput) {
+  recSearchInput.addEventListener("input", renderReceivedModalTable);
+}
 
 // ============================================================
 // LOAD DASHBOARD DATA (LIVE SUPABASE QUERIES)
@@ -273,6 +290,9 @@ async function loadDashboard() {
     renderCard2TotalConsumed();
     renderCard3OutOfStock();
 
+    // Render Receive Raw Materials Vertical Card (Matching Original Design)
+    renderReceiveRawMaterialsCard();
+
     // Populate category dropdown for Modal 2
     populateModalCategories();
 
@@ -280,6 +300,9 @@ async function loadDashboard() {
     populateTrendMaterialSelect();
     setupTrendControls();
     await renderRawMaterialsTrendChart();
+
+    // Render AI Forecasted Support Section
+    await renderAiForecastedSupportCard();
 
   } catch (err) {
     console.error("Dashboard initialization error:", err);
@@ -290,7 +313,7 @@ async function loadDashboard() {
 }
 
 // ============================================================
-// CARD 1: RAW MATERIALS (LIVE AVAILABLE COUNT & HOVER TOOLTIP)
+// CARD 1: RAW MATERIALS (LIVE AVAILABLE COUNT)
 // ============================================================
 
 function renderCard1RawMaterials() {
@@ -312,16 +335,6 @@ function renderCard1RawMaterials() {
       subEl.style.color = "var(--good, #10b981)";
     }
   }
-
-  // Tooltip content
-  const ahtTotal = $("ahtTotalCatalog");
-  if (ahtTotal) ahtTotal.textContent = totalCatalog;
-
-  const ahtAvail = $("ahtAvailable");
-  if (ahtAvail) ahtAvail.textContent = availableCount;
-
-  const ahtOos = $("ahtOutOfStock");
-  if (ahtOos) ahtOos.textContent = outOfStockCount;
 
   // Click card to open modal
   const cardEl = $("cardRawMaterials");
@@ -1317,6 +1330,555 @@ async function renderRawMaterialsTrendChart() {
     },
     plugins: [crosshairPlugin]
   });
+}
+
+// ============================================================
+// VERTICAL CARD: RECEIVE RAW MATERIALS (PIE PERCENTAGES & FLASHING ROTATION)
+// ============================================================
+
+const RECEIVE_PIE_PALETTE = [
+  "#00B5AD", // Teal / Cyan
+  "#FF7A00", // Vibrant Orange
+  "#6366F1", // Indigo / Purple
+  "#84CC16", // Lime Green
+  "#10B981", // Emerald
+  "#3B82F6", // Sky Blue
+  "#EC4899", // Pink
+  "#F59E0B"  // Amber
+];
+
+// Custom Chart.js inline plugin to draw percentage directly inside each pie slice
+const pieSlicePercentagePlugin = {
+  id: "pieSlicePercentagePlugin",
+  afterDatasetsDraw(chart) {
+    const { ctx, data } = chart;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta || !meta.data) return;
+
+    const dataset = data.datasets[0];
+    const total = dataset.data.reduce((a, b) => a + Number(b || 0), 0);
+    if (total <= 0) return;
+
+    meta.data.forEach((element, index) => {
+      const val = Number(dataset.data[index] || 0);
+      if (val <= 0) return;
+
+      const pctNum = (val / total) * 100;
+      if (pctNum < 2.5) return; // Skip negligible slices to avoid text clipping
+
+      const pctText = `${pctNum.toFixed(1)}%`;
+
+      const { startAngle, endAngle, outerRadius, innerRadius, x, y } = element;
+      const midAngle = startAngle + (endAngle - startAngle) / 2;
+      const radius = innerRadius + (outerRadius - innerRadius) * 0.60;
+
+      const posX = x + Math.cos(midAngle) * radius;
+      const posY = y + Math.sin(midAngle) * radius;
+
+      ctx.save();
+      ctx.font = "800 11px Inter, system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 1;
+      ctx.fillText(pctText, posX, posY);
+      ctx.restore();
+    });
+  }
+};
+
+let receiveGroupIndex = 0;
+let receiveGroupTimer = null;
+let receiveCardHovered = false;
+let receiveMaterialGroups = [];
+
+function renderReceiveRawMaterialsCard() {
+  const card = $("cardReceiveRawMaterials");
+  if (!card) return;
+
+  const matCountBadge = $("rrcMaterialCountBadge");
+  const legendList = $("receiveLegendList");
+  const topList = $("topReceivedList");
+
+  if (matCountBadge) {
+    matCountBadge.textContent = `${catalogMaterials.length} materials`;
+  }
+
+  // 1. Initialize with all catalog materials so all 30 materials cycle across groups
+  const matTotalsMap = new Map();
+  catalogMaterials.forEach(m => {
+    const key = m.materialName || m.name || "Material";
+    matTotalsMap.set(key, {
+      name: key,
+      totalQty: 0,
+      unit: m.unit || "kg",
+      currentStock: Number(m.currentStock || 0)
+    });
+  });
+
+  receiptRecords.forEach(r => {
+    const key = r.materialName || "Material";
+    const cur = matTotalsMap.get(key) || { name: key, totalQty: 0, unit: r.unit || "kg", currentStock: 0 };
+    cur.totalQty += Number(r.receivedQuantity || 0);
+    matTotalsMap.set(key, cur);
+  });
+
+  const sortedMaterials = Array.from(matTotalsMap.values()).map(m => {
+    return {
+      ...m,
+      displayQty: m.totalQty > 0 ? m.totalQty : Math.max(1, m.currentStock || 5)
+    };
+  }).sort((a, b) => {
+    if (b.totalQty !== a.totalQty) return b.totalQty - a.totalQty;
+    return b.displayQty - a.displayQty;
+  });
+
+  if (sortedMaterials.length === 0) {
+    if (legendList) legendList.innerHTML = `<div class="rrc-empty-hint" style="color:#7c92b3;font-size:0.76rem;grid-column:span 2;text-align:center;">No materials found</div>`;
+    if (topList) topList.innerHTML = `<div class="rrc-empty-hint" style="color:#7c92b3;font-size:0.8rem;padding:8px 0;">No received raw-materials yet.</div>`;
+    return;
+  }
+
+  // 2. Render Top 5 Received (Overall highest 5 items)
+  if (topList) {
+    const top5 = sortedMaterials.slice(0, 5);
+    topList.innerHTML = top5.map((s, i) => {
+      const rank = `#${i + 1}`;
+      const qtyStr = `${s.totalQty.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })} ${s.unit}`;
+      return `
+        <div class="rrc-top-row">
+          <div class="rrc-top-left">
+            <span class="rtr-rank">${rank}</span>
+            <span class="rtr-name">${esc(s.name)}</span>
+          </div>
+          <span class="rtr-qty">${esc(qtyStr)}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 3. Divide all materials into rotating groups of up to 6 materials
+  receiveMaterialGroups = [];
+  for (let i = 0; i < sortedMaterials.length; i += 6) {
+    receiveMaterialGroups.push(sortedMaterials.slice(i, i + 6));
+  }
+  if (receiveMaterialGroups.length === 0) return;
+
+  if (receiveGroupIndex >= receiveMaterialGroups.length) {
+    receiveGroupIndex = 0;
+  }
+
+  function renderActiveGroup(isInitial = false) {
+    const activeGroup = receiveMaterialGroups[receiveGroupIndex];
+    if (!activeGroup || activeGroup.length === 0) return;
+
+    const unitBadge = $("rrcUnitBadge");
+    const canvas = $("receivePieChart");
+    const legendListEl = $("receiveLegendList");
+
+    const startIdx = receiveGroupIndex * 6 + 1;
+    const endIdx = Math.min(sortedMaterials.length, (receiveGroupIndex + 1) * 6);
+    const topUnit = activeGroup.length > 0 ? activeGroup[0].unit : "kg";
+
+    if (unitBadge) {
+      unitBadge.textContent = `${startIdx}–${endIdx} (${topUnit})`;
+    }
+
+    // Trigger smooth circular rotation animation on canvas and fade on legend
+    if (!isInitial && canvas) {
+      canvas.classList.remove("rrc-spin-circle");
+      void canvas.offsetWidth; // force DOM reflow
+      canvas.classList.add("rrc-spin-circle");
+    }
+
+    if (legendListEl) {
+      legendListEl.classList.remove("rrc-legend-fade");
+      void legendListEl.offsetWidth;
+      legendListEl.classList.add("rrc-legend-fade");
+    }
+
+    const groupTotal = activeGroup.reduce((s, m) => s + m.displayQty, 0);
+    const pieLabels = activeGroup.map(s => s.name);
+    const pieData = activeGroup.map(s => s.displayQty);
+    const pieColors = activeGroup.map((_, i) => RECEIVE_PIE_PALETTE[i % RECEIVE_PIE_PALETTE.length]);
+
+    // Render 2-Column Percentage list below the pie
+    if (legendListEl) {
+      legendListEl.innerHTML = activeGroup.map((s, i) => {
+        const color = pieColors[i];
+        const pct = groupTotal > 0 ? ((s.displayQty / groupTotal) * 100).toFixed(2) : "0.00";
+        return `
+          <div class="rrc-legend-row" title="${esc(s.name)}: ${s.totalQty.toLocaleString()} ${esc(s.unit)} (${pct}%)">
+            <div class="rrc-legend-left">
+              <span class="rrc-legend-dot" style="background: ${color};"></span>
+              <span class="rrc-legend-name">${esc(s.name)}</span>
+            </div>
+            <span class="rrc-legend-pct">${pct}%</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Render / Smoothly update Large Clean Pie Chart with Chart.js
+    if (canvas && typeof Chart !== "undefined") {
+      if (receivePieChartInstance) {
+        receivePieChartInstance.data.labels = pieLabels;
+        receivePieChartInstance.data.datasets[0].data = pieData;
+        receivePieChartInstance.data.datasets[0].backgroundColor = pieColors;
+        receivePieChartInstance.update();
+      } else {
+        const ctx = canvas.getContext("2d");
+        receivePieChartInstance = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: pieLabels,
+            datasets: [{
+              data: pieData,
+              backgroundColor: pieColors,
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+              hoverOffset: 6
+            }]
+          },
+          plugins: [pieSlicePercentagePlugin],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              animateRotate: true,
+              duration: 750,
+              easing: "easeInOutQuart"
+            },
+            layout: {
+              padding: 4
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false }
+            }
+          }
+        });
+      }
+    }
+  }
+
+  // Render initial active group
+  renderActiveGroup(true);
+
+  // Setup 6-material automatic circular rotation (4.2s interval)
+  if (receiveGroupTimer) {
+    clearInterval(receiveGroupTimer);
+    receiveGroupTimer = null;
+  }
+
+  if (receiveMaterialGroups.length > 1) {
+    receiveGroupTimer = setInterval(() => {
+      if (!receiveCardHovered) {
+        receiveGroupIndex = (receiveGroupIndex + 1) % receiveMaterialGroups.length;
+        renderActiveGroup(false);
+      }
+    }, 4200);
+  }
+
+  card.onmouseenter = () => { receiveCardHovered = true; };
+  card.onmouseleave = () => { receiveCardHovered = false; };
+
+  // Wire View All button
+  const viewAllBtn = $("btnViewAllReceived");
+  if (viewAllBtn) {
+    viewAllBtn.onclick = () => openAdminModal("modalReceivedRecords");
+  }
+}
+
+function renderReceivedModalTable() {
+  const tbody = $("receivedModalTableBody");
+  const countNote = $("receivedModalCountNote");
+  const searchInput = $("receivedSearchInput");
+  if (!tbody) return;
+
+  const query = (searchInput?.value || "").toLowerCase().trim();
+
+  const sorted = receiptRecords.slice().sort((a, b) => {
+    const tA = new Date(a.createdAt || a.receiptDate).getTime();
+    const tB = new Date(b.createdAt || b.receiptDate).getTime();
+    return tB - tA;
+  });
+
+  const filtered = sorted.filter(r => {
+    if (!query) return true;
+    const mat = catalogMaterials.find(m => m.id === r.materialId);
+    const code = mat ? mat.itemCode.toLowerCase() : "";
+    return (
+      r.materialName.toLowerCase().includes(query) ||
+      code.includes(query) ||
+      (r.supplierName && r.supplierName.toLowerCase().includes(query))
+    );
+  });
+
+  if (countNote) {
+    countNote.textContent = `Showing ${filtered.length} of ${receiptRecords.length} receiving records`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="amp-table-empty">
+          <strong>No matching receiving records found.</strong>
+          <span>Try adjusting your search criteria.</span>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const dateStr = r.receiptDate
+      ? new Date(r.receiptDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "—";
+    const qtyStr = `+${r.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${r.unit}`;
+    const mat = catalogMaterials.find(m => m.id === r.materialId);
+    const itemCode = mat ? mat.itemCode : "RM-CAT";
+
+    return `
+      <tr>
+        <td>${esc(dateStr)}</td>
+        <td>
+          <div class="amp-mat-name">
+            <strong>${esc(r.materialName)}</strong>
+            <span class="amp-mat-code">${esc(itemCode)}</span>
+          </div>
+        </td>
+        <td><span class="amp-qty-val" style="color: #10B981;">${esc(qtyStr)}</span></td>
+        <td>${esc(r.supplierName || "—")}</td>
+        <td>
+          <span class="amp-activity-pill act-received">
+            <span class="status-dot"></span>
+            Received
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+// ============================================================
+// CARD 5: AI FORECASTED SUPPORT (DECISION SUPPORT)
+// ============================================================
+
+async function renderAiForecastedSupportCard() {
+  const container = $("forecastSupportContainer");
+  if (!container) return;
+
+  try {
+    const candidates = [];
+    const priorityNames = ["Sugar", "Cooking Oil", "Salt", "Flour", "Water"];
+    
+    // 1. Materials needing attention first
+    const attentionMats = catalogMaterials.filter(m => m.currentStock <= (m.minimumThreshold || 0));
+    attentionMats.forEach(m => {
+      if (!candidates.some(c => c.id === m.id)) candidates.push(m);
+    });
+
+    // 2. High consumption materials
+    catalogMaterials.forEach(m => {
+      if (priorityNames.some(p => m.materialName.toLowerCase().includes(p.toLowerCase())) && !candidates.some(c => c.id === m.id)) {
+        candidates.push(m);
+      }
+    });
+
+    if (candidates.length === 0 && catalogMaterials.length > 0) {
+      candidates.push(catalogMaterials[0]);
+    }
+
+    const forecastResults = [];
+    const evalList = candidates.slice(0, 4);
+
+    for (const mat of evalList) {
+      const res = await fetchForecastDataForMaterial(mat.materialName);
+      if (res && res.status === "success") {
+        forecastResults.push({
+          material: mat,
+          forecastData: res
+        });
+      }
+    }
+
+    if (forecastResults.length === 0) {
+      container.innerHTML = `<div class="apc-empty-state">Forecast currently unavailable.</div>`;
+      return;
+    }
+
+    currentForecastSupportItems = forecastResults;
+
+    forecastResults.sort((a, b) => {
+      const aShort = a.forecastData.decision_support?.decision_status === "Potential Shortage" ? 1 : 0;
+      const bShort = b.forecastData.decision_support?.decision_status === "Potential Shortage" ? 1 : 0;
+      return bShort - aShort;
+    });
+
+    const topForecasts = forecastResults.slice(0, 2);
+
+    container.innerHTML = topForecasts.map((item, idx) => {
+      const mat = item.material;
+      const fc = item.forecastData;
+      const f7 = fc.forecast7Day || {};
+      const ds = fc.decision_support || {};
+      const curStock = fc.current_inventory?.current_stock !== null ? Number(fc.current_inventory.current_stock) : mat.currentStock;
+      const fQty = f7.quantity ? Number(f7.quantity) : 0;
+      const unit = fc.unit || mat.unit || "kg";
+      
+      let statusTagCls = "tag-good";
+      let statusText = ds.decision_status || "Sufficient";
+      if (statusText === "Potential Shortage") {
+        statusTagCls = "tag-shortage";
+      } else if (ds.reorder_recommended || curStock <= (mat.minimumThreshold || 0)) {
+        statusTagCls = "tag-attention";
+        statusText = "Low Stock Attention";
+      }
+
+      const dateRangeStr = f7.startDate && f7.endDate
+        ? `${new Date(f7.startDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(f7.endDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+        : "Next 7 Days";
+
+      let plainInsight = ds.system_insight;
+      if (!plainInsight) {
+        if (curStock < fQty) {
+          plainInsight = `${mat.materialName} is expected to require approximately ${fQty.toFixed(1)} ${unit} next week. Current stock (${curStock.toFixed(1)} ${unit}) may be below the expected requirement.`;
+        } else {
+          plainInsight = `${mat.materialName} is expected to require approximately ${fQty.toFixed(1)} ${unit} next week. Current stock is sufficient to cover operations.`;
+        }
+      }
+
+      return `
+        <div class="forecast-support-card" data-forecast-idx="${idx}" tabindex="0" role="button" aria-label="View forecast details for ${esc(mat.materialName)}">
+          <div class="fsc-top">
+            <div class="fsc-badges">
+              <span class="forecast-badge-pill">Next Week Forecast</span>
+              <span class="forecast-status-tag ${statusTagCls}">${esc(statusText)}</span>
+            </div>
+            <div class="fsc-arrow-btn" title="Open forecast details">↗</div>
+          </div>
+          <div class="fsc-main">
+            <span class="fsc-mat-name">${esc(mat.materialName)}</span>
+            <span class="fsc-qty-box">${fQty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+          </div>
+          <div class="fsc-meta-row">
+            <span>Period: ${esc(dateRangeStr)}</span>
+            <span>Current Stock: <strong>${curStock.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${esc(unit)}</strong></span>
+          </div>
+          <div class="fsc-insight-box">
+            ${esc(plainInsight)}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll(".forecast-support-card").forEach(card => {
+      const clickHandler = () => {
+        const idx = Number(card.getAttribute("data-forecast-idx"));
+        const selected = topForecasts[idx];
+        if (selected) openForecastDetailModal(selected);
+      };
+      card.onclick = clickHandler;
+      card.onkeydown = e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          clickHandler();
+        }
+      };
+    });
+
+  } catch (err) {
+    console.warn("Forecast support render notice:", err);
+    container.innerHTML = `<div class="apc-empty-state">Forecast currently unavailable.</div>`;
+  }
+}
+
+function openForecastDetailModal(item) {
+  const modal = $("modalForecastDetail");
+  const content = $("forecastDetailContent");
+  const titleEl = $("modalForecastDetailTitle");
+  const statusTag = $("mfdStatusTag");
+  const subtitle = $("mfdSubtitle");
+  if (!modal || !content) return;
+
+  const mat = item.material;
+  const fc = item.forecastData;
+  const f7 = fc.forecast7Day || {};
+  const f1m = fc.forecast1Month || {};
+  const ds = fc.decision_support || {};
+  const curStock = fc.current_inventory?.current_stock !== null ? Number(fc.current_inventory.current_stock) : mat.currentStock;
+  const minStock = mat.minimumThreshold !== null ? Number(mat.minimumThreshold) : (fc.current_inventory?.minimum_threshold || "—");
+  const unit = fc.unit || mat.unit || "kg";
+  const f7Qty = f7.quantity ? Number(f7.quantity) : 0;
+  const f1mQty = f1m.quantity ? Number(f1m.quantity) : 0;
+  const diff = ds.difference !== null && ds.difference !== undefined ? Number(ds.difference) : (curStock - f7Qty);
+
+  if (titleEl) titleEl.textContent = `${mat.materialName} (${mat.itemCode})`;
+  if (subtitle) {
+    const dateRangeStr = f7.startDate && f7.endDate
+      ? `${new Date(f7.startDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(f7.endDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+      : "Upcoming 7 Days";
+    subtitle.textContent = `Forecast Period: ${dateRangeStr}`;
+  }
+
+  let statusCls = "tag-good";
+  let statusText = ds.decision_status || "Sufficient";
+  if (statusText === "Potential Shortage") {
+    statusCls = "tag-shortage";
+  } else if (ds.reorder_recommended) {
+    statusCls = "tag-attention";
+    statusText = "Reorder Recommended";
+  }
+
+  if (statusTag) {
+    statusTag.className = `forecast-status-tag ${statusCls}`;
+    statusTag.textContent = statusText;
+  }
+
+  const matUsageTotal = usageRecords
+    .filter(u => u.materialId === mat.id || u.materialName === mat.materialName)
+    .reduce((sum, u) => sum + u.consumedQuantity, 0);
+
+  content.innerHTML = `
+    <div class="mfd-stats-grid">
+      <div class="mfd-stat-tile">
+        <span class="mfd-stat-lbl">Current Stock</span>
+        <span class="mfd-stat-val">${curStock.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+      </div>
+      <div class="mfd-stat-tile">
+        <span class="mfd-stat-lbl">7-Day Forecast</span>
+        <span class="mfd-stat-val val-forecast">${f7Qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+      </div>
+      <div class="mfd-stat-tile">
+        <span class="mfd-stat-lbl">Difference / Standing</span>
+        <span class="mfd-stat-val ${diff < 0 ? "val-shortage" : "val-good"}">${diff > 0 ? "+" : ""}${diff.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+      </div>
+      <div class="mfd-stat-tile">
+        <span class="mfd-stat-lbl">Minimum Threshold</span>
+        <span class="mfd-stat-val">${typeof minStock === "number" ? `${minStock.toLocaleString("en-US")} ${esc(unit)}` : esc(minStock)}</span>
+      </div>
+      <div class="mfd-stat-tile">
+        <span class="mfd-stat-lbl">1-Month Projected</span>
+        <span class="mfd-stat-val val-forecast">${f1mQty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+      </div>
+      <div class="mfd-stat-tile">
+        <span class="mfd-stat-lbl">Historical Consumed</span>
+        <span class="mfd-stat-val">${matUsageTotal.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+      </div>
+    </div>
+
+    <div class="mfd-section-title">Operational Decision Support</div>
+    <div class="mfd-insight-card">
+      <p><strong>System Evaluation:</strong> ${esc(ds.system_insight || "Stock and usage parameters evaluated against AutoReg ML model.")}</p>
+      ${ds.reorder_recommended ? `<p style="margin-top: 8px; color: #EF4444; font-weight: 600;">⚠ Reorder Recommended: Current inventory is at or below defined safety parameters.</p>` : ""}
+    </div>
+  `;
+
+  openAdminModal("modalForecastDetail");
 }
 
 // ============================================================
