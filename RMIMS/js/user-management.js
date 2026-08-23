@@ -448,7 +448,7 @@ async function sendPasswordReset(u) {
         confirmLabel: "Send Reset Email",
         onConfirm: async () => {
             try {
-                const { error } = await auth.auth.resetPasswordForEmail(target.email);
+                const { error } = await auth.resetPasswordForEmail(target.email);
                 if (error) throw error;
                 showToast("Password reset email sent successfully.");
                 closeModal("confirmModal");

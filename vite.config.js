@@ -1,8 +1,42 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import fs from 'fs';
+
+function copyDirSync(src, dest) {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = resolve(src, entry.name);
+    const destPath = resolve(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+const copyRmimsAssetsPlugin = () => ({
+  name: 'copy-rmims-assets',
+  closeBundle() {
+    const src = resolve(__dirname, 'RMIMS/assets');
+    const dest1 = resolve(__dirname, 'dist/RMIMS/assets');
+    const dest2 = resolve(__dirname, 'dist/assets');
+    copyDirSync(src, dest1);
+    copyDirSync(src, dest2);
+
+    const jsSrc = resolve(__dirname, 'RMIMS/js');
+    const jsDest = resolve(__dirname, 'dist/RMIMS/js');
+    copyDirSync(jsSrc, jsDest);
+
+    console.log('[Vite Plugin] Successfully copied RMIMS assets and js files to dist output.');
+  }
+});
 
 export default defineConfig({
+  base: './',
   root: '.',
+  plugins: [copyRmimsAssetsPlugin()],
   server: {
     port: 5500,
     strictPort: true,
@@ -60,3 +94,4 @@ export default defineConfig({
     }
   }
 });
+

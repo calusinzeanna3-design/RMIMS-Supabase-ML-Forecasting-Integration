@@ -5,7 +5,6 @@ console.log('--- TESTING NPX HOSTING CLIS ---');
 const clis = [
   'npx -y vercel --version',
   'npx -y netlify-cli --version',
-  'npx -y firebase-tools --version',
   'npx -y supabase --version'
 ];
 

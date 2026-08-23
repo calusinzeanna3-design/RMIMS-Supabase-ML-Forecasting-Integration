@@ -396,6 +396,10 @@ function renderOverviewTable() {
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                 Edit / Update
                             </button>
+                            <button type="button" class="inv-action-item action-delete-btn" data-id="${esc(item.id)}" data-name="${esc(item.name)}" style="color: #dc2626;">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                Delete Material
+                            </button>
                         </div>
                     </div>
                 </td>
@@ -477,6 +481,33 @@ function attachDropdownListeners() {
             const id = btn.dataset.id;
             document.querySelectorAll(".inv-action-menu.open").forEach(m => m.classList.remove("open"));
             openEditModal(id);
+        };
+    });
+
+    document.querySelectorAll(".action-delete-btn").forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            const name = btn.dataset.name || "this raw material";
+            document.querySelectorAll(".inv-action-menu.open").forEach(m => m.classList.remove("open"));
+
+            if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
+
+            try {
+                toast(`Deleting "${name}"...`);
+                const { error } = await supabase
+                    .from("raw_materials")
+                    .delete()
+                    .eq("id", id);
+
+                if (error) throw error;
+
+                toast(`Successfully deleted "${name}".`);
+                await loadData();
+            } catch (err) {
+                console.error("Error deleting raw material:", err);
+                toast("Failed to delete raw material: " + (err.message || err), "error");
+            }
         };
     });
 }
@@ -983,31 +1014,67 @@ function closeImportModal() {
     $("invImportModalOverlay").classList.remove("open");
 }
 
+function parseExcelDate(val) {
+    if (!val && val !== 0) return null;
+    if (val instanceof Date) {
+        if (!isNaN(val.getTime())) {
+            return val.toISOString().slice(0, 10);
+        }
+    }
+    if (typeof val === "number" && val > 0) {
+        // Excel serial date number conversion (1900 date system)
+        const dt = new Date(Math.round((val - 25569) * 86400 * 1000));
+        if (!isNaN(dt.getTime())) {
+            return dt.toISOString().slice(0, 10);
+        }
+    }
+    const str = String(val).trim();
+    if (!str) return null;
+
+    // YYYY-MM-DD or YYYY/MM/DD
+    const matchIso = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (matchIso) {
+        const y = matchIso[1];
+        const m = matchIso[2].padStart(2, "0");
+        const d = matchIso[3].padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    }
+
+    // MM/DD/YYYY or DD/MM/YYYY
+    const matchUS = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (matchUS) {
+        const p1 = parseInt(matchUS[1], 10);
+        const p2 = parseInt(matchUS[2], 10);
+        const y = matchUS[3];
+        let m, d;
+        if (p1 > 12) {
+            d = String(p1).padStart(2, "0");
+            m = String(p2).padStart(2, "0");
+        } else {
+            m = String(p1).padStart(2, "0");
+            d = String(p2).padStart(2, "0");
+        }
+        return `${y}-${m}-${d}`;
+    }
+
+    const dt = new Date(str);
+    if (!isNaN(dt.getTime())) {
+        return dt.toISOString().slice(0, 10);
+    }
+    return null;
+}
+
 async function handleImportFileSelect(file) {
     if (!file) return;
 
     try {
-        // Level 1: Deterministic file fingerprint deduplication
-        const fingerprint = await computeFileFingerprint(file);
-        if (state.importedFingerprints.has(fingerprint)) {
-            toast("File already imported. No duplicate records were added.", "error");
-            $("invImportPreviewArea").hidden = false;
-            $("invImportPreviewArea").innerHTML = `
-                <div style="padding: 16px; background: rgba(239, 68, 68, 0.08); border: 1px solid var(--red-border); border-radius: var(--radius-sm); color: #991b1b; font-size: 0.84rem;">
-                    <strong>Duplicate File Detected:</strong> This exact file has already been imported previously.
-                </div>
-            `;
-            $("invImportConfirmBtn").disabled = true;
-            return;
-        }
-
         const data = await file.arrayBuffer();
         if (typeof XLSX === "undefined") {
             toast("Excel parser library is not loaded.", "error");
             return;
         }
 
-        const workbook = XLSX.read(data, { type: "array" });
+        const workbook = XLSX.read(data, { type: "array", cellDates: true, dateNF: "yyyy-mm-dd" });
         const firstSheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[firstSheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
@@ -1017,134 +1084,338 @@ async function handleImportFileSelect(file) {
             return;
         }
 
-        // Process and categorize rows
-        let validNew = 0;
-        let skippedExisting = 0;
-        let invalid = 0;
+        const firstRowKeys = Object.keys(rows[0] || {});
         parsedImportRows = [];
 
-        rows.forEach((r, idx) => {
-            // Find fields irrespective of case or slight variation
+        rows.forEach((r) => {
             const keys = Object.keys(r);
             const getVal = (pattern) => {
                 const k = keys.find(key => pattern.test(key));
                 return k ? String(r[k]).trim() : "";
             };
+            const getRawVal = (pattern) => {
+                const k = keys.find(key => pattern.test(key));
+                return k ? r[k] : null;
+            };
 
-            const name = getVal(/material|name|item/i);
-            const code = getVal(/code|id/i);
-            const unit = getVal(/unit/i) || "kg";
+            const codeVal = getVal(/material_id|material id|item_code|item code|rm_id|rm id|material_code|material code|\bcode\b|\bid\b/i);
+            const nameVal = getVal(/material_name|material name|item_name|item name|\bname\b/i) || (getVal(/material|item/i) !== codeVal ? getVal(/material|item/i) : "");
+
+            let rawName = nameVal;
+            let rawCode = codeVal;
+
+            if (!rawName && rawCode) rawName = rawCode;
+            if (!rawCode && rawName && /^RM\d+$/i.test(rawName.trim())) rawCode = rawName.trim();
+            if (!rawName && !rawCode) return;
+
+            let normCode = rawCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+            if (/^RM\d{1,2}$/.test(normCode)) {
+                const numPart = normCode.replace("RM", "");
+                normCode = `RM${numPart.padStart(3, "0")}`;
+            }
+            const normName = rawName.trim().toLowerCase();
+
+            const existingMat = state.materials.find(m => {
+                const mCode = String(m.itemCode || "").trim().toUpperCase();
+                const mId = String(m.id || "").trim().toLowerCase();
+                const mName = String(m.name || "").trim().toLowerCase();
+
+                if (normCode && mCode === normCode) return true;
+                if (normCode && mId === normCode.toLowerCase()) return true;
+                if (normName && mName === normName) return true;
+                if (normName && mCode === normName.toUpperCase()) return true;
+                return false;
+            });
+
+            const resolvedName = existingMat ? existingMat.name : (rawName || rawCode);
+            const resolvedCode = existingMat ? (existingMat.itemCode || normCode || rawCode) : (normCode || rawCode);
+
+            const unit = getVal(/unit/i) || (existingMat ? existingMat.unit : "kg");
             const minStockStr = getVal(/min|threshold/i);
-            const curStockStr = getVal(/stock|current|quantity|qty/i);
-            const note = getVal(/note|desc|remark/i);
+            
+            const explicitReceiptStr = getVal(/receipt|received|incoming|in_qty|received_qty/i);
+            const explicitDsbStr = getVal(/disburs|dsb|consumed|consumption|usage|out_qty|consumed_qty|used_qty|amount_used/i);
+            const generalQtyStr = getVal(/stock|current|quantity|qty|amount/i);
+            const typeStr = getVal(/type|activity|movement|transaction|action/i).toLowerCase();
+            const note = getVal(/note|desc|remark|product/i);
 
-            if (!name) {
-                invalid++;
-                return;
+            const rawDateCell = getRawVal(/date|time|timestamp|usage_date|receipt_date|usage date|receipt date/i);
+            const parsedDate = parseExcelDate(rawDateCell);
+            const recordDate = parsedDate || new Date().toISOString().slice(0, 10);
+
+            let receiptQty = 0;
+            let dsbQty = 0;
+
+            if (explicitReceiptStr !== "") {
+                receiptQty = Math.max(0, num(explicitReceiptStr));
+            }
+            if (explicitDsbStr !== "") {
+                dsbQty = Math.max(0, num(explicitDsbStr));
             }
 
-            const normName = name.toLowerCase();
-            const existingMat = state.materials.find(m => m.name.trim().toLowerCase() === normName || (code && String(m.itemCode || "").toUpperCase() === code.toUpperCase()));
-
-            if (existingMat) {
-                skippedExisting++;
-            } else {
-                validNew++;
-                parsedImportRows.push({
-                    name,
-                    code,
-                    unit: unit.toLowerCase(),
-                    minStock: minStockStr !== "" ? Math.max(0, num(minStockStr)) : null,
-                    currentStock: curStockStr !== "" ? Math.max(0, num(curStockStr)) : 0,
-                    note
-                });
+            if (explicitReceiptStr === "" && explicitDsbStr === "") {
+                const qtyVal = generalQtyStr !== "" ? Math.max(0, num(generalQtyStr)) : 0;
+                if (typeStr.includes("receipt") || typeStr.includes("receive") || typeStr.includes("in") || typeStr.includes("incoming")) {
+                    receiptQty = qtyVal;
+                } else {
+                    dsbQty = qtyVal;
+                }
             }
+
+            parsedImportRows.push({
+                name: resolvedName,
+                code: resolvedCode,
+                unit: unit.toLowerCase() || (existingMat ? (existingMat.unit || "kg").toLowerCase() : "kg"),
+                minStock: minStockStr !== "" ? Math.max(0, num(minStockStr)) : (existingMat ? existingMat.minStock : null),
+                receiptQty,
+                dsbQty,
+                recordDate,
+                note: note || (existingMat ? existingMat.note : ""),
+                isExisting: !!existingMat,
+                existingMat: existingMat || null
+            });
         });
 
+        // Simple, clean preview area
         $("invImportPreviewArea").hidden = false;
         $("invImportPreviewArea").innerHTML = `
-            <div class="import-summary-bar">
-                <span>Total Read: <strong>${rows.length}</strong></span>
-                <span style="color: var(--blue);">Valid New: <strong>${validNew}</strong></span>
-                <span style="color: var(--amber);">Skipped Existing: <strong>${skippedExisting}</strong></span>
-                <span style="color: var(--red);">Invalid: <strong>${invalid}</strong></span>
+            <div style="padding: 14px 16px; background: var(--bg-app-2, #F8FAFC); border: 1px solid var(--border-subtle, #E2E8F0); border-radius: var(--radius-md, 8px); margin-bottom: 12px;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: var(--rm-ink, #0F172A); margin-bottom: 4px;">
+                    Ready to import <strong>${parsedImportRows.length}</strong> records.
+                </div>
+                <div style="font-size: 0.8rem; color: var(--rm-ink-dim, #64748B);">
+                    Recognized fields: ${firstRowKeys.join(", ")}
+                </div>
             </div>
-            <p style="font-size: 0.78rem; color: var(--rm-ink-dim); margin-bottom: 8px;">
-                Ready to import <strong>${validNew}</strong> new raw material records.
-            </p>
         `;
-
-        $("invImportConfirmBtn").disabled = validNew === 0;
-        $("invImportConfirmBtn").dataset.fingerprint = fingerprint;
+        $("invImportConfirmBtn").disabled = parsedImportRows.length === 0;
     } catch (err) {
         console.error("Import parse error:", err);
         toast("Failed to parse the file: " + err.message, "error");
     }
 }
 
+let isImportCancelled = false;
+
 async function handleImportConfirm() {
     if (!parsedImportRows || parsedImportRows.length === 0) return;
 
+    isImportCancelled = false;
     const confirmBtn = $("invImportConfirmBtn");
-    const fingerprint = confirmBtn.dataset.fingerprint;
+    const cancelBtn = $("invImportCancelBtn");
+    const closeBtn = $("invImportModalClose");
+
     confirmBtn.disabled = true;
 
+    // Enable Cancel & Close buttons so user can abort an urgent import at any time!
+    if (cancelBtn) {
+        cancelBtn.disabled = false;
+        cancelBtn.onclick = () => {
+            isImportCancelled = true;
+            toast("Import cancelled by user.", "info");
+            closeImportModal();
+        };
+    }
+    if (closeBtn) {
+        closeBtn.style.pointerEvents = "auto";
+        closeBtn.onclick = () => {
+            isImportCancelled = true;
+            toast("Import cancelled by user.", "info");
+            closeImportModal();
+        };
+    }
+
+    const originalBtnHTML = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = `
+        <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px; animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2 a 10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+        Importing...
+    `;
+
+    const totalRows = parsedImportRows.length;
     let addedCount = 0;
+    let updatedCount = 0;
+    let totalReceiptsLogged = 0;
+    let totalDsbsLogged = 0;
+
+    // Render animated Circular Progress Ring & Percentage Bar UI
+    const previewArea = $("invImportPreviewArea");
+    if (previewArea) {
+        previewArea.hidden = false;
+        previewArea.innerHTML = `
+            <div class="import-progress-box" style="padding: 18px 16px; background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: var(--radius-md, 8px); margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px;">
+                    <svg width="48" height="48" viewBox="0 0 44 44" style="transform: rotate(-90deg);">
+                        <circle cx="22" cy="22" r="18" stroke="#E2E8F0" stroke-width="4" fill="none" />
+                        <circle id="importCircleProgress" cx="22" cy="22" r="18" stroke="#2563EB" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition: stroke-dashoffset 0.15s ease;" />
+                    </svg>
+                    <div style="text-align: left;">
+                        <div id="importPercentText" style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2;">0%</div>
+                        <div id="importStatusText" style="font-size: 0.82rem; font-weight: 600; color: #64748B;">Importing data... (0 / ${totalRows} records)</div>
+                    </div>
+                </div>
+                <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden;">
+                    <div id="importProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #2563EB, #10B981); transition: width 0.15s ease; border-radius: 4px;"></div>
+                </div>
+            </div>
+        `;
+    }
+
     try {
-        for (const item of parsedImportRows) {
-            // Generate next available RM code if not supplied
-            let code = item.code;
-            if (!code || state.materials.some(m => String(m.itemCode || "").toUpperCase() === code.toUpperCase())) {
-                const existingNums = state.materials
-                    .map(m => {
-                        const match = String(m.itemCode || "").match(/^RM0*(\d+)$/i);
-                        return match ? parseInt(match[1], 10) : 0;
-                    })
-                    .filter(n => n > 0);
-                const maxNum = existingNums.length ? Math.max(...existingNums) : 30;
-                let nextNum = maxNum + 1 + addedCount;
-                code = `RM${String(nextNum).padStart(3, "0")}`;
+        const CHUNK_SIZE = 15;
+        for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+            if (isImportCancelled) {
+                console.log("Import process aborted by user cancellation.");
+                break;
             }
 
-            const { data: newMat, error: insertErr } = await supabase
-                .from("raw_materials")
-                .insert({
-                    item_code: code,
-                    name: item.name,
-                    unit_of_measure: item.unit,
-                    minimum_threshold: item.minStock,
-                    description: item.note || null,
-                    current_stock: 0
-                })
-                .select()
-                .single();
+            const chunk = parsedImportRows.slice(i, i + CHUNK_SIZE);
 
-            if (!insertErr && newMat) {
-                addedCount++;
-                if (item.currentStock > 0) {
-                    await supabase.rpc("record_stock_receipt_v2", {
-                        p_material_id: newMat.id,
-                        p_receipt_date: new Date().toISOString().slice(0, 10),
-                        p_quantity: item.currentStock,
-                        p_unit: item.unit,
-                        p_supplier_name: "Imported Balance"
-                    });
+            await Promise.all(chunk.map(async (item, chunkIdx) => {
+                if (isImportCancelled) return;
+
+                let targetMatId = null;
+                let targetUnit = item.unit || "kg";
+
+                if (item.isExisting && item.existingMat) {
+                    targetMatId = item.existingMat.id;
+                    targetUnit = item.unit || item.existingMat.unit || "kg";
+
+                    // Update master catalog attributes
+                    const updatePayload = { updated_at: new Date().toISOString() };
+                    if (item.minStock !== null && item.minStock !== undefined) updatePayload.minimum_threshold = item.minStock;
+                    if (item.unit) updatePayload.unit_of_measure = item.unit;
+                    if (item.note) updatePayload.description = item.note;
+
+                    const { error: updateErr } = await supabase
+                        .from("raw_materials")
+                        .update(updatePayload)
+                        .eq("id", targetMatId);
+
+                    if (!updateErr) updatedCount++;
+                } else {
+                    // Generate next RM code
+                    let code = item.code;
+                    if (!code || state.materials.some(m => String(m.itemCode || "").toUpperCase() === code.toUpperCase())) {
+                        const existingNums = state.materials
+                            .map(m => {
+                                const match = String(m.itemCode || "").match(/^RM0*(\d+)$/i);
+                                return match ? parseInt(match[1], 10) : 0;
+                            })
+                            .filter(n => n > 0);
+                        const maxNum = existingNums.length ? Math.max(...existingNums) : 30;
+                        let nextNum = maxNum + 1 + addedCount + (i + chunkIdx);
+                        code = `RM${String(nextNum).padStart(3, "0")}`;
+                    }
+
+                    const { data: newMat, error: insertErr } = await supabase
+                        .from("raw_materials")
+                        .insert({
+                            item_code: code,
+                            name: item.name,
+                            unit_of_measure: item.unit,
+                            minimum_threshold: item.minStock,
+                            description: item.note || null,
+                            current_stock: 0
+                        })
+                        .select()
+                        .single();
+
+                    if (!insertErr && newMat) {
+                        addedCount++;
+                        targetMatId = newMat.id;
+                        targetUnit = newMat.unit_of_measure || item.unit || "kg";
+                    }
                 }
-            }
+
+                if (targetMatId && !isImportCancelled) {
+                    const recordDate = item.recordDate || new Date().toISOString().slice(0, 10);
+
+                    // Record Stock Receipts with original Excel date
+                    if (item.receiptQty > 0) {
+                        const { error: recErr } = await supabase.rpc("record_stock_receipt_v2", {
+                            p_material_id: targetMatId,
+                            p_receipt_date: recordDate,
+                            p_quantity: item.receiptQty,
+                            p_unit: targetUnit,
+                            p_supplier_name: "Imported Stock Receipt"
+                        });
+                        if (!recErr) totalReceiptsLogged++;
+                    }
+
+                    // Record Disbursements / DSB with original Excel date
+                    if (item.dsbQty > 0) {
+                        const { error: dsbErr } = await supabase.rpc("record_material_disbursement_v2", {
+                            p_material_id: targetMatId,
+                            p_usage_date: recordDate,
+                            p_quantity: item.dsbQty,
+                            p_unit: targetUnit,
+                            p_activity_type: "Imported Disbursement",
+                            p_finished_product_name: item.note || "Imported DSB Usage"
+                        });
+                        if (!dsbErr) totalDsbsLogged++;
+                    }
+                }
+            }));
+
+            if (isImportCancelled) break;
+
+            // Update circular ring & percentage bar per batch
+            const processedCount = Math.min(totalRows, i + CHUNK_SIZE);
+            const pct = Math.round((processedCount / totalRows) * 100);
+            const offset = 113.1 - (113.1 * pct) / 100;
+
+            const circleEl = $("importCircleProgress");
+            const barEl = $("importProgressBar");
+            const pctEl = $("importPercentText");
+            const statusEl = $("importStatusText");
+
+            if (circleEl) circleEl.style.strokeDashoffset = String(offset);
+            if (barEl) barEl.style.width = `${pct}%`;
+            if (pctEl) pctEl.textContent = `${pct}%`;
+            if (statusEl) statusEl.textContent = `Importing data... (${processedCount} / ${totalRows} records)`;
         }
 
-        if (fingerprint) {
-            state.importedFingerprints.add(fingerprint);
-        }
+        if (!isImportCancelled) {
+            // Final 100% completion display
+            const circleEl = $("importCircleProgress");
+            const barEl = $("importProgressBar");
+            const pctEl = $("importPercentText");
+            const statusEl = $("importStatusText");
 
-        toast(`Import completed: ${addedCount} raw materials added.`);
-        closeImportModal();
-        await loadData();
+            if (circleEl) circleEl.style.strokeDashoffset = "0";
+            if (barEl) barEl.style.width = "100%";
+            if (pctEl) pctEl.textContent = "100%";
+            if (statusEl) statusEl.textContent = `Successfully imported ${totalRows} records!`;
+
+            const msgParts = [];
+            if (addedCount > 0) msgParts.push(`${addedCount} new materials`);
+            if (updatedCount > 0) msgParts.push(`${updatedCount} existing synced`);
+            if (totalReceiptsLogged > 0) msgParts.push(`${totalReceiptsLogged} receipts logged`);
+            if (totalDsbsLogged > 0) msgParts.push(`${totalDsbsLogged} disbursements logged`);
+
+            toast(`Import completed: ${msgParts.join(", ") || `${parsedImportRows.length} records processed`}.`);
+            
+            setTimeout(async () => {
+                closeImportModal();
+                await loadData();
+            }, 500);
+        } else {
+            await loadData();
+        }
     } catch (err) {
         console.error("Import save error:", err);
         toast("Error while saving imported materials: " + err.message, "error");
     } finally {
         confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalBtnHTML;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.onclick = closeImportModal;
+        }
+        if (closeBtn) {
+            closeBtn.style.pointerEvents = "auto";
+            closeBtn.onclick = closeImportModal;
+        }
     }
 }
 
@@ -1154,18 +1425,22 @@ async function handleImportConfirm() {
 
 function getExportDataset() {
     const data = getOverviewDataList();
-    return data.map(item => [
-        item.activityDate || "—",
-        item.name || "",
-        item.itemCode || "",
-        item.minStock !== null ? `${item.minStock} ${item.unit}` : "—",
-        `${item.currentStock} ${item.unit}`,
-        item.unit || "",
-        item.activityStatus,
-        item.activityQty,
-        item.activityUnit,
-        item.status.label
-    ]);
+    return data.map(item => {
+        const matName = String(item.name || item.raw_material_name || item.material_name || "Raw Material").trim();
+        const matCode = String(item.itemCode || item.code || "—").trim();
+        return [
+            item.activityDate || "—",
+            matName,
+            matCode,
+            item.minStock !== null ? `${item.minStock} ${item.unit}` : "—",
+            `${item.currentStock} ${item.unit}`,
+            item.unit || "",
+            item.activityStatus,
+            item.activityQty,
+            item.activityUnit,
+            item.status.label
+        ];
+    });
 }
 
 function exportToCSV() {

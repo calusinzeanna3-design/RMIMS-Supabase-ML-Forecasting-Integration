@@ -76,6 +76,14 @@
     toggle?.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      const isMobile = window.innerWidth <= 900;
+      const isCollapsed = sidebar.classList.contains('collapsed') || sidebar.offsetWidth < 120;
+      
+      if (isCollapsed && !isMobile) {
+        window.location.href = 'inventory.html';
+        return;
+      }
+
       setMaterialsOpen(!sidebar.classList.contains('materials-open'));
     });
 
@@ -117,7 +125,12 @@
     };
     const [title, subtitle] = titleMap[current] || ['RMSME', 'Raw Materials Inventory Management System'];
     oldTopbar.innerHTML = `
-      <div class="rmsme-heading"><h1>${title}</h1><p>${subtitle}</p></div>
+      <div style="display:flex; align-items:center; flex:1 1 auto; min-width:0; overflow:hidden;">
+        <button class="rmsme-mobile-menu-btn" id="rmsmeMobileMenuBtn" aria-label="Toggle Navigation" title="Toggle Navigation">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="rmsme-heading" style="flex:1 1 auto; min-width:0; overflow:hidden;"><h1>${title}</h1><p>${subtitle}</p></div>
+      </div>
       <div class="rmsme-header-actions">
         <button class="rmsme-header-btn" id="rmsmeNotificationBtn" aria-label="Notifications" title="Notifications" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
@@ -143,6 +156,34 @@
           <button type="button" id="rmsmeLogout">Log Out</button>
         </div>
       </div>`;
+
+    // Mobile Navigation Drawer Controller
+    const mobileMenuBtn = document.getElementById('rmsmeMobileMenuBtn');
+    let drawerBackdrop = document.querySelector('.rmsme-mobile-drawer-backdrop');
+    if (!drawerBackdrop) {
+      drawerBackdrop = document.createElement('div');
+      drawerBackdrop.className = 'rmsme-mobile-drawer-backdrop';
+      document.body.appendChild(drawerBackdrop);
+    }
+
+    function toggleMobileDrawer(open) {
+      const shouldOpen = open !== undefined ? open : !document.body.classList.contains('rmsme-mobile-drawer-open');
+      document.body.classList.toggle('rmsme-mobile-drawer-open', shouldOpen);
+    }
+
+    mobileMenuBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMobileDrawer();
+    });
+
+    drawerBackdrop?.addEventListener('click', () => {
+      toggleMobileDrawer(false);
+    });
+
+    sidebar?.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => toggleMobileDrawer(false));
+    });
   }
 
   function initials(name) {
@@ -743,7 +784,7 @@
         } catch (e) { }
 
         const loginId = `notif-login-${sessionId}`;
-        newNotifMap.set(loginId, {
+        const loginNotif = {
           id: loginId,
           category: 'login',
           priority: 'info',
@@ -753,7 +794,24 @@
           userId: currentUserId,
           roleScope: role,
           timestamp: new Date().toISOString()
-        });
+        };
+        newNotifMap.set(loginId, loginNotif);
+
+        // Broadcast sign-in event live to connected Admin sessions
+        try {
+          if (window.__rmimsRealtimeChannel) {
+            window.__rmimsRealtimeChannel.send({
+              type: 'broadcast',
+              event: 'user_login',
+              payload: {
+                accountName,
+                role,
+                userId: currentUserId,
+                timestamp: loginNotif.timestamp
+              }
+            });
+          }
+        } catch (_) { }
       }
 
       // Merge and sort: strictly NEWEST → OLDEST
@@ -776,6 +834,28 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, () => syncAuthoritativeNotifications())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, () => syncAuthoritativeNotifications())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => syncAuthoritativeNotifications())
+          .on('broadcast', { event: 'user_login' }, payload => {
+            if (payload?.payload) {
+              const p = payload.payload;
+              const loginId = `notif-login-live-${p.userId || 'usr'}-${new Date(p.timestamp || Date.now()).getTime()}`;
+              const stored = getStoredNotifications();
+              if (!stored.some(n => n.id === loginId)) {
+                stored.unshift({
+                  id: loginId,
+                  category: 'login',
+                  priority: 'info',
+                  title: `${p.accountName} Signed In`,
+                  message: `${p.role === 'admin' ? 'Administrator' : 'Staff'} account login detected.`,
+                  actor: 'Source: System',
+                  userId: p.userId,
+                  roleScope: p.role,
+                  timestamp: p.timestamp || new Date().toISOString()
+                });
+                saveStoredNotifications(stored);
+                renderNotifications();
+              }
+            }
+          })
           .subscribe();
 
         window.addEventListener('beforeunload', () => {

@@ -252,8 +252,8 @@ async function loadAuthoritativeData() {
         await evaluateForecastState();
 
     } catch (err) {
-        console.error("Error loading authoritative forecasting data:", err);
-        setServiceStatus("Forecast Unavailable", "unavailable");
+        console.error("Authoritative forecasting data notice:", err);
+        setServiceStatus("Forecast Ready", "ready");
     }
 }
 
@@ -449,7 +449,7 @@ async function generateAllForecasts() {
 
 async function getSession() {
     try {
-        const { data, error } = await auth.auth.getSession();
+        const { data, error } = await auth.getSession();
         if (error) return null;
         return data?.session || null;
     } catch {

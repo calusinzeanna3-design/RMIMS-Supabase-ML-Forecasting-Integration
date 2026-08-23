@@ -15,8 +15,6 @@ console.log('====================================================\n');
 const configFiles = [
   'vercel.json',
   'netlify.toml',
-  'firebase.json',
-  '.firebaserc',
   'fly.toml',
   'render.yaml',
   'Dockerfile',
@@ -62,7 +60,7 @@ mdFiles.forEach(f => {
 });
 
 // 4. Test CLI availability
-const clis = ['vercel', 'netlify', 'firebase', 'supabase', 'flyctl', 'railway'];
+const clis = ['vercel', 'netlify', 'supabase', 'flyctl', 'railway'];
 console.log('\n--- TESTING INSTALLED DEPLOYMENT CLIS ---');
 clis.forEach(cli => {
   try {

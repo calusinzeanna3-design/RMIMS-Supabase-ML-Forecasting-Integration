@@ -430,7 +430,7 @@ function initSecurityForm() {
 
             try {
                 // Re-verify current password
-                const { error: verifyError } = await auth.auth.signInWithPassword({
+                const { error: verifyError } = await auth.signInWithPassword({
                     email: currentUser.email,
                     password: currentPassword
                 });
@@ -440,7 +440,7 @@ function initSecurityForm() {
                     return;
                 }
 
-                const { error: updateError } = await auth.auth.updateUser({ password: newPassword });
+                const { error: updateError } = await auth.updateUser({ password: newPassword });
                 if (updateError) throw updateError;
 
                 showToast("Password updated successfully.");
@@ -490,7 +490,7 @@ function initSecurityForm() {
             btn.textContent = "Saving…";
 
             try {
-                const { error: verifyError } = await auth.auth.signInWithPassword({
+                const { error: verifyError } = await auth.signInWithPassword({
                     email: currentUser.email,
                     password: currentPassword
                 });
@@ -500,7 +500,7 @@ function initSecurityForm() {
                     return;
                 }
 
-                const { error: updateError } = await auth.auth.updateUser({ password: newPassword });
+                const { error: updateError } = await auth.updateUser({ password: newPassword });
                 if (updateError) throw updateError;
 
                 showToast("Password changed successfully.");
@@ -543,7 +543,7 @@ async function loadSessionInfo() {
     if (!el) return;
 
     try {
-        const { data, error } = await auth.auth.getSession();
+        const { data, error } = await auth.getSession();
         if (error || !data.session) {
             el.textContent = "Session active on this browser.";
             return;
@@ -576,7 +576,7 @@ document.getElementById("signOutOthersBtn")?.addEventListener("click", async () 
     btn.disabled = true;
     btn.textContent = "Signing Out…";
     try {
-        const { error } = await auth.auth.signOut({ scope: "others" });
+        const { error } = await auth.signOut({ scope: "others" });
         if (error) throw error;
         showToast("Other active sessions have been signed out.");
     } catch (err) {

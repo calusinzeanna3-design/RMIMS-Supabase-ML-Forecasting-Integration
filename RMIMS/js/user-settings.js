@@ -313,7 +313,7 @@ function initActions() {
             saveBtn.textContent = "Updating...";
 
             try {
-                const { error: verifyError } = await auth.auth.signInWithPassword({
+                const { error: verifyError } = await auth.signInWithPassword({
                     email: currentUser.email,
                     password: currentPass
                 });
@@ -323,7 +323,7 @@ function initActions() {
                     return;
                 }
 
-                const { error: updateError } = await auth.auth.updateUser({ password: newPass });
+                const { error: updateError } = await auth.updateUser({ password: newPass });
                 if (updateError) throw updateError;
 
                 showToast("Password updated successfully.", "success");
@@ -358,7 +358,7 @@ function initActions() {
             signOutOthersBtn.disabled = true;
             signOutOthersBtn.textContent = "Signing Out…";
             try {
-                const { error } = await auth.auth.signOut({ scope: "others" });
+                const { error } = await auth.signOut({ scope: "others" });
                 if (error) throw error;
                 showToast("Other device sessions have been revoked.", "success");
             } catch (err) {
@@ -475,7 +475,7 @@ async function loadSessionInfo() {
     const el = $("sessionInfo");
     if (!el) return;
     try {
-        const { data, error } = await auth.auth.getSession();
+        const { data, error } = await auth.getSession();
         if (error || !data.session) { el.textContent = "Session active on current device."; return; }
 
         const signedInAt = data.session.user?.last_sign_in_at
