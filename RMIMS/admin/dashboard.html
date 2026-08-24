@@ -443,11 +443,11 @@
 </div>
 
 <!-- MODAL 5: AI FORECAST DETAIL MODAL -->
-<div class="admin-modal-panel" id="modalForecastDetail" role="dialog" aria-modal="true" aria-labelledby="modalForecastDetailTitle" hidden>
+<div class="admin-modal-panel admin-modal-wide" id="modalForecastDetail" role="dialog" aria-modal="true" aria-labelledby="modalForecastDetailTitle" hidden>
     <div class="amp-header">
         <div class="amp-title-group">
             <div class="amp-tag-row">
-                <span class="forecast-badge-pill">Next Week Forecast</span>
+                <span class="forecast-badge-pill" id="mfdBadgePill">Dynamic Pure Time-Series</span>
                 <span class="forecast-status-tag" id="mfdStatusTag">Evaluating</span>
             </div>
             <h2 id="modalForecastDetailTitle">Material Forecast Details</h2>
@@ -456,14 +456,46 @@
         <button class="amp-close-btn" id="closeModalForecastDetail" aria-label="Close dialog">✕</button>
     </div>
 
+    <!-- Multi-Horizon Controls -->
+    <div class="amp-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label for="modalHorizonType" class="amp-filter-label" style="font-weight: 600; color: var(--text-body);">Planning Horizon:</label>
+            <select id="modalHorizonType" class="amp-select" style="min-width: 110px; font-weight: 500;">
+                <option value="day">Days</option>
+                <option value="week">Weeks</option>
+                <option value="month" selected>Months</option>
+                <option value="year">Years</option>
+            </select>
+            <input type="number" id="modalHorizonValue" value="3" min="1" max="24" class="amp-select" style="width: 70px; text-align: center; font-weight: 600;" aria-label="Horizon Value">
+            <button type="button" class="amp-gran-btn active" id="modalRefreshBtn" style="padding: 7px 16px; cursor: pointer; border-radius: 8px; font-weight: 600;">Calculate</button>
+        </div>
+    </div>
+
+    <!-- Inventory Status / Decision Card -->
+    <div class="mfd-decision-box" id="decisionBox" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 14px 18px; border-radius: 12px; background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.12);">
+        <div>
+            <span class="fw-bold d-block" id="decisionStatusTitle" style="font-weight: 700; font-size: 1rem; color: #1E293B;">Analyzing inventory demand...</span>
+            <small class="text-muted" id="decisionInsightText" style="color: #64748B; font-size: 0.85rem;">Fetching data from ML backend</small>
+        </div>
+        <div style="text-align: right;">
+            <span style="display: block; font-size: 0.72rem; color: #64748B; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Total Requirement</span>
+            <h3 class="fw-bold mb-0 text-primary" id="modalTotalReqText" style="font-weight: 800; color: #2563EB; margin: 0; font-size: 1.25rem;">--</h3>
+        </div>
+    </div>
+
+    <!-- Interactive Time Series Chart Canvas -->
+    <div style="height: 250px; position: relative; margin-bottom: 16px; width: 100%;">
+        <canvas id="modalForecastChart"></canvas>
+    </div>
+
     <div class="forecast-detail-content" id="forecastDetailContent">
         <!-- Injected via JS -->
     </div>
 
     <div class="amp-footer">
-        <span class="amp-footer-count" id="mfdModelMeta">AutoReg ML Model &bull; Supabase Live Integration</span>
+        <span class="amp-footer-count" id="mfdModelMeta">Pure Time-Series (Holt-Winters ETS) &bull; Supabase Live Integration</span>
         <a href="forecasting.html" class="amp-nav-arrow-btn" title="Open AI-Based Forecasting module">
-            <span>Open AI Forecasting</span>
+            <span>Open Full AI Forecasting</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
     </div>

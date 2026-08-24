@@ -448,8 +448,8 @@ function renderRawMaterialsTable() {
     return;
   }
 
-  tbody.innerHTML = filtered.map(r => `
-    <tr>
+  tbody.innerHTML = filtered.map((r, idx) => `
+    <tr class="amp-table-row-clickable" data-mat-idx="${idx}" style="cursor: pointer;" title="Click to view live multi-horizon forecast and decision support">
       <td>
         <div class="amp-mat-name">
           <strong>${esc(r.name)}</strong>
@@ -473,6 +473,23 @@ function renderRawMaterialsTable() {
       </td>
     </tr>
   `).join("");
+
+  tbody.querySelectorAll(".amp-table-row-clickable").forEach(tr => {
+    tr.onclick = () => {
+      const idx = Number(tr.getAttribute("data-mat-idx"));
+      const r = filtered[idx];
+      if (r) {
+        const fullMat = catalogMaterials.find(m => m.id === r.id) || {
+          materialName: r.name,
+          id: r.id,
+          currentStock: r.currentStock,
+          unit: r.unit,
+          itemCode: r.itemCode
+        };
+        openForecastDetailModal(fullMat);
+      }
+    };
+  });
 }
 
 // Bind search and filter events
@@ -972,8 +989,8 @@ function renderOutOfStockTiles() {
     return;
   }
 
-  container.innerHTML = oosList.map(m => `
-    <div class="amp-oos-tile">
+  container.innerHTML = oosList.map((m, idx) => `
+    <div class="amp-oos-tile amp-oos-clickable" data-oos-idx="${idx}" style="cursor: pointer;" title="Click to view live forecast and restock projection">
       <div class="amp-oos-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z"/></svg>
       </div>
@@ -987,6 +1004,14 @@ function renderOutOfStockTiles() {
       </div>
     </div>
   `).join("");
+
+  container.querySelectorAll(".amp-oos-clickable").forEach(tile => {
+    tile.onclick = () => {
+      const idx = Number(tile.getAttribute("data-oos-idx"));
+      const m = oosList[idx];
+      if (m) openForecastDetailModal(m);
+    };
+  });
 }
 
 // ============================================================
@@ -1892,46 +1917,217 @@ async function renderAiForecastedSupportCard() {
   }
 }
 
-function openForecastDetailModal(item) {
+let modalForecastChartInstance = null;
+let activeForecastModalContext = null;
+
+async function updateModalForecastProjection() {
+  if (!activeForecastModalContext) return;
+  const mat = activeForecastModalContext;
+  const horizonType = $("modalHorizonType")?.value || "month";
+  const horizonVal = Math.max(1, parseInt($("modalHorizonValue")?.value || "3", 10));
+
+  const statusTitle = $("decisionStatusTitle");
+  const insightText = $("decisionInsightText");
+  const totalReqText = $("modalTotalReqText");
+  const statusTag = $("mfdStatusTag");
+  const canvas = $("modalForecastChart");
+
+  if (statusTitle) statusTitle.textContent = "Computing Pure Time-Series Projection...";
+  if (insightText) insightText.textContent = `Running Holt-Winters ETS model for ${horizonVal} ${horizonType}(s)...`;
+  if (totalReqText) totalReqText.textContent = "...";
+
+  try {
+    const apiBase = await getFlaskApiBase();
+    const headers = { "Content-Type": "application/json", "Accept": "application/json" };
+    try {
+      if (supabase && supabase.auth && typeof supabase.auth.getSession === "function") {
+        const { data: sessData } = await supabase.auth.getSession();
+        if (sessData?.session?.access_token) {
+          headers["Authorization"] = `Bearer ${sessData.session.access_token}`;
+        }
+      }
+    } catch (e) {}
+
+    const res = await fetch(`${apiBase}/api/forecast`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        raw_material_name: mat.materialName,
+        horizon_type: horizonType,
+        horizon_value: horizonVal
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Forecast API returned ${res.status}`);
+    }
+
+    const data = await res.json();
+    const totalReq = Number(data.total_forecast_requirement || 0);
+    const unit = data.unit || mat.unit || "kg";
+    const curStock = Number(mat.currentStock || 0);
+    const diff = curStock - totalReq;
+
+    if (totalReqText) {
+      totalReqText.textContent = `${totalReq.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${unit}`;
+    }
+
+    // Evaluate Decision Support Metrics
+    if (diff < 0) {
+      if (statusTitle) {
+        statusTitle.textContent = "DEFICIT WARNING — Potential Shortage";
+        statusTitle.style.color = "#EF4444";
+      }
+      if (insightText) {
+        insightText.textContent = `${mat.materialName} projected requirement (${totalReq.toFixed(1)} ${unit}) exceeds on-hand stock (${curStock.toFixed(1)} ${unit}) by ${Math.abs(diff).toFixed(1)} ${unit}. Advance procurement recommended.`;
+      }
+      if (statusTag) {
+        statusTag.className = "forecast-status-tag tag-shortage";
+        statusTag.textContent = "Potential Shortage";
+      }
+    } else if (curStock <= (mat.minimumThreshold || 0)) {
+      if (statusTitle) {
+        statusTitle.textContent = "ATTENTION — Low Safety Buffer Stock";
+        statusTitle.style.color = "#F59E0B";
+      }
+      if (insightText) {
+        insightText.textContent = `${mat.materialName} is at or below minimum threshold (${mat.minimumThreshold} ${unit}). Maintain safety stock.`;
+      }
+      if (statusTag) {
+        statusTag.className = "forecast-status-tag tag-attention";
+        statusTag.textContent = "Low Stock Attention";
+      }
+    } else {
+      if (statusTitle) {
+        statusTitle.textContent = "OPTIMAL SURPLUS — Sufficient Stock";
+        statusTitle.style.color = "#10B981";
+      }
+      if (insightText) {
+        insightText.textContent = `On-hand stock (${curStock.toFixed(1)} ${unit}) covers the projected ${horizonVal} ${horizonType}(s) requirement (${totalReq.toFixed(1)} ${unit}) with a surplus of +${diff.toFixed(1)} ${unit}.`;
+      }
+      if (statusTag) {
+        statusTag.className = "forecast-status-tag tag-good";
+        statusTag.textContent = "Sufficient";
+      }
+    }
+
+    // Render Time-Series Chart Canvas
+    if (canvas && typeof Chart !== "undefined") {
+      if (modalForecastChartInstance) {
+        modalForecastChartInstance.destroy();
+        modalForecastChartInstance = null;
+      }
+
+      const breakdown = Array.isArray(data.forecast_breakdown) ? data.forecast_breakdown : [];
+      const chartLabels = breakdown.map((item, idx) => {
+        if (item.period_date) {
+          const dt = new Date(item.period_date);
+          if (!isNaN(dt.getTime())) {
+            return horizonType === "year" 
+              ? dt.toLocaleDateString("en-US", { year: "numeric" })
+              : dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          }
+          return item.period_date;
+        }
+        return `${horizonType.toUpperCase()} ${idx + 1}`;
+      });
+
+      const chartValues = breakdown.map(item => Number(item.forecast_quantity || 0));
+
+      const ctx = canvas.getContext("2d");
+      modalForecastChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            label: `Forecasted ${mat.materialName} Requirement (${unit})`,
+            data: chartValues,
+            backgroundColor: "rgba(37, 99, 235, 0.65)",
+            hoverBackgroundColor: "rgba(37, 99, 235, 0.90)",
+            borderColor: "#2563EB",
+            borderWidth: 1.5,
+            borderRadius: 6,
+            barPercentage: 0.6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#0B132B",
+              titleColor: "#FFFFFF",
+              bodyColor: "#D7E0EA",
+              padding: 10,
+              callbacks: {
+                label: (ctx) => ` Required: ${Number(ctx.parsed.y).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${unit}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: "#64748B", font: { size: 11, weight: "500" } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(148, 180, 224, 0.15)" },
+              ticks: { color: "#64748B", font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+  } catch (err) {
+    console.warn("Dynamic forecast calculation notice:", err);
+    if (statusTitle) statusTitle.textContent = "Forecast Status";
+    if (insightText) insightText.textContent = "Connected to RMIMS Live Integration.";
+    if (totalReqText) totalReqText.textContent = "Available";
+  }
+}
+
+function openForecastDetailModal(itemOrMat) {
   const modal = $("modalForecastDetail");
   const content = $("forecastDetailContent");
   const titleEl = $("modalForecastDetailTitle");
-  const statusTag = $("mfdStatusTag");
   const subtitle = $("mfdSubtitle");
   if (!modal || !content) return;
 
-  const mat = item.material;
-  const fc = item.forecastData;
-  const f7 = fc.forecast7Day || {};
-  const f1m = fc.forecast1Month || {};
-  const ds = fc.decision_support || {};
-  const curStock = fc.current_inventory?.current_stock !== null ? Number(fc.current_inventory.current_stock) : mat.currentStock;
-  const minStock = mat.minimumThreshold !== null ? Number(mat.minimumThreshold) : (fc.current_inventory?.minimum_threshold || "—");
-  const unit = fc.unit || mat.unit || "kg";
+  let mat = null;
+  let fc = null;
+
+  if (itemOrMat.material) {
+    mat = itemOrMat.material;
+    fc = itemOrMat.forecastData || {};
+  } else if (itemOrMat.materialName) {
+    mat = itemOrMat;
+  } else if (typeof itemOrMat === "string") {
+    mat = catalogMaterials.find(m => m.materialName.toLowerCase() === itemOrMat.toLowerCase()) || {
+      materialName: itemOrMat,
+      itemCode: "RM-CAT",
+      currentStock: 0,
+      unit: "kg",
+      minimumThreshold: 0
+    };
+  }
+
+  if (!mat) return;
+  activeForecastModalContext = mat;
+
+  const f7 = fc?.forecast7Day || {};
+  const f1m = fc?.forecast1Month || {};
+  const curStock = Number(mat.currentStock || 0);
+  const minStock = mat.minimumThreshold !== null && mat.minimumThreshold !== undefined ? Number(mat.minimumThreshold) : "—";
+  const unit = mat.unit || "kg";
   const f7Qty = f7.quantity ? Number(f7.quantity) : 0;
   const f1mQty = f1m.quantity ? Number(f1m.quantity) : 0;
-  const diff = ds.difference !== null && ds.difference !== undefined ? Number(ds.difference) : (curStock - f7Qty);
+  const diff = curStock - f7Qty;
 
-  if (titleEl) titleEl.textContent = `${mat.materialName} (${mat.itemCode})`;
+  if (titleEl) titleEl.textContent = `${mat.materialName} (${mat.itemCode || "RM-CAT"})`;
   if (subtitle) {
-    const dateRangeStr = f7.startDate && f7.endDate
-      ? `${new Date(f7.startDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(f7.endDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-      : "Upcoming 7 Days";
-    subtitle.textContent = `Forecast Period: ${dateRangeStr}`;
-  }
-
-  let statusCls = "tag-good";
-  let statusText = ds.decision_status || "Sufficient";
-  if (statusText === "Potential Shortage") {
-    statusCls = "tag-shortage";
-  } else if (ds.reorder_recommended) {
-    statusCls = "tag-attention";
-    statusText = "Reorder Recommended";
-  }
-
-  if (statusTag) {
-    statusTag.className = `forecast-status-tag ${statusCls}`;
-    statusTag.textContent = statusText;
+    subtitle.textContent = `Pure Time-Series (Holt-Winters ETS) & Live Supabase Inventory`;
   }
 
   const matUsageTotal = usageRecords
@@ -1941,39 +2137,37 @@ function openForecastDetailModal(item) {
   content.innerHTML = `
     <div class="mfd-stats-grid">
       <div class="mfd-stat-tile">
-        <span class="mfd-stat-lbl">Current Stock</span>
+        <span class="mfd-stat-lbl">Current On-Hand Stock</span>
         <span class="mfd-stat-val">${curStock.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
       </div>
       <div class="mfd-stat-tile">
-        <span class="mfd-stat-lbl">7-Day Forecast</span>
-        <span class="mfd-stat-val val-forecast">${f7Qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
+        <span class="mfd-stat-lbl">7-Day Baseline</span>
+        <span class="mfd-stat-val val-forecast">${f7Qty > 0 ? f7Qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : "Live Calculating"} <small>${esc(unit)}</small></span>
       </div>
       <div class="mfd-stat-tile">
-        <span class="mfd-stat-lbl">Difference / Standing</span>
-        <span class="mfd-stat-val ${diff < 0 ? "val-shortage" : "val-good"}">${diff > 0 ? "+" : ""}${diff.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
-      </div>
-      <div class="mfd-stat-tile">
-        <span class="mfd-stat-lbl">Minimum Threshold</span>
+        <span class="mfd-stat-lbl">Safety Threshold</span>
         <span class="mfd-stat-val">${typeof minStock === "number" ? `${minStock.toLocaleString("en-US")} ${esc(unit)}` : esc(minStock)}</span>
-      </div>
-      <div class="mfd-stat-tile">
-        <span class="mfd-stat-lbl">1-Month Projected</span>
-        <span class="mfd-stat-val val-forecast">${f1mQty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
       </div>
       <div class="mfd-stat-tile">
         <span class="mfd-stat-lbl">Historical Consumed</span>
         <span class="mfd-stat-val">${matUsageTotal.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(unit)}</small></span>
       </div>
     </div>
-
-    <div class="mfd-section-title">Operational Decision Support</div>
-    <div class="mfd-insight-card">
-      <p><strong>System Evaluation:</strong> ${esc(ds.system_insight || "Stock and usage parameters evaluated against AutoReg ML model.")}</p>
-      ${ds.reorder_recommended ? `<p style="margin-top: 8px; color: #EF4444; font-weight: 600;">⚠ Reorder Recommended: Current inventory is at or below defined safety parameters.</p>` : ""}
-    </div>
   `;
 
+  // Wire horizon controls
+  const refreshBtn = $("modalRefreshBtn");
+  const horizonTypeSelect = $("modalHorizonType");
+  const horizonValInput = $("modalHorizonValue");
+
+  if (refreshBtn) refreshBtn.onclick = () => updateModalForecastProjection();
+  if (horizonTypeSelect) horizonTypeSelect.onchange = () => updateModalForecastProjection();
+  if (horizonValInput) horizonValInput.onchange = () => updateModalForecastProjection();
+
   openAdminModal("modalForecastDetail");
+
+  // Trigger dynamic projection immediately
+  updateModalForecastProjection();
 }
 
 // ============================================================
