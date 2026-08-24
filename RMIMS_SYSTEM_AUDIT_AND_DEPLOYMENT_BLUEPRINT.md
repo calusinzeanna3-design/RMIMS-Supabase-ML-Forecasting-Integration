@@ -1,23 +1,23 @@
-# RMIMS: Comprehensive System Audit & Cloud Deployment Blueprint
+# RMIMS: Comprehensive System Audit & Cloud Deployment Blueprint (Firebase ML Edition)
 
 ---
 
 ## 1. Executive Summary & System Deployment Status
 
-| System Component | Technology Stack | Local / Operational Status | Cloud / Vercel Status |
+| System Component | Technology Stack | Local / Operational Status | Cloud Deployment Target |
 | :--- | :--- | :--- | :--- |
-| **Front-End Website** | Vanilla ES6 Modules, Vite 6.2, HTML5, CSS3, Chart.js | **Healthy & Verified** (Bundles clean via `npm run build` in 5.16s) | ❌ **Not Deployed to Vercel** (No `.vercel` project link or `vercel.json` found) |
-| **Database & Auth** | Supabase Cloud (PostgreSQL, Row Level Security, Auth, Edge Functions) | **Live & Connected** (`hgandqozgcpytxebhvtn.supabase.co`) | ✅ **Cloud-Hosted on Supabase** |
-| **ML Backend API** | Python Flask, CORS, `supabase-py` REST API | **Healthy** (All endpoints return HTTP 200) | ❌ **Localhost Only** (`http://127.0.0.1:5000`) |
-| **ML Models** | Holt-Winters Exponential Smoothing (`rmims_time_series_model.pkl`, 3.68 MB) | **Trained & Verified** (27 materials + `OVERALL_TOTAL`) | ❌ **Packaged Locally** |
+| **Front-End Website** | Vanilla ES6 Modules, Vite 6.2, HTML5, CSS3, Chart.js | **Healthy & Verified** (Bundles in ~1.0s via `npm run build`) | **Vercel** (`https://rmims-system.vercel.app`) |
+| **Database & Auth** | Supabase Cloud (PostgreSQL, Row Level Security, Auth, Edge Functions) | **Live & Connected** (`hgandqozgcpytxebhvtn.supabase.co`) | **Supabase Cloud** |
+| **ML Backend API** | Python Flask, WSGI, `supabase-py` REST API | **Healthy** (All endpoints return HTTP 200) | **Firebase Cloud Functions (2nd Gen Python)** |
+| **ML Models** | Holt-Winters Exponential Smoothing (`rmims_time_series_model.pkl`, 3.68 MB) | **Trained & Verified** (27 materials + `OVERALL_TOTAL`) | **Firebase Cloud Functions In-Memory Container** |
 
 ---
 
 ## 2. In-Depth Component Audit
 
 ### 2.1. Front-End Website (RMIMS UI & Portals)
-- **Framework & Bundler**: Vite 6.2 managing a Multi-Page Application (MPA) written in pure ES6 JavaScript and Vanilla CSS.
-- **Entry Points & Pages**:
+- **Framework & Bundler**: Vite 6.2 Multi-Page Application (MPA) written in pure ES6 JavaScript and Vanilla CSS.
+- **Entry Points & Active Pages**:
   - **Public & Authentication**:
     - Landing page: [RMIMS/index.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/index.html)
     - Administrator login: [RMIMS/login.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/login.html)
@@ -36,10 +36,7 @@
     - [RMIMS/user/dashboard.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/user/dashboard.html), [RMIMS/user/inventory.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/user/inventory.html), [RMIMS/user/material-activity.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/user/material-activity.html), [RMIMS/user/analytics.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/user/analytics.html), [RMIMS/user/reports.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/user/reports.html), [RMIMS/user/settings.html](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/RMIMS/user/settings.html).
 - **Communication Layer**:
   - Direct database access through `@supabase/supabase-js` v2 CDN with persistent session authentication.
-  - Dynamically resolves ML backend base URL via `getApiBase()`: checks relative `/api/ml/status`, falls back to `http://127.0.0.1:5000` during local development, or relative proxy path in production.
-
-> [!WARNING]
-> **Vercel Routing Requirement**: In [vite.config.js](file:///c:/Users/Zeanna/Downloads/RMIMS-AI-BASED-FORECASTING-INTEGRATED/RMIMS-DASHBOARD-VIEW-3D-SUGAR-APPLIED/RMIMS-Supabase-ML-Forecasting-Integration/vite.config.js), Rollup input pages are located under the `RMIMS/` directory, outputting HTML files to `dist/RMIMS/index.html`. Deploying to Vercel without a `vercel.json` rewrite will cause root URL visits (`/`) to return a `404 Not Found`. A `vercel.json` configuration must be provided.
+  - Dynamically resolves ML backend base URL via `getApiBase()`: checks relative `/api/ml/status`, falls back to local `http://127.0.0.1:5000` during development, or relative proxy path in production.
 
 ---
 
@@ -76,35 +73,83 @@
   - **27 Authoritative Raw Materials**: Chiton, Salt, Ground Pepper, Crushed Garlic, Spices, Cooking Oil, Shrimp, Garlic, Onion, Spring Onion, Cabbage, Carrots, Bell Pepper, Soy Sauce, Sesame Oil, Oyster Sauce, Chicken, Pork, Loaf Bread, Butter/Margarine, Sugar, Pork Skin, Raw Bananas, Turmeric Powder, Water, Peanuts, Sea Salt, Honey.
   - **1 Aggregate Model**: `OVERALL_TOTAL` for macro-level demand planning.
 - **Operational Verification**:
-  - Tested in-memory unpickling with backward-compatibility patch for SciPy 1.18+.
-  - Verification test completed: `Loaded 27 models, HTTP 200 OK, Sugar forecast status: success`.
+  - In-memory unpickling with backward-compatibility patch for SciPy 1.18+.
+  - Verification test: `Loaded 27 models, HTTP 200 OK, Sugar forecast status: success`.
 
 ---
 
 ## 3. End-to-End Cloud Deployment Architecture
 
-To ensure high availability, zero CORS errors, and unified domain access, the system uses a decoupled hosting model:
-
 ```mermaid
 graph TD
     User([End-User / Admin Browser]) -->|HTTPS Request| Vercel[Vercel CDN Edge Host<br/>RMIMS Front-End]
     Vercel -->|Auth & Live Database Operations| Supabase[(Supabase Cloud<br/>PostgreSQL + Auth)]
-    Vercel -->|API Reverse Proxy /api/ml/*| Render[Render / Railway Cloud Service<br/>Flask Python ML API]
-    Render -->|In-Memory Inference| Model[(Holt-Winters ML Models<br/>rmims_time_series_model.pkl)]
-    Render -->|Fetch Current Stock Data| Supabase
+    Vercel -->|Reverse Proxy /api/ml/*| Firebase[Firebase Cloud Functions 2nd Gen<br/>Google Cloud Run Python Engine]
+    Firebase -->|In-Memory Inference| Model[(Holt-Winters ML Models<br/>rmims_time_series_model.pkl)]
+    Firebase -->|Fetch Current Stock Data| Supabase
 ```
 
 ---
 
-## 4. Step-by-Step Production Deployment Guide
+## 4. Step-by-Step Guide: Deploying the ML Model onto Firebase
 
-### Phase 1: Deploy the Python ML Model Backend to Render / Railway
+Firebase Cloud Functions (2nd Generation) allows deploying containerized Python microservices running on Google Cloud Run with custom memory allocation and auto-scaling.
 
-Because the ML model requires Python with heavy C-extensions (`numpy`, `scipy`, `pandas`, `statsmodels`), deploying to a containerized platform like **Render** or **Railway** ensures zero cold-start bottlenecks and full compatibility.
+### Step 4.1: Prerequisites
+1. **Firebase Project**: An active project in the [Firebase Console](https://console.firebase.google.com/).
+2. **Blaze Plan Upgrade**: Cloud Functions requires upgrading the Firebase project to the **Blaze (Pay-as-you-go)** plan. (Includes a generous free tier of 2,000,000 invocations/month).
+3. **Firebase CLI Installed**: Ensure the Firebase CLI is installed:
+   ```bash
+   npm install -g firebase-tools
+   ```
 
-#### Step 1.1: Create `ml_backend/requirements.txt`
-In `ml_backend/requirements.txt`:
+---
+
+### Step 4.2: Firebase Functions Directory Structure
+Inside the project, create or organize the `functions/` directory:
+
+```text
+functions/
+├── main.py                     # Entry point exposing Flask via Firebase 2nd Gen https_fn
+├── app.py                      # Complete RMIMS ML Flask Server
+├── rmims_time_series_model.pkl  # 3.68MB trained model artifact
+├── requirements.txt            # Python dependencies
+└── .env                        # Production environment variables
+```
+
+---
+
+### Step 4.3: Create `functions/main.py`
+This file bridges the Flask WSGI app into a Firebase 2nd Gen HTTPS Cloud Function with custom memory configuration:
+
+```python
+import os
+from firebase_functions import https_fn, options
+from app import app as flask_app
+
+# Allocate 1GB RAM to comfortably hold statsmodels, scipy, pandas, and 27 models in memory
+@https_fn.on_request(
+    memory=options.MemoryOption.GB_1,
+    timeout_sec=120,
+    cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"])
+)
+def ml_api(req: https_fn.Request) -> https_fn.Response:
+    """
+    Firebase 2nd Gen Cloud Function entry point routing all requests
+    directly through the RMIMS Flask ML application.
+    """
+    with flask_app.request_context(req.environ):
+        return flask_app.full_dispatch_request()
+```
+
+---
+
+### Step 4.4: Create `functions/requirements.txt`
+Specify exact Python dependencies for the Google Cloud build environment:
+
 ```txt
+firebase-functions>=0.1.0
+firebase-admin>=6.0.0
 flask>=3.0.0
 flask-cors>=4.0.0
 numpy>=1.26.0
@@ -112,35 +157,61 @@ pandas>=2.0.0
 scipy>=1.11.0
 statsmodels>=0.14.0
 supabase>=2.0.0
-gunicorn>=21.2.0
 ```
-
-#### Step 1.2: Create `ml_backend/Procfile`
-```txt
-web: gunicorn app:app -b 0.0.0.0:$PORT --workers 2 --timeout 120
-```
-
-#### Step 1.3: Deploy to Render.com
-1. Go to [Render.com Dashboard](https://dashboard.render.com/) and click **New +** $\rightarrow$ **Web Service**.
-2. Connect your GitHub repository: `RMIMS-Supabase-ML-Forecasting-Integration`.
-3. Configure the service settings:
-   - **Name**: `rmims-ml-backend`
-   - **Root Directory**: `ml_backend`
-   - **Runtime**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app -b 0.0.0.0:$PORT --workers 2 --timeout 120`
-4. Add Environment Variables:
-   - `SUPABASE_URL`: `https://hgandqozgcpytxebhvtn.supabase.co`
-   - `SUPABASE_KEY`: `[Your Supabase anon/publishable key]`
-5. Click **Create Web Service**. Render will deploy the API and assign a public URL (e.g. `https://rmims-ml-backend.onrender.com`).
-6. Verify deployment by visiting `https://rmims-ml-backend.onrender.com/api/health` in your browser.
 
 ---
 
-### Phase 2: Configure & Deploy Front-End to Vercel
+### Step 4.5: Create `firebase.json` in Project Root
+```json
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "__pycache__"
+      ]
+    }
+  ]
+}
+```
 
-#### Step 2.1: Add `vercel.json` to Project Root
-Create `vercel.json` in the root folder to route traffic and proxy ML API requests directly:
+---
+
+### Step 4.6: Deploying to Firebase
+1. Log in to Firebase CLI:
+   ```bash
+   firebase login
+   ```
+2. Link your active Firebase project:
+   ```bash
+   firebase use <your-firebase-project-id>
+   ```
+3. Set your Supabase environment secrets in Firebase:
+   ```bash
+   firebase functions:secrets:set SUPABASE_URL
+   firebase functions:secrets:set SUPABASE_KEY
+   ```
+4. Deploy the Cloud Function:
+   ```bash
+   firebase deploy --only functions
+   ```
+5. Firebase will output your live HTTPS Function URL:
+   ```text
+   Function URL (ml_api): https://ml-api-<hash>-uc.a.run.app
+   or
+   https://us-central1-<project-id>.cloudfunctions.net/ml_api
+   ```
+
+---
+
+## 5. Connecting Vercel Front-End to Firebase ML Functions
+
+To connect your Vercel-hosted front-end with your Firebase ML Function with **zero CORS issues**, update your `vercel.json` in the root repository:
 
 ```json
 {
@@ -149,51 +220,40 @@ Create `vercel.json` in the root folder to route traffic and proxy ML API reques
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/RMIMS/index.html"
+      "source": "/RMIMS",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/RMIMS/:path*",
+      "destination": "/:path*"
     },
     {
       "source": "/api/ml/:path*",
-      "destination": "https://rmims-ml-backend.onrender.com/api/ml/:path*"
+      "destination": "https://us-central1-<project-id>.cloudfunctions.net/ml_api/api/ml/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://rmims-ml-backend.onrender.com/api/:path*"
+      "destination": "https://us-central1-<project-id>.cloudfunctions.net/ml_api/api/:path*"
     },
     {
       "source": "/forecast",
-      "destination": "https://rmims-ml-backend.onrender.com/api/forecast"
+      "destination": "https://us-central1-<project-id>.cloudfunctions.net/ml_api/api/forecast"
     },
     {
       "source": "/health",
-      "destination": "https://rmims-ml-backend.onrender.com/health"
+      "destination": "https://us-central1-<project-id>.cloudfunctions.net/ml_api/health"
     }
   ]
 }
 ```
 
-> [!TIP]
-> Replacing `https://rmims-ml-backend.onrender.com` in `vercel.json` with your actual Render/Railway URL ensures that all browser requests to `/api/*` are reverse-proxied seamlessly without triggering browser CORS policies.
-
-#### Step 2.2: Deploy on Vercel
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard) and click **Add New...** $\rightarrow$ **Project**.
-2. Select your GitHub repository: `calusinzeanna3-design/RMIMS-Supabase-ML-Forecasting-Integration`.
-3. Configure project settings:
-   - **Framework Preset**: `Vite`
-   - **Root Directory**: `./`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-4. Add Environment Variables:
-   - `VITE_SUPABASE_URL`: `https://hgandqozgcpytxebhvtn.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY`: `[Your Supabase anon/publishable key]`
-5. Click **Deploy**. Vercel will build the project and provide your live production domain (e.g., `https://rmims.vercel.app`).
-
 ---
 
-## 5. Post-Deployment Verification Checklist
+## 6. Post-Deployment Verification Checklist
 
-- [ ] **Front-End Root Navigation**: Navigating to `https://<your-app>.vercel.app/` renders the RMIMS Landing Page.
-- [ ] **Admin & User Auth**: Logging in with an admin or user account redirects to the proper dashboard (`/RMIMS/admin/dashboard.html` or `/RMIMS/user/dashboard.html`).
-- [ ] **ML Health Check**: Visiting `https://<your-app>.vercel.app/api/health` returns `status: "healthy"` and `models_loaded: 27`.
+- [ ] **Front-End Root Navigation**: Navigating to `https://rmims-system.vercel.app/` renders the RMIMS Landing Page.
+- [ ] **Admin & User Auth**: Logging in redirects to the proper dashboard (`/admin/dashboard.html` or `/user/dashboard.html`).
+- [ ] **Firebase Function Health**: Visiting `https://us-central1-<project-id>.cloudfunctions.net/ml_api/health` returns `status: "healthy"` and `models_loaded: 27`.
+- [ ] **Vercel Reverse-Proxy Health**: Visiting `https://rmims-system.vercel.app/api/health` proxies directly to Firebase and returns the same health JSON.
 - [ ] **Forecasting Module**: Opening the Admin Forecasting page loads charts, historical comparisons, and 7-day/1-month dynamic projections with decision support cards.
-- [ ] **Inventory Synchronization**: Updating raw material quantities in Supabase updates the decision support status on the next forecast refresh.
+- [ ] **Live Inventory Sync**: Updating raw material quantities in Supabase updates the decision support status on the next forecast refresh.
