@@ -78,7 +78,6 @@ export default defineConfig({
         index: resolve(__dirname, 'RMIMS/index.html'),
         login: resolve(__dirname, 'RMIMS/login.html'),
         portal: resolve(__dirname, 'RMIMS/portal.html'),
-        kiosk: resolve(__dirname, 'RMIMS/kiosk-checkin.html'),
         userSignin: resolve(__dirname, 'RMIMS/user-signin.html'),
         // Admin pages
         adminAnalytics: resolve(__dirname, 'RMIMS/admin/analytics.html'),

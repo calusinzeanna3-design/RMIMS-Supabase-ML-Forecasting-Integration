@@ -16,10 +16,6 @@
       "destination": "/RMIMS/portal.html"
     },
     {
-      "source": "/kiosk",
-      "destination": "/RMIMS/kiosk-checkin.html"
-    },
-    {
       "source": "/user-signin",
       "destination": "/RMIMS/user-signin.html"
     },
