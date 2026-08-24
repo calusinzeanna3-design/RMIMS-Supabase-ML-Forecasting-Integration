@@ -750,6 +750,22 @@ async function fetchForecastDataForMaterial(matNameOrId) {
   }
 }
 
+async function fetchHistoricalComparisonForMaterial(matNameOrId) {
+  try {
+    const apiBase = getMlApiBaseUrl();
+    const encoded = encodeURIComponent(matNameOrId || "OVERALL_TOTAL");
+    const res = await fetch(`${apiBase}/api/forecast/comparison?material=${encoded}`, {
+      method: "GET"
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.status === "success" ? data : null;
+  } catch (err) {
+    console.warn("Comparison fetch notice:", err);
+    return null;
+  }
+}
+
 async function renderRawMaterialsTrendChart() {
   const canvas = $("rawMaterialsTrendChart");
   if (!canvas) return;
@@ -814,34 +830,37 @@ async function renderRawMaterialsTrendChart() {
   let consumedData = [];
   let forecastData = [];
 
-  // Fetch live ML forecast
-  let forecastResult = null;
-  if (selectedMat) {
-    forecastResult = await fetchForecastDataForMaterial(selectedMat.materialName);
-  } else if (catalogMaterials.length > 0) {
-    forecastResult = await fetchForecastDataForMaterial("Sugar") || await fetchForecastDataForMaterial(catalogMaterials[0].materialName);
-  }
+  // Fetch live ML comparison data (2021-2025 actuals vs 2026 Jan-Jun forecast)
+  const targetMatParam = selectedMat ? selectedMat.materialName : (catalogMaterials[0]?.materialName || "Sugar");
+  const compResult = await fetchHistoricalComparisonForMaterial(targetMatParam);
 
-  let f7Qty = forecastResult?.forecast7Day?.quantity ? Number(forecastResult.forecast7Day.quantity) : null;
-  let f1mQty = forecastResult?.forecast1Month?.quantity ? Number(forecastResult.forecast1Month.quantity) : null;
+  if (compResult && currentTrendGranularity === "general") {
+    // 2025 Historical 12 Months + 2026 Jan-Jun (H1) Projections
+    const histMonths = compResult.historical_monthly_2025 || [];
+    const fcH1 = compResult.forecast_monthly_2026_h1 || [];
 
-  // Fallback calculation if ML service API returns unavailable or is connecting
-  if (f1mQty === null || isNaN(f1mQty) || f1mQty <= 0) {
-    const usageSum = filteredUsage.reduce((acc, u) => acc + (u.consumedQuantity || u.quantity || 0), 0);
-    const avgUsage = usageRecords.length > 0 ? usageSum / Math.max(1, catalogMaterials.length) : 0;
-    const baseThresh = selectedMat?.minStock ? Number(selectedMat.minStock) * 1.2 : (avgUsage > 0 ? avgUsage * 1.5 : 25);
-    f1mQty = Number(baseThresh.toFixed(2));
-  }
-  if (f7Qty === null || isNaN(f7Qty) || f7Qty <= 0) {
-    f7Qty = Number((f1mQty / 4).toFixed(2));
-  }
+    labels = [
+      ...histMonths.map(m => m.period),
+      ...fcH1.map(m => m.period)
+    ];
 
-  if (currentTrendGranularity === "general") {
-    // "1Y" (1-Year Window — 12 Months)
+    consumedData = [
+      ...histMonths.map(m => m.actual_used_stock),
+      null, null, null, null, null, null
+    ];
+
+    // Connect from last 2025 actual point into 2026 forecast
+    const last2025Val = histMonths.length > 0 ? histMonths[histMonths.length - 1].actual_used_stock : null;
+    forecastData = [
+      null, null, null, null, null, null, null, null, null, null, null,
+      last2025Val,
+      ...fcH1.map(m => m.forecast_requirement)
+    ];
+
+  } else if (currentTrendGranularity === "general") {
+    // Fallback 1Y Window
     labels = [];
     consumedData = new Array(12).fill(0);
-
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthKeys = [];
 
     for (let i = 11; i >= 0; i--) {
@@ -864,16 +883,7 @@ async function renderRawMaterialsTrendChart() {
     });
 
     consumedData = consumedData.map(v => Number(v.toFixed(2)));
-    const totalConsumed = consumedData.reduce((s, v) => s + v, 0);
-    const effectiveF1mQty = (!selectedMat && totalConsumed > 0) ? Math.max(f1mQty, totalConsumed * 1.05) : f1mQty;
-
-    forecastData = consumedData.map((cVal, idx) => {
-      if (cVal > 0) {
-        return Number((cVal * 1.08 + (idx % 2 === 0 ? 3.5 : 1.5)).toFixed(2));
-      }
-      const baseM = Number((effectiveF1mQty / 12).toFixed(2));
-      return Number((baseM * (1 + (idx * 0.03))).toFixed(2));
-    });
+    forecastData = consumedData.map((cVal, idx) => Number((cVal * 1.08 + (idx % 2 === 0 ? 3.5 : 1.5)).toFixed(2)));
 
   } else if (currentTrendGranularity === "weekly") {
     // "6M" (6-Month Rolling Window)

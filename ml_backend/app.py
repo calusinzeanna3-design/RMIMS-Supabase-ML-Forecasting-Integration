@@ -562,6 +562,110 @@ def material_forecast_inventory(material_identifier):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@app.route("/api/forecast/comparison", methods=["GET", "POST"])
+@app.route("/api/ml/forecast/comparison/<path:material_identifier>", methods=["GET", "POST"])
+def material_historical_comparison(material_identifier=None):
+    """
+    Returns 2021-2025 actual historical used stock vs 2026 Jan-Jun forecasted requirement
+    with ±10% acceptance margin bounds.
+    """
+    try:
+        query = material_identifier
+        if not query:
+            if request.method == "POST":
+                body = request.get_json(silent=True) or {}
+                query = body.get("raw_material_name") or body.get("material_name") or body.get("material_id") or "OVERALL_TOTAL"
+            else:
+                query = request.args.get("material") or request.args.get("raw_material_name") or "OVERALL_TOTAL"
+
+        material_info = get_material_model(query)
+        if not material_info:
+            return jsonify({
+                "status": "error",
+                "error": f"Raw material '{query}' not found.",
+                "available_materials": list(MODELS.keys())
+            }), 404
+
+        model = material_info["model"]
+        unit = material_info["unit"]
+
+        # Extract 2021-2025 historical series
+        history_series = pd.Series(model.model.endog, index=model.model._index)
+
+        # 2021-2025 Yearly Totals
+        yearly_dict = history_series.groupby(history_series.index.year).sum().round(2).to_dict()
+        yearly_history = [{"year": int(y), "used_stock": float(v)} for y, v in yearly_dict.items()]
+
+        # 2025 Monthly Actual Used Stock (Jan - Dec)
+        hist_2025 = history_series["2025-01-01":"2025-12-31"]
+        monthly_2025_series = hist_2025.groupby(pd.Grouper(freq="MS")).sum().round(2)
+        monthly_2025 = [
+            {
+                "period": dt.strftime("%Y-%m"),
+                "month_name": dt.strftime("%b %Y"),
+                "actual_used_stock": round(float(val), 2),
+                "margin_upper_10": round(float(val * 1.10), 2),
+                "margin_lower_10": round(float(val * 0.90), 2)
+            }
+            for dt, val in monthly_2025_series.items()
+        ]
+
+        # 2026 Forecast (12 Months / Jan to Dec, with focus on Jan to Jun H1)
+        raw_fc = np.maximum(model.forecast(365), 0.0)
+        df_fc = pd.DataFrame({"date": raw_fc.index, "val": raw_fc.values})
+        df_fc_m = df_fc.groupby(pd.Grouper(key="date", freq="MS"))["val"].sum().round(2)
+
+        forecast_2026_h1 = [
+            {
+                "period": dt.strftime("%Y-%m"),
+                "month_name": dt.strftime("%b %Y"),
+                "forecast_requirement": round(float(val), 2),
+                "margin_upper_10": round(float(val * 1.10), 2),
+                "margin_lower_10": round(float(val * 0.90), 2)
+            }
+            for dt, val in df_fc_m.head(6).items()
+        ]
+
+        forecast_2026_full = [
+            {
+                "period": dt.strftime("%Y-%m"),
+                "month_name": dt.strftime("%b %Y"),
+                "forecast_requirement": round(float(val), 2),
+                "margin_upper_10": round(float(val * 1.10), 2),
+                "margin_lower_10": round(float(val * 0.90), 2)
+            }
+            for dt, val in df_fc_m.head(12).items()
+        ]
+
+        # Summary statistics
+        total_2025_used = round(float(monthly_2025_series.sum()), 2)
+        h1_2025_used = round(float(monthly_2025_series.head(6).sum()), 2)
+        h1_2026_forecast = round(float(df_fc_m.head(6).sum()), 2)
+        growth_rate_h1 = round(((h1_2026_forecast - h1_2025_used) / max(1, h1_2025_used)) * 100, 2)
+
+        return jsonify({
+            "status": "success",
+            "raw_material_name": material_info["raw_material_name"],
+            "material_id": material_info["material_id"],
+            "unit": unit,
+            "comparison_title": f"2021-2025 Historical Used Stock vs 2026 Jan-Jun Forecast: {material_info['raw_material_name']}",
+            "historical_yearly_2021_2025": yearly_history,
+            "historical_monthly_2025": monthly_2025,
+            "forecast_monthly_2026_h1": forecast_2026_h1,
+            "forecast_monthly_2026_full": forecast_2026_full,
+            "metrics": {
+                "total_2025_used_stock": total_2025_used,
+                "h1_2025_used_stock": h1_2025_used,
+                "h1_2026_forecast_requirement": h1_2026_forecast,
+                "h1_demand_growth_pct": growth_rate_h1,
+                "unit": unit
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 # ============================================================
 # MAIN ENTRYPOINT
 # ============================================================
