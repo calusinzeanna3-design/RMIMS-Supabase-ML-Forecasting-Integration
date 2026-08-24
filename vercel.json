@@ -1,0 +1,35 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/RMIMS/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/RMIMS/login.html"
+    },
+    {
+      "source": "/portal",
+      "destination": "/RMIMS/portal.html"
+    },
+    {
+      "source": "/kiosk",
+      "destination": "/RMIMS/kiosk-checkin.html"
+    },
+    {
+      "source": "/user-signin",
+      "destination": "/RMIMS/user-signin.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/RMIMS/admin/:path*"
+    },
+    {
+      "source": "/user/:path*",
+      "destination": "/RMIMS/user/:path*"
+    }
+  ]
+}

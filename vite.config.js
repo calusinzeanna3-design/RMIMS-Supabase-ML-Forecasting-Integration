@@ -29,7 +29,13 @@ const copyRmimsAssetsPlugin = () => ({
     const jsDest = resolve(__dirname, 'dist/RMIMS/js');
     copyDirSync(jsSrc, jsDest);
 
-    console.log('[Vite Plugin] Successfully copied RMIMS assets and js files to dist output.');
+    const indexSrc = resolve(__dirname, 'dist/RMIMS/index.html');
+    const indexDest = resolve(__dirname, 'dist/index.html');
+    if (fs.existsSync(indexSrc)) {
+      fs.copyFileSync(indexSrc, indexDest);
+    }
+
+    console.log('[Vite Plugin] Successfully copied RMIMS assets, js, and root index.html to dist output.');
   }
 });
 
