@@ -647,35 +647,73 @@ function renderPrimaryChart() {
     // Connect from last historical point
     forecastData.push(null, null, null, null, historicalData[4], week1Forecast, week2Forecast);
 
+    // Calculate ±10% margin across combined points
+    const marginUpper = labels.map((_, i) => {
+        const val = (i < 5) ? historicalData[i] : forecastData[i];
+        return val != null ? Number((val * 1.10).toFixed(1)) : null;
+    });
+    const marginLower = labels.map((_, i) => {
+        const val = (i < 5) ? historicalData[i] : forecastData[i];
+        return val != null ? Number((val * 0.90).toFixed(1)) : null;
+    });
+
     consumptionForecastChartInstance = new Chart(ctx, {
         type: "line",
         data: {
             labels: labels,
             datasets: [
                 {
-                    label: "Recorded Historical Consumption",
-                    data: historicalData,
-                    borderColor: "#16a34a",
-                    backgroundColor: "rgba(22, 163, 74, 0.08)",
-                    borderWidth: 2.5,
-                    pointBackgroundColor: "#16a34a",
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.3
+                    label: "±10% Margin Upper",
+                    data: marginUpper,
+                    borderColor: "transparent",
+                    backgroundColor: "transparent",
+                    borderWidth: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false,
+                    tension: 0.25
                 },
                 {
-                    label: "AutoReg Forecast Requirement",
+                    label: "±10% Acceptance Margin",
+                    data: marginLower,
+                    borderColor: "transparent",
+                    backgroundColor: "rgba(200, 208, 220, 0.45)",
+                    borderWidth: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: "-1",
+                    tension: 0.25
+                },
+                {
+                    label: "Actual Historical Used Stock",
+                    data: historicalData,
+                    borderColor: "#1D70B8",
+                    backgroundColor: "transparent",
+                    borderWidth: 2.8,
+                    pointBackgroundColor: "#1D70B8",
+                    pointBorderColor: "#FFFFFF",
+                    pointBorderWidth: 2,
+                    pointStyle: "circle",
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: false,
+                    tension: 0.25
+                },
+                {
+                    label: "Forecast Future Requirement",
                     data: forecastData,
-                    borderColor: "#2563eb",
-                    backgroundColor: "rgba(37, 99, 235, 0.08)",
-                    borderWidth: 2.5,
-                    borderDash: [5, 5],
-                    pointBackgroundColor: "#2563eb",
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.3
+                    borderColor: "#F97316",
+                    backgroundColor: "transparent",
+                    borderWidth: 2.6,
+                    borderDash: [6, 4],
+                    pointBackgroundColor: "#F97316",
+                    pointBorderColor: "#FFFFFF",
+                    pointBorderWidth: 2,
+                    pointStyle: "rect",
+                    pointRadius: 5.5,
+                    pointHoverRadius: 8,
+                    fill: false,
+                    tension: 0.25
                 }
             ]
         },

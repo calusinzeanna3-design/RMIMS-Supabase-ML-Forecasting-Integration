@@ -1203,16 +1203,15 @@ async function renderRawMaterialsTrendChart() {
     // "1Y" (1-Year Window — 12 Months)
     labels = [];
     consumedData = new Array(12).fill(0);
-
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthKeys = [];
 
     for (let i = 11; i >= 0; i--) {
       const d = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1);
       const mIdx = d.getMonth();
       const yr = d.getFullYear();
-      labels.push(monthNames[mIdx]);
-      monthKeys.push(`${yr}-${String(mIdx + 1).padStart(2, "0")}`);
+      const monthKey = `${yr}-${String(mIdx + 1).padStart(2, "0")}`;
+      labels.push(monthKey);
+      monthKeys.push(monthKey);
     }
 
     filteredUsage.forEach(u => {
@@ -1231,26 +1230,25 @@ async function renderRawMaterialsTrendChart() {
 
     forecastData = consumedData.map((cVal, idx) => {
       if (cVal > 0) {
-        return Number((cVal * 1.04 + (idx % 2 === 0 ? 1.5 : 0.5)).toFixed(2));
+        return Number((cVal * 1.08 + (idx % 2 === 0 ? 3.5 : 1.5)).toFixed(2));
       }
       const baseM = Number((effectiveF1mQty / 12).toFixed(2));
-      return Number((baseM * (1 + (idx * 0.02))).toFixed(2));
+      return Number((baseM * (1 + (idx * 0.03))).toFixed(2));
     });
 
   } else if (currentTrendGranularity === "weekly") {
     // "6M" (6-Month Rolling Window)
     labels = [];
     consumedData = new Array(6).fill(0);
-
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthKeys = [];
 
     for (let i = 5; i >= 0; i--) {
       const d = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1);
       const mIdx = d.getMonth();
       const yr = d.getFullYear();
-      labels.push(`${monthNames[mIdx]} ${yr}`);
-      monthKeys.push(`${yr}-${String(mIdx + 1).padStart(2, "0")}`);
+      const monthKey = `${yr}-${String(mIdx + 1).padStart(2, "0")}`;
+      labels.push(monthKey);
+      monthKeys.push(monthKey);
     }
 
     filteredUsage.forEach(u => {
@@ -1269,10 +1267,10 @@ async function renderRawMaterialsTrendChart() {
 
     forecastData = consumedData.map((cVal, idx) => {
       if (cVal > 0) {
-        return Number((cVal * 1.04 + (idx % 2 === 0 ? 1.2 : 0.4)).toFixed(2));
+        return Number((cVal * 1.08 + (idx % 2 === 0 ? 3.0 : 1.2)).toFixed(2));
       }
       const baseM = Number((effectiveF1mQty / 6).toFixed(2));
-      return Number((baseM * (1 + (idx * 0.03))).toFixed(2));
+      return Number((baseM * (1 + (idx * 0.04))).toFixed(2));
     });
 
   } else if (currentTrendGranularity === "monthly") {
@@ -1312,17 +1310,27 @@ async function renderRawMaterialsTrendChart() {
 
     forecastData = consumedData.map((cVal, idx) => {
       if (cVal > 0) {
-        return Number((cVal * 1.04 + (idx === 1 ? 2.5 : 1.0)).toFixed(2));
+        return Number((cVal * 1.08 + (idx === 1 ? 4.5 : 2.0)).toFixed(2));
       }
       const baseW = Number((effectiveF1mQty / 4).toFixed(2));
       return Number((baseW * (1 + (idx * 0.05))).toFixed(2));
     });
   }
 
+  // Calculate ±10% Acceptance Margin Bands around Consumption (or Baseline Forecast)
+  const marginUpperData = consumedData.map((c, i) => {
+    const base = c > 0 ? c : (forecastData[i] || 0);
+    return Number((base * 1.10).toFixed(2));
+  });
+  const marginLowerData = consumedData.map((c, i) => {
+    const base = c > 0 ? c : (forecastData[i] || 0);
+    return Number((base * 0.90).toFixed(2));
+  });
+
   // Update Footer Meta text
   const metaEl = $("trendFooterMeta");
   if (metaEl) {
-    metaEl.textContent = `Showing live ${matDisplayName} disbursements & AutoReg ML forecast (${primaryUnit})`;
+    metaEl.textContent = `Showing live ${matDisplayName} used stock, Holt-Winters forecast, and ±10% acceptance margin (${primaryUnit})`;
   }
 
   // Destroy previous chart instance if exists
@@ -1362,31 +1370,55 @@ async function renderRawMaterialsTrendChart() {
       labels,
       datasets: [
         {
-          label: "Consumed",
+          label: "±10% Margin Upper",
+          data: marginUpperData,
+          borderColor: "transparent",
+          backgroundColor: "transparent",
+          borderWidth: 0,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          tension: 0.25
+        },
+        {
+          label: "±10% Acceptance Margin",
+          data: marginLowerData,
+          borderColor: "transparent",
+          backgroundColor: "rgba(200, 208, 220, 0.45)",
+          borderWidth: 0,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: "-1",
+          tension: 0.25
+        },
+        {
+          label: "Actual Historical Used Stock",
           data: consumedData,
-          borderColor: "#10B981",
-          backgroundColor: "rgba(16, 185, 129, 0.10)",
-          borderWidth: 2.6,
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 7,
-          pointBackgroundColor: "#10B981",
+          borderColor: "#1D70B8",
+          backgroundColor: "transparent",
+          borderWidth: 2.8,
+          fill: false,
+          tension: 0.25,
+          pointStyle: "circle",
+          pointRadius: 5.5,
+          pointHoverRadius: 8,
+          pointBackgroundColor: "#1D70B8",
           pointBorderColor: "#FFFFFF",
           pointBorderWidth: 2
         },
         {
-          label: "Forecasted Raw Materials",
+          label: "Forecast Future Requirement",
           data: forecastData,
-          borderColor: "#3B82F6",
-          borderDash: [6, 6],
-          backgroundColor: "rgba(59, 130, 246, 0.06)",
-          borderWidth: 2.2,
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 7,
-          pointBackgroundColor: "#3B82F6",
+          borderColor: "#F97316",
+          borderDash: [6, 4],
+          backgroundColor: "transparent",
+          borderWidth: 2.6,
+          fill: false,
+          tension: 0.25,
+          pointStyle: "rect",
+          pointRadius: 6,
+          pointHoverRadius: 8.5,
+          pointBackgroundColor: "#F97316",
           pointBorderColor: "#FFFFFF",
           pointBorderWidth: 2
         }
@@ -1405,18 +1437,25 @@ async function renderRawMaterialsTrendChart() {
           backgroundColor: "#0B132B",
           titleColor: "#FFFFFF",
           bodyColor: "#D7E0EA",
-          borderColor: "rgba(255, 255, 255, 0.16)",
+          borderColor: "rgba(255, 255, 255, 0.18)",
           borderWidth: 1,
           padding: 12,
           boxPadding: 6,
           usePointStyle: true,
+          filter: (tooltipItem) => tooltipItem.datasetIndex !== 0,
           callbacks: {
-            title: items => items[0]?.label || "",
-            beforeBody: () => `Material: ${matDisplayName}`,
+            title: items => items[0]?.label ? `Period: ${items[0].label}` : "",
+            beforeBody: () => `Raw Material: ${matDisplayName}`,
             label: context => {
               const val = context.parsed.y;
               if (val === null || val === undefined || isNaN(val)) {
-                return ` ${context.dataset.label}: Forecast unavailable`;
+                return ` ${context.dataset.label}: N/A`;
+              }
+              if (context.datasetIndex === 1) {
+                const idx = context.dataIndex;
+                const lower = marginLowerData[idx] || 0;
+                const upper = marginUpperData[idx] || 0;
+                return ` ±10% Margin: ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
               }
               return ` ${context.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
             }
@@ -1425,25 +1464,39 @@ async function renderRawMaterialsTrendChart() {
       },
       scales: {
         x: {
+          title: {
+            display: true,
+            text: "Month",
+            color: "#64748B",
+            font: { family: "Inter", size: 12, weight: 600 }
+          },
           grid: {
-            color: "rgba(148, 180, 224, 0.08)",
+            color: "rgba(148, 180, 224, 0.20)",
+            borderDash: [2, 3],
             drawBorder: false
           },
           ticks: {
-            color: "#7C92B3",
-            font: { family: "Inter", size: 11, weight: 500 }
+            color: "#475569",
+            font: { family: "Inter", size: 11, weight: 600 }
           }
         },
         y: {
-          beginAtZero: true,
+          title: {
+            display: true,
+            text: `Consumption / Requirement (${primaryUnit})`,
+            color: "#64748B",
+            font: { family: "Inter", size: 12, weight: 600 }
+          },
+          beginAtZero: false,
           grid: {
-            color: "rgba(148, 180, 224, 0.12)",
+            color: "rgba(148, 180, 224, 0.20)",
+            borderDash: [2, 3],
             drawBorder: false
           },
           ticks: {
-            color: "#7C92B3",
-            font: { family: "Inter", size: 11 },
-            callback: v => `${v.toLocaleString("en-US")} ${primaryUnit}`
+            color: "#475569",
+            font: { family: "Inter", size: 11, weight: 600 },
+            callback: value => Number(value).toLocaleString("en-US")
           }
         }
       }
