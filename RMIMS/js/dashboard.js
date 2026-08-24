@@ -1197,43 +1197,15 @@ async function renderRawMaterialsTrendChart() {
   const targetMatParam = selectedMat ? selectedMat.materialName : (catalogMaterials[0]?.materialName || "Sugar");
   const compResult = await fetchHistoricalComparisonForMaterial(targetMatParam);
 
-  if (compResult && currentTrendGranularity === "general") {
-    // 2025 Historical 12 Months + 2026 Jan-Jun (H1) Projections
-    const histMonths = compResult.historical_monthly_2025 || [];
-    const fcH1 = compResult.forecast_monthly_2026_h1 || [];
-
-    labels = [
-      ...histMonths.map(m => m.period),
-      ...fcH1.map(m => m.period)
+  if (currentTrendGranularity === "general") {
+    // "1Y" (2026 Full Year Forecast — 12 Months: 2026-01 to 2026-12)
+    const fc2026 = compResult?.forecast_monthly_2026_full || [];
+    const monthKeys = [
+      "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06",
+      "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"
     ];
-
-    consumedData = [
-      ...histMonths.map(m => m.actual_used_stock),
-      null, null, null, null, null, null
-    ];
-
-    // Connect from last 2025 actual point into 2026 forecast
-    const last2025Val = histMonths.length > 0 ? histMonths[histMonths.length - 1].actual_used_stock : null;
-    forecastData = [
-      null, null, null, null, null, null, null, null, null, null, null,
-      last2025Val,
-      ...fcH1.map(m => m.forecast_requirement)
-    ];
-
-  } else if (currentTrendGranularity === "general") {
-    // Fallback 1Y Window
-    labels = [];
+    labels = [...monthKeys];
     consumedData = new Array(12).fill(0);
-    const monthKeys = [];
-
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1);
-      const mIdx = d.getMonth();
-      const yr = d.getFullYear();
-      const monthKey = `${yr}-${String(mIdx + 1).padStart(2, "0")}`;
-      labels.push(monthKey);
-      monthKeys.push(monthKey);
-    }
 
     filteredUsage.forEach(u => {
       const dateVal = u.usageDate || u.date || u.createdAt;
@@ -1246,22 +1218,20 @@ async function renderRawMaterialsTrendChart() {
     });
 
     consumedData = consumedData.map(v => Number(v.toFixed(2)));
-    forecastData = consumedData.map((cVal, idx) => Number((cVal * 1.08 + (idx % 2 === 0 ? 3.5 : 1.5)).toFixed(2)));
+
+    if (fc2026.length >= 12) {
+      forecastData = fc2026.map(m => m.forecast_requirement);
+    } else {
+      const baseM = f1mQty || 200;
+      forecastData = consumedData.map((cVal, idx) => cVal > 0 ? Number((cVal * 1.08 + 2).toFixed(2)) : Number((baseM * (1 + idx * 0.02)).toFixed(2)));
+    }
 
   } else if (currentTrendGranularity === "weekly") {
-    // "6M" (6-Month Rolling Window)
-    labels = [];
+    // "6M" (2026 H1 Window — 6 Months: 2026-01 to 2026-06)
+    const fcH1 = compResult?.forecast_monthly_2026_h1 || [];
+    const monthKeys = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
+    labels = [...monthKeys];
     consumedData = new Array(6).fill(0);
-    const monthKeys = [];
-
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1);
-      const mIdx = d.getMonth();
-      const yr = d.getFullYear();
-      const monthKey = `${yr}-${String(mIdx + 1).padStart(2, "0")}`;
-      labels.push(monthKey);
-      monthKeys.push(monthKey);
-    }
 
     filteredUsage.forEach(u => {
       const dateVal = u.usageDate || u.date || u.createdAt;
@@ -1274,24 +1244,18 @@ async function renderRawMaterialsTrendChart() {
     });
 
     consumedData = consumedData.map(v => Number(v.toFixed(2)));
-    const totalConsumed = consumedData.reduce((s, v) => s + v, 0);
-    const effectiveF1mQty = (!selectedMat && totalConsumed > 0) ? Math.max(f1mQty, totalConsumed * 1.05) : f1mQty;
 
-    forecastData = consumedData.map((cVal, idx) => {
-      if (cVal > 0) {
-        return Number((cVal * 1.08 + (idx % 2 === 0 ? 3.0 : 1.2)).toFixed(2));
-      }
-      const baseM = Number((effectiveF1mQty / 6).toFixed(2));
-      return Number((baseM * (1 + (idx * 0.04))).toFixed(2));
-    });
+    if (fcH1.length >= 6) {
+      forecastData = fcH1.map(m => m.forecast_requirement);
+    } else {
+      const baseM = f1mQty || 200;
+      forecastData = consumedData.map((cVal, idx) => cVal > 0 ? Number((cVal * 1.08 + 1.5).toFixed(2)) : Number((baseM * (1 + idx * 0.03)).toFixed(2)));
+    }
 
   } else if (currentTrendGranularity === "monthly") {
-    // "1M" (1-Month / 4 Weeks View)
-    labels = ["Week 1 (1-7)", "Week 2 (8-14)", "Week 3 (15-21)", "Week 4 (22+)"];
+    // "1M" (2026 Recent Month — 4 Weeks View)
+    labels = ["2026-W1 (1-7)", "2026-W2 (8-14)", "2026-W3 (15-21)", "2026-W4 (22+)"];
     consumedData = [0, 0, 0, 0];
-
-    const targetMonthIdx = anchorDate.getMonth();
-    const targetYear = anchorDate.getFullYear();
 
     filteredUsage.forEach(u => {
       const dateVal = u.usageDate || u.date || u.createdAt;
@@ -1306,7 +1270,7 @@ async function renderRawMaterialsTrendChart() {
         else dt = new Date(str);
       }
 
-      if (dt && !isNaN(dt.getTime()) && dt.getMonth() === targetMonthIdx && dt.getFullYear() === targetYear) {
+      if (dt && !isNaN(dt.getTime())) {
         const day = dt.getDate();
         const qty = Number(u.consumedQuantity || u.quantity || 0);
         if (day <= 7) consumedData[0] += qty;
@@ -1317,15 +1281,10 @@ async function renderRawMaterialsTrendChart() {
     });
 
     consumedData = consumedData.map(v => Number(v.toFixed(2)));
-    const totalConsumed = consumedData.reduce((s, v) => s + v, 0);
-    const effectiveF1mQty = (!selectedMat && totalConsumed > 0) ? Math.max(f1mQty, totalConsumed * 1.05) : f1mQty;
-
+    const baseW = Number((f1mQty / 4).toFixed(2)) || 50;
     forecastData = consumedData.map((cVal, idx) => {
-      if (cVal > 0) {
-        return Number((cVal * 1.08 + (idx === 1 ? 4.5 : 2.0)).toFixed(2));
-      }
-      const baseW = Number((effectiveF1mQty / 4).toFixed(2));
-      return Number((baseW * (1 + (idx * 0.05))).toFixed(2));
+      if (cVal > 0) return Number((cVal * 1.08 + (idx === 1 ? 4.5 : 2.0)).toFixed(2));
+      return Number((baseW * (1 + idx * 0.05)).toFixed(2));
     });
   }
 
