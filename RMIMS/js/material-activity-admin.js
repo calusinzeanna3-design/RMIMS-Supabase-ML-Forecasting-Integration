@@ -288,26 +288,50 @@ function buildUnifiedActivities() {
     const list = [];
 
     // Receipts as "Receive"
-    state.stockReceipts.forEach(r => {
-        const mat = state.materials.find(m => m.id === r.material_id);
-        const qty = Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
-        const dateVal = r.receipt_date || r.received_date || r.created_at;
-        list.push({
-            id: "rec_" + r.id,
-            type: "receive",
-            typeLabel: "Receive",
-            date: dateVal,
-            context: "Unassigned / General Stock",
-            materialId: r.material_id,
-            materialName: mat ? mat.name : "Unknown Material",
-            itemCode: mat ? (mat.item_code || "—") : "—",
-            quantity: qty,
-            unit: r.unit || r.unit_of_measure || (mat ? mat.unit_of_measure : "kg"),
-            currentStock: mat ? Number(mat.current_stock) : 0,
-            minStock: mat ? Number(mat.minimum_threshold) : 0,
-            rawTimestamp: new Date(dateVal).getTime()
+    if (state.stockReceipts.length === 0 && state.materials.length > 0) {
+        state.materials.forEach(mat => {
+            const qty = Number(mat.current_stock) || 0;
+            if (qty > 0) {
+                const dateVal = mat.created_at || new Date().toISOString();
+                list.push({
+                    id: "rec_init_" + mat.id,
+                    type: "receive",
+                    typeLabel: "Receive",
+                    date: dateVal,
+                    context: "Initial Stock / Delivery Receipt",
+                    materialId: mat.id,
+                    materialName: mat.name || "Unknown Material",
+                    itemCode: mat.item_code || "—",
+                    quantity: qty,
+                    unit: mat.unit_of_measure || "kg",
+                    currentStock: qty,
+                    minStock: Number(mat.minimum_threshold) || 0,
+                    rawTimestamp: new Date(dateVal).getTime()
+                });
+            }
         });
-    });
+    } else {
+        state.stockReceipts.forEach(r => {
+            const mat = state.materials.find(m => m.id === r.material_id);
+            const qty = Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+            const dateVal = r.receipt_date || r.received_date || r.created_at;
+            list.push({
+                id: "rec_" + r.id,
+                type: "receive",
+                typeLabel: "Receive",
+                date: dateVal,
+                context: "Unassigned / General Stock",
+                materialId: r.material_id,
+                materialName: mat ? mat.name : "Unknown Material",
+                itemCode: mat ? (mat.item_code || "—") : "—",
+                quantity: qty,
+                unit: r.unit || r.unit_of_measure || (mat ? mat.unit_of_measure : "kg"),
+                currentStock: mat ? Number(mat.current_stock) : 0,
+                minStock: mat ? Number(mat.minimum_threshold) : 0,
+                rawTimestamp: new Date(dateVal).getTime()
+            });
+        });
+    }
 
     // Disbursements as "Disbursement"
     state.disbursements.forEach(d => {

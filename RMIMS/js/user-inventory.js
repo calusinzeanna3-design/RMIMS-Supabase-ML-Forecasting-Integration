@@ -305,12 +305,24 @@ async function loadAllData(showToast = false) {
         });
 
         // Store Receipts & Disbursements
-        state.receipts = rawReceipts;
+        if (rawReceipts.length === 0 && rawMaterialsList.length > 0) {
+            state.receipts = rawMaterialsList.filter(m => num(m.current_stock) > 0).map(d => ({
+                id: `rec-${d.id}`,
+                material_id: d.id,
+                received_quantity: num(d.current_stock),
+                unit: (d.unit_of_measure || "kg").trim(),
+                receipt_date: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+                supplier_name: d.description && d.description.includes("Supplier:") ? d.description.split("Supplier:")[1].trim() : "Standard Supplier / Received Delivery",
+                created_at: d.created_at || new Date().toISOString()
+            }));
+        } else {
+            state.receipts = rawReceipts;
+        }
         state.disbursements = rawDisbursements;
 
         // Associate latest activity for each material
         const actByMat = new Map();
-        rawReceipts.forEach(r => {
+        state.receipts.forEach(r => {
             const cur = actByMat.get(r.material_id);
             const rTime = new Date(r.receipt_date || r.created_at || 0).getTime();
             if (!cur || rTime > cur.time) {
@@ -324,7 +336,7 @@ async function loadAllData(showToast = false) {
             }
         });
 
-        rawDisbursements.forEach(d => {
+        state.disbursements.forEach(d => {
             const cur = actByMat.get(d.material_id);
             const dTime = new Date(d.usage_date || d.created_at || 0).getTime();
             if (!cur || dTime > cur.time) {
@@ -345,6 +357,10 @@ async function loadAllData(showToast = false) {
                 m.latestActivityType = act.type;
                 m.latestActivityQty = act.qty;
                 m.latestActivityUnit = act.unit;
+            } else if (m.currentStock > 0) {
+                m.latestActivityType = "Receive";
+                m.latestActivityQty = m.currentStock;
+                m.latestActivityUnit = m.unit;
             }
         });
 

@@ -133,22 +133,38 @@ async function loadData() {
             updatedAt: d.updated_at || null
         }));
 
-        state.receipts = rawReceipts.map(d => {
-            const mat = matMap.get(d.material_id);
-            return {
-                id: d.id,
-                materialId: d.material_id,
-                materialName: mat ? mat.name : "Raw Material",
-                materialCode: mat ? (mat.item_code || "") : "",
-                currentStock: mat ? num(mat.current_stock) : 0,
-                minStock: mat ? mat.minimum_threshold : null,
-                receivedQuantity: num(d.received_quantity),
-                unit: d.unit || (mat ? mat.unit_of_measure : "kg"),
-                receiptDate: d.receipt_date || null,
-                supplierName: d.supplier_name || "Standard Supplier",
-                createdAt: d.created_at || null
-            };
-        });
+        if (rawReceipts.length === 0 && rawList.length > 0) {
+            state.receipts = rawList.filter(m => num(m.current_stock) > 0).map(d => ({
+                id: `rec-${d.id}`,
+                materialId: d.id,
+                materialName: d.name || "Raw Material",
+                materialCode: d.item_code || "",
+                currentStock: num(d.current_stock),
+                minStock: d.minimum_threshold !== null && d.minimum_threshold !== undefined ? num(d.minimum_threshold) : null,
+                receivedQuantity: num(d.current_stock),
+                unit: d.unit_of_measure || "kg",
+                receiptDate: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+                supplierName: d.description && d.description.includes("Supplier:") ? d.description.split("Supplier:")[1].trim() : "Standard Supplier / Received Delivery",
+                createdAt: d.created_at || new Date().toISOString()
+            }));
+        } else {
+            state.receipts = rawReceipts.map(d => {
+                const mat = matMap.get(d.material_id);
+                return {
+                    id: d.id,
+                    materialId: d.material_id,
+                    materialName: mat ? mat.name : "Raw Material",
+                    materialCode: mat ? (mat.item_code || "") : "",
+                    currentStock: mat ? num(mat.current_stock) : 0,
+                    minStock: mat ? mat.minimum_threshold : null,
+                    receivedQuantity: num(d.received_quantity),
+                    unit: d.unit || (mat ? mat.unit_of_measure : "kg"),
+                    receiptDate: d.receipt_date || null,
+                    supplierName: d.supplier_name || "Standard Supplier",
+                    createdAt: d.created_at || null
+                };
+            });
+        }
 
         state.disbursements = rawDisbursements.map(d => {
             const mat = matMap.get(d.material_id);
@@ -225,8 +241,8 @@ function getOverviewDataList() {
         const latestReceipt = matReceipts[0] || null;
         const latestDisburse = matDisbursements[0] || null;
 
-        let activityStatus = "None";
-        let activityQty = "—";
+        let activityStatus = m.currentStock > 0 ? "Receive" : "None";
+        let activityQty = m.currentStock > 0 ? `+${fmtQty(m.currentStock)}` : "—";
         let activityUnit = m.unit || "kg";
         let activityDate = m.createdAt ? m.createdAt.slice(0, 10) : "";
         let activityTimestamp = m.createdAt ? new Date(m.createdAt).getTime() : 0;
@@ -259,6 +275,10 @@ function getOverviewDataList() {
             activityUnit = latestDisburse.unit || m.unit;
             activityDate = latestDisburse.usageDate || (latestDisburse.createdAt ? latestDisburse.createdAt.slice(0, 10) : "");
             activityTimestamp = new Date(latestDisburse.usageDate || latestDisburse.createdAt || 0).getTime();
+        } else if (m.currentStock > 0) {
+            activityStatus = "Receive";
+            activityQty = `+${fmtQty(m.currentStock)}`;
+            activityUnit = m.unit || "kg";
         }
 
         const status = computeStockStatus(m.currentStock, m.minStock);
