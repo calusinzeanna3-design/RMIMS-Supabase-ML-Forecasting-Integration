@@ -356,24 +356,26 @@ def dynamic_forecast_endpoint():
     """
     try:
         data = request.get_json(silent=True) or {}
-        material_name = data.get("material_name") or data.get("material_id") or "OVERALL_TOTAL"
+        material_name = data.get("raw_material_name") or data.get("material_name") or data.get("material_id") or "OVERALL_TOTAL"
         horizon_type = str(data.get("horizon_type", "month")).lower()
         horizon_value = int(data.get("horizon_value", 1))
 
         material_info = get_material_model(material_name)
         if not material_info:
             return jsonify({
+                "status": "error",
                 "error": f"Raw material '{material_name}' not found.",
                 "available_materials": list(MODELS.keys())
             }), 400
 
         if horizon_type not in HORIZON_CONFIG:
             return jsonify({
+                "status": "error",
                 "error": f"Invalid horizon_type '{horizon_type}'. Must be one of: {list(HORIZON_CONFIG.keys())}"
             }), 400
 
         if horizon_value < 1:
-            return jsonify({"error": "horizon_value must be a positive integer >= 1"}), 400
+            return jsonify({"status": "error", "error": "horizon_value must be a positive integer >= 1"}), 400
 
         days_needed = horizon_value * HORIZON_CONFIG[horizon_type]["multiplier"]
         model = material_info["model"]
@@ -402,6 +404,7 @@ def dynamic_forecast_endpoint():
         total_forecast_quantity = round(float(df_fc["forecast_requirement"].sum()), 2)
 
         return jsonify({
+            "status": "success",
             "raw_material_name": material_info["raw_material_name"],
             "unit": material_info["unit"],
             "horizon_type": horizon_type,
@@ -411,7 +414,7 @@ def dynamic_forecast_endpoint():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 
 @app.route("/api/ml/forecast", methods=["GET", "POST"])
