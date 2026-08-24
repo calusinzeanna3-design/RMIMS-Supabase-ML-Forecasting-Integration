@@ -4,28 +4,12 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/RMIMS/index.html"
+      "source": "/RMIMS",
+      "destination": "/index.html"
     },
     {
-      "source": "/login",
-      "destination": "/RMIMS/login.html"
-    },
-    {
-      "source": "/portal",
-      "destination": "/RMIMS/portal.html"
-    },
-    {
-      "source": "/user-signin",
-      "destination": "/RMIMS/user-signin.html"
-    },
-    {
-      "source": "/admin/:path*",
-      "destination": "/RMIMS/admin/:path*"
-    },
-    {
-      "source": "/user/:path*",
-      "destination": "/RMIMS/user/:path*"
+      "source": "/RMIMS/:path*",
+      "destination": "/:path*"
     }
   ]
 }

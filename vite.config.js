@@ -26,16 +26,17 @@ const copyRmimsAssetsPlugin = () => ({
     copyDirSync(src, dest2);
 
     const jsSrc = resolve(__dirname, 'RMIMS/js');
-    const jsDest = resolve(__dirname, 'dist/RMIMS/js');
-    copyDirSync(jsSrc, jsDest);
+    const jsDest1 = resolve(__dirname, 'dist/RMIMS/js');
+    const jsDest2 = resolve(__dirname, 'dist/js');
+    copyDirSync(jsSrc, jsDest1);
+    copyDirSync(jsSrc, jsDest2);
 
-    const indexSrc = resolve(__dirname, 'dist/RMIMS/index.html');
-    const indexDest = resolve(__dirname, 'dist/index.html');
-    if (fs.existsSync(indexSrc)) {
-      fs.copyFileSync(indexSrc, indexDest);
-    }
+    // Mirror all dist/RMIMS generated pages (HTML, admin, user) to dist root
+    const rmimsDist = resolve(__dirname, 'dist/RMIMS');
+    const rootDist = resolve(__dirname, 'dist');
+    copyDirSync(rmimsDist, rootDist);
 
-    console.log('[Vite Plugin] Successfully copied RMIMS assets, js, and root index.html to dist output.');
+    console.log('[Vite Plugin] Successfully mirrored all RMIMS pages, assets, and JS directly to dist root.');
   }
 });
 
