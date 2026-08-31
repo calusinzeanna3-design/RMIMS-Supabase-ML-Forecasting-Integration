@@ -31,19 +31,42 @@ function ensureAuthTransitionDOM(expectedRole) {
         
         const isUserPortal = expectedRole === "user";
         const roleLabel = isUserPortal ? "Staff Workspace" : "Administrator Workspace";
-        const isRMIMSPath = window.location.pathname.toLowerCase().includes("/rmims");
-        const videoSrc = isRMIMSPath ? "/RMIMS/assets/auth-transition.mp4" : "assets/auth-transition.mp4";
 
         overlay.innerHTML = `
             <div class="auth-transition-card" role="status" aria-live="polite">
-                <div class="auth-video-wrapper">
-                    <video class="auth-transition-video" autoplay loop muted playsinline preload="auto">
-                        <source src="${videoSrc}" type="video/mp4">
-                    </video>
+                <!-- Custom Animated Raw Material Packaging Box & Zip Tape Stage -->
+                <div class="auth-box-stage">
+                    <div class="rm-floating-item rm-item-grain" title="Grain Supplies">🌾</div>
+                    <div class="rm-floating-item rm-item-bottle" title="Liquid & Chemical Ingredients">🧪</div>
+                    <div class="rm-floating-item rm-item-sugar" title="Raw Material Package">📦</div>
+                    <div class="rm-floating-item rm-item-ore" title="Mineral & Additive Components">✨</div>
+
+                    <div class="rm-box-3d">
+                        <div class="rm-box-front">
+                            <div class="rm-box-brand">
+                                <span class="rm-box-icon">📦</span>
+                                <span class="rm-box-label">RM(S)ME CARGO</span>
+                            </div>
+                            <div class="rm-box-barcode"></div>
+                        </div>
+
+                        <!-- Emerald Dynamic Zip / Security Sealing Tape -->
+                        <div class="rm-zip-tape-track">
+                            <div class="rm-zip-tape-fill" id="authZipTape" style="width: 0%;">
+                                <span class="rm-tape-text">RM(S)ME • SECURED • RAW MATERIALS • VERIFIED • </span>
+                            </div>
+                        </div>
+
+                        <!-- Verified Seal Stamp when 100% -->
+                        <div class="rm-stamp-badge" id="authStampBadge">
+                            <span>✓ VERIFIED</span>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="auth-trans-header">
-                    <h3 class="auth-trans-title">Authenticating Session</h3>
-                    <p class="auth-trans-sub">Connecting to ${roleLabel}...</p>
+                    <h3 class="auth-trans-title">Packaging & Authenticating Session</h3>
+                    <p class="auth-trans-sub">Securing ${roleLabel}...</p>
                 </div>
                 <div class="auth-progress-box">
                     <div class="auth-progress-track">
@@ -63,17 +86,26 @@ function ensureAuthTransitionDOM(expectedRole) {
     return {
         overlay,
         bar: overlay.querySelector("#authProgressBar"),
+        zipTape: overlay.querySelector("#authZipTape"),
+        stamp: overlay.querySelector("#authStampBadge"),
         message: overlay.querySelector("#authStatusMessage"),
-        percent: overlay.querySelector("#authPercentText"),
-        video: overlay.querySelector(".auth-transition-video")
+        percent: overlay.querySelector("#authPercentText")
     };
 }
 
 function updateAuthProgress(dom, percentage, messageText) {
     if (!dom) return;
     if (dom.bar) dom.bar.style.width = `${percentage}%`;
+    if (dom.zipTape) dom.zipTape.style.width = `${percentage}%`;
     if (dom.percent) dom.percent.textContent = `${Math.round(percentage)}%`;
     if (dom.message) dom.message.textContent = messageText;
+    if (dom.stamp) {
+        if (percentage >= 98) {
+            dom.stamp.classList.add("is-stamped");
+        } else {
+            dom.stamp.classList.remove("is-stamped");
+        }
+    }
 }
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -82,10 +114,6 @@ function showAuthTransition(expectedRole, initialMessage = "Connecting to Supaba
     const dom = ensureAuthTransitionDOM(expectedRole);
     dom.overlay.classList.add("is-active");
     dom.overlay.setAttribute("aria-hidden", "false");
-    if (dom.video) {
-        dom.video.currentTime = 0;
-        dom.video.play().catch(() => {});
-    }
     updateAuthProgress(dom, initialPercent, initialMessage);
     return dom;
 }

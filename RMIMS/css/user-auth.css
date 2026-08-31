@@ -454,24 +454,241 @@
   box-shadow: 0 25px 60px rgba(15, 42, 27, 0.15), 0 0 35px rgba(34, 197, 94, 0.18);
 }
 
-.auth-video-wrapper {
+/* ==========================================================
+   CUSTOM RM(S)ME RAW MATERIAL PACKAGING & EMERALD ZIP TAPE STAGE
+   ========================================================== */
+
+.auth-box-stage {
+  position: relative;
   width: 100%;
   max-width: 360px;
   height: 200px;
-  border-radius: 20px;
+  border-radius: 22px;
   overflow: hidden;
   margin-bottom: 20px;
-  background: #000000;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(34, 197, 94, 0.18);
-  position: relative;
+  background: radial-gradient(circle at 50% 65%, rgba(34, 197, 94, 0.14) 0%, rgba(17, 22, 27, 0.98) 75%);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), inset 0 0 25px rgba(34, 197, 94, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.auth-transition-video {
-  width: 100%;
+[data-theme="light"] .auth-box-stage {
+  background: radial-gradient(circle at 50% 65%, rgba(34, 197, 94, 0.15) 0%, rgba(216, 238, 220, 0.98) 75%);
+  border-color: rgba(34, 197, 94, 0.35);
+  box-shadow: 0 12px 30px rgba(15, 42, 27, 0.12), inset 0 0 20px rgba(34, 197, 94, 0.08);
+}
+
+/* Floating Raw Material Items */
+.rm-floating-item {
+  position: absolute;
+  font-size: 24px;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+  z-index: 5;
+}
+
+.rm-item-grain {
+  top: 15px;
+  left: 60px;
+  animation: itemFlyIn 2.6s ease-in-out infinite;
+}
+
+.rm-item-bottle {
+  top: 20px;
+  right: 65px;
+  animation: itemFlyIn 2.8s ease-in-out 0.6s infinite;
+}
+
+.rm-item-sugar {
+  top: 35px;
+  left: 110px;
+  animation: itemFlyIn 2.4s ease-in-out 1.2s infinite;
+}
+
+.rm-item-ore {
+  top: 30px;
+  right: 115px;
+  animation: itemFlyIn 2.9s ease-in-out 1.8s infinite;
+}
+
+@keyframes itemFlyIn {
+  0% {
+    transform: translateY(-20px) scale(0.6) rotate(-10deg);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(10px) scale(1) rotate(5deg);
+  }
+  75% {
+    opacity: 0.9;
+    transform: translateY(40px) scale(0.75) rotate(-3deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(65px) scale(0.4) rotate(0deg);
+  }
+}
+
+/* 3D Raw Material Packaging Cargo Box */
+.rm-box-3d {
+  position: relative;
+  width: 170px;
+  height: 105px;
+  margin-top: 32px;
+  animation: rmBoxFloat 4s ease-in-out infinite;
+  z-index: 10;
+}
+
+@keyframes rmBoxFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Box Front Panel */
+.rm-box-front {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, #1E2630 0%, #141A21 100%);
+  border: 1.5px solid rgba(34, 197, 94, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: hidden;
+}
+
+[data-theme="light"] .rm-box-front {
+  background: linear-gradient(145deg, #E6F4E8 0%, #D4EBD8 100%);
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 10px 24px rgba(15, 42, 27, 0.15);
+}
+
+.rm-box-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rm-box-icon {
+  font-size: 16px;
+}
+
+.rm-box-label {
+  font-family: 'Sora', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--rm-emerald-light);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-theme="light"] .rm-box-label {
+  color: var(--rm-emerald-dark);
+}
+
+.rm-box-barcode {
+  width: 70px;
+  height: 14px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.7) 0px,
+    rgba(255, 255, 255, 0.7) 2px,
+    transparent 2px,
+    transparent 4px,
+    rgba(255, 255, 255, 0.7) 4px,
+    rgba(255, 255, 255, 0.7) 7px,
+    transparent 7px,
+    transparent 9px
+  );
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+[data-theme="light"] .rm-box-barcode {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(15, 42, 27, 0.8) 0px,
+    rgba(15, 42, 27, 0.8) 2px,
+    transparent 2px,
+    transparent 4px,
+    rgba(15, 42, 27, 0.8) 4px,
+    rgba(15, 42, 27, 0.8) 7px,
+    transparent 7px,
+    transparent 9px
+  );
+}
+
+/* Emerald Dynamic Zip / Security Sealing Tape */
+.rm-zip-tape-track {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  height: 20px;
+  background: rgba(11, 15, 19, 0.6);
+  border: 1px dashed rgba(34, 197, 94, 0.4);
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+}
+
+[data-theme="light"] .rm-zip-tape-track {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.rm-zip-tape-fill {
   height: 100%;
-  object-fit: cover;
-  display: block;
+  width: 0%;
+  background: linear-gradient(90deg, #15803D 0%, #22C55E 60%, #4ADE80 100%);
+  display: flex;
+  align-items: center;
+  color: #052e16;
+  font-family: 'Sora', monospace;
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.95);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rm-tape-text {
+  padding-left: 6px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Verified Badge when 100% */
+.rm-stamp-badge {
+  position: absolute;
+  top: 24px;
+  right: -10px;
+  background: #22C55E;
+  color: #042f1a;
+  font-family: 'Sora', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.7);
+  transform: rotate(14deg) scale(0);
+  opacity: 0;
+  transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  z-index: 30;
+}
+
+.rm-stamp-badge.is-stamped {
+  transform: rotate(14deg) scale(1);
+  opacity: 1;
 }
 
 .auth-trans-header {
