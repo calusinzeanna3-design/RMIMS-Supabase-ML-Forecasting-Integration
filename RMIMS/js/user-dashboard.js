@@ -1503,9 +1503,11 @@ function renderRawMaterialsTable() {
     const latestRec = receiptRecords.find(r => r.materialId === m.id);
     const latestUse = usageRecords.find(u => u.materialId === m.id);
 
-    let latestUpdateQty = `${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${m.unit}`;
+    let currentStockQty = `${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${m.unit}`;
+    let latestUpdateQty = currentStockQty;
     let lastUpdateFormatted = "—";
     let lastUpdateTime = 0;
+    let activityType = "Initial Catalog";
 
     if (latestRec && latestUse) {
       const recTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime();
@@ -1514,23 +1516,28 @@ function renderRawMaterialsTable() {
         latestUpdateQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
         lastUpdateFormatted = latestRec.receiptDate || new Date(recTime).toISOString().slice(0, 10);
         lastUpdateTime = recTime;
+        activityType = "Received";
       } else {
         latestUpdateQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
         lastUpdateFormatted = latestUse.usageDate || new Date(useTime).toISOString().slice(0, 10);
         lastUpdateTime = useTime;
+        activityType = "Disbursement";
       }
     } else if (latestRec) {
       latestUpdateQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
       lastUpdateFormatted = latestRec.receiptDate || (latestRec.createdAt ? new Date(latestRec.createdAt).toISOString().slice(0, 10) : "—");
       lastUpdateTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime() || 0;
+      activityType = "Received";
     } else if (latestUse) {
       latestUpdateQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
       lastUpdateFormatted = latestUse.usageDate || (latestUse.createdAt ? new Date(latestUse.createdAt).toISOString().slice(0, 10) : "—");
       lastUpdateTime = new Date(latestUse.createdAt || latestUse.usageDate).getTime() || 0;
+      activityType = "Disbursement";
     } else if (m.updatedAt || m.createdAt) {
       const t = new Date(m.updatedAt || m.createdAt).getTime();
       lastUpdateFormatted = new Date(t).toISOString().slice(0, 10);
       lastUpdateTime = t;
+      activityType = "Registered";
     }
 
     let badgeClass = "badge-available";
@@ -1549,9 +1556,11 @@ function renderRawMaterialsTable() {
       name: m.materialName,
       unit: m.unit,
       currentStock: m.currentStock,
+      currentStockQty,
       latestUpdateQty,
       lastUpdateFormatted,
       lastUpdateTime,
+      activityType,
       badgeText,
       badgeClass
     };
@@ -1579,7 +1588,7 @@ function renderRawMaterialsTable() {
   }
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="amp-table-empty">No matching raw materials found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="amp-table-empty">No matching raw materials found.</td></tr>`;
     return;
   }
 
@@ -1590,10 +1599,16 @@ function renderRawMaterialsTable() {
         <div class="amp-mat-code">${esc(r.itemCode)}</div>
       </td>
       <td>
-        <span class="amp-date-val">${esc(r.lastUpdateFormatted)}</span>
+        <div class="amp-date-cell">
+          <span class="amp-date-val">${esc(r.lastUpdateFormatted)}</span>
+          <span class="amp-activity-sub">${esc(r.activityType)}</span>
+        </div>
       </td>
       <td>
-        <span class="amp-qty-val"><strong>${esc(r.latestUpdateQty)}</strong></span>
+        <span class="amp-qty-val">${esc(r.latestUpdateQty)}</span>
+      </td>
+      <td>
+        <span class="amp-stock-val">${esc(r.currentStockQty)}</span>
       </td>
       <td>
         <span class="amp-status-badge ${r.badgeClass}">

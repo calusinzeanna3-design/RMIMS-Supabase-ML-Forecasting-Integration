@@ -3640,9 +3640,44 @@ body.modal-open {
   font-weight: 600;
 }
 
-.amp-qty-val {
-  font-weight: 700;
+.amp-date-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.amp-date-val {
+  font-weight: 600;
   color: var(--ink, #0f172a);
+  font-size: 0.84rem;
+}
+
+[data-theme="dark"] .amp-date-val {
+  color: #f8fafc;
+}
+
+.amp-activity-sub {
+  font-size: 0.72rem;
+  color: var(--text-dim, #7c92b3);
+  font-weight: 500;
+}
+
+.amp-qty-val {
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+
+[data-theme="dark"] .amp-qty-val {
+  color: #f8fafc;
+}
+
+.amp-stock-val {
+  color: var(--rm-emerald-dark, #059669);
+  font-weight: 700;
+}
+
+[data-theme="dark"] .amp-stock-val {
+  color: var(--rm-emerald-light, #34d399);
 }
 
 .amp-activity-pill {
