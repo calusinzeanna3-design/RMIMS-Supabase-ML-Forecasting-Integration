@@ -1664,7 +1664,7 @@ function renderReceiveRawMaterialsCard() {
         <div class="rrc-legend-row" ${clickHandler} style="${cursorStyle}" title="${titleText}">
           <div class="rrc-legend-left">
             <span class="rrc-legend-dot" style="background: ${color};"></span>
-            <span class="rrc-legend-name" ${s.isOthers ? 'style="font-weight: 600; text-decoration: underline dotted;"' : ''}>${esc(s.name)}</span>
+            <span class="rrc-legend-name">${esc(s.name)}</span>
           </div>
           <span class="rrc-legend-pct">${pct}%</span>
         </div>
