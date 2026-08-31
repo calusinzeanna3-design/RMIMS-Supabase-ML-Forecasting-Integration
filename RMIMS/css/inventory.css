@@ -1836,4 +1836,165 @@ span.flatpickr-weekday {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
 }
 
+/* ==========================================================
+   MULTI-SELECT BULK ACTION TOOLBAR
+   ========================================================== */
+
+.inv-selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  margin-bottom: 14px;
+  background: #ECFDF5;
+  border: 1.5px solid #10B981;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+  animation: slideDownBar 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDownBar {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.isb-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.isb-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: #10B981;
+  color: #FFFFFF;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: 20px;
+  letter-spacing: 0.2px;
+}
+
+.isb-hint {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #065F46;
+}
+
+.isb-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.isb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.isb-btn.btn-secondary {
+  background: #FFFFFF;
+  border: 1px solid #10B981;
+  color: #047857;
+}
+.isb-btn.btn-secondary:hover {
+  background: #D1FAE5;
+  border-color: #059669;
+}
+
+.isb-btn.btn-danger {
+  background: #EF4444;
+  border: 1px solid #DC2626;
+  color: #FFFFFF;
+}
+.isb-btn.btn-danger:hover {
+  background: #DC2626;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.isb-btn.btn-ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #065F46;
+}
+.isb-btn.btn-ghost:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+}
+
+/* Custom Styled Checkbox */
+.inv-custom-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #10B981;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform 0.15s ease;
+  vertical-align: middle;
+}
+.inv-custom-checkbox:hover {
+  transform: scale(1.1);
+}
+
+/* Selected row highlight */
+tr.row-selected {
+  background: rgba(16, 185, 129, 0.08) !important;
+}
+
+/* Direct Row Action Buttons (Replacing 3 dots) */
+.row-direct-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.row-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.row-action-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.row-action-btn.edit-direct-btn:hover {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10B981;
+  color: #059669;
+  transform: scale(1.05);
+}
+
+.row-action-btn.delete-direct-btn:hover {
+  background: #FEE2E2;
+  border-color: #F87171;
+  color: #DC2626;
+  transform: scale(1.05);
+}
+
+
 

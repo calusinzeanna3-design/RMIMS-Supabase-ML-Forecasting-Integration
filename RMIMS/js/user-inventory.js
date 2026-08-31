@@ -99,7 +99,10 @@ const state = {
     fpcPageSize: 10,
 
     // Active Workspace Tab
-    activeTab: "overview"
+    activeTab: "overview",
+
+    // Multiple row selection
+    selectedOverviewIds: new Set()
 };
 
 const FP_STORAGE_KEY = "rmims_finished_product_context";
@@ -611,6 +614,36 @@ function getFilteredOverviewList() {
     return filtered;
 }
 
+function updateOverviewSelectionBar() {
+    const bar = $("overviewSelectionBar");
+    const countEl = $("overviewSelectedCount");
+    const selectAllCb = $("selectAllOverview");
+    if (!bar) return;
+
+    const selectedCount = state.selectedOverviewIds.size;
+    if (selectedCount > 0) {
+        bar.hidden = false;
+        if (countEl) countEl.textContent = `${selectedCount} Selected`;
+    } else {
+        bar.hidden = true;
+    }
+
+    const filtered = getFilteredOverviewList();
+    const startIdx = (state.overviewPage - 1) * state.overviewPageSize;
+    const endIdx = Math.min(startIdx + state.overviewPageSize, filtered.length);
+    const paged = filtered.slice(startIdx, endIdx);
+
+    if (selectAllCb && paged.length > 0) {
+        const allSelected = paged.every(item => state.selectedOverviewIds.has(item.id));
+        const someSelected = paged.some(item => state.selectedOverviewIds.has(item.id));
+        selectAllCb.checked = allSelected;
+        selectAllCb.indeterminate = !allSelected && someSelected;
+    } else if (selectAllCb) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    }
+}
+
 function renderOverviewTable() {
     const tbody = $("overviewTableBody");
     const countEl = $("overviewResultCount");
@@ -627,7 +660,7 @@ function renderOverviewTable() {
     if (total === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" style="text-align:center; padding: 36px 16px; color: var(--rm-ink-dim);">
+                <td colspan="12" style="text-align:center; padding: 36px 16px; color: var(--rm-ink-dim);">
                     <strong>No raw materials found.</strong><br>
                     <span style="font-size: 0.8rem;">Try adjusting your search criteria or filters.</span>
                 </td>
@@ -635,6 +668,7 @@ function renderOverviewTable() {
         `;
         if (countEl) countEl.textContent = `Showing 0 of ${state.materials.length} raw materials`;
         if (btnsEl) btnsEl.innerHTML = "";
+        updateOverviewSelectionBar();
         return;
     }
 
@@ -651,12 +685,16 @@ function renderOverviewTable() {
     }
 
     tbody.innerHTML = paged.map(item => {
+        const isSelected = state.selectedOverviewIds.has(item.id);
         let actCls = "status-badge";
         if (item.latestActivityType === "Receive") actCls = "status-badge status-badge-instock";
         else if (item.latestActivityType === "Disbursement") actCls = "status-badge status-badge-lowstock";
 
         return `
-            <tr data-id="${esc(item.id)}">
+            <tr data-id="${esc(item.id)}" class="${isSelected ? "row-selected" : ""}">
+                <td style="text-align: center;">
+                    <input type="checkbox" class="inv-custom-checkbox row-select-checkbox" data-id="${esc(item.id)}" ${isSelected ? "checked" : ""}>
+                </td>
                 <td>${esc(fmtDate(item.latestActivityDate || item.createdAt))}</td>
                 <td>
                     <div class="mat-name-cell">
@@ -673,12 +711,14 @@ function renderOverviewTable() {
                 <td>${esc(item.latestActivityUnit || item.unit)}</td>
                 <td><span class="status-badge ${item.status.cls}">${esc(item.status.badgeText)}</span></td>
                 <td style="text-align: right; white-space: nowrap;">
-                    <button type="button" class="btn-outline-sm btn-mat-edit" data-id="${esc(item.id)}" title="Edit Material" style="padding: 4px 8px; font-size: 0.76rem; margin-right: 4px;">
-                        Edit
-                    </button>
-                    <button type="button" class="btn-outline-sm btn-mat-detail" data-id="${esc(item.id)}" title="View Details" style="padding: 4px 8px; font-size: 0.76rem;">
-                        View
-                    </button>
+                    <div class="row-direct-actions">
+                        <button type="button" class="row-action-btn edit-direct-btn" data-id="${esc(item.id)}" title="Edit / Update">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
+                        </button>
+                        <button type="button" class="row-action-btn detail-direct-btn" data-id="${esc(item.id)}" title="View Details">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -689,20 +729,87 @@ function renderOverviewTable() {
         renderOverviewTable();
     });
 
-    tbody.querySelectorAll(".btn-mat-edit").forEach(btn => {
-        btn.addEventListener("click", () => {
+    attachUserOverviewListeners();
+    updateOverviewSelectionBar();
+}
+
+function attachUserOverviewListeners() {
+    // Row Checkbox Toggle
+    document.querySelectorAll(".row-select-checkbox").forEach(cb => {
+        cb.onchange = (e) => {
+            e.stopPropagation();
+            const id = cb.dataset.id;
+            const tr = cb.closest("tr");
+            if (cb.checked) {
+                state.selectedOverviewIds.add(id);
+                if (tr) tr.classList.add("row-selected");
+            } else {
+                state.selectedOverviewIds.delete(id);
+                if (tr) tr.classList.remove("row-selected");
+            }
+            updateOverviewSelectionBar();
+        };
+    });
+
+    // Select All Checkbox
+    const selectAllCb = $("selectAllOverview");
+    if (selectAllCb) {
+        selectAllCb.onchange = () => {
+            const filtered = getFilteredOverviewList();
+            const startIdx = (state.overviewPage - 1) * state.overviewPageSize;
+            const endIdx = Math.min(startIdx + state.overviewPageSize, filtered.length);
+            const paged = filtered.slice(startIdx, endIdx);
+
+            if (selectAllCb.checked) {
+                paged.forEach(item => state.selectedOverviewIds.add(item.id));
+            } else {
+                paged.forEach(item => state.selectedOverviewIds.delete(item.id));
+            }
+            renderOverviewTable();
+        };
+    }
+
+    // Bulk Deselect All
+    const bulkDeselectBtn = $("bulkDeselectBtn");
+    if (bulkDeselectBtn) {
+        bulkDeselectBtn.onclick = () => {
+            state.selectedOverviewIds.clear();
+            renderOverviewTable();
+        };
+    }
+
+    // Bulk Edit / Update
+    const bulkEditBtn = $("bulkEditBtn");
+    if (bulkEditBtn) {
+        bulkEditBtn.onclick = () => {
+            if (state.selectedOverviewIds.size === 0) {
+                toast("Please select a raw material to edit.", "warning");
+                return;
+            }
+            const firstId = Array.from(state.selectedOverviewIds)[0];
+            const mat = state.rawMaterialsMap.get(firstId);
+            if (mat) openEditMaterialModal(mat);
+        };
+    }
+
+    // Direct Row Edit
+    document.querySelectorAll(".edit-direct-btn").forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
             const id = btn.getAttribute("data-id");
             const mat = state.rawMaterialsMap.get(id);
             if (mat) openEditMaterialModal(mat);
-        });
+        };
     });
 
-    tbody.querySelectorAll(".btn-mat-detail").forEach(btn => {
-        btn.addEventListener("click", () => {
+    // Direct Row Detail
+    document.querySelectorAll(".detail-direct-btn").forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
             const id = btn.getAttribute("data-id");
             const mat = state.rawMaterialsMap.get(id);
             if (mat) openMaterialDetailModal(mat);
-        });
+        };
     });
 }
 

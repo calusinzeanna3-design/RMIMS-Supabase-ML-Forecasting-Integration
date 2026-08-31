@@ -39,7 +39,10 @@ const state = {
     disbursePageSize: 10,
 
     // Import fingerprint deduplication
-    importedFingerprints: new Set()
+    importedFingerprints: new Set(),
+
+    // Multiple row selection set (material IDs)
+    selectedOverviewIds: new Set()
 };
 
 // Helper: Escape HTML string
@@ -342,6 +345,37 @@ function getOverviewDataList() {
     return filtered;
 }
 
+function updateOverviewSelectionBar() {
+    const bar = $("overviewSelectionBar");
+    const countEl = $("overviewSelectedCount");
+    const selectAllCb = $("selectAllOverview");
+    if (!bar) return;
+
+    const selectedCount = state.selectedOverviewIds.size;
+    if (selectedCount > 0) {
+        bar.hidden = false;
+        if (countEl) countEl.textContent = `${selectedCount} Selected`;
+    } else {
+        bar.hidden = true;
+    }
+
+    // Update Select All checkbox state for visible paged items
+    const filtered = getOverviewDataList();
+    const startIdx = (state.overviewPage - 1) * state.overviewPageSize;
+    const endIdx = Math.min(startIdx + state.overviewPageSize, filtered.length);
+    const paged = filtered.slice(startIdx, endIdx);
+
+    if (selectAllCb && paged.length > 0) {
+        const allSelected = paged.every(item => state.selectedOverviewIds.has(item.id));
+        const someSelected = paged.some(item => state.selectedOverviewIds.has(item.id));
+        selectAllCb.checked = allSelected;
+        selectAllCb.indeterminate = !allSelected && someSelected;
+    } else if (selectAllCb) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    }
+}
+
 function renderOverviewTable() {
     const tbody = $("overviewTableBody");
     const countEl = $("overviewResultCount");
@@ -358,7 +392,7 @@ function renderOverviewTable() {
     if (total === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" style="text-align:center; padding: 36px 16px; color: var(--rm-ink-dim);">
+                <td colspan="12" style="text-align:center; padding: 36px 16px; color: var(--rm-ink-dim);">
                     <strong>No raw materials found.</strong><br>
                     <span style="font-size: 0.8rem;">Try adjusting your search criteria or filters.</span>
                 </td>
@@ -366,6 +400,7 @@ function renderOverviewTable() {
         `;
         if (countEl) countEl.textContent = `Showing 0 of 0 raw materials`;
         if (btnsEl) btnsEl.innerHTML = "";
+        updateOverviewSelectionBar();
         return;
     }
 
@@ -382,6 +417,7 @@ function renderOverviewTable() {
     }
 
     tbody.innerHTML = paged.map(item => {
+        const isSelected = state.selectedOverviewIds.has(item.id);
         let actBadge = `<span class="activity-badge activity-badge-none">— None</span>`;
         if (item.activityStatus === "Receive") {
             actBadge = `<span class="activity-badge activity-badge-receive">📥 Receive</span>`;
@@ -390,7 +426,10 @@ function renderOverviewTable() {
         }
 
         return `
-            <tr data-id="${esc(item.id)}">
+            <tr data-id="${esc(item.id)}" class="${isSelected ? "row-selected" : ""}">
+                <td style="text-align: center;">
+                    <input type="checkbox" class="inv-custom-checkbox row-select-checkbox" data-id="${esc(item.id)}" ${isSelected ? "checked" : ""}>
+                </td>
                 <td>${esc(fmtDate(item.activityDate))}</td>
                 <td>
                     <div class="mat-name-cell">
@@ -407,20 +446,13 @@ function renderOverviewTable() {
                 <td>${esc(item.activityUnit)}</td>
                 <td><span class="status-badge ${item.status.cls}">${esc(item.status.badgeText)}</span></td>
                 <td style="text-align: right;">
-                    <div class="inv-action-dropdown">
-                        <button type="button" class="inv-action-trigger" data-action-id="${esc(item.id)}" title="Actions">
-                            ⋮
+                    <div class="row-direct-actions">
+                        <button type="button" class="row-action-btn edit-direct-btn" data-id="${esc(item.id)}" title="Edit / Update">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
                         </button>
-                        <div class="inv-action-menu" id="actionMenu_${esc(item.id)}">
-                            <button type="button" class="inv-action-item action-edit-btn" data-id="${esc(item.id)}">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                Edit / Update
-                            </button>
-                            <button type="button" class="inv-action-item action-delete-btn" data-id="${esc(item.id)}" data-name="${esc(item.name)}" style="color: #dc2626;">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                Delete Material
-                            </button>
-                        </div>
+                        <button type="button" class="row-action-btn delete-direct-btn" data-id="${esc(item.id)}" data-name="${esc(item.name)}" title="Delete Material">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -433,7 +465,8 @@ function renderOverviewTable() {
         renderOverviewTable();
     });
 
-    attachDropdownListeners();
+    attachOverviewTableListeners();
+    updateOverviewSelectionBar();
 }
 
 function renderPaginationControls(container, currentPage, totalPages, onPageChange) {
@@ -480,36 +513,113 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
     });
 }
 
-function attachDropdownListeners() {
-    // Close any open action menu on outside click
-    document.querySelectorAll(".inv-action-trigger").forEach(btn => {
-        btn.onclick = (e) => {
+function attachOverviewTableListeners() {
+    // Row Checkbox Toggle
+    document.querySelectorAll(".row-select-checkbox").forEach(cb => {
+        cb.onchange = (e) => {
             e.stopPropagation();
-            const id = btn.dataset.actionId;
-            const menu = $(`actionMenu_${id}`);
-            // Close other open action menus
-            document.querySelectorAll(".inv-action-menu.open").forEach(m => {
-                if (m !== menu) m.classList.remove("open");
-            });
-            if (menu) menu.classList.toggle("open");
+            const id = cb.dataset.id;
+            const tr = cb.closest("tr");
+            if (cb.checked) {
+                state.selectedOverviewIds.add(id);
+                if (tr) tr.classList.add("row-selected");
+            } else {
+                state.selectedOverviewIds.delete(id);
+                if (tr) tr.classList.remove("row-selected");
+            }
+            updateOverviewSelectionBar();
         };
     });
 
-    document.querySelectorAll(".action-edit-btn").forEach(btn => {
+    // Select All Checkbox
+    const selectAllCb = $("selectAllOverview");
+    if (selectAllCb) {
+        selectAllCb.onchange = () => {
+            const filtered = getOverviewDataList();
+            const startIdx = (state.overviewPage - 1) * state.overviewPageSize;
+            const endIdx = Math.min(startIdx + state.overviewPageSize, filtered.length);
+            const paged = filtered.slice(startIdx, endIdx);
+
+            if (selectAllCb.checked) {
+                paged.forEach(item => state.selectedOverviewIds.add(item.id));
+            } else {
+                paged.forEach(item => state.selectedOverviewIds.delete(item.id));
+            }
+            renderOverviewTable();
+        };
+    }
+
+    // Bulk Deselect All
+    const bulkDeselectBtn = $("bulkDeselectBtn");
+    if (bulkDeselectBtn) {
+        bulkDeselectBtn.onclick = () => {
+            state.selectedOverviewIds.clear();
+            renderOverviewTable();
+        };
+    }
+
+    // Bulk Edit / Update
+    const bulkEditBtn = $("bulkEditBtn");
+    if (bulkEditBtn) {
+        bulkEditBtn.onclick = () => {
+            if (state.selectedOverviewIds.size === 0) {
+                toast("Please select a raw material to edit.", "warning");
+                return;
+            }
+            const firstId = Array.from(state.selectedOverviewIds)[0];
+            if (state.selectedOverviewIds.size > 1) {
+                toast(`Editing the first of ${state.selectedOverviewIds.size} selected materials.`);
+            }
+            openEditModal(firstId);
+        };
+    }
+
+    // Bulk Delete
+    const bulkDeleteBtn = $("bulkDeleteBtn");
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.onclick = async () => {
+            const count = state.selectedOverviewIds.size;
+            if (count === 0) return;
+
+            if (!confirm(`Are you sure you want to delete the ${count} selected raw material(s)? This action cannot be undone.`)) {
+                return;
+            }
+
+            const idsToDelete = Array.from(state.selectedOverviewIds);
+            try {
+                toast(`Deleting ${count} raw material(s)...`);
+                const { error } = await supabase
+                    .from("raw_materials")
+                    .delete()
+                    .in("id", idsToDelete);
+
+                if (error) throw error;
+
+                toast(`Successfully deleted ${count} raw material(s).`);
+                state.selectedOverviewIds.clear();
+                await loadData();
+            } catch (err) {
+                console.error("Bulk delete error:", err);
+                toast("Failed to delete selected materials: " + (err.message || err), "error");
+            }
+        };
+    }
+
+    // Direct Row Edit
+    document.querySelectorAll(".edit-direct-btn").forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
-            document.querySelectorAll(".inv-action-menu.open").forEach(m => m.classList.remove("open"));
             openEditModal(id);
         };
     });
 
-    document.querySelectorAll(".action-delete-btn").forEach(btn => {
+    // Direct Row Delete
+    document.querySelectorAll(".delete-direct-btn").forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
             const name = btn.dataset.name || "this raw material";
-            document.querySelectorAll(".inv-action-menu.open").forEach(m => m.classList.remove("open"));
 
             if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
 
@@ -523,6 +633,7 @@ function attachDropdownListeners() {
                 if (error) throw error;
 
                 toast(`Successfully deleted "${name}".`);
+                state.selectedOverviewIds.delete(id);
                 await loadData();
             } catch (err) {
                 console.error("Error deleting raw material:", err);
@@ -534,7 +645,6 @@ function attachDropdownListeners() {
 
 // Global click listener to close action menus
 document.addEventListener("click", () => {
-    document.querySelectorAll(".inv-action-menu.open").forEach(m => m.classList.remove("open"));
     if ($("invExportMenu")) $("invExportMenu").hidden = true;
 });
 

@@ -222,11 +222,35 @@
                     </div>
                 </div>
 
-                <!-- MAIN 11-COLUMN INVENTORY TABLE -->
+                <!-- MULTI-SELECTION BULK ACTION BAR -->
+                <div class="inv-selection-bar" id="overviewSelectionBar" hidden>
+                    <div class="isb-left">
+                        <span class="isb-count-badge" id="overviewSelectedCount">0 Selected</span>
+                        <span class="isb-hint">Select materials to update or delete</span>
+                    </div>
+                    <div class="isb-actions">
+                        <button type="button" class="btn-secondary isb-btn" id="bulkEditBtn">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Update / Edit</span>
+                        </button>
+                        <button type="button" class="btn-danger isb-btn" id="bulkDeleteBtn">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Delete Selected</span>
+                        </button>
+                        <button type="button" class="btn-ghost isb-btn" id="bulkDeselectBtn">
+                            <span>Deselect All</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MAIN 11-COLUMN INVENTORY TABLE WITH MULTI-SELECTION -->
                 <div class="table-scroll inv-table-scroll">
                     <table class="inv-main-table" id="overviewTable">
                         <thead>
                             <tr>
+                                <th style="width: 44px; text-align: center;">
+                                    <input type="checkbox" class="inv-custom-checkbox" id="selectAllOverview" title="Select All">
+                                </th>
                                 <th>Date</th>
                                 <th>Raw Material Name</th>
                                 <th>Raw Material ID</th>
@@ -237,7 +261,7 @@
                                 <th>Activity Quantity</th>
                                 <th>Activity Unit</th>
                                 <th>Status</th>
-                                <th style="text-align: right;">Actions</th>
+                                <th style="text-align: right; width: 90px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="overviewTableBody">
