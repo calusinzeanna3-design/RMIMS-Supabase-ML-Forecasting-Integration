@@ -216,6 +216,12 @@
                             <option value="za">Name: Z–A</option>
                         </select>
 
+                        <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectOverviewBtn" title="Toggle selection mode">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="select-btn-text">Select</span>
+                            <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+
                         <button type="button" class="btn-secondary-sm" id="invClearFiltersBtn" hidden title="Clear all active filters">
                             Clear
                         </button>
@@ -244,6 +250,10 @@
                         <button type="button" class="btn-ghost isb-btn" id="bulkDeselectBtn">
                             <span>Deselect All</span>
                         </button>
+                        <button type="button" class="btn-ghost isb-btn" id="hideSelectionOverviewBtn" title="Hide selection column">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Hide Selection</span>
+                        </button>
                     </div>
                 </div>
 
@@ -252,7 +262,7 @@
                     <table class="inv-main-table" id="overviewTable">
                         <thead>
                             <tr>
-                                <th style="width: 44px; text-align: center;"></th>
+                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"></th>
                                 <th>Date</th>
                                 <th>Raw Material Name</th>
                                 <th>Raw Material ID</th>
@@ -309,6 +319,11 @@
                             <label for="receiveDateTo" class="filter-label">To:</label>
                             <input type="date" id="receiveDateTo" class="inv-input-date">
                         </div>
+                        <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectReceiveBtn" title="Toggle selection mode">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="select-btn-text">Select</span>
+                            <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
                         <button type="button" class="btn-primary-sm" id="btnOpenNewReceiveModal">
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                             Record Receipt
@@ -334,6 +349,10 @@
                         <button type="button" class="btn-ghost isb-btn" id="bulkDeselectReceiveBtn">
                             <span>Deselect All</span>
                         </button>
+                        <button type="button" class="btn-ghost isb-btn" id="hideSelectionReceiveBtn" title="Hide selection column">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Hide Selection</span>
+                        </button>
                     </div>
                 </div>
 
@@ -341,7 +360,7 @@
                     <table class="inv-main-table" id="receiveTable">
                         <thead>
                             <tr>
-                                <th style="width: 44px; text-align: center;"></th>
+                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"></th>
                                 <th>Date</th>
                                 <th>Raw Material Name</th>
                                 <th>Raw Material ID</th>
@@ -360,9 +379,18 @@
                     </table>
                 </div>
 
+                <!-- RECEIVE PAGINATION -->
                 <div class="inv-pagination-bar">
                     <div class="inv-pagination-info">
                         <span id="receiveResultCount">Showing 0 receipts</span>
+                        <div class="page-size-selector">
+                            <label for="receivePageSize">Rows per page:</label>
+                            <select id="receivePageSize" class="inv-select-sm">
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="inv-pagination-controls" id="receivePaginationBtns"></div>
                 </div>
@@ -386,6 +414,11 @@
                             <label for="disburseDateTo" class="filter-label">To:</label>
                             <input type="date" id="disburseDateTo" class="inv-input-date">
                         </div>
+                        <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectDisburseBtn" title="Toggle selection mode">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="select-btn-text">Select</span>
+                            <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
                         <button type="button" class="btn-primary-sm" id="btnOpenNewDisburseModal">
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                             Record Disbursement
@@ -411,6 +444,10 @@
                         <button type="button" class="btn-ghost isb-btn" id="bulkDeselectDisburseBtn">
                             <span>Deselect All</span>
                         </button>
+                        <button type="button" class="btn-ghost isb-btn" id="hideSelectionDisburseBtn" title="Hide selection column">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Hide Selection</span>
+                        </button>
                     </div>
                 </div>
 
@@ -418,7 +455,7 @@
                     <table class="inv-main-table" id="disbursementTable">
                         <thead>
                             <tr>
-                                <th style="width: 44px; text-align: center;"></th>
+                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"></th>
                                 <th>Date</th>
                                 <th>Raw Material Name</th>
                                 <th>Raw Material ID</th>
@@ -437,9 +474,18 @@
                     </table>
                 </div>
 
+                <!-- DISBURSEMENT PAGINATION -->
                 <div class="inv-pagination-bar">
                     <div class="inv-pagination-info">
                         <span id="disbursementResultCount">Showing 0 disbursements</span>
+                        <div class="page-size-selector">
+                            <label for="disbursePageSize">Rows per page:</label>
+                            <select id="disbursePageSize" class="inv-select-sm">
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="inv-pagination-controls" id="disbursementPaginationBtns"></div>
                 </div>
@@ -458,6 +504,11 @@
                         <p>Identify the raw materials associated with each finished product.</p>
                     </div>
                     <div class="fpc-header-actions">
+                        <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectFpcBtn" title="Toggle selection mode">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="select-btn-text">Select</span>
+                            <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
                         <button type="button" id="fpcAddProductBtn" class="btn-primary">
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                             Add Finished Product
@@ -514,6 +565,10 @@
                         </button>
                         <button type="button" class="btn-ghost isb-btn" id="fpcBulkDeselectBtn">
                             <span>Deselect All</span>
+                        </button>
+                        <button type="button" class="btn-ghost isb-btn" id="hideSelectionFpcBtn" title="Hide selection">
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span>Hide Selection</span>
                         </button>
                     </div>
                 </div>

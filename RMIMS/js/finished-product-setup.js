@@ -12,6 +12,7 @@ let filteredProducts = [];
 let currentPage = 1;
 let pageSize = 20;
 let selectedProductIds = new Set();
+let selectModeFpc = false;
 let editingProductId = null;
 
 // Import Wizard State
@@ -302,6 +303,13 @@ function updateFpcSelectionBar() {
 function renderProductCards(products) {
     if (!fpcCardsContainer) return;
 
+    const toggleBtn = document.getElementById("toggleSelectFpcBtn");
+    if (toggleBtn) {
+        toggleBtn.classList.toggle("active", selectModeFpc);
+        const textSpan = toggleBtn.querySelector(".select-btn-text");
+        if (textSpan) textSpan.textContent = selectModeFpc ? "Hide Select" : "Select";
+    }
+
     if (!products.length) {
         fpcCardsContainer.innerHTML = `
             <div class="fpc-empty-state">
@@ -330,7 +338,7 @@ function renderProductCards(products) {
 
         return `
             <div class="fpc-card ${isSelected ? "card-selected" : ""}" data-id="${escapeHtml(p.id)}">
-                <div class="fpc-card-select-circle" data-id="${escapeHtml(p.id)}" title="Select finished product">
+                <div class="fpc-card-select-circle ${selectModeFpc ? "" : "hidden-circle"}" data-id="${escapeHtml(p.id)}" title="Select finished product">
                     <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
                 <div>
@@ -359,6 +367,26 @@ function renderProductCards(products) {
 }
 
 function attachFpcCardListeners() {
+    // Toggle Select Mode Button
+    const toggleBtn = document.getElementById("toggleSelectFpcBtn");
+    if (toggleBtn) {
+        toggleBtn.onclick = () => {
+            selectModeFpc = !selectModeFpc;
+            if (!selectModeFpc) selectedProductIds.clear();
+            applyFiltersAndRender();
+        };
+    }
+
+    // Hide Selection Button
+    const hideBtn = document.getElementById("hideSelectionFpcBtn");
+    if (hideBtn) {
+        hideBtn.onclick = () => {
+            selectModeFpc = false;
+            selectedProductIds.clear();
+            applyFiltersAndRender();
+        };
+    }
+
     // Circle Selection & Card Toggle
     fpcCardsContainer.querySelectorAll(".fpc-card").forEach(card => {
         const id = card.getAttribute("data-id");
@@ -366,6 +394,7 @@ function attachFpcCardListeners() {
 
         const toggleSelection = (e) => {
             if (e.target.closest(".btn-view-details")) return;
+            if (!selectModeFpc && !e.target.closest(".fpc-card-select-circle")) return;
             if (selectedProductIds.has(id)) {
                 selectedProductIds.delete(id);
                 card.classList.remove("card-selected");

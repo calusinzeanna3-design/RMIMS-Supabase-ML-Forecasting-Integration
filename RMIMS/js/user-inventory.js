@@ -101,8 +101,9 @@ const state = {
     // Active Workspace Tab
     activeTab: "overview",
 
-    // Multiple row selection
-    selectedOverviewIds: new Set()
+    // Multiple row selection and mode
+    selectedOverviewIds: new Set(),
+    selectModeOverview: false
 };
 
 const FP_STORAGE_KEY = "rmims_finished_product_context";
@@ -680,6 +681,17 @@ function renderOverviewTable() {
     const endIdx = Math.min(startIdx + state.overviewPageSize, total);
     const paged = filtered.slice(startIdx, endIdx);
 
+    const isSelectMode = !!state.selectModeOverview;
+    const thSelect = $("overviewTable")?.querySelector("thead th.col-select");
+    if (thSelect) thSelect.classList.toggle("hidden-col", !isSelectMode);
+
+    const toggleBtn = $("toggleSelectOverviewBtn");
+    if (toggleBtn) {
+        toggleBtn.classList.toggle("active", isSelectMode);
+        const textSpan = toggleBtn.querySelector(".select-btn-text");
+        if (textSpan) textSpan.textContent = isSelectMode ? "Hide Select" : "Select";
+    }
+
     if (countEl) {
         countEl.textContent = `Showing ${startIdx + 1}–${endIdx} of ${total} raw materials`;
     }
@@ -692,7 +704,7 @@ function renderOverviewTable() {
 
         return `
             <tr data-id="${esc(item.id)}" class="${isSelected ? "row-selected" : ""}">
-                <td style="text-align: center;">
+                <td class="col-select ${isSelectMode ? "" : "hidden-col"}" style="text-align: center;">
                     <input type="checkbox" class="inv-custom-checkbox row-select-checkbox" data-id="${esc(item.id)}" ${isSelected ? "checked" : ""}>
                 </td>
                 <td>${esc(fmtDate(item.latestActivityDate || item.createdAt))}</td>
@@ -734,6 +746,26 @@ function renderOverviewTable() {
 }
 
 function attachUserOverviewListeners() {
+    // Toggle Selection Mode
+    const toggleSelectOverviewBtn = $("toggleSelectOverviewBtn");
+    if (toggleSelectOverviewBtn) {
+        toggleSelectOverviewBtn.onclick = () => {
+            state.selectModeOverview = !state.selectModeOverview;
+            if (!state.selectModeOverview) state.selectedOverviewIds.clear();
+            renderOverviewTable();
+        };
+    }
+
+    // Hide Selection Button
+    const hideSelectionOverviewBtn = $("hideSelectionOverviewBtn");
+    if (hideSelectionOverviewBtn) {
+        hideSelectionOverviewBtn.onclick = () => {
+            state.selectModeOverview = false;
+            state.selectedOverviewIds.clear();
+            renderOverviewTable();
+        };
+    }
+
     // Row Checkbox Toggle
     document.querySelectorAll(".row-select-checkbox").forEach(cb => {
         cb.onchange = (e) => {

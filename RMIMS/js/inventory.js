@@ -41,10 +41,13 @@ const state = {
     // Import fingerprint deduplication
     importedFingerprints: new Set(),
 
-    // Multiple row selection sets
+    // Multiple row selection sets and modes (collapsed by default for safety)
     selectedOverviewIds: new Set(),
     selectedReceiveIds: new Set(),
-    selectedDisburseIds: new Set()
+    selectedDisburseIds: new Set(),
+    selectModeOverview: false,
+    selectModeReceive: false,
+    selectModeDisburse: false
 };
 
 // Helper: Escape HTML string
@@ -414,6 +417,17 @@ function renderOverviewTable() {
     const endIdx = Math.min(startIdx + state.overviewPageSize, total);
     const paged = filtered.slice(startIdx, endIdx);
 
+    const isSelectMode = !!state.selectModeOverview;
+    const thSelect = $("overviewTable")?.querySelector("thead th.col-select");
+    if (thSelect) thSelect.classList.toggle("hidden-col", !isSelectMode);
+
+    const toggleBtn = $("toggleSelectOverviewBtn");
+    if (toggleBtn) {
+        toggleBtn.classList.toggle("active", isSelectMode);
+        const textSpan = toggleBtn.querySelector(".select-btn-text");
+        if (textSpan) textSpan.textContent = isSelectMode ? "Hide Select" : "Select";
+    }
+
     if (countEl) {
         countEl.textContent = `Showing ${startIdx + 1}–${endIdx} of ${total} raw materials`;
     }
@@ -429,7 +443,7 @@ function renderOverviewTable() {
 
         return `
             <tr data-id="${esc(item.id)}" class="${isSelected ? "row-selected" : ""}">
-                <td style="text-align: center;">
+                <td class="col-select ${isSelectMode ? "" : "hidden-col"}" style="text-align: center;">
                     <input type="checkbox" class="inv-custom-checkbox row-select-checkbox" data-id="${esc(item.id)}" ${isSelected ? "checked" : ""}>
                 </td>
                 <td>${esc(fmtDate(item.activityDate))}</td>
@@ -516,6 +530,26 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
 }
 
 function attachOverviewTableListeners() {
+    // Toggle Selection Mode
+    const toggleSelectOverviewBtn = $("toggleSelectOverviewBtn");
+    if (toggleSelectOverviewBtn) {
+        toggleSelectOverviewBtn.onclick = () => {
+            state.selectModeOverview = !state.selectModeOverview;
+            if (!state.selectModeOverview) state.selectedOverviewIds.clear();
+            renderOverviewTable();
+        };
+    }
+
+    // Hide Selection Button
+    const hideSelectionOverviewBtn = $("hideSelectionOverviewBtn");
+    if (hideSelectionOverviewBtn) {
+        hideSelectionOverviewBtn.onclick = () => {
+            state.selectModeOverview = false;
+            state.selectedOverviewIds.clear();
+            renderOverviewTable();
+        };
+    }
+
     // Row Checkbox Toggle
     document.querySelectorAll(".row-select-checkbox").forEach(cb => {
         cb.onchange = (e) => {
@@ -684,13 +718,28 @@ function renderReceiveTable() {
     const tbody = $("receiveTableBody");
     const countEl = $("receiveResultCount");
     const btnsEl = $("receivePaginationBtns");
+    const pageSizeSelect = $("receivePageSize");
     if (!tbody) return;
 
     const filtered = getFilteredReceiveList();
     const total = filtered.length;
+
+    const isSelectMode = !!state.selectModeReceive;
+    const thSelect = $("receiveTable")?.querySelector("thead th.col-select");
+    if (thSelect) thSelect.classList.toggle("hidden-col", !isSelectMode);
+
+    const toggleBtn = $("toggleSelectReceiveBtn");
+    if (toggleBtn) {
+        toggleBtn.classList.toggle("active", isSelectMode);
+        const textSpan = toggleBtn.querySelector(".select-btn-text");
+        if (textSpan) textSpan.textContent = isSelectMode ? "Hide Select" : "Select";
+    }
+
+    if (pageSizeSelect) pageSizeSelect.value = String(state.receivePageSize);
+
     if (total === 0) {
         tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 32px 16px; color: var(--rm-ink-dim);">No stock receipt records recorded.</td></tr>`;
-        if (countEl) countEl.textContent = "Showing 0 receipts";
+        if (countEl) countEl.textContent = "Showing 0 of 0 receipts";
         if (btnsEl) btnsEl.innerHTML = "";
         updateReceiveSelectionBar();
         return;
@@ -701,16 +750,17 @@ function renderReceiveTable() {
     if (state.receivePage < 1) state.receivePage = 1;
 
     const start = (state.receivePage - 1) * state.receivePageSize;
-    const paged = filtered.slice(start, start + state.receivePageSize);
+    const end = Math.min(start + state.receivePageSize, total);
+    const paged = filtered.slice(start, end);
 
-    if (countEl) countEl.textContent = `Showing ${start + 1}–${Math.min(start + state.receivePageSize, total)} of ${total} receipts`;
+    if (countEl) countEl.textContent = `Showing ${start + 1}–${end} of ${total} receipts`;
 
     tbody.innerHTML = paged.map(r => {
         const isSelected = state.selectedReceiveIds.has(r.id);
         const st = computeStockStatus(r.currentStock, r.minStock);
         return `
             <tr data-id="${esc(r.id)}" class="${isSelected ? "row-selected" : ""}">
-                <td style="text-align: center;">
+                <td class="col-select ${isSelectMode ? "" : "hidden-col"}" style="text-align: center;">
                     <input type="checkbox" class="inv-custom-checkbox rec-select-checkbox" data-id="${esc(r.id)}" ${isSelected ? "checked" : ""}>
                 </td>
                 <td>${esc(fmtDate(r.receiptDate || r.createdAt))}</td>
@@ -743,6 +793,26 @@ function renderReceiveTable() {
 }
 
 function attachReceiveTableListeners() {
+    // Toggle Selection Mode
+    const toggleSelectReceiveBtn = $("toggleSelectReceiveBtn");
+    if (toggleSelectReceiveBtn) {
+        toggleSelectReceiveBtn.onclick = () => {
+            state.selectModeReceive = !state.selectModeReceive;
+            if (!state.selectModeReceive) state.selectedReceiveIds.clear();
+            renderReceiveTable();
+        };
+    }
+
+    // Hide Selection Button
+    const hideSelectionReceiveBtn = $("hideSelectionReceiveBtn");
+    if (hideSelectionReceiveBtn) {
+        hideSelectionReceiveBtn.onclick = () => {
+            state.selectModeReceive = false;
+            state.selectedReceiveIds.clear();
+            renderReceiveTable();
+        };
+    }
+
     // Row Checkbox Toggle
     document.querySelectorAll(".rec-select-checkbox").forEach(cb => {
         cb.onchange = (e) => {
@@ -867,13 +937,28 @@ function renderDisbursementTable() {
     const tbody = $("disbursementTableBody");
     const countEl = $("disbursementResultCount");
     const btnsEl = $("disbursementPaginationBtns");
+    const pageSizeSelect = $("disbursePageSize");
     if (!tbody) return;
 
     const filtered = getFilteredDisburseList();
     const total = filtered.length;
+
+    const isSelectMode = !!state.selectModeDisburse;
+    const thSelect = $("disbursementTable")?.querySelector("thead th.col-select");
+    if (thSelect) thSelect.classList.toggle("hidden-col", !isSelectMode);
+
+    const toggleBtn = $("toggleSelectDisburseBtn");
+    if (toggleBtn) {
+        toggleBtn.classList.toggle("active", isSelectMode);
+        const textSpan = toggleBtn.querySelector(".select-btn-text");
+        if (textSpan) textSpan.textContent = isSelectMode ? "Hide Select" : "Select";
+    }
+
+    if (pageSizeSelect) pageSizeSelect.value = String(state.disbursePageSize);
+
     if (total === 0) {
         tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 32px 16px; color: var(--rm-ink-dim);">No material disbursement records recorded.</td></tr>`;
-        if (countEl) countEl.textContent = "Showing 0 disbursements";
+        if (countEl) countEl.textContent = "Showing 0 of 0 disbursements";
         if (btnsEl) btnsEl.innerHTML = "";
         updateDisburseSelectionBar();
         return;
@@ -884,16 +969,17 @@ function renderDisbursementTable() {
     if (state.disbursePage < 1) state.disbursePage = 1;
 
     const start = (state.disbursePage - 1) * state.disbursePageSize;
-    const paged = filtered.slice(start, start + state.disbursePageSize);
+    const end = Math.min(start + state.disbursePageSize, total);
+    const paged = filtered.slice(start, end);
 
-    if (countEl) countEl.textContent = `Showing ${start + 1}–${Math.min(start + state.disbursePageSize, total)} of ${total} disbursements`;
+    if (countEl) countEl.textContent = `Showing ${start + 1}–${end} of ${total} disbursements`;
 
     tbody.innerHTML = paged.map(d => {
         const isSelected = state.selectedDisburseIds.has(d.id);
         const st = computeStockStatus(d.currentStock, d.minStock);
         return `
             <tr data-id="${esc(d.id)}" class="${isSelected ? "row-selected" : ""}">
-                <td style="text-align: center;">
+                <td class="col-select ${isSelectMode ? "" : "hidden-col"}" style="text-align: center;">
                     <input type="checkbox" class="inv-custom-checkbox disb-select-checkbox" data-id="${esc(d.id)}" ${isSelected ? "checked" : ""}>
                 </td>
                 <td>${esc(fmtDate(d.usageDate || d.createdAt))}</td>
@@ -926,6 +1012,26 @@ function renderDisbursementTable() {
 }
 
 function attachDisburseTableListeners() {
+    // Toggle Selection Mode
+    const toggleSelectDisburseBtn = $("toggleSelectDisburseBtn");
+    if (toggleSelectDisburseBtn) {
+        toggleSelectDisburseBtn.onclick = () => {
+            state.selectModeDisburse = !state.selectModeDisburse;
+            if (!state.selectModeDisburse) state.selectedDisburseIds.clear();
+            renderDisbursementTable();
+        };
+    }
+
+    // Hide Selection Button
+    const hideSelectionDisburseBtn = $("hideSelectionDisburseBtn");
+    if (hideSelectionDisburseBtn) {
+        hideSelectionDisburseBtn.onclick = () => {
+            state.selectModeDisburse = false;
+            state.selectedDisburseIds.clear();
+            renderDisbursementTable();
+        };
+    }
+
     // Row Checkbox Toggle
     document.querySelectorAll(".disb-select-checkbox").forEach(cb => {
         cb.onchange = (e) => {
@@ -2344,6 +2450,13 @@ function setupEventListeners() {
             renderReceiveTable();
         });
     }
+    if ($("receivePageSize")) {
+        $("receivePageSize").addEventListener("change", (e) => {
+            state.receivePageSize = Number(e.target.value) || 10;
+            state.receivePage = 1;
+            renderReceiveTable();
+        });
+    }
 
     // 4. Disbursement Tab Filters
     if ($("disbursementSearchInput")) {
@@ -2363,6 +2476,13 @@ function setupEventListeners() {
     if ($("disburseDateTo")) {
         $("disburseDateTo").addEventListener("change", (e) => {
             state.disburseDateTo = e.target.value;
+            state.disbursePage = 1;
+            renderDisbursementTable();
+        });
+    }
+    if ($("disbursePageSize")) {
+        $("disbursePageSize").addEventListener("change", (e) => {
+            state.disbursePageSize = Number(e.target.value) || 10;
             state.disbursePage = 1;
             renderDisbursementTable();
         });

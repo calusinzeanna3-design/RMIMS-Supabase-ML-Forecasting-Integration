@@ -1996,5 +1996,56 @@ tr.row-selected {
   transform: scale(1.05);
 }
 
+/* Select Mode Hide/Show Toggle */
+.select-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  color: var(--rm-ink);
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.select-toggle-btn:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+}
+
+.select-toggle-btn.active {
+  background: #ECFDF5;
+  border-color: #10B981;
+  color: #047857;
+}
+
+.select-toggle-btn .toggle-arrow {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.2s ease;
+}
+
+.select-toggle-btn.active .toggle-arrow {
+  transform: rotate(180deg);
+}
+
+/* Hidden selection column */
+th.col-select, td.col-select {
+  transition: opacity 0.15s ease;
+}
+
+th.col-select.hidden-col, td.col-select.hidden-col {
+  display: none !important;
+}
+
+/* Finished Product Card Selection Circle Hidden State */
+.fpc-card-select-circle.hidden-circle {
+  display: none !important;
+}
+
 
 
