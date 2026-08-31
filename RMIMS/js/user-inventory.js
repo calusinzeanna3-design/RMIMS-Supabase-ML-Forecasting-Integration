@@ -729,7 +729,7 @@ function setupEditModalEventListeners() {
     }
 }
 
-function initModalDatePicker(elementId, initialDate = "today", disablePast = true) {
+function initModalDatePicker(elementId, initialDate = "today", todayOnly = true) {
     const el = typeof elementId === "string" ? $(elementId) : elementId;
     if (!el) return null;
 
@@ -742,7 +742,10 @@ function initModalDatePicker(elementId, initialDate = "today", disablePast = tru
 
     if (typeof flatpickr === "undefined") {
         el.value = defaultVal;
-        if (disablePast) el.min = todayStr;
+        if (todayOnly) {
+            el.min = todayStr;
+            el.max = todayStr;
+        }
         return null;
     }
 
@@ -756,8 +759,9 @@ function initModalDatePicker(elementId, initialDate = "today", disablePast = tru
         animate: true
     };
 
-    if (disablePast) {
+    if (todayOnly) {
         config.minDate = "today";
+        config.maxDate = "today";
     }
 
     return flatpickr(el, config);
