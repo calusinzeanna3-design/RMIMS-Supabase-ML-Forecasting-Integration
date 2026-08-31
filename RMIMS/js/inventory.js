@@ -673,6 +673,44 @@ function renderDisbursementTable() {
 }
 
 /* ==========================================================
+   FLATPICKR DATEPICKER HELPERS (PAST DATES DISABLED)
+   ========================================================== */
+
+function initModalDatePicker(elementId, initialDate = "today", disablePast = true) {
+    const el = typeof elementId === "string" ? $(elementId) : elementId;
+    if (!el) return null;
+
+    if (el._flatpickr) {
+        el._flatpickr.destroy();
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const defaultVal = initialDate === "today" ? todayStr : (initialDate || todayStr);
+
+    if (typeof flatpickr === "undefined") {
+        el.value = defaultVal;
+        if (disablePast) el.min = todayStr;
+        return null;
+    }
+
+    const config = {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        defaultDate: defaultVal,
+        disableMobile: true,
+        allowInput: false,
+        animate: true
+    };
+
+    if (disablePast) {
+        config.minDate = "today";
+    }
+
+    return flatpickr(el, config);
+}
+
+/* ==========================================================
    ADD RAW MATERIAL MODAL LOGIC
    ========================================================== */
 
@@ -701,7 +739,7 @@ function openAddMaterialModal() {
     }
 
     if ($("addMatId")) $("addMatId").value = nextCode;
-    if ($("addMatStockDate")) $("addMatStockDate").value = new Date().toISOString().slice(0, 10);
+    if ($("addMatStockDate")) initModalDatePicker("addMatStockDate", "today", true);
 
     $("addMaterialModalOverlay").classList.add("open");
 }
@@ -820,7 +858,9 @@ function openEditModal(materialId) {
     $("editMatUnit").value = mat.unit || "kg";
     $("editMatCurrentStock").value = `${fmtQty(mat.currentStock)} ${mat.unit || ""}`;
     $("editMatMinStock").value = mat.minStock !== null ? mat.minStock : "";
-    $("editMatDate").value = mat.createdAt ? mat.createdAt.slice(0, 10) : "";
+    
+    const dateVal = mat.createdAt ? mat.createdAt.slice(0, 10) : "today";
+    if ($("editMatDate")) initModalDatePicker("editMatDate", dateVal, true);
     $("editMatNote").value = mat.note || "";
 
     setFieldError("editMatNameError");
@@ -909,7 +949,7 @@ function populateModalDropdowns() {
 
 function openNewReceiveModal() {
     $("recordReceiptForm").reset();
-    if ($("receiptDateInput")) $("receiptDateInput").value = new Date().toISOString().slice(0, 10);
+    if ($("receiptDateInput")) initModalDatePicker("receiptDateInput", "today", true);
     setFieldError("receiptMaterialError");
     setFieldError("receiptQuantityError");
     $("recordReceiptModalOverlay").classList.add("open");
@@ -957,7 +997,7 @@ async function handleRecordReceiptSave() {
 
 function openNewDisburseModal() {
     $("recordDisburseForm").reset();
-    if ($("disburseDateInput")) $("disburseDateInput").value = new Date().toISOString().slice(0, 10);
+    if ($("disburseDateInput")) initModalDatePicker("disburseDateInput", "today", true);
     setFieldError("disburseMaterialError");
     setFieldError("disburseQuantityError");
     $("recordDisburseModalOverlay").classList.add("open");
@@ -1917,8 +1957,14 @@ function setupEventListeners() {
             state.overviewSort = "latest";
 
             if ($("invSearchInput")) $("invSearchInput").value = "";
-            if ($("invDateFrom")) $("invDateFrom").value = "";
-            if ($("invDateTo")) $("invDateTo").value = "";
+            if ($("invDateFrom")) {
+                if ($("invDateFrom")._flatpickr) $("invDateFrom")._flatpickr.clear();
+                else $("invDateFrom").value = "";
+            }
+            if ($("invDateTo")) {
+                if ($("invDateTo")._flatpickr) $("invDateTo")._flatpickr.clear();
+                else $("invDateTo").value = "";
+            }
             if ($("invActivityStatusFilter")) $("invActivityStatusFilter").value = "all";
             if ($("invStatusFilter")) $("invStatusFilter").value = "all";
             if ($("invSortFilter")) $("invSortFilter").value = "latest";
@@ -1981,6 +2027,25 @@ function setupEventListeners() {
             renderDisbursementTable();
         });
     }
+
+    // Initialize all Filter Flatpickr Calendars
+    const filterDateInputIds = ["invDateFrom", "invDateTo", "receiveDateFrom", "receiveDateTo", "disburseDateFrom", "disburseDateTo"];
+    filterDateInputIds.forEach(id => {
+        const el = $(id);
+        if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
+            flatpickr(el, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                disableMobile: true,
+                allowInput: false,
+                onChange: (selectedDates, dateStr) => {
+                    el.value = dateStr;
+                    el.dispatchEvent(new Event("change"));
+                }
+            });
+        }
+    });
 
     // 5. Header Actions
     if ($("refreshBtn")) $("refreshBtn").addEventListener("click", loadData);

@@ -729,6 +729,40 @@ function setupEditModalEventListeners() {
     }
 }
 
+function initModalDatePicker(elementId, initialDate = "today", disablePast = true) {
+    const el = typeof elementId === "string" ? $(elementId) : elementId;
+    if (!el) return null;
+
+    if (el._flatpickr) {
+        el._flatpickr.destroy();
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const defaultVal = initialDate === "today" ? todayStr : (initialDate || todayStr);
+
+    if (typeof flatpickr === "undefined") {
+        el.value = defaultVal;
+        if (disablePast) el.min = todayStr;
+        return null;
+    }
+
+    const config = {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        defaultDate: defaultVal,
+        disableMobile: true,
+        allowInput: false,
+        animate: true
+    };
+
+    if (disablePast) {
+        config.minDate = "today";
+    }
+
+    return flatpickr(el, config);
+}
+
 function openEditMaterialModal(mat) {
     const overlay = $("editMaterialModalOverlay");
     if (!overlay) return;
@@ -739,7 +773,9 @@ function openEditMaterialModal(mat) {
     $("editMatUnit").value = mat.unit || "kg";
     $("editMatCurrentStock").value = `${fmtQty(mat.currentStock)} ${mat.unit}`;
     $("editMatMinStock").value = mat.minStock !== null ? mat.minStock : "";
-    $("editMatDate").value = mat.createdAt ? new Date(mat.createdAt).toISOString().slice(0, 10) : "";
+    
+    const dateVal = mat.createdAt ? new Date(mat.createdAt).toISOString().slice(0, 10) : "today";
+    if ($("editMatDate")) initModalDatePicker("editMatDate", dateVal, true);
     $("editMatNote").value = mat.note || "";
 
     setFieldError("editMatNameError");
