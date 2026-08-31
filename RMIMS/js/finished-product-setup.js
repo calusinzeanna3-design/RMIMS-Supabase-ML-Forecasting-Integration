@@ -346,14 +346,6 @@ function renderProductCards(products) {
                     </div>
                 </div>
                 <div class="fpc-card-footer">
-                    <div class="fpc-card-direct-actions">
-                        <button type="button" class="fpc-action-icon-btn btn-edit-prod" data-id="${escapeHtml(p.id)}" title="Edit / Update">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
-                        </button>
-                        <button type="button" class="fpc-action-icon-btn btn-delete-prod" data-id="${escapeHtml(p.id)}" title="Delete Finished Product">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        </button>
-                    </div>
                     <button type="button" class="btn-view-details" data-id="${escapeHtml(p.id)}">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;"><path d="M15 12A3 3 0 1 1 9 12A3 3 0 0 1 15 12Z" stroke="currentColor" stroke-width="2"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5C16.478 5 20.268 7.943 21.542 12C20.268 16.057 16.478 19 12 19C7.523 19 3.732 16.057 2.458 12Z" stroke="currentColor" stroke-width="2"/></svg>
                         View Details
@@ -373,7 +365,7 @@ function attachFpcCardListeners() {
         const circle = card.querySelector(".fpc-card-select-circle");
 
         const toggleSelection = (e) => {
-            if (e.target.closest(".btn-view-details") || e.target.closest(".fpc-action-icon-btn")) return;
+            if (e.target.closest(".btn-view-details")) return;
             if (selectedProductIds.has(id)) {
                 selectedProductIds.delete(id);
                 card.classList.remove("card-selected");
@@ -395,34 +387,6 @@ function attachFpcCardListeners() {
             const id = btn.getAttribute("data-id");
             const prod = finishedProducts.find(p => p.id === id);
             if (prod) openDetailsModal(prod);
-        });
-    });
-
-    // Direct Edit Button
-    fpcCardsContainer.querySelectorAll(".btn-edit-prod").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const id = btn.getAttribute("data-id");
-            const prod = finishedProducts.find(p => p.id === id);
-            if (prod) openEditProductModal(prod);
-        });
-    });
-
-    // Direct Delete Button
-    fpcCardsContainer.querySelectorAll(".btn-delete-prod").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const id = btn.getAttribute("data-id");
-            const prod = finishedProducts.find(p => p.id === id);
-            if (!prod) return;
-            const conf = confirm(`Are you sure you want to delete finished product "${prod.name}"?`);
-            if (!conf) return;
-
-            finishedProducts = finishedProducts.filter(p => p.id !== id);
-            selectedProductIds.delete(id);
-            saveContextToStorage();
-            applyFiltersAndRender();
-            showToast(`Deleted finished product "${prod.name}"`, "success");
         });
     });
 
