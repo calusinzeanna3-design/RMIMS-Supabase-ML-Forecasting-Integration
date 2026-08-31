@@ -6,19 +6,19 @@
 :root{
 
   /* ---- brand green system ---- */
-  --rm-dark:       #14532D;
-  --rm-dark-2:     #0E3E22;
-  --rm-mid:        #16803C;
+  --rm-dark:       #11161B;
+  --rm-dark-2:     #0B0F13;
+  --rm-mid:        #22C55E;
   --rm-light:      #86EFAC;
   --rm-light-2:    #BBF7D0;
   --rm-soft:       #DCFCE7;
   --rm-white:      #FFFFFF;
-  --rm-bg:         #F7FDF9;
+  --rm-bg:         #D8EEDC;
 
   /* ---- ink / text ---- */
   --rm-ink:        #0F2A1B;
-  --rm-ink-mid:    #3F6650;
-  --rm-ink-dim:    #7A9788;
+  --rm-ink-mid:    #2C4A38;
+  --rm-ink-dim:    #5C7A68;
 
   /* ---- lines / shadow ---- */
   --rm-line:       rgba(20, 83, 45, 0.14);

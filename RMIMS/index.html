@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,10 +15,10 @@
 </head>
 <body class="rmsme-landing">
 
-<!-- ===================== HEADER (FIXED STICKY BAR) ===================== -->
+<!-- ===================== HEADER (STICKY BLUR BAR) ===================== -->
 <header class="site-header" id="siteHeader">
   <div class="header-inner">
-    <a class="brand-mark" href="#home" data-view-target="home" id="headerBrandMark" aria-label="RM(S)ME Home">
+    <a class="brand-mark" href="#home" id="headerBrandMark" aria-label="RM(S)ME Home">
       <span class="brand-icon">
         <img src="assets/logo-icon.png" alt="RMSME logo">
       </span>
@@ -26,15 +26,33 @@
     </a>
 
     <nav class="main-nav" id="mainNav">
-      <button type="button" class="nav-link active" data-view-target="home">Home</button>
-      <button type="button" class="nav-link" data-view-target="about">About</button>
-      <button type="button" class="nav-link" data-view-target="features">Features</button>
-      <button type="button" class="nav-link" data-view-target="how-it-works">How It Works</button>
-      <button type="button" class="nav-link" data-view-target="benefits">Benefits</button>
-      <button type="button" class="nav-link" data-view-target="connect">Connect / FAQs</button>
+      <a href="#home" class="nav-link active">Home</a>
+      <a href="#about" class="nav-link">About</a>
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#how-it-works" class="nav-link">How It Works</a>
+      <a href="#benefits" class="nav-link">Benefits</a>
+      <a href="#connect" class="nav-link">Connect / FAQs</a>
     </nav>
 
     <div class="header-actions">
+      <!-- THEME TOGGLE ICON-ONLY BUTTON -->
+      <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle light or dark theme" title="Toggle Light / Dark Mode">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
       <a class="btn btn-secondary btn-sm" href="login.html">Sign In</a>
       <button class="nav-toggle" id="navToggle" aria-label="Open navigation menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -43,11 +61,11 @@
   </div>
 </header>
 
-<!-- ===================== MAIN VIEWS STAGE ===================== -->
-<main class="views-stage" id="viewsStage">
+<!-- ===================== MAIN SCROLLABLE SECTIONS ===================== -->
+<main class="landing-main" id="landingMain">
 
-  <!-- ===================== VIEW 1: HOME (HERO) ===================== -->
-  <section class="view-panel is-active" id="view-home" data-view-id="home">
+  <!-- ===================== SECTION 1: HOME (HERO) ===================== -->
+  <section class="landing-section hero-section" id="home">
     <div class="view-inner-container">
       <div class="hero-view-grid">
         <div class="hero-text-col">
@@ -70,9 +88,9 @@
             <a class="btn btn-primary btn-lg" href="portal.html">
               Get Started →
             </a>
-            <button type="button" class="btn btn-secondary btn-lg" data-view-target="about">
+            <a class="btn btn-secondary btn-lg" href="#about">
               Learn More →
-            </button>
+            </a>
           </div>
 
           <div class="hero-indicators">
@@ -88,37 +106,37 @@
             <img src="assets/rmsme-3d-logo.png" alt="RMSME — Raw Materials MSME" class="logo-3d-img" loading="eager">
           </div>
 
-          <!-- Floating Satellite Conceptual Cards -->
-          <div class="satellite-card satellite-1" data-view-target="features">
+          <!-- Floating Satellite Conceptual Cards (Link to Features) -->
+          <a class="satellite-card satellite-1" href="#features">
             <span>📦</span> <span>Inventory Management</span>
-          </div>
-          <div class="satellite-card satellite-2" data-view-target="features">
+          </a>
+          <a class="satellite-card satellite-2" href="#features">
             <span>📊</span> <span>Consumption Analytics</span>
-          </div>
-          <div class="satellite-card satellite-3" data-view-target="features">
+          </a>
+          <a class="satellite-card satellite-3" href="#features">
             <span>🤖</span> <span>AI Forecasting</span>
-          </div>
-          <div class="satellite-card satellite-4" data-view-target="features">
+          </a>
+          <a class="satellite-card satellite-4" href="#features">
             <span>💡</span> <span>Decision Support</span>
-          </div>
+          </a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ===================== VIEW 2: ABOUT / PURPOSE (SPACIOUS & WIDE) ===================== -->
-  <section class="view-panel" id="view-about" data-view-id="about">
+  <!-- ===================== SECTION 2: ABOUT / PURPOSE ===================== -->
+  <section class="landing-section about-section" id="about">
     <!-- Subtle Background Inventory Grid & Chart Skeletons -->
     <div class="about-bg-decoration" aria-hidden="true">
       <svg width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern id="inventoryGrid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(16, 185, 129, 0.08)" stroke-width="1"/>
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(16, 185, 129, 0.1)" stroke-width="1"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#inventoryGrid)"/>
         <!-- Abstract Trend Line -->
-        <path d="M 50 450 Q 300 200 600 320 T 1200 150" stroke="rgba(16, 185, 129, 0.15)" stroke-width="2" stroke-dasharray="6 6"/>
+        <path d="M 50 450 Q 300 200 600 320 T 1200 150" stroke="rgba(16, 185, 129, 0.18)" stroke-width="2" stroke-dasharray="6 6"/>
       </svg>
     </div>
 
@@ -209,13 +227,13 @@
     </div>
   </section>
 
-  <!-- ===================== VIEW 3: FEATURES (CAPABILITIES) ===================== -->
-  <section class="view-panel" id="view-features" data-view-id="features">
+  <!-- ===================== SECTION 3: FEATURES (CAPABILITIES) ===================== -->
+  <section class="landing-section features-section" id="features">
     <div class="view-inner-container">
-      <div class="view-heading-wrap" style="text-align: center; margin-bottom: 24px;">
+      <div class="view-heading-wrap" style="text-align: center; margin-bottom: 28px;">
         <span class="view-eyebrow">SYSTEM CAPABILITIES</span>
         <h2 class="view-main-title">Explore RM(S)ME Capabilities</h2>
-        <p style="font-size: 14px; color: var(--color-text-muted); margin-top: 6px;">
+        <p style="font-size: 14.5px; color: var(--color-text-muted); margin-top: 8px;">
           Everything you need to understand and manage raw material inventory. Tap any card to view details.
         </p>
       </div>
@@ -272,13 +290,13 @@
     </div>
   </section>
 
-  <!-- ===================== VIEW 4: HOW IT WORKS (STRETCHED 2-COLUMN) ===================== -->
-  <section class="view-panel" id="view-how-it-works" data-view-id="how-it-works">
+  <!-- ===================== SECTION 4: HOW IT WORKS ===================== -->
+  <section class="landing-section how-section" id="how-it-works">
     <div class="view-inner-container">
-      <div class="view-heading-wrap" style="margin-bottom: 20px;">
+      <div class="view-heading-wrap" style="margin-bottom: 24px;">
         <span class="view-eyebrow">INTERACTIVE PROCESS FLOW</span>
         <h2 class="view-main-title">How RM(S)ME Works</h2>
-        <p style="font-size: 14px; color: var(--color-text-sub); margin-top: 4px;">
+        <p style="font-size: 14.5px; color: var(--color-text-sub); margin-top: 6px;">
           From recorded materials to better inventory decisions.
         </p>
       </div>
@@ -367,13 +385,13 @@
     </div>
   </section>
 
-  <!-- ===================== VIEW 5: BENEFITS ===================== -->
-  <section class="view-panel" id="view-benefits" data-view-id="benefits">
+  <!-- ===================== SECTION 5: BENEFITS ===================== -->
+  <section class="landing-section benefits-section" id="benefits">
     <div class="view-inner-container">
-      <div class="view-heading-wrap" style="text-align: center; margin-bottom: 24px;">
+      <div class="view-heading-wrap" style="text-align: center; margin-bottom: 28px;">
         <span class="view-eyebrow">VALUE PROPOSITION</span>
         <h2 class="view-main-title">Better Inventory. Smarter Decisions.</h2>
-        <p style="font-size: 14px; color: var(--color-text-muted); margin-top: 6px;">
+        <p style="font-size: 14.5px; color: var(--color-text-muted); margin-top: 8px;">
           Practical operational advantages designed specifically for MSME raw material management.
         </p>
       </div>
@@ -413,8 +431,8 @@
     </div>
   </section>
 
-  <!-- ===================== VIEW 6: CONNECT / FAQS (2 BALANCED CARDS) ===================== -->
-  <section class="view-panel" id="view-connect" data-view-id="connect">
+  <!-- ===================== SECTION 6: CONNECT / FAQS ===================== -->
+  <section class="landing-section connect-section" id="connect">
     <div class="view-inner-container">
       <div class="connect-faq-grid">
         
@@ -426,7 +444,7 @@
             RM(S)ME is designed to support micro, small, and medium enterprises in organizing raw material inventory records, monitoring material movement, understanding consumption patterns, and supporting better inventory planning.
           </p>
           <div class="connect-access-box">
-            <h4 style="font-size: 15px; font-weight: 700; color: #FFFFFF; margin-bottom: 6px;">Need system access?</h4>
+            <h4 style="font-size: 15px; font-weight: 700; color: var(--color-text-main); margin-bottom: 6px;">Need system access?</h4>
             <p style="font-size: 13.5px; color: var(--color-text-sub); line-height: 1.55; margin-bottom: 20px;">
               Sign in using your authorized account or contact your system administrator if you need access credentials.
             </p>
@@ -532,14 +550,14 @@
 
 </main>
 
-<!-- ===================== FIXED FOOTER BAR ===================== -->
+<!-- ===================== NATURAL FOOTER ===================== -->
 <footer class="site-footer" id="siteFooter">
   <div class="footer-inner">
     <div class="footer-brand">
-      <img src="assets/logo-icon.png" alt="RMSME logo" style="width: 20px; height: 20px;">
+      <img src="assets/logo-icon.png" alt="RMSME logo" style="width: 22px; height: 22px;">
       <span>RM(S)ME — Raw Materials Inventory Management System</span>
     </div>
-    <div>
+    <div class="footer-copy">
       © 2025 RM(S)ME. All rights reserved.
     </div>
   </div>
@@ -553,7 +571,7 @@
       <div style="font-size: 32px;" id="expIcon">📦</div>
       <div>
         <span style="font-size: 11px; font-weight: 700; color: var(--color-emerald-light); text-transform: uppercase;" id="expNum">01 Capability</span>
-        <h3 style="font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; color: #FFFFFF;" id="expTitle">Inventory Management</h3>
+        <h3 style="font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; color: var(--color-text-main);" id="expTitle">Inventory Management</h3>
       </div>
     </div>
     
@@ -562,7 +580,7 @@
       <p class="exp-text" id="expDoes">Record and monitor raw materials and current stock levels with structured cataloging.</p>
     </div>
 
-    <div class="exp-box" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.08);">
+    <div class="exp-box exp-box-highlight">
       <span class="exp-label">Why it matters</span>
       <p class="exp-text" id="expMatters">Maintains accurate real-time inventory balances and prevents unexpected shortages or stockouts across production runs.</p>
     </div>

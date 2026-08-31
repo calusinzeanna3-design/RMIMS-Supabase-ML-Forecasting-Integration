@@ -1,17 +1,17 @@
 /* RMIMS UNIFIED PORTAL DESIGN SYSTEM — applied across internal Admin/User pages */
 :root {
-  --rm-dark: #14532D;
-  --rm-dark-2: #0E3E22;
-  --rm-mid: #16803C;
-  --rm-mid-2: #189146;
+  --rm-dark: #11161B;
+  --rm-dark-2: #0B0F13;
+  --rm-mid: #22C55E;
+  --rm-mid-2: #16A34A;
   --rm-light: #86EFAC;
   --rm-light-2: #BBF7D0;
   --rm-soft: #DCFCE7;
-  --rm-bg: #F7FDF9;
+  --rm-bg: #D8EEDC;
   --rm-white: #FFFFFF;
   --rm-ink: #0F2A1B;
-  --rm-ink-mid: #3F6650;
-  --rm-ink-dim: #7A9788;
+  --rm-ink-mid: #2C4A38;
+  --rm-ink-dim: #5C7A68;
   --rm-line: rgba(20, 83, 45, .12);
   --rm-line-soft: rgba(20, 83, 45, .08);
 }
@@ -60,9 +60,9 @@ body {
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
   overscroll-behavior-y: contain !important;
-  background: linear-gradient(180deg, #0E3E22 0%, #14532D 58%, #103f25 100%) !important;
-  border-right: 1px solid rgba(187, 247, 208, .16) !important;
-  box-shadow: 8px 0 28px rgba(20, 83, 45, .10) !important;
+  background: #11161B !important;
+  border-right: 1px solid rgba(255, 255, 255, .08) !important;
+  box-shadow: 8px 0 28px rgba(0, 0, 0, .25) !important;
 }
 
 .sidebar .logo {
@@ -109,9 +109,9 @@ body {
 }
 
 .sidebar a.active {
-  background: rgba(255, 255, 255, .14) !important;
-  color: #fff !important;
-  box-shadow: inset 3px 0 0 var(--rm-light), 0 8px 22px rgba(0, 0, 0, .10) !important;
+  background: rgba(34, 197, 94, .16) !important;
+  color: #22C55E !important;
+  box-shadow: inset 3px 0 0 #22C55E, 0 8px 22px rgba(0, 0, 0, .10) !important;
 }
 
 .content {
@@ -872,9 +872,9 @@ body::after {
   margin: 0 !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  background: linear-gradient(180deg, #0b4a25 0%, #126331 55%, #0b4a25 100%) !important;
-  border-right: 1px solid rgba(255, 255, 255, .12) !important;
-  box-shadow: 8px 0 30px rgba(18, 99, 49, .12) !important;
+  background: #11161B !important;
+  border-right: 1px solid rgba(255, 255, 255, .08) !important;
+  box-shadow: 8px 0 30px rgba(0, 0, 0, .25) !important;
   transition: max-width .22s ease, width .22s ease, padding .22s ease !important;
 }
 
@@ -892,7 +892,7 @@ body::after {
   height: 54px;
   padding: 4px 4px 12px;
   margin-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, .13);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -957,7 +957,7 @@ body::after {
   gap: 11px;
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, .82);
+  color: rgba(255, 255, 255, .78);
   border-radius: 9px;
   padding: 0 13px;
   text-decoration: none;
@@ -969,14 +969,14 @@ body::after {
 
 .rmsme-nav-item:hover,
 .rmsme-material-toggle:hover {
-  background: rgba(255, 255, 255, .09);
+  background: rgba(255, 255, 255, .08);
   color: #fff;
 }
 
 .rmsme-nav-item.active,
 .rmsme-subitem.active {
-  background: rgba(187, 247, 208, .16);
-  color: #fff;
+  background: rgba(34, 197, 94, .16) !important;
+  color: #22C55E !important;
   font-weight: 600;
 }
 
@@ -985,10 +985,16 @@ body::after {
   content: "";
   position: absolute;
   left: 0;
-  width: 3px;
-  height: 22px;
-  background: #8ee7aa;
-  border-radius: 0 3px 3px 0;
+  width: 4px;
+  height: 24px;
+  background: #22C55E;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+}
+
+.rmsme-nav-item.active .rmsme-nav-icon,
+.rmsme-subitem.active .rmsme-nav-icon {
+  color: #22C55E !important;
 }
 
 .rmsme-nav-icon {
@@ -1840,8 +1846,8 @@ body {
   left: 10px !important;
   right: 10px !important;
   bottom: 10px !important;
-  margin: 0 !important;
-  background: rgba(11, 74, 37, .96) !important;
+  background: #181F26 !important;
+  border: 1px solid rgba(255, 255, 255, .06) !important;
   border-radius: 10px !important;
   box-sizing: border-box !important;
 }

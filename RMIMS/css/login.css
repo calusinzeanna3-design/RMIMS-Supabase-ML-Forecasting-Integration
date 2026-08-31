@@ -49,8 +49,8 @@ body{
 
 .bento-left{
   background:
-    radial-gradient(circle at 12% 12%, rgba(134,239,172,.16), transparent 45%),
-    linear-gradient(160deg, #0E3E22 0%, var(--rm-dark) 55%, #0C331C 100%);
+    radial-gradient(circle at 12% 12%, rgba(34,197,94,.16), transparent 45%),
+    linear-gradient(160deg, #0B0F13 0%, var(--rm-dark) 55%, #181F26 100%);
   display:flex;
   align-items:center;
   justify-content:center;

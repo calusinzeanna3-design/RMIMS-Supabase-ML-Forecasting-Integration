@@ -267,9 +267,11 @@
   });
 
   document.getElementById('rmsmeLogout')?.addEventListener('click', async () => {
-    localStorage.removeItem('rmims_notifications_read');
+    // Preserve notification read state so read items stay read across sessions
     localStorage.removeItem('rmsmeCurrentUser');
     try {
+      sessionStorage.removeItem("rmims_login_session_id");
+      sessionStorage.removeItem("rmims_session_login_recorded");
       const { supabase } = await import('../supabase/supabase-config.js');
       await supabase.auth.signOut();
     } catch (err) {
@@ -381,8 +383,22 @@
     } catch (e) { }
   }
 
+  function getReadStorageKey() {
+    let uid = '';
+    try {
+      const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile') || '{}');
+      uid = u.id || u.email || '';
+    } catch (e) {}
+    return uid ? `rmims_notifications_read_${uid}` : NOTIF_READ_KEY;
+  }
+
   function getReadSet() {
     try {
+      const key = getReadStorageKey();
+      const specific = JSON.parse(localStorage.getItem(key) || 'null');
+      if (Array.isArray(specific) && specific.length > 0) {
+        return new Set(specific);
+      }
       return new Set(JSON.parse(localStorage.getItem(NOTIF_READ_KEY) || '[]'));
     } catch (e) {
       return new Set();
@@ -391,7 +407,10 @@
 
   function saveReadSet(set) {
     try {
-      localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...set]));
+      const arr = [...set];
+      const key = getReadStorageKey();
+      localStorage.setItem(key, JSON.stringify(arr));
+      localStorage.setItem(NOTIF_READ_KEY, JSON.stringify(arr));
     } catch (e) { }
   }
 

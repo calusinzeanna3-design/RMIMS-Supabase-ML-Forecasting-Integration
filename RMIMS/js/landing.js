@@ -1,6 +1,6 @@
 /* ==========================================================
    RM(S)ME — FINAL MASTER LANDING PAGE ENGINE
-   PREMIUM VITE-INSPIRED • 3D • TOUCH-FRIENDLY • ZERO REGRESSION
+   SCROLLABLE • THEME TOGGLE • 3D • TOUCH-FRIENDLY
    ========================================================== */
 
 const featureDetails = {
@@ -146,74 +146,115 @@ document.addEventListener("DOMContentLoaded", () => {
   const isTouchDevice = window.matchMedia('(hover: none)').matches;
 
   // ==========================================
-  // 1. VIEW / STATE TRANSITION ENGINE
+  // 1. THEME ENGINE (LIGHT / DARK MODE TOGGLE)
   // ==========================================
-  let currentViewId = "home";
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
+  const storedTheme = localStorage.getItem("rmsme_theme");
+  const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+  
+  let currentTheme = storedTheme || (prefersLight ? "light" : "dark");
+  applyTheme(currentTheme);
+
+  function applyTheme(theme) {
+    currentTheme = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("rmsme_theme", theme);
+    if (themeToggleBtn) {
+      themeToggleBtn.setAttribute(
+        "title",
+        theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
+      );
+      themeToggleBtn.setAttribute(
+        "aria-label",
+        theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
+      );
+    }
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", () => {
+      const newTheme = currentTheme === "dark" ? "light" : "dark";
+      applyTheme(newTheme);
+    });
+  }
+
+  // ==========================================
+  // 2. SMOOTH SCROLLING & ACTIVE NAV SPY
+  // ==========================================
   const navLinks = document.querySelectorAll(".main-nav .nav-link");
+  const sections = document.querySelectorAll(".landing-section");
+  const mainNav = document.getElementById("mainNav");
+  const navToggle = document.getElementById("navToggle");
 
-  function switchView(targetViewId) {
-    if (!targetViewId || targetViewId === currentViewId) {
-      if (targetViewId === "home") {
-        const homePanel = document.getElementById("view-home");
-        if (homePanel) homePanel.scrollTop = 0;
+  // Close mobile nav & update active state when clicking a link
+  navLinks.forEach(link => {
+    link.addEventListener("click", () => {
+      navLinks.forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
+
+      if (mainNav && mainNav.classList.contains("is-open")) {
+        mainNav.classList.remove("is-open");
+        if (navToggle) {
+          navToggle.classList.remove("is-active");
+          navToggle.setAttribute("aria-expanded", "false");
+        }
       }
-      return;
-    }
+    });
+  });
 
-    const currentPanel = document.querySelector(`.view-panel[data-view-id="${currentViewId}"]`);
-    const targetPanel = document.querySelector(`.view-panel[data-view-id="${targetViewId}"]`);
-
-    if (!targetPanel) return;
-
-    // Outgoing transition
-    if (currentPanel) {
-      currentPanel.classList.remove("is-active");
-      currentPanel.classList.add("is-leaving");
-      setTimeout(() => {
-        currentPanel.classList.remove("is-leaving");
-      }, 500);
-    }
-
-    // Incoming transition
-    targetPanel.classList.add("is-active");
-    targetPanel.scrollTop = 0;
-    currentViewId = targetViewId;
-
-    // Update active nav links
+  // Helper function to set the active nav link
+  function setActiveNav(id) {
+    if (!id) return;
     navLinks.forEach(link => {
-      if (link.dataset.viewTarget === targetViewId) {
+      const href = link.getAttribute("href");
+      if (href === `#${id}`) {
         link.classList.add("active");
       } else {
         link.classList.remove("active");
       }
     });
+  }
 
-    // Close mobile menu if open
-    const mainNav = document.getElementById("mainNav");
-    const navToggle = document.getElementById("navToggle");
-    if (mainNav && navToggle) {
-      mainNav.classList.remove("is-open");
-      navToggle.classList.remove("is-active");
-      navToggle.setAttribute("aria-expanded", "false");
+  // Active section auto-locate spy on scroll
+  function updateActiveNavOnScroll() {
+    const scrollY = window.scrollY;
+    const windowHeight = window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight;
+    const headerHeight = document.querySelector(".landing-header")?.offsetHeight || 80;
+    const triggerPoint = headerHeight + 140; // Focal line where entering a new section activates it
+
+    // 1. Absolute bottom of page: highlight last section
+    if ((windowHeight + scrollY) >= (docHeight - 50) && sections.length > 0) {
+      setActiveNav(sections[sections.length - 1].getAttribute("id"));
+      return;
+    }
+
+    // 2. Active section is the latest section whose top has crossed the trigger point
+    let currentActiveId = "";
+    sections.forEach(section => {
+      const rect = section.getBoundingClientRect();
+      if (rect.top <= triggerPoint) {
+        currentActiveId = section.getAttribute("id");
+      }
+    });
+
+    // Default to first section if at the top
+    if (!currentActiveId && sections.length > 0) {
+      currentActiveId = sections[0].getAttribute("id");
+    }
+
+    if (currentActiveId) {
+      setActiveNav(currentActiveId);
     }
   }
 
-  // Attach view switcher to all elements with data-view-target
-  document.addEventListener("click", (e) => {
-    const targetEl = e.target.closest("[data-view-target]");
-    if (targetEl) {
-      e.preventDefault();
-      const targetView = targetEl.getAttribute("data-view-target");
-      switchView(targetView);
-    }
-  });
+  window.addEventListener("scroll", updateActiveNavOnScroll, { passive: true });
+  window.addEventListener("resize", updateActiveNavOnScroll, { passive: true });
+  updateActiveNavOnScroll(); // Initial check on load
 
   // ==========================================
-  // 2. MOBILE NAV TOGGLE
+  // 3. MOBILE NAV TOGGLE
   // ==========================================
-  const navToggle = document.getElementById("navToggle");
-  const mainNav = document.getElementById("mainNav");
-
   if (navToggle && mainNav) {
     navToggle.addEventListener("click", () => {
       const isOpen = mainNav.classList.toggle("is-open");
@@ -223,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // 3. 3D HERO LOGO PARALLAX (DESKTOP ONLY)
+  // 4. 3D HERO LOGO PARALLAX (DESKTOP ONLY)
   // ==========================================
   const logoCard = document.getElementById("logoPopupCard");
   if (logoCard && !isReducedMotion && !isTouchDevice) {
@@ -246,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Header Logo Subtle 3D Tilt (Desktop only, max ±2.5deg)
+  // Header Logo Subtle 3D Tilt
   const headerBrand = document.getElementById("headerBrandMark");
   if (headerBrand && !isReducedMotion && !isTouchDevice) {
     let brandFrame = null;
@@ -277,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // 4. FEATURE CARD EXPANSION ENGINE
+  // 5. FEATURE CARD EXPANSION ENGINE
   // ==========================================
   const expansionDrawer = document.getElementById("featureExpansionDrawer");
   const expansionCloseBtn = document.getElementById("expansionCloseBtn");
@@ -336,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 5. HOW IT WORKS 5-STAGE & QUICK CHECK ENGINE
+  // 6. HOW IT WORKS 5-STAGE & QUICK CHECK ENGINE
   // ==========================================
   const stepPills = document.querySelectorAll(".process-step-pill");
   const stepNumEl = document.getElementById("howActiveStepNum");
@@ -450,7 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 6. CONNECT / FAQ ACCORDION ENGINE
+  // 7. CONNECT / FAQ ACCORDION ENGINE
   // ==========================================
   const faqItems = document.querySelectorAll(".faq-item");
   faqItems.forEach(item => {
@@ -479,4 +520,79 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   });
+
+  // ==========================================
+  // 8. SCROLL REVEAL & SMOOTH EXIT ENGINE
+  // ==========================================
+  if (!isReducedMotion) {
+    // Auto-tag sections, columns and cards with reveal animation classes
+    const leftElements = document.querySelectorAll(".hero-text-col, .about-left-col, .workflow-rail, .connect-card, .connect-left-col");
+    leftElements.forEach(el => {
+      el.classList.add("reveal-item", "reveal-left");
+    });
+
+    const rightElements = document.querySelectorAll(".hero-visual-stage, .about-right-col, .interactive-stage-panel, .faq-card");
+    rightElements.forEach(el => {
+      el.classList.add("reveal-item", "reveal-right");
+    });
+
+    const headingWraps = document.querySelectorAll(".view-heading-wrap, .site-footer");
+    headingWraps.forEach(el => {
+      el.classList.add("reveal-item", "reveal-up");
+    });
+
+    const staggerGrids = [
+      document.querySelectorAll(".objectives-grid .objective-card"),
+      document.querySelectorAll(".features-view-grid .feature-card"),
+      document.querySelectorAll(".benefits-grid .benefit-card"),
+      document.querySelectorAll(".workflow-rail .process-step-pill"),
+      document.querySelectorAll(".faq-accordion .faq-item")
+    ];
+
+    staggerGrids.forEach(cardList => {
+      cardList.forEach((card, idx) => {
+        card.classList.add("reveal-item", "reveal-up");
+        const delayClass = `delay-${Math.min((idx % 6) + 1, 6)}`;
+        card.classList.add(delayClass);
+      });
+    });
+
+    const allRevealItems = document.querySelectorAll(".reveal-item");
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const el = entry.target;
+        if (entry.isIntersecting) {
+          el.classList.add("is-visible");
+          el.classList.remove("is-exited-up");
+        } else {
+          // When element has scrolled past above the viewport, apply smooth exit-up
+          if (entry.boundingClientRect.top < 0) {
+            el.classList.add("is-exited-up");
+            el.classList.remove("is-visible");
+          } else {
+            // When below the viewport, reset for fresh entrance on scroll down
+            el.classList.remove("is-visible", "is-exited-up");
+          }
+        }
+      });
+    }, {
+      threshold: 0.05,
+      rootMargin: "0px 0px -20px 0px"
+    });
+
+    allRevealItems.forEach(item => revealObserver.observe(item));
+
+    // Guarantee reveal for elements in view on bottom scroll
+    window.addEventListener("scroll", () => {
+      const isAtBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 60);
+      if (isAtBottom) {
+        document.querySelectorAll("#connect .reveal-item, .site-footer.reveal-item").forEach(el => {
+          el.classList.add("is-visible");
+          el.classList.remove("is-exited-up");
+        });
+      }
+    }, { passive: true });
+  }
 });
+
