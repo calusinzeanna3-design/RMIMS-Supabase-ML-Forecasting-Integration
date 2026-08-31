@@ -51,7 +51,6 @@ function ensureAuthTransitionDOM(expectedRole) {
                     </div>
                     <div class="auth-progress-meta">
                         <span class="auth-status-text" id="authStatusText">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                             <span id="authStatusMessage">Initializing...</span>
                         </span>
                         <span class="auth-percent-text" id="authPercentText">0%</span>
@@ -77,7 +76,9 @@ function updateAuthProgress(dom, percentage, messageText) {
     if (dom.message) dom.message.textContent = messageText;
 }
 
-function showAuthTransition(expectedRole, initialMessage = "Connecting to authentication service...", initialPercent = 20) {
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function showAuthTransition(expectedRole, initialMessage = "Connecting to Supabase Authentication...", initialPercent = 15) {
     const dom = ensureAuthTransitionDOM(expectedRole);
     dom.overlay.classList.add("is-active");
     dom.overlay.setAttribute("aria-hidden", "false");
@@ -98,7 +99,7 @@ function hideAuthTransition(dom) {
 
 /**
  * Authenticates a user against Supabase Auth and validates application role/status from public.user_profiles.
- * Integrated with the video progress transition lifecycle.
+ * Integrated with the video progress transition lifecycle and smooth pacing.
  * 
  * @param {string} email - User email address
  * @param {string} password - User password
@@ -106,14 +107,20 @@ function hideAuthTransition(dom) {
  */
 export async function loginUser(email, password, expectedRole) {
     // 1. Launch interactive transition overlay
-    const transDOM = showAuthTransition(expectedRole, "Verifying credentials with Supabase...", 25);
+    const transDOM = showAuthTransition(expectedRole, "Connecting to Supabase Authentication...", 18);
 
     try {
-        // Step 1: Sign in with password
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Step 1: Sign in with Supabase Auth
+        const authPromise = supabase.auth.signInWithPassword({
             email: email.trim(),
             password: password
         });
+
+        // Smooth pacing delay to allow video playback
+        await sleep(550);
+        updateAuthProgress(transDOM, 38, "Verifying credentials & security tokens...");
+
+        const { data, error } = await authPromise;
 
         if (error) {
             throw new Error(friendlyAuthError(error));
@@ -127,13 +134,16 @@ export async function loginUser(email, password, expectedRole) {
         const uid = data.user.id;
 
         // Step 2: Validate security role & profile
-        updateAuthProgress(transDOM, 60, "Validating security permissions & role profile...");
+        await sleep(650);
+        updateAuthProgress(transDOM, 65, "Validating account role permissions & security profile...");
 
-        const { data: profile, error: profileError } = await supabase
+        const profilePromise = supabase
             .from("user_profiles")
             .select("id, full_name, email, role, status")
             .eq("id", uid)
             .maybeSingle();
+
+        const { data: profile, error: profileError } = await profilePromise;
 
         if (profileError || !profile) {
             await supabase.auth.signOut();
@@ -157,7 +167,8 @@ export async function loginUser(email, password, expectedRole) {
         }
 
         // Step 3: Synchronize session storage
-        updateAuthProgress(transDOM, 85, "Synchronizing workspace session & inventory state...");
+        await sleep(650);
+        updateAuthProgress(transDOM, 88, "Synchronizing workspace session & inventory state...");
 
         const sessionUser = {
             id: profile.id,
@@ -177,10 +188,11 @@ export async function loginUser(email, password, expectedRole) {
         } catch (e) { }
 
         // Step 4: Final verification & launch
-        updateAuthProgress(transDOM, 100, "Authentication verified! Launching dashboard...");
+        await sleep(600);
+        updateAuthProgress(transDOM, 100, "Access Granted! Launching Workspace Dashboard...");
 
-        // Smooth 550ms completion pause for visual delight
-        await new Promise(r => setTimeout(r, 550));
+        // Smooth 650ms completion pause for visual delight
+        await sleep(650);
 
         // Role-based destination routing
         const isRMIMSPath = window.location.pathname.toLowerCase().includes("/rmims");
