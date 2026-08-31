@@ -1639,13 +1639,14 @@ function renderModalConsumptionChart() {
   const legendEl = $("modalChartLegend");
   const catSelect = $("modalCategoryFilter");
   const granGroup = $("modalGranularityGroup");
+  const insightsBox = $("modalChartInsights");
   if (!canvas || typeof Chart === "undefined") return;
 
   // Populate category select once
   if (catSelect && !catSelect.dataset.populated) {
     catSelect.dataset.populated = "true";
-    catSelect.innerHTML = `<option value="general">General (Top 5 Consumed)</option>` +
-      catalogMaterials.map(m => `<option value="${esc(m.id)}">${esc(m.materialName)} (${esc(m.unit)})</option>`).join("");
+    catSelect.innerHTML = `<option value="all">All Materials (Top 5 Overview)</option>` +
+      catalogMaterials.slice().sort((a, b) => a.materialName.localeCompare(b.materialName)).map(m => `<option value="${esc(m.id)}">${esc(m.materialName)} (${esc(m.unit)})</option>`).join("");
 
     catSelect.addEventListener("change", e => {
       currentModalCategory = e.target.value;
@@ -1666,105 +1667,173 @@ function renderModalConsumptionChart() {
     });
   }
 
-  // Determine which materials to display
-  let targetMaterials = [];
-  if (currentModalCategory === "general") {
+  if (modalConsumptionChartInst) {
+    modalConsumptionChartInst.destroy();
+    modalConsumptionChartInst = null;
+  }
+
+  // 1. Determine selected material(s)
+  let seriesMats = [];
+  let isAll = (currentModalCategory === "all" || currentModalCategory === "general");
+
+  if (isAll) {
     // Top 5 consumed materials
     const sumMap = {};
     usageRecords.forEach(u => {
-      sumMap[u.materialId] = (sumMap[u.materialId] || 0) + u.quantity;
+      if (u.materialId) sumMap[u.materialId] = (sumMap[u.materialId] || 0) + (u.consumedQuantity || 0);
     });
     const sortedIds = Object.keys(sumMap).sort((a, b) => sumMap[b] - sumMap[a]).slice(0, 5);
-    targetMaterials = catalogMaterials.filter(m => sortedIds.includes(m.id));
-    if (targetMaterials.length === 0) targetMaterials = catalogMaterials.slice(0, 5);
+    seriesMats = catalogMaterials.filter(m => sortedIds.includes(m.id)).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
+    if (seriesMats.length === 0) {
+      seriesMats = catalogMaterials.slice(0, 5).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
+    }
   } else {
     const single = catalogMaterials.find(m => m.id === currentModalCategory);
-    if (single) targetMaterials = [single];
-  }
-
-  let labels = [];
-  let datasets = [];
-
-  if (currentModalGranularity === "general") {
-    // 6-Month Rolling Window
-    labels = ["Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026"];
-    datasets = targetMaterials.map((mat, idx) => {
-      const monthlySums = [0, 0, 0, 0, 0, 0];
-      usageRecords.filter(u => u.materialId === mat.id).forEach(u => {
-        const d = new Date(u.date);
-        const m = d.getMonth();
-        if (m >= 0 && m < 6) monthlySums[m] += u.quantity;
-      });
-      const color = SERIES_PALETTE[idx % SERIES_PALETTE.length];
-      return {
-        label: `${mat.materialName} (${mat.unit})`,
-        data: monthlySums.map(v => Number(v.toFixed(2))),
-        borderColor: color,
-        backgroundColor: color,
-        borderWidth: 2.2,
-        tension: 0.3,
-        pointRadius: 3.5
-      };
-    });
-  } else if (currentModalGranularity === "week") {
-    // 7 Days
-    const now = new Date();
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 86400000);
-      days.push({
-        iso: d.toISOString().split("T")[0],
-        label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-      });
+    if (single) {
+      seriesMats = [{ name: single.materialName, unit: single.unit, id: single.id }];
+    } else {
+      seriesMats = catalogMaterials.slice(0, 1).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
     }
-    labels = days.map(d => d.label);
-    datasets = targetMaterials.map((mat, idx) => {
-      const dailySums = days.map(day => {
-        let sum = 0;
-        usageRecords.filter(u => u.materialId === mat.id).forEach(u => {
-          if (String(u.date || "").startsWith(day.iso)) sum += u.quantity;
-        });
-        return Number(sum.toFixed(2));
-      });
-      const color = SERIES_PALETTE[idx % SERIES_PALETTE.length];
-      return {
-        label: `${mat.materialName} (${mat.unit})`,
-        data: dailySums,
-        borderColor: color,
-        backgroundColor: color,
-        borderWidth: 2.2,
-        tension: 0.25,
-        pointRadius: 3.5
-      };
-    });
+  }
+
+  // Relevant usage records
+  const relevantUsage = isAll
+    ? usageRecords.filter(u => u.usageDate)
+    : usageRecords.filter(u => seriesMats.some(m => m.id === u.materialId || m.name === u.materialName) && u.usageDate);
+
+  // 2. Build date buckets based on granularity (daily, week, month, year)
+  let labels = [];
+  let dateBuckets = [];
+
+  let referenceYear = new Date().getFullYear();
+  if (relevantUsage.length > 0) {
+    const years = relevantUsage.map(u => new Date(u.usageDate).getFullYear()).filter(y => !isNaN(y));
+    if (years.length > 0) referenceYear = Math.max(...years);
+  }
+
+  if (currentModalGranularity === "year") {
+    const uniqueYears = Array.from(new Set(usageRecords.map(u => new Date(u.usageDate).getFullYear()).filter(y => !isNaN(y)))).sort();
+    if (uniqueYears.length <= 1) {
+      const baseYear = uniqueYears[0] || referenceYear;
+      uniqueYears.length = 0;
+      for (let y = baseYear - 2; y <= baseYear + 1; y++) uniqueYears.push(y);
+    }
+    labels = uniqueYears.map(y => `${y}`);
+    dateBuckets = uniqueYears.map(y => ({
+      label: `${y}`,
+      filter: d => d.getFullYear() === y
+    }));
+
   } else if (currentModalGranularity === "month") {
-    // 4 Weeks of Current Month
-    labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
-    datasets = targetMaterials.map((mat, idx) => {
-      const weeklySums = [0, 0, 0, 0];
-      usageRecords.filter(u => u.materialId === mat.id).forEach(u => {
-        const d = new Date(u.date);
-        const dayOfMonth = d.getDate();
-        const wIdx = Math.min(3, Math.floor((dayOfMonth - 1) / 7));
-        weeklySums[wIdx] += u.quantity;
+    labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    dateBuckets = labels.map((_, i) => ({
+      label: `${labels[i]} ${referenceYear}`,
+      filter: d => d.getFullYear() === referenceYear && d.getMonth() === i
+    }));
+
+  } else if (currentModalGranularity === "week") {
+    let activeMonth = new Date().getMonth();
+    if (relevantUsage.length > 0) {
+      const months = relevantUsage.map(u => new Date(u.usageDate).getMonth()).filter(m => !isNaN(m));
+      if (months.length > 0) activeMonth = months[months.length - 1];
+    }
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const mName = monthNames[activeMonth];
+
+    labels = [`W1 (${mName} 1-7)`, `W2 (${mName} 8-14)`, `W3 (${mName} 15-21)`, `W4 (${mName} 22+)`];
+    dateBuckets = [
+      { label: labels[0], filter: d => d.getFullYear() === referenceYear && d.getMonth() === activeMonth && d.getDate() <= 7 },
+      { label: labels[1], filter: d => d.getFullYear() === referenceYear && d.getMonth() === activeMonth && d.getDate() > 7 && d.getDate() <= 14 },
+      { label: labels[2], filter: d => d.getFullYear() === referenceYear && d.getMonth() === activeMonth && d.getDate() > 14 && d.getDate() <= 21 },
+      { label: labels[3], filter: d => d.getFullYear() === referenceYear && d.getMonth() === activeMonth && d.getDate() > 21 }
+    ];
+
+  } else {
+    // Daily (7 Days)
+    const matDates = Array.from(new Set(relevantUsage.map(u => u.usageDate).filter(Boolean))).sort();
+
+    if (matDates.length >= 7) {
+      const recentDates = matDates.slice(-7);
+      labels = recentDates.map(ds => {
+        const d = new Date(ds + "T00:00:00");
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       });
-      const color = SERIES_PALETTE[idx % SERIES_PALETTE.length];
-      return {
-        label: `${mat.materialName} (${mat.unit})`,
-        data: weeklySums.map(v => Number(v.toFixed(2))),
-        borderColor: color,
-        backgroundColor: color,
-        borderWidth: 2.2,
-        tension: 0.3,
-        pointRadius: 3.5
-      };
+      dateBuckets = recentDates.map((ds, i) => ({
+        label: labels[i],
+        filter: d => d.toISOString().split("T")[0] === ds
+      }));
+    } else if (matDates.length > 0) {
+      const latestDateStr = matDates[matDates.length - 1];
+      const anchorDate = new Date(latestDateStr + "T00:00:00");
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(anchorDate);
+        d.setDate(d.getDate() - i);
+        const ds = d.toISOString().split("T")[0];
+        labels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+        dateBuckets.push({
+          label: labels[labels.length - 1],
+          filter: itemDate => itemDate.toISOString().split("T")[0] === ds
+        });
+      }
+    } else {
+      const now = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const ds = d.toISOString().split("T")[0];
+        labels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+        dateBuckets.push({
+          label: labels[labels.length - 1],
+          filter: itemDate => itemDate.toISOString().split("T")[0] === ds
+        });
+      }
+    }
+  }
+
+  // 3. Build datasets
+  let maxVal = 0;
+  let totalPeriodSum = 0;
+  let highestMaterial = "";
+  let highestPeriod = "";
+
+  const datasets = seriesMats.map((mat, idx) => {
+    const color = SERIES_PALETTE[idx % SERIES_PALETTE.length];
+    const data = dateBuckets.map(b => {
+      let sum = 0;
+      usageRecords.forEach(u => {
+        if ((u.materialId === mat.id || u.materialName === mat.name) && u.usageDate) {
+          const d = new Date(u.usageDate + "T00:00:00");
+          if (!isNaN(d.getTime()) && b.filter(d)) {
+            sum += u.consumedQuantity || 0;
+          }
+        }
+      });
+      totalPeriodSum += sum;
+      if (sum > maxVal) {
+        maxVal = sum;
+        highestMaterial = mat.name;
+        highestPeriod = b.label;
+      }
+      return sum;
     });
-  }
 
-  if (modalConsumptionChartInst) {
-    modalConsumptionChartInst.destroy();
-  }
+    return {
+      label: `${mat.name} (${mat.unit || "kg"})`,
+      data,
+      borderColor: color,
+      backgroundColor: color + "1A",
+      borderWidth: 2.4,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: color,
+      pointBorderColor: "#FFFFFF",
+      pointBorderWidth: 1.5,
+      tension: 0.32,
+      fill: true
+    };
+  });
 
+  // 4. Render Chart
   modalConsumptionChartInst = new Chart(canvas, {
     type: "line",
     data: { labels, datasets },
@@ -1775,28 +1844,59 @@ function renderModalConsumptionChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
+          backgroundColor: "#0B132B",
+          titleColor: "#FFFFFF",
+          bodyColor: "#D7E0EA",
+          borderColor: "rgba(255,255,255,0.16)",
+          borderWidth: 1,
+          padding: 10,
+          boxPadding: 4,
           callbacks: {
             label: function(ctx) {
-              return ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString("en-US")}`;
+              const val = ctx.parsed.y || 0;
+              return ` ${ctx.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
             }
           }
         }
       },
       scales: {
-        x: { grid: { display: false } },
-        y: { grid: { color: "rgba(148, 180, 224, 0.12)" } }
+        x: {
+          grid: { color: "rgba(148, 180, 224, 0.08)", drawBorder: false },
+          ticks: { color: "#7C92B3", font: { family: "Inter", size: 11 } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: "rgba(148, 180, 224, 0.12)", drawBorder: false },
+          ticks: {
+            color: "#7C92B3",
+            font: { family: "Inter", size: 11 },
+            callback: value => value.toLocaleString("en-US")
+          }
+        }
       }
     }
   });
 
-  // Render Custom Interactive Legend
+  // 5. Render custom legend
   if (legendEl) {
-    legendEl.innerHTML = datasets.map((ds, idx) => `
-      <div class="amp-legend-item">
-        <span class="amp-legend-dot" style="background:${ds.borderColor};"></span>
-        <span class="amp-legend-label">${esc(ds.label)}</span>
+    legendEl.innerHTML = datasets.map(ds => `
+      <div class="amp-legend-pill">
+        <span class="legend-circle" style="background-color: ${ds.borderColor};"></span>
+        <span class="legend-name">${esc(ds.label)}</span>
       </div>
     `).join("");
+  }
+
+  // 6. Update insights footer
+  if (insightsBox) {
+    if (!isAll && seriesMats.length === 1) {
+      const mat = seriesMats[0];
+      insightsBox.textContent = `${mat.name}: Total consumed across this timeframe is ${totalPeriodSum.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${mat.unit || "kg"}.`;
+    } else if (maxVal > 0 && highestMaterial) {
+      insightsBox.textContent = `Peak disbursement: ${highestMaterial} with ${maxVal.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} consumed in ${highestPeriod}.`;
+    } else {
+      insightsBox.textContent = `Displaying live consumption records across ${labels.length} intervals.`;
+    }
   }
 }
 
