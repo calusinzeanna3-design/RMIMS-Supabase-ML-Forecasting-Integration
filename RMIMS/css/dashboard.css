@@ -4093,23 +4093,8 @@ body.modal-open {
 }
 
 /* Smooth Circular Rotation Transition Animation */
-@keyframes rrcSpinCircle {
-  0% {
-    transform: rotate(0deg) scale(0.96);
-    opacity: 0.85;
-  }
-  50% {
-    transform: rotate(180deg) scale(1.02);
-    opacity: 1;
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-    opacity: 1;
-  }
-}
-
 .rrc-spin-circle {
-  animation: rrcSpinCircle 0.85s cubic-bezier(0.34, 1.25, 0.64, 1) forwards;
+  transform: none !important;
 }
 
 @keyframes rrcLegendFade {

@@ -1507,10 +1507,8 @@ const RECEIVE_PIE_PALETTE = [
   "#FF7A00", // Vibrant Orange
   "#6366F1", // Indigo / Purple
   "#84CC16", // Lime Green
-  "#10B981", // Emerald
-  "#3B82F6", // Sky Blue
   "#EC4899", // Pink
-  "#F59E0B"  // Amber
+  "#64748B"  // Slate (Others)
 ];
 
 // Custom Chart.js inline plugin to draw percentage directly inside each pie slice
@@ -1530,7 +1528,7 @@ const pieSlicePercentagePlugin = {
       if (val <= 0) return;
 
       const pctNum = (val / total) * 100;
-      if (pctNum < 2.5) return; // Skip negligible slices to avoid text clipping
+      if (pctNum < 4.0) return; // Skip very small slices to prevent text clutter
 
       const pctText = `${pctNum.toFixed(1)}%`;
 
@@ -1556,16 +1554,13 @@ const pieSlicePercentagePlugin = {
   }
 };
 
-let receiveGroupIndex = 0;
-let receiveGroupTimer = null;
-let receiveCardHovered = false;
-let receiveMaterialGroups = [];
-
 function renderReceiveRawMaterialsCard() {
   const card = $("cardReceiveRawMaterials");
   if (!card) return;
 
   const matCountBadge = $("rrcMaterialCountBadge");
+  const unitBadge = $("rrcUnitBadge");
+  const canvas = $("receivePieChart");
   const legendList = $("receiveLegendList");
   const topList = $("topReceivedList");
 
@@ -1573,7 +1568,7 @@ function renderReceiveRawMaterialsCard() {
     matCountBadge.textContent = `${catalogMaterials.length} materials`;
   }
 
-  // 1. Initialize with all catalog materials so all 30 materials cycle across groups
+  // 1. Calculate aggregated received total and display stock per raw material
   const matTotalsMap = new Map();
   catalogMaterials.forEach(m => {
     const key = m.materialName || m.name || "Material";
@@ -1608,7 +1603,7 @@ function renderReceiveRawMaterialsCard() {
     return;
   }
 
-  // 2. Render Top 5 Received (Overall highest 5 items)
+  // 2. Render Top 5 Received List
   if (topList) {
     const top5 = sortedMaterials.slice(0, 5);
     topList.innerHTML = top5.map((s, i) => {
@@ -1626,133 +1621,108 @@ function renderReceiveRawMaterialsCard() {
     }).join("");
   }
 
-  // 3. Divide all materials into rotating groups of up to 6 materials
-  receiveMaterialGroups = [];
-  for (let i = 0; i < sortedMaterials.length; i += 6) {
-    receiveMaterialGroups.push(sortedMaterials.slice(i, i + 6));
+  // 3. Build Steady Pie Slices: Top 5 materials + "Others" for all remaining hidden items
+  const top5Materials = sortedMaterials.slice(0, 5);
+  const otherMaterials = sortedMaterials.slice(5);
+
+  const pieSlices = [...top5Materials];
+
+  if (otherMaterials.length > 0) {
+    const otherTotalQty = otherMaterials.reduce((sum, m) => sum + m.totalQty, 0);
+    const otherDisplayQty = otherMaterials.reduce((sum, m) => sum + m.displayQty, 0);
+    pieSlices.push({
+      name: `Others (${otherMaterials.length})`,
+      totalQty: otherTotalQty,
+      displayQty: otherDisplayQty,
+      unit: top5Materials[0]?.unit || "kg",
+      isOthers: true,
+      otherCount: otherMaterials.length
+    });
   }
-  if (receiveMaterialGroups.length === 0) return;
 
-  if (receiveGroupIndex >= receiveMaterialGroups.length) {
-    receiveGroupIndex = 0;
+  if (unitBadge) {
+    unitBadge.textContent = otherMaterials.length > 0 ? "Top 5 + Others" : "All Inflow";
   }
 
-  function renderActiveGroup(isInitial = false) {
-    const activeGroup = receiveMaterialGroups[receiveGroupIndex];
-    if (!activeGroup || activeGroup.length === 0) return;
+  const grandTotal = pieSlices.reduce((s, m) => s + m.displayQty, 0);
+  const pieLabels = pieSlices.map(s => s.name);
+  const pieData = pieSlices.map(s => s.displayQty);
+  const pieColors = pieSlices.map((s, i) => s.isOthers ? "#64748B" : RECEIVE_PIE_PALETTE[i % RECEIVE_PIE_PALETTE.length]);
 
-    const unitBadge = $("rrcUnitBadge");
-    const canvas = $("receivePieChart");
-    const legendListEl = $("receiveLegendList");
+  // 4. Render 2-Column Percentage list below the steady pie
+  if (legendList) {
+    legendList.innerHTML = pieSlices.map((s, i) => {
+      const color = pieColors[i];
+      const pct = grandTotal > 0 ? ((s.displayQty / grandTotal) * 100).toFixed(2) : "0.00";
+      const clickHandler = s.isOthers ? `onclick="openAdminModal('modalReceivedRecords')"` : "";
+      const cursorStyle = s.isOthers ? `cursor: pointer;` : "";
+      const titleText = s.isOthers
+        ? `Others includes ${s.otherCount} materials (${s.totalQty.toLocaleString()} ${esc(s.unit)} total). Click to view all in full table.`
+        : `${esc(s.name)}: ${s.totalQty.toLocaleString()} ${esc(s.unit)} (${pct}%)`;
 
-    const startIdx = receiveGroupIndex * 6 + 1;
-    const endIdx = Math.min(sortedMaterials.length, (receiveGroupIndex + 1) * 6);
-    const topUnit = activeGroup.length > 0 ? activeGroup[0].unit : "kg";
-
-    if (unitBadge) {
-      unitBadge.textContent = `${startIdx}–${endIdx} (${topUnit})`;
-    }
-
-    // Trigger smooth circular rotation animation on canvas and fade on legend
-    if (!isInitial && canvas) {
-      canvas.classList.remove("rrc-spin-circle");
-      void canvas.offsetWidth; // force DOM reflow
-      canvas.classList.add("rrc-spin-circle");
-    }
-
-    if (legendListEl) {
-      legendListEl.classList.remove("rrc-legend-fade");
-      void legendListEl.offsetWidth;
-      legendListEl.classList.add("rrc-legend-fade");
-    }
-
-    const groupTotal = activeGroup.reduce((s, m) => s + m.displayQty, 0);
-    const pieLabels = activeGroup.map(s => s.name);
-    const pieData = activeGroup.map(s => s.displayQty);
-    const pieColors = activeGroup.map((_, i) => RECEIVE_PIE_PALETTE[i % RECEIVE_PIE_PALETTE.length]);
-
-    // Render 2-Column Percentage list below the pie
-    if (legendListEl) {
-      legendListEl.innerHTML = activeGroup.map((s, i) => {
-        const color = pieColors[i];
-        const pct = groupTotal > 0 ? ((s.displayQty / groupTotal) * 100).toFixed(2) : "0.00";
-        return `
-          <div class="rrc-legend-row" title="${esc(s.name)}: ${s.totalQty.toLocaleString()} ${esc(s.unit)} (${pct}%)">
-            <div class="rrc-legend-left">
-              <span class="rrc-legend-dot" style="background: ${color};"></span>
-              <span class="rrc-legend-name">${esc(s.name)}</span>
-            </div>
-            <span class="rrc-legend-pct">${pct}%</span>
+      return `
+        <div class="rrc-legend-row" ${clickHandler} style="${cursorStyle}" title="${titleText}">
+          <div class="rrc-legend-left">
+            <span class="rrc-legend-dot" style="background: ${color};"></span>
+            <span class="rrc-legend-name" ${s.isOthers ? 'style="font-weight: 600; text-decoration: underline dotted;"' : ''}>${esc(s.name)}</span>
           </div>
-        `;
-      }).join("");
-    }
+          <span class="rrc-legend-pct">${pct}%</span>
+        </div>
+      `;
+    }).join("");
+  }
 
-    // Render / Smoothly update Large Clean Pie Chart with Chart.js
-    if (canvas && typeof Chart !== "undefined") {
-      if (receivePieChartInstance) {
-        receivePieChartInstance.data.labels = pieLabels;
-        receivePieChartInstance.data.datasets[0].data = pieData;
-        receivePieChartInstance.data.datasets[0].backgroundColor = pieColors;
-        receivePieChartInstance.update();
-      } else {
-        const ctx = canvas.getContext("2d");
-        receivePieChartInstance = new Chart(ctx, {
-          type: "pie",
-          data: {
-            labels: pieLabels,
-            datasets: [{
-              data: pieData,
-              backgroundColor: pieColors,
-              borderWidth: 2,
-              borderColor: "#FFFFFF",
-              hoverOffset: 6
-            }]
+  // 5. Render Steady Pie Chart (Zero Loop / Zero Continuous Rotation)
+  if (canvas && typeof Chart !== "undefined") {
+    if (receivePieChartInstance) {
+      receivePieChartInstance.data.labels = pieLabels;
+      receivePieChartInstance.data.datasets[0].data = pieData;
+      receivePieChartInstance.data.datasets[0].backgroundColor = pieColors;
+      receivePieChartInstance.update();
+    } else {
+      const ctx = canvas.getContext("2d");
+      receivePieChartInstance = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: pieLabels,
+          datasets: [{
+            data: pieData,
+            backgroundColor: pieColors,
+            borderWidth: 2,
+            borderColor: "#FFFFFF",
+            hoverOffset: 6
+          }]
+        },
+        plugins: [pieSlicePercentagePlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            animateRotate: false,
+            duration: 400
           },
-          plugins: [pieSlicePercentagePlugin],
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-              animateRotate: true,
-              duration: 750,
-              easing: "easeInOutQuart"
-            },
-            layout: {
-              padding: 4
-            },
-            plugins: {
-              legend: { display: false },
-              tooltip: { enabled: false }
+          layout: {
+            padding: 4
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const label = ctx.label || "";
+                  const val = ctx.parsed || 0;
+                  const pct = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(1) : "0.0";
+                  return ` ${label}: ${pct}%`;
+                }
+              }
             }
           }
-        });
-      }
+        }
+      });
     }
   }
 
-  // Render initial active group
-  renderActiveGroup(true);
-
-  // Setup 6-material automatic circular rotation (4.2s interval)
-  if (receiveGroupTimer) {
-    clearInterval(receiveGroupTimer);
-    receiveGroupTimer = null;
-  }
-
-  if (receiveMaterialGroups.length > 1) {
-    receiveGroupTimer = setInterval(() => {
-      if (!receiveCardHovered) {
-        receiveGroupIndex = (receiveGroupIndex + 1) % receiveMaterialGroups.length;
-        renderActiveGroup(false);
-      }
-    }, 4200);
-  }
-
-  card.onmouseenter = () => { receiveCardHovered = true; };
-  card.onmouseleave = () => { receiveCardHovered = false; };
-
-  // Wire View All button
+  // Wire View All button to open detailed receiving modal
   const viewAllBtn = $("btnViewAllReceived");
   if (viewAllBtn) {
     viewAllBtn.onclick = () => openAdminModal("modalReceivedRecords");
