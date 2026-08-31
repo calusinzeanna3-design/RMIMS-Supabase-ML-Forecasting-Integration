@@ -75,8 +75,8 @@ let card2MaterialsList = [];
 let card3MaterialsList = [];
 
 // Modal 2 Filter State
-let currentModalGranularity = "general";
-let currentModalCategory = "general";
+let currentModalGranularity = "daily";
+let currentModalCategory = "all";
 
 // Guaranteed unique series colors palette for Chart.js
 const SERIES_PALETTE = [
@@ -650,24 +650,6 @@ function startCard2Ticker() {
   // Rotate every 3.5 seconds (respects subtle reading pace)
   card2TickerTimer = setInterval(updateTicker, 3500);
 }
-
-// Modal 2 Filter State
-let currentModalGranularity = "daily";
-let currentModalCategory = "all";
-
-// Guaranteed unique series colors palette for Chart.js
-const SERIES_PALETTE = [
-  "#10B981", // Emerald
-  "#3B82F6", // Blue
-  "#F59E0B", // Amber
-  "#8B5CF6", // Purple
-  "#EC4899", // Pink
-  "#06B6D4", // Cyan
-  "#14B8A6", // Teal
-  "#F97316", // Orange
-  "#6366F1", // Indigo
-  "#84CC16"  // Lime
-];
 
 // ============================================================
 // CARD 2 MODAL: CONSUMPTION ANALYTICS (CHART & MULTI-SERIES)
