@@ -1417,3 +1417,228 @@ body.admin-page {
   font-variant-numeric: tabular-nums;
 }
 
+/* ==========================================================
+   EXPORT MODAL STYLES
+   ========================================================== */
+
+.modal-sheet-md {
+  max-width: 680px;
+  width: 100%;
+}
+
+.export-modal-section {
+  margin-bottom: 20px;
+}
+
+.export-section-title {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--rm-ink, #0F172A);
+  margin-bottom: 10px;
+}
+
+.export-tab-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.export-tab-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--line, #E2E8F0);
+  border-radius: var(--radius-md, 12px);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.export-tab-card.span-2 {
+  grid-column: span 2;
+}
+
+.export-tab-card:hover {
+  border-color: #94A3B8;
+  background: #F8FAFC;
+  transform: translateY(-1px);
+}
+
+.export-tab-card.active {
+  border-color: #10B981;
+  background: rgba(16, 185, 129, 0.04);
+  box-shadow: 0 0 0 1px #10B981, 0 4px 12px rgba(16, 185, 129, 0.08);
+}
+
+.etc-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.etc-icon-wrap svg {
+  width: 20px;
+  height: 20px;
+}
+
+.etc-icon-wrap.icon-blue { background: rgba(37, 99, 235, 0.1); color: #2563EB; }
+.etc-icon-wrap.icon-emerald { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+.etc-icon-wrap.icon-amber { background: rgba(245, 158, 11, 0.1); color: #F59E0B; }
+.etc-icon-wrap.icon-purple { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
+.etc-icon-wrap.icon-teal { background: rgba(13, 148, 136, 0.1); color: #0D9488; }
+
+.etc-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.etc-info strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--rm-ink, #0F172A);
+}
+
+.etc-info span {
+  font-size: 0.75rem;
+  color: var(--rm-ink-dim, #64748B);
+  line-height: 1.35;
+}
+
+.etc-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #CBD5E1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: transparent;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.export-tab-card.active .etc-check {
+  border-color: #10B981;
+  background: #10B981;
+  color: #FFFFFF;
+}
+
+.export-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.export-format-options,
+.export-scope-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-format-btn,
+.export-scope-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--line, #E2E8F0);
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.export-format-btn:hover,
+.export-scope-btn:hover {
+  border-color: #94A3B8;
+  background: #F8FAFC;
+}
+
+.export-format-btn.active,
+.export-scope-btn.active {
+  border-color: #2563EB;
+  background: rgba(37, 99, 235, 0.04);
+  box-shadow: 0 0 0 1px #2563EB;
+}
+
+.export-fmt-icon {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 4px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.export-fmt-icon.xlsx {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.export-fmt-icon.csv {
+  background: rgba(37, 99, 235, 0.14);
+  color: #2563EB;
+}
+
+.export-format-btn strong,
+.export-scope-btn strong {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rm-ink, #0F172A);
+}
+
+.export-format-btn small,
+.export-scope-btn small {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--rm-ink-dim, #64748B);
+}
+
+.export-summary-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md, 10px);
+  margin-top: 6px;
+}
+
+.esb-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.esb-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.esb-text strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--rm-ink, #0F172A);
+}
+
+.esb-text span {
+  font-size: 0.78rem;
+  color: var(--rm-ink-dim, #64748B);
+}
+

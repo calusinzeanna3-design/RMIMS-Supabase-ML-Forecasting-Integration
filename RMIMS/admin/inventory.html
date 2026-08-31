@@ -74,22 +74,10 @@
                     Import
                 </button>
 
-                <div class="export-dropdown-wrap">
-                    <button id="invExportBtn" class="btn-secondary" title="Export inventory records">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                        Export
-                    </button>
-                    <div class="export-menu" id="invExportMenu" hidden>
-                        <button type="button" class="export-menu-item" id="exportCsvOption">
-                            <span class="export-dot"></span>
-                            Export as CSV (.csv)
-                        </button>
-                        <button type="button" class="export-menu-item" id="exportExcelOption">
-                            <span class="export-dot dot-green"></span>
-                            Export as Excel (.xlsx)
-                        </button>
-                    </div>
-                </div>
+                <button id="invExportBtn" class="btn-secondary" title="Export inventory records and verified tabs">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    Export
+                </button>
 
                 <button id="addMaterialBtn" class="btn-primary" title="Add a new raw material catalog record">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -656,6 +644,167 @@
             <button class="btn-secondary" id="invImportCancelBtn">Cancel</button>
             <button class="btn-primary" id="invImportConfirmBtn" disabled>
                 Import Raw Materials
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- EXPORT RAW MATERIALS MODAL -->
+<div class="modal-overlay" id="invExportModalOverlay">
+    <div class="modal-sheet modal-sheet-md" role="dialog" aria-modal="true" aria-labelledby="invExportModalTitle">
+
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <span class="modal-icon icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </span>
+                <div>
+                    <h4 id="invExportModalTitle">Export Inventory Records</h4>
+                    <span class="modal-time">Select dataset tab, format, and download verified data</span>
+                </div>
+            </div>
+            <button class="modal-close" id="invExportModalClose" aria-label="Close dialog">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <!-- STEP 1: SELECT DATASET TAB -->
+            <div class="export-modal-section">
+                <label class="export-section-title">1. Choose Dataset / Tab to Export <span class="required-star">*</span></label>
+                <div class="export-tab-grid" id="exportTabOptions">
+                    <!-- Overview Card -->
+                    <label class="export-tab-card active" data-dataset="overview">
+                        <input type="radio" name="exportDatasetRadio" value="overview" checked hidden>
+                        <div class="etc-icon-wrap icon-blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+                        </div>
+                        <div class="etc-info">
+                            <strong>Overview</strong>
+                            <span>Catalog balances, stock status, unit of measure & minimum levels</span>
+                        </div>
+                        <div class="etc-check">✓</div>
+                    </label>
+
+                    <!-- Receive Card -->
+                    <label class="export-tab-card" data-dataset="receive">
+                        <input type="radio" name="exportDatasetRadio" value="receive" hidden>
+                        <div class="etc-icon-wrap icon-emerald">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                        </div>
+                        <div class="etc-info">
+                            <strong>Receive (Inbound)</strong>
+                            <span>Supplier deliveries, received quantities, dates & batch receipts</span>
+                        </div>
+                        <div class="etc-check">✓</div>
+                    </label>
+
+                    <!-- Disbursement Card -->
+                    <label class="export-tab-card" data-dataset="disbursement">
+                        <input type="radio" name="exportDatasetRadio" value="disbursement" hidden>
+                        <div class="etc-icon-wrap icon-amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                        </div>
+                        <div class="etc-info">
+                            <strong>Disbursement</strong>
+                            <span>Usage consumption, finished products, activity types & logged dates</span>
+                        </div>
+                        <div class="etc-check">✓</div>
+                    </label>
+
+                    <!-- Other Details Card -->
+                    <label class="export-tab-card" data-dataset="other">
+                        <input type="radio" name="exportDatasetRadio" value="other" hidden>
+                        <div class="etc-icon-wrap icon-purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
+                        <div class="etc-info">
+                            <strong>Other Details</strong>
+                            <span>Reorder quantities, lead times, safety stocks & catalog descriptions</span>
+                        </div>
+                        <div class="etc-check">✓</div>
+                    </label>
+
+                    <!-- All Combined Card -->
+                    <label class="export-tab-card span-2" data-dataset="all">
+                        <input type="radio" name="exportDatasetRadio" value="all" hidden>
+                        <div class="etc-icon-wrap icon-teal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                        </div>
+                        <div class="etc-info">
+                            <strong>All Datasets (Complete Multi-Tab Archive)</strong>
+                            <span>Includes Overview, Receipts, Disbursements, and Specifications in one export</span>
+                        </div>
+                        <div class="etc-check">✓</div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- STEP 2: FORMAT & SCOPE -->
+            <div class="export-modal-grid">
+                <div class="export-modal-col">
+                    <label class="export-section-title">2. Export File Format</label>
+                    <div class="export-format-options" id="exportFormatOptions">
+                        <label class="export-format-btn active" data-format="xlsx">
+                            <input type="radio" name="exportFormatRadio" value="xlsx" checked hidden>
+                            <span class="export-fmt-icon xlsx">XLSX</span>
+                            <div>
+                                <strong>Excel (.xlsx)</strong>
+                                <small>Formatted spreadsheet with styling</small>
+                            </div>
+                        </label>
+                        <label class="export-format-btn" data-format="csv">
+                            <input type="radio" name="exportFormatRadio" value="csv" hidden>
+                            <span class="export-fmt-icon csv">CSV</span>
+                            <div>
+                                <strong>CSV (.csv)</strong>
+                                <small>Standard plain-text table format</small>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="export-modal-col">
+                    <label class="export-section-title">3. Data Scope</label>
+                    <div class="export-scope-options" id="exportScopeOptions">
+                        <label class="export-scope-btn active" data-scope="all">
+                            <input type="radio" name="exportScopeRadio" value="all" checked hidden>
+                            <div>
+                                <strong>All Records (Full History)</strong>
+                                <small id="exportScopeAllNote">All catalog entries & historical records</small>
+                            </div>
+                        </label>
+                        <label class="export-scope-btn" data-scope="filtered">
+                            <input type="radio" name="exportScopeRadio" value="filtered" hidden>
+                            <div>
+                                <strong>Current Filtered View</strong>
+                                <small id="exportScopeFilteredNote">Respects current search query & date filter</small>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: DYNAMIC SUMMARY & PROGRESS AREA -->
+            <div class="export-summary-box" id="exportSummaryBox">
+                <div class="esb-icon">📊</div>
+                <div class="esb-text">
+                    <strong id="exportSummaryTitle">Ready to Export Overview</strong>
+                    <span id="exportSummaryDesc">26 registered materials ready for download in Excel (.xlsx) format.</span>
+                </div>
+            </div>
+
+            <div id="invExportProgressArea" class="import-preview-area" hidden>
+                <!-- Animated Circular Progress Ring + Percentage Bar -->
+            </div>
+        </div>
+
+        <div class="modal-sticky-footer">
+            <button class="btn-secondary" id="invExportCancelBtn">Cancel</button>
+            <button class="btn-primary" id="invExportConfirmBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke-linecap="round"/></svg>
+                Export & Download
             </button>
         </div>
 

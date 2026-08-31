@@ -1463,63 +1463,394 @@ function getExportDataset() {
     });
 }
 
-function exportToCSV() {
-    const dataset = getExportDataset();
-    const headers = [
-        "Date",
-        "Raw Material Name",
-        "Raw Material ID",
-        "Minimum Stock",
-        "Current Stock",
-        "Unit",
-        "Activity Status",
-        "Activity Quantity",
-        "Activity Unit",
-        "Status"
-    ];
+/* ==========================================================
+   EXPORT MODAL ENGINE (VERIFIED TAB SELECTION & SMOOTH PROGRESS)
+   ========================================================== */
+
+let currentExportDataset = "overview";
+let currentExportFormat = "xlsx";
+let currentExportScope = "all";
+
+function openExportModal() {
+    const overlay = $("invExportModalOverlay");
+    if (!overlay) return;
+
+    currentExportDataset = "overview";
+    currentExportFormat = "xlsx";
+    currentExportScope = "all";
+
+    // Set initial dataset cards
+    const cards = document.querySelectorAll("#exportTabOptions .export-tab-card");
+    cards.forEach(c => {
+        if (c.dataset.dataset === "overview") {
+            c.classList.add("active");
+            const radio = c.querySelector("input[type='radio']");
+            if (radio) radio.checked = true;
+        } else {
+            c.classList.remove("active");
+        }
+    });
+
+    // Set initial format buttons
+    const fmtBtns = document.querySelectorAll("#exportFormatOptions .export-format-btn");
+    fmtBtns.forEach(b => {
+        if (b.dataset.format === "xlsx") {
+            b.classList.add("active");
+            const radio = b.querySelector("input[type='radio']");
+            if (radio) radio.checked = true;
+        } else {
+            b.classList.remove("active");
+        }
+    });
+
+    // Set initial scope buttons
+    const scopeBtns = document.querySelectorAll("#exportScopeOptions .export-scope-btn");
+    scopeBtns.forEach(b => {
+        if (b.dataset.scope === "all") {
+            b.classList.add("active");
+            const radio = b.querySelector("input[type='radio']");
+            if (radio) radio.checked = true;
+        } else {
+            b.classList.remove("active");
+        }
+    });
+
+    // Hide progress area and reset confirm button
+    const progressArea = $("invExportProgressArea");
+    if (progressArea) {
+        progressArea.hidden = true;
+        progressArea.innerHTML = "";
+    }
+    const summaryBox = $("exportSummaryBox");
+    if (summaryBox) summaryBox.hidden = false;
+
+    const confirmBtn = $("invExportConfirmBtn");
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke-linecap="round"/></svg>
+            Export & Download
+        `;
+    }
+
+    updateExportSummary();
+    overlay.classList.add("open");
+}
+
+function closeExportModal() {
+    const overlay = $("invExportModalOverlay");
+    if (overlay) overlay.classList.remove("open");
+}
+
+function updateExportSummary() {
+    const titleEl = $("exportSummaryTitle");
+    const descEl = $("exportSummaryDesc");
+    const allNote = $("exportScopeAllNote");
+    const filteredNote = $("exportScopeFilteredNote");
+    if (!titleEl || !descEl) return;
+
+    let datasetName = "Overview";
+    let recordCount = state.materials.length;
+
+    if (currentExportDataset === "receive") {
+        datasetName = "Receive Inbound Records";
+        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("receive").length : state.receipts.length;
+    } else if (currentExportDataset === "disbursement") {
+        datasetName = "Disbursement Consumption Logs";
+        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("disbursement").length : state.disbursements.length;
+    } else if (currentExportDataset === "other") {
+        datasetName = "Other Details Specifications";
+        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("other").length : state.materials.length;
+    } else if (currentExportDataset === "all") {
+        datasetName = "All Datasets (Full Archive)";
+        recordCount = state.materials.length + state.receipts.length + state.disbursements.length;
+    } else {
+        datasetName = "Overview Master Catalog";
+        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("overview").length : state.materials.length;
+    }
+
+    const fmtName = currentExportFormat.toUpperCase();
+    titleEl.textContent = `Ready to Export ${datasetName}`;
+    descEl.textContent = `${recordCount.toLocaleString()} verified records ready for download in ${fmtName} format.`;
+
+    if (allNote) allNote.textContent = `All catalog entries & historical records (${recordCount.toLocaleString()} items)`;
+    if (filteredNote) filteredNote.textContent = `Respects current search query & active date filters`;
+}
+
+function getFilteredTableRows(type) {
+    if (!state.tableRows) return [];
+    if (type === "overview") return state.tableRows;
+    if (type === "receive") return state.tableRows.filter(r => r.activityStatus === "Received" || r.isReceipt);
+    if (type === "disbursement") return state.tableRows.filter(r => r.activityStatus === "Disbursement" || r.isDisbursement);
+    if (type === "other") return state.tableRows;
+    return state.tableRows;
+}
+
+function getMatName(matId) {
+    const m = state.materials.find(mat => mat.id === matId);
+    return m ? m.name : "Raw Material";
+}
+
+function getMatCode(matId) {
+    const m = state.materials.find(mat => mat.id === matId);
+    return m ? (m.itemCode || "RM-CAT") : "RM-CAT";
+}
+
+function executeExcelExport(isFiltered, dateTag) {
+    const wb = XLSX.utils.book_new();
+
+    // 1. Overview Sheet Data
+    const overviewHeaders = ["Raw Material Name", "Item Code", "Current Stock", "Unit", "Minimum Threshold", "Status", "Last Update Date"];
+    const overviewData = state.materials.map(m => {
+        let status = "Available";
+        if (m.currentStock <= 0) status = "Out of Stock";
+        else if (m.minimumThreshold !== null && m.currentStock <= m.minimumThreshold) status = "Might Restock";
+        return [
+            m.name,
+            m.itemCode || "RM-CAT",
+            m.currentStock,
+            m.unit || "kg",
+            m.minimumThreshold !== null ? m.minimumThreshold : "—",
+            status,
+            m.updatedAt ? m.updatedAt.slice(0, 10) : dateTag
+        ];
+    });
+
+    // 2. Receipts Sheet Data
+    const receiptHeaders = ["Receipt Date", "Raw Material Name", "Item Code", "Received Quantity", "Unit", "Supplier Name", "Received By", "Created At"];
+    const receiptData = state.receipts.map(r => [
+        r.receiptDate || (r.createdAt ? r.createdAt.slice(0, 10) : "—"),
+        getMatName(r.materialId),
+        getMatCode(r.materialId),
+        r.receivedQuantity,
+        r.unit || "kg",
+        r.supplierName || "—",
+        r.receivedBy || "Admin",
+        r.createdAt || "—"
+    ]);
+
+    // 3. Disbursements Sheet Data
+    const disbHeaders = ["Usage Date", "Raw Material Name", "Item Code", "Consumed Quantity", "Unit", "Activity Type", "Finished Product Name", "Recorded By", "Created At"];
+    const disbData = state.disbursements.map(d => [
+        d.usageDate || (d.createdAt ? d.createdAt.slice(0, 10) : "—"),
+        getMatName(d.materialId),
+        getMatCode(d.materialId),
+        d.consumedQuantity,
+        d.unit || "kg",
+        d.activityType || "Disbursement",
+        d.finishedProductName || "—",
+        d.recordedBy || "User",
+        d.createdAt || "—"
+    ]);
+
+    // 4. Other Details Sheet Data
+    const otherHeaders = ["Raw Material Name", "Item Code", "Unit of Measure", "Minimum Threshold", "Reorder Quantity", "Lead Time (Days)", "Current Stock", "Description"];
+    const otherData = state.materials.map(m => [
+        m.name,
+        m.itemCode || "RM-CAT",
+        m.unit || "kg",
+        m.minimumThreshold !== null ? m.minimumThreshold : "—",
+        m.reorderQuantity !== null ? m.reorderQuantity : "—",
+        m.leadTimeDays !== null ? m.leadTimeDays : "—",
+        m.currentStock,
+        m.description || "—"
+    ]);
+
+    if (currentExportDataset === "overview") {
+        const ws = XLSX.utils.aoa_to_sheet([overviewHeaders, ...overviewData]);
+        XLSX.utils.book_append_sheet(wb, ws, "Overview");
+        XLSX.writeFile(wb, `RMIMS_Inventory_Overview_${dateTag}.xlsx`);
+    } else if (currentExportDataset === "receive") {
+        const ws = XLSX.utils.aoa_to_sheet([receiptHeaders, ...receiptData]);
+        XLSX.utils.book_append_sheet(wb, ws, "Stock Receipts");
+        XLSX.writeFile(wb, `RMIMS_Inventory_Receive_${dateTag}.xlsx`);
+    } else if (currentExportDataset === "disbursement") {
+        const ws = XLSX.utils.aoa_to_sheet([disbHeaders, ...disbData]);
+        XLSX.utils.book_append_sheet(wb, ws, "Disbursements");
+        XLSX.writeFile(wb, `RMIMS_Inventory_Disbursements_${dateTag}.xlsx`);
+    } else if (currentExportDataset === "other") {
+        const ws = XLSX.utils.aoa_to_sheet([otherHeaders, ...otherData]);
+        XLSX.utils.book_append_sheet(wb, ws, "Material Details");
+        XLSX.writeFile(wb, `RMIMS_Inventory_Other_Details_${dateTag}.xlsx`);
+    } else {
+        // ALL Combined Archive
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([overviewHeaders, ...overviewData]), "Overview");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([receiptHeaders, ...receiptData]), "Stock Receipts");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([disbHeaders, ...disbData]), "Disbursements");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([otherHeaders, ...otherData]), "Catalog Specs");
+        XLSX.writeFile(wb, `RMIMS_Inventory_Complete_Archive_${dateTag}.xlsx`);
+    }
+}
+
+function executeCsvExport(isFiltered, dateTag) {
+    let headers = [];
+    let data = [];
+    let filenamePrefix = "RMIMS_Inventory";
+
+    if (currentExportDataset === "receive") {
+        filenamePrefix = "RMIMS_Inventory_Receive";
+        headers = ["Receipt Date", "Raw Material Name", "Item Code", "Received Quantity", "Unit", "Supplier Name", "Received By", "Created At"];
+        data = state.receipts.map(r => [
+            r.receiptDate || (r.createdAt ? r.createdAt.slice(0, 10) : "—"),
+            getMatName(r.materialId),
+            getMatCode(r.materialId),
+            r.receivedQuantity,
+            r.unit || "kg",
+            r.supplierName || "—",
+            r.receivedBy || "Admin",
+            r.createdAt || "—"
+        ]);
+    } else if (currentExportDataset === "disbursement") {
+        filenamePrefix = "RMIMS_Inventory_Disbursements";
+        headers = ["Usage Date", "Raw Material Name", "Item Code", "Consumed Quantity", "Unit", "Activity Type", "Finished Product Name", "Recorded By", "Created At"];
+        data = state.disbursements.map(d => [
+            d.usageDate || (d.createdAt ? d.createdAt.slice(0, 10) : "—"),
+            getMatName(d.materialId),
+            getMatCode(d.materialId),
+            d.consumedQuantity,
+            d.unit || "kg",
+            d.activityType || "Disbursement",
+            d.finishedProductName || "—",
+            d.recordedBy || "User",
+            d.createdAt || "—"
+        ]);
+    } else if (currentExportDataset === "other") {
+        filenamePrefix = "RMIMS_Inventory_Other_Details";
+        headers = ["Raw Material Name", "Item Code", "Unit of Measure", "Minimum Threshold", "Reorder Quantity", "Lead Time (Days)", "Current Stock", "Description"];
+        data = state.materials.map(m => [
+            m.name,
+            m.itemCode || "RM-CAT",
+            m.unit || "kg",
+            m.minimumThreshold !== null ? m.minimumThreshold : "—",
+            m.reorderQuantity !== null ? m.reorderQuantity : "—",
+            m.leadTimeDays !== null ? m.leadTimeDays : "—",
+            m.currentStock,
+            m.description || "—"
+        ]);
+    } else {
+        filenamePrefix = "RMIMS_Inventory_Overview";
+        headers = ["Raw Material Name", "Item Code", "Current Stock", "Unit", "Minimum Threshold", "Status", "Last Update Date"];
+        data = state.materials.map(m => {
+            let status = "Available";
+            if (m.currentStock <= 0) status = "Out of Stock";
+            else if (m.minimumThreshold !== null && m.currentStock <= m.minimumThreshold) status = "Might Restock";
+            return [
+                m.name,
+                m.itemCode || "RM-CAT",
+                m.currentStock,
+                m.unit || "kg",
+                m.minimumThreshold !== null ? m.minimumThreshold : "—",
+                status,
+                m.updatedAt ? m.updatedAt.slice(0, 10) : dateTag
+            ];
+        });
+    }
 
     const escapeCsv = (str) => `"${String(str ?? "").replace(/"/g, '""')}"`;
     const rows = [
         headers.map(escapeCsv).join(","),
-        ...dataset.map(row => row.map(escapeCsv).join(","))
+        ...data.map(row => row.map(escapeCsv).join(","))
     ];
 
-    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.join("\n"));
+    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", csvContent);
-    link.setAttribute("download", `RMIMS_Inventory_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filenamePrefix}_${dateTag}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    toast("CSV export generated successfully.");
+    URL.revokeObjectURL(url);
 }
 
-function exportToExcel() {
-    if (typeof XLSX === "undefined") {
-        toast("Excel export library not available.", "error");
-        return;
+async function handleExportConfirm() {
+    const confirmBtn = $("invExportConfirmBtn");
+    const cancelBtn = $("invExportCancelBtn");
+    const closeBtn = $("invExportModalClose");
+    const summaryBox = $("exportSummaryBox");
+    const progressArea = $("invExportProgressArea");
+
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (closeBtn) closeBtn.style.pointerEvents = "none";
+    if (summaryBox) summaryBox.hidden = true;
+
+    if (progressArea) {
+        progressArea.hidden = false;
+        progressArea.innerHTML = `
+            <div class="import-progress-box" style="padding: 20px 16px; background: rgba(16, 185, 129, 0.04); border: 1.5px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md, 12px); margin-top: 10px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px;">
+                    <svg width="48" height="48" viewBox="0 0 44 44" style="transform: rotate(-90deg);">
+                        <circle cx="22" cy="22" r="18" stroke="#E2E8F0" stroke-width="4" fill="none" />
+                        <circle id="exportCircleProgress" cx="22" cy="22" r="18" stroke="#10B981" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition: stroke-dashoffset 0.2s ease;" />
+                    </svg>
+                    <div style="text-align: left;">
+                        <div id="exportPercentText" style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2;">0%</div>
+                        <div id="exportStatusText" style="font-size: 0.82rem; font-weight: 600; color: #64748B;">Preparing data records...</div>
+                    </div>
+                </div>
+                <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden;">
+                    <div id="exportProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10B981, #059669); transition: width 0.2s ease; border-radius: 4px;"></div>
+                </div>
+            </div>
+        `;
     }
 
-    const dataset = getExportDataset();
-    const headers = [
-        "Date",
-        "Raw Material Name",
-        "Raw Material ID",
-        "Minimum Stock",
-        "Current Stock",
-        "Unit",
-        "Activity Status",
-        "Activity Quantity",
-        "Activity Unit",
-        "Status"
-    ];
+    const setProgress = (pct, status) => {
+        const circle = $("exportCircleProgress");
+        const bar = $("exportProgressBar");
+        const pctText = $("exportPercentText");
+        const statusText = $("exportStatusText");
 
-    const wsData = [headers, ...dataset];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Inventory Overview");
-    XLSX.writeFile(wb, `RMIMS_Inventory_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast("Excel (.xlsx) export generated successfully.");
+        if (pctText) pctText.textContent = `${pct}%`;
+        if (statusText) statusText.textContent = status;
+        if (bar) bar.style.width = `${pct}%`;
+        if (circle) {
+            const circumference = 113.1;
+            const offset = circumference - (pct / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+    };
+
+    try {
+        setProgress(25, "Gathering verified catalog & transaction logs...");
+        await new Promise(r => setTimeout(r, 260));
+
+        setProgress(60, "Formatting table columns & units...");
+        await new Promise(r => setTimeout(r, 280));
+
+        const isFiltered = currentExportScope === "filtered";
+        const dateTag = new Date().toISOString().slice(0, 10);
+
+        if (currentExportFormat === "xlsx") {
+            if (typeof XLSX === "undefined") {
+                toast("Excel library is unavailable, exporting as CSV.", "warning");
+                executeCsvExport(isFiltered, dateTag);
+            } else {
+                setProgress(85, "Compiling Excel spreadsheet workbook...");
+                await new Promise(r => setTimeout(r, 240));
+                executeExcelExport(isFiltered, dateTag);
+            }
+        } else {
+            setProgress(85, "Generating UTF-8 CSV table...");
+            await new Promise(r => setTimeout(r, 240));
+            executeCsvExport(isFiltered, dateTag);
+        }
+
+        setProgress(100, "Export complete! Triggering download...");
+        await new Promise(r => setTimeout(r, 450));
+
+        toast(`Export generated successfully! Download started.`, "success");
+        closeExportModal();
+
+    } catch (err) {
+        console.error("Export error:", err);
+        toast("Export failed: " + err.message, "error");
+    } finally {
+        if (confirmBtn) confirmBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        if (closeBtn) closeBtn.style.pointerEvents = "auto";
+    }
 }
 
 /* ==========================================================
@@ -1716,26 +2047,49 @@ function setupEventListeners() {
     }
     if ($("invImportConfirmBtn")) $("invImportConfirmBtn").addEventListener("click", handleImportConfirm);
 
-    // 8. Export Menu
+    // 8. Export Menu & Modal Event Listeners
     if ($("invExportBtn")) {
-        $("invExportBtn").addEventListener("click", (e) => {
-            e.stopPropagation();
-            const menu = $("invExportMenu");
-            if (menu) menu.hidden = !menu.hidden;
-        });
+        $("invExportBtn").addEventListener("click", openExportModal);
     }
-    if ($("exportCsvOption")) {
-        $("exportCsvOption").addEventListener("click", () => {
-            if ($("invExportMenu")) $("invExportMenu").hidden = true;
-            exportToCSV();
+    if ($("invExportModalClose")) $("invExportModalClose").addEventListener("click", closeExportModal);
+    if ($("invExportCancelBtn")) $("invExportCancelBtn").addEventListener("click", closeExportModal);
+    if ($("invExportConfirmBtn")) $("invExportConfirmBtn").addEventListener("click", handleExportConfirm);
+
+    // Dataset card selection
+    document.querySelectorAll("#exportTabOptions .export-tab-card").forEach(card => {
+        card.addEventListener("click", () => {
+            document.querySelectorAll("#exportTabOptions .export-tab-card").forEach(c => c.classList.remove("active"));
+            card.classList.add("active");
+            currentExportDataset = card.dataset.dataset || "overview";
+            const radio = card.querySelector("input[type='radio']");
+            if (radio) radio.checked = true;
+            updateExportSummary();
         });
-    }
-    if ($("exportExcelOption")) {
-        $("exportExcelOption").addEventListener("click", () => {
-            if ($("invExportMenu")) $("invExportMenu").hidden = true;
-            exportToExcel();
+    });
+
+    // Format selection
+    document.querySelectorAll("#exportFormatOptions .export-format-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("#exportFormatOptions .export-format-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentExportFormat = btn.dataset.format || "xlsx";
+            const radio = btn.querySelector("input[type='radio']");
+            if (radio) radio.checked = true;
+            updateExportSummary();
         });
-    }
+    });
+
+    // Scope selection
+    document.querySelectorAll("#exportScopeOptions .export-scope-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("#exportScopeOptions .export-scope-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentExportScope = btn.dataset.scope || "all";
+            const radio = btn.querySelector("input[type='radio']");
+            if (radio) radio.checked = true;
+            updateExportSummary();
+        });
+    });
 }
 
 // Initialization on DOM Ready
