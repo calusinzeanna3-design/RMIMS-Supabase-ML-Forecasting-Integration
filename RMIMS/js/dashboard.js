@@ -460,8 +460,8 @@ function renderRawMaterialsTable() {
     return;
   }
 
-  tbody.innerHTML = filtered.map((r, idx) => `
-    <tr class="amp-table-row-clickable" data-mat-idx="${idx}" style="cursor: pointer;" title="Click to view live multi-horizon forecast and decision support">
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
       <td>
         <div class="amp-mat-name">
           <strong>${esc(r.name)}</strong>
@@ -488,23 +488,6 @@ function renderRawMaterialsTable() {
       </td>
     </tr>
   `).join("");
-
-  tbody.querySelectorAll(".amp-table-row-clickable").forEach(tr => {
-    tr.onclick = () => {
-      const idx = Number(tr.getAttribute("data-mat-idx"));
-      const r = filtered[idx];
-      if (r) {
-        const fullMat = catalogMaterials.find(m => m.id === r.id) || {
-          materialName: r.name,
-          id: r.id,
-          currentStock: r.currentStock,
-          unit: r.unit,
-          itemCode: r.itemCode
-        };
-        openForecastDetailModal(fullMat);
-      }
-    };
-  });
 }
 
 // Bind search and filter events

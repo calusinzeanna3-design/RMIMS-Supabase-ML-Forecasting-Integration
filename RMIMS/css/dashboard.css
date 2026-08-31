@@ -3490,42 +3490,55 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #FFFFFF;
-  border: 1px solid #CBD5E1;
-  border-radius: 10px;
-  padding: 8px 12px;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  outline: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-theme="dark"] .amp-search-box {
-  background: #181F26;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  background: #181F26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
 }
 
 .amp-search-box:focus-within {
-  border-color: #22C55E;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2) !important;
+  outline: none !important;
+}
+
+[data-theme="dark"] .amp-search-box:focus-within {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) !important;
 }
 
 .amp-search-box svg {
   width: 16px;
   height: 16px;
   color: var(--text-dim, #7c92b3);
+  flex-shrink: 0;
 }
 
-.amp-search-box input {
-  background: transparent;
-  border: none;
-  outline: none;
-  width: 100%;
-  font-size: 0.85rem;
-  color: var(--ink, #0f172a);
+.amp-search-box input,
+.amp-search-box input:focus,
+.amp-search-box input:focus-visible {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  font-size: 0.85rem !important;
+  color: var(--ink, #0f172a) !important;
 }
 
-[data-theme="dark"] .amp-search-box input {
-  color: #F8FAFC;
+[data-theme="dark"] .amp-search-box input,
+[data-theme="dark"] .amp-search-box input:focus,
+[data-theme="dark"] .amp-search-box input:focus-visible {
+  color: #F8FAFC !important;
 }
 
 .amp-filter-box {
