@@ -299,11 +299,12 @@
             <input type="search" id="rawMaterialSearch" placeholder="Search by material name or item code..." aria-label="Search materials">
         </div>
         <div class="amp-filter-box">
-            <label for="rawMaterialFilter" class="amp-filter-label">Activity Filter:</label>
+            <label for="rawMaterialFilter" class="amp-filter-label">Sort By:</label>
             <select id="rawMaterialFilter" class="amp-select">
-                <option value="all">All</option>
-                <option value="received">Received</option>
-                <option value="disbursement">Disbursement</option>
+                <option value="latest">Latest</option>
+                <option value="oldest">Oldest</option>
+                <option value="a-z">A - Z</option>
+                <option value="z-a">Z - A</option>
             </select>
         </div>
     </div>
@@ -313,8 +314,8 @@
             <thead>
                 <tr>
                     <th>Raw Material Name</th>
-                    <th>Recent Quantity</th>
-                    <th>Activity</th>
+                    <th>Last Update</th>
+                    <th>Latest Update Quantity</th>
                     <th>Status</th>
                 </tr>
             </thead>

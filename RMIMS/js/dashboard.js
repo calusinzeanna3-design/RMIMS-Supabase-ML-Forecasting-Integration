@@ -363,42 +363,41 @@ function renderRawMaterialsTable() {
   const query = (searchInput?.value || "").toLowerCase().trim();
   const filterVal = filterSelect?.value || "all";
 
-  // Build latest activity for each material
+  // Build latest activity and update info for each material
   const rows = catalogMaterials.map(m => {
     // Find latest receipt for this material
     const latestRec = receiptRecords.find(r => r.materialId === m.id);
     // Find latest disbursement for this material
     const latestUse = usageRecords.find(u => u.materialId === m.id);
 
-    let recentQty = `${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${m.unit}`;
-    let activity = "Initial Stock";
-    let activityDate = null;
-    let activityClass = "act-initial";
+    let latestUpdateQty = `${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${m.unit}`;
+    let lastUpdateFormatted = "—";
+    let lastUpdateTime = 0;
 
     if (latestRec && latestUse) {
       const recTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime();
       const useTime = new Date(latestUse.createdAt || latestUse.usageDate).getTime();
       if (recTime >= useTime) {
-        recentQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
-        activity = "Received";
-        activityDate = latestRec.receiptDate;
-        activityClass = "act-received";
+        latestUpdateQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
+        lastUpdateFormatted = latestRec.receiptDate || new Date(recTime).toISOString().slice(0, 10);
+        lastUpdateTime = recTime;
       } else {
-        recentQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
-        activity = "Disbursement";
-        activityDate = latestUse.usageDate;
-        activityClass = "act-disbursement";
+        latestUpdateQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
+        lastUpdateFormatted = latestUse.usageDate || new Date(useTime).toISOString().slice(0, 10);
+        lastUpdateTime = useTime;
       }
     } else if (latestRec) {
-      recentQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
-      activity = "Received";
-      activityDate = latestRec.receiptDate;
-      activityClass = "act-received";
+      latestUpdateQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
+      lastUpdateFormatted = latestRec.receiptDate || (latestRec.createdAt ? new Date(latestRec.createdAt).toISOString().slice(0, 10) : "—");
+      lastUpdateTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime() || 0;
     } else if (latestUse) {
-      recentQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
-      activity = "Disbursement";
-      activityDate = latestUse.usageDate;
-      activityClass = "act-disbursement";
+      latestUpdateQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
+      lastUpdateFormatted = latestUse.usageDate || (latestUse.createdAt ? new Date(latestUse.createdAt).toISOString().slice(0, 10) : "—");
+      lastUpdateTime = new Date(latestUse.createdAt || latestUse.usageDate).getTime() || 0;
+    } else if (m.updatedAt || m.createdAt) {
+      const t = new Date(m.updatedAt || m.createdAt).getTime();
+      lastUpdateFormatted = new Date(t).toISOString().slice(0, 10);
+      lastUpdateTime = t;
     }
 
     let statusCls = "status-good";
@@ -411,26 +410,30 @@ function renderRawMaterialsTable() {
       name: m.materialName,
       unit: m.unit,
       currentStock: m.currentStock,
-      recentQty,
-      activity,
-      activityDate,
-      activityClass,
+      latestUpdateQty,
+      lastUpdateFormatted,
+      lastUpdateTime,
       status: m.status,
       statusCls
     };
   });
 
-  // Filter rows
-  const filtered = rows.filter(r => {
-    // Search query
-    const matchQuery = !query || r.name.toLowerCase().includes(query) || r.itemCode.toLowerCase().includes(query);
-    if (!matchQuery) return false;
-
-    // Activity filter
-    if (filterVal === "received") return r.activity === "Received";
-    if (filterVal === "disbursement") return r.activity === "Disbursement";
-    return true;
+  // Filter rows by search query
+  let filtered = rows.filter(r => {
+    return !query || r.name.toLowerCase().includes(query) || r.itemCode.toLowerCase().includes(query);
   });
+
+  // Sort rows based on filterVal (latest, oldest, a-z, z-a)
+  if (filterVal === "oldest") {
+    filtered.sort((a, b) => (a.lastUpdateTime || 0) - (b.lastUpdateTime || 0));
+  } else if (filterVal === "a-z") {
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (filterVal === "z-a") {
+    filtered.sort((a, b) => b.name.localeCompare(a.name));
+  } else {
+    // Default: latest
+    filtered.sort((a, b) => (b.lastUpdateTime || 0) - (a.lastUpdateTime || 0));
+  }
 
   if (countNote) {
     countNote.textContent = `Showing ${filtered.length} of ${catalogMaterials.length} catalog materials`;
@@ -441,7 +444,7 @@ function renderRawMaterialsTable() {
       <tr>
         <td colspan="4" class="amp-table-empty">
           <strong>No matching raw materials found.</strong>
-          <span>Try adjusting your search term or activity filter.</span>
+          <span>Try adjusting your search term.</span>
         </td>
       </tr>
     `;
@@ -457,13 +460,10 @@ function renderRawMaterialsTable() {
         </div>
       </td>
       <td>
-        <span class="amp-qty-val">${esc(r.recentQty)}</span>
+        <span class="amp-date-val">${esc(r.lastUpdateFormatted)}</span>
       </td>
       <td>
-        <span class="amp-activity-pill ${r.activityClass}">
-          ${esc(r.activity)}
-          ${r.activityDate ? `<small>${esc(r.activityDate)}</small>` : ""}
-        </span>
+        <span class="amp-qty-val"><strong>${esc(r.latestUpdateQty)}</strong></span>
       </td>
       <td>
         <span class="amp-status-badge ${r.statusCls}">

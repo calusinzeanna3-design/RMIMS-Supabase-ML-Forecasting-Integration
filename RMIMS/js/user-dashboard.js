@@ -1496,19 +1496,82 @@ function renderRawMaterialsTable() {
   if (!tbody) return;
 
   const query = (searchInput?.value || "").toLowerCase().trim();
-  const filter = filterSelect?.value || "all";
+  const filterVal = filterSelect?.value || "latest";
 
-  let filtered = catalogMaterials.filter(m => {
-    const matchQ = !query || m.materialName.toLowerCase().includes(query) || m.itemCode.toLowerCase().includes(query);
-    return matchQ;
+  // Build rows with latest activity and update timestamp
+  const rows = catalogMaterials.map(m => {
+    const latestRec = receiptRecords.find(r => r.materialId === m.id);
+    const latestUse = usageRecords.find(u => u.materialId === m.id);
+
+    let latestUpdateQty = `${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${m.unit}`;
+    let lastUpdateFormatted = "—";
+    let lastUpdateTime = 0;
+
+    if (latestRec && latestUse) {
+      const recTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime();
+      const useTime = new Date(latestUse.createdAt || latestUse.usageDate).getTime();
+      if (recTime >= useTime) {
+        latestUpdateQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
+        lastUpdateFormatted = latestRec.receiptDate || new Date(recTime).toISOString().slice(0, 10);
+        lastUpdateTime = recTime;
+      } else {
+        latestUpdateQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
+        lastUpdateFormatted = latestUse.usageDate || new Date(useTime).toISOString().slice(0, 10);
+        lastUpdateTime = useTime;
+      }
+    } else if (latestRec) {
+      latestUpdateQty = `${latestRec.receivedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestRec.unit}`;
+      lastUpdateFormatted = latestRec.receiptDate || (latestRec.createdAt ? new Date(latestRec.createdAt).toISOString().slice(0, 10) : "—");
+      lastUpdateTime = new Date(latestRec.createdAt || latestRec.receiptDate).getTime() || 0;
+    } else if (latestUse) {
+      latestUpdateQty = `${latestUse.consumedQuantity.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${latestUse.unit}`;
+      lastUpdateFormatted = latestUse.usageDate || (latestUse.createdAt ? new Date(latestUse.createdAt).toISOString().slice(0, 10) : "—");
+      lastUpdateTime = new Date(latestUse.createdAt || latestUse.usageDate).getTime() || 0;
+    } else if (m.updatedAt || m.createdAt) {
+      const t = new Date(m.updatedAt || m.createdAt).getTime();
+      lastUpdateFormatted = new Date(t).toISOString().slice(0, 10);
+      lastUpdateTime = t;
+    }
+
+    let badgeClass = "badge-available";
+    let badgeText = "Good for 7 days";
+    if (m.currentStock <= 0) {
+      badgeClass = "badge-out";
+      badgeText = "Out of Stock";
+    } else if (m.minimumThreshold !== null && m.currentStock <= m.minimumThreshold) {
+      badgeClass = "badge-might";
+      badgeText = "Might Restock";
+    }
+
+    return {
+      id: m.id,
+      itemCode: m.itemCode,
+      name: m.materialName,
+      unit: m.unit,
+      currentStock: m.currentStock,
+      latestUpdateQty,
+      lastUpdateFormatted,
+      lastUpdateTime,
+      badgeText,
+      badgeClass
+    };
   });
 
-  if (filter === "received") {
-    const receivedIds = new Set(receiptRecords.map(r => r.materialId));
-    filtered = filtered.filter(m => receivedIds.has(m.id));
-  } else if (filter === "disbursement") {
-    const usedIds = new Set(usageRecords.map(u => u.materialId));
-    filtered = filtered.filter(m => usedIds.has(m.id));
+  // Filter by query
+  let filtered = rows.filter(r => {
+    return !query || r.name.toLowerCase().includes(query) || r.itemCode.toLowerCase().includes(query);
+  });
+
+  // Sort by filterVal
+  if (filterVal === "oldest") {
+    filtered.sort((a, b) => (a.lastUpdateTime || 0) - (b.lastUpdateTime || 0));
+  } else if (filterVal === "a-z") {
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (filterVal === "z-a") {
+    filtered.sort((a, b) => b.name.localeCompare(a.name));
+  } else {
+    // Default: latest
+    filtered.sort((a, b) => (b.lastUpdateTime || 0) - (a.lastUpdateTime || 0));
   }
 
   if (countNote) {
@@ -1520,39 +1583,26 @@ function renderRawMaterialsTable() {
     return;
   }
 
-  tbody.innerHTML = filtered.map(m => {
-    let badgeClass = "badge-available";
-    let badgeText = "Available";
-    if (m.currentStock <= 0) {
-      badgeClass = "badge-out";
-      badgeText = "Out of Stock";
-    } else if (m.minimumThreshold !== null && m.currentStock <= m.minimumThreshold) {
-      badgeClass = "badge-might";
-      badgeText = "Might Restock";
-    } else {
-      badgeClass = "badge-good";
-      badgeText = "Good for 7 days";
-    }
-
-    return `
-      <tr>
-        <td>
-          <div class="amp-mat-name"><strong>${esc(m.materialName)}</strong></div>
-          <div class="amp-mat-code">${esc(m.itemCode)}</div>
-        </td>
-        <td>
-          <span class="amp-qty">${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</span>
-          <span class="amp-unit">${esc(m.unit)}</span>
-        </td>
-        <td>
-          <span class="amp-activity-tag">Active Catalog</span>
-        </td>
-        <td>
-          <span class="amp-status-badge ${badgeClass}">${esc(badgeText)}</span>
-        </td>
-      </tr>
-    `;
-  }).join("");
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td>
+        <div class="amp-mat-name"><strong>${esc(r.name)}</strong></div>
+        <div class="amp-mat-code">${esc(r.itemCode)}</div>
+      </td>
+      <td>
+        <span class="amp-date-val">${esc(r.lastUpdateFormatted)}</span>
+      </td>
+      <td>
+        <span class="amp-qty-val"><strong>${esc(r.latestUpdateQty)}</strong></span>
+      </td>
+      <td>
+        <span class="amp-status-badge ${r.badgeClass}">
+          <span class="status-dot"></span>
+          ${esc(r.badgeText)}
+        </span>
+      </td>
+    </tr>
+  `).join("");
 
   // Bind filter events once
   if (searchInput && !searchInput.dataset.bound) {
