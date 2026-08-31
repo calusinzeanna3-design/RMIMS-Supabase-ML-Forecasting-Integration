@@ -11,6 +11,8 @@ let finishedProducts = [];
 let filteredProducts = [];
 let currentPage = 1;
 let pageSize = 20;
+let selectedProductIds = new Set();
+let editingProductId = null;
 
 // Import Wizard State
 let importFiles = [];
@@ -283,6 +285,20 @@ function applyFiltersAndRender() {
     renderPagination(total, maxPage);
 }
 
+function updateFpcSelectionBar() {
+    const bar = document.getElementById("fpcSelectionBar");
+    const countEl = document.getElementById("fpcSelectedCount");
+    if (!bar) return;
+
+    const count = selectedProductIds.size;
+    if (count > 0) {
+        bar.hidden = false;
+        if (countEl) countEl.textContent = `${count} Selected`;
+    } else {
+        bar.hidden = true;
+    }
+}
+
 function renderProductCards(products) {
     if (!fpcCardsContainer) return;
 
@@ -293,10 +309,12 @@ function renderProductCards(products) {
                 <h4>No Finished Product Context Found</h4>
                 <p>Click <strong>"+ Add Finished Product"</strong> or <strong>"Import"</strong> to identify raw materials associated with your finished products.</p>
             </div>`;
+        updateFpcSelectionBar();
         return;
     }
 
     fpcCardsContainer.innerHTML = products.map(p => {
+        const isSelected = selectedProductIds.has(p.id);
         const matCount = p.materialIds.length;
         const matNames = p.materialIds
             .map(id => {
@@ -311,7 +329,10 @@ function renderProductCards(products) {
             : `<div class="fpc-avatar"><span>${escapeHtml(getInitials(p.name))}</span></div>`;
 
         return `
-            <div class="fpc-card">
+            <div class="fpc-card ${isSelected ? "card-selected" : ""}" data-id="${escapeHtml(p.id)}">
+                <div class="fpc-card-select-circle" data-id="${escapeHtml(p.id)}" title="Select finished product">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
                 <div>
                     <div class="fpc-card-top">
                         ${avatarHtml}
@@ -325,6 +346,14 @@ function renderProductCards(products) {
                     </div>
                 </div>
                 <div class="fpc-card-footer">
+                    <div class="fpc-card-direct-actions">
+                        <button type="button" class="fpc-action-icon-btn btn-edit-prod" data-id="${escapeHtml(p.id)}" title="Edit / Update">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
+                        </button>
+                        <button type="button" class="fpc-action-icon-btn btn-delete-prod" data-id="${escapeHtml(p.id)}" title="Delete Finished Product">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
                     <button type="button" class="btn-view-details" data-id="${escapeHtml(p.id)}">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;"><path d="M15 12A3 3 0 1 1 9 12A3 3 0 0 1 15 12Z" stroke="currentColor" stroke-width="2"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5C16.478 5 20.268 7.943 21.542 12C20.268 16.057 16.478 19 12 19C7.523 19 3.732 16.057 2.458 12Z" stroke="currentColor" stroke-width="2"/></svg>
                         View Details
@@ -333,14 +362,115 @@ function renderProductCards(products) {
             </div>`;
     }).join("");
 
-    // Attach click listeners to View Details buttons
+    attachFpcCardListeners();
+    updateFpcSelectionBar();
+}
+
+function attachFpcCardListeners() {
+    // Circle Selection & Card Toggle
+    fpcCardsContainer.querySelectorAll(".fpc-card").forEach(card => {
+        const id = card.getAttribute("data-id");
+        const circle = card.querySelector(".fpc-card-select-circle");
+
+        const toggleSelection = (e) => {
+            if (e.target.closest(".btn-view-details") || e.target.closest(".fpc-action-icon-btn")) return;
+            if (selectedProductIds.has(id)) {
+                selectedProductIds.delete(id);
+                card.classList.remove("card-selected");
+            } else {
+                selectedProductIds.add(id);
+                card.classList.add("card-selected");
+            }
+            updateFpcSelectionBar();
+        };
+
+        if (circle) circle.addEventListener("click", toggleSelection);
+        card.addEventListener("click", toggleSelection);
+    });
+
+    // View Details button
     fpcCardsContainer.querySelectorAll(".btn-view-details").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
             const id = btn.getAttribute("data-id");
             const prod = finishedProducts.find(p => p.id === id);
             if (prod) openDetailsModal(prod);
         });
     });
+
+    // Direct Edit Button
+    fpcCardsContainer.querySelectorAll(".btn-edit-prod").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            const prod = finishedProducts.find(p => p.id === id);
+            if (prod) openEditProductModal(prod);
+        });
+    });
+
+    // Direct Delete Button
+    fpcCardsContainer.querySelectorAll(".btn-delete-prod").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            const prod = finishedProducts.find(p => p.id === id);
+            if (!prod) return;
+            const conf = confirm(`Are you sure you want to delete finished product "${prod.name}"?`);
+            if (!conf) return;
+
+            finishedProducts = finishedProducts.filter(p => p.id !== id);
+            selectedProductIds.delete(id);
+            saveContextToStorage();
+            applyFiltersAndRender();
+            showToast(`Deleted finished product "${prod.name}"`, "success");
+        });
+    });
+
+    // Bulk Select All
+    const selectAllBtn = document.getElementById("fpcBulkSelectAllBtn");
+    if (selectAllBtn) {
+        selectAllBtn.onclick = () => {
+            filteredProducts.forEach(p => selectedProductIds.add(p.id));
+            renderProductCards(filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize));
+        };
+    }
+
+    // Bulk Deselect All
+    const deselectBtn = document.getElementById("fpcBulkDeselectBtn");
+    if (deselectBtn) {
+        deselectBtn.onclick = () => {
+            selectedProductIds.clear();
+            renderProductCards(filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize));
+        };
+    }
+
+    // Bulk Edit
+    const bulkEditBtn = document.getElementById("fpcBulkEditBtn");
+    if (bulkEditBtn) {
+        bulkEditBtn.onclick = () => {
+            if (selectedProductIds.size === 0) return;
+            const firstId = Array.from(selectedProductIds)[0];
+            const prod = finishedProducts.find(p => p.id === firstId);
+            if (prod) openEditProductModal(prod);
+        };
+    }
+
+    // Bulk Delete
+    const bulkDeleteBtn = document.getElementById("fpcBulkDeleteBtn");
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.onclick = () => {
+            const count = selectedProductIds.size;
+            if (count === 0) return;
+            const conf = confirm(`Are you sure you want to delete ${count} selected finished product(s)?`);
+            if (!conf) return;
+
+            finishedProducts = finishedProducts.filter(p => !selectedProductIds.has(p.id));
+            selectedProductIds.clear();
+            saveContextToStorage();
+            applyFiltersAndRender();
+            showToast(`Successfully deleted ${count} finished product(s)`, "success");
+        };
+    }
 }
 
 function renderPagination(total, maxPage) {
@@ -438,6 +568,10 @@ let addProductImageBase64 = null;
 
 function openAddModal() {
     if (!fpcAddModalOverlay) return;
+    editingProductId = null;
+
+    const modalTitle = fpcAddModalOverlay.querySelector("h3");
+    if (modalTitle) modalTitle.textContent = "Add Finished Product Context";
 
     // Reset fields
     if (fpcNameInput) fpcNameInput.value = "";
@@ -454,7 +588,36 @@ function openAddModal() {
     if (fpcNameInput) fpcNameInput.focus();
 }
 
+function openEditProductModal(product) {
+    if (!fpcAddModalOverlay || !product) return;
+    editingProductId = product.id;
+
+    const modalTitle = fpcAddModalOverlay.querySelector("h3");
+    if (modalTitle) modalTitle.textContent = "Edit Finished Product Context";
+
+    if (fpcNameInput) fpcNameInput.value = product.name;
+    if (fpcNameError) fpcNameError.textContent = "";
+    if (fpcMatError) fpcMatError.textContent = "";
+
+    if (fpcImageInput) fpcImageInput.value = "";
+    if (product.imageUrl) {
+        if (fpcImagePreviewWrap) fpcImagePreviewWrap.hidden = false;
+        if (fpcImagePreview) fpcImagePreview.src = product.imageUrl;
+        addProductImageBase64 = product.imageUrl;
+    } else {
+        if (fpcImagePreviewWrap) fpcImagePreviewWrap.hidden = true;
+        if (fpcImagePreview) fpcImagePreview.src = "";
+        addProductImageBase64 = null;
+    }
+
+    selectedMaterialIds = new Set(product.materialIds || []);
+    renderMaterialChecklist();
+    fpcAddModalOverlay.classList.add("open", "active");
+    if (fpcNameInput) fpcNameInput.focus();
+}
+
 function closeAddModal() {
+    editingProductId = null;
     if (fpcAddModalOverlay) fpcAddModalOverlay.classList.remove("open", "active");
 }
 
@@ -548,7 +711,7 @@ function handleSaveProduct() {
 
     // Normalized duplicate check
     const normalized = rawName.toLowerCase();
-    const duplicate = finishedProducts.find(p => p.name.toLowerCase() === normalized);
+    const duplicate = finishedProducts.find(p => p.name.toLowerCase() === normalized && p.id !== editingProductId);
     if (duplicate) {
         if (fpcNameError) fpcNameError.textContent = "Finished product already exists.";
         fpcNameInput.focus();
@@ -557,6 +720,21 @@ function handleSaveProduct() {
 
     if (selectedMaterialIds.size === 0) {
         if (fpcMatError) fpcMatError.textContent = "Select at least one associated raw material.";
+        return;
+    }
+
+    if (editingProductId) {
+        const prod = finishedProducts.find(p => p.id === editingProductId);
+        if (prod) {
+            prod.name = rawName;
+            prod.imageUrl = addProductImageBase64 || null;
+            prod.materialIds = Array.from(selectedMaterialIds);
+            prod.updatedAt = new Date().toISOString();
+        }
+        saveContextToStorage();
+        closeAddModal();
+        applyFiltersAndRender();
+        showToast(`Updated finished product "${rawName}"`, "success");
         return;
     }
 

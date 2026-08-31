@@ -125,11 +125,72 @@
     overflow: hidden;
 }
 
+/* Card Selection Circle & Active Highlight */
+.fpc-card {
+    position: relative;
+    cursor: pointer;
+}
+
+.fpc-card.card-selected {
+    border-color: #10B981 !important;
+    background: #F0FDF4 !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.16) !important;
+    transform: translateY(-2px);
+}
+
+.fpc-card-select-circle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #CBD5E1;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s ease;
+    z-index: 2;
+}
+
+.fpc-card:hover .fpc-card-select-circle {
+    border-color: #10B981;
+}
+
+.fpc-card.card-selected .fpc-card-select-circle {
+    background: #10B981;
+    border-color: #10B981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}
+
+.fpc-card-select-circle svg {
+    width: 13px;
+    height: 13px;
+    color: #FFFFFF;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.18s ease;
+}
+
+.fpc-card.card-selected .fpc-card-select-circle svg {
+    opacity: 1;
+    transform: scale(1);
+}
+
 .fpc-card-footer {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
     padding-top: 10px;
     border-top: 1px solid #F1F5F9;
+    gap: 8px;
+}
+
+.fpc-card-direct-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .btn-view-details {
@@ -151,6 +212,37 @@
     background: var(--blue, #2563EB);
     color: #FFFFFF;
     border-color: var(--blue, #2563EB);
+}
+
+.fpc-action-icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.fpc-action-icon-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.fpc-action-icon-btn:hover {
+    background: #F8FAFC;
+    color: #0F172A;
+    border-color: #CBD5E1;
+}
+
+.fpc-action-icon-btn.btn-delete-prod:hover {
+    background: #FEE2E2;
+    color: #DC2626;
+    border-color: #FCA5A5;
 }
 
 /* Empty State */

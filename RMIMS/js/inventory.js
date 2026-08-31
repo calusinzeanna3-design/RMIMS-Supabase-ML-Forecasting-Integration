@@ -41,8 +41,10 @@ const state = {
     // Import fingerprint deduplication
     importedFingerprints: new Set(),
 
-    // Multiple row selection set (material IDs)
-    selectedOverviewIds: new Set()
+    // Multiple row selection sets
+    selectedOverviewIds: new Set(),
+    selectedReceiveIds: new Set(),
+    selectedDisburseIds: new Set()
 };
 
 // Helper: Escape HTML string
@@ -644,12 +646,21 @@ document.addEventListener("click", () => {
    TAB 2: RECEIVE TABLE & LOGIC (PUBLIC.STOCK_RECEIPTS)
    ========================================================== */
 
-function renderReceiveTable() {
-    const tbody = $("receiveTableBody");
-    const countEl = $("receiveResultCount");
-    const btnsEl = $("receivePaginationBtns");
-    if (!tbody) return;
+function updateReceiveSelectionBar() {
+    const bar = $("receiveSelectionBar");
+    const countEl = $("receiveSelectedCount");
+    if (!bar) return;
 
+    const selectedCount = state.selectedReceiveIds.size;
+    if (selectedCount > 0) {
+        bar.hidden = false;
+        if (countEl) countEl.textContent = `${selectedCount} Selected`;
+    } else {
+        bar.hidden = true;
+    }
+}
+
+function getFilteredReceiveList() {
     let filtered = [...state.receipts];
 
     if (state.receiveSearch) {
@@ -666,12 +677,22 @@ function renderReceiveTable() {
         const toTime = new Date(state.receiveDateTo + "T23:59:59").getTime();
         filtered = filtered.filter(r => new Date(r.receiptDate || r.createdAt).getTime() <= toTime);
     }
+    return filtered;
+}
 
+function renderReceiveTable() {
+    const tbody = $("receiveTableBody");
+    const countEl = $("receiveResultCount");
+    const btnsEl = $("receivePaginationBtns");
+    if (!tbody) return;
+
+    const filtered = getFilteredReceiveList();
     const total = filtered.length;
     if (total === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 32px 16px; color: var(--rm-ink-dim);">No stock receipt records recorded.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 32px 16px; color: var(--rm-ink-dim);">No stock receipt records recorded.</td></tr>`;
         if (countEl) countEl.textContent = "Showing 0 receipts";
         if (btnsEl) btnsEl.innerHTML = "";
+        updateReceiveSelectionBar();
         return;
     }
 
@@ -685,9 +706,13 @@ function renderReceiveTable() {
     if (countEl) countEl.textContent = `Showing ${start + 1}–${Math.min(start + state.receivePageSize, total)} of ${total} receipts`;
 
     tbody.innerHTML = paged.map(r => {
+        const isSelected = state.selectedReceiveIds.has(r.id);
         const st = computeStockStatus(r.currentStock, r.minStock);
         return `
-            <tr>
+            <tr data-id="${esc(r.id)}" class="${isSelected ? "row-selected" : ""}">
+                <td style="text-align: center;">
+                    <input type="checkbox" class="inv-custom-checkbox rec-select-checkbox" data-id="${esc(r.id)}" ${isSelected ? "checked" : ""}>
+                </td>
                 <td>${esc(fmtDate(r.receiptDate || r.createdAt))}</td>
                 <td><strong>${esc(r.materialName)}</strong></td>
                 <td><span class="mat-id-badge">${esc(r.materialCode || "—")}</span></td>
@@ -697,6 +722,13 @@ function renderReceiveTable() {
                 <td><strong>${fmtQty(r.currentStock)} ${esc(r.unit)}</strong></td>
                 <td>${r.minStock !== null ? `${fmtQty(r.minStock)} ${esc(r.unit)}` : "—"}</td>
                 <td><span class="status-badge ${st.cls}">${esc(st.badgeText)}</span></td>
+                <td style="text-align: right; white-space: nowrap;">
+                    <div class="row-direct-actions">
+                        <button type="button" class="row-action-btn delete-direct-btn delete-rec-btn" data-id="${esc(r.id)}" title="Delete Receipt Record">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                </td>
             </tr>
         `;
     }).join("");
@@ -705,18 +737,113 @@ function renderReceiveTable() {
         state.receivePage = newPage;
         renderReceiveTable();
     });
+
+    attachReceiveTableListeners();
+    updateReceiveSelectionBar();
+}
+
+function attachReceiveTableListeners() {
+    // Row Checkbox Toggle
+    document.querySelectorAll(".rec-select-checkbox").forEach(cb => {
+        cb.onchange = (e) => {
+            e.stopPropagation();
+            const id = cb.dataset.id;
+            const tr = cb.closest("tr");
+            if (cb.checked) {
+                state.selectedReceiveIds.add(id);
+                if (tr) tr.classList.add("row-selected");
+            } else {
+                state.selectedReceiveIds.delete(id);
+                if (tr) tr.classList.remove("row-selected");
+            }
+            updateReceiveSelectionBar();
+        };
+    });
+
+    // Bulk Select All
+    const bulkSelectAllReceiveBtn = $("bulkSelectAllReceiveBtn");
+    if (bulkSelectAllReceiveBtn) {
+        bulkSelectAllReceiveBtn.onclick = () => {
+            const filtered = getFilteredReceiveList();
+            filtered.forEach(r => state.selectedReceiveIds.add(r.id));
+            renderReceiveTable();
+        };
+    }
+
+    // Bulk Deselect All
+    const bulkDeselectReceiveBtn = $("bulkDeselectReceiveBtn");
+    if (bulkDeselectReceiveBtn) {
+        bulkDeselectReceiveBtn.onclick = () => {
+            state.selectedReceiveIds.clear();
+            renderReceiveTable();
+        };
+    }
+
+    // Bulk Delete Selected Receipts
+    const bulkDeleteReceiveBtn = $("bulkDeleteReceiveBtn");
+    if (bulkDeleteReceiveBtn) {
+        bulkDeleteReceiveBtn.onclick = async () => {
+            const count = state.selectedReceiveIds.size;
+            if (count === 0) return;
+            const conf = confirm(`Are you sure you want to delete ${count} selected stock receipt record(s)? This will recalculate current inventory.`);
+            if (!conf) return;
+
+            try {
+                const idsToDelete = Array.from(state.selectedReceiveIds);
+                const { error } = await supabase.from("stock_receipts").delete().in("id", idsToDelete);
+                if (error) throw error;
+                state.selectedReceiveIds.clear();
+                await loadData();
+                toast(`Successfully deleted ${count} receipt record(s).`, "success");
+            } catch (err) {
+                console.error("Error deleting stock receipts:", err);
+                toast("Failed to delete stock receipts: " + (err.message || err), "error");
+            }
+        };
+    }
+
+    // Single Direct Delete
+    document.querySelectorAll(".delete-rec-btn").forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            const conf = confirm("Are you sure you want to delete this stock receipt record?");
+            if (!conf) return;
+
+            try {
+                const { error } = await supabase.from("stock_receipts").delete().eq("id", id);
+                if (error) throw error;
+                state.selectedReceiveIds.delete(id);
+                await loadData();
+                toast("Stock receipt record deleted successfully.", "success");
+            } catch (err) {
+                console.error("Error deleting stock receipt:", err);
+                toast("Failed to delete stock receipt: " + (err.message || err), "error");
+            }
+        };
+    });
 }
 
 /* ==========================================================
    TAB 3: DISBURSEMENT TABLE & LOGIC (PUBLIC.MATERIAL_DISBURSEMENTS)
    ========================================================== */
 
-function renderDisbursementTable() {
-    const tbody = $("disbursementTableBody");
-    const countEl = $("disbursementResultCount");
-    const btnsEl = $("disbursementPaginationBtns");
-    if (!tbody) return;
+function updateDisburseSelectionBar() {
+    const bar = $("disburseSelectionBar");
+    const countEl = $("disburseSelectedCount");
+    if (!bar) return;
 
+    const selectedCount = state.selectedDisburseIds.size;
+    if (selectedCount > 0) {
+        bar.hidden = false;
+        if (countEl) countEl.textContent = `${selectedCount} Selected`;
+    } else {
+        bar.hidden = true;
+    }
+}
+
+function getFilteredDisburseList() {
     let filtered = [...state.disbursements];
 
     if (state.disburseSearch) {
@@ -733,12 +860,22 @@ function renderDisbursementTable() {
         const toTime = new Date(state.disburseDateTo + "T23:59:59").getTime();
         filtered = filtered.filter(d => new Date(d.usageDate || d.createdAt).getTime() <= toTime);
     }
+    return filtered;
+}
 
+function renderDisbursementTable() {
+    const tbody = $("disbursementTableBody");
+    const countEl = $("disbursementResultCount");
+    const btnsEl = $("disbursementPaginationBtns");
+    if (!tbody) return;
+
+    const filtered = getFilteredDisburseList();
     const total = filtered.length;
     if (total === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 32px 16px; color: var(--rm-ink-dim);">No material disbursement records recorded.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 32px 16px; color: var(--rm-ink-dim);">No material disbursement records recorded.</td></tr>`;
         if (countEl) countEl.textContent = "Showing 0 disbursements";
         if (btnsEl) btnsEl.innerHTML = "";
+        updateDisburseSelectionBar();
         return;
     }
 
@@ -752,9 +889,13 @@ function renderDisbursementTable() {
     if (countEl) countEl.textContent = `Showing ${start + 1}–${Math.min(start + state.disbursePageSize, total)} of ${total} disbursements`;
 
     tbody.innerHTML = paged.map(d => {
+        const isSelected = state.selectedDisburseIds.has(d.id);
         const st = computeStockStatus(d.currentStock, d.minStock);
         return `
-            <tr>
+            <tr data-id="${esc(d.id)}" class="${isSelected ? "row-selected" : ""}">
+                <td style="text-align: center;">
+                    <input type="checkbox" class="inv-custom-checkbox disb-select-checkbox" data-id="${esc(d.id)}" ${isSelected ? "checked" : ""}>
+                </td>
                 <td>${esc(fmtDate(d.usageDate || d.createdAt))}</td>
                 <td><strong>${esc(d.materialName)}</strong></td>
                 <td><span class="mat-id-badge">${esc(d.materialCode || "—")}</span></td>
@@ -764,6 +905,13 @@ function renderDisbursementTable() {
                 <td><strong>${fmtQty(d.currentStock)} ${esc(d.unit)}</strong></td>
                 <td>${d.minStock !== null ? `${fmtQty(d.minStock)} ${esc(d.unit)}` : "—"}</td>
                 <td><span class="status-badge ${st.cls}">${esc(st.badgeText)}</span></td>
+                <td style="text-align: right; white-space: nowrap;">
+                    <div class="row-direct-actions">
+                        <button type="button" class="row-action-btn delete-direct-btn delete-disb-btn" data-id="${esc(d.id)}" title="Delete Disbursement Record">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                </td>
             </tr>
         `;
     }).join("");
@@ -771,6 +919,92 @@ function renderDisbursementTable() {
     renderPaginationControls(btnsEl, state.disbursePage, totalPages, (newPage) => {
         state.disbursePage = newPage;
         renderDisbursementTable();
+    });
+
+    attachDisburseTableListeners();
+    updateDisburseSelectionBar();
+}
+
+function attachDisburseTableListeners() {
+    // Row Checkbox Toggle
+    document.querySelectorAll(".disb-select-checkbox").forEach(cb => {
+        cb.onchange = (e) => {
+            e.stopPropagation();
+            const id = cb.dataset.id;
+            const tr = cb.closest("tr");
+            if (cb.checked) {
+                state.selectedDisburseIds.add(id);
+                if (tr) tr.classList.add("row-selected");
+            } else {
+                state.selectedDisburseIds.delete(id);
+                if (tr) tr.classList.remove("row-selected");
+            }
+            updateDisburseSelectionBar();
+        };
+    });
+
+    // Bulk Select All
+    const bulkSelectAllDisburseBtn = $("bulkSelectAllDisburseBtn");
+    if (bulkSelectAllDisburseBtn) {
+        bulkSelectAllDisburseBtn.onclick = () => {
+            const filtered = getFilteredDisburseList();
+            filtered.forEach(d => state.selectedDisburseIds.add(d.id));
+            renderDisbursementTable();
+        };
+    }
+
+    // Bulk Deselect All
+    const bulkDeselectDisburseBtn = $("bulkDeselectDisburseBtn");
+    if (bulkDeselectDisburseBtn) {
+        bulkDeselectDisburseBtn.onclick = () => {
+            state.selectedDisburseIds.clear();
+            renderDisbursementTable();
+        };
+    }
+
+    // Bulk Delete Selected Disbursements
+    const bulkDeleteDisburseBtn = $("bulkDeleteDisburseBtn");
+    if (bulkDeleteDisburseBtn) {
+        bulkDeleteDisburseBtn.onclick = async () => {
+            const count = state.selectedDisburseIds.size;
+            if (count === 0) return;
+            const conf = confirm(`Are you sure you want to delete ${count} selected material disbursement record(s)? This will recalculate current inventory.`);
+            if (!conf) return;
+
+            try {
+                const idsToDelete = Array.from(state.selectedDisburseIds);
+                const { error } = await supabase.from("material_disbursements").delete().in("id", idsToDelete);
+                if (error) throw error;
+                state.selectedDisburseIds.clear();
+                await loadData();
+                toast(`Successfully deleted ${count} disbursement record(s).`, "success");
+            } catch (err) {
+                console.error("Error deleting disbursements:", err);
+                toast("Failed to delete disbursements: " + (err.message || err), "error");
+            }
+        };
+    }
+
+    // Single Direct Delete
+    document.querySelectorAll(".delete-disb-btn").forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            if (!id) return;
+            const conf = confirm("Are you sure you want to delete this material disbursement record?");
+            if (!conf) return;
+
+            try {
+                const { error } = await supabase.from("material_disbursements").delete().eq("id", id);
+                if (error) throw error;
+                state.selectedDisburseIds.delete(id);
+                await loadData();
+                toast("Material disbursement record deleted successfully.", "success");
+            } catch (err) {
+                console.error("Error deleting disbursement:", err);
+                toast("Failed to delete disbursement: " + (err.message || err), "error");
+            }
+        };
     });
 }
 
