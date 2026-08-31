@@ -396,15 +396,164 @@
   text-decoration: underline;
 }
 
-/* ---------------------------------------------------------
-   RESPONSIVE & ACCESSIBILITY
---------------------------------------------------------- */
+/* ==========================================================
+   INTERACTIVE AUTH TRANSITION & LOADING PROGRESS OVERLAY
+   ========================================================== */
+
+.auth-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(11, 15, 19, 0.94);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-transition-overlay.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.auth-transition-card {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(24, 31, 38, 0.90);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 28px;
+  padding: 32px 28px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.75), 0 0 45px rgba(34, 197, 94, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transform: scale(0.95) translateY(12px);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-transition-overlay.is-active .auth-transition-card {
+  transform: scale(1) translateY(0);
+}
+
+[data-theme="light"] .auth-transition-overlay {
+  background: rgba(216, 238, 220, 0.92);
+}
+
+[data-theme="light"] .auth-transition-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(34, 197, 94, 0.35);
+  box-shadow: 0 25px 60px rgba(15, 42, 27, 0.15), 0 0 35px rgba(34, 197, 94, 0.18);
+}
+
+.auth-video-wrapper {
+  width: 100%;
+  max-width: 360px;
+  height: 200px;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background: #000000;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(34, 197, 94, 0.18);
+  position: relative;
+}
+
+.auth-transition-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.auth-trans-header {
+  margin-bottom: 18px;
+}
+
+.auth-trans-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--rm-text-white);
+  margin-bottom: 6px;
+}
+
+.auth-trans-sub {
+  font-size: 13px;
+  color: var(--rm-text-muted);
+}
+
+.auth-progress-box {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.auth-progress-track {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] .auth-progress-track {
+  background: rgba(15, 42, 27, 0.1);
+}
+
+.auth-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #22C55E 0%, #4ADE80 100%);
+  border-radius: 999px;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.9);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+
+.auth-status-text {
+  color: var(--rm-emerald-light);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+[data-theme="light"] .auth-status-text {
+  color: var(--rm-emerald-dark);
+}
+
+.auth-percent-text {
+  font-family: 'Sora', monospace;
+  font-weight: 700;
+  color: var(--rm-text-white);
+}
 
 @media (max-width: 520px) {
   .workspace-panel.auth-panel {
     padding: 30px 22px 28px;
     border-radius: 24px;
     width: calc(100% - 24px);
+  }
+  .auth-video-wrapper {
+    height: 160px;
   }
 }
 
@@ -413,6 +562,9 @@
     animation: none !important;
   }
   .auth-panel .login-btn {
+    transition: none !important;
+  }
+  .auth-transition-overlay {
     transition: none !important;
   }
 }
