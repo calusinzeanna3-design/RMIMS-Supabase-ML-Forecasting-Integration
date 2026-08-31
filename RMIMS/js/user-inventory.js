@@ -751,20 +751,12 @@ function attachUserOverviewListeners() {
         };
     });
 
-    // Select All Checkbox
-    const selectAllCb = $("selectAllOverview");
-    if (selectAllCb) {
-        selectAllCb.onchange = () => {
+    // Bulk Select All
+    const bulkSelectAllBtn = $("bulkSelectAllBtn");
+    if (bulkSelectAllBtn) {
+        bulkSelectAllBtn.onclick = () => {
             const filtered = getFilteredOverviewList();
-            const startIdx = (state.overviewPage - 1) * state.overviewPageSize;
-            const endIdx = Math.min(startIdx + state.overviewPageSize, filtered.length);
-            const paged = filtered.slice(startIdx, endIdx);
-
-            if (selectAllCb.checked) {
-                paged.forEach(item => state.selectedOverviewIds.add(item.id));
-            } else {
-                paged.forEach(item => state.selectedOverviewIds.delete(item.id));
-            }
+            filtered.forEach(item => state.selectedOverviewIds.add(item.id));
             renderOverviewTable();
         };
     }
