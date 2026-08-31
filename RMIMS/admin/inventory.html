@@ -670,9 +670,9 @@
         </div>
 
         <div class="modal-body">
-            <!-- STEP 1: SELECT DATASET TAB -->
+            <!-- DATASET TAB SELECTION -->
             <div class="export-modal-section">
-                <label class="export-section-title">1. Choose Dataset / Tab to Export <span class="required-star">*</span></label>
+                <label class="export-section-title">Choose Dataset / Tab to Export <span class="required-star">*</span></label>
                 <div class="export-tab-grid" id="exportTabOptions">
                     <!-- Overview Card -->
                     <label class="export-tab-card active" data-dataset="overview">
@@ -682,7 +682,6 @@
                         </div>
                         <div class="etc-info">
                             <strong>Overview</strong>
-                            <span>Catalog balances, stock status, unit of measure & minimum levels</span>
                         </div>
                         <div class="etc-check">✓</div>
                     </label>
@@ -694,8 +693,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
                         </div>
                         <div class="etc-info">
-                            <strong>Receive (Inbound)</strong>
-                            <span>Supplier deliveries, received quantities, dates & batch receipts</span>
+                            <strong>Receive</strong>
                         </div>
                         <div class="etc-check">✓</div>
                     </label>
@@ -708,7 +706,6 @@
                         </div>
                         <div class="etc-info">
                             <strong>Disbursement</strong>
-                            <span>Usage consumption, finished products, activity types & logged dates</span>
                         </div>
                         <div class="etc-check">✓</div>
                     </label>
@@ -721,7 +718,6 @@
                         </div>
                         <div class="etc-info">
                             <strong>Other Details</strong>
-                            <span>Reorder quantities, lead times, safety stocks & catalog descriptions</span>
                         </div>
                         <div class="etc-check">✓</div>
                     </label>
@@ -733,60 +729,41 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                         </div>
                         <div class="etc-info">
-                            <strong>All Datasets (Complete Multi-Tab Archive)</strong>
-                            <span>Includes Overview, Receipts, Disbursements, and Specifications in one export</span>
+                            <strong>All Datasets</strong>
                         </div>
                         <div class="etc-check">✓</div>
                     </label>
                 </div>
             </div>
 
-            <!-- STEP 2: FORMAT & SCOPE -->
-            <div class="export-modal-grid">
-                <div class="export-modal-col">
-                    <label class="export-section-title">2. Export File Format</label>
-                    <div class="export-format-options" id="exportFormatOptions">
-                        <label class="export-format-btn active" data-format="xlsx">
-                            <input type="radio" name="exportFormatRadio" value="xlsx" checked hidden>
-                            <span class="export-fmt-icon xlsx">XLSX</span>
-                            <div>
-                                <strong>Excel (.xlsx)</strong>
-                                <small>Formatted spreadsheet with styling</small>
-                            </div>
-                        </label>
-                        <label class="export-format-btn" data-format="csv">
-                            <input type="radio" name="exportFormatRadio" value="csv" hidden>
-                            <span class="export-fmt-icon csv">CSV</span>
-                            <div>
-                                <strong>CSV (.csv)</strong>
-                                <small>Standard plain-text table format</small>
-                            </div>
-                        </label>
-                    </div>
-                </div>
+            <!-- SEPARATOR -->
+            <div class="export-modal-divider"></div>
 
-                <div class="export-modal-col">
-                    <label class="export-section-title">3. Data Scope</label>
-                    <div class="export-scope-options" id="exportScopeOptions">
-                        <label class="export-scope-btn active" data-scope="all">
-                            <input type="radio" name="exportScopeRadio" value="all" checked hidden>
-                            <div>
-                                <strong>All Records (Full History)</strong>
-                                <small id="exportScopeAllNote">All catalog entries & historical records</small>
-                            </div>
-                        </label>
-                        <label class="export-scope-btn" data-scope="filtered">
-                            <input type="radio" name="exportScopeRadio" value="filtered" hidden>
-                            <div>
-                                <strong>Current Filtered View</strong>
-                                <small id="exportScopeFilteredNote">Respects current search query & date filter</small>
-                            </div>
-                        </label>
-                    </div>
+            <!-- FORMAT SELECTION -->
+            <div class="export-modal-section">
+                <label class="export-section-title">Export File Format <span class="required-star">*</span></label>
+                <div class="export-format-options horizontal" id="exportFormatOptions">
+                    <label class="export-format-btn active" data-format="xlsx">
+                        <input type="radio" name="exportFormatRadio" value="xlsx" checked hidden>
+                        <span class="export-fmt-icon xlsx">XLSX</span>
+                        <div class="efb-title">
+                            <strong>Excel (.xlsx)</strong>
+                        </div>
+                    </label>
+                    <label class="export-format-btn" data-format="csv">
+                        <input type="radio" name="exportFormatRadio" value="csv" hidden>
+                        <span class="export-fmt-icon csv">CSV</span>
+                        <div class="efb-title">
+                            <strong>CSV (.csv)</strong>
+                        </div>
+                    </label>
                 </div>
             </div>
 
-            <!-- STEP 3: DYNAMIC SUMMARY & PROGRESS AREA -->
+            <!-- SEPARATOR -->
+            <div class="export-modal-divider"></div>
+
+            <!-- DYNAMIC SUMMARY & PROGRESS AREA -->
             <div class="export-summary-box" id="exportSummaryBox">
                 <div class="esb-icon">📊</div>
                 <div class="esb-text">

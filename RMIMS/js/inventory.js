@@ -1469,7 +1469,6 @@ function getExportDataset() {
 
 let currentExportDataset = "overview";
 let currentExportFormat = "xlsx";
-let currentExportScope = "all";
 
 function openExportModal() {
     const overlay = $("invExportModalOverlay");
@@ -1477,7 +1476,6 @@ function openExportModal() {
 
     currentExportDataset = "overview";
     currentExportFormat = "xlsx";
-    currentExportScope = "all";
 
     // Set initial dataset cards
     const cards = document.querySelectorAll("#exportTabOptions .export-tab-card");
@@ -1495,18 +1493,6 @@ function openExportModal() {
     const fmtBtns = document.querySelectorAll("#exportFormatOptions .export-format-btn");
     fmtBtns.forEach(b => {
         if (b.dataset.format === "xlsx") {
-            b.classList.add("active");
-            const radio = b.querySelector("input[type='radio']");
-            if (radio) radio.checked = true;
-        } else {
-            b.classList.remove("active");
-        }
-    });
-
-    // Set initial scope buttons
-    const scopeBtns = document.querySelectorAll("#exportScopeOptions .export-scope-btn");
-    scopeBtns.forEach(b => {
-        if (b.dataset.scope === "all") {
             b.classList.add("active");
             const radio = b.querySelector("input[type='radio']");
             if (radio) radio.checked = true;
@@ -1545,36 +1531,31 @@ function closeExportModal() {
 function updateExportSummary() {
     const titleEl = $("exportSummaryTitle");
     const descEl = $("exportSummaryDesc");
-    const allNote = $("exportScopeAllNote");
-    const filteredNote = $("exportScopeFilteredNote");
     if (!titleEl || !descEl) return;
 
     let datasetName = "Overview";
     let recordCount = state.materials.length;
 
     if (currentExportDataset === "receive") {
-        datasetName = "Receive Inbound Records";
-        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("receive").length : state.receipts.length;
+        datasetName = "Receive Records";
+        recordCount = state.receipts.length;
     } else if (currentExportDataset === "disbursement") {
-        datasetName = "Disbursement Consumption Logs";
-        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("disbursement").length : state.disbursements.length;
+        datasetName = "Disbursement Logs";
+        recordCount = state.disbursements.length;
     } else if (currentExportDataset === "other") {
-        datasetName = "Other Details Specifications";
-        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("other").length : state.materials.length;
+        datasetName = "Other Details";
+        recordCount = state.materials.length;
     } else if (currentExportDataset === "all") {
-        datasetName = "All Datasets (Full Archive)";
+        datasetName = "All Datasets";
         recordCount = state.materials.length + state.receipts.length + state.disbursements.length;
     } else {
-        datasetName = "Overview Master Catalog";
-        recordCount = currentExportScope === "filtered" ? getFilteredTableRows("overview").length : state.materials.length;
+        datasetName = "Overview";
+        recordCount = state.materials.length;
     }
 
     const fmtName = currentExportFormat.toUpperCase();
     titleEl.textContent = `Ready to Export ${datasetName}`;
     descEl.textContent = `${recordCount.toLocaleString()} verified records ready for download in ${fmtName} format.`;
-
-    if (allNote) allNote.textContent = `All catalog entries & historical records (${recordCount.toLocaleString()} items)`;
-    if (filteredNote) filteredNote.textContent = `Respects current search query & active date filters`;
 }
 
 function getFilteredTableRows(type) {
@@ -1852,7 +1833,6 @@ async function handleExportConfirm() {
         if (closeBtn) closeBtn.style.pointerEvents = "auto";
     }
 }
-
 /* ==========================================================
    ATTACH EVENT LISTENERS & TAB NAVIGATION
    ========================================================== */
@@ -2047,10 +2027,8 @@ function setupEventListeners() {
     }
     if ($("invImportConfirmBtn")) $("invImportConfirmBtn").addEventListener("click", handleImportConfirm);
 
-    // 8. Export Menu & Modal Event Listeners
-    if ($("invExportBtn")) {
-        $("invExportBtn").addEventListener("click", openExportModal);
-    }
+    // 8. Export Modal Event Listeners
+    if ($("invExportBtn")) $("invExportBtn").addEventListener("click", openExportModal);
     if ($("invExportModalClose")) $("invExportModalClose").addEventListener("click", closeExportModal);
     if ($("invExportCancelBtn")) $("invExportCancelBtn").addEventListener("click", closeExportModal);
     if ($("invExportConfirmBtn")) $("invExportConfirmBtn").addEventListener("click", handleExportConfirm);
@@ -2073,18 +2051,6 @@ function setupEventListeners() {
             document.querySelectorAll("#exportFormatOptions .export-format-btn").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
             currentExportFormat = btn.dataset.format || "xlsx";
-            const radio = btn.querySelector("input[type='radio']");
-            if (radio) radio.checked = true;
-            updateExportSummary();
-        });
-    });
-
-    // Scope selection
-    document.querySelectorAll("#exportScopeOptions .export-scope-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll("#exportScopeOptions .export-scope-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            currentExportScope = btn.dataset.scope || "all";
             const radio = btn.querySelector("input[type='radio']");
             if (radio) radio.checked = true;
             updateExportSummary();
