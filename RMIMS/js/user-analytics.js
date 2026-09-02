@@ -24,7 +24,10 @@ const state = {
     
     // Chart 1 Options
     chart1MaterialId: "ALL",
-    chart1Period: "weekly",  // 'daily' | 'weekly' | 'monthly'
+    chart1Period: "daily",  // 'daily' | 'weekly' | 'monthly'
+    
+    // Stock Status Progress Period
+    statusPeriod: "weekly", // 'daily' | 'weekly' | 'monthly'
     
     // Table Options
     tableSearch: "",
@@ -678,7 +681,7 @@ function renderStatusProgressChart() {
         statusProgressChartInstance = null;
     }
 
-    const intervals = generateTimelineIntervals("weekly", state.dateFrom, state.dateTo);
+    const intervals = generateTimelineIntervals(state.statusPeriod || "weekly", state.dateFrom, state.dateTo);
     const labels = intervals.map(i => i.label);
 
     const goodCounts = [];
@@ -1457,6 +1460,17 @@ function initEventListeners() {
             tab.classList.add("active");
             state.chart1Period = tab.getAttribute("data-period");
             renderOverviewTrendChart();
+        });
+    });
+
+    // 2b. Stock Status Progress Period Tabs (Daily, Weekly, Monthly)
+    const statusTabs = document.querySelectorAll("#statusProgressPeriodTabs [data-status-period]");
+    statusTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            statusTabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            state.statusPeriod = tab.getAttribute("data-status-period");
+            renderStatusProgressChart();
         });
     });
 
