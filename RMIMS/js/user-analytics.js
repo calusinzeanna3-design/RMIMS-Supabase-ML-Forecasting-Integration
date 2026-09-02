@@ -24,7 +24,7 @@ const state = {
     
     // Chart 1 Options
     chart1MaterialId: "ALL",
-    chart1Period: "weekly",  // 'weekly' | 'monthly' | 'date_to_date'
+    chart1Period: "weekly",  // 'daily' | 'weekly' | 'monthly'
     
     // Table Options
     tableSearch: "",
@@ -562,10 +562,19 @@ function generateTimelineIntervals(period, fromStr, toStr) {
         dEnd = temp;
     }
 
-    const diffDays = Math.max(1, Math.round((dEnd - dStart) / 86400000));
-
-    // Dynamic Interval Mapping
-    if (period === "monthly") {
+    // Dynamic Interval Mapping (Daily, Weekly, Monthly)
+    if (period === "daily") {
+        let curr = new Date(dStart);
+        while (curr <= dEnd) {
+            const dateISO = formatDateISO(curr);
+            intervals.push({
+                label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                start: dateISO,
+                end: dateISO
+            });
+            curr.setDate(curr.getDate() + 1);
+        }
+    } else if (period === "monthly") {
         let curr = new Date(dStart.getFullYear(), dStart.getMonth(), 1);
         while (curr <= dEnd) {
             const startStr = formatDateISO(curr);
@@ -578,89 +587,19 @@ function generateTimelineIntervals(period, fromStr, toStr) {
             });
             curr.setMonth(curr.getMonth() + 1);
         }
-    } else if (diffDays <= 1) {
-        // Single Day ("Today")
-        const dateISO = formatDateISO(dStart);
-        const dayLabel = dStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        intervals.push({
-            label: `${dayLabel} (All Day)`,
-            start: dateISO,
-            end: dateISO
-        });
-    } else if (diffDays <= 7) {
-        // Up to 7 days ("This Week", "Last 7 Days", etc.) -> Daily intervals
+    } else {
+        // Default to "weekly"
         let curr = new Date(dStart);
         while (curr <= dEnd) {
-            const dateISO = formatDateISO(curr);
+            const startStr = formatDateISO(curr);
+            const stepEnd = new Date(curr.getTime() + 6 * 86400000);
+            const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
             intervals.push({
-                label: curr.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
-                start: dateISO,
-                end: dateISO
+                label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                start: startStr,
+                end: endStr
             });
-            curr.setDate(curr.getDate() + 1);
-        }
-    } else if (diffDays <= 31) {
-        // Up to 1 month ("This Month", "Last Month", "Last 30 Days")
-        if (period === "date_to_date") {
-            let curr = new Date(dStart);
-            const step = Math.max(1, Math.round(diffDays / 6));
-            while (curr <= dEnd) {
-                const startStr = formatDateISO(curr);
-                const stepEnd = new Date(curr.getTime() + (step - 1) * 86400000);
-                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
-                intervals.push({
-                    label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                    start: startStr,
-                    end: endStr
-                });
-                curr.setDate(curr.getDate() + step);
-            }
-        } else {
-            // Weekly intervals across the month
-            let curr = new Date(dStart);
-            while (curr <= dEnd) {
-                const startStr = formatDateISO(curr);
-                const stepEnd = new Date(curr.getTime() + 6 * 86400000);
-                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
-                const startLabel = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                const endLabel = (stepEnd > dEnd ? dEnd : stepEnd).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                intervals.push({
-                    label: `${startLabel} – ${endLabel}`,
-                    start: startStr,
-                    end: endStr
-                });
-                curr.setDate(curr.getDate() + 7);
-            }
-        }
-    } else {
-        // Long ranges (> 31 days)
-        if (period === "weekly") {
-            let curr = new Date(dStart);
-            while (curr <= dEnd) {
-                const startStr = formatDateISO(curr);
-                const stepEnd = new Date(curr.getTime() + 6 * 86400000);
-                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
-                intervals.push({
-                    label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                    start: startStr,
-                    end: endStr
-                });
-                curr.setDate(curr.getDate() + 7);
-            }
-        } else {
-            // Default to monthly intervals
-            let curr = new Date(dStart.getFullYear(), dStart.getMonth(), 1);
-            while (curr <= dEnd) {
-                const startStr = formatDateISO(curr);
-                const nextMonth = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
-                const endStr = formatDateISO(nextMonth > dEnd ? dEnd : nextMonth);
-                intervals.push({
-                    label: curr.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-                    start: startStr,
-                    end: endStr
-                });
-                curr.setMonth(curr.getMonth() + 1);
-            }
+            curr.setDate(curr.getDate() + 7);
         }
     }
 
