@@ -1545,7 +1545,8 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                             <th>Raw Material</th>
                             <th>Item Code</th>
                             <th>Current Stock</th>
-                            <th>Minimum Safety Stock</th>
+                            <th>Minimum Threshold</th>
+                            <th>Reorder Quantity</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -1556,6 +1557,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                 <td><span style="font-family:monospace; font-weight:700; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
                                 <td><strong>${m.currentStock.toLocaleString()}</strong> ${escapeHtml(m.unit)}</td>
                                 <td>${m.minThreshold.toLocaleString()} ${escapeHtml(m.unit)}</td>
+                                <td>${m.reorderQty.toLocaleString()} ${escapeHtml(m.unit)}</td>
                                 <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                             </tr>
                         `).join("")}
@@ -1593,7 +1595,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                     <td><strong>${escapeHtml(r.materialName)}</strong></td>
                                     <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(r.unit)}</td>
                                     <td>${escapeHtml(r.supplierName)}</td>
-                                    <td>${escapeHtml(r.receivedBy)}</td>
+                                    <td>${escapeHtml(formatOperatorDisplay(r.receivedBy))}</td>
                                     <td><span style="color:#059669; font-weight:600;">Verified</span></td>
                                 </tr>
                             `).join("")
@@ -1630,10 +1632,10 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
                                     <td><strong>${escapeHtml(d.materialName)}</strong></td>
-                                    <td>${escapeHtml(d.finishedProduct)}</td>
+                                    <td>${escapeHtml(d.finishedProduct || 'Production Batch')}</td>
                                     <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(d.unit)}</td>
-                                    <td>${escapeHtml(d.activityType)}</td>
-                                    <td>${escapeHtml(d.recordedBy)}</td>
+                                    <td>${escapeHtml(d.activityType || 'Production Issue')}</td>
+                                    <td>${escapeHtml(formatOperatorDisplay(d.recordedBy))}</td>
                                 </tr>
                             `).join("")
                         }
@@ -1649,8 +1651,8 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
         const activities = [];
 
-        periodReceipts.forEach(r => activities.push({ date: r.receiptDate, type: "Received", mat: r.materialName, qty: r.receivedQuantity, unit: r.unit, ref: r.supplierName, op: r.receivedBy }));
-        periodDisbursements.forEach(d => activities.push({ date: d.usageDate, type: "Disbursed", mat: d.materialName, qty: -d.disbursedQuantity, unit: d.unit, ref: d.finishedProduct, op: d.recordedBy }));
+        periodReceipts.forEach(r => activities.push({ date: r.receiptDate, type: "Received", mat: r.materialName, qty: r.receivedQuantity, unit: r.unit, ref: r.supplierName, op: formatOperatorDisplay(r.receivedBy) }));
+        periodDisbursements.forEach(d => activities.push({ date: d.usageDate, type: "Disbursed", mat: d.materialName, qty: -d.disbursedQuantity, unit: d.unit, ref: d.finishedProduct || 'Production Batch', op: formatOperatorDisplay(d.recordedBy) }));
         activities.sort((a, b) => b.date.localeCompare(a.date));
 
         sectionsHtml += `
@@ -2023,12 +2025,13 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
 
             doc.autoTable({
                 startY: y,
-                head: [["Raw Material", "Item Code", "Current Stock", "Minimum Stock", "Status"]],
+                head: [["Raw Material", "Item Code", "Current Stock", "Minimum Threshold", "Reorder Quantity", "Status"]],
                 body: state.materials.map(m => [
                     m.name,
                     m.itemCode,
                     `${m.currentStock.toLocaleString()} ${m.unit}`,
                     `${m.minThreshold.toLocaleString()} ${m.unit}`,
+                    `${m.reorderQty.toLocaleString()} ${m.unit}`,
                     m.status
                 ]),
                 margin: { left: 40, right: 40 },
@@ -2256,8 +2259,8 @@ function buildMultiSheetExcelWorkbook(selectedSections = ["manager", "inventory"
 
         if (key === "inventory") {
             const rows = [
-                ["Raw Material", "Item Code", "Unit", "Current Stock", "Minimum Stock", "Status"],
-                ...state.materials.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, m.status])
+                ["Raw Material", "Item Code", "Unit", "Current Stock", "Minimum Threshold", "Reorder Quantity", "Status"],
+                ...state.materials.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, m.reorderQty, m.status])
             ];
             const ws = XLSX.utils.aoa_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, "Inventory Records");
@@ -2709,6 +2712,15 @@ function escapeHtml(str) {
     const d = document.createElement("div");
     d.textContent = str ?? "";
     return d.innerHTML;
+}
+
+function formatOperatorDisplay(val) {
+    if (!val || typeof val !== "string") return "Authorized Staff";
+    const clean = val.trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—") {
+        return "Authorized Staff";
+    }
+    return clean;
 }
 
 window.addEventListener("beforeprint", updatePrintDocHtml);

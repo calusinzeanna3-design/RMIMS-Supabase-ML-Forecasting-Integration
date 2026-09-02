@@ -2001,10 +2001,42 @@ function updatePrintDocHtml() {
                             </table>
                         </div>
 
-                        <!-- SECTION 2: RAW MATERIAL RECEIVING -->
+                        <!-- SECTION 2: RAW MATERIAL INVENTORY RECORDS -->
                         <div class="print-section">
                             <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">2. Material Receiving Log</h3>
+                                <h3 class="print-section-header-green">2. Raw Material Inventory Records</h3>
+                                <span class="print-source-pill">Source: raw_materials Catalog Ledger</span>
+                            </div>
+                            <table class="print-table">
+                                <thead>
+                                    <tr>
+                                        <th>Raw Material</th>
+                                        <th>Item Code</th>
+                                        <th>Current Stock</th>
+                                        <th>Minimum Threshold</th>
+                                        <th>Reorder Quantity</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.materials.map(m => `
+                                        <tr>
+                                            <td><strong>${esc(m.name)}</strong></td>
+                                            <td><span style="font-family:monospace; font-weight:700; color:#475569;">${esc(m.itemCode)}</span></td>
+                                            <td><strong>${m.currentStock.toLocaleString()}</strong> ${esc(m.unit)}</td>
+                                            <td>${m.minThreshold.toLocaleString()} ${esc(m.unit)}</td>
+                                            <td>${m.reorderQty.toLocaleString()} ${esc(m.unit)}</td>
+                                            <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#d97706' : '#dc2626')}">${esc(m.status)}</strong></td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SECTION 3: RAW MATERIAL RECEIVING -->
+                        <div class="print-section">
+                            <div class="print-section-header-wrap">
+                                <h3 class="print-section-header-green">3. Material Receiving Log</h3>
                                 <span class="print-source-pill">Source: stock_receipts Inbound Records</span>
                             </div>
                             <table class="print-table">
@@ -2036,10 +2068,10 @@ function updatePrintDocHtml() {
                             </table>
                         </div>
 
-                        <!-- SECTION 3: MATERIAL DISBURSEMENT -->
+                        <!-- SECTION 4: MATERIAL DISBURSEMENT -->
                         <div class="print-section">
                             <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">3. Material Disbursement Log</h3>
+                                <h3 class="print-section-header-green">4. Material Disbursement Log</h3>
                                 <span class="print-source-pill">Source: material_disbursements Production Issue Ledger</span>
                             </div>
                             <table class="print-table">
@@ -2069,10 +2101,10 @@ function updatePrintDocHtml() {
                             </table>
                         </div>
 
-                        <!-- SECTION 4: CONSUMPTION ANALYSIS -->
+                        <!-- SECTION 5: CONSUMPTION ANALYSIS -->
                         <div class="print-section">
                             <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">4. Raw Material Consumption Analysis</h3>
+                                <h3 class="print-section-header-green">5. Raw Material Consumption Analysis</h3>
                                 <span class="print-source-pill">Source: Period Usage vs Catalog Health</span>
                             </div>
                             <table class="print-table">
@@ -2103,10 +2135,10 @@ function updatePrintDocHtml() {
                             </table>
                         </div>
 
-                        <!-- SECTION 5: AI FORECAST PROJECTIONS -->
+                        <!-- SECTION 6: AI FORECAST PROJECTIONS -->
                         <div class="print-section">
                             <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">5. AI Forecast Projections &amp; Requirement Needs</h3>
+                                <h3 class="print-section-header-green">6. AI Forecast Projections &amp; Requirement Needs</h3>
                                 <span class="print-source-pill">Source: AI Demand Forecasting Engine</span>
                             </div>
                             <table class="print-table">
@@ -2184,6 +2216,15 @@ function handlePrintReport() {
         console.error("Print report generation error:", err);
         isPrinting = false;
     }
+}
+
+function formatOperatorDisplay(val) {
+    if (!val || typeof val !== "string") return "Authorized Staff";
+    const clean = val.trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—") {
+        return "Authorized Staff";
+    }
+    return clean;
 }
 
 window.addEventListener("beforeprint", updatePrintDocHtml);
