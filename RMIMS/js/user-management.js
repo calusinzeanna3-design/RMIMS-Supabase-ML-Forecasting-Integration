@@ -1287,7 +1287,36 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
             if (error) {
                 const errMsg = (error.message || "").toLowerCase();
                 if (errMsg.includes("already registered") || errMsg.includes("already exists")) {
-                    // Check if profile exists in user_profiles
+                    // Try to authenticate on the throwaway client to retrieve the authoritative auth.users UID
+                    try {
+                        const { data: signData } = await tempClient.auth.signInWithPassword({ email, password });
+                        if (signData?.user?.id) {
+                            await supabase.from("user_profiles").upsert({
+                                id: signData.user.id,
+                                full_name: fullName,
+                                email: email,
+                                role: role,
+                                status: "active",
+                                updated_at: new Date().toISOString()
+                            });
+
+                            showToast("User account added successfully.");
+                            window.RMIMS_NOTIFICATIONS?.addNotification({
+                                category: 'user',
+                                priority: 'info',
+                                title: 'User Account Created',
+                                message: `Account "${fullName}" (${email}) was registered with role ${roleLabel(role)}.`,
+                                actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                            });
+                            closeModal("addUserModal");
+                            await refreshAll();
+                            return;
+                        }
+                    } catch (signInCatch) {
+                        console.warn("UID recovery sign-in notice:", signInCatch);
+                    }
+
+                    // Check if profile exists in user_profiles by email
                     const { data: existingProfiles } = await supabase
                         .from("user_profiles")
                         .select("*")
