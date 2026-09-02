@@ -1772,77 +1772,93 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     }
 
     return `
-        <!-- TOP CONFIDENTIAL BANNER -->
-        <div class="print-confidential-top">
-            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
-            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
-            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDateStr} ${genTimeStr}</div>
-        </div>
-
-        <!-- FADED SYSTEM LOGO WATERMARK OVERLAY -->
+        <!-- FADED SYSTEM LOGO SLANTED WATERMARK OVERLAY (CENTERED ACROSS EVERY PAGE) -->
         <div class="print-watermark-overlay" aria-hidden="true">
-            <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
-            <div class="print-watermark-title">RMSME</div>
-            <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-            <div class="print-watermark-sub" style="font-size:7pt; margin-top:2px;">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
-        </div>
-
-        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
-        <div class="print-header-block">
-            <div class="print-logo-row">
-                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
-                <div class="print-system-info">
-                    <h1 class="print-rmims-title">RMSME</h1>
-                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-                </div>
-            </div>
-            <div class="print-doc-meta-right">
-                <div><strong>Generated:</strong> ${genDateStr} at ${genTimeStr}</div>
-                <div><strong>Authority:</strong> RMSME Authorized System Administrator</div>
-                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
+            <div class="print-watermark-inner">
+                <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
+                <div class="print-watermark-title">RMSME</div>
+                <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                <div class="print-watermark-tag">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
             </div>
         </div>
 
-        <!-- REPORT TITLE & PERIOD RIBBON -->
-        <div class="print-doc-title-row">
-            <h2 class="print-doc-title">Executive Manager Summary &amp; Inventory Decision Report</h2>
-            <span class="print-period-badge">${escapeHtml(periodLabel)}</span>
-        </div>
+        <!-- PRINT DOCUMENT TABLE WRAPPER (ENABLES FOOTER ON EVERY PAGE) -->
+        <table class="print-page-table-wrapper">
+            <tbody>
+                <tr>
+                    <td>
+                        <!-- TOP CONFIDENTIAL BANNER -->
+                        <div class="print-confidential-top">
+                            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
+                            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
+                            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDateStr} ${genTimeStr}</div>
+                        </div>
 
-        <!-- METADATA CARD GRID -->
-        <div class="print-meta-grid-2col">
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">Report Horizon</span>
-                <span class="print-meta-val">${escapeHtml(periodLabel)}</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">Report Preset</span>
-                <span class="print-meta-val">${escapeHtml(reportTypeStr)} Snapshot</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">System Source</span>
-                <span class="print-meta-val">RMSME Authoritative PostgreSQL Database</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">Security Classification</span>
-                <span class="print-meta-val">Confidential / Internal Operation Only</span>
-            </div>
-        </div>
+                        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
+                        <div class="print-header-block">
+                            <div class="print-logo-row">
+                                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
+                                <div class="print-system-info">
+                                    <h1 class="print-rmims-title">RMSME</h1>
+                                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                                </div>
+                            </div>
+                            <div class="print-doc-meta-right">
+                                <div><strong>Generated:</strong> ${genDateStr} at ${genTimeStr}</div>
+                                <div><strong>Authority:</strong> RMSME Authorized System Administrator</div>
+                                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
+                            </div>
+                        </div>
 
-        <!-- REPORT SECTIONS (MANAGER SUMMARY FIRST, CONTINUOUS STREAM) -->
-        ${sectionsHtml}
+                        <!-- REPORT TITLE & PERIOD RIBBON -->
+                        <div class="print-doc-title-row">
+                            <h2 class="print-doc-title">Executive Manager Summary &amp; Inventory Decision Report</h2>
+                            <span class="print-period-badge">${escapeHtml(periodLabel)}</span>
+                        </div>
 
-        <!-- BOTTOM PERMANENT SYSTEM CONTACT & OWNERSHIP FOOTER -->
-        <div class="print-doc-footer">
-            <div class="print-footer-top">
-                <span>RMSME — Raw Material Stock Management &amp; Enterprise Forecasting System</span>
-                <span>Document Ownership: RMSME Authorized Management</span>
-            </div>
-            <div class="print-footer-contact">
-                <span>System Support: <strong>support@rmsme.internal</strong> | Helpline: <strong>(02) 8876-RMSME</strong></span>
-                <span>Official System Generated Copy • Anti-Tamper Protected</span>
-            </div>
-        </div>
+                        <!-- METADATA CARD GRID -->
+                        <div class="print-meta-grid-2col">
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">Report Horizon</span>
+                                <span class="print-meta-val">${escapeHtml(periodLabel)}</span>
+                            </div>
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">Report Preset</span>
+                                <span class="print-meta-val">${escapeHtml(reportTypeStr)} Snapshot</span>
+                            </div>
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">System Source</span>
+                                <span class="print-meta-val">RMSME Authoritative PostgreSQL Database</span>
+                            </div>
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">Security Classification</span>
+                                <span class="print-meta-val">Confidential / Internal Operation Only</span>
+                            </div>
+                        </div>
+
+                        <!-- REPORT SECTIONS (MANAGER SUMMARY FIRST, CONTINUOUS STREAM) -->
+                        ${sectionsHtml}
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>
+                        <!-- PERMANENT SYSTEM CONTACT & OWNERSHIP FOOTER ON EVERY PAGE -->
+                        <div class="print-doc-footer">
+                            <div class="print-footer-top">
+                                <span>RMSME — Raw Material Stock Management &amp; Enterprise Forecasting System</span>
+                                <span>Document Ownership: RMSME Authorized Management</span>
+                            </div>
+                            <div class="print-footer-contact">
+                                <span>System Support: <strong>support@rmsme.internal</strong> | Helpline: <strong>(02) 8876-RMSME</strong></span>
+                                <span>Official System Generated Copy • Anti-Tamper Protected</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
     `;
 }
 

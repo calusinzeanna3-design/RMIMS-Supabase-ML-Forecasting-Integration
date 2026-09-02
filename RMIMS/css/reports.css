@@ -1315,61 +1315,107 @@
     height: auto !important;
     min-height: 100% !important;
     overflow: visible !important;
-    padding: 12px 20px !important;
+    padding: 10px 18px !important;
     background: #ffffff !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     margin: 0 auto !important;
-    position: relative !important;
+    position: static !important;
   }
 
-  /* Centered Watermark Overlay with System Logo & Brand */
+  /* Centered Watermark Overlay with System Logo & Slanted Brand Across Every Page */
   .print-watermark-overlay {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    user-select: none !important;
+    opacity: 0.11 !important;
+  }
+
+  .print-watermark-inner {
+    transform: rotate(-30deg);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    pointer-events: none;
-    z-index: 0;
-    user-select: none;
-    opacity: 0.10 !important;
     width: 90%;
-    max-width: 540px;
+    max-width: 680px;
   }
 
   .print-watermark-logo-img {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     object-fit: contain;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     filter: grayscale(100%);
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-watermark-title {
-    font-size: 28pt;
+    font-size: 34pt;
     font-weight: 900;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     color: #1e293b !important;
     text-transform: uppercase;
-    line-height: 1.1;
+    line-height: 1.05;
   }
 
   .print-watermark-sub {
-    font-size: 8.5pt;
+    font-size: 9.5pt;
     font-weight: 800;
-    letter-spacing: 0.26em;
-    color: #475569 !important;
+    letter-spacing: 0.24em;
+    color: #334155 !important;
+    text-transform: uppercase;
+    margin-top: 5px;
+    white-space: nowrap;
+  }
+
+  .print-watermark-tag {
+    font-size: 7.5pt;
+    font-weight: 800;
+    letter-spacing: 0.32em;
+    color: #64748b !important;
     text-transform: uppercase;
     margin-top: 4px;
     white-space: nowrap;
+  }
+
+  /* Table Wrapper to Guarantee Footer Appears on Every Printed Page */
+  .print-page-table-wrapper {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-page-table-wrapper > tbody > tr > td {
+    border: none !important;
+    padding: 0 !important;
+    vertical-align: top;
+  }
+
+  .print-page-table-wrapper > tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-page-table-wrapper > tfoot > tr > td {
+    border: none !important;
+    padding: 0 !important;
+    vertical-align: bottom;
   }
 
   /* Top Confidentiality Banner */

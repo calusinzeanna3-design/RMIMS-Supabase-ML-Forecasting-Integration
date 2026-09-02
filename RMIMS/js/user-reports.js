@@ -1887,268 +1887,284 @@ function updatePrintDocHtml() {
     const attentionStock = state.materials.filter(m => m.status !== "Good").length;
 
     let html = `
-        <!-- TOP CONFIDENTIAL BANNER -->
-        <div class="print-confidential-top">
-            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
-            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
-            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDate} ${genTime}</div>
-        </div>
-
-        <!-- FADED SYSTEM LOGO WATERMARK OVERLAY -->
+        <!-- FADED SYSTEM LOGO SLANTED WATERMARK OVERLAY (CENTERED ACROSS EVERY PAGE) -->
         <div class="print-watermark-overlay" aria-hidden="true">
-            <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
-            <div class="print-watermark-title">RMSME</div>
-            <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-            <div class="print-watermark-sub" style="font-size:7pt; margin-top:2px;">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
-        </div>
-
-        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
-        <div class="print-header-block">
-            <div class="print-logo-row">
-                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
-                <div class="print-system-info">
-                    <h1 class="print-rmims-title">RMSME</h1>
-                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-                </div>
-            </div>
-            <div class="print-doc-meta-right">
-                <div><strong>Generated:</strong> ${genDate} at ${genTime}</div>
-                <div><strong>Operator:</strong> ${esc(currentUser?.fullName || "RMSME Authorized Staff")}</div>
-                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
+            <div class="print-watermark-inner">
+                <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
+                <div class="print-watermark-title">RMSME</div>
+                <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                <div class="print-watermark-tag">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
             </div>
         </div>
 
-        <!-- REPORT TITLE & PERIOD RIBBON -->
-        <div class="print-doc-title-row">
-            <h2 class="print-doc-title">Operational Inventory &amp; Production Report</h2>
-            <span class="print-period-badge">${esc(periodLabel)}</span>
-        </div>
+        <!-- PRINT DOCUMENT TABLE WRAPPER (ENABLES FOOTER ON EVERY PAGE) -->
+        <table class="print-page-table-wrapper">
+            <tbody>
+                <tr>
+                    <td>
+                        <!-- TOP CONFIDENTIAL BANNER -->
+                        <div class="print-confidential-top">
+                            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
+                            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
+                            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDate} ${genTime}</div>
+                        </div>
 
-        <!-- METADATA CARD GRID -->
-        <div class="print-meta-grid-2col">
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">REPORT HORIZON</span>
-                <span class="print-meta-val">${esc(periodLabel)}</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">REPORT PRESET</span>
-                <span class="print-meta-val">${esc(reportTypeLabel)}</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">SECURITY CLASSIFICATION</span>
-                <span class="print-meta-val">Confidential / Internal Operation</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">DATA INTEGRITY</span>
-                <span class="print-meta-val">Verified PostgreSQL Ledger</span>
-            </div>
-        </div>
+                        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
+                        <div class="print-header-block">
+                            <div class="print-logo-row">
+                                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
+                                <div class="print-system-info">
+                                    <h1 class="print-rmims-title">RMSME</h1>
+                                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                                </div>
+                            </div>
+                            <div class="print-doc-meta-right">
+                                <div><strong>Generated:</strong> ${genDate} at ${genTime}</div>
+                                <div><strong>Operator:</strong> ${esc(currentUser?.fullName || "RMSME Authorized Staff")}</div>
+                                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
+                            </div>
+                        </div>
 
-        <!-- FIRST CARD: OPERATIONAL SUMMARY & OVERVIEW -->
-        <div class="print-section">
-            <div class="print-section-header-wrap">
-                <h3 class="print-section-header-green">1. Operational Summary &amp; Overview</h3>
-                <span class="print-source-pill">Source: Operational Summary Matrix</span>
-            </div>
-            
-            <div class="print-kpi-summary-grid">
-                <div class="print-kpi-box">
-                    <div class="print-kpi-box-lbl">TOTAL RAW MATERIALS</div>
-                    <div class="print-kpi-box-num">${state.materials.length}</div>
-                </div>
-                <div class="print-kpi-box">
-                    <div class="print-kpi-box-lbl">OPTIMAL STOCK</div>
-                    <div class="print-kpi-box-num" style="color: #059669;">${goodStock}</div>
-                </div>
-                <div class="print-kpi-box">
-                    <div class="print-kpi-box-lbl">NEEDS ATTENTION</div>
-                    <div class="print-kpi-box-num" style="color: #dc2626;">${attentionStock}</div>
-                </div>
-                <div class="print-kpi-box">
-                    <div class="print-kpi-box-lbl">RECEIVING LOGS</div>
-                    <div class="print-kpi-box-num">${periodReceipts.length}</div>
-                </div>
-            </div>
+                        <!-- REPORT TITLE & PERIOD RIBBON -->
+                        <div class="print-doc-title-row">
+                            <h2 class="print-doc-title">Operational Inventory &amp; Production Report</h2>
+                            <span class="print-period-badge">${esc(periodLabel)}</span>
+                        </div>
 
-            <h4 class="print-subsection-title">Operational Health Matrix</h4>
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th style="width: 60%;">Metric / Dimension</th>
-                        <th style="width: 40%;">Value / Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Total Active Catalog Materials</td>
-                        <td><strong>${state.materials.length} items</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Materials at Optimal / Good Stock</td>
-                        <td><strong style="color: #059669;">${goodStock} items</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Materials Requiring Reorder / Attention</td>
-                        <td><strong style="color: ${attentionStock > 0 ? '#dc2626' : '#059669'};">${attentionStock} items</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Material Receipts in Selected Horizon</td>
-                        <td><strong>${periodReceipts.length} recorded transactions</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Production Disbursements in Selected Horizon</td>
-                        <td><strong>${periodDisbursements.length} recorded transactions</strong></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                        <!-- METADATA CARD GRID -->
+                        <div class="print-meta-grid-2col">
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">REPORT HORIZON</span>
+                                <span class="print-meta-val">${esc(periodLabel)}</span>
+                            </div>
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">REPORT PRESET</span>
+                                <span class="print-meta-val">${esc(reportTypeLabel)}</span>
+                            </div>
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">SECURITY CLASSIFICATION</span>
+                                <span class="print-meta-val">Confidential / Internal Operation</span>
+                            </div>
+                            <div class="print-meta-item">
+                                <span class="print-meta-lbl">DATA INTEGRITY</span>
+                                <span class="print-meta-val">Verified PostgreSQL Ledger</span>
+                            </div>
+                        </div>
 
-        <!-- SECTION 2: RAW MATERIAL RECEIVING -->
-        <div class="print-section">
-            <div class="print-section-header-wrap">
-                <h3 class="print-section-header-green">2. Material Receiving Log</h3>
-                <span class="print-source-pill">Source: stock_receipts Inbound Records</span>
-            </div>
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th>Receipt Date</th>
-                        <th>Raw Material</th>
-                        <th>Item Code</th>
-                        <th>Received Qty</th>
-                        <th>Unit</th>
-                        <th>Supplier / Source</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${periodReceipts.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:8px;">No material receiving records recorded in this period.</td></tr>` : 
-                    periodReceipts.map(r => `
-                        <tr>
-                            <td>${esc(r.receiptDate)}</td>
-                            <td><strong>${esc(r.materialName)}</strong></td>
-                            <td>${esc(r.itemCode)}</td>
-                            <td>+${r.receivedQuantity}</td>
-                            <td>${esc(r.unit)}</td>
-                            <td>${esc(r.supplierName || r.finishedProduct || "General Stock")}</td>
-                            <td>${esc(r.status || "Verified")}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        </div>
+                        <!-- FIRST CARD: OPERATIONAL SUMMARY & OVERVIEW -->
+                        <div class="print-section">
+                            <div class="print-section-header-wrap">
+                                <h3 class="print-section-header-green">1. Operational Summary &amp; Overview</h3>
+                                <span class="print-source-pill">Source: Operational Summary Matrix</span>
+                            </div>
+                            
+                            <div class="print-kpi-summary-grid">
+                                <div class="print-kpi-box">
+                                    <div class="print-kpi-box-lbl">TOTAL RAW MATERIALS</div>
+                                    <div class="print-kpi-box-num">${state.materials.length}</div>
+                                </div>
+                                <div class="print-kpi-box">
+                                    <div class="print-kpi-box-lbl">OPTIMAL STOCK</div>
+                                    <div class="print-kpi-box-num" style="color: #059669;">${goodStock}</div>
+                                </div>
+                                <div class="print-kpi-box">
+                                    <div class="print-kpi-box-lbl">NEEDS ATTENTION</div>
+                                    <div class="print-kpi-box-num" style="color: #dc2626;">${attentionStock}</div>
+                                </div>
+                                <div class="print-kpi-box">
+                                    <div class="print-kpi-box-lbl">RECEIVING LOGS</div>
+                                    <div class="print-kpi-box-num">${periodReceipts.length}</div>
+                                </div>
+                            </div>
 
-        <!-- SECTION 3: MATERIAL DISBURSEMENT -->
-        <div class="print-section">
-            <div class="print-section-header-wrap">
-                <h3 class="print-section-header-green">3. Material Disbursement Log</h3>
-                <span class="print-source-pill">Source: material_disbursements Production Issue Ledger</span>
-            </div>
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th>Usage Date</th>
-                        <th>Target Product / Context</th>
-                        <th>Raw Material</th>
-                        <th>Item Code</th>
-                        <th>Disbursed Qty</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No material disbursements recorded in this period.</td></tr>` :
-                    periodDisbursements.map(d => `
-                        <tr>
-                            <td>${esc(d.usageDate)}</td>
-                            <td><strong>${esc(d.finishedProduct || "General Production")}</strong></td>
-                            <td>${esc(d.materialName)}</td>
-                            <td>${esc(d.itemCode)}</td>
-                            <td>-${d.disbursedQuantity} ${esc(d.unit)}</td>
-                            <td>${esc(d.status || "Recorded")}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        </div>
+                            <h4 class="print-subsection-title">Operational Health Matrix</h4>
+                            <table class="print-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60%;">Metric / Dimension</th>
+                                        <th style="width: 40%;">Value / Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Total Active Catalog Materials</td>
+                                        <td><strong>${state.materials.length} items</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Materials at Optimal / Good Stock</td>
+                                        <td><strong style="color: #059669;">${goodStock} items</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Materials Requiring Reorder / Attention</td>
+                                        <td><strong style="color: ${attentionStock > 0 ? '#dc2626' : '#059669'};">${attentionStock} items</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Material Receipts in Selected Horizon</td>
+                                        <td><strong>${periodReceipts.length} recorded transactions</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Production Disbursements in Selected Horizon</td>
+                                        <td><strong>${periodDisbursements.length} recorded transactions</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
-        <!-- SECTION 4: CONSUMPTION ANALYSIS -->
-        <div class="print-section">
-            <div class="print-section-header-wrap">
-                <h3 class="print-section-header-green">4. Raw Material Consumption Analysis</h3>
-                <span class="print-source-pill">Source: Period Usage vs Catalog Health</span>
-            </div>
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th>Raw Material</th>
-                        <th>Item Code</th>
-                        <th>Current Stock</th>
-                        <th>Period Consumed</th>
-                        <th>Stock Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${state.materials.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:8px;">No catalog raw materials registered.</td></tr>` :
-                    state.materials.map(m => {
-                        const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((sum, d) => sum + d.disbursedQuantity, 0);
-                        return `
-                            <tr>
-                                <td><strong>${esc(m.name)}</strong></td>
-                                <td>${esc(m.itemCode)}</td>
-                                <td>${m.currentStock.toLocaleString()} ${esc(m.unit)}</td>
-                                <td>${consumed.toLocaleString()} ${esc(m.unit)}</td>
-                                <td><span style="font-weight:600; color:${m.status === 'Critical' ? '#dc2626' : (m.status === 'Low' ? '#d97706' : '#059669')};">${esc(m.status)}</span></td>
-                            </tr>
-                        `;
-                    }).join("")}
-                </tbody>
-            </table>
-        </div>
+                        <!-- SECTION 2: RAW MATERIAL RECEIVING -->
+                        <div class="print-section">
+                            <div class="print-section-header-wrap">
+                                <h3 class="print-section-header-green">2. Material Receiving Log</h3>
+                                <span class="print-source-pill">Source: stock_receipts Inbound Records</span>
+                            </div>
+                            <table class="print-table">
+                                <thead>
+                                    <tr>
+                                        <th>Receipt Date</th>
+                                        <th>Raw Material</th>
+                                        <th>Item Code</th>
+                                        <th>Received Qty</th>
+                                        <th>Unit</th>
+                                        <th>Supplier / Source</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${periodReceipts.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:8px;">No material receiving records recorded in this period.</td></tr>` : 
+                                    periodReceipts.map(r => `
+                                        <tr>
+                                            <td>${esc(r.receiptDate)}</td>
+                                            <td><strong>${esc(r.materialName)}</strong></td>
+                                            <td>${esc(r.itemCode)}</td>
+                                            <td>+${r.receivedQuantity}</td>
+                                            <td>${esc(r.unit)}</td>
+                                            <td>${esc(r.supplierName || r.finishedProduct || "General Stock")}</td>
+                                            <td>${esc(r.status || "Verified")}</td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
 
-        <!-- SECTION 5: AI FORECAST PROJECTIONS -->
-        <div class="print-section">
-            <div class="print-section-header-wrap">
-                <h3 class="print-section-header-green">5. AI Forecast Projections &amp; Requirement Needs</h3>
-                <span class="print-source-pill">Source: AI Demand Forecasting Engine</span>
-            </div>
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th>Raw Material</th>
-                        <th>Item Code</th>
-                        <th>Current Stock</th>
-                        <th>Forecast Requirement (7D)</th>
-                        <th>Additional Needed</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${state.forecastList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No AI forecast projections recorded.</td></tr>` :
-                    state.forecastList.map(f => `
-                        <tr>
-                            <td><strong>${esc(f.name)}</strong></td>
-                            <td>${esc(f.itemCode)}</td>
-                            <td>${f.currentStock.toLocaleString()} ${esc(f.unit)}</td>
-                            <td>${f.forecast7Day.toFixed(1)} ${esc(f.unit)}</td>
-                            <td>${f.additionalNeed > 0 ? `+${f.additionalNeed.toFixed(1)} ${esc(f.unit)}` : "0"}</td>
-                            <td>${esc(f.status || "Projected")}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        </div>
+                        <!-- SECTION 3: MATERIAL DISBURSEMENT -->
+                        <div class="print-section">
+                            <div class="print-section-header-wrap">
+                                <h3 class="print-section-header-green">3. Material Disbursement Log</h3>
+                                <span class="print-source-pill">Source: material_disbursements Production Issue Ledger</span>
+                            </div>
+                            <table class="print-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usage Date</th>
+                                        <th>Target Product / Context</th>
+                                        <th>Raw Material</th>
+                                        <th>Item Code</th>
+                                        <th>Disbursed Qty</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No material disbursements recorded in this period.</td></tr>` :
+                                    periodDisbursements.map(d => `
+                                        <tr>
+                                            <td>${esc(d.usageDate)}</td>
+                                            <td><strong>${esc(d.finishedProduct || "General Production")}</strong></td>
+                                            <td>${esc(d.materialName)}</td>
+                                            <td>${esc(d.itemCode)}</td>
+                                            <td>-${d.disbursedQuantity} ${esc(d.unit)}</td>
+                                            <td>${esc(d.status || "Recorded")}</td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
 
-        <!-- Bottom System Ownership & Contact Footer -->
-        <div class="print-doc-footer">
-            <div class="print-footer-top">
-                <span>RMSME — RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</span>
-                <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM DOCUMENT</span>
-            </div>
-            <div class="print-footer-contact">
-                <span>System Support: <strong>support@rmsme.internal</strong> | Hotline: <strong>(02) 8876-RMSME</strong></span>
-                <span>Official System Generated Copy • Anti-Tamper Protected</span>
-            </div>
-        </div>
+                        <!-- SECTION 4: CONSUMPTION ANALYSIS -->
+                        <div class="print-section">
+                            <div class="print-section-header-wrap">
+                                <h3 class="print-section-header-green">4. Raw Material Consumption Analysis</h3>
+                                <span class="print-source-pill">Source: Period Usage vs Catalog Health</span>
+                            </div>
+                            <table class="print-table">
+                                <thead>
+                                    <tr>
+                                        <th>Raw Material</th>
+                                        <th>Item Code</th>
+                                        <th>Current Stock</th>
+                                        <th>Period Consumed</th>
+                                        <th>Stock Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.materials.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:8px;">No catalog raw materials registered.</td></tr>` :
+                                    state.materials.map(m => {
+                                        const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((sum, d) => sum + d.disbursedQuantity, 0);
+                                        return `
+                                            <tr>
+                                                <td><strong>${esc(m.name)}</strong></td>
+                                                <td>${esc(m.itemCode)}</td>
+                                                <td>${m.currentStock.toLocaleString()} ${esc(m.unit)}</td>
+                                                <td>${consumed.toLocaleString()} ${esc(m.unit)}</td>
+                                                <td><span style="font-weight:600; color:${m.status === 'Critical' ? '#dc2626' : (m.status === 'Low' ? '#d97706' : '#059669')};">${esc(m.status)}</span></td>
+                                            </tr>
+                                        `;
+                                    }).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SECTION 5: AI FORECAST PROJECTIONS -->
+                        <div class="print-section">
+                            <div class="print-section-header-wrap">
+                                <h3 class="print-section-header-green">5. AI Forecast Projections &amp; Requirement Needs</h3>
+                                <span class="print-source-pill">Source: AI Demand Forecasting Engine</span>
+                            </div>
+                            <table class="print-table">
+                                <thead>
+                                    <tr>
+                                        <th>Raw Material</th>
+                                        <th>Item Code</th>
+                                        <th>Current Stock</th>
+                                        <th>Forecast Requirement (7D)</th>
+                                        <th>Additional Needed</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${state.forecastList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No AI forecast projections recorded.</td></tr>` :
+                                    state.forecastList.map(f => `
+                                        <tr>
+                                            <td><strong>${esc(f.name)}</strong></td>
+                                            <td>${esc(f.itemCode)}</td>
+                                            <td>${f.currentStock.toLocaleString()} ${esc(f.unit)}</td>
+                                            <td>${f.forecast7Day.toFixed(1)} ${esc(f.unit)}</td>
+                                            <td>${f.additionalNeed > 0 ? `+${f.additionalNeed.toFixed(1)} ${esc(f.unit)}` : "0"}</td>
+                                            <td>${esc(f.status || "Projected")}</td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>
+                        <!-- Bottom System Ownership & Contact Footer on Every Page -->
+                        <div class="print-doc-footer">
+                            <div class="print-footer-top">
+                                <span>RMSME — RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</span>
+                                <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM DOCUMENT</span>
+                            </div>
+                            <div class="print-footer-contact">
+                                <span>System Support: <strong>support@rmsme.internal</strong> | Helpline: <strong>(02) 8876-RMSME</strong></span>
+                                <span>Official System Generated Copy • Anti-Tamper Protected</span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
     `;
 
     printDoc.innerHTML = html;
