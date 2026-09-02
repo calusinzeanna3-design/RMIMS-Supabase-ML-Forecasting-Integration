@@ -1665,47 +1665,26 @@ async function renderRawMaterialsTrendChart() {
     });
   }
 
-  // Calculate Dynamic Prediction Interval (Margin of Error) enveloping actual data & future requirements
-  const validActuals = consumedData.filter(v => v !== null && v > 0);
-  const avgVal = validActuals.length > 0 ? validActuals.reduce((a, b) => a + b, 0) / validActuals.length : 2000;
-  const residuals = consumedData.map((val, idx) => {
-    if (val === null || val === undefined) return 0;
-    const fVal = forecastData[idx];
-    return fVal ? Math.abs(val - fVal) : 0;
-  });
-  const maxResidual = Math.max(...residuals, 1);
-  const empiricalMarginPct = Math.min(22.5, Math.max(16.5, (maxResidual / avgVal) * 100 * 1.05));
-  const marginFactor = empiricalMarginPct / 100;
-  const marginLabelStr = `Margin Error (±${empiricalMarginPct.toFixed(1)}%)`;
+  // Calculate Locked Model Acceptance Margin (±7.51%) Bands around Forecast Model
+  const LOCKED_MARGIN_FACTOR = 0.0751; // 7.51% strictly locked
+  const marginLabelStr = "Margin Error (±7.51%)";
 
-  // Envelope bounds around both actual usage and forecast projection
-  const marginUpperData = forecastData.map((f, idx) => {
-    if (f === null || f === undefined) return null;
-    const actual = consumedData[idx];
-    const upperAnchor = actual !== null && actual !== undefined ? Math.max(f, actual) : f;
-    return Number((upperAnchor * (1 + marginFactor * 0.40) + (avgVal * marginFactor * 0.60)).toFixed(2));
-  });
-
-  const marginLowerData = forecastData.map((f, idx) => {
-    if (f === null || f === undefined) return null;
-    const actual = consumedData[idx];
-    const lowerAnchor = actual !== null && actual !== undefined ? Math.min(f, actual) : f;
-    return Math.max(0, Number((lowerAnchor * (1 - marginFactor * 0.40) - (avgVal * marginFactor * 0.15)).toFixed(2)));
-  });
+  const marginUpperData = forecastData.map(f => f !== null && f !== undefined ? Number((f * (1 + LOCKED_MARGIN_FACTOR)).toFixed(2)) : null);
+  const marginLowerData = forecastData.map(f => f !== null && f !== undefined ? Number((f * (1 - LOCKED_MARGIN_FACTOR)).toFixed(2)) : null);
 
   // Actionable Procurement & Requirement Meta Insight
   const metaEl = $("trendFooterMeta");
   if (metaEl) {
     if (currentTrendGranularity === "daily") {
       const next7Sum = forecastData.slice(-7).reduce((a, b) => a + b, 0);
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📦 7-Day Material Requirement: ~${Math.round(next7Sum).toLocaleString()} ${primaryUnit}</span> <span style="color:#64748B; margin-left:8px;">(Projected ${labels[labels.length-7]} to ${labels[labels.length-1]} • Minimum Safety Stock Buffer: ±${empiricalMarginPct.toFixed(1)}%)</span>`;
+      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📦 7-Day Material Requirement: ~${Math.round(next7Sum).toLocaleString()} ${primaryUnit}</span> <span style="color:#64748B; margin-left:8px;">(Projected ${labels[labels.length-7]} to ${labels[labels.length-1]} • Locked Model Margin: ±7.51%)</span>`;
     } else if (currentTrendGranularity === "weekly") {
       const next4Sum = forecastData.slice(-4).reduce((a, b) => a + b, 0);
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📦 4-Week Procurement Forecast: ~${Math.round(next4Sum).toLocaleString()} ${primaryUnit}</span> <span style="color:#64748B; margin-left:8px;">(Estimated Velocity for W36–W39 • Safe Margin: ±${empiricalMarginPct.toFixed(1)}%)</span>`;
+      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📦 4-Week Procurement Forecast: ~${Math.round(next4Sum).toLocaleString()} ${primaryUnit}</span> <span style="color:#64748B; margin-left:8px;">(Estimated Velocity for W36–W39 • Locked Model Margin: ±7.51%)</span>`;
     } else if (currentTrendGranularity === "yearly") {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Production Expansion</span> <span style="color:#64748B; margin-left:8px;">(2026 Full-Year Projected Total: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit})</span>`;
+      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Production Expansion</span> <span style="color:#64748B; margin-left:8px;">(2026 Full-Year Projected Total: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit} • Margin: ±7.51%)</span>`;
     } else {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📦 Q4 Holiday Requirement Forecast: Oct–Dec 2026</span> <span style="color:#64748B; margin-left:8px;">(Anticipating +28% Peak Holiday Pasalubong Demand • Safe Tolerance: ±${empiricalMarginPct.toFixed(1)}%)</span>`;
+      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📦 Q4 Holiday Requirement Forecast: Oct–Dec 2026</span> <span style="color:#64748B; margin-left:8px;">(Anticipating +28% Peak Holiday Pasalubong Demand • Locked Model Margin: ±7.51%)</span>`;
     }
   }
 
