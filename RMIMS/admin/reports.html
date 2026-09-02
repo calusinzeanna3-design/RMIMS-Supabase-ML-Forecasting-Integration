@@ -47,23 +47,40 @@
         </header>
 
         <!-- REPORTS ON-SCREEN WORKSPACE -->
-        <div class="rpt-workspace-wrap">
-            
-            <!-- PAGE HEADER -->
-            <div class="rpt-page-header">
-                <div>
-                    <h1 class="rpt-page-title">Reports &amp; Decision Support</h1>
-                    <p class="rpt-page-subtitle">Generate comprehensive inventory, material receiving, disbursement, and consumption reports.</p>
-                </div>
+        <!-- PAGE TITLE + PRIMARY ACTIONS -->
+        <div class="page-title">
+            <div class="page-title-text">
+                <h1>Reports &amp; Decision Support</h1>
+                <p>Generate comprehensive inventory, material receiving, disbursement, and consumption reports.</p>
             </div>
 
-            <!-- TOP CONTROLS & REPORT ACTIONS BAR -->
-            <section class="rpt-control-card" aria-label="Report Parameters and Actions">
+            <div class="page-actions">
+                <button id="btnSaveAs" class="btn-primary" title="Save or Export Report Package">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    Save As
+                </button>
+
+                <button id="btnPrint" class="btn-secondary" title="Print Report Document">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    Print
+                </button>
+
+                <button id="generateReportBtn" class="btn-icon-only" title="Refresh Live Data">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- REPORTS ON-SCREEN WORKSPACE -->
+        <div class="rpt-workspace-wrap">
+
+            <!-- FILTER TOOLBAR (INVENTORY DESIGN) -->
+            <section class="rpt-control-card" aria-label="Report Parameters and Filters">
                 <div class="rpt-control-left">
                     <!-- Period Preset Selector -->
                     <div class="rpt-control-group">
-                        <label class="rpt-control-label" for="reportPeriodPreset">Period</label>
-                        <select class="rpt-select" id="reportPeriodPreset">
+                        <label class="filter-label" for="reportPeriodPreset">Period:</label>
+                        <select class="inv-select" id="reportPeriodPreset" title="Select Report Period">
                             <option value="weekly" selected>Weekly (Last 7 Days)</option>
                             <option value="monthly">Monthly (Last 30 Days)</option>
                             <option value="today">Latest Update Day</option>
@@ -72,48 +89,30 @@
                         </select>
                     </div>
 
-                    <!-- Date Range Inputs -->
+                    <!-- Modern Inventory Date Range Picker -->
                     <div class="rpt-control-group" id="rptDateRangeGroup">
-                        <label class="rpt-control-label">Date Range</label>
-                        <div class="rpt-date-range-wrap">
-                            <input type="date" class="rpt-input" id="rptStartDate" aria-label="Report Start Date"/>
-                            <span class="rpt-range-sep">→</span>
-                            <input type="date" class="rpt-input" id="rptEndDate" aria-label="Report End Date"/>
+                        <div class="inv-date-range-wrap">
+                            <label for="rptStartDate" class="filter-label">From:</label>
+                            <input type="date" class="inv-input-date" id="rptStartDate" title="Report Start Date"/>
+                            <label for="rptEndDate" class="filter-label">To:</label>
+                            <input type="date" class="inv-input-date" id="rptEndDate" title="Report End Date"/>
                         </div>
                     </div>
-
-                    <!-- Generate / Refresh Action -->
-                    <button type="button" class="rpt-btn-generate" id="generateReportBtn">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <span>Update Report</span>
-                    </button>
                 </div>
 
-                <!-- 2 MAIN REPORT ACTIONS (TOP ONLY) -->
-                <div class="rpt-control-right">
-                    <button type="button" class="rpt-btn-action rpt-btn-save" id="btnSaveAs">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                        <span>Save As</span>
-                    </button>
-                    <button type="button" class="rpt-btn-action rpt-btn-print" id="btnPrint">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                        <span>Print</span>
-                    </button>
+                <!-- METADATA SUB-BAR -->
+                <div class="rpt-meta-bar">
+                    <div>
+                        <span class="rpt-meta-item"><strong>Report Period:</strong> <span id="metaPeriodLabel">Loading...</span></span>
+                        <span class="rpt-meta-sep">•</span>
+                        <span class="rpt-meta-item"><strong>Generated:</strong> <span id="metaGeneratedTime">—</span></span>
+                    </div>
+                    <div class="rpt-status-pill">
+                        <span class="rpt-status-dot"></span>
+                        <span>Live Supabase Connected</span>
+                    </div>
                 </div>
             </section>
-
-            <!-- METADATA SUB-BAR -->
-            <div class="rpt-meta-bar">
-                <div>
-                    <span class="rpt-meta-item"><strong>Report Period:</strong> <span id="metaPeriodLabel">Loading...</span></span>
-                    <span class="rpt-meta-sep">•</span>
-                    <span class="rpt-meta-item"><strong>Generated:</strong> <span id="metaGeneratedTime">—</span></span>
-                </div>
-                <div class="rpt-status-pill">
-                    <span class="rpt-status-dot"></span>
-                    <span>Live Supabase Connected</span>
-                </div>
-            </div>
 
             <!-- UNIFIED REPORT WORKSPACE (MULTIPLE TABS) -->
             <section class="rpt-workspace-card" aria-label="Report Workspace">
@@ -168,6 +167,37 @@
                                 <span class="rpt-kpi-label">Period Activity Records</span>
                                 <h3 class="rpt-kpi-val text-blue" id="mgrPeriodActivities">0</h3>
                                 <span class="rpt-kpi-sub">Receipts + Disbursements</span>
+                            </div>
+                        </div>
+
+                        <!-- Manager Visual Analytics Row -->
+                        <div class="rpt-charts-row">
+                            <!-- Chart 1: Stock Health Breakdown (Doughnut) -->
+                            <div class="rpt-chart-card">
+                                <div class="rpt-chart-header">
+                                    <div>
+                                        <h4 class="rpt-chart-title">Stock Health Breakdown</h4>
+                                        <p class="rpt-chart-sub">Materials categorized by threshold health</p>
+                                    </div>
+                                    <span class="rpt-chart-badge" id="stockHealthTotalBadge">0 Materials</span>
+                                </div>
+                                <div class="rpt-chart-body">
+                                    <canvas id="stockHealthChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Chart 2: Top Consumed Materials (Horizontal Bar) -->
+                            <div class="rpt-chart-card">
+                                <div class="rpt-chart-header">
+                                    <div>
+                                        <h4 class="rpt-chart-title">Top Consumed Raw Materials</h4>
+                                        <p class="rpt-chart-sub">Most utilized materials in selected period</p>
+                                    </div>
+                                    <span class="rpt-chart-badge" id="topConsumedTotalBadge">Period Usage</span>
+                                </div>
+                                <div class="rpt-chart-body">
+                                    <canvas id="topConsumedChart"></canvas>
+                                </div>
                             </div>
                         </div>
 
@@ -439,7 +469,6 @@
                                         <th>Forecast Requirement</th>
                                         <th>Additional Stock Needed</th>
                                         <th>Status</th>
-                                        <th style="text-align:right;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="fcTableBody">
@@ -469,33 +498,6 @@
         </div>
 
     </main>
-<!-- ===================================================
-     MATERIAL DETAIL BREAKDOWN MODAL
-     =================================================== -->
-<div class="rpt-modal-overlay" id="fcDetailModalOverlay">
-    <div class="rpt-modal-sheet" style="max-width: 580px;">
-        <div class="rpt-modal-header">
-            <div class="rpt-modal-header-info">
-                <div class="rpt-modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-7-7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13 2v7h7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                </div>
-                <div>
-                    <h3 class="rpt-modal-title" id="fcDetailMaterialName">Raw Material Breakdown</h3>
-                    <span class="rpt-modal-sub" id="fcDetailItemCode">Item Code: RM—</span>
-                </div>
-            </div>
-            <button type="button" class="rpt-modal-close" id="fcDetailCloseBtn" aria-label="Close modal">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-        </div>
-        <div class="rpt-modal-body" id="fcDetailBody">
-            <!-- Populated via JS -->
-        </div>
-        <div class="rpt-modal-footer">
-            <button type="button" class="rpt-btn-primary" id="fcDetailDismissBtn">Close Breakdown</button>
-        </div>
-    </div>
-</div>
 
 <!-- ===================================================
      SAVE AS / EXPORT MODAL
@@ -601,6 +603,7 @@
 <div class="toast-stack" id="toastStack"></div>
 
 <!-- LIBRARIES -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>

@@ -79,6 +79,7 @@ const state = {
     periodPreset: "weekly", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
     startDate: null,
     endDate: null,
+    latestDataDate: null,
     generatedAt: null,
     
     // Active Screen Tab
@@ -132,25 +133,24 @@ function initPeriodDates() {
 }
 
 function setPeriodPresetDates(preset) {
-    const now = new Date();
-    const todayStr = formatDateISO(now);
+    const anchor = state.latestDataDate ? new Date(state.latestDataDate) : new Date();
 
     if (preset === "today") {
-        state.startDate = parseDateOnly(todayStr);
-        state.endDate = parseDateOnly(todayStr);
+        state.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+        state.endDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
     } else if (preset === "weekly") {
-        const start = startOfWeek(now);
-        const end = addDays(start, 6);
+        const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+        const start = addDays(end, -6);
         state.startDate = start;
         state.endDate = end;
     } else if (preset === "monthly") {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+        const start = addDays(end, -29);
         state.startDate = start;
         state.endDate = end;
     } else if (preset === "all") {
         state.startDate = new Date(2020, 0, 1);
-        state.endDate = new Date(now.getFullYear() + 1, 11, 31);
+        state.endDate = new Date(anchor.getFullYear() + 1, 11, 31);
     }
 
     const startInput = $("rptStartDate");
@@ -311,7 +311,25 @@ async function loadAuthoritativeData() {
             };
         });
 
-        // Fetch Authoritative AI Forecast Data
+        // Compute Latest Recorded Data Date
+        let maxDateStr = "";
+        state.receipts.forEach(r => {
+            if (r.receiptDate && r.receiptDate > maxDateStr) maxDateStr = r.receiptDate;
+        });
+        state.disbursements.forEach(d => {
+            if (d.usageDate && d.usageDate > maxDateStr) maxDateStr = d.usageDate;
+        });
+
+        if (maxDateStr) {
+            state.latestDataDate = parseDateOnly(maxDateStr);
+        } else {
+            state.latestDataDate = new Date();
+        }
+
+        // Re-anchor period presets
+        setPeriodPresetDates(state.periodPreset);
+
+        // Fetch Authoritative AI Forecast Data (Staged as blanks)
         await loadAuthoritativeForecasts();
 
         // Mark report generation timestamp
@@ -326,85 +344,27 @@ async function loadAuthoritativeData() {
 }
 
 async function loadAuthoritativeForecasts() {
-    try {
-        state.forecastMap.clear();
-        state.forecastList = [];
+    state.forecastMap.clear();
+    state.forecastList = [];
 
-        let payload = null;
+    state.materials.forEach(mat => {
+        const item = {
+            name: mat.name,
+            itemCode: mat.itemCode,
+            unit: mat.unit,
+            currentStock: mat.currentStock,
+            forecast7Day: null,
+            additionalNeed: null,
+            status: "—",
+            interpretation: "AI time-series demand forecasting module is currently in development."
+        };
 
-        // Try direct Flask API endpoint
-        try {
-            const resp = await fetch("http://127.0.0.1:5000/api/forecast");
-            if (resp.ok) {
-                payload = await resp.json();
-            }
-        } catch (_) {
-            // fallback to Supabase stored forecast runs
-        }
+        state.forecastList.push(item);
+        state.forecastMap.set(mat.name.toLowerCase(), item);
+    });
 
-        if (!payload || !payload.results || payload.results.length === 0) {
-            // Attempt to query ml_forecast_runs / predictions from Supabase
-            const { data: runData } = await supabase
-                .from("ml_forecast_runs")
-                .select("id, created_at, status, forecast_horizon_days, total_predicted_demand, raw_material_predictions")
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (runData && runData.raw_material_predictions) {
-                payload = {
-                    timestamp: runData.created_at,
-                    status: runData.status,
-                    results: runData.raw_material_predictions
-                };
-            }
-        }
-
-        if (payload && payload.results && Array.isArray(payload.results)) {
-            state.lastForecastTimestamp = payload.timestamp || new Date().toISOString();
-            state.forecastStatusText = payload.status || "Forecast Ready";
-
-            const matMap = new Map(state.materials.map(m => [m.name.toLowerCase(), m]));
-
-            payload.results.forEach(res => {
-                const matName = res.material_name || res.raw_material || "";
-                const mat = matMap.get(matName.toLowerCase());
-                const curStock = mat ? mat.currentStock : Number(res.current_stock || 0);
-                const unit = (mat ? mat.unit : res.unit || "kg").trim();
-                const itemCode = mat ? mat.itemCode : "RM—";
-                
-                const f7 = Number(res.forecast_7day_quantity || res.predicted_requirement_7d || res.predicted_demand || 0);
-                const add7 = Math.max(0, f7 - curStock);
-
-                let status = "Sufficient Stock";
-                let interpretation = `Current stock (${curStock.toLocaleString()} ${unit}) is sufficient to cover projected 7-day requirements (${f7.toFixed(1)} ${unit}).`;
-
-                if (curStock <= 0) {
-                    status = "Critical Shortage";
-                    interpretation = `Immediate stockout! Additional ${f7.toFixed(1)} ${unit} is urgently required for upcoming demand.`;
-                } else if (add7 > 0) {
-                    status = "Attention Needed";
-                    interpretation = `Potential shortage detected. Projected 7-day requirement exceeds current inventory by ${add7.toFixed(1)} ${unit}.`;
-                }
-
-                const item = {
-                    name: matName,
-                    itemCode: itemCode,
-                    unit: unit,
-                    currentStock: curStock,
-                    forecast7Day: f7,
-                    additionalNeed: add7,
-                    status: status,
-                    interpretation: interpretation
-                };
-
-                state.forecastList.push(item);
-                state.forecastMap.set(matName.toLowerCase(), item);
-            });
-        }
-    } catch (err) {
-        console.warn("Forecast support loading notice:", err);
-    }
+    state.lastForecastTimestamp = null;
+    state.forecastStatusText = "Awaiting ML Integration";
 }
 
 /* ==========================================================
@@ -422,8 +382,10 @@ function openSaveModal() {
 
     const reportNameInput = $("saveModalReportName");
     if (reportNameInput) {
-        const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : "Operational");
-        reportNameInput.value = `RMIMS_User_${pTag}_Report_${formatDateISO(state.startDate || new Date())}`;
+        const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : (state.periodPreset === "today" ? "Today" : "Operational"));
+        const startStr = state.startDate ? formatDateISO(state.startDate) : "";
+        const endStr = state.endDate ? formatDateISO(state.endDate) : "";
+        reportNameInput.value = `RMIMS_${pTag}_Report_${startStr}_to_${endStr}`;
     }
 
     saveOverlay.classList.add("open");
@@ -1032,26 +994,15 @@ function renderTabForecasting() {
     }
 
     tbody.innerHTML = filtered.map(f => {
-        let statusBadge = `<span class="status-pill status-good">Sufficient Stock</span>`;
-        if (f.status.includes("Critical")) {
-            statusBadge = `<span class="status-pill status-red">Critical Shortage</span>`;
-        } else if (f.status.includes("Attention")) {
-            statusBadge = `<span class="status-pill status-orange">Attention Needed</span>`;
-        }
-
-        const addNeedHtml = f.additionalNeed > 0 
-            ? `<span class="text-red font-bold">+${f.additionalNeed.toFixed(1)} ${esc(f.unit)}</span>` 
-            : `<span style="color:#64748b;">0 ${esc(f.unit)}</span>`;
-
         return `
             <tr>
                 <td><strong>${esc(f.name)}</strong></td>
                 <td><span class="rpt-code-badge">${esc(f.itemCode)}</span></td>
                 <td><span style="font-weight:600; color:#475569;">Next 7 Days</span></td>
                 <td><strong>${f.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(f.unit)}</small></td>
-                <td><strong class="text-blue">${f.forecast7Day.toFixed(1)}</strong> <small style="color:#64748b;">${esc(f.unit)}</small></td>
-                <td>${addNeedHtml}</td>
-                <td>${statusBadge}</td>
+                <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
+                <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
+                <td><span class="status-pill status-neutral">—</span></td>
                 <td><span style="font-size:0.8rem; color:#475569;">${esc(f.interpretation)}</span></td>
             </tr>
         `;

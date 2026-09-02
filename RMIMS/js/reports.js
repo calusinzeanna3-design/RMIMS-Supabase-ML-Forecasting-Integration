@@ -546,6 +546,145 @@ function renderManagerSummaryTab() {
             `).join("");
         }
     }
+
+    // Render Visual Charts
+    renderManagerCharts();
+}
+
+let stockHealthChartInstance = null;
+let topConsumedChartInstance = null;
+
+function renderManagerCharts() {
+    if (typeof Chart === "undefined") return;
+
+    // 1. Stock Health Breakdown Chart (Doughnut)
+    const stockHealthCanvas = document.getElementById("stockHealthChart");
+    if (stockHealthCanvas) {
+        const goodCount = state.materials.filter(m => m.status === "Good").length;
+        const lowCount = state.materials.filter(m => m.status === "Low").length;
+        const criticalCount = state.materials.filter(m => m.status === "Critical").length;
+        const totalMats = state.materials.length;
+
+        const badge = document.getElementById("stockHealthTotalBadge");
+        if (badge) badge.textContent = `${totalMats} Materials`;
+
+        if (stockHealthChartInstance) {
+            stockHealthChartInstance.destroy();
+            stockHealthChartInstance = null;
+        }
+
+        const ctx = stockHealthCanvas.getContext("2d");
+        stockHealthChartInstance = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels: ["Sufficient (Good)", "Low Buffer", "Critical Threshold"],
+                datasets: [{
+                    data: [goodCount, lowCount, criticalCount],
+                    backgroundColor: [
+                        "#16803c", // emerald green
+                        "#f59e0b", // amber/orange
+                        "#dc2626"  // red
+                    ],
+                    borderWidth: 2,
+                    borderColor: "#ffffff"
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "right",
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 11, weight: "600" },
+                            color: "#334155"
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.raw || 0;
+                                const pct = totalMats > 0 ? ((val / totalMats) * 100).toFixed(1) : 0;
+                                return ` ${context.label}: ${val} materials (${pct}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: "68%"
+            }
+        });
+    }
+
+    // 2. Top Consumed Materials Chart (Horizontal Bar)
+    const topConsumedCanvas = document.getElementById("topConsumedChart");
+    if (topConsumedCanvas) {
+        const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
+
+        // Aggregate by material name
+        const usageMap = new Map();
+        const unitMap = new Map();
+        periodDisbursements.forEach(d => {
+            usageMap.set(d.materialName, (usageMap.get(d.materialName) || 0) + d.disbursedQuantity);
+            if (!unitMap.has(d.materialName)) unitMap.set(d.materialName, d.unit);
+        });
+
+        // Sort descending and take top 5
+        const sorted = Array.from(usageMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const labels = sorted.map(item => item[0]);
+        const dataValues = sorted.map(item => item[1]);
+        const units = sorted.map(item => unitMap.get(item[0]) || "units");
+
+        const badge = document.getElementById("topConsumedTotalBadge");
+        if (badge) badge.textContent = `${periodDisbursements.length} Records`;
+
+        if (topConsumedChartInstance) {
+            topConsumedChartInstance.destroy();
+            topConsumedChartInstance = null;
+        }
+
+        const ctx = topConsumedCanvas.getContext("2d");
+        topConsumedChartInstance = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels.length > 0 ? labels : ["No Disbursements"],
+                datasets: [{
+                    label: "Quantity Consumed",
+                    data: dataValues.length > 0 ? dataValues : [0],
+                    backgroundColor: "rgba(37, 99, 235, 0.85)", // Blue
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const idx = context.dataIndex;
+                                const u = units[idx] || "";
+                                return ` Consumed: ${context.raw?.toLocaleString()} ${u}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: "#f1f5f9" },
+                        ticks: { font: { size: 10 }, color: "#64748b" }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11, weight: "600" }, color: "#1e293b" }
+                    }
+                }
+            }
+        });
+    }
 }
 
 /* ==========================================================
@@ -815,89 +954,36 @@ function renderAiForecastingTab() {
     const horizonEl = document.getElementById("fcReportHorizon");
     const lastTimeEl = document.getElementById("fcReportLastTime");
 
-    if (statusEl) statusEl.textContent = state.forecastStatusText;
-    if (matCountEl) matCountEl.textContent = state.forecastList.length.toString();
-    if (horizonEl) horizonEl.textContent = state.fcHorizon === "7day" ? "Horizon: Next 7 Days" : "Horizon: Next 30 Days";
+    if (statusEl) statusEl.textContent = "In Development";
+    if (matCountEl) matCountEl.textContent = state.materials.length.toString();
+    if (horizonEl) horizonEl.textContent = "Horizon: Staged (Next 7 Days)";
 
     if (lastTimeEl) {
-        const d = state.lastForecastTimestamp || new Date();
-        lastTimeEl.textContent = `Last: ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+        lastTimeEl.textContent = "Status: Awaiting ML Integration";
     }
 
-    // 2. Unit-Safe Requirement Summary (NEVER combine incompatible units)
+    // 2. Unit-Safe Requirement Summary Placeholder
     const pillsContainer = document.getElementById("fcReportReqPills");
     if (pillsContainer) {
-        const unitMap = new Map();
-        state.forecastList.forEach(item => {
-            const req = state.fcHorizon === "7day" ? item.forecast7Day : item.forecast1Month;
-            unitMap.set(item.unit, (unitMap.get(item.unit) || 0) + req);
-        });
-
-        if (unitMap.size === 0) {
-            pillsContainer.innerHTML = `<span style="font-size:0.8rem; color:var(--rpt-text-dim);">No requirements</span>`;
-        } else {
-            pillsContainer.innerHTML = Array.from(unitMap.entries()).map(([u, val]) => `
-                <span class="fc-unit-pill">${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(u)}</span>
-            `).join("");
-        }
+        pillsContainer.innerHTML = `<span class="fc-unit-pill" style="background:#f1f5f9; color:#64748b; font-weight:500;">— Awaiting Model Run —</span>`;
     }
 
-    // 3. AI Forecast Decision Support Findings
+    // 3. AI Forecast Decision Support Findings Placeholder
     const decisionListEl = document.getElementById("fcReportDecisionList");
     if (decisionListEl) {
-        const cards = [];
-        state.forecastList.forEach(item => {
-            const req = state.fcHorizon === "7day" ? item.forecast7Day : item.forecast1Month;
-            const diff = item.currentStock - req;
-
-            if (diff < 0) {
-                cards.push({
-                    type: "warning",
-                    title: `${item.name} (${item.itemCode})`,
-                    badge: "Potential Shortage",
-                    body: `Projected ${state.fcHorizon === "7day" ? "7-day" : "30-day"} requirement (${req} ${item.unit}) exceeds available stock (${item.currentStock} ${item.unit}). Additional ${Math.abs(diff).toFixed(1)} ${item.unit} needed.`
-                });
-            } else if (item.currentStock <= item.minThreshold) {
-                cards.push({
-                    type: "attention",
-                    title: `${item.name} (${item.itemCode})`,
-                    badge: "Needs Attention",
-                    body: `Stock is approaching minimum safety limit (${item.currentStock} ${item.unit} vs min ${item.minThreshold} ${item.unit}). Order replenishment soon.`
-                });
-            } else if (diff <= item.minThreshold) {
-                cards.push({
-                    type: "monitor",
-                    title: `${item.name} (${item.itemCode})`,
-                    badge: "Monitor",
-                    body: `Stock will drop near safety buffer after fulfilling projected requirement (${req} ${item.unit}). Keep monitoring.`
-                });
-            }
-        });
-
-        if (cards.length === 0) {
-            decisionListEl.innerHTML = `
-                <div class="rpt-fc-decision-card">
-                    <div class="rpt-fc-decision-title"><span>All Raw Materials Optimal</span> <span class="rpt-badge rpt-badge-good">Sufficient</span></div>
-                    <div class="rpt-fc-decision-body">Current inventory stock levels are fully sufficient to satisfy projected operational requirements.</div>
+        decisionListEl.innerHTML = `
+            <div class="rpt-fc-decision-card">
+                <div class="rpt-fc-decision-title">
+                    <span>AI Forecasting Module In Progress</span>
+                    <span class="rpt-badge rpt-badge-monitor">Staging</span>
                 </div>
-            `;
-        } else {
-            // Show top priority findings
-            decisionListEl.innerHTML = cards.slice(0, 4).map(c => `
-                <div class="rpt-fc-decision-card ${c.type}">
-                    <div class="rpt-fc-decision-title">
-                        <span>${escapeHtml(c.title)}</span>
-                        <span class="rpt-badge ${c.type === "warning" ? "rpt-badge-shortage" : (c.type === "attention" ? "rpt-badge-attention" : "rpt-badge-monitor")}">${c.badge}</span>
-                    </div>
-                    <div class="rpt-fc-decision-body">${escapeHtml(c.body)}</div>
-                </div>
-            `).join("");
-        }
+                <div class="rpt-fc-decision-body">Statistical time-series demand predictions and shortage warnings will automatically populate this section once the forecasting module is developed.</div>
+            </div>
+        `;
     }
 
     // 4. Filter & Search Table Rows
     const term = state.fcSearch.trim().toLowerCase();
-    const statusFilter = state.fcStatus;
     const unitFilter = state.fcUnit;
 
     let filtered = state.forecastList.filter(item => {
@@ -907,7 +993,6 @@ function renderAiForecastingTab() {
             const matchProduct = item.finishedProduct.toLowerCase().includes(term);
             if (!matchName && !matchCode && !matchProduct) return false;
         }
-        if (statusFilter !== "all" && item.status !== statusFilter) return false;
         if (unitFilter !== "all" && item.unit !== unitFilter) return false;
         return true;
     });
@@ -934,110 +1019,25 @@ function renderAiForecastingTab() {
     if (!tbody) return;
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No materials match the forecast search criteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No materials match the forecast search criteria.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = pageItems.map(item => {
-        const req = state.fcHorizon === "7day" ? item.forecast7Day : item.forecast1Month;
-        const addNeed = state.fcHorizon === "7day" ? item.additionalNeed7 : item.additionalNeed1m;
-
-        let badgeCls = "rpt-badge-good";
-        if (item.status === "Potential Shortage") badgeCls = "rpt-badge-shortage";
-        else if (item.status === "Needs Attention") badgeCls = "rpt-badge-attention";
-        else if (item.status === "Monitor") badgeCls = "rpt-badge-monitor";
-
         return `
             <tr>
                 <td><strong>${escapeHtml(item.name)}</strong></td>
                 <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(item.itemCode)}</span></td>
                 <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span></td>
-                <td><strong>${item.currentStock.toLocaleString()}</strong></td>
+                <td><strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong></td>
                 <td>${escapeHtml(item.unit)}</td>
-                <td>${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td>
-                <td><strong style="color:var(--rpt-blue-dark);">${req.toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong></td>
-                <td><strong style="color:${addNeed > 0 ? "var(--rpt-red-dark)" : "var(--rpt-green-dark)"};">${addNeed > 0 ? `${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : "0"}</strong></td>
-                <td><span class="rpt-badge ${badgeCls}">${escapeHtml(item.status)}</span></td>
-                <td style="text-align:right;">
-                    <button type="button" class="rpt-btn-table-sm" data-action="view-fc" data-mat="${escapeHtml(item.name)}">Details</button>
-                </td>
+                <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : "—"}</td>
+                <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
+                <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
+                <td><span class="rpt-badge rpt-badge-monitor">—</span></td>
             </tr>
         `;
     }).join("");
-
-    // Attach row detail listeners
-    tbody.querySelectorAll("button[data-action='view-fc']").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const matName = btn.getAttribute("data-mat");
-            openMaterialDetailModal(matName);
-        });
-    });
-}
-
-function openMaterialDetailModal(matName) {
-    const item = state.forecastMap.get(matName);
-    if (!item) return;
-
-    const overlay = document.getElementById("fcDetailModalOverlay");
-    const nameEl = document.getElementById("fcDetailMaterialName");
-    const codeEl = document.getElementById("fcDetailItemCode");
-    const bodyEl = document.getElementById("fcDetailBody");
-
-    if (nameEl) nameEl.textContent = item.name;
-    if (codeEl) codeEl.textContent = `Item Code: ${item.itemCode}`;
-
-    const genDateStr = (state.lastForecastTimestamp || new Date()).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
-    const req = state.fcHorizon === "7day" ? item.forecast7Day : item.forecast1Month;
-    const addNeed = state.fcHorizon === "7day" ? item.additionalNeed7 : item.additionalNeed1m;
-
-    if (bodyEl) {
-        bodyEl.innerHTML = `
-            <div class="fc-detail-grid">
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Raw Material</span>
-                    <span class="fc-detail-val">${escapeHtml(item.name)}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Item Code</span>
-                    <span class="fc-detail-val">${escapeHtml(item.itemCode)}</span>
-                </div>
-                <div class="fc-detail-item" style="grid-column: span 2;">
-                    <span class="fc-detail-label">Finished Product Association</span>
-                    <span class="fc-detail-val" style="color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Current Stock</span>
-                    <span class="fc-detail-val">${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Minimum Safety Stock</span>
-                    <span class="fc-detail-val">${item.minThreshold.toLocaleString()} ${escapeHtml(item.unit)}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Recent Consumption</span>
-                    <span class="fc-detail-val">${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Forecast Requirement (${state.fcHorizon === "7day" ? "7 Days" : "30 Days"})</span>
-                    <span class="fc-detail-val" style="color:var(--rpt-blue-dark); font-weight:800;">${req.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Additional Stock Needed</span>
-                    <span class="fc-detail-val" style="color:${addNeed > 0 ? "var(--rpt-red-dark)" : "var(--rpt-green-dark)"}; font-weight:800;">${addNeed > 0 ? `${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : "0 (Stock Sufficient)"}</span>
-                </div>
-                <div class="fc-detail-item">
-                    <span class="fc-detail-label">Forecast Status</span>
-                    <span class="fc-detail-val">${escapeHtml(item.status)}</span>
-                </div>
-                <div class="fc-detail-item" style="grid-column: span 2;">
-                    <span class="fc-detail-label">Forecast Generated Timestamp</span>
-                    <span class="fc-detail-val">${escapeHtml(genDateStr)}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    if (overlay) overlay.classList.add("open");
 }
 
 /* ==========================================================
@@ -1319,19 +1319,13 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         `;
     }
 
-    // 7. AI Forecasting
+    // 7. AI Forecasting (Staged as Blanks)
     if (selectedSections.includes("forecasting")) {
-        const reqMap = new Map();
-        state.forecastList.forEach(item => {
-            reqMap.set(item.unit, (reqMap.get(item.unit) || 0) + item.forecast7Day);
-        });
-        const reqSummaryStr = Array.from(reqMap.entries()).map(([u, v]) => `${v.toFixed(1)} ${u}`).join(" | ");
-
         sectionsHtml += `
             <div class="print-section">
                 <h2 class="print-section-header-green">AI Forecasting &amp; Requirement Projections</h2>
                 <div style="font-size: 8.5pt; color: #475569; margin-bottom: 8px;">
-                    <strong>Forecast Status:</strong> ${state.forecastStatusText} | <strong>Horizon:</strong> Next 7 Days | <strong>Total Requirement:</strong> ${escapeHtml(reqSummaryStr)}
+                    <strong>Forecast Status:</strong> In Development (Awaiting ML Model Run) | <strong>Horizon:</strong> Staged (Next 7 Days)
                 </div>
                 <table class="print-table">
                     <thead>
@@ -1352,9 +1346,9 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                 <td>${escapeHtml(item.itemCode)}</td>
                                 <td>${escapeHtml(item.finishedProduct)}</td>
                                 <td>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</td>
-                                <td>${item.forecast7Day.toFixed(1)} ${escapeHtml(item.unit)}</td>
-                                <td>${item.additionalNeed7 > 0 ? `${item.additionalNeed7.toFixed(1)} ${escapeHtml(item.unit)}` : "0"}</td>
-                                <td>${escapeHtml(item.status)}</td>
+                                <td>${item.forecast7Day !== null ? `${item.forecast7Day.toFixed(1)} ${escapeHtml(item.unit)}` : "—"}</td>
+                                <td>${item.additionalNeed7 !== null && item.additionalNeed7 > 0 ? `${item.additionalNeed7.toFixed(1)} ${escapeHtml(item.unit)}` : "—"}</td>
+                                <td>${escapeHtml(item.status || "—")}</td>
                             </tr>
                         `).join("")}
                     </tbody>
@@ -1703,16 +1697,10 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
             doc.text("AI Forecasting & Requirement Projections", 40, y);
             y += 16;
 
-            const reqMap = new Map();
-            state.forecastList.forEach(item => {
-                reqMap.set(item.unit, (reqMap.get(item.unit) || 0) + item.forecast7Day);
-            });
-            const reqSummaryStr = Array.from(reqMap.entries()).map(([u, v]) => `${v.toFixed(1)} ${u}`).join(" | ");
-
             doc.setFontSize(8.5);
             doc.setTextColor(...RM_DIM);
             doc.setFont("helvetica", "normal");
-            doc.text(`Status: ${state.forecastStatusText} | Horizon: Next 7 Days | Total Forecasted Requirement: ${reqSummaryStr}`, 40, y);
+            doc.text("Status: In Development (Awaiting ML Model Run) | Horizon: Staged (Next 7 Days)", 40, y);
             y += 12;
 
             doc.autoTable({
@@ -1723,9 +1711,9 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
                     item.itemCode,
                     item.finishedProduct,
                     `${item.currentStock.toLocaleString()} ${item.unit}`,
-                    `${item.forecast7Day.toFixed(1)} ${item.unit}`,
-                    item.additionalNeed7 > 0 ? `${item.additionalNeed7.toFixed(1)} ${item.unit}` : "0",
-                    item.status
+                    item.forecast7Day !== null ? `${item.forecast7Day.toFixed(1)} ${item.unit}` : "—",
+                    item.additionalNeed7 !== null && item.additionalNeed7 > 0 ? `${item.additionalNeed7.toFixed(1)} ${item.unit}` : "—",
+                    item.status || "—"
                 ]),
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
@@ -1974,19 +1962,6 @@ function initEventListeners() {
     const fcNext = document.getElementById("fcNextPageBtn");
     if (fcNext) fcNext.addEventListener("click", () => { state.fcPage++; renderAiForecastingTab(); });
 
-    // AI Forecasting Detail Modal
-    const fcDetailOverlay = document.getElementById("fcDetailModalOverlay");
-    const fcDetailClose = document.getElementById("fcDetailCloseBtn");
-    const fcDetailDismiss = document.getElementById("fcDetailDismissBtn");
-    const closeFcDetail = () => fcDetailOverlay?.classList.remove("open");
-    if (fcDetailClose) fcDetailClose.addEventListener("click", closeFcDetail);
-    if (fcDetailDismiss) fcDetailDismiss.addEventListener("click", closeFcDetail);
-    if (fcDetailOverlay) {
-        fcDetailOverlay.addEventListener("click", (e) => {
-            if (e.target === fcDetailOverlay) closeFcDetail();
-        });
-    }
-
     // 4. Print Action -> Directly triggers browser printer dialog (No file download)
     const printBtn = document.getElementById("btnPrint");
     if (printBtn) {
@@ -2007,8 +1982,10 @@ function initEventListeners() {
         saveAsBtn.addEventListener("click", () => {
             const reportNameInput = document.getElementById("saveModalReportName");
             if (reportNameInput) {
-                const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : "Custom");
-                reportNameInput.value = `RMIMS_${pTag}_Report_${formatDateISO(state.startDate || new Date())}`;
+                const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : (state.periodPreset === "today" ? "Today" : "Custom"));
+                const startStr = state.startDate ? formatDateISO(state.startDate) : "";
+                const endStr = state.endDate ? formatDateISO(state.endDate) : "";
+                reportNameInput.value = `RMIMS_${pTag}_Report_${startStr}_to_${endStr}`;
             }
             saveOverlay.classList.add("open");
         });

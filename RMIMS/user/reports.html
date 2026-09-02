@@ -45,73 +45,72 @@
             </div>
         </header>
 
-        <!-- REPORTS ON-SCREEN WORKSPACE -->
-        <div class="rpt-workspace-wrap">
-            
-            <!-- PAGE HEADER -->
-            <div class="rpt-page-header">
-                <div>
-                    <h1 class="rpt-page-title">Reports</h1>
-                </div>
+        <!-- PAGE TITLE + PRIMARY ACTIONS -->
+        <div class="page-title">
+            <div class="page-title-text">
+                <h1>Reports &amp; Decision Support</h1>
+                <p>Generate inventory, receiving, disbursement, and consumption reports.</p>
             </div>
 
-            <!-- TOP CONTROLS & REPORT ACTIONS BAR -->
-            <section class="rpt-control-card" aria-label="Report Parameters and Actions">
+            <div class="page-actions">
+                <button id="btnSaveAs" class="btn-primary" title="Save or Export Report Package" onclick="window.__rmimsOpenSaveModal &amp;&amp; window.__rmimsOpenSaveModal()">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    Save As
+                </button>
+
+                <button id="btnPrint" class="btn-secondary" title="Print Report Document" onclick="window.__rmimsPrintReport &amp;&amp; window.__rmimsPrintReport()">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    Print
+                </button>
+
+                <button id="generateReportBtn" class="btn-icon-only" title="Refresh Live Data">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- REPORTS ON-SCREEN WORKSPACE -->
+        <div class="rpt-workspace-wrap">
+
+            <!-- FILTER TOOLBAR (INVENTORY DESIGN) -->
+            <section class="rpt-control-card" aria-label="Report Parameters and Filters">
                 <div class="rpt-control-left">
                     <!-- Period Preset Selector -->
                     <div class="rpt-control-group">
-                        <label class="rpt-control-label" for="reportPeriodPreset">Period</label>
-                        <select class="rpt-select" id="reportPeriodPreset">
-                            <option value="all">All Available Records</option>
-                            <option value="today">Today</option>
-                            <option value="weekly" selected>Weekly (Current Week)</option>
-                            <option value="monthly">Monthly (Current Month)</option>
+                        <label class="filter-label" for="reportPeriodPreset">Period:</label>
+                        <select class="inv-select" id="reportPeriodPreset" title="Select Report Period">
+                            <option value="weekly" selected>Weekly (Last 7 Days)</option>
+                            <option value="monthly">Monthly (Last 30 Days)</option>
+                            <option value="today">Latest Update Day</option>
                             <option value="custom">Custom Date Range</option>
+                            <option value="all">All Available Records</option>
                         </select>
                     </div>
 
-                    <!-- Date Range Inputs -->
+                    <!-- Modern Inventory Date Range Picker -->
                     <div class="rpt-control-group" id="rptDateRangeGroup">
-                        <label class="rpt-control-label">Date Range</label>
-                        <div class="rpt-date-range-wrap">
-                            <input type="date" class="rpt-input" id="rptStartDate" aria-label="Report Start Date"/>
-                            <span class="rpt-range-sep">→</span>
-                            <input type="date" class="rpt-input" id="rptEndDate" aria-label="Report End Date"/>
+                        <div class="inv-date-range-wrap">
+                            <label for="rptStartDate" class="filter-label">From:</label>
+                            <input type="date" class="inv-input-date" id="rptStartDate" title="Report Start Date"/>
+                            <label for="rptEndDate" class="filter-label">To:</label>
+                            <input type="date" class="inv-input-date" id="rptEndDate" title="Report End Date"/>
                         </div>
                     </div>
-
-                    <!-- Generate / Refresh Action -->
-                    <button type="button" class="rpt-btn-generate" id="generateReportBtn">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <span>Update Report</span>
-                    </button>
                 </div>
 
-                <!-- 2 MAIN REPORT ACTIONS (TOP ONLY) -->
-                <div class="rpt-control-right">
-                    <button type="button" class="rpt-btn-action rpt-btn-save" id="btnSaveAs" onclick="window.__rmimsOpenSaveModal &amp;&amp; window.__rmimsOpenSaveModal()">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                        <span>Save As</span>
-                    </button>
-                    <button type="button" class="rpt-btn-action rpt-btn-print" id="btnPrint" onclick="window.__rmimsPrintReport &amp;&amp; window.__rmimsPrintReport()">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                        <span>Print</span>
-                    </button>
+                <!-- METADATA SUB-BAR -->
+                <div class="rpt-meta-bar">
+                    <div>
+                        <span class="rpt-meta-item"><strong>Report Period:</strong> <span id="metaPeriodLabel">Loading...</span></span>
+                        <span class="rpt-meta-sep">•</span>
+                        <span class="rpt-meta-item"><strong>Generated:</strong> <span id="metaGeneratedTime">—</span></span>
+                    </div>
+                    <div class="rpt-status-pill">
+                        <span class="rpt-status-dot"></span>
+                        <span>Live Supabase Connected</span>
+                    </div>
                 </div>
             </section>
-
-            <!-- METADATA SUB-BAR -->
-            <div class="rpt-meta-bar">
-                <div>
-                    <span class="rpt-meta-item"><strong>Report Period:</strong> <span id="metaPeriodLabel">Loading...</span></span>
-                    <span class="rpt-meta-sep">•</span>
-                    <span class="rpt-meta-item"><strong>Generated:</strong> <span id="metaGeneratedTime">—</span></span>
-                </div>
-                <div class="rpt-status-pill">
-                    <span class="rpt-status-dot"></span>
-                    <span>Live Supabase Connected</span>
-                </div>
-            </div>
 
             <!-- UNIFIED USER REPORT WORKSPACE (5 TABS) -->
             <section class="rpt-workspace-card" aria-label="Report Workspace">
