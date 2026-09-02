@@ -620,7 +620,13 @@ async function handleSaveConfirm() {
    EVENT LISTENERS
    ========================================================== */
 
+let listenersInitialized = false;
+let isPrinting = false;
+
 function initEventListeners() {
+    if (listenersInitialized) return;
+    listenersInitialized = true;
+
     // Period Preset
     const presetSelect = $("reportPeriodPreset");
     if (presetSelect) {
@@ -2149,14 +2155,24 @@ function updatePrintDocHtml() {
 }
 
 function handlePrintReport() {
+    if (isPrinting) return;
+    isPrinting = true;
     try {
         updatePrintDocHtml();
         setTimeout(() => {
-            window.print();
+            try {
+                window.print();
+            } catch (err) {
+                console.error("Print error:", err);
+            } finally {
+                setTimeout(() => {
+                    isPrinting = false;
+                }, 400);
+            }
         }, 50);
     } catch (err) {
         console.error("Print report generation error:", err);
-        window.print();
+        isPrinting = false;
     }
 }
 
@@ -2167,17 +2183,6 @@ window.__rmimsOpenSaveModal = openSaveModal;
 window.__rmimsCloseSaveModal = closeSaveModal;
 window.__rmimsHandleSaveConfirm = handleSaveConfirm;
 window.__rmimsPrintReport = handlePrintReport;
-
-// Initialize event listeners immediately so buttons work instantly without waiting for network/auth
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-        initPeriodDates();
-        initEventListeners();
-    });
-} else {
-    initPeriodDates();
-    initEventListeners();
-}
 
 /* ==========================================================
    TOAST NOTIFICATIONS

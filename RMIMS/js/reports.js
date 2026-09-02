@@ -2368,7 +2368,31 @@ async function saveExportBlob({ blob, fileName, defaultExtension }) {
    EVENT LISTENERS & UI WIRING
    ========================================================== */
 
+let listenersInitialized = false;
+let isPrinting = false;
+
+function handlePrintReport() {
+    if (isPrinting) return;
+    isPrinting = true;
+    updatePrintDocHtml();
+    setTimeout(() => {
+        try {
+            window.print();
+        } catch (e) {
+            console.error("Print error:", e);
+        } finally {
+            // Re-enable after print dialog lifecycle finishes
+            setTimeout(() => {
+                isPrinting = false;
+            }, 400);
+        }
+    }, 50);
+}
+
 function initEventListeners() {
+    if (listenersInitialized) return;
+    listenersInitialized = true;
+
     // 1. Tab Switching
     const tabBtns = document.querySelectorAll(".rpt-tab-btn");
     const panels = {
@@ -2383,58 +2407,62 @@ function initEventListeners() {
 
     tabBtns.forEach(btn => {
         btn.addEventListener("click", () => {
+            const target = btn.dataset.tab;
+            if (!target) return;
+            state.activeTab = target;
+
             tabBtns.forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
-            const tabKey = btn.getAttribute("data-tab");
-            state.activeTab = tabKey;
 
-            Object.entries(panels).forEach(([k, panel]) => {
-                if (panel) {
-                    if (k === tabKey) panel.classList.add("active");
-                    else panel.classList.remove("active");
+            Object.keys(panels).forEach(k => {
+                if (panels[k]) {
+                    panels[k].style.display = (k === target) ? "block" : "none";
                 }
             });
+
+            // Re-render tab specific content
+            if (target === "manager") renderManagerOverviewTab();
+            else if (target === "inventory") renderInventoryRecordsTab();
+            else if (target === "receiving") renderMaterialReceivingTab();
+            else if (target === "disbursement") renderMaterialDisbursementTab();
+            else if (target === "activity") renderMaterialActivityTab();
+            else if (target === "consumption") renderConsumptionAnalysisTab();
+            else if (target === "forecasting") renderAiForecastingTab();
         });
     });
 
     // 2. Period Preset & Date Controls
     const presetSelect = document.getElementById("reportPeriodPreset");
-    const startInput = document.getElementById("rptStartDate");
-    const endInput = document.getElementById("rptEndDate");
-    const genBtn = document.getElementById("generateReportBtn");
-
     if (presetSelect) {
-        presetSelect.addEventListener("change", () => {
-            state.periodPreset = presetSelect.value;
-            setPeriodPresetDates(presetSelect.value);
-            updateMetadataLabels();
-            renderAllTabs();
-            updatePrintDocHtml();
+        presetSelect.addEventListener("change", (e) => {
+            const val = e.target.value;
+            state.periodPreset = val;
+
+            const dateGroup = document.getElementById("rptDateRangeGroup");
+            const startInput = document.getElementById("rptStartDate");
+            const endInput = document.getElementById("rptEndDate");
+            const clearBtn = document.getElementById("clearReportDatesBtn");
+
+            if (val === "custom") {
+                if (dateGroup) dateGroup.classList.add("active");
+                if (clearBtn) clearBtn.style.display = "inline-flex";
+                if (startInput) startInput.readOnly = false;
+                if (endInput) endInput.readOnly = false;
+            } else {
+                if (dateGroup) dateGroup.classList.remove("active");
+                if (clearBtn) clearBtn.style.display = "none";
+                if (startInput) startInput.readOnly = true;
+                if (endInput) endInput.readOnly = true;
+
+                setPeriodPresetDates(val);
+                updateDateInputDisplay();
+                renderAllTabs();
+            }
         });
     }
 
-    if (startInput) {
-        startInput.addEventListener("change", () => {
-            state.startDate = parseDateOnly(startInput.value);
-            state.periodPreset = "custom";
-            if (presetSelect) presetSelect.value = "custom";
-            updateMetadataLabels();
-            renderAllTabs();
-            updatePrintDocHtml();
-        });
-    }
-
-    if (endInput) {
-        endInput.addEventListener("change", () => {
-            state.endDate = parseDateOnly(endInput.value);
-            state.periodPreset = "custom";
-            if (presetSelect) presetSelect.value = "custom";
-            updateMetadataLabels();
-            renderAllTabs();
-            updatePrintDocHtml();
-        });
-    }
-
+    // Refresh Live Data Button
+    const genBtn = document.getElementById("generateReportBtn");
     if (genBtn) {
         genBtn.addEventListener("click", async () => {
             genBtn.classList.add("spinning");
@@ -2452,7 +2480,19 @@ function initEventListeners() {
         });
     }
 
-    // 3. Tab Toolbar Search & Filter Listeners
+    // Clear Dates button
+    const clearDatesBtn = document.getElementById("clearReportDatesBtn");
+    if (clearDatesBtn) {
+        clearDatesBtn.addEventListener("click", () => {
+            if (fpStart) fpStart.clear();
+            if (fpEnd) fpEnd.clear();
+            state.startDate = null;
+            state.endDate = null;
+            renderAllTabs();
+        });
+    }
+
+    // 3. Filters per Tab
     const invSearch = document.getElementById("invSearchInput");
     if (invSearch) invSearch.addEventListener("input", (e) => { state.invSearch = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); });
     const invStatus = document.getElementById("invStatusFilter");
@@ -2482,15 +2522,10 @@ function initEventListeners() {
     const fcHorizon = document.getElementById("fcHorizonFilter");
     if (fcHorizon) fcHorizon.addEventListener("change", (e) => { state.fcHorizon = e.target.value; state.fcPage = 1; renderAiForecastingTab(); });
 
-    // 4. Print Action -> Directly triggers browser printer dialog
+    // 4. Print Action -> Single debounced print trigger
     const printBtn = document.getElementById("btnPrint");
     if (printBtn) {
-        printBtn.addEventListener("click", () => {
-            updatePrintDocHtml();
-            setTimeout(() => {
-                window.print();
-            }, 50);
-        });
+        printBtn.addEventListener("click", handlePrintReport);
     }
 
     // 5. Save As Modal
@@ -2668,9 +2703,4 @@ function escapeHtml(str) {
 
 window.addEventListener("beforeprint", updatePrintDocHtml);
 
-window.__rmimsPrintReport = () => {
-    updatePrintDocHtml();
-    setTimeout(() => {
-        window.print();
-    }, 50);
-};
+window.__rmimsPrintReport = handlePrintReport;
