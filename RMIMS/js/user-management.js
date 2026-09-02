@@ -474,7 +474,7 @@ async function sendPasswordReset(u) {
         loadingLabel: "Sending Reset Email...",
         onConfirm: async () => {
             try {
-                const redirectUrl = `${window.location.origin}/login.html`;
+                const redirectUrl = new URL('../login.html', window.location.href).href;
                 const { error } = await supabase.auth.resetPasswordForEmail(target.email, {
                     redirectTo: redirectUrl
                 });
