@@ -686,13 +686,62 @@ function renderStatusProgressChart() {
     const lowCounts = [];
     const outCounts = [];
 
+    // Pre-group transactions by materialId for fast lookup
+    const disbByMat = new Map();
+    const rcvByMat = new Map();
+
+    state.materials.forEach(m => {
+        disbByMat.set(m.id, []);
+        rcvByMat.set(m.id, []);
+    });
+
+    state.disbursements.forEach(d => {
+        if (disbByMat.has(d.materialId)) {
+            disbByMat.get(d.materialId).push(d);
+        }
+    });
+
+    state.receipts.forEach(r => {
+        if (rcvByMat.has(r.materialId)) {
+            rcvByMat.get(r.materialId).push(r);
+        }
+    });
+
+    // Compute dynamic historical status at the end of each timeline interval
     intervals.forEach(inv => {
         let g = 0, s = 0, l = 0, o = 0;
+        const targetDate = inv.end;
+
         state.materials.forEach(mat => {
-            if (mat.status.code === "GOOD") g++;
-            else if (mat.status.code === "STABLE") s++;
-            else if (mat.status.code === "LOW") l++;
-            else if (mat.status.code === "OUT") o++;
+            const min = mat.minStock;
+            const matDisbs = disbByMat.get(mat.id) || [];
+            const matRcvs = rcvByMat.get(mat.id) || [];
+
+            let futureDisb = 0;
+            for (let i = 0; i < matDisbs.length; i++) {
+                if (matDisbs[i].usageDate > targetDate) {
+                    futureDisb += matDisbs[i].consumedQuantity;
+                }
+            }
+
+            let futureRcv = 0;
+            for (let i = 0; i < matRcvs.length; i++) {
+                if (matRcvs[i].receivedDate > targetDate) {
+                    futureRcv += matRcvs[i].receivedQuantity;
+                }
+            }
+
+            const historicalStock = Math.max(0, mat.currentStock + futureDisb - futureRcv);
+
+            if (historicalStock <= 0) {
+                o++;
+            } else if (historicalStock < min) {
+                l++;
+            } else if (historicalStock <= min * 1.5) {
+                s++;
+            } else {
+                g++;
+            }
         });
 
         goodCounts.push(g);
@@ -707,69 +756,84 @@ function renderStatusProgressChart() {
             labels: labels,
             datasets: [
                 {
-                    label: "Good Stock",
+                    label: "Good / Full Stock",
                     data: goodCounts,
                     borderColor: "#16a34a",
-                    backgroundColor: "rgba(22, 163, 74, 0.12)",
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3
+                    backgroundColor: "transparent",
+                    borderWidth: 2.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.3
                 },
                 {
                     label: "Stable Stock",
                     data: stableCounts,
                     borderColor: "#2563eb",
-                    backgroundColor: "rgba(37, 99, 235, 0.1)",
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3
+                    backgroundColor: "transparent",
+                    borderWidth: 2.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.3
                 },
                 {
                     label: "Low Stock",
                     data: lowCounts,
                     borderColor: "#ea580c",
-                    backgroundColor: "rgba(234, 88, 12, 0.1)",
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3
+                    backgroundColor: "transparent",
+                    borderWidth: 2.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.3
                 },
                 {
                     label: "Out of Stock",
                     data: outCounts,
                     borderColor: "#dc2626",
-                    backgroundColor: "rgba(220, 38, 38, 0.1)",
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3
+                    backgroundColor: "transparent",
+                    borderWidth: 2.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.3
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: "#0f172a",
-                    titleColor: "#f8fafc",
-                    bodyColor: "#e2e8f0",
-                    padding: 10,
+                    backgroundColor: "#0B132B",
+                    titleColor: "#FFFFFF",
+                    bodyColor: "#D7E0EA",
+                    borderColor: "rgba(255, 255, 255, 0.18)",
+                    borderWidth: 1,
+                    padding: 12,
                     cornerRadius: 8
                 }
             },
             scales: {
                 x: {
-                    grid: { display: false },
-                    ticks: { color: "#64748b", font: { size: 11, weight: 600 } }
+                    grid: {
+                        color: "rgba(203, 213, 225, 0.40)",
+                        borderDash: [3, 3],
+                        drawBorder: false
+                    },
+                    ticks: { color: "#475569", font: { family: "Inter", size: 11, weight: 600 } }
                 },
                 y: {
                     beginAtZero: true,
-                    grid: { color: "#f1f5f9" },
-                    ticks: { color: "#64748b", font: { size: 11 } }
+                    max: 60,
+                    grid: {
+                        color: "rgba(203, 213, 225, 0.40)",
+                        borderDash: [3, 3],
+                        drawBorder: false
+                    },
+                    ticks: { precision: 0, color: "#475569", font: { family: "Inter", size: 11 } }
                 }
             }
         }
