@@ -1338,17 +1338,93 @@
     position: static !important;
   }
 
-  .print-watermark-overlay {
-    display: none !important;
-  }
-
-  /* Table Wrapper to Guarantee Footer Appears on Every Printed Page */
+  /* Table Wrapper to Guarantee Watermark and Footer Appear on Every Printed Page */
   .print-page-table-wrapper {
     width: 100% !important;
     border-collapse: collapse !important;
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
+  }
+
+  .print-page-table-wrapper > thead {
+    display: table-header-group !important;
+  }
+
+  .print-watermark-th {
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    position: relative !important;
+    line-height: 0 !important;
+    background: transparent !important;
+  }
+
+  .print-page-watermark-box {
+    position: absolute !important;
+    top: 420px !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 90vw !important;
+    max-width: 650px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    user-select: none !important;
+    opacity: 0.11 !important;
+  }
+
+  .print-watermark-inner {
+    transform: rotate(-30deg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .print-watermark-logo-img {
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+    margin-bottom: 8px;
+    filter: grayscale(100%);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-watermark-title {
+    font-size: 32pt;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    color: #1e293b !important;
+    text-transform: uppercase;
+    line-height: 1.05;
+  }
+
+  .print-watermark-sub {
+    font-size: 8.5pt;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    color: #334155 !important;
+    text-transform: uppercase;
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  .print-watermark-tag {
+    font-size: 7.2pt;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    color: #64748b !important;
+    text-transform: uppercase;
+    margin-top: 3px;
+    white-space: nowrap;
   }
 
   .print-page-table-wrapper > tbody > tr > td {

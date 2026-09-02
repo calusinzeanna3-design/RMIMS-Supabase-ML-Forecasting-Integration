@@ -1772,8 +1772,22 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     }
 
     return `
-        <!-- PRINT DOCUMENT TABLE WRAPPER (ENABLES FOOTER ON EVERY PAGE) -->
+        <!-- PRINT DOCUMENT TABLE WRAPPER (ENABLES WATERMARK AND FOOTER ON EVERY PAGE) -->
         <table class="print-page-table-wrapper">
+            <thead>
+                <tr>
+                    <th class="print-watermark-th">
+                        <div class="print-page-watermark-box" aria-hidden="true">
+                            <div class="print-watermark-inner">
+                                <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
+                                <div class="print-watermark-title">RMSME</div>
+                                <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                                <div class="print-watermark-tag">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
             <tbody>
                 <tr>
                     <td>
@@ -1791,12 +1805,6 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                 <div><strong>Authority:</strong> RMSME Authorized System Administrator</div>
                                 <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
                             </div>
-                        </div>
-
-                        <!-- REPORT TITLE & PERIOD RIBBON -->
-                        <div class="print-doc-title-row">
-                            <h2 class="print-doc-title">Document Report</h2>
-                            <span class="print-period-badge">${escapeHtml(periodLabel)}</span>
                         </div>
 
                         <!-- METADATA CARD GRID -->
