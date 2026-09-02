@@ -163,11 +163,16 @@ function setPeriodPresetDates(preset) {
         state.startDate = null;
         state.endDate = null;
     }
+    state.periodPreset = preset;
 
     const startInput = $("rptStartDate");
     const endInput = $("rptEndDate");
-    if (startInput && state.startDate) startInput.value = formatDateISO(state.startDate);
-    if (endInput && state.endDate) endInput.value = formatDateISO(state.endDate);
+    const presetSelect = $("reportPeriodPreset");
+
+    if (presetSelect) presetSelect.value = preset;
+
+    if (startInput) startInput.value = state.startDate ? formatDateISO(state.startDate) : "";
+    if (endInput) endInput.value = state.endDate ? formatDateISO(state.endDate) : "";
 
     if (fpStart) {
         if (state.startDate) fpStart.setDate(formatDateISO(state.startDate), false);
@@ -240,6 +245,7 @@ function initUserReportsFlatpickr() {
             allowInput: true,
             defaultDate: state.startDate ? formatDateISO(state.startDate) : null,
             onChange: (selectedDates, dateStr) => {
+                if (!dateStr) return;
                 state.startDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
@@ -263,6 +269,7 @@ function initUserReportsFlatpickr() {
             allowInput: true,
             defaultDate: state.endDate ? formatDateISO(state.endDate) : null,
             onChange: (selectedDates, dateStr) => {
+                if (!dateStr) return;
                 state.endDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";

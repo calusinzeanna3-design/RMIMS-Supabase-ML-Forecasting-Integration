@@ -128,7 +128,6 @@ async function init() {
 function initPeriodDates() {
     setPeriodPresetDates("all");
 }
-
 function setPeriodPresetDates(preset) {
     const anchor = state.latestDataDate || new Date();
     const anchorStr = formatDateISO(anchor);
@@ -137,22 +136,25 @@ function setPeriodPresetDates(preset) {
         state.startDate = parseDateOnly(anchorStr);
         state.endDate = parseDateOnly(anchorStr);
     } else if (preset === "weekly") {
-        // Last 7 days ending on latest update date
         state.endDate = parseDateOnly(anchorStr);
         state.startDate = addDays(state.endDate, -6);
     } else if (preset === "monthly") {
-        // Last 30 days ending on latest update date
         state.endDate = parseDateOnly(anchorStr);
         state.startDate = addDays(state.endDate, -29);
     } else if (preset === "all") {
         state.startDate = null;
         state.endDate = null;
     }
+    state.periodPreset = preset;
 
     const startInput = document.getElementById("rptStartDate");
     const endInput = document.getElementById("rptEndDate");
-    if (startInput && state.startDate) startInput.value = formatDateISO(state.startDate);
-    if (endInput && state.endDate) endInput.value = formatDateISO(state.endDate);
+    const presetSelect = document.getElementById("reportPeriodPreset");
+
+    if (presetSelect) presetSelect.value = preset;
+
+    if (startInput) startInput.value = state.startDate ? formatDateISO(state.startDate) : "";
+    if (endInput) endInput.value = state.endDate ? formatDateISO(state.endDate) : "";
 
     if (fpStart) {
         if (state.startDate) fpStart.setDate(formatDateISO(state.startDate), false);
@@ -225,6 +227,7 @@ function initReportsFlatpickr() {
             allowInput: true,
             defaultDate: state.startDate ? formatDateISO(state.startDate) : null,
             onChange: (selectedDates, dateStr) => {
+                if (!dateStr) return;
                 state.startDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
@@ -250,6 +253,7 @@ function initReportsFlatpickr() {
             allowInput: true,
             defaultDate: state.endDate ? formatDateISO(state.endDate) : null,
             onChange: (selectedDates, dateStr) => {
+                if (!dateStr) return;
                 state.endDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
@@ -271,8 +275,8 @@ function initReportsFlatpickr() {
             if (fpEnd) fpEnd.clear();
             state.startDate = null;
             state.endDate = null;
-            if (presetSelect) presetSelect.value = "all";
             state.periodPreset = "all";
+            if (presetSelect) presetSelect.value = "all";
             syncDateInputsInteractiveState();
             updateClearBtnVisibility();
             updateMetadataLabels();
