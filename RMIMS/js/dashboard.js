@@ -1718,7 +1718,7 @@ async function renderRawMaterialsTrendChart() {
           tension: 0.28
         },
         {
-          label: marginLabelStr,
+          label: `Dynamic Acceptance Margin (±7.51%)`,
           data: marginLowerData,
           borderColor: "transparent",
           backgroundColor: "rgba(203, 213, 225, 0.45)",
@@ -1729,7 +1729,7 @@ async function renderRawMaterialsTrendChart() {
           tension: 0.28
         },
         {
-          label: `Actual Usage (${primaryUnit})`,
+          label: `Actual Consumption (${primaryUnit})`,
           data: consumedData,
           borderColor: "#1D70B8",
           backgroundColor: "#1D70B8",
@@ -1745,7 +1745,7 @@ async function renderRawMaterialsTrendChart() {
           spanGaps: false
         },
         {
-          label: `Forecast Requirement (${primaryUnit})`,
+          label: `Holt-Winters Fitted Forecast (${primaryUnit})`,
           data: forecastData,
           borderColor: "#F97316",
           borderDash: [6, 4],
@@ -1791,18 +1791,18 @@ async function renderRawMaterialsTrendChart() {
           usePointStyle: true,
           filter: tooltipItem => tooltipItem.datasetIndex !== 0,
           callbacks: {
-            title: items => items[0]?.label ? `Period: ${items[0].label}` : "",
+            title: items => items[0]?.label ? `Date: ${items[0].label}` : "",
             beforeBody: () => `Raw Material: ${matDisplayName}`,
             label: context => {
               const val = context.parsed.y;
               if (val === null || val === undefined || isNaN(val)) {
-                return ` ${context.dataset.label}: N/A`;
+                return ` ${context.dataset.label}: Pending (Future Cycle)`;
               }
               if (context.datasetIndex === 1) {
                 const idx = context.dataIndex;
                 const lower = marginLowerData[idx] || 0;
                 const upper = marginUpperData[idx] || 0;
-                return ` Margin Error (±7.51%): ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
+                return ` Acceptance Margin (±7.51%): ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
               }
               return ` ${context.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
             }
@@ -1813,7 +1813,7 @@ async function renderRawMaterialsTrendChart() {
         x: {
           title: {
             display: true,
-            text: xAxisTitle,
+            text: "Date",
             color: "#64748B",
             font: { family: "Inter", size: 12, weight: 600 }
           },
@@ -1823,14 +1823,16 @@ async function renderRawMaterialsTrendChart() {
             drawBorder: false
           },
           ticks: {
-            color: "#475569",
-            font: { family: "Inter", size: 11, weight: 600 }
+            color: "#64748B",
+            font: { family: "Inter", size: 11 },
+            maxRotation: 45,
+            minRotation: 30
           }
         },
         y: {
           title: {
             display: true,
-            text: `Quantity (${primaryUnit})`,
+            text: `Consumption (${primaryUnit})`,
             color: "#64748B",
             font: { family: "Inter", size: 12, weight: 600 }
           },
