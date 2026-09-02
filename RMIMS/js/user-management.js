@@ -1189,12 +1189,14 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
     } else {
         const dupe = findByEmail(email);
         if (dupe) {
-            valid = false;
-            duplicateNotice.hidden = false;
             if (dupe.status === "active") {
-                duplicateText.textContent = "This email is already registered.";
+                valid = false;
+                duplicateNotice.hidden = false;
+                duplicateText.textContent = "This email is already registered and active.";
             } else {
-                duplicateText.textContent = "This account already exists and is inactive.";
+                // If inactive, we will automatically reactivate and update upon submission!
+                duplicateNotice.hidden = false;
+                duplicateText.textContent = "This account already exists and is inactive. Submitting will reactivate it.";
                 reactivateBtn.hidden = false;
                 reactivateTargetId = dupe.id;
             }
@@ -1212,10 +1214,33 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
     const submitBtn = document.getElementById("addUserSubmit");
     submitBtn.disabled = true;
     const original = submitBtn.innerHTML;
-    submitBtn.innerHTML = `<span class="btn-spinner"></span> Creating Account...`;
+    submitBtn.innerHTML = `<span class="btn-spinner"></span> Saving...`;
 
     let tempClient = null;
     try {
+        const dupe = findByEmail(email);
+        if (dupe && dupe.status === "inactive") {
+            // Instant reactivate and update role/name
+            await supabase.from("user_profiles").update({
+                full_name: fullName,
+                role: role,
+                status: "active",
+                updated_at: new Date().toISOString()
+            }).eq("id", dupe.id);
+
+            showToast("Account reactivated and updated successfully.");
+            window.RMIMS_NOTIFICATIONS?.addNotification({
+                category: 'user',
+                priority: 'success',
+                title: 'User Account Reactivated',
+                message: `Account "${fullName}" (${email}) was reactivated as ${roleLabel(role)}.`,
+                actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+            });
+            closeModal("addUserModal");
+            await refreshAll();
+            return;
+        }
+
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
         let createdSuccessfully = false;
@@ -1258,18 +1283,51 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
                     }
                 }
             });
-            if (error) throw error;
+
+            if (error) {
+                const errMsg = (error.message || "").toLowerCase();
+                if (errMsg.includes("already registered") || errMsg.includes("already exists")) {
+                    // Check if profile exists in user_profiles
+                    const { data: existingProfiles } = await supabase
+                        .from("user_profiles")
+                        .select("*")
+                        .eq("email", email);
+
+                    if (existingProfiles && existingProfiles.length > 0) {
+                        const existingP = existingProfiles[0];
+                        await supabase.from("user_profiles").update({
+                            full_name: fullName,
+                            role: role,
+                            status: "active",
+                            updated_at: new Date().toISOString()
+                        }).eq("id", existingP.id);
+
+                        showToast("Account activated and updated successfully.");
+                        window.RMIMS_NOTIFICATIONS?.addNotification({
+                            category: 'user',
+                            priority: 'success',
+                            title: 'User Account Reactivated',
+                            message: `Account "${fullName}" (${email}) was reactivated as ${roleLabel(role)}.`,
+                            actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                        });
+                        closeModal("addUserModal");
+                        await refreshAll();
+                        return;
+                    }
+                }
+                throw error;
+            }
 
             const uid = data.user?.id;
             if (!uid) throw new Error("Account creation did not return a user id.");
 
-            await supabase.from("user_profiles").insert({
+            await supabase.from("user_profiles").upsert({
                 id: uid,
                 full_name: fullName,
                 email: email,
                 role: role,
                 status: "active",
-                created_at: new Date().toISOString()
+                updated_at: new Date().toISOString()
             });
         }
 
@@ -1288,7 +1346,7 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
         const msg = (err && err.message || "").toLowerCase();
         if (msg.includes("already registered") || msg.includes("already exists")) {
             duplicateNotice.hidden = false;
-            duplicateText.textContent = "This email is already registered.";
+            duplicateText.textContent = "This email is already registered in the system.";
         } else if (msg.includes("password")) {
             passwordErr.textContent = "Password is too weak. Use at least 8 characters.";
             passwordEl.classList.add("invalid");
@@ -1298,9 +1356,27 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
     } finally {
         try { await tempClient?.auth.signOut(); } catch { /* no-op: client was never persisted */ }
         submitBtn.disabled = false;
-        submitBtn.textContent = original;
+        submitBtn.innerHTML = original;
     }
 });
+
+const reactivateBtnEl = document.getElementById("reactivateInsteadBtn");
+if (reactivateBtnEl) {
+    reactivateBtnEl.addEventListener("click", async () => {
+        if (!reactivateTargetId) return;
+        try {
+            await supabase.from("user_profiles").update({
+                status: "active",
+                updated_at: new Date().toISOString()
+            }).eq("id", reactivateTargetId);
+            showToast("Account reactivated successfully.");
+            closeModal("addUserModal");
+            await refreshAll();
+        } catch (err) {
+            showToast(friendlyError(err, "Unable to reactivate account."), "error");
+        }
+    });
+}
 
 /* ==========================================================
    INIT
