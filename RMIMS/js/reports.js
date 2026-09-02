@@ -67,6 +67,7 @@ const state = {
     
     // Period & Filter State
     periodPreset: "weekly", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
+    latestDataDate: null,
     startDate: null,
     endDate: null,
     generatedAt: null,
@@ -111,25 +112,23 @@ function initPeriodDates() {
 }
 
 function setPeriodPresetDates(preset) {
-    const now = new Date();
-    const todayStr = formatDateISO(now);
+    const anchor = state.latestDataDate || new Date();
+    const anchorStr = formatDateISO(anchor);
 
     if (preset === "today") {
-        state.startDate = parseDateOnly(todayStr);
-        state.endDate = parseDateOnly(todayStr);
+        state.startDate = parseDateOnly(anchorStr);
+        state.endDate = parseDateOnly(anchorStr);
     } else if (preset === "weekly") {
-        const start = startOfWeek(now);
-        const end = addDays(start, 6);
-        state.startDate = start;
-        state.endDate = end;
+        // Last 7 days ending on latest update date
+        state.endDate = parseDateOnly(anchorStr);
+        state.startDate = addDays(state.endDate, -6);
     } else if (preset === "monthly") {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        state.startDate = start;
-        state.endDate = end;
+        // Last 30 days ending on latest update date
+        state.endDate = parseDateOnly(anchorStr);
+        state.startDate = addDays(state.endDate, -29);
     } else if (preset === "all") {
         state.startDate = new Date(2020, 0, 1);
-        state.endDate = new Date(now.getFullYear() + 1, 11, 31);
+        state.endDate = new Date(anchor.getFullYear() + 1, 11, 31);
     }
 
     const startInput = document.getElementById("rptStartDate");
@@ -180,7 +179,7 @@ function formatDisplayPeriod(start, end, preset) {
     if (!start || !end) return "All Available Records";
     if (preset === "all") return "All Recorded Data";
     if (preset === "today") {
-        return `${MONTHS_ABBR[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()}`;
+        return `${MONTHS_ABBR[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()} (Latest Update)`;
     }
     const sameYear = start.getFullYear() === end.getFullYear();
     const sameMonth = sameYear && start.getMonth() === end.getMonth();
@@ -195,9 +194,9 @@ function formatDisplayPeriod(start, end, preset) {
 }
 
 function formatPeriodTypeLabel(preset) {
-    if (preset === "weekly") return "Weekly";
-    if (preset === "monthly") return "Monthly";
-    if (preset === "today") return "Daily";
+    if (preset === "weekly") return "Weekly (Last 7 Days)";
+    if (preset === "monthly") return "Monthly (Last 30 Days)";
+    if (preset === "today") return "Daily (Latest Update)";
     return "Custom Period";
 }
 
@@ -284,7 +283,23 @@ async function loadAuthoritativeData() {
             };
         });
 
-        // Load Authoritative Forecast Cache / Output
+        // Find latest recorded transaction date across receipts and disbursements
+        let maxDateStr = null;
+        state.receipts.forEach(r => {
+            if (r.receiptDate && r.receiptDate !== "—" && (!maxDateStr || r.receiptDate > maxDateStr)) {
+                maxDateStr = r.receiptDate;
+            }
+        });
+        state.disbursements.forEach(d => {
+            if (d.usageDate && d.usageDate !== "—" && (!maxDateStr || d.usageDate > maxDateStr)) {
+                maxDateStr = d.usageDate;
+            }
+        });
+
+        state.latestDataDate = parseDateOnly(maxDateStr) || new Date();
+        setPeriodPresetDates(state.periodPreset);
+
+        // Load Authoritative Forecast Cache / Output (staged as blank placeholders)
         loadAuthoritativeForecasts();
 
         state.generatedAt = new Date();
