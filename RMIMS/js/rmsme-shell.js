@@ -495,20 +495,25 @@
   function renderNotifications() {
     const listEl = document.getElementById('rmsmeNotificationList');
     const badgeEl = document.getElementById('rmsmeNotifBadge');
+    const legacyBadgeEl = document.getElementById('notifBadge');
     const visibleNotifs = getVisibleNotifications();
     const readSet = getReadSet();
 
     const unreadCount = visibleNotifs.filter(n => !readSet.has(String(n.id))).length;
 
-    if (badgeEl) {
-      if (unreadCount > 0) {
-        badgeEl.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
-        badgeEl.style.display = 'inline-flex';
-      } else {
-        badgeEl.textContent = '0';
-        badgeEl.style.display = 'none';
+    [badgeEl, legacyBadgeEl].forEach(b => {
+      if (b) {
+        if (unreadCount > 0) {
+          b.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+          b.style.display = 'inline-flex';
+          b.hidden = false;
+        } else {
+          b.textContent = '0';
+          b.style.display = 'none';
+          b.hidden = true;
+        }
       }
-    }
+    });
 
     if (!listEl) return;
 
