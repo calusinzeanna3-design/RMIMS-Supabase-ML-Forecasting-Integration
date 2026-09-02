@@ -4,6 +4,6 @@ __pycache__/
 *.pyc
 dist/
 .vscode/
-ml_backend/
 notebooks/
 scratch/
+ml_backend/__pycache__/
