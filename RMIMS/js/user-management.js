@@ -471,6 +471,7 @@ async function sendPasswordReset(u) {
         title: "Reset password?",
         message: `A password reset email will be sent to <strong>${escapeHtml(target.email)}</strong>. The current password will not be shown to you.`,
         confirmLabel: "Send Reset Email",
+        loadingLabel: "Sending Reset Email...",
         onConfirm: async () => {
             try {
                 const redirectUrl = `${window.location.origin}/login.html`;
@@ -499,6 +500,7 @@ function openDeleteUserConfirm(u) {
         title: "Delete this account?",
         message: `Delete <strong>${escapeHtml(u.fullName)}</strong>? The account will lose access to RMSME, while historical inventory and material activity records will be preserved.`,
         confirmLabel: "Delete",
+        loadingLabel: "Deactivating...",
         danger: true,
         onConfirm: async () => {
             try {
@@ -725,8 +727,8 @@ document.getElementById("editUserForm").addEventListener("submit", async (e) => 
 
     const submitBtn = document.getElementById("editUserSubmit");
     submitBtn.disabled = true;
-    const original = submitBtn.textContent;
-    submitBtn.textContent = "Saving...";
+    const original = submitBtn.innerHTML;
+    submitBtn.innerHTML = `<span class="btn-spinner"></span> Saving...`;
 
     try {
         const fresh = await guardNotStale(editingUser);
@@ -745,7 +747,7 @@ document.getElementById("editUserForm").addEventListener("submit", async (e) => 
         showToast("Unable to update the account. Please try again.", "error");
     } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = original;
+        submitBtn.innerHTML = original;
     }
 });
 
@@ -801,8 +803,8 @@ document.getElementById("changeRoleForm").addEventListener("submit", async (e) =
     }
     const submit = document.getElementById("changeRoleSubmit");
     submit.disabled = true;
-    const original = submit.textContent;
-    submit.textContent = "Saving...";
+    const original = submit.innerHTML;
+    submit.innerHTML = `<span class="btn-spinner"></span> Updating Role...`;
     try {
         const fresh = await guardNotStale(roleChangeUser);
         if (!fresh) { closeModal("changeRoleModal"); return; }
@@ -817,7 +819,7 @@ document.getElementById("changeRoleForm").addEventListener("submit", async (e) =
         showToast(friendlyError(err, "Unable to update the user's role. Please try again."), "error");
     } finally {
         submit.disabled = false;
-        submit.textContent = original;
+        submit.innerHTML = original;
         roleChangeUser = null;
     }
 });
@@ -827,15 +829,17 @@ document.getElementById("changeRoleForm").addEventListener("submit", async (e) =
    ========================================================== */
 
 let confirmHandler = null;
+let confirmLoadingText = "Processing...";
 
-function openConfirm({ title, message, confirmLabel = "Confirm", danger = false, onConfirm }) {
+function openConfirm({ title, message, confirmLabel = "Confirm", loadingLabel = "Processing...", danger = false, onConfirm }) {
     document.getElementById("confirmTitle").textContent = title;
     document.getElementById("confirmMessage").innerHTML = message;
     const btn = document.getElementById("confirmActionBtn");
-    btn.textContent = confirmLabel;
+    btn.innerHTML = confirmLabel;
     btn.className = danger ? "btn-primary" : "btn-primary";
     btn.style.background = danger ? "linear-gradient(90deg,#c23b3b,#a92f2f)" : "";
     btn.style.boxShadow = danger ? "0 8px 18px rgba(194,59,59,.28)" : "";
+    confirmLoadingText = loadingLabel;
     confirmHandler = onConfirm;
     openModal("confirmModal");
 }
@@ -843,11 +847,19 @@ function openConfirm({ title, message, confirmLabel = "Confirm", danger = false,
 document.getElementById("confirmActionBtn").addEventListener("click", async () => {
     if (!confirmHandler) return;
     const btn = document.getElementById("confirmActionBtn");
+    const cancelBtn = document.querySelector('[data-close-modal="confirmModal"]');
+    const origHtml = btn.innerHTML;
+    
     btn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span> ${escapeHtml(confirmLoadingText)}`;
+    
     try {
         await confirmHandler();
     } finally {
         btn.disabled = false;
+        btn.innerHTML = origHtml;
+        if (cancelBtn) cancelBtn.disabled = false;
     }
 });
 
@@ -867,6 +879,7 @@ function openChangeRoleConfirm(u) {
             ? "This will give the account access to administrative features."
             : "This will remove the account's access to administrative features."}`,
         confirmLabel: "Confirm",
+        loadingLabel: "Updating Role...",
         onConfirm: async () => {
             try {
                 const fresh = await guardNotStale(u);
@@ -904,6 +917,7 @@ function openDeactivateConfirm(u) {
         title: "Deactivate this account?",
         message: `The user will no longer be able to access RMIMS. Existing records will be preserved.<div class="confirm-note">Deactivating <strong>${escapeHtml(u.fullName)}</strong> (${roleLabel(u.role)}) does not delete any material activity, receiving, or usage history already recorded under this account.</div>`,
         confirmLabel: "Deactivate",
+        loadingLabel: "Deactivating...",
         danger: true,
         onConfirm: async () => {
             try {
@@ -938,6 +952,7 @@ function openActivateConfirm(u) {
         title: "Activate this account?",
         message: `<strong>${escapeHtml(u.fullName)}</strong> will be able to access RMIMS again as ${roleLabel(u.role)}.`,
         confirmLabel: "Activate",
+        loadingLabel: "Activating...",
         onConfirm: async () => {
             try {
                 const fresh = await guardNotStale(u);
@@ -1148,8 +1163,8 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
 
     const submitBtn = document.getElementById("addUserSubmit");
     submitBtn.disabled = true;
-    const original = submitBtn.textContent;
-    submitBtn.textContent = "Creating...";
+    const original = submitBtn.innerHTML;
+    submitBtn.innerHTML = `<span class="btn-spinner"></span> Creating Account...`;
 
     let tempClient = null;
     try {
