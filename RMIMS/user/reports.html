@@ -81,14 +81,18 @@
                         <button type="button" id="clearReportDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                     </div>
 
-                    <!-- Period Dropdown (Clean Inventory Style) -->
-                    <select class="inv-select" id="reportPeriodPreset" title="Select Report Period">
-                        <option value="weekly" selected>Period: Weekly (Last 7 Days)</option>
-                        <option value="monthly">Period: Monthly (Last 30 Days)</option>
-                        <option value="today">Period: Latest Update Day</option>
-                        <option value="custom">Period: Custom Date Range</option>
-                        <option value="all">Period: All Available Records</option>
-                    </select>
+                    <!-- Improved Period Dropdown with Leading Icon & Chevron -->
+                    <div class="rpt-select-wrap">
+                        <svg class="rpt-select-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <select class="inv-select rpt-period-select" id="reportPeriodPreset" title="Select Report Period">
+                            <option value="weekly" selected>📅 Period: Weekly (Last 7 Days)</option>
+                            <option value="monthly">🗓️ Period: Monthly (Last 30 Days)</option>
+                            <option value="today">📊 Period: Latest Update Day</option>
+                            <option value="custom">✏️ Period: Custom Date Range</option>
+                            <option value="all">🌐 Period: All Available Records</option>
+                        </select>
+                        <svg class="rpt-select-chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
 
                     <!-- Modern Refresh Button with Live Supabase Status Update -->
                     <button id="generateReportBtn" class="btn-secondary rpt-refresh-btn" title="Refresh Live Data from Supabase">

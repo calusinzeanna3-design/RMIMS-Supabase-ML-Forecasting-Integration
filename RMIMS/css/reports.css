@@ -195,27 +195,60 @@
   border-color: #FECACA;
 }
 
-/* Clean Dropdown (Matching Inventory) */
+/* Improved Dropdown with System Styling & Leading Icon */
+.rpt-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rpt-select-icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: #64748B;
+  pointer-events: none;
+  transition: color 0.18s ease;
+}
+
+.rpt-select-chev {
+  position: absolute;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  color: #64748B;
+  pointer-events: none;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.rpt-period-select,
 .inv-select {
   border: 1.5px solid #CBD5E1;
   border-radius: 10px;
-  padding: 0 14px;
+  padding: 0 32px 0 34px;
   font-size: 0.84rem;
   font-weight: 600;
   color: #1E293B;
   background: #FFFFFF;
   outline: none;
+  appearance: none;
+  -webkit-appearance: none;
   transition: all 0.18s ease;
   height: 40px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
+.rpt-select-wrap:focus-within .rpt-select-icon,
+.rpt-select-wrap:focus-within .rpt-select-chev {
+  color: #10B981;
+}
+
+.rpt-period-select:hover,
+.rpt-period-select:focus,
 .inv-select:hover,
 .inv-select:focus {
-  border-color: #10B981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
-}
   border-color: #10B981;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
