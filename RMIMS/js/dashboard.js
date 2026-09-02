@@ -1412,23 +1412,30 @@ async function renderRawMaterialsTrendChart() {
       forecastData = labels.map((_, i) => Number((300 * (1 + (i * 0.02))).toFixed(2)));
     }
 
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     consumedData = labels.map(mStr => {
-      return filteredUsage.reduce((sum, u) => {
+      const sum = filteredUsage.reduce((acc, u) => {
         const d = String(u.usageDate || u.date || u.createdAt || "");
-        if (d.startsWith(mStr)) return sum + Number(u.consumedQuantity || u.quantity || 0);
-        return sum;
+        if (d.startsWith(mStr)) return acc + Number(u.consumedQuantity || u.quantity || 0);
+        return acc;
       }, 0);
+
+      // If future month with 0 usage, mark as null so the actual line stops cleanly at current month
+      if (sum === 0 && mStr > currentMonthStr) {
+        return null;
+      }
+      return sum;
     });
   }
 
-  // Calculate ±10% Acceptance Margin Bands around Consumption (or Baseline Forecast)
-  const marginUpperData = consumedData.map((c, i) => {
-    const base = c > 0 ? c : (forecastData[i] || 0);
-    return Number((base * 1.10).toFixed(2));
+  // Calculate ±10% Acceptance Margin Bands around Forecast Model
+  const marginUpperData = forecastData.map((f) => {
+    return f !== null && f !== undefined ? Number((f * 1.10).toFixed(2)) : null;
   });
-  const marginLowerData = consumedData.map((c, i) => {
-    const base = c > 0 ? c : (forecastData[i] || 0);
-    return Number((base * 0.90).toFixed(2));
+  const marginLowerData = forecastData.map((f) => {
+    return f !== null && f !== undefined ? Number((f * 0.90).toFixed(2)) : null;
   });
 
   // Update Footer Meta text
