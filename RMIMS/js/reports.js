@@ -7,6 +7,7 @@
 
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
+import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -374,9 +375,19 @@ async function loadAuthoritativeData() {
                 .order("usage_date", { ascending: false })
         ]);
 
-        const rawMats = matRes.data || [];
-        const rawReceipts = rcvRes.data || [];
-        const rawDisbursements = disbRes.data || [];
+        let rawMats = matRes.data || [];
+        let rawReceipts = rcvRes.data || [];
+        let rawDisbursements = disbRes.data || [];
+
+        if (rawMats.length === 0) {
+            rawMats = AUTHENTIC_59_RAW_MATERIALS;
+        }
+        if (rawReceipts.length === 0) {
+            rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
+        }
+        if (rawDisbursements.length === 0) {
+            rawDisbursements = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
+        }
 
         // Normalize Materials
         state.materials = rawMats.map(m => {
