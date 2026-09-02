@@ -380,19 +380,16 @@ function renderOverviewTrendChart() {
     // Determine target material
     const isAll = state.chart1MaterialId === "ALL";
     const selectedMat = !isAll ? state.materials.find(m => m.id === state.chart1MaterialId) : null;
+    const unit = selectedMat ? selectedMat.unit : "kg";
 
     // Build timeline intervals based on period & active date range
     const intervals = generateTimelineIntervals(state.chart1Period, state.dateFrom, state.dateTo);
     const labels = intervals.map(i => i.label);
 
     const actualData = [];
-    const minTargetData = [];
 
     intervals.forEach(inv => {
-        // Compute consumption or stock in interval
         let intervalUsage = 0;
-        let minThreshold = selectedMat ? selectedMat.minStock : 0;
-
         state.disbursements.forEach(d => {
             if (d.usageDate >= inv.start && d.usageDate <= inv.end) {
                 if (isAll || d.materialId === state.chart1MaterialId) {
@@ -400,14 +397,7 @@ function renderOverviewTrendChart() {
                 }
             }
         });
-
-        if (isAll) {
-            // Aggregate minimum threshold across all catalog items
-            minThreshold = state.materials.reduce((sum, m) => sum + m.minStock, 0);
-        }
-
         actualData.push(Number(intervalUsage.toFixed(2)));
-        minTargetData.push(Number(minThreshold.toFixed(2)));
     });
 
     overviewChartInstance = new Chart(ctx, {
@@ -416,58 +406,73 @@ function renderOverviewTrendChart() {
             labels: labels,
             datasets: [
                 {
-                    label: isAll ? "Total Usage" : `${selectedMat?.name} Usage`,
+                    label: isAll ? "Actual Consumption (All Materials)" : `${selectedMat?.name} Usage`,
                     data: actualData,
-                    borderColor: "#16a34a",
-                    backgroundColor: "rgba(22, 163, 74, 0.08)",
-                    borderWidth: 2.5,
-                    pointBackgroundColor: "#16a34a",
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.3
-                },
-                {
-                    label: isAll ? "Combined Minimum Target" : `${selectedMat?.name} Minimum Target`,
-                    data: minTargetData,
-                    borderColor: "#ea580c",
-                    borderWidth: 2,
-                    borderDash: [5, 5],
+                    borderColor: "#1D70B8",
+                    backgroundColor: "rgba(29, 112, 184, 0.08)",
+                    borderWidth: 2.4,
                     pointRadius: 0,
-                    pointHoverRadius: 0,
-                    fill: false,
-                    tension: 0
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: "#1D70B8",
+                    pointHoverBorderColor: "#FFFFFF",
+                    pointHoverBorderWidth: 2,
+                    fill: true,
+                    tension: 0.25
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: "#0f172a",
-                    titleColor: "#f8fafc",
-                    bodyColor: "#e2e8f0",
-                    padding: 10,
+                    backgroundColor: "#0B132B",
+                    titleColor: "#FFFFFF",
+                    bodyColor: "#D7E0EA",
+                    borderColor: "rgba(255, 255, 255, 0.18)",
+                    borderWidth: 1,
+                    padding: 12,
                     cornerRadius: 8,
+                    displayColors: false,
                     callbacks: {
+                        title: items => items[0]?.label ? `Timeline: ${items[0].label}` : "",
                         label: function(context) {
-                            const unit = selectedMat ? selectedMat.unit : "units";
-                            return ` ${context.dataset.label}: ${context.parsed.y.toLocaleString()} ${unit}`;
+                            const val = context.parsed.y;
+                            if (val === null || val === undefined || isNaN(val)) return " Usage: N/A";
+                            return ` Actual Usage: ${val.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${unit}`;
                         }
                     }
                 }
             },
             scales: {
                 x: {
-                    grid: { display: false },
-                    ticks: { color: "#64748b", font: { size: 11, weight: 600 } }
+                    grid: {
+                        color: "rgba(203, 213, 225, 0.40)",
+                        borderDash: [3, 3],
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: "#475569",
+                        font: { family: "Inter", size: 11, weight: 600 }
+                    }
                 },
                 y: {
                     beginAtZero: true,
-                    grid: { color: "#f1f5f9" },
-                    ticks: { color: "#64748b", font: { size: 11 } }
+                    grid: {
+                        color: "rgba(203, 213, 225, 0.40)",
+                        borderDash: [3, 3],
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: "#475569",
+                        font: { family: "Inter", size: 11, weight: 500 },
+                        callback: val => Number(val).toLocaleString()
+                    }
                 }
             }
         }
