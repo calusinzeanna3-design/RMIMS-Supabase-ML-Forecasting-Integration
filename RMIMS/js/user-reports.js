@@ -171,7 +171,49 @@ function setPeriodPresetDates(preset) {
         else fpEnd.clear();
     }
 
+    syncUserDateInputsInteractiveState();
     updateUserClearBtnVisibility();
+}
+
+function syncUserDateInputsInteractiveState() {
+    const isCustom = state.periodPreset === "custom";
+    const wrap = $("rptDateRangeGroup");
+
+    if (wrap) {
+        if (isCustom) {
+            wrap.classList.remove("is-preset-locked");
+            wrap.classList.add("is-custom-active");
+            wrap.title = "Custom Date Range: Click date fields to modify range";
+        } else {
+            wrap.classList.add("is-preset-locked");
+            wrap.classList.remove("is-custom-active");
+            wrap.title = "Preset active: Dates are automatically loaded. Switch to 'Custom Date Range' in dropdown to edit.";
+        }
+    }
+
+    if (fpStart && fpStart.altInput) {
+        if (isCustom) {
+            fpStart.altInput.style.pointerEvents = "auto";
+            fpStart.altInput.style.cursor = "pointer";
+            fpStart.altInput.classList.remove("input-locked");
+        } else {
+            fpStart.altInput.style.pointerEvents = "none";
+            fpStart.altInput.style.cursor = "default";
+            fpStart.altInput.classList.add("input-locked");
+        }
+    }
+
+    if (fpEnd && fpEnd.altInput) {
+        if (isCustom) {
+            fpEnd.altInput.style.pointerEvents = "auto";
+            fpEnd.altInput.style.cursor = "pointer";
+            fpEnd.altInput.classList.remove("input-locked");
+        } else {
+            fpEnd.altInput.style.pointerEvents = "none";
+            fpEnd.altInput.style.cursor = "default";
+            fpEnd.altInput.classList.add("input-locked");
+        }
+    }
 }
 
 function updateUserClearBtnVisibility() {
@@ -206,6 +248,7 @@ function initUserReportsFlatpickr() {
                 state.startDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
+                syncUserDateInputsInteractiveState();
                 updateUserClearBtnVisibility();
                 renderAllReportSections();
             }
@@ -228,6 +271,7 @@ function initUserReportsFlatpickr() {
                 state.endDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
+                syncUserDateInputsInteractiveState();
                 updateUserClearBtnVisibility();
                 renderAllReportSections();
             }
@@ -245,12 +289,14 @@ function initUserReportsFlatpickr() {
             state.endDate = null;
             if (presetSelect) presetSelect.value = "all";
             state.periodPreset = "all";
+            syncUserDateInputsInteractiveState();
             updateUserClearBtnVisibility();
             renderAllReportSections();
             showToast("Report date filter cleared.", "info");
         });
     }
 
+    syncUserDateInputsInteractiveState();
     updateUserClearBtnVisibility();
 }
 

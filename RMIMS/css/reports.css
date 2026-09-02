@@ -144,6 +144,36 @@
   background: #FFFFFF;
 }
 
+/* Preset Locked vs Custom Editable States */
+.inv-date-range-wrap.is-preset-locked {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.inv-date-range-wrap.is-preset-locked .inv-input-date,
+.inv-date-range-wrap .inv-input-date.input-locked {
+  background: #F1F5F9 !important;
+  color: #475569 !important;
+  border-color: #E2E8F0 !important;
+  cursor: default !important;
+  user-select: none;
+  pointer-events: none;
+}
+
+.inv-date-range-wrap.is-custom-active {
+  border-color: #10B981;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+}
+
+.inv-date-range-wrap.is-custom-active .inv-input-date {
+  background: #FFFFFF !important;
+  border-color: #10B981 !important;
+  color: #0F172A !important;
+  cursor: pointer !important;
+  pointer-events: auto;
+}
+
 .date-clear-btn {
   border: 1px solid #CBD5E1;
   background: #F8FAFC;
@@ -165,27 +195,54 @@
   border-color: #FECACA;
 }
 
-/* Improved Dropdown with System Styling */
+/* Improved Dropdown with System Styling & Multiple Icons */
 .rpt-select-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
+.rpt-select-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: #64748B;
+  pointer-events: none;
+  transition: color 0.18s ease;
+}
+
+.rpt-select-chev {
+  position: absolute;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  color: #64748B;
+  pointer-events: none;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
 .rpt-period-select,
 .inv-select {
   border: 1.5px solid #CBD5E1;
   border-radius: 10px;
-  padding: 0 14px;
+  padding: 0 32px 0 36px;
   font-size: 0.84rem;
   font-weight: 600;
   color: #1E293B;
   background: #FFFFFF;
   outline: none;
+  appearance: none;
+  -webkit-appearance: none;
   transition: all 0.18s ease;
   height: 40px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.rpt-select-wrap:focus-within .rpt-select-icon,
+.rpt-select-wrap:focus-within .rpt-select-chev {
+  color: #10B981;
 }
 
 .rpt-period-select:hover,

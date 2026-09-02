@@ -74,7 +74,7 @@
             <section class="rpt-control-card" aria-label="Report Parameters and Filters">
                 <div class="rpt-control-left">
                     <!-- Modern Inventory Date Range Picker with Pill & Clear button -->
-                    <div class="inv-date-range-wrap">
+                    <div class="inv-date-range-wrap" id="rptDateRangeGroup">
                         <label for="rptStartDate" class="filter-label">FROM:</label>
                         <input type="text" class="inv-input-date" id="rptStartDate" title="Report Start Date" placeholder="dd/mm/yyyy" readonly/>
                         <label for="rptEndDate" class="filter-label">TO:</label>
@@ -82,15 +82,17 @@
                         <button type="button" id="clearReportDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                     </div>
 
-                    <!-- Improved Period Dropdown with Icon -->
+                    <!-- Improved Period Dropdown with Leading Icon & Chevron -->
                     <div class="rpt-select-wrap">
+                        <svg class="rpt-select-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 2V6M8 2V6M3 10H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                         <select class="inv-select rpt-period-select" id="reportPeriodPreset" title="Select Report Period">
-                            <option value="weekly" selected>Period: Weekly (Last 7 Days)</option>
-                            <option value="monthly">Period: Monthly (Last 30 Days)</option>
-                            <option value="today">Period: Latest Update Day</option>
-                            <option value="custom">Period: Custom Date Range</option>
-                            <option value="all">Period: All Available Records</option>
+                            <option value="weekly" selected>📅 Period: Weekly (Last 7 Days)</option>
+                            <option value="monthly">🗓️ Period: Monthly (Last 30 Days)</option>
+                            <option value="today">⚡ Period: Latest Update Day</option>
+                            <option value="custom">✏️ Period: Custom Date Range</option>
+                            <option value="all">🌐 Period: All Available Records</option>
                         </select>
+                        <svg class="rpt-select-chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
 
                     <!-- Modern Refresh Button with Live Supabase Status Update -->
