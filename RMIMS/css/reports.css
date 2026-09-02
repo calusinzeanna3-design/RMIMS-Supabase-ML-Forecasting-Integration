@@ -367,7 +367,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 620px; /* Non-movable, stable height */
+  min-height: auto;
 }
 
 .rpt-tab-bar {
@@ -403,7 +403,7 @@
 }
 
 .rpt-tab-body {
-  padding: 24px;
+  padding: 20px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -417,7 +417,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 480px; /* Locked non-movable panel height */
+  min-height: auto;
 }
 
 /* Manager KPI Mini Cards */
@@ -598,10 +598,7 @@
   border: 1px solid var(--rpt-card-border);
   border-radius: var(--rpt-radius-sm);
   background: #ffffff;
-  flex: 1;
-  min-height: 280px;
-  display: flex;
-  flex-direction: column;
+  min-height: auto;
 }
 
 .rpt-table {
@@ -612,16 +609,16 @@
 
 .rpt-pagination-bar,
 .inv-pagination-bar {
-  margin-top: 16px !important;
+  margin-top: 14px !important;
   border-top: 1px solid #E2E8F0 !important;
-  padding: 12px 16px !important;
-  background: #FFFFFF !important;
+  padding: 12px 4px 4px 4px !important;
+  background: transparent !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   flex-shrink: 0 !important;
   gap: 12px !important;
-  border-radius: 0 0 10px 10px !important;
+  border-radius: 0 !important;
 }
 
 .rpt-table th {
