@@ -1433,7 +1433,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
 
     let sectionsHtml = "";
 
-    // 1. FIRST CARD / FIRST PAGE: Manager Summary
+    // 1. FIRST CARD: Manager Summary
     if (selectedSections.includes("manager")) {
         const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
@@ -1447,14 +1447,14 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                 decisions.push({
                     priority: "High",
                     material: m.name,
-                    finding: `Stock has reached critical safety threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
+                    finding: `Stock reached critical threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
                     action: `Create urgent purchase receipt for ${m.reorderQty || 50} ${m.unit}.`
                 });
             } else if (m.status === "Low") {
                 decisions.push({
                     priority: "Medium",
                     material: m.name,
-                    finding: `Stock is approaching minimum threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
+                    finding: `Stock is approaching minimum safety limit (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
                     action: `Schedule replenishment order with primary supplier.`
                 });
             }
@@ -1462,7 +1462,10 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
 
         sectionsHtml += `
             <div class="print-section">
-                <h2 class="print-section-header-green">1. Executive Manager Summary &amp; Decisions</h2>
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">1. Executive Manager Summary &amp; Decisions</h2>
+                    <span class="print-source-pill">Source: Executive Dashboard &amp; Decision Matrix</span>
+                </div>
                 
                 <!-- KPI Executive Chips -->
                 <div class="print-kpi-summary-grid">
@@ -1480,7 +1483,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                     </div>
                     <div class="print-kpi-box">
                         <div class="print-kpi-box-num" style="color:#2563EB;">${periodReceipts.length + periodDisbursements.length}</div>
-                        <div class="print-kpi-box-lbl">Total Period Activities</div>
+                        <div class="print-kpi-box-lbl">Total Movements</div>
                     </div>
                 </div>
 
@@ -1488,8 +1491,8 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                 <table class="print-table">
                     <thead>
                         <tr>
-                            <th style="width: 70%;">Operational Metric</th>
-                            <th style="width: 30%;">Result / Count</th>
+                            <th style="width: 65%;">Operational Metric</th>
+                            <th style="width: 35%;">Result / Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1501,7 +1504,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                     </tbody>
                 </table>
 
-                <h3 class="print-subsection-title">Manager Strategic Decision Breakdown</h3>
+                <h3 class="print-subsection-title">Strategic Decision Breakdown</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1512,7 +1515,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                         </tr>
                     </thead>
                     <tbody>
-                        ${decisions.length === 0 ? `<tr><td colspan="4" style="text-align:center; padding:10px; color:#64748b;">No materials currently require urgent priority intervention. Stock levels are stable.</td></tr>` :
+                        ${decisions.length === 0 ? `<tr><td colspan="4" style="text-align:center; padding:6px; color:#64748b;">No materials currently require urgent priority intervention. Stock levels are stable.</td></tr>` :
                             decisions.map(d => `
                                 <tr>
                                     <td><strong style="color:${d.priority === 'High' ? '#DC2626' : '#D97706'};">${escapeHtml(d.priority)}</strong></td>
@@ -1531,8 +1534,11 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     // 2. Inventory Records
     if (selectedSections.includes("inventory")) {
         sectionsHtml += `
-            <div class="print-section page-break">
-                <h2 class="print-section-header-green">2. Raw Material Inventory Records</h2>
+            <div class="print-section">
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">2. Raw Material Inventory Records</h2>
+                    <span class="print-source-pill">Source: raw_materials Catalog Ledger</span>
+                </div>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1563,8 +1569,11 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     if (selectedSections.includes("receiving")) {
         const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
         sectionsHtml += `
-            <div class="print-section page-break">
-                <h2 class="print-section-header-green">3. Material Receiving Log</h2>
+            <div class="print-section">
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">3. Material Receiving Log</h2>
+                    <span class="print-source-pill">Source: stock_receipts Inbound Records</span>
+                </div>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1577,7 +1586,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                         </tr>
                     </thead>
                     <tbody>
-                        ${periodReceipts.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:10px; color:#64748b;">No receiving records found for the selected period.</td></tr>` :
+                        ${periodReceipts.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:8px; color:#64748b;">No receiving records found for the selected period.</td></tr>` :
                             periodReceipts.map(r => `
                                 <tr>
                                     <td>${escapeHtml(r.receiptDate)}</td>
@@ -1599,8 +1608,11 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     if (selectedSections.includes("disbursement")) {
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
         sectionsHtml += `
-            <div class="print-section page-break">
-                <h2 class="print-section-header-green">4. Material Disbursement Log</h2>
+            <div class="print-section">
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">4. Material Disbursement Log</h2>
+                    <span class="print-source-pill">Source: material_disbursements Production Issue Ledger</span>
+                </div>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1613,7 +1625,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                         </tr>
                     </thead>
                     <tbody>
-                        ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:10px; color:#64748b;">No disbursement records found for the selected period.</td></tr>` :
+                        ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:8px; color:#64748b;">No disbursement records found for the selected period.</td></tr>` :
                             periodDisbursements.map(d => `
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
@@ -1642,8 +1654,11 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         activities.sort((a, b) => b.date.localeCompare(a.date));
 
         sectionsHtml += `
-            <div class="print-section page-break">
-                <h2 class="print-section-header-green">5. Material Activity Movement Log</h2>
+            <div class="print-section">
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">5. Material Activity Movement Log</h2>
+                    <span class="print-source-pill">Source: Unified Movement Chronology</span>
+                </div>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1656,7 +1671,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                         </tr>
                     </thead>
                     <tbody>
-                        ${activities.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:10px; color:#64748b;">No stock movements recorded for this period.</td></tr>` :
+                        ${activities.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:8px; color:#64748b;">No stock movements recorded for this period.</td></tr>` :
                             activities.map(a => `
                                 <tr>
                                     <td>${escapeHtml(a.date)}</td>
@@ -1681,8 +1696,11 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         periodDisbursements.forEach(d => curMap.set(d.materialId, (curMap.get(d.materialId) || 0) + d.disbursedQuantity));
 
         sectionsHtml += `
-            <div class="print-section page-break">
-                <h2 class="print-section-header-green">6. Consumption Analysis &amp; Usage Trends</h2>
+            <div class="print-section">
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">6. Consumption Analysis &amp; Usage Trends</h2>
+                    <span class="print-source-pill">Source: Aggregate Consumption vs Real-Time Health</span>
+                </div>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1715,10 +1733,13 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     // 7. AI Forecasting
     if (selectedSections.includes("forecasting")) {
         sectionsHtml += `
-            <div class="print-section page-break">
-                <h2 class="print-section-header-green">7. AI Forecasting &amp; Requirement Projections</h2>
-                <div style="font-size: 8pt; color: #475569; margin-bottom: 8px; background:#f8fafc; padding:6px 10px; border-left:3px solid #059669;">
-                    <strong>Forecast Status:</strong> Production Support Mode | <strong>Horizon:</strong> Next 7 Days Projections | <strong>Confidence Level:</strong> 95%
+            <div class="print-section">
+                <div class="print-section-header-wrap">
+                    <h2 class="print-section-header-green">7. AI Forecasting &amp; Requirement Projections</h2>
+                    <span class="print-source-pill">Source: AI Demand Forecasting Engine</span>
+                </div>
+                <div style="font-size: 7.5pt; color: #475569; margin-bottom: 6px; background:#f8fafc; padding:4px 8px; border-left:3px solid #059669;">
+                    <strong>Forecast Status:</strong> Production Ready Projections | <strong>Horizon:</strong> Next 7 Days | <strong>Model:</strong> ML Demand Engine
                 </div>
                 <table class="print-table">
                     <thead>
@@ -1751,16 +1772,25 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     }
 
     return `
-        <!-- FADED GREY ANTI-FAKE WATERMARK -->
-        <div class="print-watermark-overlay" aria-hidden="true">
-            <span>RMSME OFFICIAL REPORT</span>
-            <span class="print-watermark-sub">SYSTEM VERIFIED • PREVENT FAKE COPY</span>
+        <!-- TOP CONFIDENTIAL BANNER -->
+        <div class="print-confidential-top">
+            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
+            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
+            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDateStr} ${genTimeStr}</div>
         </div>
 
-        <!-- OFFICIAL PERMANENT RMSME HEADER -->
+        <!-- FADED SYSTEM LOGO WATERMARK OVERLAY -->
+        <div class="print-watermark-overlay" aria-hidden="true">
+            <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
+            <div class="print-watermark-title">RMSME</div>
+            <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+            <div class="print-watermark-sub" style="font-size:7pt; margin-top:2px;">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
+        </div>
+
+        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
         <div class="print-header-block">
             <div class="print-logo-row">
-                <div class="print-logo-badge">RMSME</div>
+                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
                 <div class="print-system-info">
                     <h1 class="print-rmims-title">RMSME</h1>
                     <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
@@ -1795,11 +1825,11 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
             </div>
             <div class="print-meta-item">
                 <span class="print-meta-lbl">Security Classification</span>
-                <span class="print-meta-val">Confidential / Internal Production Use Only</span>
+                <span class="print-meta-val">Confidential / Internal Operation Only</span>
             </div>
         </div>
 
-        <!-- REPORT SECTIONS (MANAGER SUMMARY FIRST) -->
+        <!-- REPORT SECTIONS (MANAGER SUMMARY FIRST, CONTINUOUS STREAM) -->
         ${sectionsHtml}
 
         <!-- BOTTOM PERMANENT SYSTEM CONTACT & OWNERSHIP FOOTER -->
@@ -1809,8 +1839,8 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                 <span>Document Ownership: RMSME Authorized Management</span>
             </div>
             <div class="print-footer-contact">
-                <span>System Service &amp; Support: support@rmsme.internal | Helpline: (02) 8876-RMSME</span>
-                <span>Official System Generated Copy • No Signature Required • Anti-Tamper Protected</span>
+                <span>System Support: <strong>support@rmsme.internal</strong> | Helpline: <strong>(02) 8876-RMSME</strong></span>
+                <span>Official System Generated Copy • Anti-Tamper Protected</span>
             </div>
         </div>
     `;

@@ -1881,93 +1881,86 @@ function updatePrintDocHtml() {
     const attentionStock = state.materials.filter(m => m.status !== "Good").length;
 
     let html = `
-        <!-- Centered Faded Anti-Fake Watermark Across Printed Pages -->
-        <div class="print-watermark-overlay">
-            <div>RMSME OFFICIAL REPORT</div>
-            <div class="print-watermark-sub">SYSTEM VERIFIED • PREVENT FAKE COPY</div>
+        <!-- TOP CONFIDENTIAL BANNER -->
+        <div class="print-confidential-top">
+            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
+            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
+            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDate} ${genTime}</div>
         </div>
 
-        <!-- Official RMSME Header Block -->
+        <!-- FADED SYSTEM LOGO WATERMARK OVERLAY -->
+        <div class="print-watermark-overlay" aria-hidden="true">
+            <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
+            <div class="print-watermark-title">RMSME</div>
+            <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+            <div class="print-watermark-sub" style="font-size:7pt; margin-top:2px;">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
+        </div>
+
+        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
         <div class="print-header-block">
-            <div class="print-header-left">
-                <div class="print-logo-badge">RMSME</div>
-                <div>
-                    <h1 class="print-rmims-title">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</h1>
-                    <div class="print-rmims-sub">OFFICIAL SYSTEM-GENERATED OPERATIONAL REPORT &amp; INVENTORY AUDIT</div>
+            <div class="print-logo-row">
+                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
+                <div class="print-system-info">
+                    <h1 class="print-rmims-title">RMSME</h1>
+                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
                 </div>
             </div>
             <div class="print-doc-meta-right">
-                <div class="print-meta-pill"><strong>DOC REF:</strong> ${docRefCode}</div>
-                <div class="print-meta-pill"><strong>DATE:</strong> ${genDate}</div>
-                <div class="print-meta-pill"><strong>TIME:</strong> ${genTime}</div>
+                <div><strong>Generated:</strong> ${genDate} at ${genTime}</div>
+                <div><strong>Operator:</strong> ${esc(currentUser?.fullName || "RMSME Authorized Staff")}</div>
+                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
             </div>
         </div>
 
-        <div class="print-doc-divider"></div>
+        <!-- REPORT TITLE & PERIOD RIBBON -->
+        <div class="print-doc-title-row">
+            <h2 class="print-doc-title">Operational Inventory &amp; Production Report</h2>
+            <span class="print-period-badge">${esc(periodLabel)}</span>
+        </div>
 
-        <h2 class="print-doc-title">RMSME Operational Report Package</h2>
-
+        <!-- METADATA CARD GRID -->
         <div class="print-meta-grid-2col">
             <div class="print-meta-item">
-                <span class="print-meta-lbl">REPORT TYPE</span>
-                <span class="print-meta-val">${esc(reportTypeLabel)}</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">REPORT PERIOD</span>
+                <span class="print-meta-lbl">REPORT HORIZON</span>
                 <span class="print-meta-val">${esc(periodLabel)}</span>
             </div>
             <div class="print-meta-item">
-                <span class="print-meta-lbl">GENERATED DATE &amp; TIME</span>
-                <span class="print-meta-val">${esc(genDate)} at ${esc(genTime)}</span>
+                <span class="print-meta-lbl">REPORT PRESET</span>
+                <span class="print-meta-val">${esc(reportTypeLabel)}</span>
             </div>
             <div class="print-meta-item">
                 <span class="print-meta-lbl">SECURITY CLASSIFICATION</span>
                 <span class="print-meta-val">Confidential / Internal Operation</span>
             </div>
             <div class="print-meta-item">
-                <span class="print-meta-lbl">PREPARED FOR</span>
-                <span class="print-meta-val">MSME Inventory &amp; Production Management</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">PREPARED BY / OPERATOR</span>
-                <span class="print-meta-val">${esc(currentUser?.fullName || "RMSME Authorized Staff")}</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">AUTHORITY / SYSTEM</span>
-                <span class="print-meta-val">RMSME Enterprise Inventory Engine v2.4</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">DATA SOURCE INTEGRITY</span>
-                <span class="print-meta-val">Verified Authoritative PostgreSQL Ledger</span>
+                <span class="print-meta-lbl">DATA INTEGRITY</span>
+                <span class="print-meta-val">Verified PostgreSQL Ledger</span>
             </div>
         </div>
 
-        <div class="print-doc-divider"></div>
-
-        <!-- FIRST CARD / PAGE 1: MANAGER SUMMARY & OVERVIEW -->
+        <!-- FIRST CARD: OPERATIONAL SUMMARY & OVERVIEW -->
         <div class="print-section">
-            <h3 class="print-section-header-green">1. Operational Summary &amp; Overview</h3>
+            <div class="print-section-header-wrap">
+                <h3 class="print-section-header-green">1. Operational Summary &amp; Overview</h3>
+                <span class="print-source-pill">Source: Operational Summary Matrix</span>
+            </div>
             
             <div class="print-kpi-summary-grid">
                 <div class="print-kpi-box">
-                    <div class="print-kpi-lbl">TOTAL RAW MATERIALS</div>
-                    <div class="print-kpi-val">${state.materials.length}</div>
-                    <div class="print-kpi-sub">Active in Catalog</div>
+                    <div class="print-kpi-box-lbl">TOTAL RAW MATERIALS</div>
+                    <div class="print-kpi-box-num">${state.materials.length}</div>
                 </div>
                 <div class="print-kpi-box">
-                    <div class="print-kpi-lbl">OPTIMAL STOCK</div>
-                    <div class="print-kpi-val" style="color: #059669;">${goodStock}</div>
-                    <div class="print-kpi-sub">Healthy Levels</div>
+                    <div class="print-kpi-box-lbl">OPTIMAL STOCK</div>
+                    <div class="print-kpi-box-num" style="color: #059669;">${goodStock}</div>
                 </div>
                 <div class="print-kpi-box">
-                    <div class="print-kpi-lbl">NEEDS ATTENTION</div>
-                    <div class="print-kpi-val" style="color: #dc2626;">${attentionStock}</div>
-                    <div class="print-kpi-sub">Low / Critical Stock</div>
+                    <div class="print-kpi-box-lbl">NEEDS ATTENTION</div>
+                    <div class="print-kpi-box-num" style="color: #dc2626;">${attentionStock}</div>
                 </div>
                 <div class="print-kpi-box">
-                    <div class="print-kpi-lbl">RECEIVING LOGS</div>
-                    <div class="print-kpi-val">${periodReceipts.length}</div>
-                    <div class="print-kpi-sub">In Selected Horizon</div>
+                    <div class="print-kpi-box-lbl">RECEIVING LOGS</div>
+                    <div class="print-kpi-box-num">${periodReceipts.length}</div>
                 </div>
             </div>
 
@@ -2004,9 +1997,12 @@ function updatePrintDocHtml() {
             </table>
         </div>
 
-        <!-- SECTION 2: RAW MATERIAL RECEIVING (PAGE BREAK) -->
-        <div class="print-section page-break">
-            <h3 class="print-section-header-green">2. Material Receiving Log</h3>
+        <!-- SECTION 2: RAW MATERIAL RECEIVING -->
+        <div class="print-section">
+            <div class="print-section-header-wrap">
+                <h3 class="print-section-header-green">2. Material Receiving Log</h3>
+                <span class="print-source-pill">Source: stock_receipts Inbound Records</span>
+            </div>
             <table class="print-table">
                 <thead>
                     <tr>
@@ -2020,7 +2016,7 @@ function updatePrintDocHtml() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${periodReceipts.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:12px;">No material receiving records recorded in this period.</td></tr>` : 
+                    ${periodReceipts.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:8px;">No material receiving records recorded in this period.</td></tr>` : 
                     periodReceipts.map(r => `
                         <tr>
                             <td>${esc(r.receiptDate)}</td>
@@ -2037,8 +2033,11 @@ function updatePrintDocHtml() {
         </div>
 
         <!-- SECTION 3: MATERIAL DISBURSEMENT -->
-        <div class="print-section page-break">
-            <h3 class="print-section-header-green">3. Material Disbursement Log</h3>
+        <div class="print-section">
+            <div class="print-section-header-wrap">
+                <h3 class="print-section-header-green">3. Material Disbursement Log</h3>
+                <span class="print-source-pill">Source: material_disbursements Production Issue Ledger</span>
+            </div>
             <table class="print-table">
                 <thead>
                     <tr>
@@ -2051,7 +2050,7 @@ function updatePrintDocHtml() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:12px;">No material disbursements recorded in this period.</td></tr>` :
+                    ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No material disbursements recorded in this period.</td></tr>` :
                     periodDisbursements.map(d => `
                         <tr>
                             <td>${esc(d.usageDate)}</td>
@@ -2067,8 +2066,11 @@ function updatePrintDocHtml() {
         </div>
 
         <!-- SECTION 4: CONSUMPTION ANALYSIS -->
-        <div class="print-section page-break">
-            <h3 class="print-section-header-green">4. Raw Material Consumption Analysis</h3>
+        <div class="print-section">
+            <div class="print-section-header-wrap">
+                <h3 class="print-section-header-green">4. Raw Material Consumption Analysis</h3>
+                <span class="print-source-pill">Source: Period Usage vs Catalog Health</span>
+            </div>
             <table class="print-table">
                 <thead>
                     <tr>
@@ -2080,7 +2082,7 @@ function updatePrintDocHtml() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${state.materials.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:12px;">No catalog raw materials registered.</td></tr>` :
+                    ${state.materials.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:8px;">No catalog raw materials registered.</td></tr>` :
                     state.materials.map(m => {
                         const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((sum, d) => sum + d.disbursedQuantity, 0);
                         return `
@@ -2098,8 +2100,11 @@ function updatePrintDocHtml() {
         </div>
 
         <!-- SECTION 5: AI FORECAST PROJECTIONS -->
-        <div class="print-section page-break">
-            <h3 class="print-section-header-green">5. AI Forecast Projections &amp; Requirement Needs</h3>
+        <div class="print-section">
+            <div class="print-section-header-wrap">
+                <h3 class="print-section-header-green">5. AI Forecast Projections &amp; Requirement Needs</h3>
+                <span class="print-source-pill">Source: AI Demand Forecasting Engine</span>
+            </div>
             <table class="print-table">
                 <thead>
                     <tr>
@@ -2112,7 +2117,7 @@ function updatePrintDocHtml() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${state.forecastList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:12px;">No AI forecast projections recorded.</td></tr>` :
+                    ${state.forecastList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No AI forecast projections recorded.</td></tr>` :
                     state.forecastList.map(f => `
                         <tr>
                             <td><strong>${esc(f.name)}</strong></td>
@@ -2134,11 +2139,8 @@ function updatePrintDocHtml() {
                 <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM DOCUMENT</span>
             </div>
             <div class="print-footer-contact">
-                <span>System Support: <strong>support@rmsme.internal</strong></span>
-                <span>•</span>
-                <span>Hotline: <strong>(02) 8876-RMSME</strong></span>
-                <span>•</span>
-                <span>Anti-Tamper Digital Audit Trail Active</span>
+                <span>System Support: <strong>support@rmsme.internal</strong> | Hotline: <strong>(02) 8876-RMSME</strong></span>
+                <span>Official System Generated Copy • Anti-Tamper Protected</span>
             </div>
         </div>
     `;

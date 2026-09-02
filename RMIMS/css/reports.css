@@ -1315,7 +1315,7 @@
     height: auto !important;
     min-height: 100% !important;
     overflow: visible !important;
-    padding: 16px 24px !important;
+    padding: 12px 20px !important;
     background: #ffffff !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -1324,42 +1324,83 @@
     position: relative !important;
   }
 
-  /* Centered Faded Grey Anti-Fake Watermark */
+  /* Centered Watermark Overlay with System Logo & Brand */
   .print-watermark-overlay {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-size: 44pt;
-    font-weight: 900;
-    letter-spacing: 0.14em;
-    color: rgba(148, 163, 184, 0.13) !important;
-    text-transform: uppercase;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     pointer-events: none;
     z-index: 0;
     user-select: none;
-    white-space: nowrap;
-    line-height: 1.25;
+    opacity: 0.10 !important;
+    width: 90%;
+    max-width: 540px;
+  }
+
+  .print-watermark-logo-img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    margin-bottom: 8px;
+    filter: grayscale(100%);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-watermark-title {
+    font-size: 28pt;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    color: #1e293b !important;
+    text-transform: uppercase;
+    line-height: 1.1;
   }
 
   .print-watermark-sub {
-    font-size: 13pt;
+    font-size: 8.5pt;
     font-weight: 800;
-    letter-spacing: 0.32em;
-    color: rgba(148, 163, 184, 0.10) !important;
-    display: block;
-    margin-top: 6px;
+    letter-spacing: 0.26em;
+    color: #475569 !important;
+    text-transform: uppercase;
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  /* Top Confidentiality Banner */
+  .print-confidential-top {
+    text-align: center;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+    border-bottom: 1px dashed #cbd5e1;
+    font-size: 7pt;
+    color: #64748b;
+    line-height: 1.25;
+    position: relative;
+    z-index: 1;
+  }
+
+  .print-confidential-tag {
+    font-weight: 800;
+    color: #b91c1c !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 7.5pt;
   }
 
   /* Official RMSME Header Block */
   .print-header-block {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 12px;
+    align-items: center;
+    padding-bottom: 8px;
     border-bottom: 2px solid #059669;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
     position: relative;
     z-index: 1;
   }
@@ -1367,21 +1408,17 @@
   .print-logo-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .print-logo-badge {
-    width: 42px;
-    height: 42px;
-    background: #059669 !important;
-    color: #ffffff !important;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13pt;
-    font-weight: 900;
-    letter-spacing: 0.05em;
+  .print-header-logo-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 1px;
+    border: 1px solid #a7f3d0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1392,7 +1429,7 @@
   }
 
   .print-rmims-title {
-    font-size: 15pt;
+    font-size: 13pt;
     font-weight: 900;
     color: #059669 !important;
     margin: 0;
@@ -1401,23 +1438,23 @@
   }
 
   .print-rmims-sub {
-    font-size: 7.5pt;
+    font-size: 7pt;
     font-weight: 700;
     color: #475569 !important;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-top: 2px;
+    letter-spacing: 0.05em;
+    margin-top: 1px;
   }
 
   .print-doc-meta-right {
     text-align: right;
-    font-size: 8pt;
+    font-size: 7.5pt;
     color: #334155;
-    line-height: 1.35;
+    line-height: 1.3;
   }
 
   .print-doc-title-row {
-    margin: 12px 0 10px 0;
+    margin: 8px 0 8px 0;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -1426,21 +1463,21 @@
   }
 
   .print-doc-title {
-    font-size: 13pt;
+    font-size: 11.5pt;
     font-weight: 900;
     color: #0f172a !important;
     margin: 0;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
   }
 
   .print-period-badge {
     background: #ecfdf5 !important;
     color: #059669 !important;
     border: 1px solid #a7f3d0 !important;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 8pt;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 7.5pt;
     font-weight: 700;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -1449,12 +1486,12 @@
   .print-meta-grid-2col {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px 24px;
+    gap: 4px 18px;
     background: #f8fafc !important;
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
+    border-radius: 6px;
+    padding: 7px 12px;
+    margin-bottom: 10px;
     position: relative;
     z-index: 1;
     -webkit-print-color-adjust: exact;
@@ -1464,15 +1501,15 @@
   .print-meta-item {
     display: flex;
     justify-content: space-between;
-    padding: 2px 0;
-    font-size: 8pt;
+    padding: 1px 0;
+    font-size: 7.5pt;
   }
 
   .print-meta-lbl {
     font-weight: 700;
     color: #64748b !important;
     text-transform: uppercase;
-    font-size: 7.5pt;
+    font-size: 7pt;
   }
 
   .print-meta-val {
@@ -1483,8 +1520,8 @@
   .print-kpi-summary-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 6px;
+    margin-bottom: 8px;
     position: relative;
     z-index: 1;
   }
@@ -1492,73 +1529,94 @@
   .print-kpi-box {
     background: #ffffff !important;
     border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 8px 10px;
+    border-radius: 5px;
+    padding: 5px 8px;
     text-align: center;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-kpi-box-num {
-    font-size: 14pt;
+    font-size: 12pt;
     font-weight: 900;
     color: #059669;
     line-height: 1.1;
   }
 
   .print-kpi-box-lbl {
-    font-size: 7pt;
+    font-size: 6.5pt;
     font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
+  /* Compact & Continuous Print Flow without Wasted Page Breaks */
   .print-section {
-    margin-top: 14px;
-    margin-bottom: 20px;
-    page-break-inside: auto;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    break-inside: avoid;
+    page-break-inside: avoid;
     position: relative;
     z-index: 1;
   }
 
   .print-section.page-break {
-    page-break-before: always;
-    margin-top: 24px;
+    page-break-before: auto;
+    margin-top: 8px;
+  }
+
+  .print-section-header-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1.5px solid #059669;
+    padding-bottom: 3px;
+    margin-bottom: 6px;
   }
 
   .print-section-header-green {
-    font-size: 11pt;
+    font-size: 9.5pt;
     font-weight: 800;
     color: #059669 !important;
-    margin: 0 0 8px 0;
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 6px;
-    border-bottom: 1.5px solid #e2e8f0;
-    padding-bottom: 4px;
+  }
+
+  .print-source-pill {
+    font-size: 6.8pt;
+    font-weight: 700;
+    color: #475569 !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .print-subsection-title {
-    font-size: 9pt;
+    font-size: 8pt;
     font-weight: 800;
     color: #0f172a !important;
-    margin: 10px 0 6px 0;
+    margin: 6px 0 4px 0;
   }
 
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 12px;
-    page-break-inside: auto;
-    font-size: 8pt;
+    margin-bottom: 8px;
+    font-size: 7.5pt;
   }
 
   .print-table th {
     background: #f1f5f9 !important;
     color: #334155 !important;
-    padding: 6px 8px;
-    font-size: 7.5pt;
+    padding: 4px 6px;
+    font-size: 7pt;
     font-weight: 800;
     text-align: left;
     text-transform: uppercase;
@@ -1568,15 +1626,15 @@
   }
 
   .print-table td {
-    padding: 5.5px 8px;
-    font-size: 8pt;
+    padding: 4px 6px;
+    font-size: 7.5pt;
     color: #0f172a !important;
     border: 1px solid #e2e8f0;
   }
 
   .print-table tr {
+    break-inside: avoid;
     page-break-inside: avoid;
-    page-break-after: auto;
   }
 
   .print-table tr:nth-child(even) td {
@@ -1588,27 +1646,29 @@
   /* Official Footer & Contact Ownership */
   .print-doc-footer {
     border-top: 1.5px solid #059669;
-    padding-top: 10px;
-    margin-top: 24px;
-    font-size: 7.5pt;
+    padding-top: 8px;
+    margin-top: 14px;
+    font-size: 7pt;
     color: #475569;
     position: relative;
     z-index: 1;
-    line-height: 1.4;
+    line-height: 1.35;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .print-footer-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
     font-weight: 700;
     color: #0f172a;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .print-footer-contact {
     display: flex;
     justify-content: space-between;
+    font-size: 6.8pt;
     color: #64748b;
   }
 }
