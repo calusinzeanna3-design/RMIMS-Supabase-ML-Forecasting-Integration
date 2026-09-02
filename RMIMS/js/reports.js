@@ -716,7 +716,7 @@ function renderManagerSummaryTab() {
 }
 
 let stockHealthChartInstance = null;
-let topConsumedChartInstance = null;
+let qtyProgressChartInstance = null;
 
 function renderManagerCharts() {
     if (typeof Chart === "undefined") return;
@@ -834,13 +834,13 @@ function renderManagerCharts() {
         const badge = document.getElementById("qtyProgressTotalBadge");
         if (badge) badge.textContent = `+${totalRcv.toLocaleString()} in / -${totalDisb.toLocaleString()} out`;
 
-        if (topConsumedChartInstance) {
-            topConsumedChartInstance.destroy();
-            topConsumedChartInstance = null;
+        if (qtyProgressChartInstance) {
+            qtyProgressChartInstance.destroy();
+            qtyProgressChartInstance = null;
         }
 
         const ctx = qtyProgressCanvas.getContext("2d");
-        topConsumedChartInstance = new Chart(ctx, {
+        qtyProgressChartInstance = new Chart(ctx, {
             type: "bar",
             data: {
                 labels: formattedLabels.length > 0 ? formattedLabels : ["No Records"],
