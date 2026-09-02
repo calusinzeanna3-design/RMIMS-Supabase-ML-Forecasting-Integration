@@ -2486,7 +2486,13 @@ function initEventListeners() {
             if (fpEnd) fpEnd.clear();
             state.startDate = null;
             state.endDate = null;
+            state.periodPreset = "all";
+            if (presetSelect) presetSelect.value = "all";
+            syncDateInputsInteractiveState();
+            updateClearBtnVisibility();
+            updateMetadataLabels();
             renderAllTabs();
+            updatePrintDocHtml();
         });
     }
 
