@@ -1246,7 +1246,10 @@ let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
 async function getFlaskApiBase() {
   if (resolvedApiBase !== null) return resolvedApiBase;
   try {
-    const res = await fetch("/api/ml/status", { method: "GET" }).catch(() => null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 200);
+    const res = await fetch("/api/ml/status", { method: "GET", signal: controller.signal }).catch(() => null);
+    clearTimeout(timeoutId);
     if (res && res.ok) {
       resolvedApiBase = "";
       return "";
@@ -1254,8 +1257,16 @@ async function getFlaskApiBase() {
   } catch (e) {}
 
   if (typeof window !== "undefined" && (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")) {
-    resolvedApiBase = "http://127.0.0.1:5000";
-    return resolvedApiBase;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 200);
+      const res = await fetch("http://127.0.0.1:5000/api/ml/status", { method: "GET", signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
+      if (res && res.ok) {
+        resolvedApiBase = "http://127.0.0.1:5000";
+        return resolvedApiBase;
+      }
+    } catch (e) {}
   }
 
   resolvedApiBase = "";
@@ -1269,69 +1280,65 @@ function computeClientSideForecastBreakdown(matName, horizonType = "month", hori
     (m.id && m.id === matName)
   );
 
-  const matUsages = usageRecords.filter(u => {
-    if (!normMatName || normMatName === "overall_total") return true;
-    return (u.materialName && u.materialName.toLowerCase().trim() === normMatName) ||
-           (mat && u.materialId === mat.id);
+  const matchedRecords = usageRecords.filter(u => {
+    if (mat && u.materialId === mat.id) return true;
+    if (u.materialName && u.materialName.toLowerCase().trim() === normMatName) return true;
+    return false;
   });
 
-  const unit = mat?.unit || "kg";
-  let totalUsage = 0;
-  const dailyUsageMap = new Map();
+  const count = matchedRecords.length;
+  const total = matchedRecords.reduce((sum, r) => sum + r.consumedQuantity, 0);
+  const avgDaily = count > 0 ? total / Math.max(1, count) : Math.max(1, (mat?.currentStock || 50) * 0.05);
 
-  matUsages.forEach(u => {
-    const qty = Number(u.consumedQuantity) || 0;
-    totalUsage += qty;
-    const dtStr = u.usageDate || (u.createdAt ? u.createdAt.split("T")[0] : null);
-    if (dtStr) {
-      dailyUsageMap.set(dtStr, (dailyUsageMap.get(dtStr) || 0) + qty);
-    }
-  });
+  let stepDays = 1;
+  let numSteps = horizonVal;
 
-  const uniqueDays = Math.max(1, dailyUsageMap.size);
-  let dailyAvg = totalUsage > 0 ? (totalUsage / uniqueDays) : ((Number(mat?.minimumThreshold) || 10) * 0.2);
-  if (dailyAvg <= 0) dailyAvg = 5;
+  if (horizonType === "day") {
+    stepDays = 1;
+    numSteps = horizonVal;
+  } else if (horizonType === "week") {
+    stepDays = 7;
+    numSteps = horizonVal;
+  } else if (horizonType === "month") {
+    stepDays = 30;
+    numSteps = horizonVal;
+  } else if (horizonType === "quarter") {
+    stepDays = 90;
+    numSteps = horizonVal;
+  } else if (horizonType === "year") {
+    stepDays = 365;
+    numSteps = horizonVal;
+  }
 
   const periods = [];
-  const now = new Date();
-  const stepCount = horizonType === "day" ? horizonVal : (horizonType === "week" ? horizonVal : horizonVal);
-  let stepDays = 1;
-  if (horizonType === "week") stepDays = 7;
-  else if (horizonType === "month") stepDays = 30;
-  else if (horizonType === "year") stepDays = 365;
+  let cumulative = 0;
+  const startDate = new Date();
 
-  let totalForecastReq = 0;
+  for (let i = 1; i <= numSteps; i++) {
+    const stepQuantity = avgDaily * stepDays * (1 + (Math.sin(i * 0.8) * 0.08));
+    cumulative += stepQuantity;
 
-  for (let i = 1; i <= stepCount; i++) {
-    const pDate = new Date(now);
-    if (horizonType === "day") {
-      pDate.setDate(now.getDate() + i);
-    } else if (horizonType === "week") {
-      pDate.setDate(now.getDate() + (i * 7));
-    } else if (horizonType === "month") {
-      pDate.setMonth(now.getMonth() + i);
-    } else if (horizonType === "year") {
-      pDate.setFullYear(now.getFullYear() + i);
-    }
-
-    const cycleFactor = 1 + (Math.sin(i * 0.8) * 0.08);
-    const periodQty = Number((dailyAvg * stepDays * cycleFactor).toFixed(2));
-    totalForecastReq += periodQty;
+    const pStart = new Date(startDate.getTime() + (i - 1) * stepDays * 86400000);
+    const pEnd = new Date(startDate.getTime() + i * stepDays * 86400000);
 
     periods.push({
-      period_date: pDate.toISOString().split("T")[0],
-      forecast_quantity: periodQty,
-      unit: unit
+      period_index: i,
+      period_label: horizonType === "day" ? `Day +${i}` : (horizonType === "week" ? `Week +${i}` : (horizonType === "month" ? `Month +${i}` : `Period ${i}`)),
+      start_date: pStart.toISOString().slice(0, 10),
+      end_date: pEnd.toISOString().slice(0, 10),
+      forecasted_quantity: Number(stepQuantity.toFixed(2)),
+      cumulative_quantity: Number(cumulative.toFixed(2)),
+      unit: mat?.unit || "kg"
     });
   }
 
   return {
     status: "success",
-    raw_material_name: mat?.materialName || matName || "All Materials",
+    raw_material_name: mat?.materialName || matName,
+    unit: mat?.unit || "kg",
     horizon_type: horizonType,
     horizon_value: horizonVal,
-    total_forecast_requirement: Number(totalForecastReq.toFixed(2)),
-    unit: unit,
+    total_forecast_requirement: Number(cumulative.toFixed(2)),
     forecast_breakdown: periods
   };
 }
@@ -1351,10 +1358,14 @@ async function fetchForecastDataForMaterial(matNameOrId) {
       } catch (e) {}
 
       const encoded = encodeURIComponent(matNameOrId);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300);
       const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
         method: "GET",
-        headers
+        headers,
+        signal: controller.signal
       }).catch(() => null);
+      clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();
         if (data && (data.status === "success" || data.forecast1Month)) return data;
@@ -1401,15 +1412,19 @@ async function fetchForecastBreakdown(matName, horizonType, horizonVal) {
   try {
     const apiBase = await getFlaskApiBase();
     if (apiBase) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300);
       const res = await fetch(`${apiBase}/api/forecast`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           raw_material_name: matName || "OVERALL_TOTAL",
           horizon_type: horizonType,
           horizon_value: horizonVal
         })
       }).catch(() => null);
+      clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();
         if (data && data.status === "success") return data;
@@ -1425,9 +1440,13 @@ async function fetchHistoricalComparisonForMaterial(matNameOrId) {
     const apiBase = await getFlaskApiBase();
     if (apiBase) {
       const encoded = encodeURIComponent(matNameOrId || "OVERALL_TOTAL");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300);
       const res = await fetch(`${apiBase}/api/forecast/comparison?material=${encoded}`, {
-        method: "GET"
+        method: "GET",
+        signal: controller.signal
       }).catch(() => null);
+      clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();
         if (data && data.status === "success") return data;
@@ -2138,18 +2157,19 @@ async function renderAiForecastedSupportCard() {
       candidates.push(catalogMaterials[0]);
     }
 
-    const forecastResults = [];
     const evalList = candidates.slice(0, 4);
 
-    for (const mat of evalList) {
-      const res = await fetchForecastDataForMaterial(mat.materialName);
-      if (res && res.status === "success") {
-        forecastResults.push({
-          material: mat,
-          forecastData: res
-        });
-      }
-    }
+    const fetched = await Promise.all(
+      evalList.map(async mat => {
+        const res = await fetchForecastDataForMaterial(mat.materialName);
+        if (res && res.status === "success") {
+          return { material: mat, forecastData: res };
+        }
+        return null;
+      })
+    );
+
+    const forecastResults = fetched.filter(Boolean);
 
     if (forecastResults.length === 0) {
       container.innerHTML = `<div class="apc-empty-state">Forecast currently unavailable.</div>`;
