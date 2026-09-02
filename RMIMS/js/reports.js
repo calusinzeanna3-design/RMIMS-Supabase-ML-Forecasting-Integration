@@ -647,19 +647,19 @@ function renderManagerSummaryTab() {
                 <td><strong>Deliveries Received</strong></td>
                 <td><strong>${periodReceipts.length}</strong></td>
                 <td>Stock In (Deliveries)</td>
-                <td><span class="rpt-badge rpt-badge-good">Verified &amp; Stored</span></td>
+                <td>${periodReceipts.length > 0 ? `<span class="rpt-badge rpt-badge-good">${periodReceipts.length} Batches Stored</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
             </tr>
             <tr>
                 <td><strong>Production Usage</strong></td>
                 <td><strong>${periodDisbursements.length}</strong></td>
                 <td>Stock Used in Kitchen</td>
-                <td><span class="rpt-badge rpt-badge-good">Production Use</span></td>
+                <td>${periodDisbursements.length > 0 ? `<span class="rpt-badge rpt-badge-good">${periodDisbursements.length} Usages Recorded</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
             </tr>
             <tr>
                 <td><strong>Total Stock Released</strong></td>
                 <td><strong>${periodDisbursements.length}</strong></td>
                 <td>Stock Out (Disbursed)</td>
-                <td><span class="rpt-badge rpt-badge-good">Released for Baking</span></td>
+                <td>${periodDisbursements.length > 0 ? `<span class="rpt-badge rpt-badge-good">Released for Baking</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
             </tr>
         `;
     }
@@ -670,19 +670,20 @@ function renderManagerSummaryTab() {
         const decisions = [];
         state.materials.forEach(m => {
             if (m.status === "Critical") {
+                const minText = m.minThreshold > 0 ? ` (below threshold of ${m.minThreshold} ${m.unit})` : '';
                 decisions.push({
                     priority: "High Priority",
                     material: m.name,
                     stock: `${m.currentStock.toLocaleString()} ${m.unit}`,
-                    finding: `Stock is critically low (${m.currentStock} ${m.unit} left, minimum is ${m.minThreshold} ${m.unit}).`,
-                    action: `Order ${m.reorderQty || 50} ${m.unit} from supplier soon.`
+                    finding: m.currentStock <= 0 ? `Out of stock (0 ${m.unit} on hand).` : `Stock is critically low: ${m.currentStock} ${m.unit}${minText}.`,
+                    action: `Order ${m.reorderQty || 50} ${m.unit} from supplier.`
                 });
             } else if (m.status === "Low") {
                 decisions.push({
                     priority: "Medium",
                     material: m.name,
                     stock: `${m.currentStock.toLocaleString()} ${m.unit}`,
-                    finding: `Stock is running low (${m.currentStock} ${m.unit} left, minimum is ${m.minThreshold} ${m.unit}).`,
+                    finding: `Stock is getting low: ${m.currentStock} ${m.unit} (below threshold of ${m.minThreshold} ${m.unit}).`,
                     action: `Prepare next order with supplier.`
                 });
             }
