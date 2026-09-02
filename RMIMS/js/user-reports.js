@@ -103,7 +103,10 @@ const state = {
     fcSearch: "",
     fcStatus: "all",
     fcPage: 1,
-    fcPageSize: 10
+    fcPageSize: 10,
+
+    customSaveDirectoryHandle: null,
+    customSaveDirectoryName: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -541,7 +544,37 @@ function closeSaveModal() {
     if (saveOverlay) saveOverlay.classList.remove("open");
 }
 
-function handleSaveConfirm() {
+/* ==========================================================
+   SAVE BLOB HELPER (INTERACTIVE FOLDER OR BROWSER DOWNLOAD)
+   ========================================================== */
+
+async function saveUserExportBlob({ blob, fileName, defaultExtension }) {
+    const fullFileName = fileName.endsWith(`.${defaultExtension}`) ? fileName : `${fileName}.${defaultExtension}`;
+
+    if (state.customSaveDirectoryHandle && typeof state.customSaveDirectoryHandle.getFileHandle === "function") {
+        try {
+            const fileHandle = await state.customSaveDirectoryHandle.getFileHandle(fullFileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return { success: true, mode: "custom-directory", location: state.customSaveDirectoryHandle.name };
+        } catch (err) {
+            console.warn("Direct directory write failed, falling back to download:", err);
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fullFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    return { success: true, mode: "browser-download" };
+}
+
+async function handleSaveConfirm() {
     const checkedBoxes = Array.from(document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']:checked"));
     if (checkedBoxes.length === 0) {
         showToast("Please select at least one report section.", "error");
@@ -551,21 +584,36 @@ function handleSaveConfirm() {
     const selectedKeys = checkedBoxes.map(cb => cb.value);
     const format = document.querySelector("input[name='saveFileFormat']:checked")?.value || "pdf";
     const rawName = $("saveModalReportName")?.value.trim() || `RMIMS_User_Report_${formatDateISO(new Date())}`;
+    const confirmBtn = $("saveModalConfirmBtn");
 
-    if (format === "pdf") {
-        generateUserPdfReport(selectedKeys, rawName);
-    } else if (format === "excel") {
-        generateUserExcelWorkbook(selectedKeys, rawName);
-    } else if (format === "both") {
-        generateUserPdfReport(selectedKeys, rawName);
-        generateUserExcelWorkbook(selectedKeys, rawName);
-    } else if (format === "csv") {
-        generateUserCsvPackage(selectedKeys, rawName);
-    } else if (format === "json") {
-        generateUserJsonExport(selectedKeys, rawName);
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin 0.6s linear infinite;"></span> Saving...`;
     }
 
-    closeSaveModal();
+    try {
+        if (format === "pdf") {
+            generateUserPdfReport(selectedKeys, rawName);
+        } else if (format === "excel") {
+            generateUserExcelWorkbook(selectedKeys, rawName);
+        } else if (format === "both") {
+            generateUserPdfReport(selectedKeys, `${rawName}_Document`);
+            generateUserExcelWorkbook(selectedKeys, `${rawName}_Workbook`);
+        } else if (format === "csv") {
+            generateUserCsvPackage(selectedKeys, rawName);
+        } else if (format === "json") {
+            generateUserJsonExport(selectedKeys, rawName);
+        }
+    } catch (err) {
+        console.error("User save error:", err);
+        showToast("Error saving report package.", "error");
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Report`;
+        }
+        closeSaveModal();
+    }
 }
 
 /* ==========================================================
@@ -695,10 +743,58 @@ function initEventListeners() {
     const saveConfirmBtn = $("saveModalConfirmBtn");
     if (saveConfirmBtn) saveConfirmBtn.addEventListener("click", handleSaveConfirm);
 
+    // Interactive Browse Location Picker
     const browseBtn = $("browseLocationBtn");
+    const locInput = $("saveModalLocation");
+
     if (browseBtn) {
-        browseBtn.addEventListener("click", () => {
-            showToast("Files are saved directly to your browser's default Downloads folder.", "info");
+        browseBtn.addEventListener("click", async () => {
+            if ("showDirectoryPicker" in window) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+                    if (dirHandle) {
+                        state.customSaveDirectoryHandle = dirHandle;
+                        state.customSaveDirectoryName = dirHandle.name;
+                        if (locInput) {
+                            locInput.value = `📁 ${dirHandle.name} (Custom Folder)`;
+                            locInput.style.color = "#059669";
+                            locInput.style.fontWeight = "700";
+                        }
+                        showToast(`Target save folder selected: "${dirHandle.name}"`, "success");
+                    }
+                } catch (err) {
+                    if (err.name !== "AbortError") {
+                        console.error("Directory picker error:", err);
+                        showToast("Could not access custom folder. Defaulting to Downloads.", "info");
+                    }
+                }
+            } else {
+                const folderName = prompt("Enter target folder name or label for your export archive:\n(e.g., Reports/August2026 or RMIMS_Archives)", state.customSaveDirectoryName || "RMIMS_Reports");
+                if (folderName && folderName.trim()) {
+                    state.customSaveDirectoryName = folderName.trim();
+                    if (locInput) {
+                        locInput.value = `📁 Downloads / ${state.customSaveDirectoryName}`;
+                        locInput.style.color = "#059669";
+                        locInput.style.fontWeight = "700";
+                    }
+                    showToast(`Save location set to: Downloads / ${state.customSaveDirectoryName}`, "success");
+                }
+            }
+        });
+    }
+
+    if (locInput) {
+        locInput.addEventListener("click", () => {
+            if (state.customSaveDirectoryHandle || state.customSaveDirectoryName) {
+                if (confirm("Reset save location back to default browser Downloads folder?")) {
+                    state.customSaveDirectoryHandle = null;
+                    state.customSaveDirectoryName = null;
+                    locInput.value = "Downloads (Browser Default)";
+                    locInput.style.color = "";
+                    locInput.style.fontWeight = "";
+                    showToast("Save location reset to default Downloads folder.", "info");
+                }
+            }
         });
     }
 
@@ -1251,12 +1347,7 @@ function renderTabForecasting() {
    EXCEL WORKBOOK EXPORT (5 ORGANIZED SHEETS)
    ========================================================== */
 
-function generateUserExcelWorkbook(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"], fileName = "RMIMS_User_Report") {
-    if (typeof XLSX === "undefined") {
-        showToast("Excel export library is loading, please try again.", "error");
-        return;
-    }
-
+function buildUserExcelWorkbook(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"]) {
     const wb = XLSX.utils.book_new();
 
     const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
@@ -1348,15 +1439,31 @@ function generateUserExcelWorkbook(selectedSections = ["overview", "receiving", 
         }
     });
 
-    XLSX.writeFile(wb, `${fileName}.xlsx`);
-    showToast(`Excel report saved: ${fileName}.xlsx`, "success");
+    return wb;
+}
+
+async function generateUserExcelWorkbook(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"], fileName = "RMIMS_User_Report") {
+    if (typeof XLSX === "undefined") {
+        showToast("Excel export library is loading, please try again.", "error");
+        return;
+    }
+
+    const wb = buildUserExcelWorkbook(selectedSections);
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const excelBlob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const res = await saveUserExportBlob({ blob: excelBlob, fileName, defaultExtension: "xlsx" });
+    if (res.mode === "custom-directory") {
+        showToast(`Excel workbook saved directly to "${res.location}".`, "success");
+    } else {
+        showToast("Excel workbook downloaded successfully.", "success");
+    }
 }
 
 /* ==========================================================
    PDF DOCUMENT EXPORT (jsPDF + autoTable)
    ========================================================== */
 
-function generateUserPdfReport(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"], fileName = "RMIMS_User_Report") {
+async function generateUserPdfReport(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"], fileName = "RMIMS_User_Report") {
     if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
         showToast("PDF generation library is loading, please try again.", "error");
         return;
@@ -1433,9 +1540,17 @@ function generateUserPdfReport(selectedSections = ["overview", "receiving", "dis
 
             doc.autoTable({
                 startY: y,
-                head: [["Date", "Raw Material", "Material ID", "Quantity", "Supplier / Context", "Status"]],
-                body: periodReceipts.length === 0 ? [["—", "No receiving records", "—", "—", "—", "—"]] :
-                    periodReceipts.map(r => [r.receiptDate, r.materialName, r.itemCode, `+${r.receivedQuantity} ${r.unit}`, r.supplierName, r.status]),
+                head: [["Date", "Raw Material", "ID", "Qty", "Unit", "Supplier", "Status"]],
+                body: periodReceipts.length === 0 ? [["—", "—", "No receiving in period", "—", "—", "—", "—"]] :
+                    periodReceipts.map(r => [
+                        r.receiptDate,
+                        r.materialName,
+                        r.itemCode,
+                        r.receivedQuantity,
+                        r.unit,
+                        r.supplierName,
+                        r.status
+                    ]),
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
                 headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
@@ -1448,14 +1563,22 @@ function generateUserPdfReport(selectedSections = ["overview", "receiving", "dis
             doc.setFont("helvetica", "bold");
             doc.setFontSize(12);
             doc.setTextColor(...RM_GREEN);
-            doc.text("3. Recent Material Disbursement", 40, y);
+            doc.text("3. Recent Raw Material Disbursement", 40, y);
             y += 12;
 
             doc.autoTable({
                 startY: y,
-                head: [["Date", "Finished Product / Context", "Raw Material", "ID", "Disbursed", "Status"]],
-                body: periodDisbursements.length === 0 ? [["—", "No disbursements", "—", "—", "—", "—"]] :
-                    periodDisbursements.map(d => [d.usageDate, d.finishedProduct, d.materialName, d.itemCode, `-${d.disbursedQuantity} ${d.unit}`, d.status]),
+                head: [["Date", "Product / Context", "Raw Material", "ID", "Qty", "Unit", "Status"]],
+                body: periodDisbursements.length === 0 ? [["—", "—", "No disbursements in period", "—", "—", "—", "—"]] :
+                    periodDisbursements.map(d => [
+                        d.usageDate,
+                        d.finishedProduct,
+                        d.materialName,
+                        d.itemCode,
+                        d.disbursedQuantity,
+                        d.unit,
+                        d.status
+                    ]),
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
                 headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
@@ -1468,17 +1591,21 @@ function generateUserPdfReport(selectedSections = ["overview", "receiving", "dis
             doc.setFont("helvetica", "bold");
             doc.setFontSize(12);
             doc.setTextColor(...RM_GREEN);
-            doc.text("4. Raw Material Consumption Analysis", 40, y);
+            doc.text("4. Consumption Analysis", 40, y);
             y += 12;
 
             doc.autoTable({
                 startY: y,
-                head: [["Raw Material", "Item Code", "Current Stock", "Period Consumed", "Status"]],
+                head: [["Raw Material", "ID", "Current Stock", "Period Consumed", "Status"]],
                 body: state.materials.map(m => {
-                    const consumed = periodDisbursements
-                        .filter(d => d.materialId === m.id)
-                        .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-                    return [m.name, m.itemCode, `${m.currentStock.toLocaleString()} ${m.unit}`, `${consumed.toLocaleString()} ${m.unit}`, m.status];
+                    const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((sum, d) => sum + d.disbursedQuantity, 0);
+                    return [
+                        m.name,
+                        m.itemCode,
+                        `${m.currentStock.toLocaleString()} ${m.unit}`,
+                        `${consumed.toLocaleString()} ${m.unit}`,
+                        m.status
+                    ];
                 }),
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
@@ -1488,7 +1615,7 @@ function generateUserPdfReport(selectedSections = ["overview", "receiving", "dis
         }
 
         if (key === "forecasting") {
-            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
             doc.setFontSize(12);
             doc.setTextColor(...RM_GREEN);
@@ -1527,15 +1654,20 @@ function generateUserPdfReport(selectedSections = ["overview", "receiving", "dis
         doc.text(`Page ${i} of ${totalPages}`, pageWidth - 80, doc.internal.pageSize.getHeight() - 18);
     }
 
-    doc.save(`${fileName}.pdf`);
-    showToast(`PDF report downloaded: ${fileName}.pdf`, "success");
+    const pdfBlob = doc.output("blob");
+    const res = await saveUserExportBlob({ blob: pdfBlob, fileName, defaultExtension: "pdf" });
+    if (res.mode === "custom-directory") {
+        showToast(`PDF report saved directly to "${res.location}".`, "success");
+    } else {
+        showToast(`PDF report downloaded: ${fileName}.pdf`, "success");
+    }
 }
 
 /* ==========================================================
    CSV & JSON EXPORT
    ========================================================== */
 
-function generateUserCsvPackage(selectedSections, fileName) {
+async function generateUserCsvPackage(selectedSections, fileName) {
     const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
     const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
 
@@ -1567,51 +1699,71 @@ function generateUserCsvPackage(selectedSections, fileName) {
     }
 
     if (selectedSections.includes("forecasting")) {
-        csvContent += `--- AI FORECAST SUPPORT ---\nRaw Material,Item Code,Unit,Current Stock,Forecast 7D,Additional Need,Status\n`;
+        csvContent += `--- AI FORECAST SUPPORT ---\nRaw Material,Item Code,Forecast Period,Current Stock,Forecast 7D,Additional Need,Status\n`;
         state.forecastList.forEach(f => {
-            csvContent += `"${f.name}","${f.itemCode}","${f.unit}",${f.currentStock},${f.forecast7Day},${f.additionalNeed},"${f.status}"\n`;
+            csvContent += `"${f.name}","${f.itemCode}","Next 7 Days",${f.currentStock},${f.forecast7Day},${f.additionalNeed},"${f.status}"\n`;
         });
     }
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${fileName}.csv`;
-    link.click();
-    showToast(`CSV data downloaded: ${fileName}.csv`, "success");
+    const csvBlob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const res = await saveUserExportBlob({ blob: csvBlob, fileName, defaultExtension: "csv" });
+    if (res.mode === "custom-directory") {
+        showToast(`CSV package saved directly to "${res.location}".`, "success");
+    } else {
+        showToast("CSV package exported successfully.", "success");
+    }
 }
 
-function generateUserJsonExport(selectedSections, fileName) {
-    const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-
-    const exportData = {
-        title: "RMIMS Reports & Decision Support (User)",
-        period: formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset),
-        generatedAt: new Date().toISOString(),
-        sections: {}
+async function generateUserJsonExport(selectedSections, fileName) {
+    const exportObj = {
+        meta: {
+            title: "RMIMS User Report Export",
+            periodPreset: state.periodPreset,
+            startDate: state.startDate ? formatDateISO(state.startDate) : null,
+            endDate: state.endDate ? formatDateISO(state.endDate) : null,
+            generatedAt: new Date().toISOString()
+        }
     };
 
     if (selectedSections.includes("overview")) {
-        exportData.sections.overview = {
+        exportObj.overview = {
             totalMaterials: state.materials.length,
-            receiptCount: periodReceipts.length,
-            disbursementCount: periodDisbursements.length,
-            attentionNeededCount: state.materials.filter(m => m.status !== "Good").length
+            needingAttention: state.materials.filter(m => m.status !== "Good").length,
+            periodReceiptsCount: state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate)).length,
+            periodDisbursementsCount: state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate)).length
         };
     }
-    if (selectedSections.includes("receiving")) exportData.sections.receiving = periodReceipts;
-    if (selectedSections.includes("disbursement")) exportData.sections.disbursement = periodDisbursements;
-    if (selectedSections.includes("consumption")) exportData.sections.materials = state.materials;
-    if (selectedSections.includes("forecasting")) exportData.sections.forecasting = state.forecastList;
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${fileName}.json`;
-    link.click();
-    showToast(`JSON export saved: ${fileName}.json`, "success");
-}
+    if (selectedSections.includes("receiving")) {
+        exportObj.receiving = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
+    }
+
+    if (selectedSections.includes("disbursement")) {
+        exportObj.disbursement = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
+    }
+
+    if (selectedSections.includes("consumption")) {
+        exportObj.consumption = state.materials.map(m => ({
+            materialId: m.id,
+            materialName: m.name,
+            currentStock: m.currentStock,
+            unit: m.unit,
+            periodConsumed: state.disbursements.filter(d => d.materialId === m.id && withinRange(d.usageDate, state.startDate, state.endDate)).reduce((s, d) => s + d.disbursedQuantity, 0)
+        }));
+    }
+
+    if (selectedSections.includes("forecasting")) {
+        exportObj.forecasting = state.forecastList;
+    }
+
+    const jsonBlob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
+    const res = await saveUserExportBlob({ blob: jsonBlob, fileName, defaultExtension: "json" });
+    if (res.mode === "custom-directory") {
+        showToast(`JSON report saved directly to "${res.location}".`, "success");
+    } else {
+        showToast("JSON report exported successfully.", "success");
+    }
+};
 
 /* ==========================================================
    PRINT REPORT HANDLER (MATCHING CLASSIC RMIMS TEMPLATE)

@@ -2108,7 +2108,11 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
    EXPORT EXCEL WORKBOOK GENERATION (MULTI-SHEET WORKBOOK)
    ========================================================== */
 
-function generateMultiSheetExcel(selectedSections = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"], fileName = "RMIMS_Report_Package") {
+/* ==========================================================
+   EXPORT EXCEL WORKBOOK GENERATION (MULTI-SHEET WORKBOOK)
+   ========================================================== */
+
+function buildMultiSheetExcelWorkbook(selectedSections = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"]) {
     const wb = XLSX.utils.book_new();
 
     const officialOrder = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"];
@@ -2208,7 +2212,50 @@ function generateMultiSheetExcel(selectedSections = ["manager", "inventory", "re
         }
     });
 
+    return wb;
+}
+
+function generateMultiSheetExcel(selectedSections, fileName = "RMIMS_Report_Package") {
+    const wb = buildMultiSheetExcelWorkbook(selectedSections);
     XLSX.writeFile(wb, `${fileName}.xlsx`);
+}
+
+function generateMultiSheetExcelBlob(selectedSections) {
+    const wb = buildMultiSheetExcelWorkbook(selectedSections);
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    return new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+/* ==========================================================
+   SAVE BLOB HELPER (INTERACTIVE FOLDER OR BROWSER DOWNLOAD)
+   ========================================================== */
+
+async function saveExportBlob({ blob, fileName, defaultExtension }) {
+    const fullFileName = fileName.endsWith(`.${defaultExtension}`) ? fileName : `${fileName}.${defaultExtension}`;
+
+    // 1. If user selected a custom directory using the File System Access API
+    if (state.customSaveDirectoryHandle && typeof state.customSaveDirectoryHandle.getFileHandle === "function") {
+        try {
+            const fileHandle = await state.customSaveDirectoryHandle.getFileHandle(fullFileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return { success: true, mode: "custom-directory", location: state.customSaveDirectoryHandle.name };
+        } catch (err) {
+            console.warn("Direct directory write failed, falling back to download:", err);
+        }
+    }
+
+    // 2. Fallback to standard automatic download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fullFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    return { success: true, mode: "browser-download" };
 }
 
 /* ==========================================================
@@ -2344,6 +2391,8 @@ function initEventListeners() {
     const saveClose = document.getElementById("saveModalCloseBtn");
     const saveCancel = document.getElementById("saveModalCancelBtn");
     const saveConfirm = document.getElementById("saveModalConfirmBtn");
+    const browseBtn = document.getElementById("browseLocationBtn");
+    const locInput = document.getElementById("saveModalLocation");
 
     if (saveAsBtn && saveOverlay) {
         saveAsBtn.addEventListener("click", () => {
@@ -2355,6 +2404,58 @@ function initEventListeners() {
                 reportNameInput.value = `RMIMS_${pTag}_Report_${startStr}_to_${endStr}`;
             }
             saveOverlay.classList.add("open");
+        });
+    }
+
+    // Interactive Browse Location Picker
+    if (browseBtn) {
+        browseBtn.addEventListener("click", async () => {
+            if ("showDirectoryPicker" in window) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+                    if (dirHandle) {
+                        state.customSaveDirectoryHandle = dirHandle;
+                        state.customSaveDirectoryName = dirHandle.name;
+                        if (locInput) {
+                            locInput.value = `📁 ${dirHandle.name} (Custom Folder)`;
+                            locInput.style.color = "#059669";
+                            locInput.style.fontWeight = "700";
+                        }
+                        showToast(`Target save folder selected: "${dirHandle.name}"`, "success");
+                    }
+                } catch (err) {
+                    if (err.name !== "AbortError") {
+                        console.error("Directory picker error:", err);
+                        showToast("Could not access custom folder. Defaulting to Downloads.", "info");
+                    }
+                }
+            } else {
+                const folderName = prompt("Enter target folder name or label for your export archive:\n(e.g., Reports/August2026 or RMIMS_Archives)", state.customSaveDirectoryName || "RMIMS_Reports");
+                if (folderName && folderName.trim()) {
+                    state.customSaveDirectoryName = folderName.trim();
+                    if (locInput) {
+                        locInput.value = `📁 Downloads / ${state.customSaveDirectoryName}`;
+                        locInput.style.color = "#059669";
+                        locInput.style.fontWeight = "700";
+                    }
+                    showToast(`Save location set to: Downloads / ${state.customSaveDirectoryName}`, "success");
+                }
+            }
+        });
+    }
+
+    if (locInput) {
+        locInput.addEventListener("click", () => {
+            if (state.customSaveDirectoryHandle || state.customSaveDirectoryName) {
+                if (confirm("Reset save location back to default browser Downloads folder?")) {
+                    state.customSaveDirectoryHandle = null;
+                    state.customSaveDirectoryName = null;
+                    locInput.value = "Downloads (Browser Default)";
+                    locInput.style.color = "";
+                    locInput.style.fontWeight = "";
+                    showToast("Save location reset to default Downloads folder.", "info");
+                }
+            }
         });
     }
 
@@ -2376,7 +2477,7 @@ function initEventListeners() {
     });
 
     if (saveConfirm) {
-        saveConfirm.addEventListener("click", () => {
+        saveConfirm.addEventListener("click", async () => {
             const checkedBoxes = Array.from(document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']:checked"));
             if (checkedBoxes.length === 0) {
                 showToast("Please select at least one report section.", "error");
@@ -2387,21 +2488,49 @@ function initEventListeners() {
             const format = document.querySelector("input[name='saveFileFormat']:checked")?.value || "pdf";
             const rawName = document.getElementById("saveModalReportName")?.value.trim() || "RMIMS_Report";
 
-            if (format === "pdf") {
-                const doc = generateContinuousPdf(selectedKeys);
-                doc.save(`${rawName}.pdf`);
-                showToast("Continuous PDF report downloaded.");
-            } else if (format === "excel") {
-                generateMultiSheetExcel(selectedKeys, rawName);
-                showToast("Multi-sheet Excel workbook generated.");
-            } else if (format === "both") {
-                const doc = generateContinuousPdf(selectedKeys);
-                doc.save(`${rawName}.pdf`);
-                generateMultiSheetExcel(selectedKeys, rawName);
-                showToast("PDF + Excel report package generated.");
-            }
+            saveConfirm.disabled = true;
+            saveConfirm.innerHTML = `<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin 0.6s linear infinite;"></span> Saving...`;
 
-            closeSaveModal();
+            try {
+                if (format === "pdf") {
+                    const doc = generateContinuousPdf(selectedKeys);
+                    const pdfBlob = doc.output("blob");
+                    const res = await saveExportBlob({ blob: pdfBlob, fileName: rawName, defaultExtension: "pdf" });
+                    if (res.mode === "custom-directory") {
+                        showToast(`PDF saved directly to "${res.location}".`, "success");
+                    } else {
+                        showToast("Continuous PDF report downloaded.", "success");
+                    }
+                } else if (format === "excel") {
+                    const excelBlob = generateMultiSheetExcelBlob(selectedKeys);
+                    const res = await saveExportBlob({ blob: excelBlob, fileName: rawName, defaultExtension: "xlsx" });
+                    if (res.mode === "custom-directory") {
+                        showToast(`Excel workbook saved directly to "${res.location}".`, "success");
+                    } else {
+                        showToast("Multi-sheet Excel workbook generated.", "success");
+                    }
+                } else if (format === "both") {
+                    const doc = generateContinuousPdf(selectedKeys);
+                    const pdfBlob = doc.output("blob");
+                    const excelBlob = generateMultiSheetExcelBlob(selectedKeys);
+                    
+                    await saveExportBlob({ blob: pdfBlob, fileName: `${rawName}_Document`, defaultExtension: "pdf" });
+                    await saveExportBlob({ blob: excelBlob, fileName: `${rawName}_Workbook`, defaultExtension: "xlsx" });
+                    
+                    if (state.customSaveDirectoryHandle) {
+                        showToast(`PDF + Excel package saved to "${state.customSaveDirectoryHandle.name}".`, "success");
+                    } else {
+                        showToast("PDF + Excel report package generated.", "success");
+                    }
+                }
+            } catch (err) {
+                console.error("Save error:", err);
+                showToast("An error occurred while saving the report.", "error");
+            } finally {
+                saveConfirm.disabled = false;
+                saveConfirm.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Report`;
+                closeSaveModal();
+            }
         });
     }
 }
