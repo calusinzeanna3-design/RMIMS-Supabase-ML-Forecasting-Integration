@@ -1315,7 +1315,7 @@
     border: none !important;
   }
 
-  /* Continuous Printable Document Container with repeating watermark per page */
+  /* Continuous Printable Document Container */
   .rpt-continuous-print-doc {
     display: block !important;
     visibility: visible !important;
@@ -1324,11 +1324,8 @@
     min-height: 100% !important;
     overflow: visible !important;
     padding: 6px 14px !important;
-    background-color: #ffffff !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='1050' viewBox='0 0 800 1050'%3E%3Cg transform='translate(400, 460) rotate(-30)'%3E%3Ctext x='0' y='-35' font-family='Segoe UI, -apple-system, Roboto, sans-serif' font-size='58' font-weight='900' fill='%230f172a' fill-opacity='0.065' text-anchor='middle' letter-spacing='8'%3ERMSME%3C/text%3E%3Ctext x='0' y='8' font-family='Segoe UI, -apple-system, Roboto, sans-serif' font-size='14' font-weight='800' fill='%231e293b' fill-opacity='0.06' text-anchor='middle' letter-spacing='3'%3ERAW MATERIAL STOCK MANAGEMENT %26 FORECASTING ENTERPRISE%3C/text%3E%3Ctext x='0' y='36' font-family='Segoe UI, -apple-system, Roboto, sans-serif' font-size='11' font-weight='800' fill='%23334155' fill-opacity='0.055' text-anchor='middle' letter-spacing='4'%3EOFFICIAL SYSTEM REPORT • PREVENT FAKE COPY%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
-    background-repeat: repeat-y !important;
-    background-position: center top !important;
-    background-size: 100% 268mm !important;
+    background: #ffffff !important;
+    background-image: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     width: 100% !important;
