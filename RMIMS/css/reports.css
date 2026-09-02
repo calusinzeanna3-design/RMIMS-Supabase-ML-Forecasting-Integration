@@ -1234,9 +1234,18 @@
 
 @media print {
   html,
-  body {
+  body,
+  .app-body,
+  .main-content,
+  .container,
+  .content,
+  .rpt-workspace-wrap,
+  .reports-container,
+  #reportsWorkspace {
     background: #ffffff !important;
-    color: #0f172a !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
     font-family: 'Inter', -apple-system, sans-serif !important;
     font-size: 9pt;
     margin: 0 !important;
@@ -1255,7 +1264,6 @@
   .topbar,
   .page-header,
   .rpt-page-header,
-  .rpt-workspace-wrap,
   .rpt-control-card,
   .rpt-meta-bar,
   .rpt-workspace-card,
@@ -1307,7 +1315,7 @@
     border: none !important;
   }
 
-  /* Continuous Printable Document Container */
+  /* Continuous Printable Document Container with repeating watermark per page */
   .rpt-continuous-print-doc {
     display: block !important;
     visibility: visible !important;
@@ -1315,8 +1323,14 @@
     height: auto !important;
     min-height: 100% !important;
     overflow: visible !important;
-    padding: 10px 18px !important;
-    background: #ffffff !important;
+    padding: 6px 14px !important;
+    background-color: #ffffff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='1050' viewBox='0 0 800 1050'%3E%3Cg transform='translate(400, 460) rotate(-30)'%3E%3Ctext x='0' y='-35' font-family='Segoe UI, -apple-system, Roboto, sans-serif' font-size='58' font-weight='900' fill='%230f172a' fill-opacity='0.065' text-anchor='middle' letter-spacing='8'%3ERMSME%3C/text%3E%3Ctext x='0' y='8' font-family='Segoe UI, -apple-system, Roboto, sans-serif' font-size='14' font-weight='800' fill='%231e293b' fill-opacity='0.06' text-anchor='middle' letter-spacing='3'%3ERAW MATERIAL STOCK MANAGEMENT %26 FORECASTING ENTERPRISE%3C/text%3E%3Ctext x='0' y='36' font-family='Segoe UI, -apple-system, Roboto, sans-serif' font-size='11' font-weight='800' fill='%23334155' fill-opacity='0.055' text-anchor='middle' letter-spacing='4'%3EOFFICIAL SYSTEM REPORT • PREVENT FAKE COPY%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    background-repeat: repeat-y !important;
+    background-position: center top !important;
+    background-size: 100% 268mm !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -1324,71 +1338,8 @@
     position: static !important;
   }
 
-  /* Centered Watermark Overlay with System Logo & Slanted Brand (Upper Middle of Page) */
   .print-watermark-overlay {
-    position: fixed !important;
-    top: 36% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: 88vw !important;
-    max-width: 620px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-    user-select: none !important;
-    opacity: 0.12 !important;
-  }
-
-  .print-watermark-inner {
-    transform: rotate(-30deg);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    width: 100%;
-  }
-
-  .print-watermark-logo-img {
-    width: 140px;
-    height: 140px;
-    object-fit: contain;
-    margin-bottom: 8px;
-    filter: grayscale(100%);
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  .print-watermark-title {
-    font-size: 32pt;
-    font-weight: 900;
-    letter-spacing: 0.16em;
-    color: #1e293b !important;
-    text-transform: uppercase;
-    line-height: 1.05;
-  }
-
-  .print-watermark-sub {
-    font-size: 9pt;
-    font-weight: 800;
-    letter-spacing: 0.24em;
-    color: #334155 !important;
-    text-transform: uppercase;
-    margin-top: 4px;
-    white-space: nowrap;
-  }
-
-  .print-watermark-tag {
-    font-size: 7.5pt;
-    font-weight: 800;
-    letter-spacing: 0.32em;
-    color: #64748b !important;
-    text-transform: uppercase;
-    margin-top: 3px;
-    white-space: nowrap;
+    display: none !important;
   }
 
   /* Table Wrapper to Guarantee Footer Appears on Every Printed Page */

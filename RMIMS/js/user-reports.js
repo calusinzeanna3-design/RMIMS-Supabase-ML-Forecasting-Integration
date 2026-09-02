@@ -1887,16 +1887,6 @@ function updatePrintDocHtml() {
     const attentionStock = state.materials.filter(m => m.status !== "Good").length;
 
     let html = `
-        <!-- FADED SYSTEM LOGO SLANTED WATERMARK OVERLAY (CENTERED ACROSS EVERY PAGE) -->
-        <div class="print-watermark-overlay" aria-hidden="true">
-            <div class="print-watermark-inner">
-                <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
-                <div class="print-watermark-title">RMSME</div>
-                <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-                <div class="print-watermark-tag">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
-            </div>
-        </div>
-
         <!-- PRINT DOCUMENT TABLE WRAPPER (ENABLES FOOTER ON EVERY PAGE) -->
         <table class="print-page-table-wrapper">
             <tbody>
