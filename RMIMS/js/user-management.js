@@ -1200,7 +1200,16 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
 
         if (!createdSuccessfully) {
             tempClient = createTempAuthClient();
-            const { data, error } = await tempClient.auth.signUp({ email, password });
+            const { data, error } = await tempClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        role: role
+                    }
+                }
+            });
             if (error) throw error;
 
             const uid = data.user?.id;
