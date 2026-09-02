@@ -1289,59 +1289,64 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
                 if (errMsg.includes("already registered") || errMsg.includes("already exists")) {
                     // Try to authenticate on the throwaway client to retrieve the authoritative auth.users UID
                     try {
-                        const { data: signData } = await tempClient.auth.signInWithPassword({ email, password });
-                        if (signData?.user?.id) {
-                            await supabase.from("user_profiles").upsert({
+                        const { data: signData, error: signErr } = await tempClient.auth.signInWithPassword({ email, password });
+                        if (signData?.user?.id && !signErr) {
+                            const { error: upsertErr } = await supabase.from("user_profiles").upsert({
                                 id: signData.user.id,
                                 full_name: fullName,
                                 email: email,
                                 role: role,
                                 status: "active",
+                                created_at: new Date().toISOString(),
                                 updated_at: new Date().toISOString()
-                            });
+                            }, { onConflict: "id" });
 
-                            showToast("User account added successfully.");
-                            window.RMIMS_NOTIFICATIONS?.addNotification({
-                                category: 'user',
-                                priority: 'info',
-                                title: 'User Account Created',
-                                message: `Account "${fullName}" (${email}) was registered with role ${roleLabel(role)}.`,
-                                actor: `Admin: ${currentUser.fullName || 'Administrator'}`
-                            });
-                            closeModal("addUserModal");
-                            await refreshAll();
-                            return;
+                            if (!upsertErr) {
+                                showToast("User account added successfully.");
+                                window.RMIMS_NOTIFICATIONS?.addNotification({
+                                    category: 'user',
+                                    priority: 'info',
+                                    title: 'User Account Created',
+                                    message: `Account "${fullName}" (${email}) was registered with role ${roleLabel(role)}.`,
+                                    actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                                });
+                                closeModal("addUserModal");
+                                await refreshAll();
+                                return;
+                            }
                         }
                     } catch (signInCatch) {
                         console.warn("UID recovery sign-in notice:", signInCatch);
                     }
 
                     // Check if profile exists in user_profiles by email
-                    const { data: existingProfiles } = await supabase
+                    const { data: existingProfiles, error: profileErr } = await supabase
                         .from("user_profiles")
                         .select("*")
                         .eq("email", email);
 
-                    if (existingProfiles && existingProfiles.length > 0) {
+                    if (!profileErr && existingProfiles && existingProfiles.length > 0) {
                         const existingP = existingProfiles[0];
-                        await supabase.from("user_profiles").update({
+                        const { error: updateErr } = await supabase.from("user_profiles").update({
                             full_name: fullName,
                             role: role,
                             status: "active",
                             updated_at: new Date().toISOString()
                         }).eq("id", existingP.id);
 
-                        showToast("Account activated and updated successfully.");
-                        window.RMIMS_NOTIFICATIONS?.addNotification({
-                            category: 'user',
-                            priority: 'success',
-                            title: 'User Account Reactivated',
-                            message: `Account "${fullName}" (${email}) was reactivated as ${roleLabel(role)}.`,
-                            actor: `Admin: ${currentUser.fullName || 'Administrator'}`
-                        });
-                        closeModal("addUserModal");
-                        await refreshAll();
-                        return;
+                        if (!updateErr) {
+                            showToast("Account activated and updated successfully.");
+                            window.RMIMS_NOTIFICATIONS?.addNotification({
+                                category: 'user',
+                                priority: 'success',
+                                title: 'User Account Reactivated',
+                                message: `Account "${fullName}" (${email}) was reactivated as ${roleLabel(role)}.`,
+                                actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                            });
+                            closeModal("addUserModal");
+                            await refreshAll();
+                            return;
+                        }
                     }
                 }
                 throw error;
@@ -1350,14 +1355,17 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
             const uid = data.user?.id;
             if (!uid) throw new Error("Account creation did not return a user id.");
 
-            await supabase.from("user_profiles").upsert({
+            const { error: insertErr } = await supabase.from("user_profiles").upsert({
                 id: uid,
                 full_name: fullName,
                 email: email,
                 role: role,
                 status: "active",
+                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: "id" });
+
+            if (insertErr) throw insertErr;
         }
 
         showToast("User created successfully.");
