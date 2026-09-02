@@ -764,20 +764,41 @@ textarea::placeholder {
 
 /* --- Print cleanup --- */
 @media print {
+  html,
+  body {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .container {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+  }
 
   .sidebar,
   .topbar,
   .no-print,
   button,
   .btn,
-  .filters {
+  .filters,
+  .toast-stack {
     display: none !important;
   }
 
   .content {
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
   }
 
   .card,

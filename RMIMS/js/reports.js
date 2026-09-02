@@ -600,6 +600,7 @@ function renderAllTabs() {
     renderMaterialActivityTab();
     renderConsumptionAnalysisTab();
     renderAiForecastingTab();
+    updatePrintDocHtml();
 }
 
 /* ==========================================================
@@ -2451,12 +2452,14 @@ function initEventListeners() {
     const fcHorizon = document.getElementById("fcHorizonFilter");
     if (fcHorizon) fcHorizon.addEventListener("change", (e) => { state.fcHorizon = e.target.value; state.fcPage = 1; renderAiForecastingTab(); });
 
-    // 4. Print Action -> Directly triggers browser printer dialog (No file download)
+    // 4. Print Action -> Directly triggers browser printer dialog
     const printBtn = document.getElementById("btnPrint");
     if (printBtn) {
         printBtn.addEventListener("click", () => {
             updatePrintDocHtml();
-            window.print();
+            setTimeout(() => {
+                window.print();
+            }, 50);
         });
     }
 
@@ -2632,3 +2635,12 @@ function escapeHtml(str) {
     d.textContent = str ?? "";
     return d.innerHTML;
 }
+
+window.addEventListener("beforeprint", updatePrintDocHtml);
+
+window.__rmimsPrintReport = () => {
+    updatePrintDocHtml();
+    setTimeout(() => {
+        window.print();
+    }, 50);
+};

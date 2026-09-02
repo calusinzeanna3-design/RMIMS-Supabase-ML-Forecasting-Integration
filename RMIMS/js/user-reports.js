@@ -2141,13 +2141,17 @@ function updatePrintDocHtml() {
                 <span>Anti-Tamper Digital Audit Trail Active</span>
             </div>
         </div>
+    `;
+
     printDoc.innerHTML = html;
 }
 
 function handlePrintReport() {
     try {
         updatePrintDocHtml();
-        window.print();
+        setTimeout(() => {
+            window.print();
+        }, 50);
     } catch (err) {
         console.error("Print report generation error:", err);
         window.print();
