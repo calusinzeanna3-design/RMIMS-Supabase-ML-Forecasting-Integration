@@ -791,37 +791,7 @@ function renderCard4ReceiveRawMaterials() {
   `).join("");
 }
 
-// ============================================================
-// RAW MATERIALS TREND CHART (HISTORICAL USAGE + FORECAST)
-// ============================================================
 
-function initTrendControls() {
-  if (trendControlsBound) return;
-  trendControlsBound = true;
-
-  const select = $("trendMaterialSelect");
-  if (select) {
-    select.innerHTML = `<option value="all">All Materials</option>` +
-      catalogMaterials.map(m => `<option value="${esc(m.id)}">${esc(m.materialName)} (${esc(m.unit)})</option>`).join("");
-
-    select.addEventListener("change", async e => {
-      currentTrendMaterial = e.target.value;
-      await renderRawMaterialsTrendChart();
-    });
-  }
-
-  const granGroup = $("trendGranularityGroup");
-  if (granGroup) {
-    granGroup.querySelectorAll(".trend-gran-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        granGroup.querySelectorAll(".trend-gran-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        currentTrendGranularity = btn.getAttribute("data-gran");
-        await renderRawMaterialsTrendChart();
-      });
-    });
-  }
-}
 
 let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
 

@@ -1190,56 +1190,7 @@ function renderOutOfStockTiles() {
   });
 }
 
-// ============================================================
-// RAW MATERIALS TREND CHART (LIVE CONSUMPTION & AUTO-REG ML FORECAST)
-// ============================================================
 
-function populateTrendMaterialSelect() {
-  const select = $("trendMaterialSelect");
-  if (!select) return;
-
-  const currentVal = select.value || "all";
-  select.innerHTML = `<option value="all">All Materials</option>`;
-
-  const sorted = catalogMaterials.slice().sort((a, b) => a.materialName.localeCompare(b.materialName));
-  sorted.forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m.id;
-    opt.textContent = `${m.materialName} (${m.unit})`;
-    select.appendChild(opt);
-  });
-
-  if (sorted.some(m => m.id === currentVal)) {
-    select.value = currentVal;
-  } else {
-    select.value = "all";
-  }
-}
-
-function setupTrendControls() {
-  if (trendControlsBound) return;
-  trendControlsBound = true;
-
-  const select = $("trendMaterialSelect");
-  if (select) {
-    select.addEventListener("change", async () => {
-      currentTrendMaterial = select.value;
-      await renderRawMaterialsTrendChart();
-    });
-  }
-
-  const granGroup = $("trendGranularityGroup");
-  if (granGroup) {
-    granGroup.querySelectorAll(".trend-gran-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        granGroup.querySelectorAll(".trend-gran-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        currentTrendGranularity = btn.getAttribute("data-gran") || "monthly";
-        await renderRawMaterialsTrendChart();
-      });
-    });
-  }
-}
 
 let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
 
