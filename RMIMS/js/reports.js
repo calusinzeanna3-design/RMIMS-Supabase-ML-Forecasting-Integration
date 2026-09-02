@@ -66,7 +66,7 @@ const state = {
     forecastStatusText: "Forecast Ready",
     
     // Period & Filter State
-    periodPreset: "weekly", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
+    periodPreset: "all", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
     latestDataDate: null,
     startDate: null,
     endDate: null,
@@ -126,7 +126,7 @@ async function init() {
    ========================================================== */
 
 function initPeriodDates() {
-    setPeriodPresetDates("weekly");
+    setPeriodPresetDates("all");
 }
 
 function setPeriodPresetDates(preset) {
@@ -672,36 +672,36 @@ function renderManagerSummaryTab() {
         `;
     }
 
-    // Manager Decision Breakdown Table
+    // Restock Recommendations Table
     const decisionBody = document.getElementById("mgrDecisionTableBody");
     if (decisionBody) {
         const decisions = [];
         state.materials.forEach(m => {
             if (m.status === "Critical") {
                 decisions.push({
-                    priority: "HIGH",
+                    priority: "High Priority",
                     material: m.name,
                     stock: `${m.currentStock.toLocaleString()} ${m.unit}`,
-                    finding: `Stock has reached critical threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
-                    action: `Create urgent purchase receipt for ${m.reorderQty || 50} ${m.unit}.`
+                    finding: `Stock is critically low (${m.currentStock} ${m.unit} left, minimum is ${m.minThreshold} ${m.unit}).`,
+                    action: `Order ${m.reorderQty || 50} ${m.unit} from supplier soon.`
                 });
             } else if (m.status === "Low") {
                 decisions.push({
-                    priority: "MEDIUM",
+                    priority: "Medium",
                     material: m.name,
                     stock: `${m.currentStock.toLocaleString()} ${m.unit}`,
-                    finding: `Stock is approaching minimum safety limit (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
-                    action: `Schedule replenishment order with primary supplier.`
+                    finding: `Stock is running low (${m.currentStock} ${m.unit} left, minimum is ${m.minThreshold} ${m.unit}).`,
+                    action: `Prepare next order with supplier.`
                 });
             }
         });
 
         if (decisions.length === 0) {
-            decisionBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--rpt-text-dim);">No raw materials currently require priority replenishment intervention.</td></tr>`;
+            decisionBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--rpt-text-dim);">All raw materials have healthy stock levels. No reorders needed right now.</td></tr>`;
         } else {
             decisionBody.innerHTML = decisions.map(d => `
                 <tr>
-                    <td><span class="rpt-badge ${d.priority === "HIGH" ? "rpt-priority-high" : "rpt-priority-med"}">${d.priority}</span></td>
+                    <td><span class="rpt-badge ${d.priority.includes("High") ? "rpt-priority-high" : "rpt-priority-med"}">${d.priority}</span></td>
                     <td><strong>${escapeHtml(d.material)}</strong></td>
                     <td>${escapeHtml(d.stock)}</td>
                     <td>${escapeHtml(d.finding)}</td>

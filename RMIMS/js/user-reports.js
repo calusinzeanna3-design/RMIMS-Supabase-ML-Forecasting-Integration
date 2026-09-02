@@ -76,7 +76,7 @@ const state = {
     forecastStatusText: "Forecast Available",
     
     // Period & Filter State
-    periodPreset: "weekly", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
+    periodPreset: "all", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
     startDate: null,
     endDate: null,
     latestDataDate: null,
@@ -140,7 +140,7 @@ async function init() {
    ========================================================== */
 
 function initPeriodDates() {
-    setPeriodPresetDates("weekly");
+    setPeriodPresetDates("all");
 }
 
 function setPeriodPresetDates(preset) {

@@ -84,11 +84,11 @@
 
                     <!-- Single Clean Fitted Period Dropdown -->
                     <select class="inv-select" id="reportPeriodPreset" title="Select Report Period">
-                        <option value="weekly" selected>📅 Period: Weekly (Last 7 Days)</option>
-                        <option value="monthly">🗓️ Period: Monthly (Last 30 Days)</option>
-                        <option value="today">📊 Period: Latest Update Day</option>
-                        <option value="custom">✏️ Period: Custom Date Range</option>
-                        <option value="all">🌐 Period: All Available Records</option>
+                        <option value="all" selected>All Records (All Time)</option>
+                        <option value="today">Today</option>
+                        <option value="weekly">This Week (Last 7 Days)</option>
+                        <option value="monthly">This Month (Last 30 Days)</option>
+                        <option value="custom">Custom Date Range</option>
                     </select>
 
                     <!-- Modern Refresh Button with Live Supabase Status Update -->
@@ -147,49 +147,60 @@
                         <!-- Top Summary KPI Mini Cards -->
                         <div class="rpt-manager-kpi-grid">
                             <div class="rpt-kpi-box">
-                                <span class="rpt-kpi-label">Total Catalog Materials</span>
+                                <span class="rpt-kpi-label">Total Raw Materials</span>
                                 <h3 class="rpt-kpi-val" id="mgrTotalMaterials">0</h3>
-                                <span class="rpt-kpi-sub">Active Raw Materials</span>
+                                <span class="rpt-kpi-sub">Registered Ingredients</span>
                             </div>
                             <div class="rpt-kpi-box">
                                 <span class="rpt-kpi-label">Sufficient Stock</span>
                                 <h3 class="rpt-kpi-val text-green" id="mgrGoodStock">0</h3>
-                                <span class="rpt-kpi-sub">Above Minimum Threshold</span>
+                                <span class="rpt-kpi-sub">Ready for Production</span>
                             </div>
                             <div class="rpt-kpi-box">
-                                <span class="rpt-kpi-label">Needs Attention</span>
+                                <span class="rpt-kpi-label">Needs Reordering</span>
                                 <h3 class="rpt-kpi-val text-red" id="mgrAttentionStock">0</h3>
-                                <span class="rpt-kpi-sub">Low / Critical Threshold</span>
+                                <span class="rpt-kpi-sub">Low / Out of Stock</span>
                             </div>
                             <div class="rpt-kpi-box">
-                                <span class="rpt-kpi-label">Period Activity Records</span>
+                                <span class="rpt-kpi-label">Total Activities</span>
                                 <h3 class="rpt-kpi-val text-blue" id="mgrPeriodActivities">0</h3>
-                                <span class="rpt-kpi-sub">Receipts + Disbursements</span>
+                                <span class="rpt-kpi-sub">Deliveries + Usage</span>
                             </div>
                         </div>
 
-                        <!-- Manager Visual Analytics Row -->
+                        <!-- Visual Charts Row -->
                         <div class="rpt-charts-row">
-                            <!-- Chart 1: Stock Health Breakdown (Doughnut) -->
                             <div class="rpt-chart-card">
-                                <div class="rpt-chart-header">
+                                <div class="rpt-chart-head">
                                     <div>
-                                        <h4 class="rpt-chart-title">Stock Health Breakdown</h4>
-                                        <p class="rpt-chart-sub">Materials categorized by threshold health</p>
+                                        <h4 class="rpt-chart-title">Stock Health Overview</h4>
+                                        <p class="rpt-chart-sub">Proportion of safe vs low stock items</p>
                                     </div>
-                                    <span class="rpt-chart-badge" id="stockHealthTotalBadge">0 Materials</span>
+                                    <span class="rpt-chart-badge" id="stockHealthTotalBadge">Total Items</span>
                                 </div>
                                 <div class="rpt-chart-body">
                                     <canvas id="stockHealthChart"></canvas>
                                 </div>
                             </div>
 
-                            <!-- Chart 2: Material Quantity Progress (Movement & Activity Progress) -->
                             <div class="rpt-chart-card">
-                                <div class="rpt-chart-header">
+                                <div class="rpt-chart-head">
                                     <div>
-                                        <h4 class="rpt-chart-title">Material Quantity Progress</h4>
-                                        <p class="rpt-chart-sub">Daily inflow (received) vs outflow (disbursed) quantity</p>
+                                        <h4 class="rpt-chart-title">Top Consumed Materials</h4>
+                                        <p class="rpt-chart-sub">Highest usage in the selected period</p>
+                                    </div>
+                                    <span class="rpt-chart-badge" id="topConsumedTotalBadge">Top Ingredients</span>
+                                </div>
+                                <div class="rpt-chart-body">
+                                    <canvas id="topConsumedChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="rpt-chart-card">
+                                <div class="rpt-chart-head">
+                                    <div>
+                                        <h4 class="rpt-chart-title">Stock Movement Progress</h4>
+                                        <p class="rpt-chart-sub">Daily stock received vs stock used in kitchen</p>
                                     </div>
                                     <span class="rpt-chart-badge" id="qtyProgressTotalBadge">Period Progress</span>
                                 </div>
@@ -201,8 +212,8 @@
 
                         <!-- Manager Overview Table -->
                         <div class="rpt-section-header">
-                            <h3 class="rpt-section-title">Manager Overview</h3>
-                            <p class="rpt-section-desc">Key metrics and period activity breakdown</p>
+                            <h3 class="rpt-section-title">Inventory Summary</h3>
+                            <p class="rpt-section-desc">Key stock levels and activity totals</p>
                         </div>
                         <div class="rpt-table-wrap">
                             <table class="rpt-table">
@@ -222,8 +233,8 @@
 
                         <!-- Manager Decision Breakdown Table -->
                         <div class="rpt-section-header" style="margin-top:28px;">
-                            <h3 class="rpt-section-title">Manager Decision Breakdown</h3>
-                            <p class="rpt-section-desc">Recommended inventory priority and replenishment actions</p>
+                            <h3 class="rpt-section-title">Restock Recommendations</h3>
+                            <p class="rpt-section-desc">Suggested reorder actions based on current inventory levels</p>
                         </div>
                         <div class="rpt-table-wrap">
                             <table class="rpt-table">
@@ -232,8 +243,8 @@
                                         <th>Priority</th>
                                         <th>Raw Material</th>
                                         <th>Current Stock</th>
-                                        <th>What the Data Shows</th>
-                                        <th>Recommended Action</th>
+                                        <th>Current Situation</th>
+                                        <th>Suggested Next Step</th>
                                     </tr>
                                 </thead>
                                 <tbody id="mgrDecisionTableBody">
