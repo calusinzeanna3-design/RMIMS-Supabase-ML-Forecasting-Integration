@@ -163,6 +163,8 @@ function bindToggle(btn, input) {
 bindToggle(toggleNewPw, newPasswordInput);
 bindToggle(toggleConfirmPw, confirmNewPasswordInput);
 
+let recoveryTokens = null;
+
 // Check if arriving with recovery token in URL hash or search params
 function checkRecoveryState() {
     const hash = window.location.hash || "";
@@ -170,6 +172,23 @@ function checkRecoveryState() {
     const isRecovery = hash.includes("type=recovery") || search.includes("type=recovery") || hash.includes("access_token=");
     
     if (isRecovery) {
+        try {
+            const rawParams = hash.startsWith("#") ? hash.substring(1) : (search.startsWith("?") ? search.substring(1) : "");
+            const urlParams = new URLSearchParams(rawParams);
+            const accessToken = urlParams.get("access_token");
+            const refreshToken = urlParams.get("refresh_token");
+
+            if (accessToken) {
+                recoveryTokens = { accessToken, refreshToken };
+                supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken || ""
+                }).catch(e => console.warn("Recovery session init notice:", e));
+            }
+        } catch (e) {
+            console.warn("Parse recovery params error:", e);
+        }
+
         openSetNewPasswordModal();
     }
 }
@@ -177,8 +196,11 @@ function checkRecoveryState() {
 checkRecoveryState();
 
 // Also listen to Supabase Auth State for PASSWORD_RECOVERY
-supabase.auth.onAuthStateChange(async (event) => {
-    if (event === "PASSWORD_RECOVERY") {
+supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && window.location.hash.includes("type=recovery"))) {
+        if (session && session.access_token) {
+            recoveryTokens = { accessToken: session.access_token, refreshToken: session.refresh_token };
+        }
         openSetNewPasswordModal();
     }
 });
@@ -209,6 +231,14 @@ if (setNewPasswordForm) {
         saveNewPasswordBtn.innerHTML = `<span class="auth-spinner"></span> Updating Password...`;
 
         try {
+            // Guarantee active session from token if available
+            if (recoveryTokens && recoveryTokens.accessToken) {
+                await supabase.auth.setSession({
+                    access_token: recoveryTokens.accessToken,
+                    refresh_token: recoveryTokens.refreshToken || ""
+                }).catch(err => console.warn("Session ensure warning:", err));
+            }
+
             const { error } = await supabase.auth.updateUser({
                 password: newPass
             });
