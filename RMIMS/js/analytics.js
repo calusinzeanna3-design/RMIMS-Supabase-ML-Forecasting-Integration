@@ -489,7 +489,7 @@ function generateTimelineIntervals(period, fromStr, toStr) {
         dStart = new Date(Date.now() - 29 * 86400000);
         dEnd = new Date(toStr + "T23:59:59");
     } else {
-        // "All Time": find earliest disbursement date
+        // "All Time": find earliest and latest disbursement dates
         if (state.disbursements && state.disbursements.length > 0) {
             const validDates = state.disbursements
                 .map(d => d.usageDate)
@@ -497,13 +497,15 @@ function generateTimelineIntervals(period, fromStr, toStr) {
                 .sort();
             if (validDates.length > 0) {
                 dStart = new Date(validDates[0] + "T00:00:00");
+                dEnd = new Date(validDates[validDates.length - 1] + "T23:59:59");
             } else {
                 dStart = new Date(Date.now() - 29 * 86400000);
+                dEnd = new Date();
             }
         } else {
             dStart = new Date(Date.now() - 29 * 86400000);
+            dEnd = new Date();
         }
-        dEnd = new Date();
     }
 
     if (isNaN(dStart.getTime())) dStart = new Date(Date.now() - 29 * 86400000);
