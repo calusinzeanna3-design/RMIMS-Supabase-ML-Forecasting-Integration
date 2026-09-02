@@ -97,9 +97,13 @@ const state = {
     disbPageSize: 10,
 
     cnsSearch: "",
+    cnsPage: 1,
+    cnsPageSize: 10,
 
     fcSearch: "",
-    fcStatus: "all"
+    fcStatus: "all",
+    fcPage: 1,
+    fcPageSize: 10
 };
 
 const $ = (id) => document.getElementById(id);
@@ -649,6 +653,7 @@ function initEventListeners() {
     if (cnsSearch) {
         cnsSearch.addEventListener("input", (e) => {
             state.cnsSearch = e.target.value.trim().toLowerCase();
+            state.cnsPage = 1;
             renderTabConsumption();
         });
     }
@@ -657,6 +662,7 @@ function initEventListeners() {
     if (fcSearch) {
         fcSearch.addEventListener("input", (e) => {
             state.fcSearch = e.target.value.trim().toLowerCase();
+            state.fcPage = 1;
             renderTabForecasting();
         });
     }
@@ -664,6 +670,7 @@ function initEventListeners() {
     if (fcStatus) {
         fcStatus.addEventListener("change", (e) => {
             state.fcStatus = e.target.value;
+            state.fcPage = 1;
             renderTabForecasting();
         });
     }
@@ -852,12 +859,84 @@ function renderTabOverview() {
 }
 
 /* ==========================================================
+   REUSABLE PAGINATION HELPER
+   ========================================================== */
+
+function renderReportsPaginationBar({ containerId, currentPage, totalItems, pageSize, onPageChange }) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (totalItems === 0) {
+        container.innerHTML = `
+            <div class="inv-pagination-info">Showing 0 to 0 of 0 entries</div>
+            <div class="inv-pagination-controls">
+                <button type="button" class="inv-page-btn" disabled>&laquo; Prev</button>
+                <button type="button" class="inv-page-btn active" disabled>1</button>
+                <button type="button" class="inv-page-btn" disabled>Next &raquo;</button>
+            </div>
+        `;
+        return;
+    }
+
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const safePage = Math.max(1, Math.min(currentPage, totalPages));
+    const startIdx = (safePage - 1) * pageSize + 1;
+    const endIdx = Math.min(safePage * pageSize, totalItems);
+
+    let pageButtonsHtml = `
+        <button type="button" class="inv-page-btn" ${safePage <= 1 ? "disabled" : ""} data-page="${safePage - 1}">&laquo; Prev</button>
+    `;
+
+    let startPage = Math.max(1, safePage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+
+    if (startPage > 1) {
+        pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="1">1</button>`;
+        if (startPage > 2) pageButtonsHtml += `<span class="page-ellipsis" style="padding: 0 4px; color: #94A3B8;">...</span>`;
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        pageButtonsHtml += `
+            <button type="button" class="inv-page-btn ${p === safePage ? "active" : ""}" data-page="${p}">${p}</button>
+        `;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) pageButtonsHtml += `<span class="page-ellipsis" style="padding: 0 4px; color: #94A3B8;">...</span>`;
+        pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    pageButtonsHtml += `
+        <button type="button" class="inv-page-btn" ${safePage >= totalPages ? "disabled" : ""} data-page="${safePage + 1}">Next &raquo;</button>
+    `;
+
+    container.innerHTML = `
+        <div class="inv-pagination-info">Showing ${startIdx} to ${endIdx} of ${totalItems} entries</div>
+        <div class="inv-pagination-controls">
+            ${pageButtonsHtml}
+        </div>
+    `;
+
+    const buttons = container.querySelectorAll("button[data-page]");
+    buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetP = parseInt(btn.getAttribute("data-page"), 10);
+            if (!isNaN(targetP) && targetP !== safePage && targetP >= 1 && targetP <= totalPages) {
+                onPageChange(targetP);
+            }
+        });
+    });
+}
+
+/* ==========================================================
    TAB 2: RECENT RECEIVING
    ========================================================== */
 
 function renderTabReceiving() {
     const tbody = $("receivingTableBody");
-    const pagination = $("receivingPagination");
     if (!tbody) return;
 
     let filtered = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
@@ -878,41 +957,45 @@ function renderTabReceiving() {
         filtered.sort((a, b) => b.receivedQuantity - a.receivedQuantity);
     }
 
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No receiving records found for the selected period.</td></tr>`;
-        if (pagination) pagination.innerHTML = "";
-        return;
-    }
-
-    const totalPages = Math.ceil(filtered.length / state.rcvPageSize);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.rcvPageSize));
     if (state.rcvPage > totalPages) state.rcvPage = totalPages;
     const startIndex = (state.rcvPage - 1) * state.rcvPageSize;
     const pageItems = filtered.slice(startIndex, startIndex + state.rcvPageSize);
 
-    tbody.innerHTML = pageItems.map(r => {
-        const dateFormatted = r.receiptDate 
-            ? new Date(r.receiptDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-            : "—";
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No receiving records found for the selected period.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(r => {
+            const dateFormatted = r.receiptDate 
+                ? new Date(r.receiptDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : "—";
 
-        const stockText = r.currentStock !== null ? `${r.currentStock.toLocaleString()} ${r.unit}` : "—";
+            const stockText = r.currentStock !== null ? `${r.currentStock.toLocaleString()} ${r.unit}` : "—";
 
-        return `
-            <tr>
-                <td style="white-space:nowrap; font-weight:600; color:#475569;">${esc(dateFormatted)}</td>
-                <td><strong>${esc(r.materialName)}</strong></td>
-                <td><span class="rpt-code-badge">${esc(r.itemCode)}</span></td>
-                <td><span class="text-green font-bold">+${r.receivedQuantity.toLocaleString()}</span></td>
-                <td>${esc(r.unit)}</td>
-                <td>${esc(stockText)}</td>
-                <td>${esc(r.supplierName)}</td>
-                <td><span class="status-pill status-good">${esc(r.status)}</span></td>
-            </tr>
-        `;
-    }).join("");
+            return `
+                <tr>
+                    <td style="white-space:nowrap; font-weight:600; color:#475569;">${esc(dateFormatted)}</td>
+                    <td><strong>${esc(r.materialName)}</strong></td>
+                    <td><span class="rpt-code-badge">${esc(r.itemCode)}</span></td>
+                    <td><span class="text-green font-bold">+${r.receivedQuantity.toLocaleString()}</span></td>
+                    <td>${esc(r.unit)}</td>
+                    <td>${esc(stockText)}</td>
+                    <td>${esc(r.supplierName)}</td>
+                    <td><span class="status-pill status-good">${esc(r.status)}</span></td>
+                </tr>
+            `;
+        }).join("");
+    }
 
-    renderPagination(pagination, state.rcvPage, totalPages, (newPage) => {
-        state.rcvPage = newPage;
-        renderTabReceiving();
+    renderReportsPaginationBar({
+        containerId: "receivingPagination",
+        currentPage: state.rcvPage,
+        totalItems: filtered.length,
+        pageSize: state.rcvPageSize,
+        onPageChange: (newPage) => {
+            state.rcvPage = newPage;
+            renderTabReceiving();
+        }
     });
 }
 
@@ -922,7 +1005,6 @@ function renderTabReceiving() {
 
 function renderTabDisbursement() {
     const tbody = $("disbursementTableBody");
-    const pagination = $("disbursementPagination");
     if (!tbody) return;
 
     let filtered = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
@@ -943,62 +1025,46 @@ function renderTabDisbursement() {
         filtered.sort((a, b) => b.disbursedQuantity - a.disbursedQuantity);
     }
 
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No disbursement records found for the selected period.</td></tr>`;
-        if (pagination) pagination.innerHTML = "";
-        return;
-    }
-
-    const totalPages = Math.ceil(filtered.length / state.disbPageSize);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.disbPageSize));
     if (state.disbPage > totalPages) state.disbPage = totalPages;
     const startIndex = (state.disbPage - 1) * state.disbPageSize;
     const pageItems = filtered.slice(startIndex, startIndex + state.disbPageSize);
 
-    tbody.innerHTML = pageItems.map(d => {
-        const dateFormatted = d.usageDate 
-            ? new Date(d.usageDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-            : "—";
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No disbursement records found for the selected period.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(d => {
+            const dateFormatted = d.usageDate 
+                ? new Date(d.usageDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : "—";
 
-        const stockText = d.currentStock !== null ? `${d.currentStock.toLocaleString()} ${d.unit}` : "—";
+            const stockText = d.currentStock !== null ? `${d.currentStock.toLocaleString()} ${d.unit}` : "—";
 
-        return `
-            <tr>
-                <td style="white-space:nowrap; font-weight:600; color:#475569;">${esc(dateFormatted)}</td>
-                <td><strong style="color:#0f172a;">${esc(d.finishedProduct)}</strong></td>
-                <td><span style="font-weight:600; color:#1e293b;">${esc(d.materialName)}</span></td>
-                <td><span class="rpt-code-badge">${esc(d.itemCode)}</span></td>
-                <td><span class="text-red font-bold">-${d.disbursedQuantity.toLocaleString()}</span></td>
-                <td>${esc(d.unit)}</td>
-                <td>${esc(stockText)}</td>
-                <td><span class="status-pill status-good">${esc(d.status)}</span></td>
-            </tr>
-        `;
-    }).join("");
-
-    renderPagination(pagination, state.disbPage, totalPages, (newPage) => {
-        state.disbPage = newPage;
-        renderTabDisbursement();
-    });
-}
-
-function renderPagination(container, currentPage, totalPages, onPageChange) {
-    if (!container) return;
-    if (totalPages <= 1) {
-        container.innerHTML = "";
-        return;
+            return `
+                <tr>
+                    <td style="white-space:nowrap; font-weight:600; color:#475569;">${esc(dateFormatted)}</td>
+                    <td><strong style="color:#0f172a;">${esc(d.finishedProduct)}</strong></td>
+                    <td><span style="font-weight:600; color:#1e293b;">${esc(d.materialName)}</span></td>
+                    <td><span class="rpt-code-badge">${esc(d.itemCode)}</span></td>
+                    <td><span class="text-red font-bold">-${d.disbursedQuantity.toLocaleString()}</span></td>
+                    <td>${esc(d.unit)}</td>
+                    <td>${esc(stockText)}</td>
+                    <td><span class="status-pill status-good">${esc(d.status)}</span></td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    container.innerHTML = `
-        <button type="button" class="rpt-page-btn" id="prevPageBtn" ${currentPage === 1 ? "disabled" : ""}>← Previous</button>
-        <span class="rpt-page-info">Page ${currentPage} of ${totalPages}</span>
-        <button type="button" class="rpt-page-btn" id="nextPageBtn" ${currentPage === totalPages ? "disabled" : ""}>Next →</button>
-    `;
-
-    const prevBtn = container.querySelector("#prevPageBtn");
-    const nextBtn = container.querySelector("#nextPageBtn");
-
-    if (prevBtn) prevBtn.addEventListener("click", () => onPageChange(currentPage - 1));
-    if (nextBtn) nextBtn.addEventListener("click", () => onPageChange(currentPage + 1));
+    renderReportsPaginationBar({
+        containerId: "disbursementPagination",
+        currentPage: state.disbPage,
+        totalItems: filtered.length,
+        pageSize: state.disbPageSize,
+        onPageChange: (newPage) => {
+            state.disbPage = newPage;
+            renderTabDisbursement();
+        }
+    });
 }
 
 /* ==========================================================
@@ -1051,49 +1117,64 @@ function renderTabConsumption() {
         );
     }
 
-    if (displayMaterials.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(displayMaterials.length / state.cnsPageSize));
+    if (state.cnsPage > totalPages) state.cnsPage = totalPages;
+    const startIndex = (state.cnsPage - 1) * state.cnsPageSize;
+    const pageItems = displayMaterials.slice(startIndex, startIndex + state.cnsPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No consumption records found for the selected period.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(m => {
+            // Today usage
+            const todayUsage = state.disbursements
+                .filter(d => d.materialId === m.id && d.usageDate === todayStr)
+                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
+
+            // Week usage
+            const weekUsage = state.disbursements
+                .filter(d => d.materialId === m.id && withinRange(d.usageDate, weekStart, weekEnd))
+                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
+
+            // Month usage
+            const monthUsage = state.disbursements
+                .filter(d => d.materialId === m.id && withinRange(d.usageDate, monthStart, monthEnd))
+                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
+
+            // Selected Period usage
+            const periodUsage = state.disbursements
+                .filter(d => d.materialId === m.id && withinRange(d.usageDate, state.startDate, state.endDate))
+                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
+
+            let statusBadge = `<span class="status-pill status-good">Normal</span>`;
+            if (m.status === "Critical") statusBadge = `<span class="status-pill status-red">Critical</span>`;
+            else if (m.status === "Low") statusBadge = `<span class="status-pill status-orange">Low Stock</span>`;
+
+            return `
+                <tr>
+                    <td><strong>${esc(m.name)}</strong></td>
+                    <td><span class="rpt-code-badge">${esc(m.itemCode)}</span></td>
+                    <td>${todayUsage > 0 ? `<strong class="text-blue">${todayUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
+                    <td>${weekUsage > 0 ? `<strong class="text-blue">${weekUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
+                    <td>${monthUsage > 0 ? `<strong class="text-blue">${monthUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
+                    <td><strong class="text-green">${periodUsage.toLocaleString()} ${esc(m.unit)}</strong></td>
+                    <td><strong>${m.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(m.unit)}</small></td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    tbody.innerHTML = displayMaterials.map(m => {
-        // Today usage
-        const todayUsage = state.disbursements
-            .filter(d => d.materialId === m.id && d.usageDate === todayStr)
-            .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-        // Week usage
-        const weekUsage = state.disbursements
-            .filter(d => d.materialId === m.id && withinRange(d.usageDate, weekStart, weekEnd))
-            .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-        // Month usage
-        const monthUsage = state.disbursements
-            .filter(d => d.materialId === m.id && withinRange(d.usageDate, monthStart, monthEnd))
-            .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-        // Selected Period usage
-        const periodUsage = state.disbursements
-            .filter(d => d.materialId === m.id && withinRange(d.usageDate, state.startDate, state.endDate))
-            .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-        let statusBadge = `<span class="status-pill status-good">Normal</span>`;
-        if (m.status === "Critical") statusBadge = `<span class="status-pill status-red">Critical</span>`;
-        else if (m.status === "Low") statusBadge = `<span class="status-pill status-orange">Low Stock</span>`;
-
-        return `
-            <tr>
-                <td><strong>${esc(m.name)}</strong></td>
-                <td><span class="rpt-code-badge">${esc(m.itemCode)}</span></td>
-                <td>${todayUsage > 0 ? `<strong class="text-blue">${todayUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
-                <td>${weekUsage > 0 ? `<strong class="text-blue">${weekUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
-                <td>${monthUsage > 0 ? `<strong class="text-blue">${monthUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
-                <td><strong class="text-green">${periodUsage.toLocaleString()} ${esc(m.unit)}</strong></td>
-                <td><strong>${m.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(m.unit)}</small></td>
-                <td>${statusBadge}</td>
-            </tr>
-        `;
-    }).join("");
+    renderReportsPaginationBar({
+        containerId: "consumptionPagination",
+        currentPage: state.cnsPage,
+        totalItems: displayMaterials.length,
+        pageSize: state.cnsPageSize,
+        onPageChange: (newPage) => {
+            state.cnsPage = newPage;
+            renderTabConsumption();
+        }
+    });
 }
 
 /* ==========================================================
@@ -1114,11 +1195,6 @@ function renderTabForecasting() {
         }
     }
 
-    if (state.forecastList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No AI forecast support is currently available.</td></tr>`;
-        return;
-    }
-
     let filtered = state.forecastList;
 
     if (state.fcSearch) {
@@ -1135,25 +1211,40 @@ function renderTabForecasting() {
         filtered = filtered.filter(f => f.status.includes("Sufficient") || f.additionalNeed === 0);
     }
 
-    if (filtered.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.fcPageSize));
+    if (state.fcPage > totalPages) state.fcPage = totalPages;
+    const startIndex = (state.fcPage - 1) * state.fcPageSize;
+    const pageItems = filtered.slice(startIndex, startIndex + state.fcPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No matching forecast records found.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(f => {
+            return `
+                <tr>
+                    <td><strong>${esc(f.name)}</strong></td>
+                    <td><span class="rpt-code-badge">${esc(f.itemCode)}</span></td>
+                    <td><span style="font-weight:600; color:#475569;">Next 7 Days</span></td>
+                    <td><strong>${f.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(f.unit)}</small></td>
+                    <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
+                    <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
+                    <td><span class="status-pill status-neutral">—</span></td>
+                    <td><span style="font-size:0.8rem; color:#475569;">${esc(f.interpretation)}</span></td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    tbody.innerHTML = filtered.map(f => {
-        return `
-            <tr>
-                <td><strong>${esc(f.name)}</strong></td>
-                <td><span class="rpt-code-badge">${esc(f.itemCode)}</span></td>
-                <td><span style="font-weight:600; color:#475569;">Next 7 Days</span></td>
-                <td><strong>${f.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(f.unit)}</small></td>
-                <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
-                <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
-                <td><span class="status-pill status-neutral">—</span></td>
-                <td><span style="font-size:0.8rem; color:#475569;">${esc(f.interpretation)}</span></td>
-            </tr>
-        `;
-    }).join("");
+    renderReportsPaginationBar({
+        containerId: "forecastPagination",
+        currentPage: state.fcPage,
+        totalItems: filtered.length,
+        pageSize: state.fcPageSize,
+        onPageChange: (newPage) => {
+            state.fcPage = newPage;
+            renderTabForecasting();
+        }
+    });
 }
 
 /* ==========================================================

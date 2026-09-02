@@ -78,11 +78,25 @@ const state = {
     // Tab Specific Filter States
     invSearch: "",
     invStatus: "all",
+    invPage: 1,
+    invPageSize: 10,
+
     rcvSearch: "",
+    rcvPage: 1,
+    rcvPageSize: 10,
+
     disbSearch: "",
+    disbPage: 1,
+    disbPageSize: 10,
+
     actSearch: "",
     actType: "all",
+    actPage: 1,
+    actPageSize: 10,
+
     cnsSearch: "",
+    cnsPage: 1,
+    cnsPageSize: 10,
 
     // AI Forecasting Tab Filter & Pagination State
     fcSearch: "",
@@ -883,6 +897,79 @@ function renderManagerCharts() {
 }
 
 /* ==========================================================
+   REUSABLE PAGINATION HELPER
+   ========================================================== */
+
+function renderReportsPaginationBar({ containerId, currentPage, totalItems, pageSize, onPageChange }) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (totalItems === 0) {
+        container.innerHTML = `
+            <div class="inv-pagination-info">Showing 0 to 0 of 0 entries</div>
+            <div class="inv-pagination-controls">
+                <button type="button" class="inv-page-btn" disabled>&laquo; Prev</button>
+                <button type="button" class="inv-page-btn active" disabled>1</button>
+                <button type="button" class="inv-page-btn" disabled>Next &raquo;</button>
+            </div>
+        `;
+        return;
+    }
+
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const safePage = Math.max(1, Math.min(currentPage, totalPages));
+    const startIdx = (safePage - 1) * pageSize + 1;
+    const endIdx = Math.min(safePage * pageSize, totalItems);
+
+    let pageButtonsHtml = `
+        <button type="button" class="inv-page-btn" ${safePage <= 1 ? "disabled" : ""} data-page="${safePage - 1}">&laquo; Prev</button>
+    `;
+
+    let startPage = Math.max(1, safePage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+
+    if (startPage > 1) {
+        pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="1">1</button>`;
+        if (startPage > 2) pageButtonsHtml += `<span class="page-ellipsis" style="padding: 0 4px; color: #94A3B8;">...</span>`;
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        pageButtonsHtml += `
+            <button type="button" class="inv-page-btn ${p === safePage ? "active" : ""}" data-page="${p}">${p}</button>
+        `;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) pageButtonsHtml += `<span class="page-ellipsis" style="padding: 0 4px; color: #94A3B8;">...</span>`;
+        pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    pageButtonsHtml += `
+        <button type="button" class="inv-page-btn" ${safePage >= totalPages ? "disabled" : ""} data-page="${safePage + 1}">Next &raquo;</button>
+    `;
+
+    container.innerHTML = `
+        <div class="inv-pagination-info">Showing ${startIdx} to ${endIdx} of ${totalItems} entries</div>
+        <div class="inv-pagination-controls">
+            ${pageButtonsHtml}
+        </div>
+    `;
+
+    const buttons = container.querySelectorAll("button[data-page]");
+    buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetP = parseInt(btn.getAttribute("data-page"), 10);
+            if (!isNaN(targetP) && targetP !== safePage && targetP >= 1 && targetP <= totalPages) {
+                onPageChange(targetP);
+            }
+        });
+    });
+}
+
+/* ==========================================================
    TAB 2: INVENTORY RECORDS
    ========================================================== */
 
@@ -899,25 +986,41 @@ function renderInventoryRecordsTab() {
         return true;
     });
 
-    if (filtered.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.invPageSize));
+    if (state.invPage > totalPages) state.invPage = totalPages;
+
+    const startIdx = (state.invPage - 1) * state.invPageSize;
+    const pageItems = filtered.slice(startIdx, startIdx + state.invPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No inventory records match the search criteria.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(m => {
+            const badgeCls = m.status === "Critical" ? "rpt-badge-critical" : (m.status === "Low" ? "rpt-badge-low" : "rpt-badge-good");
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(m.name)}</strong></td>
+                    <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(m.itemCode)}</span></td>
+                    <td>${escapeHtml(m.unit)}</td>
+                    <td><strong>${m.currentStock.toLocaleString()}</strong></td>
+                    <td>${m.minThreshold.toLocaleString()}</td>
+                    <td>${m.reorderQty.toLocaleString()}</td>
+                    <td><span class="rpt-badge ${badgeCls}">${m.status}</span></td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    tbody.innerHTML = filtered.map(m => {
-        const badgeCls = m.status === "Critical" ? "rpt-badge-critical" : (m.status === "Low" ? "rpt-badge-low" : "rpt-badge-good");
-        return `
-            <tr>
-                <td><strong>${escapeHtml(m.name)}</strong></td>
-                <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(m.itemCode)}</span></td>
-                <td>${escapeHtml(m.unit)}</td>
-                <td><strong>${m.currentStock.toLocaleString()}</strong></td>
-                <td>${m.minThreshold.toLocaleString()}</td>
-                <td>${m.reorderQty.toLocaleString()}</td>
-                <td><span class="rpt-badge ${badgeCls}">${m.status}</span></td>
-            </tr>
-        `;
-    }).join("");
+    renderReportsPaginationBar({
+        containerId: "invPaginationBar",
+        currentPage: state.invPage,
+        totalItems: filtered.length,
+        pageSize: state.invPageSize,
+        onPageChange: (p) => {
+            state.invPage = p;
+            renderInventoryRecordsTab();
+        }
+    });
 }
 
 /* ==========================================================
@@ -938,22 +1041,38 @@ function renderMaterialReceivingTab() {
 
     if (countNote) countNote.textContent = `${filtered.length} receipt${filtered.length === 1 ? "" : "s"} recorded`;
 
-    if (filtered.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.rcvPageSize));
+    if (state.rcvPage > totalPages) state.rcvPage = totalPages;
+
+    const startIdx = (state.rcvPage - 1) * state.rcvPageSize;
+    const pageItems = filtered.slice(startIdx, startIdx + state.rcvPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(r => `
+            <tr>
+                <td>${escapeHtml(r.receiptDate)}</td>
+                <td><strong>${escapeHtml(r.materialName)}</strong></td>
+                <td><strong style="color:var(--rpt-green-dark);">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
+                <td>${escapeHtml(r.unit)}</td>
+                <td>${escapeHtml(r.supplierName)}</td>
+                <td>${escapeHtml(r.receivedBy)}</td>
+                <td><span class="rpt-badge rpt-badge-good">Verified &amp; Received</span></td>
+            </tr>
+        `).join("");
     }
 
-    tbody.innerHTML = filtered.map(r => `
-        <tr>
-            <td>${escapeHtml(r.receiptDate)}</td>
-            <td><strong>${escapeHtml(r.materialName)}</strong></td>
-            <td><strong style="color:var(--rpt-green-dark);">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
-            <td>${escapeHtml(r.unit)}</td>
-            <td>${escapeHtml(r.supplierName)}</td>
-            <td>${escapeHtml(r.receivedBy)}</td>
-            <td><span class="rpt-badge rpt-badge-good">Verified &amp; Received</span></td>
-        </tr>
-    `).join("");
+    renderReportsPaginationBar({
+        containerId: "rcvPaginationBar",
+        currentPage: state.rcvPage,
+        totalItems: filtered.length,
+        pageSize: state.rcvPageSize,
+        onPageChange: (p) => {
+            state.rcvPage = p;
+            renderMaterialReceivingTab();
+        }
+    });
 }
 
 /* ==========================================================
@@ -974,22 +1093,38 @@ function renderMaterialDisbursementTab() {
 
     if (countNote) countNote.textContent = `${filtered.length} disbursement${filtered.length === 1 ? "" : "s"} recorded`;
 
-    if (filtered.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.disbPageSize));
+    if (state.disbPage > totalPages) state.disbPage = totalPages;
+
+    const startIdx = (state.disbPage - 1) * state.disbPageSize;
+    const pageItems = filtered.slice(startIdx, startIdx + state.disbPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(d => `
+            <tr>
+                <td>${escapeHtml(d.usageDate)}</td>
+                <td><strong>${escapeHtml(d.materialName)}</strong></td>
+                <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(d.finishedProduct)}</span></td>
+                <td><strong style="color:var(--rpt-orange-dark);">${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
+                <td>${escapeHtml(d.unit)}</td>
+                <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(d.activityType)}</span></td>
+                <td>${escapeHtml(d.recordedBy)}</td>
+            </tr>
+        `).join("");
     }
 
-    tbody.innerHTML = filtered.map(d => `
-        <tr>
-            <td>${escapeHtml(d.usageDate)}</td>
-            <td><strong>${escapeHtml(d.materialName)}</strong></td>
-            <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(d.finishedProduct)}</span></td>
-            <td><strong style="color:var(--rpt-orange-dark);">${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
-            <td>${escapeHtml(d.unit)}</td>
-            <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(d.activityType)}</span></td>
-            <td>${escapeHtml(d.recordedBy)}</td>
-        </tr>
-    `).join("");
+    renderReportsPaginationBar({
+        containerId: "disbPaginationBar",
+        currentPage: state.disbPage,
+        totalItems: filtered.length,
+        pageSize: state.disbPageSize,
+        onPageChange: (p) => {
+            state.disbPage = p;
+            renderMaterialDisbursementTab();
+        }
+    });
 }
 
 /* ==========================================================
@@ -1040,29 +1175,45 @@ function renderMaterialActivityTab() {
         return true;
     });
 
-    if (filtered.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / state.actPageSize));
+    if (state.actPage > totalPages) state.actPage = totalPages;
+
+    const startIdx = (state.actPage - 1) * state.actPageSize;
+    const pageItems = filtered.slice(startIdx, startIdx + state.actPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(a => {
+            const isRcv = a.type === "Received";
+            const badgeCls = isRcv ? "rpt-badge-good" : "rpt-badge-low";
+            const qtyStr = isRcv ? `+${a.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${a.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            const qtyColor = isRcv ? "var(--rpt-green-dark)" : "var(--rpt-red-dark)";
+
+            return `
+                <tr>
+                    <td>${escapeHtml(a.date)}</td>
+                    <td><span class="rpt-badge ${badgeCls}">${a.type}</span></td>
+                    <td><strong>${escapeHtml(a.material)}</strong></td>
+                    <td><strong style="color:${qtyColor};">${qtyStr}</strong></td>
+                    <td>${escapeHtml(a.unit)}</td>
+                    <td>${escapeHtml(a.ref)}</td>
+                    <td>${escapeHtml(a.operator)}</td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    tbody.innerHTML = filtered.map(a => {
-        const isRcv = a.type === "Received";
-        const badgeCls = isRcv ? "rpt-badge-good" : "rpt-badge-low";
-        const qtyStr = isRcv ? `+${a.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : `${a.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-        const qtyColor = isRcv ? "var(--rpt-green-dark)" : "var(--rpt-red-dark)";
-
-        return `
-            <tr>
-                <td>${escapeHtml(a.date)}</td>
-                <td><span class="rpt-badge ${badgeCls}">${a.type}</span></td>
-                <td><strong>${escapeHtml(a.material)}</strong></td>
-                <td><strong style="color:${qtyColor};">${qtyStr}</strong></td>
-                <td>${escapeHtml(a.unit)}</td>
-                <td>${escapeHtml(a.ref)}</td>
-                <td>${escapeHtml(a.operator)}</td>
-            </tr>
-        `;
-    }).join("");
+    renderReportsPaginationBar({
+        containerId: "actPaginationBar",
+        currentPage: state.actPage,
+        totalItems: filtered.length,
+        pageSize: state.actPageSize,
+        onPageChange: (p) => {
+            state.actPage = p;
+            renderMaterialActivityTab();
+        }
+    });
 }
 
 /* ==========================================================
@@ -1116,26 +1267,42 @@ function renderConsumptionAnalysisTab() {
         list = list.filter(l => l.material.toLowerCase().includes(term));
     }
 
-    if (list.length === 0) {
+    const totalPages = Math.max(1, Math.ceil(list.length / state.cnsPageSize));
+    if (state.cnsPage > totalPages) state.cnsPage = totalPages;
+
+    const startIdx = (state.cnsPage - 1) * state.cnsPageSize;
+    const pageItems = list.slice(startIdx, startIdx + state.cnsPageSize);
+
+    if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No consumption records match the filter.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(l => {
+            const badgeCls = l.status === "Critical" ? "rpt-badge-critical" : (l.status === "Low" ? "rpt-badge-low" : "rpt-badge-good");
+            const trendColor = l.trend === "Increasing" ? "var(--rpt-orange-dark)" : (l.trend === "Decreasing" ? "var(--rpt-blue-dark)" : "var(--rpt-text-muted)");
+
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(l.material)}</strong></td>
+                    <td><strong>${l.currentUsage.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(l.unit)}</strong></td>
+                    <td>${l.previousUsage.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(l.unit)}</td>
+                    <td>${l.currentStock.toLocaleString()} ${escapeHtml(l.unit)}</td>
+                    <td><strong style="color:${trendColor};">${l.trend}</strong></td>
+                    <td><span class="rpt-badge ${badgeCls}">${l.status}</span></td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    tbody.innerHTML = list.map(l => {
-        const badgeCls = l.status === "Critical" ? "rpt-badge-critical" : (l.status === "Low" ? "rpt-badge-low" : "rpt-badge-good");
-        const trendColor = l.trend === "Increasing" ? "var(--rpt-orange-dark)" : (l.trend === "Decreasing" ? "var(--rpt-blue-dark)" : "var(--rpt-text-muted)");
-
-        return `
-            <tr>
-                <td><strong>${escapeHtml(l.material)}</strong></td>
-                <td><strong>${l.currentUsage.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(l.unit)}</strong></td>
-                <td>${l.previousUsage.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(l.unit)}</td>
-                <td>${l.currentStock.toLocaleString()} ${escapeHtml(l.unit)}</td>
-                <td><strong style="color:${trendColor};">${l.trend}</strong></td>
-                <td><span class="rpt-badge ${badgeCls}">${l.status}</span></td>
-            </tr>
-        `;
-    }).join("");
+    renderReportsPaginationBar({
+        containerId: "cnsPaginationBar",
+        currentPage: state.cnsPage,
+        totalItems: list.length,
+        pageSize: state.cnsPageSize,
+        onPageChange: (p) => {
+            state.cnsPage = p;
+            renderConsumptionAnalysisTab();
+        }
+    });
 }
 
 /* ==========================================================
@@ -1195,17 +1362,8 @@ function renderAiForecastingTab() {
     const countNote = document.getElementById("fcTotalCountNote");
     if (countNote) countNote.textContent = `${filtered.length} material${filtered.length === 1 ? "" : "s"}`;
 
-    // 5. Pagination
     const totalPages = Math.max(1, Math.ceil(filtered.length / state.fcPageSize));
     if (state.fcPage > totalPages) state.fcPage = totalPages;
-
-    const prevBtn = document.getElementById("fcPrevPageBtn");
-    const nextBtn = document.getElementById("fcNextPageBtn");
-    const pageInfo = document.getElementById("fcPaginationInfo");
-
-    if (prevBtn) prevBtn.disabled = state.fcPage <= 1;
-    if (nextBtn) nextBtn.disabled = state.fcPage >= totalPages;
-    if (pageInfo) pageInfo.textContent = `Page ${state.fcPage} of ${totalPages} (${filtered.length} total)`;
 
     const startIdx = (state.fcPage - 1) * state.fcPageSize;
     const pageItems = filtered.slice(startIdx, startIdx + state.fcPageSize);
@@ -1215,24 +1373,34 @@ function renderAiForecastingTab() {
 
     if (pageItems.length === 0) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No materials match the forecast search criteria.</td></tr>`;
-        return;
+    } else {
+        tbody.innerHTML = pageItems.map(item => {
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(item.name)}</strong></td>
+                    <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(item.itemCode)}</span></td>
+                    <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span></td>
+                    <td><strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong></td>
+                    <td>${escapeHtml(item.unit)}</td>
+                    <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : "—"}</td>
+                    <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
+                    <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
+                    <td><span class="rpt-badge rpt-badge-monitor">—</span></td>
+                </tr>
+            `;
+        }).join("");
     }
 
-    tbody.innerHTML = pageItems.map(item => {
-        return `
-            <tr>
-                <td><strong>${escapeHtml(item.name)}</strong></td>
-                <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(item.itemCode)}</span></td>
-                <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span></td>
-                <td><strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong></td>
-                <td>${escapeHtml(item.unit)}</td>
-                <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : "—"}</td>
-                <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
-                <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
-                <td><span class="rpt-badge rpt-badge-monitor">—</span></td>
-            </tr>
-        `;
-    }).join("");
+    renderReportsPaginationBar({
+        containerId: "fcPaginationBar",
+        currentPage: state.fcPage,
+        totalItems: filtered.length,
+        pageSize: state.fcPageSize,
+        onPageChange: (p) => {
+            state.fcPage = p;
+            renderAiForecastingTab();
+        }
+    });
 }
 
 /* ==========================================================
@@ -2133,23 +2301,23 @@ function initEventListeners() {
 
     // 3. Tab Toolbar Search & Filter Listeners
     const invSearch = document.getElementById("invSearchInput");
-    if (invSearch) invSearch.addEventListener("input", (e) => { state.invSearch = e.target.value; renderInventoryRecordsTab(); });
+    if (invSearch) invSearch.addEventListener("input", (e) => { state.invSearch = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); });
     const invStatus = document.getElementById("invStatusFilter");
-    if (invStatus) invStatus.addEventListener("change", (e) => { state.invStatus = e.target.value; renderInventoryRecordsTab(); });
+    if (invStatus) invStatus.addEventListener("change", (e) => { state.invStatus = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); });
 
     const rcvSearch = document.getElementById("rcvSearchInput");
-    if (rcvSearch) rcvSearch.addEventListener("input", (e) => { state.rcvSearch = e.target.value; renderMaterialReceivingTab(); });
+    if (rcvSearch) rcvSearch.addEventListener("input", (e) => { state.rcvSearch = e.target.value; state.rcvPage = 1; renderMaterialReceivingTab(); });
 
     const disbSearch = document.getElementById("disbSearchInput");
-    if (disbSearch) disbSearch.addEventListener("input", (e) => { state.disbSearch = e.target.value; renderMaterialDisbursementTab(); });
+    if (disbSearch) disbSearch.addEventListener("input", (e) => { state.disbSearch = e.target.value; state.disbPage = 1; renderMaterialDisbursementTab(); });
 
     const actSearch = document.getElementById("actSearchInput");
-    if (actSearch) actSearch.addEventListener("input", (e) => { state.actSearch = e.target.value; renderMaterialActivityTab(); });
+    if (actSearch) actSearch.addEventListener("input", (e) => { state.actSearch = e.target.value; state.actPage = 1; renderMaterialActivityTab(); });
     const actType = document.getElementById("actTypeFilter");
-    if (actType) actType.addEventListener("change", (e) => { state.actType = e.target.value; renderMaterialActivityTab(); });
+    if (actType) actType.addEventListener("change", (e) => { state.actType = e.target.value; state.actPage = 1; renderMaterialActivityTab(); });
 
     const cnsSearch = document.getElementById("cnsSearchInput");
-    if (cnsSearch) cnsSearch.addEventListener("input", (e) => { state.cnsSearch = e.target.value; renderConsumptionAnalysisTab(); });
+    if (cnsSearch) cnsSearch.addEventListener("input", (e) => { state.cnsSearch = e.target.value; state.cnsPage = 1; renderConsumptionAnalysisTab(); });
 
     // AI Forecasting Filters & Search
     const fcSearch = document.getElementById("fcSearchInput");
@@ -2159,13 +2327,7 @@ function initEventListeners() {
     const fcUnit = document.getElementById("fcUnitFilter");
     if (fcUnit) fcUnit.addEventListener("change", (e) => { state.fcUnit = e.target.value; state.fcPage = 1; renderAiForecastingTab(); });
     const fcHorizon = document.getElementById("fcHorizonFilter");
-    if (fcHorizon) fcHorizon.addEventListener("change", (e) => { state.fcHorizon = e.target.value; renderAiForecastingTab(); });
-
-    // AI Forecasting Pagination
-    const fcPrev = document.getElementById("fcPrevPageBtn");
-    if (fcPrev) fcPrev.addEventListener("click", () => { if (state.fcPage > 1) { state.fcPage--; renderAiForecastingTab(); } });
-    const fcNext = document.getElementById("fcNextPageBtn");
-    if (fcNext) fcNext.addEventListener("click", () => { state.fcPage++; renderAiForecastingTab(); });
+    if (fcHorizon) fcHorizon.addEventListener("change", (e) => { state.fcHorizon = e.target.value; state.fcPage = 1; renderAiForecastingTab(); });
 
     // 4. Print Action -> Directly triggers browser printer dialog (No file download)
     const printBtn = document.getElementById("btnPrint");
