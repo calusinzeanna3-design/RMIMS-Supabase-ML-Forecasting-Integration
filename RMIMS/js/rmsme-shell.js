@@ -608,7 +608,7 @@
         supabase.from('raw_materials').select('id, name, item_code, current_stock, minimum_threshold, unit_of_measure, updated_at'),
         supabase.from('stock_receipts').select('id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at').order('created_at', { ascending: false }).limit(30),
         supabase.from('material_disbursements').select('id, usage_date, material_id, consumed_quantity, unit, finished_product_name, recorded_by, created_at').order('created_at', { ascending: false }).limit(30),
-        supabase.from('user_profiles').select('id, full_name, email, role')
+        supabase.from('user_profiles').select('id, full_name, email, role, status, created_at').order('created_at', { ascending: false }).limit(20)
       ]);
 
       const materials = matRes.data || [];
@@ -838,6 +838,23 @@
         } catch (_) { }
       }
 
+      // G. User Account Creation Notifications
+      profiles.forEach(p => {
+        if (p && p.created_at) {
+          const userNotifId = `notif-user-reg-${p.id}`;
+          newNotifMap.set(userNotifId, {
+            id: userNotifId,
+            category: 'user',
+            priority: 'info',
+            title: `User Account: ${p.full_name || p.email}`,
+            message: `Account registered as ${p.role === 'admin' ? 'Administrator' : 'Staff User'} (${p.status === 'active' ? 'Active' : 'Inactive'}).`,
+            actor: 'Source: User Management',
+            roleScope: 'admin',
+            timestamp: p.created_at
+          });
+        }
+      });
+
       // Merge and sort: strictly NEWEST → OLDEST
       const mergedList = Array.from(newNotifMap.values()).sort((a, b) => {
         const tA = new Date(a.timestamp).getTime() || 0;
@@ -858,6 +875,7 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, () => syncAuthoritativeNotifications())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, () => syncAuthoritativeNotifications())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => syncAuthoritativeNotifications())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => syncAuthoritativeNotifications())
           .on('broadcast', { event: 'user_login' }, payload => {
             if (payload?.payload) {
               const p = payload.payload;
