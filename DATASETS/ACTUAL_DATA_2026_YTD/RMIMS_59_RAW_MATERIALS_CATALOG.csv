@@ -21,7 +21,7 @@ RM-019,"Glutinous Rice (Malagkit for Pinipig)","Grains & Flours",kg,387,180,350,
 RM-020,"Hard Wheat Bread Flour","Grains & Flours",kg,341,450,900,3,LOW STOCK
 RM-021,"Purified Water","Liquids",L,2152,1000,2000,1,IN STOCK
 RM-022,"Cleaned Chicken Crop (Butse)","Meat & Poultry",kg,39,50,100,2,LOW STOCK
-RM-023,"Pork Skin with Back Fat","Meat & Poultry",kg,152,200,400,2,LOW STOCK
+RM-023,"Pork Skin with Back Fat","Meat & Poultry",kg,0,200,400,2,OUT OF STOCK
 RM-024,"Raw Shelled Peanuts","Nuts & Seeds",kg,116,150,300,5,LOW STOCK
 RM-025,"Toasted Sesame Seeds","Nuts & Seeds",kg,65,30,60,5,IN STOCK
 RM-026,"Palm Cooking Oil","Oils & Fats",L,526,700,1400,3,LOW STOCK
@@ -29,7 +29,7 @@ RM-027,"Pure Pork Lard","Oils & Fats",L,217,100,200,4,IN STOCK
 RM-028,"Refined Peanut Oil","Oils & Fats",L,175,80,150,5,IN STOCK
 RM-029,"Fresh Carrots","Produce / Agricultural",kg,133,60,120,2,IN STOCK
 RM-030,"Fresh Cassava Tubers","Produce / Agricultural",kg,151,200,400,2,LOW STOCK
-RM-031,"Fresh Garlic","Produce / Agricultural",kg,92,120,240,3,LOW STOCK
+RM-031,"Fresh Garlic","Produce / Agricultural",kg,0,120,240,3,OUT OF STOCK
 RM-032,"Fresh Ginger","Produce / Agricultural",kg,109,50,100,3,IN STOCK
 RM-033,"Fresh Grated Coconut Meat","Produce / Agricultural",kg,303,140,280,2,IN STOCK
 RM-034,"Fresh Mature Coconut Meat","Produce / Agricultural",kg,326,150,300,2,IN STOCK
@@ -40,10 +40,10 @@ RM-038,"Pandan Leaves","Produce / Agricultural",kg,23,10,20,2,IN STOCK
 RM-039,"Red Bell Peppers","Produce / Agricultural",kg,67,30,60,3,IN STOCK
 RM-040,"Red Chili Peppers (Siling Labuyo)","Produce / Agricultural",kg,14,15,30,2,LOW STOCK
 RM-041,"Red Onions","Produce / Agricultural",kg,219,100,200,3,IN STOCK
-RM-042,"Unripe Green Saba Bananas","Produce / Agricultural",kg,339,450,900,2,LOW STOCK
+RM-042,"Unripe Green Saba Bananas","Produce / Agricultural",kg,0,450,900,2,OUT OF STOCK
 RM-043,"Fresh Acetes Shrimp (Alamang)","Seafood",kg,151,70,140,2,IN STOCK
 RM-044,"Fresh Bangus (Milkfish) Skin","Seafood",kg,63,80,160,2,LOW STOCK
-RM-045,"Fresh Chiton Mollusk (Kibit)","Seafood",kg,38,50,100,2,LOW STOCK
+RM-045,"Fresh Chiton Mollusk (Kibit)","Seafood",kg,0,50,100,2,OUT OF STOCK
 RM-046,"Fresh Kabasi Fish","Seafood",kg,89,40,80,2,IN STOCK
 RM-047,"Fresh Sapsap Fish","Seafood",kg,112,50,100,2,IN STOCK
 RM-048,"Cheese Seasoning Powder","Seasonings & Powders",kg,29,35,70,5,LOW STOCK

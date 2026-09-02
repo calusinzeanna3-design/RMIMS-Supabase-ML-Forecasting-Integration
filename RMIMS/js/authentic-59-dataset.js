@@ -295,7 +295,7 @@ export const AUTHENTIC_59_RAW_MATERIALS = [
     "name": "Pork Skin with Back Fat",
     "category": "Meat & Poultry",
     "unit_of_measure": "kg",
-    "current_stock": 152,
+    "current_stock": 0,
     "minimum_threshold": 200,
     "reorder_quantity": 400,
     "lead_time_days": 2,
@@ -399,7 +399,7 @@ export const AUTHENTIC_59_RAW_MATERIALS = [
     "name": "Fresh Garlic",
     "category": "Produce / Agricultural",
     "unit_of_measure": "kg",
-    "current_stock": 92,
+    "current_stock": 0,
     "minimum_threshold": 120,
     "reorder_quantity": 240,
     "lead_time_days": 3,
@@ -542,7 +542,7 @@ export const AUTHENTIC_59_RAW_MATERIALS = [
     "name": "Unripe Green Saba Bananas",
     "category": "Produce / Agricultural",
     "unit_of_measure": "kg",
-    "current_stock": 339,
+    "current_stock": 0,
     "minimum_threshold": 450,
     "reorder_quantity": 900,
     "lead_time_days": 2,
@@ -581,7 +581,7 @@ export const AUTHENTIC_59_RAW_MATERIALS = [
     "name": "Fresh Chiton Mollusk (Kibit)",
     "category": "Seafood",
     "unit_of_measure": "kg",
-    "current_stock": 38,
+    "current_stock": 0,
     "minimum_threshold": 50,
     "reorder_quantity": 100,
     "lead_time_days": 2,
@@ -12270,40 +12270,51 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
   {
     "id": "rcv-2026-01015",
     "material_id": "RM-023",
-    "received_quantity": 239.17,
+    "received_quantity": 192.92,
     "unit": "kg",
-    "receipt_date": "2026-01-05",
+    "receipt_date": "2026-01-03",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-05T08:30:00Z"
+    "created_at": "2026-01-03T08:30:00Z"
   },
   {
     "id": "rcv-2026-01016",
     "material_id": "RM-023",
-    "received_quantity": 266.4,
+    "received_quantity": 201.91,
     "unit": "kg",
-    "receipt_date": "2026-01-11",
+    "receipt_date": "2026-01-08",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-11T08:30:00Z"
+    "created_at": "2026-01-08T08:30:00Z"
   },
   {
     "id": "rcv-2026-01017",
     "material_id": "RM-023",
-    "received_quantity": 256.4,
+    "received_quantity": 223.58,
     "unit": "kg",
-    "receipt_date": "2026-01-17",
+    "receipt_date": "2026-01-13",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-17T08:30:00Z"
+    "created_at": "2026-01-13T08:30:00Z"
   },
   {
     "id": "rcv-2026-01018",
     "material_id": "RM-023",
-    "received_quantity": 229.95,
+    "received_quantity": 204.76,
+    "unit": "kg",
+    "receipt_date": "2026-01-18",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-01-18T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01019",
+    "material_id": "RM-023",
+    "received_quantity": 191.63,
     "unit": "kg",
     "receipt_date": "2026-01-23",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12312,53 +12323,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01019",
-    "material_id": "RM-023",
-    "received_quantity": 242.06,
-    "unit": "kg",
-    "receipt_date": "2026-01-29",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-29T08:30:00Z"
-  },
-  {
     "id": "rcv-2026-01020",
     "material_id": "RM-023",
-    "received_quantity": 267.54,
+    "received_quantity": 216.41,
     "unit": "kg",
-    "receipt_date": "2026-02-04",
+    "receipt_date": "2026-01-28",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-04T08:30:00Z"
+    "created_at": "2026-01-28T08:30:00Z"
   },
   {
     "id": "rcv-2026-01021",
     "material_id": "RM-023",
-    "received_quantity": 253.42,
+    "received_quantity": 218.3,
     "unit": "kg",
-    "receipt_date": "2026-02-10",
+    "receipt_date": "2026-02-02",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-10T08:30:00Z"
+    "created_at": "2026-02-02T08:30:00Z"
   },
   {
     "id": "rcv-2026-01022",
     "material_id": "RM-023",
-    "received_quantity": 229.05,
+    "received_quantity": 192.66,
     "unit": "kg",
-    "receipt_date": "2026-02-16",
+    "receipt_date": "2026-02-07",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-16T08:30:00Z"
+    "created_at": "2026-02-07T08:30:00Z"
   },
   {
     "id": "rcv-2026-01023",
     "material_id": "RM-023",
-    "received_quantity": 245.11,
+    "received_quantity": 202.4,
+    "unit": "kg",
+    "receipt_date": "2026-02-12",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-02-12T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01024",
+    "material_id": "RM-023",
+    "received_quantity": 223.62,
+    "unit": "kg",
+    "receipt_date": "2026-02-17",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-02-17T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01025",
+    "material_id": "RM-023",
+    "received_quantity": 204.26,
     "unit": "kg",
     "receipt_date": "2026-02-22",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12367,53 +12389,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01024",
-    "material_id": "RM-023",
-    "received_quantity": 268.2,
-    "unit": "kg",
-    "receipt_date": "2026-02-28",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-28T08:30:00Z"
-  },
-  {
-    "id": "rcv-2026-01025",
-    "material_id": "RM-023",
-    "received_quantity": 250.32,
-    "unit": "kg",
-    "receipt_date": "2026-03-06",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-06T08:30:00Z"
-  },
-  {
     "id": "rcv-2026-01026",
     "material_id": "RM-023",
-    "received_quantity": 228.64,
+    "received_quantity": 191.82,
     "unit": "kg",
-    "receipt_date": "2026-03-12",
+    "receipt_date": "2026-02-27",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-12T08:30:00Z"
+    "created_at": "2026-02-27T08:30:00Z"
   },
   {
     "id": "rcv-2026-01027",
     "material_id": "RM-023",
-    "received_quantity": 248.24,
+    "received_quantity": 216.82,
     "unit": "kg",
-    "receipt_date": "2026-03-18",
+    "receipt_date": "2026-03-04",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-18T08:30:00Z"
+    "created_at": "2026-03-04T08:30:00Z"
   },
   {
     "id": "rcv-2026-01028",
     "material_id": "RM-023",
-    "received_quantity": 268.37,
+    "received_quantity": 217.92,
+    "unit": "kg",
+    "receipt_date": "2026-03-09",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-03-09T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01029",
+    "material_id": "RM-023",
+    "received_quantity": 192.42,
+    "unit": "kg",
+    "receipt_date": "2026-03-14",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-03-14T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01030",
+    "material_id": "RM-023",
+    "received_quantity": 202.88,
+    "unit": "kg",
+    "receipt_date": "2026-03-19",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-03-19T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01031",
+    "material_id": "RM-023",
+    "received_quantity": 223.64,
     "unit": "kg",
     "receipt_date": "2026-03-24",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12422,53 +12455,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01029",
-    "material_id": "RM-023",
-    "received_quantity": 247.17,
-    "unit": "kg",
-    "receipt_date": "2026-03-30",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-30T08:30:00Z"
-  },
-  {
-    "id": "rcv-2026-01030",
-    "material_id": "RM-023",
-    "received_quantity": 228.73,
-    "unit": "kg",
-    "receipt_date": "2026-04-05",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-05T08:30:00Z"
-  },
-  {
-    "id": "rcv-2026-01031",
-    "material_id": "RM-023",
-    "received_quantity": 251.39,
-    "unit": "kg",
-    "receipt_date": "2026-04-11",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-11T08:30:00Z"
-  },
-  {
     "id": "rcv-2026-01032",
     "material_id": "RM-023",
-    "received_quantity": 268.03,
+    "received_quantity": 203.76,
     "unit": "kg",
-    "receipt_date": "2026-04-17",
+    "receipt_date": "2026-03-29",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-17T08:30:00Z"
+    "created_at": "2026-03-29T08:30:00Z"
   },
   {
     "id": "rcv-2026-01033",
     "material_id": "RM-023",
-    "received_quantity": 244.05,
+    "received_quantity": 192.02,
+    "unit": "kg",
+    "receipt_date": "2026-04-03",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-03T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01034",
+    "material_id": "RM-023",
+    "received_quantity": 217.22,
+    "unit": "kg",
+    "receipt_date": "2026-04-08",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-08T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01035",
+    "material_id": "RM-023",
+    "received_quantity": 217.53,
+    "unit": "kg",
+    "receipt_date": "2026-04-13",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-13T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01036",
+    "material_id": "RM-023",
+    "received_quantity": 192.19,
+    "unit": "kg",
+    "receipt_date": "2026-04-18",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-18T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01037",
+    "material_id": "RM-023",
+    "received_quantity": 203.38,
     "unit": "kg",
     "receipt_date": "2026-04-23",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12477,53 +12521,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01034",
-    "material_id": "RM-023",
-    "received_quantity": 229.31,
-    "unit": "kg",
-    "receipt_date": "2026-04-29",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-29T08:30:00Z"
-  },
-  {
-    "id": "rcv-2026-01035",
-    "material_id": "RM-023",
-    "received_quantity": 254.46,
-    "unit": "kg",
-    "receipt_date": "2026-05-05",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-05T08:30:00Z"
-  },
-  {
-    "id": "rcv-2026-01036",
-    "material_id": "RM-023",
-    "received_quantity": 267.21,
-    "unit": "kg",
-    "receipt_date": "2026-05-11",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-11T08:30:00Z"
-  },
-  {
-    "id": "rcv-2026-01037",
-    "material_id": "RM-023",
-    "received_quantity": 241.05,
-    "unit": "kg",
-    "receipt_date": "2026-05-17",
-    "supplier_name": "Quezon Agricultural Producers Coop",
-    "received_by": "Warehouse Inbound Team",
-    "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-17T08:30:00Z"
-  },
-  {
     "id": "rcv-2026-01038",
     "material_id": "RM-023",
-    "received_quantity": 230.37,
+    "received_quantity": 223.64,
+    "unit": "kg",
+    "receipt_date": "2026-04-28",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-28T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01039",
+    "material_id": "RM-023",
+    "received_quantity": 203.27,
+    "unit": "kg",
+    "receipt_date": "2026-05-03",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-03T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01040",
+    "material_id": "RM-023",
+    "received_quantity": 192.24,
+    "unit": "kg",
+    "receipt_date": "2026-05-08",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-08T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01041",
+    "material_id": "RM-023",
+    "received_quantity": 217.62,
+    "unit": "kg",
+    "receipt_date": "2026-05-13",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-13T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01042",
+    "material_id": "RM-023",
+    "received_quantity": 217.13,
+    "unit": "kg",
+    "receipt_date": "2026-05-18",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-18T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01043",
+    "material_id": "RM-023",
+    "received_quantity": 191.98,
     "unit": "kg",
     "receipt_date": "2026-05-23",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12532,53 +12587,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01039",
+    "id": "rcv-2026-01044",
     "material_id": "RM-023",
-    "received_quantity": 257.38,
+    "received_quantity": 203.87,
     "unit": "kg",
-    "receipt_date": "2026-05-29",
+    "receipt_date": "2026-05-28",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-29T08:30:00Z"
+    "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01040",
+    "id": "rcv-2026-01045",
     "material_id": "RM-023",
-    "received_quantity": 265.91,
+    "received_quantity": 223.63,
     "unit": "kg",
-    "receipt_date": "2026-06-04",
+    "receipt_date": "2026-06-02",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-04T08:30:00Z"
+    "created_at": "2026-06-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01041",
+    "id": "rcv-2026-01046",
     "material_id": "RM-023",
-    "received_quantity": 238.23,
+    "received_quantity": 202.78,
     "unit": "kg",
-    "receipt_date": "2026-06-10",
+    "receipt_date": "2026-06-07",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-10T08:30:00Z"
+    "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01042",
+    "id": "rcv-2026-01047",
     "material_id": "RM-023",
-    "received_quantity": 231.89,
+    "received_quantity": 192.47,
     "unit": "kg",
-    "receipt_date": "2026-06-16",
+    "receipt_date": "2026-06-12",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-16T08:30:00Z"
+    "created_at": "2026-06-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01043",
+    "id": "rcv-2026-01048",
     "material_id": "RM-023",
-    "received_quantity": 260.07,
+    "received_quantity": 218,
+    "unit": "kg",
+    "receipt_date": "2026-06-17",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-06-17T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01049",
+    "material_id": "RM-023",
+    "received_quantity": 216.73,
     "unit": "kg",
     "receipt_date": "2026-06-22",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12587,53 +12653,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01044",
+    "id": "rcv-2026-01050",
     "material_id": "RM-023",
-    "received_quantity": 264.18,
+    "received_quantity": 191.77,
     "unit": "kg",
-    "receipt_date": "2026-06-28",
+    "receipt_date": "2026-06-27",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-28T08:30:00Z"
+    "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01045",
+    "id": "rcv-2026-01051",
     "material_id": "RM-023",
-    "received_quantity": 235.67,
+    "received_quantity": 204.37,
     "unit": "kg",
-    "receipt_date": "2026-07-04",
+    "receipt_date": "2026-07-02",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-04T08:30:00Z"
+    "created_at": "2026-07-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01046",
+    "id": "rcv-2026-01052",
     "material_id": "RM-023",
-    "received_quantity": 233.82,
+    "received_quantity": 223.61,
     "unit": "kg",
-    "receipt_date": "2026-07-10",
+    "receipt_date": "2026-07-07",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-10T08:30:00Z"
+    "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01047",
+    "id": "rcv-2026-01053",
     "material_id": "RM-023",
-    "received_quantity": 262.48,
+    "received_quantity": 202.29,
     "unit": "kg",
-    "receipt_date": "2026-07-16",
+    "receipt_date": "2026-07-12",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-16T08:30:00Z"
+    "created_at": "2026-07-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01048",
+    "id": "rcv-2026-01054",
     "material_id": "RM-023",
-    "received_quantity": 262.05,
+    "received_quantity": 192.72,
+    "unit": "kg",
+    "receipt_date": "2026-07-17",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-07-17T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01055",
+    "material_id": "RM-023",
+    "received_quantity": 218.38,
     "unit": "kg",
     "receipt_date": "2026-07-22",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12642,53 +12719,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01049",
+    "id": "rcv-2026-01056",
     "material_id": "RM-023",
-    "received_quantity": 233.43,
+    "received_quantity": 216.31,
     "unit": "kg",
-    "receipt_date": "2026-07-28",
+    "receipt_date": "2026-07-27",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-28T08:30:00Z"
+    "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01050",
+    "id": "rcv-2026-01057",
     "material_id": "RM-023",
-    "received_quantity": 236.13,
+    "received_quantity": 191.59,
     "unit": "kg",
-    "receipt_date": "2026-08-03",
+    "receipt_date": "2026-08-01",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-03T08:30:00Z"
+    "created_at": "2026-08-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01051",
+    "id": "rcv-2026-01058",
     "material_id": "RM-023",
-    "received_quantity": 264.54,
+    "received_quantity": 204.87,
     "unit": "kg",
-    "receipt_date": "2026-08-09",
+    "receipt_date": "2026-08-06",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-09T08:30:00Z"
+    "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01052",
+    "id": "rcv-2026-01059",
     "material_id": "RM-023",
-    "received_quantity": 259.59,
+    "received_quantity": 223.57,
     "unit": "kg",
-    "receipt_date": "2026-08-15",
+    "receipt_date": "2026-08-11",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-15T08:30:00Z"
+    "created_at": "2026-08-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01053",
+    "id": "rcv-2026-01060",
     "material_id": "RM-023",
-    "received_quantity": 231.57,
+    "received_quantity": 201.81,
+    "unit": "kg",
+    "receipt_date": "2026-08-16",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-08-16T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01061",
+    "material_id": "RM-023",
+    "received_quantity": 192.98,
     "unit": "kg",
     "receipt_date": "2026-08-21",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -12697,29 +12785,29 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01054",
+    "id": "rcv-2026-01062",
     "material_id": "RM-023",
-    "received_quantity": 238.74,
+    "received_quantity": 218.74,
     "unit": "kg",
-    "receipt_date": "2026-08-27",
+    "receipt_date": "2026-08-26",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-27T08:30:00Z"
+    "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01055",
+    "id": "rcv-2026-01063",
     "material_id": "RM-023",
-    "received_quantity": 216.48,
+    "received_quantity": 215.89,
     "unit": "kg",
-    "receipt_date": "2026-09-02",
+    "receipt_date": "2026-08-31",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-09-02T08:30:00Z"
+    "created_at": "2026-08-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01056",
+    "id": "rcv-2026-01064",
     "material_id": "RM-024",
     "received_quantity": 198.22,
     "unit": "kg",
@@ -12730,7 +12818,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01057",
+    "id": "rcv-2026-01065",
     "material_id": "RM-024",
     "received_quantity": 198.57,
     "unit": "kg",
@@ -12741,7 +12829,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01058",
+    "id": "rcv-2026-01066",
     "material_id": "RM-024",
     "received_quantity": 222.77,
     "unit": "kg",
@@ -12752,7 +12840,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01059",
+    "id": "rcv-2026-01067",
     "material_id": "RM-024",
     "received_quantity": 220.5,
     "unit": "kg",
@@ -12763,7 +12851,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01060",
+    "id": "rcv-2026-01068",
     "material_id": "RM-024",
     "received_quantity": 196.48,
     "unit": "kg",
@@ -12774,7 +12862,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01061",
+    "id": "rcv-2026-01069",
     "material_id": "RM-024",
     "received_quantity": 200.66,
     "unit": "kg",
@@ -12785,7 +12873,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01062",
+    "id": "rcv-2026-01070",
     "material_id": "RM-024",
     "received_quantity": 224.34,
     "unit": "kg",
@@ -12796,7 +12884,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01063",
+    "id": "rcv-2026-01071",
     "material_id": "RM-024",
     "received_quantity": 218.29,
     "unit": "kg",
@@ -12807,7 +12895,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01064",
+    "id": "rcv-2026-01072",
     "material_id": "RM-024",
     "received_quantity": 195.09,
     "unit": "kg",
@@ -12818,7 +12906,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01065",
+    "id": "rcv-2026-01073",
     "material_id": "RM-024",
     "received_quantity": 202.98,
     "unit": "kg",
@@ -12829,7 +12917,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01066",
+    "id": "rcv-2026-01074",
     "material_id": "RM-024",
     "received_quantity": 225.55,
     "unit": "kg",
@@ -12840,7 +12928,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01067",
+    "id": "rcv-2026-01075",
     "material_id": "RM-024",
     "received_quantity": 215.87,
     "unit": "kg",
@@ -12851,7 +12939,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01068",
+    "id": "rcv-2026-01076",
     "material_id": "RM-024",
     "received_quantity": 194.06,
     "unit": "kg",
@@ -12862,7 +12950,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01069",
+    "id": "rcv-2026-01077",
     "material_id": "RM-024",
     "received_quantity": 205.47,
     "unit": "kg",
@@ -12873,7 +12961,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01070",
+    "id": "rcv-2026-01078",
     "material_id": "RM-024",
     "received_quantity": 226.38,
     "unit": "kg",
@@ -12884,7 +12972,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01071",
+    "id": "rcv-2026-01079",
     "material_id": "RM-024",
     "received_quantity": 213.31,
     "unit": "kg",
@@ -12895,7 +12983,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01072",
+    "id": "rcv-2026-01080",
     "material_id": "RM-024",
     "received_quantity": 193.44,
     "unit": "kg",
@@ -12906,7 +12994,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01073",
+    "id": "rcv-2026-01081",
     "material_id": "RM-024",
     "received_quantity": 208.08,
     "unit": "kg",
@@ -12917,7 +13005,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01074",
+    "id": "rcv-2026-01082",
     "material_id": "RM-024",
     "received_quantity": 226.79,
     "unit": "kg",
@@ -12928,7 +13016,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01075",
+    "id": "rcv-2026-01083",
     "material_id": "RM-024",
     "received_quantity": 210.67,
     "unit": "kg",
@@ -12939,7 +13027,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01076",
+    "id": "rcv-2026-01084",
     "material_id": "RM-024",
     "received_quantity": 193.24,
     "unit": "kg",
@@ -12950,7 +13038,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01077",
+    "id": "rcv-2026-01085",
     "material_id": "RM-024",
     "received_quantity": 210.74,
     "unit": "kg",
@@ -12961,7 +13049,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01078",
+    "id": "rcv-2026-01086",
     "material_id": "RM-024",
     "received_quantity": 226.79,
     "unit": "kg",
@@ -12972,7 +13060,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01079",
+    "id": "rcv-2026-01087",
     "material_id": "RM-024",
     "received_quantity": 208.01,
     "unit": "kg",
@@ -12983,7 +13071,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01080",
+    "id": "rcv-2026-01088",
     "material_id": "RM-024",
     "received_quantity": 193.45,
     "unit": "kg",
@@ -12994,7 +13082,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01081",
+    "id": "rcv-2026-01089",
     "material_id": "RM-024",
     "received_quantity": 213.39,
     "unit": "kg",
@@ -13005,7 +13093,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01082",
+    "id": "rcv-2026-01090",
     "material_id": "RM-024",
     "received_quantity": 226.36,
     "unit": "kg",
@@ -13016,7 +13104,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01083",
+    "id": "rcv-2026-01091",
     "material_id": "RM-024",
     "received_quantity": 205.4,
     "unit": "kg",
@@ -13027,7 +13115,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01084",
+    "id": "rcv-2026-01092",
     "material_id": "RM-024",
     "received_quantity": 194.09,
     "unit": "kg",
@@ -13038,7 +13126,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01085",
+    "id": "rcv-2026-01093",
     "material_id": "RM-024",
     "received_quantity": 215.94,
     "unit": "kg",
@@ -13049,7 +13137,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01086",
+    "id": "rcv-2026-01094",
     "material_id": "RM-024",
     "received_quantity": 225.52,
     "unit": "kg",
@@ -13060,7 +13148,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01087",
+    "id": "rcv-2026-01095",
     "material_id": "RM-024",
     "received_quantity": 202.91,
     "unit": "kg",
@@ -13071,7 +13159,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01088",
+    "id": "rcv-2026-01096",
     "material_id": "RM-024",
     "received_quantity": 195.12,
     "unit": "kg",
@@ -13082,7 +13170,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01089",
+    "id": "rcv-2026-01097",
     "material_id": "RM-024",
     "received_quantity": 218.35,
     "unit": "kg",
@@ -13093,7 +13181,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01090",
+    "id": "rcv-2026-01098",
     "material_id": "RM-024",
     "received_quantity": 224.3,
     "unit": "kg",
@@ -13104,7 +13192,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01091",
+    "id": "rcv-2026-01099",
     "material_id": "RM-024",
     "received_quantity": 200.59,
     "unit": "kg",
@@ -13115,7 +13203,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01092",
+    "id": "rcv-2026-01100",
     "material_id": "RM-024",
     "received_quantity": 196.53,
     "unit": "kg",
@@ -13126,7 +13214,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01093",
+    "id": "rcv-2026-01101",
     "material_id": "RM-024",
     "received_quantity": 220.56,
     "unit": "kg",
@@ -13137,7 +13225,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01094",
+    "id": "rcv-2026-01102",
     "material_id": "RM-024",
     "received_quantity": 222.72,
     "unit": "kg",
@@ -13148,7 +13236,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01095",
+    "id": "rcv-2026-01103",
     "material_id": "RM-024",
     "received_quantity": 198.52,
     "unit": "kg",
@@ -13159,7 +13247,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01096",
+    "id": "rcv-2026-01104",
     "material_id": "RM-025",
     "received_quantity": 32.54,
     "unit": "kg",
@@ -13170,7 +13258,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01097",
+    "id": "rcv-2026-01105",
     "material_id": "RM-025",
     "received_quantity": 29.45,
     "unit": "kg",
@@ -13181,7 +13269,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01098",
+    "id": "rcv-2026-01106",
     "material_id": "RM-025",
     "received_quantity": 28.04,
     "unit": "kg",
@@ -13192,7 +13280,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01099",
+    "id": "rcv-2026-01107",
     "material_id": "RM-025",
     "received_quantity": 31.77,
     "unit": "kg",
@@ -13203,7 +13291,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01100",
+    "id": "rcv-2026-01108",
     "material_id": "RM-025",
     "received_quantity": 31.49,
     "unit": "kg",
@@ -13214,7 +13302,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01101",
+    "id": "rcv-2026-01109",
     "material_id": "RM-025",
     "received_quantity": 27.88,
     "unit": "kg",
@@ -13225,7 +13313,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01102",
+    "id": "rcv-2026-01110",
     "material_id": "RM-025",
     "received_quantity": 29.8,
     "unit": "kg",
@@ -13236,7 +13324,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01103",
+    "id": "rcv-2026-01111",
     "material_id": "RM-025",
     "received_quantity": 32.53,
     "unit": "kg",
@@ -13247,7 +13335,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01104",
+    "id": "rcv-2026-01112",
     "material_id": "RM-025",
     "received_quantity": 29.38,
     "unit": "kg",
@@ -13258,7 +13346,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01105",
+    "id": "rcv-2026-01113",
     "material_id": "RM-025",
     "received_quantity": 28.07,
     "unit": "kg",
@@ -13269,7 +13357,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01106",
+    "id": "rcv-2026-01114",
     "material_id": "RM-025",
     "received_quantity": 31.82,
     "unit": "kg",
@@ -13280,7 +13368,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01107",
+    "id": "rcv-2026-01115",
     "material_id": "RM-025",
     "received_quantity": 31.43,
     "unit": "kg",
@@ -13291,7 +13379,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01108",
+    "id": "rcv-2026-01116",
     "material_id": "RM-025",
     "received_quantity": 27.86,
     "unit": "kg",
@@ -13302,7 +13390,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01109",
+    "id": "rcv-2026-01117",
     "material_id": "RM-025",
     "received_quantity": 29.87,
     "unit": "kg",
@@ -13313,7 +13401,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01110",
+    "id": "rcv-2026-01118",
     "material_id": "RM-025",
     "received_quantity": 32.53,
     "unit": "kg",
@@ -13324,7 +13412,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01111",
+    "id": "rcv-2026-01119",
     "material_id": "RM-025",
     "received_quantity": 29.31,
     "unit": "kg",
@@ -13335,7 +13423,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01112",
+    "id": "rcv-2026-01120",
     "material_id": "RM-025",
     "received_quantity": 28.11,
     "unit": "kg",
@@ -13346,7 +13434,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01113",
+    "id": "rcv-2026-01121",
     "material_id": "RM-025",
     "received_quantity": 31.87,
     "unit": "kg",
@@ -13357,7 +13445,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01114",
+    "id": "rcv-2026-01122",
     "material_id": "RM-025",
     "received_quantity": 31.36,
     "unit": "kg",
@@ -13368,7 +13456,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01115",
+    "id": "rcv-2026-01123",
     "material_id": "RM-025",
     "received_quantity": 27.83,
     "unit": "kg",
@@ -13379,7 +13467,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01116",
+    "id": "rcv-2026-01124",
     "material_id": "RM-025",
     "received_quantity": 29.94,
     "unit": "kg",
@@ -13390,7 +13478,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01117",
+    "id": "rcv-2026-01125",
     "material_id": "RM-025",
     "received_quantity": 32.52,
     "unit": "kg",
@@ -13401,7 +13489,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01118",
+    "id": "rcv-2026-01126",
     "material_id": "RM-025",
     "received_quantity": 29.24,
     "unit": "kg",
@@ -13412,7 +13500,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01119",
+    "id": "rcv-2026-01127",
     "material_id": "RM-025",
     "received_quantity": 28.15,
     "unit": "kg",
@@ -13423,7 +13511,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01120",
+    "id": "rcv-2026-01128",
     "material_id": "RM-025",
     "received_quantity": 31.92,
     "unit": "kg",
@@ -13434,7 +13522,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01121",
+    "id": "rcv-2026-01129",
     "material_id": "RM-025",
     "received_quantity": 31.3,
     "unit": "kg",
@@ -13445,7 +13533,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01122",
+    "id": "rcv-2026-01130",
     "material_id": "RM-025",
     "received_quantity": 27.81,
     "unit": "kg",
@@ -13456,7 +13544,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01123",
+    "id": "rcv-2026-01131",
     "material_id": "RM-025",
     "received_quantity": 30.02,
     "unit": "kg",
@@ -13467,7 +13555,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01124",
+    "id": "rcv-2026-01132",
     "material_id": "RM-025",
     "received_quantity": 32.5,
     "unit": "kg",
@@ -13478,7 +13566,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01125",
+    "id": "rcv-2026-01133",
     "material_id": "RM-025",
     "received_quantity": 29.17,
     "unit": "kg",
@@ -13489,7 +13577,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01126",
+    "id": "rcv-2026-01134",
     "material_id": "RM-025",
     "received_quantity": 28.2,
     "unit": "kg",
@@ -13500,7 +13588,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01127",
+    "id": "rcv-2026-01135",
     "material_id": "RM-025",
     "received_quantity": 31.97,
     "unit": "kg",
@@ -13511,7 +13599,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01128",
+    "id": "rcv-2026-01136",
     "material_id": "RM-025",
     "received_quantity": 31.23,
     "unit": "kg",
@@ -13522,7 +13610,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01129",
+    "id": "rcv-2026-01137",
     "material_id": "RM-025",
     "received_quantity": 27.79,
     "unit": "kg",
@@ -13533,7 +13621,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01130",
+    "id": "rcv-2026-01138",
     "material_id": "RM-025",
     "received_quantity": 30.09,
     "unit": "kg",
@@ -13544,7 +13632,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01131",
+    "id": "rcv-2026-01139",
     "material_id": "RM-025",
     "received_quantity": 32.49,
     "unit": "kg",
@@ -13555,7 +13643,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01132",
+    "id": "rcv-2026-01140",
     "material_id": "RM-025",
     "received_quantity": 29.1,
     "unit": "kg",
@@ -13566,7 +13654,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01133",
+    "id": "rcv-2026-01141",
     "material_id": "RM-025",
     "received_quantity": 28.24,
     "unit": "kg",
@@ -13577,7 +13665,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01134",
+    "id": "rcv-2026-01142",
     "material_id": "RM-025",
     "received_quantity": 32.02,
     "unit": "kg",
@@ -13588,7 +13676,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01135",
+    "id": "rcv-2026-01143",
     "material_id": "RM-025",
     "received_quantity": 31.17,
     "unit": "kg",
@@ -13599,7 +13687,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01136",
+    "id": "rcv-2026-01144",
     "material_id": "RM-025",
     "received_quantity": 27.78,
     "unit": "kg",
@@ -13610,7 +13698,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01137",
+    "id": "rcv-2026-01145",
     "material_id": "RM-025",
     "received_quantity": 30.16,
     "unit": "kg",
@@ -13621,7 +13709,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01138",
+    "id": "rcv-2026-01146",
     "material_id": "RM-025",
     "received_quantity": 32.47,
     "unit": "kg",
@@ -13632,7 +13720,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01139",
+    "id": "rcv-2026-01147",
     "material_id": "RM-025",
     "received_quantity": 29.04,
     "unit": "kg",
@@ -13643,7 +13731,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01140",
+    "id": "rcv-2026-01148",
     "material_id": "RM-025",
     "received_quantity": 28.29,
     "unit": "kg",
@@ -13654,7 +13742,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01141",
+    "id": "rcv-2026-01149",
     "material_id": "RM-025",
     "received_quantity": 32.06,
     "unit": "kg",
@@ -13665,7 +13753,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01142",
+    "id": "rcv-2026-01150",
     "material_id": "RM-025",
     "received_quantity": 31.1,
     "unit": "kg",
@@ -13676,7 +13764,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01143",
+    "id": "rcv-2026-01151",
     "material_id": "RM-025",
     "received_quantity": 27.76,
     "unit": "kg",
@@ -13687,7 +13775,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01144",
+    "id": "rcv-2026-01152",
     "material_id": "RM-025",
     "received_quantity": 30,
     "unit": "kg",
@@ -13698,7 +13786,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01145",
+    "id": "rcv-2026-01153",
     "material_id": "RM-026",
     "received_quantity": 572.2,
     "unit": "L",
@@ -13709,7 +13797,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01146",
+    "id": "rcv-2026-01154",
     "material_id": "RM-026",
     "received_quantity": 630.13,
     "unit": "L",
@@ -13720,7 +13808,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01147",
+    "id": "rcv-2026-01155",
     "material_id": "RM-026",
     "received_quantity": 670.03,
     "unit": "L",
@@ -13731,7 +13819,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01148",
+    "id": "rcv-2026-01156",
     "material_id": "RM-026",
     "received_quantity": 608.93,
     "unit": "L",
@@ -13742,7 +13830,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01149",
+    "id": "rcv-2026-01157",
     "material_id": "RM-026",
     "received_quantity": 573.88,
     "unit": "L",
@@ -13753,7 +13841,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01150",
+    "id": "rcv-2026-01158",
     "material_id": "RM-026",
     "received_quantity": 637.75,
     "unit": "L",
@@ -13764,7 +13852,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01151",
+    "id": "rcv-2026-01159",
     "material_id": "RM-026",
     "received_quantity": 667.74,
     "unit": "L",
@@ -13775,7 +13863,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01152",
+    "id": "rcv-2026-01160",
     "material_id": "RM-026",
     "received_quantity": 601.49,
     "unit": "L",
@@ -13786,7 +13874,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01153",
+    "id": "rcv-2026-01161",
     "material_id": "RM-026",
     "received_quantity": 576.75,
     "unit": "L",
@@ -13797,7 +13885,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01154",
+    "id": "rcv-2026-01162",
     "material_id": "RM-026",
     "received_quantity": 644.96,
     "unit": "L",
@@ -13808,7 +13896,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01155",
+    "id": "rcv-2026-01163",
     "material_id": "RM-026",
     "received_quantity": 664.3,
     "unit": "L",
@@ -13819,7 +13907,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01156",
+    "id": "rcv-2026-01164",
     "material_id": "RM-026",
     "received_quantity": 594.55,
     "unit": "L",
@@ -13830,7 +13918,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01157",
+    "id": "rcv-2026-01165",
     "material_id": "RM-026",
     "received_quantity": 580.75,
     "unit": "L",
@@ -13841,7 +13929,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01158",
+    "id": "rcv-2026-01166",
     "material_id": "RM-026",
     "received_quantity": 651.59,
     "unit": "L",
@@ -13852,7 +13940,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01159",
+    "id": "rcv-2026-01167",
     "material_id": "RM-026",
     "received_quantity": 659.78,
     "unit": "L",
@@ -13863,7 +13951,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01160",
+    "id": "rcv-2026-01168",
     "material_id": "RM-026",
     "received_quantity": 588.29,
     "unit": "L",
@@ -13874,7 +13962,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01161",
+    "id": "rcv-2026-01169",
     "material_id": "RM-026",
     "received_quantity": 585.77,
     "unit": "L",
@@ -13885,7 +13973,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01162",
+    "id": "rcv-2026-01170",
     "material_id": "RM-026",
     "received_quantity": 657.45,
     "unit": "L",
@@ -13896,7 +13984,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01163",
+    "id": "rcv-2026-01171",
     "material_id": "RM-026",
     "received_quantity": 654.29,
     "unit": "L",
@@ -13907,7 +13995,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01164",
+    "id": "rcv-2026-01172",
     "material_id": "RM-026",
     "received_quantity": 582.85,
     "unit": "L",
@@ -13918,7 +14006,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01165",
+    "id": "rcv-2026-01173",
     "material_id": "RM-026",
     "received_quantity": 591.68,
     "unit": "L",
@@ -13929,7 +14017,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01166",
+    "id": "rcv-2026-01174",
     "material_id": "RM-026",
     "received_quantity": 662.42,
     "unit": "L",
@@ -13940,7 +14028,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01167",
+    "id": "rcv-2026-01175",
     "material_id": "RM-026",
     "received_quantity": 647.99,
     "unit": "L",
@@ -13951,7 +14039,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01168",
+    "id": "rcv-2026-01176",
     "material_id": "RM-026",
     "received_quantity": 578.39,
     "unit": "L",
@@ -13962,7 +14050,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01169",
+    "id": "rcv-2026-01177",
     "material_id": "RM-026",
     "received_quantity": 598.34,
     "unit": "L",
@@ -13973,7 +14061,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01170",
+    "id": "rcv-2026-01178",
     "material_id": "RM-026",
     "received_quantity": 666.35,
     "unit": "L",
@@ -13984,7 +14072,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01171",
+    "id": "rcv-2026-01179",
     "material_id": "RM-026",
     "received_quantity": 641.01,
     "unit": "L",
@@ -13995,7 +14083,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01172",
+    "id": "rcv-2026-01180",
     "material_id": "RM-026",
     "received_quantity": 575.01,
     "unit": "L",
@@ -14006,7 +14094,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01173",
+    "id": "rcv-2026-01181",
     "material_id": "RM-026",
     "received_quantity": 605.58,
     "unit": "L",
@@ -14017,7 +14105,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01174",
+    "id": "rcv-2026-01182",
     "material_id": "RM-026",
     "received_quantity": 669.16,
     "unit": "L",
@@ -14028,7 +14116,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01175",
+    "id": "rcv-2026-01183",
     "material_id": "RM-026",
     "received_quantity": 633.55,
     "unit": "L",
@@ -14039,7 +14127,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01176",
+    "id": "rcv-2026-01184",
     "material_id": "RM-026",
     "received_quantity": 572.79,
     "unit": "L",
@@ -14050,7 +14138,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01177",
+    "id": "rcv-2026-01185",
     "material_id": "RM-026",
     "received_quantity": 613.22,
     "unit": "L",
@@ -14061,7 +14149,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01178",
+    "id": "rcv-2026-01186",
     "material_id": "RM-026",
     "received_quantity": 670.77,
     "unit": "L",
@@ -14072,7 +14160,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01179",
+    "id": "rcv-2026-01187",
     "material_id": "RM-026",
     "received_quantity": 625.78,
     "unit": "L",
@@ -14083,7 +14171,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01180",
+    "id": "rcv-2026-01188",
     "material_id": "RM-026",
     "received_quantity": 571.8,
     "unit": "L",
@@ -14094,7 +14182,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01181",
+    "id": "rcv-2026-01189",
     "material_id": "RM-026",
     "received_quantity": 621.07,
     "unit": "L",
@@ -14105,7 +14193,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01182",
+    "id": "rcv-2026-01190",
     "material_id": "RM-026",
     "received_quantity": 671.15,
     "unit": "L",
@@ -14116,7 +14204,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01183",
+    "id": "rcv-2026-01191",
     "material_id": "RM-026",
     "received_quantity": 617.91,
     "unit": "L",
@@ -14127,7 +14215,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01184",
+    "id": "rcv-2026-01192",
     "material_id": "RM-026",
     "received_quantity": 572.05,
     "unit": "L",
@@ -14138,7 +14226,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01185",
+    "id": "rcv-2026-01193",
     "material_id": "RM-026",
     "received_quantity": 566.62,
     "unit": "L",
@@ -14149,7 +14237,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01186",
+    "id": "rcv-2026-01194",
     "material_id": "RM-027",
     "received_quantity": 95.03,
     "unit": "L",
@@ -14160,7 +14248,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01187",
+    "id": "rcv-2026-01195",
     "material_id": "RM-027",
     "received_quantity": 92.15,
     "unit": "L",
@@ -14171,7 +14259,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01188",
+    "id": "rcv-2026-01196",
     "material_id": "RM-027",
     "received_quantity": 104.48,
     "unit": "L",
@@ -14182,7 +14270,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01189",
+    "id": "rcv-2026-01197",
     "material_id": "RM-027",
     "received_quantity": 101.77,
     "unit": "L",
@@ -14193,7 +14281,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01190",
+    "id": "rcv-2026-01198",
     "material_id": "RM-027",
     "received_quantity": 90.67,
     "unit": "L",
@@ -14204,7 +14292,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01191",
+    "id": "rcv-2026-01199",
     "material_id": "RM-027",
     "received_quantity": 98.41,
     "unit": "L",
@@ -14215,7 +14303,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01192",
+    "id": "rcv-2026-01200",
     "material_id": "RM-027",
     "received_quantity": 106,
     "unit": "L",
@@ -14226,7 +14314,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01193",
+    "id": "rcv-2026-01201",
     "material_id": "RM-027",
     "received_quantity": 94.82,
     "unit": "L",
@@ -14237,7 +14325,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01194",
+    "id": "rcv-2026-01202",
     "material_id": "RM-027",
     "received_quantity": 92.3,
     "unit": "L",
@@ -14248,7 +14336,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01195",
+    "id": "rcv-2026-01203",
     "material_id": "RM-027",
     "received_quantity": 104.62,
     "unit": "L",
@@ -14259,7 +14347,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01196",
+    "id": "rcv-2026-01204",
     "material_id": "RM-027",
     "received_quantity": 101.55,
     "unit": "L",
@@ -14270,7 +14358,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01197",
+    "id": "rcv-2026-01205",
     "material_id": "RM-027",
     "received_quantity": 90.62,
     "unit": "L",
@@ -14281,7 +14369,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01198",
+    "id": "rcv-2026-01206",
     "material_id": "RM-027",
     "received_quantity": 98.65,
     "unit": "L",
@@ -14292,7 +14380,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01199",
+    "id": "rcv-2026-01207",
     "material_id": "RM-027",
     "received_quantity": 105.94,
     "unit": "L",
@@ -14303,7 +14391,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01200",
+    "id": "rcv-2026-01208",
     "material_id": "RM-027",
     "received_quantity": 94.6,
     "unit": "L",
@@ -14314,7 +14402,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01201",
+    "id": "rcv-2026-01209",
     "material_id": "RM-027",
     "received_quantity": 92.46,
     "unit": "L",
@@ -14325,7 +14413,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01202",
+    "id": "rcv-2026-01210",
     "material_id": "RM-027",
     "received_quantity": 104.77,
     "unit": "L",
@@ -14336,7 +14424,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01203",
+    "id": "rcv-2026-01211",
     "material_id": "RM-027",
     "received_quantity": 101.33,
     "unit": "L",
@@ -14347,7 +14435,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01204",
+    "id": "rcv-2026-01212",
     "material_id": "RM-027",
     "received_quantity": 90.58,
     "unit": "L",
@@ -14358,7 +14446,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01205",
+    "id": "rcv-2026-01213",
     "material_id": "RM-027",
     "received_quantity": 98.89,
     "unit": "L",
@@ -14369,7 +14457,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01206",
+    "id": "rcv-2026-01214",
     "material_id": "RM-027",
     "received_quantity": 105.87,
     "unit": "L",
@@ -14380,7 +14468,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01207",
+    "id": "rcv-2026-01215",
     "material_id": "RM-027",
     "received_quantity": 94.39,
     "unit": "L",
@@ -14391,7 +14479,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01208",
+    "id": "rcv-2026-01216",
     "material_id": "RM-027",
     "received_quantity": 92.62,
     "unit": "L",
@@ -14402,7 +14490,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01209",
+    "id": "rcv-2026-01217",
     "material_id": "RM-027",
     "received_quantity": 104.9,
     "unit": "L",
@@ -14413,7 +14501,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01210",
+    "id": "rcv-2026-01218",
     "material_id": "RM-027",
     "received_quantity": 101.1,
     "unit": "L",
@@ -14424,7 +14512,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01211",
+    "id": "rcv-2026-01219",
     "material_id": "RM-027",
     "received_quantity": 90.55,
     "unit": "L",
@@ -14435,7 +14523,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01212",
+    "id": "rcv-2026-01220",
     "material_id": "RM-027",
     "received_quantity": 99.13,
     "unit": "L",
@@ -14446,7 +14534,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01213",
+    "id": "rcv-2026-01221",
     "material_id": "RM-027",
     "received_quantity": 105.8,
     "unit": "L",
@@ -14457,7 +14545,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01214",
+    "id": "rcv-2026-01222",
     "material_id": "RM-027",
     "received_quantity": 94.19,
     "unit": "L",
@@ -14468,7 +14556,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01215",
+    "id": "rcv-2026-01223",
     "material_id": "RM-027",
     "received_quantity": 92.79,
     "unit": "L",
@@ -14479,7 +14567,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01216",
+    "id": "rcv-2026-01224",
     "material_id": "RM-027",
     "received_quantity": 105.03,
     "unit": "L",
@@ -14490,7 +14578,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01217",
+    "id": "rcv-2026-01225",
     "material_id": "RM-027",
     "received_quantity": 100.88,
     "unit": "L",
@@ -14501,7 +14589,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01218",
+    "id": "rcv-2026-01226",
     "material_id": "RM-027",
     "received_quantity": 90.52,
     "unit": "L",
@@ -14512,7 +14600,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01219",
+    "id": "rcv-2026-01227",
     "material_id": "RM-027",
     "received_quantity": 99.37,
     "unit": "L",
@@ -14523,7 +14611,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01220",
+    "id": "rcv-2026-01228",
     "material_id": "RM-027",
     "received_quantity": 105.72,
     "unit": "L",
@@ -14534,7 +14622,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01221",
+    "id": "rcv-2026-01229",
     "material_id": "RM-027",
     "received_quantity": 93.99,
     "unit": "L",
@@ -14545,7 +14633,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01222",
+    "id": "rcv-2026-01230",
     "material_id": "RM-027",
     "received_quantity": 92.96,
     "unit": "L",
@@ -14556,7 +14644,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01223",
+    "id": "rcv-2026-01231",
     "material_id": "RM-027",
     "received_quantity": 105.15,
     "unit": "L",
@@ -14567,7 +14655,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01224",
+    "id": "rcv-2026-01232",
     "material_id": "RM-027",
     "received_quantity": 100.65,
     "unit": "L",
@@ -14578,7 +14666,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01225",
+    "id": "rcv-2026-01233",
     "material_id": "RM-027",
     "received_quantity": 90.5,
     "unit": "L",
@@ -14589,7 +14677,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01226",
+    "id": "rcv-2026-01234",
     "material_id": "RM-027",
     "received_quantity": 99.61,
     "unit": "L",
@@ -14600,7 +14688,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01227",
+    "id": "rcv-2026-01235",
     "material_id": "RM-027",
     "received_quantity": 105.63,
     "unit": "L",
@@ -14611,7 +14699,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01228",
+    "id": "rcv-2026-01236",
     "material_id": "RM-027",
     "received_quantity": 93.79,
     "unit": "L",
@@ -14622,7 +14710,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01229",
+    "id": "rcv-2026-01237",
     "material_id": "RM-027",
     "received_quantity": 93.14,
     "unit": "L",
@@ -14633,7 +14721,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01230",
+    "id": "rcv-2026-01238",
     "material_id": "RM-027",
     "received_quantity": 105.27,
     "unit": "L",
@@ -14644,7 +14732,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01231",
+    "id": "rcv-2026-01239",
     "material_id": "RM-027",
     "received_quantity": 100.42,
     "unit": "L",
@@ -14655,7 +14743,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01232",
+    "id": "rcv-2026-01240",
     "material_id": "RM-027",
     "received_quantity": 90.49,
     "unit": "L",
@@ -14666,7 +14754,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01233",
+    "id": "rcv-2026-01241",
     "material_id": "RM-027",
     "received_quantity": 99.84,
     "unit": "L",
@@ -14677,7 +14765,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01234",
+    "id": "rcv-2026-01242",
     "material_id": "RM-027",
     "received_quantity": 105.15,
     "unit": "L",
@@ -14688,7 +14776,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01235",
+    "id": "rcv-2026-01243",
     "material_id": "RM-028",
     "received_quantity": 61.88,
     "unit": "L",
@@ -14699,7 +14787,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01236",
+    "id": "rcv-2026-01244",
     "material_id": "RM-028",
     "received_quantity": 70.11,
     "unit": "L",
@@ -14710,7 +14798,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01237",
+    "id": "rcv-2026-01245",
     "material_id": "RM-028",
     "received_quantity": 67.71,
     "unit": "L",
@@ -14721,7 +14809,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01238",
+    "id": "rcv-2026-01246",
     "material_id": "RM-028",
     "received_quantity": 60.57,
     "unit": "L",
@@ -14732,7 +14820,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01239",
+    "id": "rcv-2026-01247",
     "material_id": "RM-028",
     "received_quantity": 66.21,
     "unit": "L",
@@ -14743,7 +14831,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01240",
+    "id": "rcv-2026-01248",
     "material_id": "RM-028",
     "received_quantity": 70.79,
     "unit": "L",
@@ -14754,7 +14842,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01241",
+    "id": "rcv-2026-01249",
     "material_id": "RM-028",
     "received_quantity": 63.07,
     "unit": "L",
@@ -14765,7 +14853,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01242",
+    "id": "rcv-2026-01250",
     "material_id": "RM-028",
     "received_quantity": 61.99,
     "unit": "L",
@@ -14776,7 +14864,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01243",
+    "id": "rcv-2026-01251",
     "material_id": "RM-028",
     "received_quantity": 70.19,
     "unit": "L",
@@ -14787,7 +14875,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01244",
+    "id": "rcv-2026-01252",
     "material_id": "RM-028",
     "received_quantity": 67.56,
     "unit": "L",
@@ -14798,7 +14886,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01245",
+    "id": "rcv-2026-01253",
     "material_id": "RM-028",
     "received_quantity": 60.55,
     "unit": "L",
@@ -14809,7 +14897,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01246",
+    "id": "rcv-2026-01254",
     "material_id": "RM-028",
     "received_quantity": 66.37,
     "unit": "L",
@@ -14820,7 +14908,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01247",
+    "id": "rcv-2026-01255",
     "material_id": "RM-028",
     "received_quantity": 70.73,
     "unit": "L",
@@ -14831,7 +14919,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01248",
+    "id": "rcv-2026-01256",
     "material_id": "RM-028",
     "received_quantity": 62.94,
     "unit": "L",
@@ -14842,7 +14930,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01249",
+    "id": "rcv-2026-01257",
     "material_id": "RM-028",
     "received_quantity": 62.1,
     "unit": "L",
@@ -14853,7 +14941,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01250",
+    "id": "rcv-2026-01258",
     "material_id": "RM-028",
     "received_quantity": 70.28,
     "unit": "L",
@@ -14864,7 +14952,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01251",
+    "id": "rcv-2026-01259",
     "material_id": "RM-028",
     "received_quantity": 67.4,
     "unit": "L",
@@ -14875,7 +14963,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01252",
+    "id": "rcv-2026-01260",
     "material_id": "RM-028",
     "received_quantity": 60.53,
     "unit": "L",
@@ -14886,7 +14974,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01253",
+    "id": "rcv-2026-01261",
     "material_id": "RM-028",
     "received_quantity": 66.52,
     "unit": "L",
@@ -14897,7 +14985,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01254",
+    "id": "rcv-2026-01262",
     "material_id": "RM-028",
     "received_quantity": 70.68,
     "unit": "L",
@@ -14908,7 +14996,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01255",
+    "id": "rcv-2026-01263",
     "material_id": "RM-028",
     "received_quantity": 62.8,
     "unit": "L",
@@ -14919,7 +15007,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01256",
+    "id": "rcv-2026-01264",
     "material_id": "RM-028",
     "received_quantity": 62.22,
     "unit": "L",
@@ -14930,7 +15018,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01257",
+    "id": "rcv-2026-01265",
     "material_id": "RM-028",
     "received_quantity": 70.36,
     "unit": "L",
@@ -14941,7 +15029,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01258",
+    "id": "rcv-2026-01266",
     "material_id": "RM-028",
     "received_quantity": 67.25,
     "unit": "L",
@@ -14952,7 +15040,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01259",
+    "id": "rcv-2026-01267",
     "material_id": "RM-028",
     "received_quantity": 60.52,
     "unit": "L",
@@ -14963,7 +15051,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01260",
+    "id": "rcv-2026-01268",
     "material_id": "RM-028",
     "received_quantity": 66.68,
     "unit": "L",
@@ -14974,7 +15062,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01261",
+    "id": "rcv-2026-01269",
     "material_id": "RM-028",
     "received_quantity": 70.62,
     "unit": "L",
@@ -14985,7 +15073,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01262",
+    "id": "rcv-2026-01270",
     "material_id": "RM-028",
     "received_quantity": 62.67,
     "unit": "L",
@@ -14996,7 +15084,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01263",
+    "id": "rcv-2026-01271",
     "material_id": "RM-028",
     "received_quantity": 62.34,
     "unit": "L",
@@ -15007,7 +15095,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01264",
+    "id": "rcv-2026-01272",
     "material_id": "RM-028",
     "received_quantity": 70.44,
     "unit": "L",
@@ -15018,7 +15106,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01265",
+    "id": "rcv-2026-01273",
     "material_id": "RM-028",
     "received_quantity": 67.1,
     "unit": "L",
@@ -15029,7 +15117,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01266",
+    "id": "rcv-2026-01274",
     "material_id": "RM-028",
     "received_quantity": 60.52,
     "unit": "L",
@@ -15040,7 +15128,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01267",
+    "id": "rcv-2026-01275",
     "material_id": "RM-028",
     "received_quantity": 66.84,
     "unit": "L",
@@ -15051,7 +15139,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01268",
+    "id": "rcv-2026-01276",
     "material_id": "RM-028",
     "received_quantity": 70.55,
     "unit": "L",
@@ -15062,7 +15150,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01269",
+    "id": "rcv-2026-01277",
     "material_id": "RM-028",
     "received_quantity": 62.54,
     "unit": "L",
@@ -15073,7 +15161,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01270",
+    "id": "rcv-2026-01278",
     "material_id": "RM-028",
     "received_quantity": 62.46,
     "unit": "L",
@@ -15084,7 +15172,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01271",
+    "id": "rcv-2026-01279",
     "material_id": "RM-028",
     "received_quantity": 70.51,
     "unit": "L",
@@ -15095,7 +15183,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01272",
+    "id": "rcv-2026-01280",
     "material_id": "RM-028",
     "received_quantity": 66.94,
     "unit": "L",
@@ -15106,7 +15194,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01273",
+    "id": "rcv-2026-01281",
     "material_id": "RM-028",
     "received_quantity": 60.51,
     "unit": "L",
@@ -15117,7 +15205,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01274",
+    "id": "rcv-2026-01282",
     "material_id": "RM-028",
     "received_quantity": 67,
     "unit": "L",
@@ -15128,7 +15216,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01275",
+    "id": "rcv-2026-01283",
     "material_id": "RM-028",
     "received_quantity": 70.48,
     "unit": "L",
@@ -15139,7 +15227,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01276",
+    "id": "rcv-2026-01284",
     "material_id": "RM-028",
     "received_quantity": 62.42,
     "unit": "L",
@@ -15150,7 +15238,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01277",
+    "id": "rcv-2026-01285",
     "material_id": "RM-028",
     "received_quantity": 62.59,
     "unit": "L",
@@ -15161,7 +15249,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01278",
+    "id": "rcv-2026-01286",
     "material_id": "RM-028",
     "received_quantity": 70.58,
     "unit": "L",
@@ -15172,7 +15260,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01279",
+    "id": "rcv-2026-01287",
     "material_id": "RM-028",
     "received_quantity": 66.78,
     "unit": "L",
@@ -15183,7 +15271,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01280",
+    "id": "rcv-2026-01288",
     "material_id": "RM-028",
     "received_quantity": 60.52,
     "unit": "L",
@@ -15194,7 +15282,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01281",
+    "id": "rcv-2026-01289",
     "material_id": "RM-028",
     "received_quantity": 67.15,
     "unit": "L",
@@ -15205,7 +15293,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01282",
+    "id": "rcv-2026-01290",
     "material_id": "RM-028",
     "received_quantity": 70.41,
     "unit": "L",
@@ -15216,7 +15304,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01283",
+    "id": "rcv-2026-01291",
     "material_id": "RM-028",
     "received_quantity": 62.3,
     "unit": "L",
@@ -15227,7 +15315,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01284",
+    "id": "rcv-2026-01292",
     "material_id": "RM-029",
     "received_quantity": 81.64,
     "unit": "kg",
@@ -15238,7 +15326,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01285",
+    "id": "rcv-2026-01293",
     "material_id": "RM-029",
     "received_quantity": 78.19,
     "unit": "kg",
@@ -15249,7 +15337,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01286",
+    "id": "rcv-2026-01294",
     "material_id": "RM-029",
     "received_quantity": 70.28,
     "unit": "kg",
@@ -15260,7 +15348,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01287",
+    "id": "rcv-2026-01295",
     "material_id": "RM-029",
     "received_quantity": 77.32,
     "unit": "kg",
@@ -15271,7 +15359,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01288",
+    "id": "rcv-2026-01296",
     "material_id": "RM-029",
     "received_quantity": 82.04,
     "unit": "kg",
@@ -15282,7 +15370,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01289",
+    "id": "rcv-2026-01297",
     "material_id": "RM-029",
     "received_quantity": 72.86,
     "unit": "kg",
@@ -15293,7 +15381,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01290",
+    "id": "rcv-2026-01298",
     "material_id": "RM-029",
     "received_quantity": 72.3,
     "unit": "kg",
@@ -15304,7 +15392,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01291",
+    "id": "rcv-2026-01299",
     "material_id": "RM-029",
     "received_quantity": 81.73,
     "unit": "kg",
@@ -15315,7 +15403,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01292",
+    "id": "rcv-2026-01300",
     "material_id": "RM-029",
     "received_quantity": 78.01,
     "unit": "kg",
@@ -15326,7 +15414,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01293",
+    "id": "rcv-2026-01301",
     "material_id": "RM-029",
     "received_quantity": 70.27,
     "unit": "kg",
@@ -15337,7 +15425,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01294",
+    "id": "rcv-2026-01302",
     "material_id": "RM-029",
     "received_quantity": 77.5,
     "unit": "kg",
@@ -15348,7 +15436,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01295",
+    "id": "rcv-2026-01303",
     "material_id": "RM-029",
     "received_quantity": 81.96,
     "unit": "kg",
@@ -15359,7 +15447,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01296",
+    "id": "rcv-2026-01304",
     "material_id": "RM-029",
     "received_quantity": 72.71,
     "unit": "kg",
@@ -15370,7 +15458,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01297",
+    "id": "rcv-2026-01305",
     "material_id": "RM-029",
     "received_quantity": 72.44,
     "unit": "kg",
@@ -15381,7 +15469,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01298",
+    "id": "rcv-2026-01306",
     "material_id": "RM-029",
     "received_quantity": 81.82,
     "unit": "kg",
@@ -15392,7 +15480,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01299",
+    "id": "rcv-2026-01307",
     "material_id": "RM-029",
     "received_quantity": 77.83,
     "unit": "kg",
@@ -15403,7 +15491,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01300",
+    "id": "rcv-2026-01308",
     "material_id": "RM-029",
     "received_quantity": 70.26,
     "unit": "kg",
@@ -15414,7 +15502,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01301",
+    "id": "rcv-2026-01309",
     "material_id": "RM-029",
     "received_quantity": 77.68,
     "unit": "kg",
@@ -15425,7 +15513,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01302",
+    "id": "rcv-2026-01310",
     "material_id": "RM-029",
     "received_quantity": 81.89,
     "unit": "kg",
@@ -15436,7 +15524,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01303",
+    "id": "rcv-2026-01311",
     "material_id": "RM-029",
     "received_quantity": 72.56,
     "unit": "kg",
@@ -15447,7 +15535,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01304",
+    "id": "rcv-2026-01312",
     "material_id": "RM-029",
     "received_quantity": 72.59,
     "unit": "kg",
@@ -15458,7 +15546,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01305",
+    "id": "rcv-2026-01313",
     "material_id": "RM-029",
     "received_quantity": 81.9,
     "unit": "kg",
@@ -15469,7 +15557,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01306",
+    "id": "rcv-2026-01314",
     "material_id": "RM-029",
     "received_quantity": 77.65,
     "unit": "kg",
@@ -15480,7 +15568,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01307",
+    "id": "rcv-2026-01315",
     "material_id": "RM-029",
     "received_quantity": 70.26,
     "unit": "kg",
@@ -15491,7 +15579,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01308",
+    "id": "rcv-2026-01316",
     "material_id": "RM-029",
     "received_quantity": 77.87,
     "unit": "kg",
@@ -15502,7 +15590,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01309",
+    "id": "rcv-2026-01317",
     "material_id": "RM-029",
     "received_quantity": 81.8,
     "unit": "kg",
@@ -15513,7 +15601,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01310",
+    "id": "rcv-2026-01318",
     "material_id": "RM-029",
     "received_quantity": 72.42,
     "unit": "kg",
@@ -15524,7 +15612,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01311",
+    "id": "rcv-2026-01319",
     "material_id": "RM-029",
     "received_quantity": 72.74,
     "unit": "kg",
@@ -15535,7 +15623,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01312",
+    "id": "rcv-2026-01320",
     "material_id": "RM-029",
     "received_quantity": 81.98,
     "unit": "kg",
@@ -15546,7 +15634,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01313",
+    "id": "rcv-2026-01321",
     "material_id": "RM-029",
     "received_quantity": 77.47,
     "unit": "kg",
@@ -15557,7 +15645,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01314",
+    "id": "rcv-2026-01322",
     "material_id": "RM-029",
     "received_quantity": 70.27,
     "unit": "kg",
@@ -15568,7 +15656,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01315",
+    "id": "rcv-2026-01323",
     "material_id": "RM-029",
     "received_quantity": 78.05,
     "unit": "kg",
@@ -15579,7 +15667,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01316",
+    "id": "rcv-2026-01324",
     "material_id": "RM-029",
     "received_quantity": 81.72,
     "unit": "kg",
@@ -15590,7 +15678,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01317",
+    "id": "rcv-2026-01325",
     "material_id": "RM-029",
     "received_quantity": 72.28,
     "unit": "kg",
@@ -15601,7 +15689,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01318",
+    "id": "rcv-2026-01326",
     "material_id": "RM-029",
     "received_quantity": 72.89,
     "unit": "kg",
@@ -15612,7 +15700,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01319",
+    "id": "rcv-2026-01327",
     "material_id": "RM-029",
     "received_quantity": 82.05,
     "unit": "kg",
@@ -15623,7 +15711,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01320",
+    "id": "rcv-2026-01328",
     "material_id": "RM-029",
     "received_quantity": 77.28,
     "unit": "kg",
@@ -15634,7 +15722,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01321",
+    "id": "rcv-2026-01329",
     "material_id": "RM-029",
     "received_quantity": 70.28,
     "unit": "kg",
@@ -15645,7 +15733,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01322",
+    "id": "rcv-2026-01330",
     "material_id": "RM-029",
     "received_quantity": 78.22,
     "unit": "kg",
@@ -15656,7 +15744,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01323",
+    "id": "rcv-2026-01331",
     "material_id": "RM-029",
     "received_quantity": 81.62,
     "unit": "kg",
@@ -15667,7 +15755,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01324",
+    "id": "rcv-2026-01332",
     "material_id": "RM-029",
     "received_quantity": 72.14,
     "unit": "kg",
@@ -15678,7 +15766,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01325",
+    "id": "rcv-2026-01333",
     "material_id": "RM-029",
     "received_quantity": 73.04,
     "unit": "kg",
@@ -15689,7 +15777,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01326",
+    "id": "rcv-2026-01334",
     "material_id": "RM-029",
     "received_quantity": 82.12,
     "unit": "kg",
@@ -15700,7 +15788,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01327",
+    "id": "rcv-2026-01335",
     "material_id": "RM-029",
     "received_quantity": 77.1,
     "unit": "kg",
@@ -15711,7 +15799,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01328",
+    "id": "rcv-2026-01336",
     "material_id": "RM-029",
     "received_quantity": 70.3,
     "unit": "kg",
@@ -15722,7 +15810,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01329",
+    "id": "rcv-2026-01337",
     "material_id": "RM-029",
     "received_quantity": 78.4,
     "unit": "kg",
@@ -15733,7 +15821,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01330",
+    "id": "rcv-2026-01338",
     "material_id": "RM-029",
     "received_quantity": 81.53,
     "unit": "kg",
@@ -15744,7 +15832,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01331",
+    "id": "rcv-2026-01339",
     "material_id": "RM-029",
     "received_quantity": 72.01,
     "unit": "kg",
@@ -15755,7 +15843,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01332",
+    "id": "rcv-2026-01340",
     "material_id": "RM-029",
     "received_quantity": 72.99,
     "unit": "kg",
@@ -15766,7 +15854,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01333",
+    "id": "rcv-2026-01341",
     "material_id": "RM-030",
     "received_quantity": 283.5,
     "unit": "kg",
@@ -15777,7 +15865,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01334",
+    "id": "rcv-2026-01342",
     "material_id": "RM-030",
     "received_quantity": 274.48,
     "unit": "kg",
@@ -15788,7 +15876,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01335",
+    "id": "rcv-2026-01343",
     "material_id": "RM-030",
     "received_quantity": 307.59,
     "unit": "kg",
@@ -15799,7 +15887,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01336",
+    "id": "rcv-2026-01344",
     "material_id": "RM-030",
     "received_quantity": 313.99,
     "unit": "kg",
@@ -15810,7 +15898,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01337",
+    "id": "rcv-2026-01345",
     "material_id": "RM-030",
     "received_quantity": 280.37,
     "unit": "kg",
@@ -15821,7 +15909,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01338",
+    "id": "rcv-2026-01346",
     "material_id": "RM-030",
     "received_quantity": 276.63,
     "unit": "kg",
@@ -15832,7 +15920,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01339",
+    "id": "rcv-2026-01347",
     "material_id": "RM-030",
     "received_quantity": 310.55,
     "unit": "kg",
@@ -15843,7 +15931,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01340",
+    "id": "rcv-2026-01348",
     "material_id": "RM-030",
     "received_quantity": 311.6,
     "unit": "kg",
@@ -15854,7 +15942,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01341",
+    "id": "rcv-2026-01349",
     "material_id": "RM-030",
     "received_quantity": 277.6,
     "unit": "kg",
@@ -15865,7 +15953,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01342",
+    "id": "rcv-2026-01350",
     "material_id": "RM-030",
     "received_quantity": 279.25,
     "unit": "kg",
@@ -15876,7 +15964,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01343",
+    "id": "rcv-2026-01351",
     "material_id": "RM-030",
     "received_quantity": 313.12,
     "unit": "kg",
@@ -15887,7 +15975,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01344",
+    "id": "rcv-2026-01352",
     "material_id": "RM-030",
     "received_quantity": 308.78,
     "unit": "kg",
@@ -15898,7 +15986,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01345",
+    "id": "rcv-2026-01353",
     "material_id": "RM-030",
     "received_quantity": 275.26,
     "unit": "kg",
@@ -15909,7 +15997,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01346",
+    "id": "rcv-2026-01354",
     "material_id": "RM-030",
     "received_quantity": 282.25,
     "unit": "kg",
@@ -15920,7 +16008,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01347",
+    "id": "rcv-2026-01355",
     "material_id": "RM-030",
     "received_quantity": 315.22,
     "unit": "kg",
@@ -15931,7 +16019,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01348",
+    "id": "rcv-2026-01356",
     "material_id": "RM-030",
     "received_quantity": 305.61,
     "unit": "kg",
@@ -15942,7 +16030,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01349",
+    "id": "rcv-2026-01357",
     "material_id": "RM-030",
     "received_quantity": 273.4,
     "unit": "kg",
@@ -15953,7 +16041,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01350",
+    "id": "rcv-2026-01358",
     "material_id": "RM-030",
     "received_quantity": 285.56,
     "unit": "kg",
@@ -15964,7 +16052,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01351",
+    "id": "rcv-2026-01359",
     "material_id": "RM-030",
     "received_quantity": 316.81,
     "unit": "kg",
@@ -15975,7 +16063,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01352",
+    "id": "rcv-2026-01360",
     "material_id": "RM-030",
     "received_quantity": 302.17,
     "unit": "kg",
@@ -15986,7 +16074,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01353",
+    "id": "rcv-2026-01361",
     "material_id": "RM-030",
     "received_quantity": 272.09,
     "unit": "kg",
@@ -15997,7 +16085,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01354",
+    "id": "rcv-2026-01362",
     "material_id": "RM-030",
     "received_quantity": 289.11,
     "unit": "kg",
@@ -16008,7 +16096,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01355",
+    "id": "rcv-2026-01363",
     "material_id": "RM-030",
     "received_quantity": 317.84,
     "unit": "kg",
@@ -16019,7 +16107,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01356",
+    "id": "rcv-2026-01364",
     "material_id": "RM-030",
     "received_quantity": 298.55,
     "unit": "kg",
@@ -16030,7 +16118,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01357",
+    "id": "rcv-2026-01365",
     "material_id": "RM-030",
     "received_quantity": 271.34,
     "unit": "kg",
@@ -16041,7 +16129,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01358",
+    "id": "rcv-2026-01366",
     "material_id": "RM-030",
     "received_quantity": 292.79,
     "unit": "kg",
@@ -16052,7 +16140,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01359",
+    "id": "rcv-2026-01367",
     "material_id": "RM-030",
     "received_quantity": 318.3,
     "unit": "kg",
@@ -16063,7 +16151,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01360",
+    "id": "rcv-2026-01368",
     "material_id": "RM-030",
     "received_quantity": 294.82,
     "unit": "kg",
@@ -16074,7 +16162,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01361",
+    "id": "rcv-2026-01369",
     "material_id": "RM-030",
     "received_quantity": 271.18,
     "unit": "kg",
@@ -16085,7 +16173,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01362",
+    "id": "rcv-2026-01370",
     "material_id": "RM-030",
     "received_quantity": 296.53,
     "unit": "kg",
@@ -16096,7 +16184,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01363",
+    "id": "rcv-2026-01371",
     "material_id": "RM-030",
     "received_quantity": 318.16,
     "unit": "kg",
@@ -16107,7 +16195,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01364",
+    "id": "rcv-2026-01372",
     "material_id": "RM-030",
     "received_quantity": 291.1,
     "unit": "kg",
@@ -16118,7 +16206,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01365",
+    "id": "rcv-2026-01373",
     "material_id": "RM-030",
     "received_quantity": 271.61,
     "unit": "kg",
@@ -16129,7 +16217,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01366",
+    "id": "rcv-2026-01374",
     "material_id": "RM-030",
     "received_quantity": 300.22,
     "unit": "kg",
@@ -16140,7 +16228,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01367",
+    "id": "rcv-2026-01375",
     "material_id": "RM-030",
     "received_quantity": 317.44,
     "unit": "kg",
@@ -16151,7 +16239,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01368",
+    "id": "rcv-2026-01376",
     "material_id": "RM-030",
     "received_quantity": 287.46,
     "unit": "kg",
@@ -16162,7 +16250,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01369",
+    "id": "rcv-2026-01377",
     "material_id": "RM-030",
     "received_quantity": 272.62,
     "unit": "kg",
@@ -16173,7 +16261,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01370",
+    "id": "rcv-2026-01378",
     "material_id": "RM-030",
     "received_quantity": 303.77,
     "unit": "kg",
@@ -16184,7 +16272,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01371",
+    "id": "rcv-2026-01379",
     "material_id": "RM-030",
     "received_quantity": 316.15,
     "unit": "kg",
@@ -16195,7 +16283,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01372",
+    "id": "rcv-2026-01380",
     "material_id": "RM-030",
     "received_quantity": 284.01,
     "unit": "kg",
@@ -16206,9 +16294,9 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01373",
+    "id": "rcv-2026-01381",
     "material_id": "RM-031",
-    "received_quantity": 173.15,
+    "received_quantity": 144.29,
     "unit": "kg",
     "receipt_date": "2026-01-01",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16217,53 +16305,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01374",
+    "id": "rcv-2026-01382",
     "material_id": "RM-031",
-    "received_quantity": 184.46,
+    "received_quantity": 131.16,
     "unit": "kg",
-    "receipt_date": "2026-01-07",
+    "receipt_date": "2026-01-06",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-07T08:30:00Z"
+    "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01375",
+    "id": "rcv-2026-01383",
     "material_id": "RM-031",
-    "received_quantity": 167.86,
+    "received_quantity": 145.93,
     "unit": "kg",
-    "receipt_date": "2026-01-13",
+    "receipt_date": "2026-01-11",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-13T08:30:00Z"
+    "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01376",
+    "id": "rcv-2026-01384",
     "material_id": "RM-031",
-    "received_quantity": 157.87,
+    "received_quantity": 152.36,
     "unit": "kg",
-    "receipt_date": "2026-01-19",
+    "receipt_date": "2026-01-16",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-19T08:30:00Z"
+    "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01377",
+    "id": "rcv-2026-01385",
     "material_id": "RM-031",
-    "received_quantity": 175.26,
+    "received_quantity": 134.68,
     "unit": "kg",
-    "receipt_date": "2026-01-25",
+    "receipt_date": "2026-01-21",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-25T08:30:00Z"
+    "created_at": "2026-01-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01378",
+    "id": "rcv-2026-01386",
     "material_id": "RM-031",
-    "received_quantity": 183.88,
+    "received_quantity": 136.27,
+    "unit": "kg",
+    "receipt_date": "2026-01-26",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-01-26T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01387",
+    "material_id": "RM-031",
+    "received_quantity": 153.23,
     "unit": "kg",
     "receipt_date": "2026-01-31",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16272,53 +16371,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01379",
+    "id": "rcv-2026-01388",
     "material_id": "RM-031",
-    "received_quantity": 165.8,
+    "received_quantity": 143.95,
     "unit": "kg",
-    "receipt_date": "2026-02-06",
+    "receipt_date": "2026-02-05",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-06T08:30:00Z"
+    "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01380",
+    "id": "rcv-2026-01389",
     "material_id": "RM-031",
-    "received_quantity": 158.62,
+    "received_quantity": 131.19,
     "unit": "kg",
-    "receipt_date": "2026-02-12",
+    "receipt_date": "2026-02-10",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-12T08:30:00Z"
+    "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01381",
+    "id": "rcv-2026-01390",
     "material_id": "RM-031",
-    "received_quantity": 177.26,
+    "received_quantity": 146.26,
     "unit": "kg",
-    "receipt_date": "2026-02-18",
+    "receipt_date": "2026-02-15",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-18T08:30:00Z"
+    "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01382",
+    "id": "rcv-2026-01391",
     "material_id": "RM-031",
-    "received_quantity": 182.97,
+    "received_quantity": 152.18,
     "unit": "kg",
-    "receipt_date": "2026-02-24",
+    "receipt_date": "2026-02-20",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-24T08:30:00Z"
+    "created_at": "2026-02-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01383",
+    "id": "rcv-2026-01392",
     "material_id": "RM-031",
-    "received_quantity": 163.87,
+    "received_quantity": 134.43,
+    "unit": "kg",
+    "receipt_date": "2026-02-25",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-02-25T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01393",
+    "material_id": "RM-031",
+    "received_quantity": 136.56,
     "unit": "kg",
     "receipt_date": "2026-03-02",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16327,53 +16437,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01384",
+    "id": "rcv-2026-01394",
     "material_id": "RM-031",
-    "received_quantity": 159.68,
+    "received_quantity": 153.35,
     "unit": "kg",
-    "receipt_date": "2026-03-08",
+    "receipt_date": "2026-03-07",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-08T08:30:00Z"
+    "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01385",
+    "id": "rcv-2026-01395",
     "material_id": "RM-031",
-    "received_quantity": 179.11,
+    "received_quantity": 143.6,
     "unit": "kg",
-    "receipt_date": "2026-03-14",
+    "receipt_date": "2026-03-12",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-14T08:30:00Z"
+    "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01386",
+    "id": "rcv-2026-01396",
     "material_id": "RM-031",
-    "received_quantity": 181.76,
+    "received_quantity": 131.23,
     "unit": "kg",
-    "receipt_date": "2026-03-20",
+    "receipt_date": "2026-03-17",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-20T08:30:00Z"
+    "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01387",
+    "id": "rcv-2026-01397",
     "material_id": "RM-031",
-    "received_quantity": 162.12,
+    "received_quantity": 146.59,
     "unit": "kg",
-    "receipt_date": "2026-03-26",
+    "receipt_date": "2026-03-22",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-26T08:30:00Z"
+    "created_at": "2026-03-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01388",
+    "id": "rcv-2026-01398",
     "material_id": "RM-031",
-    "received_quantity": 161.02,
+    "received_quantity": 151.99,
+    "unit": "kg",
+    "receipt_date": "2026-03-27",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-03-27T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01399",
+    "material_id": "RM-031",
+    "received_quantity": 134.19,
     "unit": "kg",
     "receipt_date": "2026-04-01",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16382,53 +16503,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01389",
+    "id": "rcv-2026-01400",
     "material_id": "RM-031",
-    "received_quantity": 180.75,
+    "received_quantity": 136.86,
     "unit": "kg",
-    "receipt_date": "2026-04-07",
+    "receipt_date": "2026-04-06",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-07T08:30:00Z"
+    "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01390",
+    "id": "rcv-2026-01401",
     "material_id": "RM-031",
-    "received_quantity": 180.28,
+    "received_quantity": 153.45,
     "unit": "kg",
-    "receipt_date": "2026-04-13",
+    "receipt_date": "2026-04-11",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-13T08:30:00Z"
+    "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01391",
+    "id": "rcv-2026-01402",
     "material_id": "RM-031",
-    "received_quantity": 160.59,
+    "received_quantity": 143.25,
     "unit": "kg",
-    "receipt_date": "2026-04-19",
+    "receipt_date": "2026-04-16",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-19T08:30:00Z"
+    "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01392",
+    "id": "rcv-2026-01403",
     "material_id": "RM-031",
-    "received_quantity": 162.62,
+    "received_quantity": 131.29,
     "unit": "kg",
-    "receipt_date": "2026-04-25",
+    "receipt_date": "2026-04-21",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-25T08:30:00Z"
+    "created_at": "2026-04-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01393",
+    "id": "rcv-2026-01404",
     "material_id": "RM-031",
-    "received_quantity": 182.15,
+    "received_quantity": 146.91,
+    "unit": "kg",
+    "receipt_date": "2026-04-26",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-26T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01405",
+    "material_id": "RM-031",
+    "received_quantity": 151.79,
     "unit": "kg",
     "receipt_date": "2026-05-01",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16437,53 +16569,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01394",
+    "id": "rcv-2026-01406",
     "material_id": "RM-031",
-    "received_quantity": 178.58,
+    "received_quantity": 133.95,
     "unit": "kg",
-    "receipt_date": "2026-05-07",
+    "receipt_date": "2026-05-06",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-07T08:30:00Z"
+    "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01395",
+    "id": "rcv-2026-01407",
     "material_id": "RM-031",
-    "received_quantity": 159.33,
+    "received_quantity": 137.16,
     "unit": "kg",
-    "receipt_date": "2026-05-13",
+    "receipt_date": "2026-05-11",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-13T08:30:00Z"
+    "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01396",
+    "id": "rcv-2026-01408",
     "material_id": "RM-031",
-    "received_quantity": 164.43,
+    "received_quantity": 153.55,
     "unit": "kg",
-    "receipt_date": "2026-05-19",
+    "receipt_date": "2026-05-16",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-19T08:30:00Z"
+    "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01397",
+    "id": "rcv-2026-01409",
     "material_id": "RM-031",
-    "received_quantity": 183.27,
+    "received_quantity": 142.91,
     "unit": "kg",
-    "receipt_date": "2026-05-25",
+    "receipt_date": "2026-05-21",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-25T08:30:00Z"
+    "created_at": "2026-05-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01398",
+    "id": "rcv-2026-01410",
     "material_id": "RM-031",
-    "received_quantity": 176.68,
+    "received_quantity": 131.35,
+    "unit": "kg",
+    "receipt_date": "2026-05-26",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-26T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01411",
+    "material_id": "RM-031",
+    "received_quantity": 147.23,
     "unit": "kg",
     "receipt_date": "2026-05-31",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16492,53 +16635,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01399",
+    "id": "rcv-2026-01412",
     "material_id": "RM-031",
-    "received_quantity": 158.36,
+    "received_quantity": 151.59,
     "unit": "kg",
-    "receipt_date": "2026-06-06",
+    "receipt_date": "2026-06-05",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-06T08:30:00Z"
+    "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01400",
+    "id": "rcv-2026-01413",
     "material_id": "RM-031",
-    "received_quantity": 166.41,
+    "received_quantity": 133.73,
     "unit": "kg",
-    "receipt_date": "2026-06-12",
+    "receipt_date": "2026-06-10",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-12T08:30:00Z"
+    "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01401",
+    "id": "rcv-2026-01414",
     "material_id": "RM-031",
-    "received_quantity": 184.09,
+    "received_quantity": 137.47,
     "unit": "kg",
-    "receipt_date": "2026-06-18",
+    "receipt_date": "2026-06-15",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-18T08:30:00Z"
+    "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01402",
+    "id": "rcv-2026-01415",
     "material_id": "RM-031",
-    "received_quantity": 174.64,
+    "received_quantity": 153.63,
     "unit": "kg",
-    "receipt_date": "2026-06-24",
+    "receipt_date": "2026-06-20",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-24T08:30:00Z"
+    "created_at": "2026-06-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01403",
+    "id": "rcv-2026-01416",
     "material_id": "RM-031",
-    "received_quantity": 157.71,
+    "received_quantity": 142.56,
+    "unit": "kg",
+    "receipt_date": "2026-06-25",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-06-25T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01417",
+    "material_id": "RM-031",
+    "received_quantity": 131.42,
     "unit": "kg",
     "receipt_date": "2026-06-30",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16547,53 +16701,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01404",
+    "id": "rcv-2026-01418",
     "material_id": "RM-031",
-    "received_quantity": 168.5,
+    "received_quantity": 147.55,
     "unit": "kg",
-    "receipt_date": "2026-07-06",
+    "receipt_date": "2026-07-05",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-06T08:30:00Z"
+    "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01405",
+    "id": "rcv-2026-01419",
     "material_id": "RM-031",
-    "received_quantity": 184.57,
+    "received_quantity": 151.37,
     "unit": "kg",
-    "receipt_date": "2026-07-12",
+    "receipt_date": "2026-07-10",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-12T08:30:00Z"
+    "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01406",
+    "id": "rcv-2026-01420",
     "material_id": "RM-031",
-    "received_quantity": 172.51,
+    "received_quantity": 133.51,
     "unit": "kg",
-    "receipt_date": "2026-07-18",
+    "receipt_date": "2026-07-15",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-18T08:30:00Z"
+    "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01407",
+    "id": "rcv-2026-01421",
     "material_id": "RM-031",
-    "received_quantity": 157.39,
+    "received_quantity": 137.79,
     "unit": "kg",
-    "receipt_date": "2026-07-24",
+    "receipt_date": "2026-07-20",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-24T08:30:00Z"
+    "created_at": "2026-07-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01408",
+    "id": "rcv-2026-01422",
     "material_id": "RM-031",
-    "received_quantity": 170.65,
+    "received_quantity": 153.71,
+    "unit": "kg",
+    "receipt_date": "2026-07-25",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-07-25T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01423",
+    "material_id": "RM-031",
+    "received_quantity": 142.21,
     "unit": "kg",
     "receipt_date": "2026-07-30",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16602,53 +16767,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01409",
+    "id": "rcv-2026-01424",
     "material_id": "RM-031",
-    "received_quantity": 184.72,
+    "received_quantity": 131.5,
     "unit": "kg",
-    "receipt_date": "2026-08-05",
+    "receipt_date": "2026-08-04",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-05T08:30:00Z"
+    "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01410",
+    "id": "rcv-2026-01425",
     "material_id": "RM-031",
-    "received_quantity": 170.34,
+    "received_quantity": 147.86,
     "unit": "kg",
-    "receipt_date": "2026-08-11",
+    "receipt_date": "2026-08-09",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-11T08:30:00Z"
+    "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01411",
+    "id": "rcv-2026-01426",
     "material_id": "RM-031",
-    "received_quantity": 157.41,
+    "received_quantity": 151.15,
     "unit": "kg",
-    "receipt_date": "2026-08-17",
+    "receipt_date": "2026-08-14",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-17T08:30:00Z"
+    "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01412",
+    "id": "rcv-2026-01427",
     "material_id": "RM-031",
-    "received_quantity": 172.82,
+    "received_quantity": 133.3,
     "unit": "kg",
-    "receipt_date": "2026-08-23",
+    "receipt_date": "2026-08-19",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-23T08:30:00Z"
+    "created_at": "2026-08-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01413",
+    "id": "rcv-2026-01428",
     "material_id": "RM-031",
-    "received_quantity": 140.61,
+    "received_quantity": 138.11,
+    "unit": "kg",
+    "receipt_date": "2026-08-24",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-08-24T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01429",
+    "material_id": "RM-031",
+    "received_quantity": 152.5,
     "unit": "kg",
     "receipt_date": "2026-08-29",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -16657,7 +16833,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01414",
+    "id": "rcv-2026-01430",
     "material_id": "RM-032",
     "received_quantity": 45.25,
     "unit": "kg",
@@ -16668,7 +16844,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01415",
+    "id": "rcv-2026-01431",
     "material_id": "RM-032",
     "received_quantity": 50.59,
     "unit": "kg",
@@ -16679,7 +16855,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01416",
+    "id": "rcv-2026-01432",
     "material_id": "RM-032",
     "received_quantity": 52.38,
     "unit": "kg",
@@ -16690,7 +16866,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01417",
+    "id": "rcv-2026-01433",
     "material_id": "RM-032",
     "received_quantity": 46.23,
     "unit": "kg",
@@ -16701,7 +16877,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01418",
+    "id": "rcv-2026-01434",
     "material_id": "RM-032",
     "received_quantity": 47.23,
     "unit": "kg",
@@ -16712,7 +16888,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01419",
+    "id": "rcv-2026-01435",
     "material_id": "RM-032",
     "received_quantity": 52.92,
     "unit": "kg",
@@ -16723,7 +16899,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01420",
+    "id": "rcv-2026-01436",
     "material_id": "RM-032",
     "received_quantity": 49.34,
     "unit": "kg",
@@ -16734,7 +16910,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01421",
+    "id": "rcv-2026-01437",
     "material_id": "RM-032",
     "received_quantity": 45.27,
     "unit": "kg",
@@ -16745,7 +16921,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01422",
+    "id": "rcv-2026-01438",
     "material_id": "RM-032",
     "received_quantity": 50.7,
     "unit": "kg",
@@ -16756,7 +16932,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01423",
+    "id": "rcv-2026-01439",
     "material_id": "RM-032",
     "received_quantity": 52.31,
     "unit": "kg",
@@ -16767,7 +16943,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01424",
+    "id": "rcv-2026-01440",
     "material_id": "RM-032",
     "received_quantity": 46.15,
     "unit": "kg",
@@ -16778,7 +16954,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01425",
+    "id": "rcv-2026-01441",
     "material_id": "RM-032",
     "received_quantity": 47.33,
     "unit": "kg",
@@ -16789,7 +16965,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01426",
+    "id": "rcv-2026-01442",
     "material_id": "RM-032",
     "received_quantity": 52.95,
     "unit": "kg",
@@ -16800,7 +16976,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01427",
+    "id": "rcv-2026-01443",
     "material_id": "RM-032",
     "received_quantity": 49.22,
     "unit": "kg",
@@ -16811,7 +16987,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01428",
+    "id": "rcv-2026-01444",
     "material_id": "RM-032",
     "received_quantity": 45.3,
     "unit": "kg",
@@ -16822,7 +16998,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01429",
+    "id": "rcv-2026-01445",
     "material_id": "RM-032",
     "received_quantity": 50.81,
     "unit": "kg",
@@ -16833,7 +17009,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01430",
+    "id": "rcv-2026-01446",
     "material_id": "RM-032",
     "received_quantity": 52.23,
     "unit": "kg",
@@ -16844,7 +17020,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01431",
+    "id": "rcv-2026-01447",
     "material_id": "RM-032",
     "received_quantity": 46.08,
     "unit": "kg",
@@ -16855,7 +17031,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01432",
+    "id": "rcv-2026-01448",
     "material_id": "RM-032",
     "received_quantity": 47.44,
     "unit": "kg",
@@ -16866,7 +17042,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01433",
+    "id": "rcv-2026-01449",
     "material_id": "RM-032",
     "received_quantity": 52.98,
     "unit": "kg",
@@ -16877,7 +17053,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01434",
+    "id": "rcv-2026-01450",
     "material_id": "RM-032",
     "received_quantity": 49.1,
     "unit": "kg",
@@ -16888,7 +17064,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01435",
+    "id": "rcv-2026-01451",
     "material_id": "RM-032",
     "received_quantity": 45.32,
     "unit": "kg",
@@ -16899,7 +17075,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01436",
+    "id": "rcv-2026-01452",
     "material_id": "RM-032",
     "received_quantity": 50.92,
     "unit": "kg",
@@ -16910,7 +17086,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01437",
+    "id": "rcv-2026-01453",
     "material_id": "RM-032",
     "received_quantity": 52.16,
     "unit": "kg",
@@ -16921,7 +17097,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01438",
+    "id": "rcv-2026-01454",
     "material_id": "RM-032",
     "received_quantity": 46,
     "unit": "kg",
@@ -16932,7 +17108,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01439",
+    "id": "rcv-2026-01455",
     "material_id": "RM-032",
     "received_quantity": 47.55,
     "unit": "kg",
@@ -16943,7 +17119,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01440",
+    "id": "rcv-2026-01456",
     "material_id": "RM-032",
     "received_quantity": 53,
     "unit": "kg",
@@ -16954,7 +17130,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01441",
+    "id": "rcv-2026-01457",
     "material_id": "RM-032",
     "received_quantity": 48.98,
     "unit": "kg",
@@ -16965,7 +17141,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01442",
+    "id": "rcv-2026-01458",
     "material_id": "RM-032",
     "received_quantity": 45.35,
     "unit": "kg",
@@ -16976,7 +17152,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01443",
+    "id": "rcv-2026-01459",
     "material_id": "RM-032",
     "received_quantity": 51.02,
     "unit": "kg",
@@ -16987,7 +17163,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01444",
+    "id": "rcv-2026-01460",
     "material_id": "RM-032",
     "received_quantity": 52.08,
     "unit": "kg",
@@ -16998,7 +17174,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01445",
+    "id": "rcv-2026-01461",
     "material_id": "RM-032",
     "received_quantity": 45.93,
     "unit": "kg",
@@ -17009,7 +17185,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01446",
+    "id": "rcv-2026-01462",
     "material_id": "RM-032",
     "received_quantity": 47.66,
     "unit": "kg",
@@ -17020,7 +17196,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01447",
+    "id": "rcv-2026-01463",
     "material_id": "RM-032",
     "received_quantity": 53.02,
     "unit": "kg",
@@ -17031,7 +17207,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01448",
+    "id": "rcv-2026-01464",
     "material_id": "RM-032",
     "received_quantity": 48.86,
     "unit": "kg",
@@ -17042,7 +17218,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01449",
+    "id": "rcv-2026-01465",
     "material_id": "RM-032",
     "received_quantity": 45.39,
     "unit": "kg",
@@ -17053,7 +17229,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01450",
+    "id": "rcv-2026-01466",
     "material_id": "RM-032",
     "received_quantity": 51.13,
     "unit": "kg",
@@ -17064,7 +17240,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01451",
+    "id": "rcv-2026-01467",
     "material_id": "RM-032",
     "received_quantity": 52,
     "unit": "kg",
@@ -17075,7 +17251,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01452",
+    "id": "rcv-2026-01468",
     "material_id": "RM-032",
     "received_quantity": 45.86,
     "unit": "kg",
@@ -17086,7 +17262,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01453",
+    "id": "rcv-2026-01469",
     "material_id": "RM-032",
     "received_quantity": 47.77,
     "unit": "kg",
@@ -17097,7 +17273,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01454",
+    "id": "rcv-2026-01470",
     "material_id": "RM-032",
     "received_quantity": 53.04,
     "unit": "kg",
@@ -17108,7 +17284,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01455",
+    "id": "rcv-2026-01471",
     "material_id": "RM-032",
     "received_quantity": 48.74,
     "unit": "kg",
@@ -17119,7 +17295,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01456",
+    "id": "rcv-2026-01472",
     "material_id": "RM-032",
     "received_quantity": 45.42,
     "unit": "kg",
@@ -17130,7 +17306,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01457",
+    "id": "rcv-2026-01473",
     "material_id": "RM-032",
     "received_quantity": 51.23,
     "unit": "kg",
@@ -17141,7 +17317,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01458",
+    "id": "rcv-2026-01474",
     "material_id": "RM-032",
     "received_quantity": 51.91,
     "unit": "kg",
@@ -17152,7 +17328,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01459",
+    "id": "rcv-2026-01475",
     "material_id": "RM-032",
     "received_quantity": 45.8,
     "unit": "kg",
@@ -17163,7 +17339,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01460",
+    "id": "rcv-2026-01476",
     "material_id": "RM-032",
     "received_quantity": 47.89,
     "unit": "kg",
@@ -17174,7 +17350,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01461",
+    "id": "rcv-2026-01477",
     "material_id": "RM-032",
     "received_quantity": 53.06,
     "unit": "kg",
@@ -17185,7 +17361,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01462",
+    "id": "rcv-2026-01478",
     "material_id": "RM-032",
     "received_quantity": 48.62,
     "unit": "kg",
@@ -17196,7 +17372,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01463",
+    "id": "rcv-2026-01479",
     "material_id": "RM-033",
     "received_quantity": 197.51,
     "unit": "kg",
@@ -17207,7 +17383,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01464",
+    "id": "rcv-2026-01480",
     "material_id": "RM-033",
     "received_quantity": 202.76,
     "unit": "kg",
@@ -17218,7 +17394,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01465",
+    "id": "rcv-2026-01481",
     "material_id": "RM-033",
     "received_quantity": 178.84,
     "unit": "kg",
@@ -17229,7 +17405,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01466",
+    "id": "rcv-2026-01482",
     "material_id": "RM-033",
     "received_quantity": 184.44,
     "unit": "kg",
@@ -17240,7 +17416,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01467",
+    "id": "rcv-2026-01483",
     "material_id": "RM-033",
     "received_quantity": 205.82,
     "unit": "kg",
@@ -17251,7 +17427,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01468",
+    "id": "rcv-2026-01484",
     "material_id": "RM-033",
     "received_quantity": 190.52,
     "unit": "kg",
@@ -17262,7 +17438,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01469",
+    "id": "rcv-2026-01485",
     "material_id": "RM-033",
     "received_quantity": 176.08,
     "unit": "kg",
@@ -17273,7 +17449,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01470",
+    "id": "rcv-2026-01486",
     "material_id": "RM-033",
     "received_quantity": 197.93,
     "unit": "kg",
@@ -17284,7 +17460,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01471",
+    "id": "rcv-2026-01487",
     "material_id": "RM-033",
     "received_quantity": 202.46,
     "unit": "kg",
@@ -17295,7 +17471,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01472",
+    "id": "rcv-2026-01488",
     "material_id": "RM-033",
     "received_quantity": 178.56,
     "unit": "kg",
@@ -17306,7 +17482,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01473",
+    "id": "rcv-2026-01489",
     "material_id": "RM-033",
     "received_quantity": 184.87,
     "unit": "kg",
@@ -17317,7 +17493,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01474",
+    "id": "rcv-2026-01490",
     "material_id": "RM-033",
     "received_quantity": 205.91,
     "unit": "kg",
@@ -17328,7 +17504,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01475",
+    "id": "rcv-2026-01491",
     "material_id": "RM-033",
     "received_quantity": 190.06,
     "unit": "kg",
@@ -17339,7 +17515,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01476",
+    "id": "rcv-2026-01492",
     "material_id": "RM-033",
     "received_quantity": 176.21,
     "unit": "kg",
@@ -17350,7 +17526,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01477",
+    "id": "rcv-2026-01493",
     "material_id": "RM-033",
     "received_quantity": 198.34,
     "unit": "kg",
@@ -17361,7 +17537,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01478",
+    "id": "rcv-2026-01494",
     "material_id": "RM-033",
     "received_quantity": 202.15,
     "unit": "kg",
@@ -17372,7 +17548,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01479",
+    "id": "rcv-2026-01495",
     "material_id": "RM-033",
     "received_quantity": 178.29,
     "unit": "kg",
@@ -17383,7 +17559,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01480",
+    "id": "rcv-2026-01496",
     "material_id": "RM-033",
     "received_quantity": 185.3,
     "unit": "kg",
@@ -17394,7 +17570,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01481",
+    "id": "rcv-2026-01497",
     "material_id": "RM-033",
     "received_quantity": 205.98,
     "unit": "kg",
@@ -17405,7 +17581,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01482",
+    "id": "rcv-2026-01498",
     "material_id": "RM-033",
     "received_quantity": 189.59,
     "unit": "kg",
@@ -17416,7 +17592,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01483",
+    "id": "rcv-2026-01499",
     "material_id": "RM-033",
     "received_quantity": 176.34,
     "unit": "kg",
@@ -17427,7 +17603,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01484",
+    "id": "rcv-2026-01500",
     "material_id": "RM-033",
     "received_quantity": 198.74,
     "unit": "kg",
@@ -17438,7 +17614,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01485",
+    "id": "rcv-2026-01501",
     "material_id": "RM-033",
     "received_quantity": 201.83,
     "unit": "kg",
@@ -17449,7 +17625,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01486",
+    "id": "rcv-2026-01502",
     "material_id": "RM-033",
     "received_quantity": 178.03,
     "unit": "kg",
@@ -17460,7 +17636,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01487",
+    "id": "rcv-2026-01503",
     "material_id": "RM-033",
     "received_quantity": 185.74,
     "unit": "kg",
@@ -17471,7 +17647,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01488",
+    "id": "rcv-2026-01504",
     "material_id": "RM-033",
     "received_quantity": 206.04,
     "unit": "kg",
@@ -17482,7 +17658,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01489",
+    "id": "rcv-2026-01505",
     "material_id": "RM-033",
     "received_quantity": 189.13,
     "unit": "kg",
@@ -17493,7 +17669,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01490",
+    "id": "rcv-2026-01506",
     "material_id": "RM-033",
     "received_quantity": 176.49,
     "unit": "kg",
@@ -17504,7 +17680,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01491",
+    "id": "rcv-2026-01507",
     "material_id": "RM-033",
     "received_quantity": 199.14,
     "unit": "kg",
@@ -17515,7 +17691,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01492",
+    "id": "rcv-2026-01508",
     "material_id": "RM-033",
     "received_quantity": 201.5,
     "unit": "kg",
@@ -17526,7 +17702,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01493",
+    "id": "rcv-2026-01509",
     "material_id": "RM-033",
     "received_quantity": 177.78,
     "unit": "kg",
@@ -17537,7 +17713,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01494",
+    "id": "rcv-2026-01510",
     "material_id": "RM-033",
     "received_quantity": 186.18,
     "unit": "kg",
@@ -17548,7 +17724,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01495",
+    "id": "rcv-2026-01511",
     "material_id": "RM-033",
     "received_quantity": 206.09,
     "unit": "kg",
@@ -17559,7 +17735,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01496",
+    "id": "rcv-2026-01512",
     "material_id": "RM-033",
     "received_quantity": 188.67,
     "unit": "kg",
@@ -17570,7 +17746,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01497",
+    "id": "rcv-2026-01513",
     "material_id": "RM-033",
     "received_quantity": 176.66,
     "unit": "kg",
@@ -17581,7 +17757,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01498",
+    "id": "rcv-2026-01514",
     "material_id": "RM-033",
     "received_quantity": 199.53,
     "unit": "kg",
@@ -17592,7 +17768,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01499",
+    "id": "rcv-2026-01515",
     "material_id": "RM-033",
     "received_quantity": 201.16,
     "unit": "kg",
@@ -17603,7 +17779,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01500",
+    "id": "rcv-2026-01516",
     "material_id": "RM-033",
     "received_quantity": 177.55,
     "unit": "kg",
@@ -17614,7 +17790,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01501",
+    "id": "rcv-2026-01517",
     "material_id": "RM-033",
     "received_quantity": 186.62,
     "unit": "kg",
@@ -17625,7 +17801,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01502",
+    "id": "rcv-2026-01518",
     "material_id": "RM-033",
     "received_quantity": 206.12,
     "unit": "kg",
@@ -17636,7 +17812,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01503",
+    "id": "rcv-2026-01519",
     "material_id": "RM-033",
     "received_quantity": 188.21,
     "unit": "kg",
@@ -17647,7 +17823,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01504",
+    "id": "rcv-2026-01520",
     "material_id": "RM-033",
     "received_quantity": 176.83,
     "unit": "kg",
@@ -17658,7 +17834,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01505",
+    "id": "rcv-2026-01521",
     "material_id": "RM-033",
     "received_quantity": 199.9,
     "unit": "kg",
@@ -17669,7 +17845,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01506",
+    "id": "rcv-2026-01522",
     "material_id": "RM-033",
     "received_quantity": 200.81,
     "unit": "kg",
@@ -17680,7 +17856,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01507",
+    "id": "rcv-2026-01523",
     "material_id": "RM-033",
     "received_quantity": 177.33,
     "unit": "kg",
@@ -17691,7 +17867,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01508",
+    "id": "rcv-2026-01524",
     "material_id": "RM-033",
     "received_quantity": 187.07,
     "unit": "kg",
@@ -17702,7 +17878,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01509",
+    "id": "rcv-2026-01525",
     "material_id": "RM-033",
     "received_quantity": 206.14,
     "unit": "kg",
@@ -17713,7 +17889,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01510",
+    "id": "rcv-2026-01526",
     "material_id": "RM-033",
     "received_quantity": 187.75,
     "unit": "kg",
@@ -17724,7 +17900,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01511",
+    "id": "rcv-2026-01527",
     "material_id": "RM-033",
     "received_quantity": 177.02,
     "unit": "kg",
@@ -17735,7 +17911,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01512",
+    "id": "rcv-2026-01528",
     "material_id": "RM-034",
     "received_quantity": 232.03,
     "unit": "kg",
@@ -17746,7 +17922,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01513",
+    "id": "rcv-2026-01529",
     "material_id": "RM-034",
     "received_quantity": 204.65,
     "unit": "kg",
@@ -17757,7 +17933,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01514",
+    "id": "rcv-2026-01530",
     "material_id": "RM-034",
     "received_quantity": 213.03,
     "unit": "kg",
@@ -17768,7 +17944,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01515",
+    "id": "rcv-2026-01531",
     "material_id": "RM-034",
     "received_quantity": 236.61,
     "unit": "kg",
@@ -17779,7 +17955,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01516",
+    "id": "rcv-2026-01532",
     "material_id": "RM-034",
     "received_quantity": 217.53,
     "unit": "kg",
@@ -17790,7 +17966,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01517",
+    "id": "rcv-2026-01533",
     "material_id": "RM-034",
     "received_quantity": 202.6,
     "unit": "kg",
@@ -17801,7 +17977,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01518",
+    "id": "rcv-2026-01534",
     "material_id": "RM-034",
     "received_quantity": 228.45,
     "unit": "kg",
@@ -17812,7 +17988,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01519",
+    "id": "rcv-2026-01535",
     "material_id": "RM-034",
     "received_quantity": 231.65,
     "unit": "kg",
@@ -17823,7 +17999,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01520",
+    "id": "rcv-2026-01536",
     "material_id": "RM-034",
     "received_quantity": 204.35,
     "unit": "kg",
@@ -17834,7 +18010,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01521",
+    "id": "rcv-2026-01537",
     "material_id": "RM-034",
     "received_quantity": 213.53,
     "unit": "kg",
@@ -17845,7 +18021,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01522",
+    "id": "rcv-2026-01538",
     "material_id": "RM-034",
     "received_quantity": 236.67,
     "unit": "kg",
@@ -17856,7 +18032,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01523",
+    "id": "rcv-2026-01539",
     "material_id": "RM-034",
     "received_quantity": 217,
     "unit": "kg",
@@ -17867,7 +18043,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01524",
+    "id": "rcv-2026-01540",
     "material_id": "RM-034",
     "received_quantity": 202.78,
     "unit": "kg",
@@ -17878,7 +18054,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01525",
+    "id": "rcv-2026-01541",
     "material_id": "RM-034",
     "received_quantity": 228.9,
     "unit": "kg",
@@ -17889,7 +18065,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01526",
+    "id": "rcv-2026-01542",
     "material_id": "RM-034",
     "received_quantity": 231.27,
     "unit": "kg",
@@ -17900,7 +18076,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01527",
+    "id": "rcv-2026-01543",
     "material_id": "RM-034",
     "received_quantity": 204.08,
     "unit": "kg",
@@ -17911,7 +18087,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01528",
+    "id": "rcv-2026-01544",
     "material_id": "RM-034",
     "received_quantity": 214.04,
     "unit": "kg",
@@ -17922,7 +18098,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01529",
+    "id": "rcv-2026-01545",
     "material_id": "RM-034",
     "received_quantity": 236.71,
     "unit": "kg",
@@ -17933,7 +18109,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01530",
+    "id": "rcv-2026-01546",
     "material_id": "RM-034",
     "received_quantity": 216.47,
     "unit": "kg",
@@ -17944,7 +18120,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01531",
+    "id": "rcv-2026-01547",
     "material_id": "RM-034",
     "received_quantity": 202.98,
     "unit": "kg",
@@ -17955,7 +18131,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01532",
+    "id": "rcv-2026-01548",
     "material_id": "RM-034",
     "received_quantity": 229.34,
     "unit": "kg",
@@ -17966,7 +18142,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01533",
+    "id": "rcv-2026-01549",
     "material_id": "RM-034",
     "received_quantity": 230.88,
     "unit": "kg",
@@ -17977,7 +18153,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01534",
+    "id": "rcv-2026-01550",
     "material_id": "RM-034",
     "received_quantity": 203.81,
     "unit": "kg",
@@ -17988,7 +18164,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01535",
+    "id": "rcv-2026-01551",
     "material_id": "RM-034",
     "received_quantity": 214.55,
     "unit": "kg",
@@ -17999,7 +18175,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01536",
+    "id": "rcv-2026-01552",
     "material_id": "RM-034",
     "received_quantity": 236.74,
     "unit": "kg",
@@ -18010,7 +18186,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01537",
+    "id": "rcv-2026-01553",
     "material_id": "RM-034",
     "received_quantity": 215.94,
     "unit": "kg",
@@ -18021,7 +18197,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01538",
+    "id": "rcv-2026-01554",
     "material_id": "RM-034",
     "received_quantity": 203.18,
     "unit": "kg",
@@ -18032,7 +18208,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01539",
+    "id": "rcv-2026-01555",
     "material_id": "RM-034",
     "received_quantity": 229.77,
     "unit": "kg",
@@ -18043,7 +18219,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01540",
+    "id": "rcv-2026-01556",
     "material_id": "RM-034",
     "received_quantity": 230.47,
     "unit": "kg",
@@ -18054,7 +18230,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01541",
+    "id": "rcv-2026-01557",
     "material_id": "RM-034",
     "received_quantity": 203.57,
     "unit": "kg",
@@ -18065,7 +18241,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01542",
+    "id": "rcv-2026-01558",
     "material_id": "RM-034",
     "received_quantity": 215.07,
     "unit": "kg",
@@ -18076,7 +18252,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01543",
+    "id": "rcv-2026-01559",
     "material_id": "RM-034",
     "received_quantity": 236.76,
     "unit": "kg",
@@ -18087,7 +18263,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01544",
+    "id": "rcv-2026-01560",
     "material_id": "RM-034",
     "received_quantity": 215.42,
     "unit": "kg",
@@ -18098,7 +18274,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01545",
+    "id": "rcv-2026-01561",
     "material_id": "RM-034",
     "received_quantity": 203.41,
     "unit": "kg",
@@ -18109,7 +18285,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01546",
+    "id": "rcv-2026-01562",
     "material_id": "RM-034",
     "received_quantity": 230.2,
     "unit": "kg",
@@ -18120,7 +18296,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01547",
+    "id": "rcv-2026-01563",
     "material_id": "RM-034",
     "received_quantity": 230.05,
     "unit": "kg",
@@ -18131,7 +18307,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01548",
+    "id": "rcv-2026-01564",
     "material_id": "RM-034",
     "received_quantity": 203.33,
     "unit": "kg",
@@ -18142,7 +18318,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01549",
+    "id": "rcv-2026-01565",
     "material_id": "RM-034",
     "received_quantity": 215.59,
     "unit": "kg",
@@ -18153,7 +18329,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01550",
+    "id": "rcv-2026-01566",
     "material_id": "RM-034",
     "received_quantity": 236.75,
     "unit": "kg",
@@ -18164,7 +18340,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01551",
+    "id": "rcv-2026-01567",
     "material_id": "RM-034",
     "received_quantity": 214.9,
     "unit": "kg",
@@ -18175,7 +18351,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01552",
+    "id": "rcv-2026-01568",
     "material_id": "RM-034",
     "received_quantity": 203.65,
     "unit": "kg",
@@ -18186,7 +18362,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01553",
+    "id": "rcv-2026-01569",
     "material_id": "RM-034",
     "received_quantity": 230.61,
     "unit": "kg",
@@ -18197,7 +18373,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01554",
+    "id": "rcv-2026-01570",
     "material_id": "RM-034",
     "received_quantity": 229.63,
     "unit": "kg",
@@ -18208,7 +18384,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01555",
+    "id": "rcv-2026-01571",
     "material_id": "RM-034",
     "received_quantity": 203.11,
     "unit": "kg",
@@ -18219,7 +18395,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01556",
+    "id": "rcv-2026-01572",
     "material_id": "RM-034",
     "received_quantity": 216.12,
     "unit": "kg",
@@ -18230,7 +18406,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01557",
+    "id": "rcv-2026-01573",
     "material_id": "RM-034",
     "received_quantity": 236.74,
     "unit": "kg",
@@ -18241,7 +18417,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01558",
+    "id": "rcv-2026-01574",
     "material_id": "RM-034",
     "received_quantity": 214.38,
     "unit": "kg",
@@ -18252,7 +18428,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01559",
+    "id": "rcv-2026-01575",
     "material_id": "RM-034",
     "received_quantity": 203.9,
     "unit": "kg",
@@ -18263,7 +18439,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01560",
+    "id": "rcv-2026-01576",
     "material_id": "RM-034",
     "received_quantity": 228.6,
     "unit": "kg",
@@ -18274,7 +18450,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01561",
+    "id": "rcv-2026-01577",
     "material_id": "RM-035",
     "received_quantity": 256.33,
     "unit": "kg",
@@ -18285,7 +18461,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01562",
+    "id": "rcv-2026-01578",
     "material_id": "RM-035",
     "received_quantity": 287.13,
     "unit": "kg",
@@ -18296,7 +18472,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01563",
+    "id": "rcv-2026-01579",
     "material_id": "RM-035",
     "received_quantity": 293.74,
     "unit": "kg",
@@ -18307,7 +18483,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01564",
+    "id": "rcv-2026-01580",
     "material_id": "RM-035",
     "received_quantity": 262.42,
     "unit": "kg",
@@ -18318,7 +18494,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01565",
+    "id": "rcv-2026-01581",
     "material_id": "RM-035",
     "received_quantity": 258.29,
     "unit": "kg",
@@ -18329,7 +18505,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01566",
+    "id": "rcv-2026-01582",
     "material_id": "RM-035",
     "received_quantity": 289.94,
     "unit": "kg",
@@ -18340,7 +18516,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01567",
+    "id": "rcv-2026-01583",
     "material_id": "RM-035",
     "received_quantity": 291.56,
     "unit": "kg",
@@ -18351,7 +18527,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01568",
+    "id": "rcv-2026-01584",
     "material_id": "RM-035",
     "received_quantity": 259.78,
     "unit": "kg",
@@ -18362,7 +18538,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01569",
+    "id": "rcv-2026-01585",
     "material_id": "RM-035",
     "received_quantity": 260.68,
     "unit": "kg",
@@ -18373,7 +18549,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01570",
+    "id": "rcv-2026-01586",
     "material_id": "RM-035",
     "received_quantity": 292.38,
     "unit": "kg",
@@ -18384,7 +18560,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01571",
+    "id": "rcv-2026-01587",
     "material_id": "RM-035",
     "received_quantity": 288.98,
     "unit": "kg",
@@ -18395,7 +18571,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01572",
+    "id": "rcv-2026-01588",
     "material_id": "RM-035",
     "received_quantity": 257.54,
     "unit": "kg",
@@ -18406,7 +18582,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01573",
+    "id": "rcv-2026-01589",
     "material_id": "RM-035",
     "received_quantity": 263.44,
     "unit": "kg",
@@ -18417,7 +18593,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01574",
+    "id": "rcv-2026-01590",
     "material_id": "RM-035",
     "received_quantity": 294.41,
     "unit": "kg",
@@ -18428,7 +18604,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01575",
+    "id": "rcv-2026-01591",
     "material_id": "RM-035",
     "received_quantity": 286.06,
     "unit": "kg",
@@ -18439,7 +18615,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01576",
+    "id": "rcv-2026-01592",
     "material_id": "RM-035",
     "received_quantity": 255.75,
     "unit": "kg",
@@ -18450,7 +18626,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01577",
+    "id": "rcv-2026-01593",
     "material_id": "RM-035",
     "received_quantity": 266.5,
     "unit": "kg",
@@ -18461,7 +18637,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01578",
+    "id": "rcv-2026-01594",
     "material_id": "RM-035",
     "received_quantity": 295.96,
     "unit": "kg",
@@ -18472,7 +18648,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01579",
+    "id": "rcv-2026-01595",
     "material_id": "RM-035",
     "received_quantity": 282.87,
     "unit": "kg",
@@ -18483,7 +18659,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01580",
+    "id": "rcv-2026-01596",
     "material_id": "RM-035",
     "received_quantity": 254.45,
     "unit": "kg",
@@ -18494,7 +18670,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01581",
+    "id": "rcv-2026-01597",
     "material_id": "RM-035",
     "received_quantity": 269.79,
     "unit": "kg",
@@ -18505,7 +18681,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01582",
+    "id": "rcv-2026-01598",
     "material_id": "RM-035",
     "received_quantity": 297,
     "unit": "kg",
@@ -18516,7 +18692,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01583",
+    "id": "rcv-2026-01599",
     "material_id": "RM-035",
     "received_quantity": 279.5,
     "unit": "kg",
@@ -18527,7 +18703,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01584",
+    "id": "rcv-2026-01600",
     "material_id": "RM-035",
     "received_quantity": 253.68,
     "unit": "kg",
@@ -18538,7 +18714,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01585",
+    "id": "rcv-2026-01601",
     "material_id": "RM-035",
     "received_quantity": 273.23,
     "unit": "kg",
@@ -18549,7 +18725,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01586",
+    "id": "rcv-2026-01602",
     "material_id": "RM-035",
     "received_quantity": 297.49,
     "unit": "kg",
@@ -18560,7 +18736,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01587",
+    "id": "rcv-2026-01603",
     "material_id": "RM-035",
     "received_quantity": 276.02,
     "unit": "kg",
@@ -18571,7 +18747,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01588",
+    "id": "rcv-2026-01604",
     "material_id": "RM-035",
     "received_quantity": 253.46,
     "unit": "kg",
@@ -18582,7 +18758,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01589",
+    "id": "rcv-2026-01605",
     "material_id": "RM-035",
     "received_quantity": 276.72,
     "unit": "kg",
@@ -18593,7 +18769,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01590",
+    "id": "rcv-2026-01606",
     "material_id": "RM-035",
     "received_quantity": 297.44,
     "unit": "kg",
@@ -18604,7 +18780,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01591",
+    "id": "rcv-2026-01607",
     "material_id": "RM-035",
     "received_quantity": 272.54,
     "unit": "kg",
@@ -18615,7 +18791,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01592",
+    "id": "rcv-2026-01608",
     "material_id": "RM-035",
     "received_quantity": 253.79,
     "unit": "kg",
@@ -18626,7 +18802,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01593",
+    "id": "rcv-2026-01609",
     "material_id": "RM-035",
     "received_quantity": 280.18,
     "unit": "kg",
@@ -18637,7 +18813,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01594",
+    "id": "rcv-2026-01610",
     "material_id": "RM-035",
     "received_quantity": 296.83,
     "unit": "kg",
@@ -18648,7 +18824,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01595",
+    "id": "rcv-2026-01611",
     "material_id": "RM-035",
     "received_quantity": 269.12,
     "unit": "kg",
@@ -18659,7 +18835,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01596",
+    "id": "rcv-2026-01612",
     "material_id": "RM-035",
     "received_quantity": 254.67,
     "unit": "kg",
@@ -18670,7 +18846,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01597",
+    "id": "rcv-2026-01613",
     "material_id": "RM-035",
     "received_quantity": 283.52,
     "unit": "kg",
@@ -18681,7 +18857,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01598",
+    "id": "rcv-2026-01614",
     "material_id": "RM-035",
     "received_quantity": 295.69,
     "unit": "kg",
@@ -18692,7 +18868,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01599",
+    "id": "rcv-2026-01615",
     "material_id": "RM-035",
     "received_quantity": 265.87,
     "unit": "kg",
@@ -18703,7 +18879,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01600",
+    "id": "rcv-2026-01616",
     "material_id": "RM-035",
     "received_quantity": 256.07,
     "unit": "kg",
@@ -18714,7 +18890,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01601",
+    "id": "rcv-2026-01617",
     "material_id": "RM-035",
     "received_quantity": 248.66,
     "unit": "kg",
@@ -18725,7 +18901,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01602",
+    "id": "rcv-2026-01618",
     "material_id": "RM-036",
     "received_quantity": 126.41,
     "unit": "kg",
@@ -18736,7 +18912,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01603",
+    "id": "rcv-2026-01619",
     "material_id": "RM-036",
     "received_quantity": 133.95,
     "unit": "kg",
@@ -18747,7 +18923,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01604",
+    "id": "rcv-2026-01620",
     "material_id": "RM-036",
     "received_quantity": 147.16,
     "unit": "kg",
@@ -18758,7 +18934,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01605",
+    "id": "rcv-2026-01621",
     "material_id": "RM-036",
     "received_quantity": 133.63,
     "unit": "kg",
@@ -18769,7 +18945,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01606",
+    "id": "rcv-2026-01622",
     "material_id": "RM-036",
     "received_quantity": 126.55,
     "unit": "kg",
@@ -18780,7 +18956,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01607",
+    "id": "rcv-2026-01623",
     "material_id": "RM-036",
     "received_quantity": 143.29,
     "unit": "kg",
@@ -18791,7 +18967,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01608",
+    "id": "rcv-2026-01624",
     "material_id": "RM-036",
     "received_quantity": 142.78,
     "unit": "kg",
@@ -18802,7 +18978,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01609",
+    "id": "rcv-2026-01625",
     "material_id": "RM-036",
     "received_quantity": 126.27,
     "unit": "kg",
@@ -18813,7 +18989,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01610",
+    "id": "rcv-2026-01626",
     "material_id": "RM-036",
     "received_quantity": 134.27,
     "unit": "kg",
@@ -18824,7 +19000,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01611",
+    "id": "rcv-2026-01627",
     "material_id": "RM-036",
     "received_quantity": 147.15,
     "unit": "kg",
@@ -18835,7 +19011,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01612",
+    "id": "rcv-2026-01628",
     "material_id": "RM-036",
     "received_quantity": 133.31,
     "unit": "kg",
@@ -18846,7 +19022,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01613",
+    "id": "rcv-2026-01629",
     "material_id": "RM-036",
     "received_quantity": 126.71,
     "unit": "kg",
@@ -18857,7 +19033,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01614",
+    "id": "rcv-2026-01630",
     "material_id": "RM-036",
     "received_quantity": 143.55,
     "unit": "kg",
@@ -18868,7 +19044,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01615",
+    "id": "rcv-2026-01631",
     "material_id": "RM-036",
     "received_quantity": 142.51,
     "unit": "kg",
@@ -18879,7 +19055,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01616",
+    "id": "rcv-2026-01632",
     "material_id": "RM-036",
     "received_quantity": 126.14,
     "unit": "kg",
@@ -18890,7 +19066,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01617",
+    "id": "rcv-2026-01633",
     "material_id": "RM-036",
     "received_quantity": 134.6,
     "unit": "kg",
@@ -18901,7 +19077,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01618",
+    "id": "rcv-2026-01634",
     "material_id": "RM-036",
     "received_quantity": 147.13,
     "unit": "kg",
@@ -18912,7 +19088,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01619",
+    "id": "rcv-2026-01635",
     "material_id": "RM-036",
     "received_quantity": 132.99,
     "unit": "kg",
@@ -18923,7 +19099,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01620",
+    "id": "rcv-2026-01636",
     "material_id": "RM-036",
     "received_quantity": 126.88,
     "unit": "kg",
@@ -18934,7 +19110,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01621",
+    "id": "rcv-2026-01637",
     "material_id": "RM-036",
     "received_quantity": 143.79,
     "unit": "kg",
@@ -18945,7 +19121,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01622",
+    "id": "rcv-2026-01638",
     "material_id": "RM-036",
     "received_quantity": 142.23,
     "unit": "kg",
@@ -18956,7 +19132,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01623",
+    "id": "rcv-2026-01639",
     "material_id": "RM-036",
     "received_quantity": 126.02,
     "unit": "kg",
@@ -18967,7 +19143,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01624",
+    "id": "rcv-2026-01640",
     "material_id": "RM-036",
     "received_quantity": 134.93,
     "unit": "kg",
@@ -18978,7 +19154,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01625",
+    "id": "rcv-2026-01641",
     "material_id": "RM-036",
     "received_quantity": 147.1,
     "unit": "kg",
@@ -18989,7 +19165,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01626",
+    "id": "rcv-2026-01642",
     "material_id": "RM-036",
     "received_quantity": 132.67,
     "unit": "kg",
@@ -19000,7 +19176,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01627",
+    "id": "rcv-2026-01643",
     "material_id": "RM-036",
     "received_quantity": 127.05,
     "unit": "kg",
@@ -19011,7 +19187,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01628",
+    "id": "rcv-2026-01644",
     "material_id": "RM-036",
     "received_quantity": 144.03,
     "unit": "kg",
@@ -19022,7 +19198,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01629",
+    "id": "rcv-2026-01645",
     "material_id": "RM-036",
     "received_quantity": 141.95,
     "unit": "kg",
@@ -19033,7 +19209,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01630",
+    "id": "rcv-2026-01646",
     "material_id": "RM-036",
     "received_quantity": 125.91,
     "unit": "kg",
@@ -19044,7 +19220,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01631",
+    "id": "rcv-2026-01647",
     "material_id": "RM-036",
     "received_quantity": 135.26,
     "unit": "kg",
@@ -19055,7 +19231,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01632",
+    "id": "rcv-2026-01648",
     "material_id": "RM-036",
     "received_quantity": 147.06,
     "unit": "kg",
@@ -19066,7 +19242,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01633",
+    "id": "rcv-2026-01649",
     "material_id": "RM-036",
     "received_quantity": 132.36,
     "unit": "kg",
@@ -19077,7 +19253,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01634",
+    "id": "rcv-2026-01650",
     "material_id": "RM-036",
     "received_quantity": 127.23,
     "unit": "kg",
@@ -19088,7 +19264,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01635",
+    "id": "rcv-2026-01651",
     "material_id": "RM-036",
     "received_quantity": 144.26,
     "unit": "kg",
@@ -19099,7 +19275,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01636",
+    "id": "rcv-2026-01652",
     "material_id": "RM-036",
     "received_quantity": 141.66,
     "unit": "kg",
@@ -19110,7 +19286,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01637",
+    "id": "rcv-2026-01653",
     "material_id": "RM-036",
     "received_quantity": 125.81,
     "unit": "kg",
@@ -19121,7 +19297,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01638",
+    "id": "rcv-2026-01654",
     "material_id": "RM-036",
     "received_quantity": 135.59,
     "unit": "kg",
@@ -19132,7 +19308,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01639",
+    "id": "rcv-2026-01655",
     "material_id": "RM-036",
     "received_quantity": 147.01,
     "unit": "kg",
@@ -19143,7 +19319,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01640",
+    "id": "rcv-2026-01656",
     "material_id": "RM-036",
     "received_quantity": 132.05,
     "unit": "kg",
@@ -19154,7 +19330,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01641",
+    "id": "rcv-2026-01657",
     "material_id": "RM-036",
     "received_quantity": 127.42,
     "unit": "kg",
@@ -19165,7 +19341,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01642",
+    "id": "rcv-2026-01658",
     "material_id": "RM-036",
     "received_quantity": 144.48,
     "unit": "kg",
@@ -19176,7 +19352,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01643",
+    "id": "rcv-2026-01659",
     "material_id": "RM-036",
     "received_quantity": 141.37,
     "unit": "kg",
@@ -19187,7 +19363,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01644",
+    "id": "rcv-2026-01660",
     "material_id": "RM-036",
     "received_quantity": 125.72,
     "unit": "kg",
@@ -19198,7 +19374,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01645",
+    "id": "rcv-2026-01661",
     "material_id": "RM-036",
     "received_quantity": 135.93,
     "unit": "kg",
@@ -19209,7 +19385,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01646",
+    "id": "rcv-2026-01662",
     "material_id": "RM-036",
     "received_quantity": 146.95,
     "unit": "kg",
@@ -19220,7 +19396,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01647",
+    "id": "rcv-2026-01663",
     "material_id": "RM-036",
     "received_quantity": 131.75,
     "unit": "kg",
@@ -19231,7 +19407,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01648",
+    "id": "rcv-2026-01664",
     "material_id": "RM-036",
     "received_quantity": 127.62,
     "unit": "kg",
@@ -19242,7 +19418,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01649",
+    "id": "rcv-2026-01665",
     "material_id": "RM-036",
     "received_quantity": 144.69,
     "unit": "kg",
@@ -19253,7 +19429,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01650",
+    "id": "rcv-2026-01666",
     "material_id": "RM-036",
     "received_quantity": 141.08,
     "unit": "kg",
@@ -19264,7 +19440,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01651",
+    "id": "rcv-2026-01667",
     "material_id": "RM-037",
     "received_quantity": 119.15,
     "unit": "kg",
@@ -19275,7 +19451,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01652",
+    "id": "rcv-2026-01668",
     "material_id": "RM-037",
     "received_quantity": 130.1,
     "unit": "kg",
@@ -19286,7 +19462,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01653",
+    "id": "rcv-2026-01669",
     "material_id": "RM-037",
     "received_quantity": 117.49,
     "unit": "kg",
@@ -19297,7 +19473,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01654",
+    "id": "rcv-2026-01670",
     "material_id": "RM-037",
     "received_quantity": 112.26,
     "unit": "kg",
@@ -19308,7 +19484,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01655",
+    "id": "rcv-2026-01671",
     "material_id": "RM-037",
     "received_quantity": 127.24,
     "unit": "kg",
@@ -19319,7 +19495,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01656",
+    "id": "rcv-2026-01672",
     "material_id": "RM-037",
     "received_quantity": 125.68,
     "unit": "kg",
@@ -19330,7 +19506,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01657",
+    "id": "rcv-2026-01673",
     "material_id": "RM-037",
     "received_quantity": 111.4,
     "unit": "kg",
@@ -19341,7 +19517,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01658",
+    "id": "rcv-2026-01674",
     "material_id": "RM-037",
     "received_quantity": 119.44,
     "unit": "kg",
@@ -19352,7 +19528,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01659",
+    "id": "rcv-2026-01675",
     "material_id": "RM-037",
     "received_quantity": 130.07,
     "unit": "kg",
@@ -19363,7 +19539,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01660",
+    "id": "rcv-2026-01676",
     "material_id": "RM-037",
     "received_quantity": 117.21,
     "unit": "kg",
@@ -19374,7 +19550,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01661",
+    "id": "rcv-2026-01677",
     "material_id": "RM-037",
     "received_quantity": 112.42,
     "unit": "kg",
@@ -19385,7 +19561,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01662",
+    "id": "rcv-2026-01678",
     "material_id": "RM-037",
     "received_quantity": 127.45,
     "unit": "kg",
@@ -19396,7 +19572,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01663",
+    "id": "rcv-2026-01679",
     "material_id": "RM-037",
     "received_quantity": 125.42,
     "unit": "kg",
@@ -19407,7 +19583,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01664",
+    "id": "rcv-2026-01680",
     "material_id": "RM-037",
     "received_quantity": 111.31,
     "unit": "kg",
@@ -19418,7 +19594,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01665",
+    "id": "rcv-2026-01681",
     "material_id": "RM-037",
     "received_quantity": 119.74,
     "unit": "kg",
@@ -19429,7 +19605,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01666",
+    "id": "rcv-2026-01682",
     "material_id": "RM-037",
     "received_quantity": 130.03,
     "unit": "kg",
@@ -19440,7 +19616,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01667",
+    "id": "rcv-2026-01683",
     "material_id": "RM-037",
     "received_quantity": 116.94,
     "unit": "kg",
@@ -19451,7 +19627,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01668",
+    "id": "rcv-2026-01684",
     "material_id": "RM-037",
     "received_quantity": 112.58,
     "unit": "kg",
@@ -19462,7 +19638,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01669",
+    "id": "rcv-2026-01685",
     "material_id": "RM-037",
     "received_quantity": 127.65,
     "unit": "kg",
@@ -19473,7 +19649,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01670",
+    "id": "rcv-2026-01686",
     "material_id": "RM-037",
     "received_quantity": 125.17,
     "unit": "kg",
@@ -19484,7 +19660,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01671",
+    "id": "rcv-2026-01687",
     "material_id": "RM-037",
     "received_quantity": 111.23,
     "unit": "kg",
@@ -19495,7 +19671,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01672",
+    "id": "rcv-2026-01688",
     "material_id": "RM-037",
     "received_quantity": 120.03,
     "unit": "kg",
@@ -19506,7 +19682,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01673",
+    "id": "rcv-2026-01689",
     "material_id": "RM-037",
     "received_quantity": 129.98,
     "unit": "kg",
@@ -19517,7 +19693,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01674",
+    "id": "rcv-2026-01690",
     "material_id": "RM-037",
     "received_quantity": 116.66,
     "unit": "kg",
@@ -19528,7 +19704,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01675",
+    "id": "rcv-2026-01691",
     "material_id": "RM-037",
     "received_quantity": 112.75,
     "unit": "kg",
@@ -19539,7 +19715,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01676",
+    "id": "rcv-2026-01692",
     "material_id": "RM-037",
     "received_quantity": 127.84,
     "unit": "kg",
@@ -19550,7 +19726,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01677",
+    "id": "rcv-2026-01693",
     "material_id": "RM-037",
     "received_quantity": 124.91,
     "unit": "kg",
@@ -19561,7 +19737,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01678",
+    "id": "rcv-2026-01694",
     "material_id": "RM-037",
     "received_quantity": 111.15,
     "unit": "kg",
@@ -19572,7 +19748,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01679",
+    "id": "rcv-2026-01695",
     "material_id": "RM-037",
     "received_quantity": 120.32,
     "unit": "kg",
@@ -19583,7 +19759,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01680",
+    "id": "rcv-2026-01696",
     "material_id": "RM-037",
     "received_quantity": 129.92,
     "unit": "kg",
@@ -19594,7 +19770,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01681",
+    "id": "rcv-2026-01697",
     "material_id": "RM-037",
     "received_quantity": 116.4,
     "unit": "kg",
@@ -19605,7 +19781,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01682",
+    "id": "rcv-2026-01698",
     "material_id": "RM-037",
     "received_quantity": 112.93,
     "unit": "kg",
@@ -19616,7 +19792,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01683",
+    "id": "rcv-2026-01699",
     "material_id": "RM-037",
     "received_quantity": 128.03,
     "unit": "kg",
@@ -19627,7 +19803,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01684",
+    "id": "rcv-2026-01700",
     "material_id": "RM-037",
     "received_quantity": 124.65,
     "unit": "kg",
@@ -19638,7 +19814,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01685",
+    "id": "rcv-2026-01701",
     "material_id": "RM-037",
     "received_quantity": 111.08,
     "unit": "kg",
@@ -19649,7 +19825,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01686",
+    "id": "rcv-2026-01702",
     "material_id": "RM-037",
     "received_quantity": 120.62,
     "unit": "kg",
@@ -19660,7 +19836,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01687",
+    "id": "rcv-2026-01703",
     "material_id": "RM-037",
     "received_quantity": 129.86,
     "unit": "kg",
@@ -19671,7 +19847,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01688",
+    "id": "rcv-2026-01704",
     "material_id": "RM-037",
     "received_quantity": 116.13,
     "unit": "kg",
@@ -19682,7 +19858,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01689",
+    "id": "rcv-2026-01705",
     "material_id": "RM-037",
     "received_quantity": 113.12,
     "unit": "kg",
@@ -19693,7 +19869,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01690",
+    "id": "rcv-2026-01706",
     "material_id": "RM-037",
     "received_quantity": 128.21,
     "unit": "kg",
@@ -19704,7 +19880,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01691",
+    "id": "rcv-2026-01707",
     "material_id": "RM-037",
     "received_quantity": 124.38,
     "unit": "kg",
@@ -19715,7 +19891,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01692",
+    "id": "rcv-2026-01708",
     "material_id": "RM-037",
     "received_quantity": 111.02,
     "unit": "kg",
@@ -19726,7 +19902,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01693",
+    "id": "rcv-2026-01709",
     "material_id": "RM-037",
     "received_quantity": 120.91,
     "unit": "kg",
@@ -19737,7 +19913,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01694",
+    "id": "rcv-2026-01710",
     "material_id": "RM-037",
     "received_quantity": 129.78,
     "unit": "kg",
@@ -19748,7 +19924,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01695",
+    "id": "rcv-2026-01711",
     "material_id": "RM-037",
     "received_quantity": 115.87,
     "unit": "kg",
@@ -19759,7 +19935,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01696",
+    "id": "rcv-2026-01712",
     "material_id": "RM-037",
     "received_quantity": 113.31,
     "unit": "kg",
@@ -19770,7 +19946,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01697",
+    "id": "rcv-2026-01713",
     "material_id": "RM-037",
     "received_quantity": 128.38,
     "unit": "kg",
@@ -19781,7 +19957,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01698",
+    "id": "rcv-2026-01714",
     "material_id": "RM-037",
     "received_quantity": 124.11,
     "unit": "kg",
@@ -19792,7 +19968,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01699",
+    "id": "rcv-2026-01715",
     "material_id": "RM-037",
     "received_quantity": 110.97,
     "unit": "kg",
@@ -19803,7 +19979,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01700",
+    "id": "rcv-2026-01716",
     "material_id": "RM-038",
     "received_quantity": 14.76,
     "unit": "kg",
@@ -19814,7 +19990,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01701",
+    "id": "rcv-2026-01717",
     "material_id": "RM-038",
     "received_quantity": 13.26,
     "unit": "kg",
@@ -19825,7 +20001,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01702",
+    "id": "rcv-2026-01718",
     "material_id": "RM-038",
     "received_quantity": 12.79,
     "unit": "kg",
@@ -19836,7 +20012,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01703",
+    "id": "rcv-2026-01719",
     "material_id": "RM-038",
     "received_quantity": 14.5,
     "unit": "kg",
@@ -19847,7 +20023,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01704",
+    "id": "rcv-2026-01720",
     "material_id": "RM-038",
     "received_quantity": 14.2,
     "unit": "kg",
@@ -19858,7 +20034,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01705",
+    "id": "rcv-2026-01721",
     "material_id": "RM-038",
     "received_quantity": 12.62,
     "unit": "kg",
@@ -19869,7 +20045,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01706",
+    "id": "rcv-2026-01722",
     "material_id": "RM-038",
     "received_quantity": 13.64,
     "unit": "kg",
@@ -19880,7 +20056,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01707",
+    "id": "rcv-2026-01723",
     "material_id": "RM-038",
     "received_quantity": 14.75,
     "unit": "kg",
@@ -19891,7 +20067,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01708",
+    "id": "rcv-2026-01724",
     "material_id": "RM-038",
     "received_quantity": 13.23,
     "unit": "kg",
@@ -19902,7 +20078,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01709",
+    "id": "rcv-2026-01725",
     "material_id": "RM-038",
     "received_quantity": 12.81,
     "unit": "kg",
@@ -19913,7 +20089,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01710",
+    "id": "rcv-2026-01726",
     "material_id": "RM-038",
     "received_quantity": 14.52,
     "unit": "kg",
@@ -19924,7 +20100,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01711",
+    "id": "rcv-2026-01727",
     "material_id": "RM-038",
     "received_quantity": 14.17,
     "unit": "kg",
@@ -19935,7 +20111,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01712",
+    "id": "rcv-2026-01728",
     "material_id": "RM-038",
     "received_quantity": 12.61,
     "unit": "kg",
@@ -19946,7 +20122,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01713",
+    "id": "rcv-2026-01729",
     "material_id": "RM-038",
     "received_quantity": 13.67,
     "unit": "kg",
@@ -19957,7 +20133,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01714",
+    "id": "rcv-2026-01730",
     "material_id": "RM-038",
     "received_quantity": 14.75,
     "unit": "kg",
@@ -19968,7 +20144,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01715",
+    "id": "rcv-2026-01731",
     "material_id": "RM-038",
     "received_quantity": 13.2,
     "unit": "kg",
@@ -19979,7 +20155,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01716",
+    "id": "rcv-2026-01732",
     "material_id": "RM-038",
     "received_quantity": 12.83,
     "unit": "kg",
@@ -19990,7 +20166,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01717",
+    "id": "rcv-2026-01733",
     "material_id": "RM-038",
     "received_quantity": 14.54,
     "unit": "kg",
@@ -20001,7 +20177,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01718",
+    "id": "rcv-2026-01734",
     "material_id": "RM-038",
     "received_quantity": 14.14,
     "unit": "kg",
@@ -20012,7 +20188,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01719",
+    "id": "rcv-2026-01735",
     "material_id": "RM-038",
     "received_quantity": 12.61,
     "unit": "kg",
@@ -20023,7 +20199,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01720",
+    "id": "rcv-2026-01736",
     "material_id": "RM-038",
     "received_quantity": 13.71,
     "unit": "kg",
@@ -20034,7 +20210,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01721",
+    "id": "rcv-2026-01737",
     "material_id": "RM-038",
     "received_quantity": 14.74,
     "unit": "kg",
@@ -20045,7 +20221,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01722",
+    "id": "rcv-2026-01738",
     "material_id": "RM-038",
     "received_quantity": 13.17,
     "unit": "kg",
@@ -20056,7 +20232,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01723",
+    "id": "rcv-2026-01739",
     "material_id": "RM-038",
     "received_quantity": 12.85,
     "unit": "kg",
@@ -20067,7 +20243,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01724",
+    "id": "rcv-2026-01740",
     "material_id": "RM-038",
     "received_quantity": 14.56,
     "unit": "kg",
@@ -20078,7 +20254,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01725",
+    "id": "rcv-2026-01741",
     "material_id": "RM-038",
     "received_quantity": 14.11,
     "unit": "kg",
@@ -20089,7 +20265,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01726",
+    "id": "rcv-2026-01742",
     "material_id": "RM-038",
     "received_quantity": 12.6,
     "unit": "kg",
@@ -20100,7 +20276,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01727",
+    "id": "rcv-2026-01743",
     "material_id": "RM-038",
     "received_quantity": 13.74,
     "unit": "kg",
@@ -20111,7 +20287,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01728",
+    "id": "rcv-2026-01744",
     "material_id": "RM-038",
     "received_quantity": 14.73,
     "unit": "kg",
@@ -20122,7 +20298,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01729",
+    "id": "rcv-2026-01745",
     "material_id": "RM-038",
     "received_quantity": 13.14,
     "unit": "kg",
@@ -20133,7 +20309,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01730",
+    "id": "rcv-2026-01746",
     "material_id": "RM-038",
     "received_quantity": 12.87,
     "unit": "kg",
@@ -20144,7 +20320,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01731",
+    "id": "rcv-2026-01747",
     "material_id": "RM-038",
     "received_quantity": 14.58,
     "unit": "kg",
@@ -20155,7 +20331,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01732",
+    "id": "rcv-2026-01748",
     "material_id": "RM-038",
     "received_quantity": 14.08,
     "unit": "kg",
@@ -20166,7 +20342,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01733",
+    "id": "rcv-2026-01749",
     "material_id": "RM-038",
     "received_quantity": 12.6,
     "unit": "kg",
@@ -20177,7 +20353,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01734",
+    "id": "rcv-2026-01750",
     "material_id": "RM-038",
     "received_quantity": 13.77,
     "unit": "kg",
@@ -20188,7 +20364,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01735",
+    "id": "rcv-2026-01751",
     "material_id": "RM-038",
     "received_quantity": 14.72,
     "unit": "kg",
@@ -20199,7 +20375,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01736",
+    "id": "rcv-2026-01752",
     "material_id": "RM-038",
     "received_quantity": 13.11,
     "unit": "kg",
@@ -20210,7 +20386,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01737",
+    "id": "rcv-2026-01753",
     "material_id": "RM-038",
     "received_quantity": 12.9,
     "unit": "kg",
@@ -20221,7 +20397,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01738",
+    "id": "rcv-2026-01754",
     "material_id": "RM-038",
     "received_quantity": 14.6,
     "unit": "kg",
@@ -20232,7 +20408,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01739",
+    "id": "rcv-2026-01755",
     "material_id": "RM-038",
     "received_quantity": 14.04,
     "unit": "kg",
@@ -20243,7 +20419,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01740",
+    "id": "rcv-2026-01756",
     "material_id": "RM-038",
     "received_quantity": 12.59,
     "unit": "kg",
@@ -20254,7 +20430,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01741",
+    "id": "rcv-2026-01757",
     "material_id": "RM-038",
     "received_quantity": 13.81,
     "unit": "kg",
@@ -20265,7 +20441,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01742",
+    "id": "rcv-2026-01758",
     "material_id": "RM-038",
     "received_quantity": 14.71,
     "unit": "kg",
@@ -20276,7 +20452,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01743",
+    "id": "rcv-2026-01759",
     "material_id": "RM-038",
     "received_quantity": 13.08,
     "unit": "kg",
@@ -20287,7 +20463,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01744",
+    "id": "rcv-2026-01760",
     "material_id": "RM-038",
     "received_quantity": 12.92,
     "unit": "kg",
@@ -20298,7 +20474,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01745",
+    "id": "rcv-2026-01761",
     "material_id": "RM-038",
     "received_quantity": 14.62,
     "unit": "kg",
@@ -20309,7 +20485,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01746",
+    "id": "rcv-2026-01762",
     "material_id": "RM-038",
     "received_quantity": 14.01,
     "unit": "kg",
@@ -20320,7 +20496,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01747",
+    "id": "rcv-2026-01763",
     "material_id": "RM-038",
     "received_quantity": 12.59,
     "unit": "kg",
@@ -20331,7 +20507,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01748",
+    "id": "rcv-2026-01764",
     "material_id": "RM-038",
     "received_quantity": 13.73,
     "unit": "kg",
@@ -20342,7 +20518,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01749",
+    "id": "rcv-2026-01765",
     "material_id": "RM-039",
     "received_quantity": 36.78,
     "unit": "kg",
@@ -20353,7 +20529,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01750",
+    "id": "rcv-2026-01766",
     "material_id": "RM-039",
     "received_quantity": 35.8,
     "unit": "kg",
@@ -20364,7 +20540,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01751",
+    "id": "rcv-2026-01767",
     "material_id": "RM-039",
     "received_quantity": 40.58,
     "unit": "kg",
@@ -20375,7 +20551,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01752",
+    "id": "rcv-2026-01768",
     "material_id": "RM-039",
     "received_quantity": 39.39,
     "unit": "kg",
@@ -20386,7 +20562,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01753",
+    "id": "rcv-2026-01769",
     "material_id": "RM-039",
     "received_quantity": 35.15,
     "unit": "kg",
@@ -20397,7 +20573,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01754",
+    "id": "rcv-2026-01770",
     "material_id": "RM-039",
     "received_quantity": 38.26,
     "unit": "kg",
@@ -20408,7 +20584,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01755",
+    "id": "rcv-2026-01771",
     "material_id": "RM-039",
     "received_quantity": 41.09,
     "unit": "kg",
@@ -20419,7 +20595,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01756",
+    "id": "rcv-2026-01772",
     "material_id": "RM-039",
     "received_quantity": 36.7,
     "unit": "kg",
@@ -20430,7 +20606,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01757",
+    "id": "rcv-2026-01773",
     "material_id": "RM-039",
     "received_quantity": 35.86,
     "unit": "kg",
@@ -20441,7 +20617,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01758",
+    "id": "rcv-2026-01774",
     "material_id": "RM-039",
     "received_quantity": 40.63,
     "unit": "kg",
@@ -20452,7 +20628,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01759",
+    "id": "rcv-2026-01775",
     "material_id": "RM-039",
     "received_quantity": 39.3,
     "unit": "kg",
@@ -20463,7 +20639,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01760",
+    "id": "rcv-2026-01776",
     "material_id": "RM-039",
     "received_quantity": 35.13,
     "unit": "kg",
@@ -20474,7 +20650,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01761",
+    "id": "rcv-2026-01777",
     "material_id": "RM-039",
     "received_quantity": 38.35,
     "unit": "kg",
@@ -20485,7 +20661,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01762",
+    "id": "rcv-2026-01778",
     "material_id": "RM-039",
     "received_quantity": 41.06,
     "unit": "kg",
@@ -20496,7 +20672,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01763",
+    "id": "rcv-2026-01779",
     "material_id": "RM-039",
     "received_quantity": 36.61,
     "unit": "kg",
@@ -20507,7 +20683,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01764",
+    "id": "rcv-2026-01780",
     "material_id": "RM-039",
     "received_quantity": 35.92,
     "unit": "kg",
@@ -20518,7 +20694,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01765",
+    "id": "rcv-2026-01781",
     "material_id": "RM-039",
     "received_quantity": 40.69,
     "unit": "kg",
@@ -20529,7 +20705,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01766",
+    "id": "rcv-2026-01782",
     "material_id": "RM-039",
     "received_quantity": 39.22,
     "unit": "kg",
@@ -20540,7 +20716,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01767",
+    "id": "rcv-2026-01783",
     "material_id": "RM-039",
     "received_quantity": 35.12,
     "unit": "kg",
@@ -20551,7 +20727,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01768",
+    "id": "rcv-2026-01784",
     "material_id": "RM-039",
     "received_quantity": 38.45,
     "unit": "kg",
@@ -20562,7 +20738,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01769",
+    "id": "rcv-2026-01785",
     "material_id": "RM-039",
     "received_quantity": 41.04,
     "unit": "kg",
@@ -20573,7 +20749,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01770",
+    "id": "rcv-2026-01786",
     "material_id": "RM-039",
     "received_quantity": 36.53,
     "unit": "kg",
@@ -20584,7 +20760,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01771",
+    "id": "rcv-2026-01787",
     "material_id": "RM-039",
     "received_quantity": 35.99,
     "unit": "kg",
@@ -20595,7 +20771,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01772",
+    "id": "rcv-2026-01788",
     "material_id": "RM-039",
     "received_quantity": 40.74,
     "unit": "kg",
@@ -20606,7 +20782,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01773",
+    "id": "rcv-2026-01789",
     "material_id": "RM-039",
     "received_quantity": 39.13,
     "unit": "kg",
@@ -20617,7 +20793,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01774",
+    "id": "rcv-2026-01790",
     "material_id": "RM-039",
     "received_quantity": 35.11,
     "unit": "kg",
@@ -20628,7 +20804,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01775",
+    "id": "rcv-2026-01791",
     "material_id": "RM-039",
     "received_quantity": 38.54,
     "unit": "kg",
@@ -20639,7 +20815,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01776",
+    "id": "rcv-2026-01792",
     "material_id": "RM-039",
     "received_quantity": 41,
     "unit": "kg",
@@ -20650,7 +20826,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01777",
+    "id": "rcv-2026-01793",
     "material_id": "RM-039",
     "received_quantity": 36.46,
     "unit": "kg",
@@ -20661,7 +20837,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01778",
+    "id": "rcv-2026-01794",
     "material_id": "RM-039",
     "received_quantity": 36.05,
     "unit": "kg",
@@ -20672,7 +20848,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01779",
+    "id": "rcv-2026-01795",
     "material_id": "RM-039",
     "received_quantity": 40.78,
     "unit": "kg",
@@ -20683,7 +20859,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01780",
+    "id": "rcv-2026-01796",
     "material_id": "RM-039",
     "received_quantity": 39.04,
     "unit": "kg",
@@ -20694,7 +20870,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01781",
+    "id": "rcv-2026-01797",
     "material_id": "RM-039",
     "received_quantity": 35.1,
     "unit": "kg",
@@ -20705,7 +20881,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01782",
+    "id": "rcv-2026-01798",
     "material_id": "RM-039",
     "received_quantity": 38.63,
     "unit": "kg",
@@ -20716,7 +20892,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01783",
+    "id": "rcv-2026-01799",
     "material_id": "RM-039",
     "received_quantity": 40.97,
     "unit": "kg",
@@ -20727,7 +20903,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01784",
+    "id": "rcv-2026-01800",
     "material_id": "RM-039",
     "received_quantity": 36.38,
     "unit": "kg",
@@ -20738,7 +20914,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01785",
+    "id": "rcv-2026-01801",
     "material_id": "RM-039",
     "received_quantity": 36.12,
     "unit": "kg",
@@ -20749,7 +20925,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01786",
+    "id": "rcv-2026-01802",
     "material_id": "RM-039",
     "received_quantity": 40.83,
     "unit": "kg",
@@ -20760,7 +20936,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01787",
+    "id": "rcv-2026-01803",
     "material_id": "RM-039",
     "received_quantity": 38.95,
     "unit": "kg",
@@ -20771,7 +20947,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01788",
+    "id": "rcv-2026-01804",
     "material_id": "RM-039",
     "received_quantity": 35.1,
     "unit": "kg",
@@ -20782,7 +20958,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01789",
+    "id": "rcv-2026-01805",
     "material_id": "RM-039",
     "received_quantity": 38.72,
     "unit": "kg",
@@ -20793,7 +20969,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01790",
+    "id": "rcv-2026-01806",
     "material_id": "RM-039",
     "received_quantity": 40.93,
     "unit": "kg",
@@ -20804,7 +20980,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01791",
+    "id": "rcv-2026-01807",
     "material_id": "RM-039",
     "received_quantity": 36.3,
     "unit": "kg",
@@ -20815,7 +20991,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01792",
+    "id": "rcv-2026-01808",
     "material_id": "RM-039",
     "received_quantity": 36.19,
     "unit": "kg",
@@ -20826,7 +21002,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01793",
+    "id": "rcv-2026-01809",
     "material_id": "RM-039",
     "received_quantity": 40.87,
     "unit": "kg",
@@ -20837,7 +21013,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01794",
+    "id": "rcv-2026-01810",
     "material_id": "RM-039",
     "received_quantity": 38.86,
     "unit": "kg",
@@ -20848,7 +21024,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01795",
+    "id": "rcv-2026-01811",
     "material_id": "RM-039",
     "received_quantity": 35.09,
     "unit": "kg",
@@ -20859,7 +21035,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01796",
+    "id": "rcv-2026-01812",
     "material_id": "RM-039",
     "received_quantity": 38.81,
     "unit": "kg",
@@ -20870,7 +21046,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01797",
+    "id": "rcv-2026-01813",
     "material_id": "RM-039",
     "received_quantity": 40.81,
     "unit": "kg",
@@ -20881,7 +21057,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01798",
+    "id": "rcv-2026-01814",
     "material_id": "RM-040",
     "received_quantity": 34.17,
     "unit": "kg",
@@ -20892,7 +21068,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01799",
+    "id": "rcv-2026-01815",
     "material_id": "RM-040",
     "received_quantity": 35.04,
     "unit": "kg",
@@ -20903,7 +21079,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01800",
+    "id": "rcv-2026-01816",
     "material_id": "RM-040",
     "received_quantity": 31.32,
     "unit": "kg",
@@ -20914,7 +21090,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01801",
+    "id": "rcv-2026-01817",
     "material_id": "RM-040",
     "received_quantity": 30.75,
     "unit": "kg",
@@ -20925,7 +21101,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01802",
+    "id": "rcv-2026-01818",
     "material_id": "RM-040",
     "received_quantity": 34.51,
     "unit": "kg",
@@ -20936,7 +21112,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01803",
+    "id": "rcv-2026-01819",
     "material_id": "RM-040",
     "received_quantity": 34.78,
     "unit": "kg",
@@ -20947,7 +21123,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01804",
+    "id": "rcv-2026-01820",
     "material_id": "RM-040",
     "received_quantity": 31,
     "unit": "kg",
@@ -20958,7 +21134,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01805",
+    "id": "rcv-2026-01821",
     "material_id": "RM-040",
     "received_quantity": 31.03,
     "unit": "kg",
@@ -20969,7 +21145,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01806",
+    "id": "rcv-2026-01822",
     "material_id": "RM-040",
     "received_quantity": 34.81,
     "unit": "kg",
@@ -20980,7 +21156,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01807",
+    "id": "rcv-2026-01823",
     "material_id": "RM-040",
     "received_quantity": 34.48,
     "unit": "kg",
@@ -20991,7 +21167,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01808",
+    "id": "rcv-2026-01824",
     "material_id": "RM-040",
     "received_quantity": 30.72,
     "unit": "kg",
@@ -21002,7 +21178,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01809",
+    "id": "rcv-2026-01825",
     "material_id": "RM-040",
     "received_quantity": 31.35,
     "unit": "kg",
@@ -21013,7 +21189,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01810",
+    "id": "rcv-2026-01826",
     "material_id": "RM-040",
     "received_quantity": 35.06,
     "unit": "kg",
@@ -21024,7 +21200,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01811",
+    "id": "rcv-2026-01827",
     "material_id": "RM-040",
     "received_quantity": 34.14,
     "unit": "kg",
@@ -21035,7 +21211,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01812",
+    "id": "rcv-2026-01828",
     "material_id": "RM-040",
     "received_quantity": 30.5,
     "unit": "kg",
@@ -21046,7 +21222,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01813",
+    "id": "rcv-2026-01829",
     "material_id": "RM-040",
     "received_quantity": 31.71,
     "unit": "kg",
@@ -21057,7 +21233,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01814",
+    "id": "rcv-2026-01830",
     "material_id": "RM-040",
     "received_quantity": 35.25,
     "unit": "kg",
@@ -21068,7 +21244,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01815",
+    "id": "rcv-2026-01831",
     "material_id": "RM-040",
     "received_quantity": 33.76,
     "unit": "kg",
@@ -21079,7 +21255,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01816",
+    "id": "rcv-2026-01832",
     "material_id": "RM-040",
     "received_quantity": 30.34,
     "unit": "kg",
@@ -21090,7 +21266,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01817",
+    "id": "rcv-2026-01833",
     "material_id": "RM-040",
     "received_quantity": 32.1,
     "unit": "kg",
@@ -21101,7 +21277,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01818",
+    "id": "rcv-2026-01834",
     "material_id": "RM-040",
     "received_quantity": 35.38,
     "unit": "kg",
@@ -21112,7 +21288,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01819",
+    "id": "rcv-2026-01835",
     "material_id": "RM-040",
     "received_quantity": 33.36,
     "unit": "kg",
@@ -21123,7 +21299,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01820",
+    "id": "rcv-2026-01836",
     "material_id": "RM-040",
     "received_quantity": 30.24,
     "unit": "kg",
@@ -21134,7 +21310,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01821",
+    "id": "rcv-2026-01837",
     "material_id": "RM-040",
     "received_quantity": 32.51,
     "unit": "kg",
@@ -21145,7 +21321,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01822",
+    "id": "rcv-2026-01838",
     "material_id": "RM-040",
     "received_quantity": 35.45,
     "unit": "kg",
@@ -21156,7 +21332,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01823",
+    "id": "rcv-2026-01839",
     "material_id": "RM-040",
     "received_quantity": 32.95,
     "unit": "kg",
@@ -21167,7 +21343,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01824",
+    "id": "rcv-2026-01840",
     "material_id": "RM-040",
     "received_quantity": 30.21,
     "unit": "kg",
@@ -21178,7 +21354,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01825",
+    "id": "rcv-2026-01841",
     "material_id": "RM-040",
     "received_quantity": 32.92,
     "unit": "kg",
@@ -21189,7 +21365,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01826",
+    "id": "rcv-2026-01842",
     "material_id": "RM-040",
     "received_quantity": 35.45,
     "unit": "kg",
@@ -21200,7 +21376,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01827",
+    "id": "rcv-2026-01843",
     "material_id": "RM-040",
     "received_quantity": 32.53,
     "unit": "kg",
@@ -21211,7 +21387,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01828",
+    "id": "rcv-2026-01844",
     "material_id": "RM-040",
     "received_quantity": 30.24,
     "unit": "kg",
@@ -21222,7 +21398,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01829",
+    "id": "rcv-2026-01845",
     "material_id": "RM-040",
     "received_quantity": 33.34,
     "unit": "kg",
@@ -21233,7 +21409,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01830",
+    "id": "rcv-2026-01846",
     "material_id": "RM-040",
     "received_quantity": 35.39,
     "unit": "kg",
@@ -21244,7 +21420,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01831",
+    "id": "rcv-2026-01847",
     "material_id": "RM-040",
     "received_quantity": 32.12,
     "unit": "kg",
@@ -21255,7 +21431,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01832",
+    "id": "rcv-2026-01848",
     "material_id": "RM-040",
     "received_quantity": 30.33,
     "unit": "kg",
@@ -21266,7 +21442,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01833",
+    "id": "rcv-2026-01849",
     "material_id": "RM-040",
     "received_quantity": 33.74,
     "unit": "kg",
@@ -21277,7 +21453,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01834",
+    "id": "rcv-2026-01850",
     "material_id": "RM-040",
     "received_quantity": 35.26,
     "unit": "kg",
@@ -21288,7 +21464,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01835",
+    "id": "rcv-2026-01851",
     "material_id": "RM-040",
     "received_quantity": 31.73,
     "unit": "kg",
@@ -21299,7 +21475,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01836",
+    "id": "rcv-2026-01852",
     "material_id": "RM-040",
     "received_quantity": 30.49,
     "unit": "kg",
@@ -21310,7 +21486,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01837",
+    "id": "rcv-2026-01853",
     "material_id": "RM-040",
     "received_quantity": 34.12,
     "unit": "kg",
@@ -21321,7 +21497,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01838",
+    "id": "rcv-2026-01854",
     "material_id": "RM-040",
     "received_quantity": 26.04,
     "unit": "kg",
@@ -21332,7 +21508,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01839",
+    "id": "rcv-2026-01855",
     "material_id": "RM-041",
     "received_quantity": 124.43,
     "unit": "kg",
@@ -21343,7 +21519,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01840",
+    "id": "rcv-2026-01856",
     "material_id": "RM-041",
     "received_quantity": 140.67,
     "unit": "kg",
@@ -21354,7 +21530,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01841",
+    "id": "rcv-2026-01857",
     "material_id": "RM-041",
     "received_quantity": 134.28,
     "unit": "kg",
@@ -21365,7 +21541,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01842",
+    "id": "rcv-2026-01858",
     "material_id": "RM-041",
     "received_quantity": 120.94,
     "unit": "kg",
@@ -21376,7 +21552,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01843",
+    "id": "rcv-2026-01859",
     "material_id": "RM-041",
     "received_quantity": 133.38,
     "unit": "kg",
@@ -21387,7 +21563,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01844",
+    "id": "rcv-2026-01860",
     "material_id": "RM-041",
     "received_quantity": 141.07,
     "unit": "kg",
@@ -21398,7 +21574,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01845",
+    "id": "rcv-2026-01861",
     "material_id": "RM-041",
     "received_quantity": 125.14,
     "unit": "kg",
@@ -21409,7 +21585,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01846",
+    "id": "rcv-2026-01862",
     "material_id": "RM-041",
     "received_quantity": 124.67,
     "unit": "kg",
@@ -21420,7 +21596,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01847",
+    "id": "rcv-2026-01863",
     "material_id": "RM-041",
     "received_quantity": 140.82,
     "unit": "kg",
@@ -21431,7 +21607,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01848",
+    "id": "rcv-2026-01864",
     "material_id": "RM-041",
     "received_quantity": 133.97,
     "unit": "kg",
@@ -21442,7 +21618,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01849",
+    "id": "rcv-2026-01865",
     "material_id": "RM-041",
     "received_quantity": 120.93,
     "unit": "kg",
@@ -21453,7 +21629,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01850",
+    "id": "rcv-2026-01866",
     "material_id": "RM-041",
     "received_quantity": 133.69,
     "unit": "kg",
@@ -21464,7 +21640,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01851",
+    "id": "rcv-2026-01867",
     "material_id": "RM-041",
     "received_quantity": 140.94,
     "unit": "kg",
@@ -21475,7 +21651,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01852",
+    "id": "rcv-2026-01868",
     "material_id": "RM-041",
     "received_quantity": 124.89,
     "unit": "kg",
@@ -21486,7 +21662,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01853",
+    "id": "rcv-2026-01869",
     "material_id": "RM-041",
     "received_quantity": 124.92,
     "unit": "kg",
@@ -21497,7 +21673,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01854",
+    "id": "rcv-2026-01870",
     "material_id": "RM-041",
     "received_quantity": 140.96,
     "unit": "kg",
@@ -21508,7 +21684,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01855",
+    "id": "rcv-2026-01871",
     "material_id": "RM-041",
     "received_quantity": 133.65,
     "unit": "kg",
@@ -21519,7 +21695,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01856",
+    "id": "rcv-2026-01872",
     "material_id": "RM-041",
     "received_quantity": 120.93,
     "unit": "kg",
@@ -21530,7 +21706,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01857",
+    "id": "rcv-2026-01873",
     "material_id": "RM-041",
     "received_quantity": 134.01,
     "unit": "kg",
@@ -21541,7 +21717,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01858",
+    "id": "rcv-2026-01874",
     "material_id": "RM-041",
     "received_quantity": 140.8,
     "unit": "kg",
@@ -21552,7 +21728,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01859",
+    "id": "rcv-2026-01875",
     "material_id": "RM-041",
     "received_quantity": 124.64,
     "unit": "kg",
@@ -21563,7 +21739,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01860",
+    "id": "rcv-2026-01876",
     "material_id": "RM-041",
     "received_quantity": 125.18,
     "unit": "kg",
@@ -21574,7 +21750,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01861",
+    "id": "rcv-2026-01877",
     "material_id": "RM-041",
     "received_quantity": 141.09,
     "unit": "kg",
@@ -21585,7 +21761,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01862",
+    "id": "rcv-2026-01878",
     "material_id": "RM-041",
     "received_quantity": 133.34,
     "unit": "kg",
@@ -21596,7 +21772,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01863",
+    "id": "rcv-2026-01879",
     "material_id": "RM-041",
     "received_quantity": 120.94,
     "unit": "kg",
@@ -21607,7 +21783,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01864",
+    "id": "rcv-2026-01880",
     "material_id": "RM-041",
     "received_quantity": 134.32,
     "unit": "kg",
@@ -21618,7 +21794,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01865",
+    "id": "rcv-2026-01881",
     "material_id": "RM-041",
     "received_quantity": 140.65,
     "unit": "kg",
@@ -21629,7 +21805,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01866",
+    "id": "rcv-2026-01882",
     "material_id": "RM-041",
     "received_quantity": 124.4,
     "unit": "kg",
@@ -21640,7 +21816,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01867",
+    "id": "rcv-2026-01883",
     "material_id": "RM-041",
     "received_quantity": 125.44,
     "unit": "kg",
@@ -21651,7 +21827,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01868",
+    "id": "rcv-2026-01884",
     "material_id": "RM-041",
     "received_quantity": 141.21,
     "unit": "kg",
@@ -21662,7 +21838,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01869",
+    "id": "rcv-2026-01885",
     "material_id": "RM-041",
     "received_quantity": 133.02,
     "unit": "kg",
@@ -21673,7 +21849,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01870",
+    "id": "rcv-2026-01886",
     "material_id": "RM-041",
     "received_quantity": 120.96,
     "unit": "kg",
@@ -21684,7 +21860,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01871",
+    "id": "rcv-2026-01887",
     "material_id": "RM-041",
     "received_quantity": 134.62,
     "unit": "kg",
@@ -21695,7 +21871,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01872",
+    "id": "rcv-2026-01888",
     "material_id": "RM-041",
     "received_quantity": 140.49,
     "unit": "kg",
@@ -21706,7 +21882,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01873",
+    "id": "rcv-2026-01889",
     "material_id": "RM-041",
     "received_quantity": 124.17,
     "unit": "kg",
@@ -21717,7 +21893,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01874",
+    "id": "rcv-2026-01890",
     "material_id": "RM-041",
     "received_quantity": 125.7,
     "unit": "kg",
@@ -21728,7 +21904,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01875",
+    "id": "rcv-2026-01891",
     "material_id": "RM-041",
     "received_quantity": 141.33,
     "unit": "kg",
@@ -21739,7 +21915,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01876",
+    "id": "rcv-2026-01892",
     "material_id": "RM-041",
     "received_quantity": 132.7,
     "unit": "kg",
@@ -21750,7 +21926,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01877",
+    "id": "rcv-2026-01893",
     "material_id": "RM-041",
     "received_quantity": 120.99,
     "unit": "kg",
@@ -21761,7 +21937,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01878",
+    "id": "rcv-2026-01894",
     "material_id": "RM-041",
     "received_quantity": 134.93,
     "unit": "kg",
@@ -21772,7 +21948,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01879",
+    "id": "rcv-2026-01895",
     "material_id": "RM-041",
     "received_quantity": 140.32,
     "unit": "kg",
@@ -21783,7 +21959,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01880",
+    "id": "rcv-2026-01896",
     "material_id": "RM-041",
     "received_quantity": 123.94,
     "unit": "kg",
@@ -21794,7 +21970,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01881",
+    "id": "rcv-2026-01897",
     "material_id": "RM-041",
     "received_quantity": 125.98,
     "unit": "kg",
@@ -21805,7 +21981,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01882",
+    "id": "rcv-2026-01898",
     "material_id": "RM-041",
     "received_quantity": 141.43,
     "unit": "kg",
@@ -21816,7 +21992,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01883",
+    "id": "rcv-2026-01899",
     "material_id": "RM-041",
     "received_quantity": 132.38,
     "unit": "kg",
@@ -21827,7 +22003,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01884",
+    "id": "rcv-2026-01900",
     "material_id": "RM-041",
     "received_quantity": 121.03,
     "unit": "kg",
@@ -21838,7 +22014,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01885",
+    "id": "rcv-2026-01901",
     "material_id": "RM-041",
     "received_quantity": 135.23,
     "unit": "kg",
@@ -21849,7 +22025,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01886",
+    "id": "rcv-2026-01902",
     "material_id": "RM-041",
     "received_quantity": 140.14,
     "unit": "kg",
@@ -21860,7 +22036,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01887",
+    "id": "rcv-2026-01903",
     "material_id": "RM-041",
     "received_quantity": 123.72,
     "unit": "kg",
@@ -21871,20 +22047,31 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01888",
+    "id": "rcv-2026-01904",
     "material_id": "RM-042",
-    "received_quantity": 526.13,
+    "received_quantity": 467.76,
     "unit": "kg",
-    "receipt_date": "2026-01-06",
+    "receipt_date": "2026-01-02",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-06T08:30:00Z"
+    "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01889",
+    "id": "rcv-2026-01905",
     "material_id": "RM-042",
-    "received_quantity": 481.39,
+    "received_quantity": 442.92,
+    "unit": "kg",
+    "receipt_date": "2026-01-07",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-01-07T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01906",
+    "material_id": "RM-042",
+    "received_quantity": 401.16,
     "unit": "kg",
     "receipt_date": "2026-01-12",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -21893,53 +22080,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01890",
+    "id": "rcv-2026-01907",
     "material_id": "RM-042",
-    "received_quantity": 523.64,
+    "received_quantity": 444.94,
     "unit": "kg",
-    "receipt_date": "2026-01-18",
+    "receipt_date": "2026-01-17",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-18T08:30:00Z"
+    "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01891",
+    "id": "rcv-2026-01908",
     "material_id": "RM-042",
-    "received_quantity": 565.04,
+    "received_quantity": 466.84,
     "unit": "kg",
-    "receipt_date": "2026-01-24",
+    "receipt_date": "2026-01-22",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-24T08:30:00Z"
+    "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01892",
+    "id": "rcv-2026-01909",
     "material_id": "RM-042",
-    "received_quantity": 519.5,
+    "received_quantity": 413.13,
     "unit": "kg",
-    "receipt_date": "2026-01-30",
+    "receipt_date": "2026-01-27",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-30T08:30:00Z"
+    "created_at": "2026-01-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01893",
+    "id": "rcv-2026-01910",
     "material_id": "RM-042",
-    "received_quantity": 481.72,
+    "received_quantity": 415.59,
     "unit": "kg",
-    "receipt_date": "2026-02-05",
+    "receipt_date": "2026-02-01",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-05T08:30:00Z"
+    "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01894",
+    "id": "rcv-2026-01911",
     "material_id": "RM-042",
-    "received_quantity": 530.24,
+    "received_quantity": 468.19,
+    "unit": "kg",
+    "receipt_date": "2026-02-06",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-02-06T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01912",
+    "material_id": "RM-042",
+    "received_quantity": 441.87,
     "unit": "kg",
     "receipt_date": "2026-02-11",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -21948,53 +22146,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01895",
+    "id": "rcv-2026-01913",
     "material_id": "RM-042",
-    "received_quantity": 564.18,
+    "received_quantity": 401.21,
     "unit": "kg",
-    "receipt_date": "2026-02-17",
+    "receipt_date": "2026-02-16",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-17T08:30:00Z"
+    "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01896",
+    "id": "rcv-2026-01914",
     "material_id": "RM-042",
-    "received_quantity": 512.97,
+    "received_quantity": 445.97,
     "unit": "kg",
-    "receipt_date": "2026-02-23",
+    "receipt_date": "2026-02-21",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-23T08:30:00Z"
+    "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01897",
+    "id": "rcv-2026-01915",
     "material_id": "RM-042",
-    "received_quantity": 483.09,
+    "received_quantity": 466.33,
     "unit": "kg",
-    "receipt_date": "2026-03-01",
+    "receipt_date": "2026-02-26",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-01T08:30:00Z"
+    "created_at": "2026-02-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01898",
+    "id": "rcv-2026-01916",
     "material_id": "RM-042",
-    "received_quantity": 536.67,
+    "received_quantity": 412.33,
     "unit": "kg",
-    "receipt_date": "2026-03-07",
+    "receipt_date": "2026-03-03",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-07T08:30:00Z"
+    "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01899",
+    "id": "rcv-2026-01917",
     "material_id": "RM-042",
-    "received_quantity": 562.3,
+    "received_quantity": 416.46,
+    "unit": "kg",
+    "receipt_date": "2026-03-08",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-03-08T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01918",
+    "material_id": "RM-042",
+    "received_quantity": 468.59,
     "unit": "kg",
     "receipt_date": "2026-03-13",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -22003,53 +22212,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01900",
+    "id": "rcv-2026-01919",
     "material_id": "RM-042",
-    "received_quantity": 506.69,
+    "received_quantity": 440.82,
     "unit": "kg",
-    "receipt_date": "2026-03-19",
+    "receipt_date": "2026-03-18",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-19T08:30:00Z"
+    "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01901",
+    "id": "rcv-2026-01920",
     "material_id": "RM-042",
-    "received_quantity": 485.46,
+    "received_quantity": 401.29,
     "unit": "kg",
-    "receipt_date": "2026-03-25",
+    "receipt_date": "2026-03-23",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-25T08:30:00Z"
+    "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01902",
+    "id": "rcv-2026-01921",
     "material_id": "RM-042",
-    "received_quantity": 542.77,
+    "received_quantity": 446.98,
     "unit": "kg",
-    "receipt_date": "2026-03-31",
+    "receipt_date": "2026-03-28",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-31T08:30:00Z"
+    "created_at": "2026-03-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01903",
+    "id": "rcv-2026-01922",
     "material_id": "RM-042",
-    "received_quantity": 559.44,
+    "received_quantity": 465.79,
     "unit": "kg",
-    "receipt_date": "2026-04-06",
+    "receipt_date": "2026-04-02",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-06T08:30:00Z"
+    "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01904",
+    "id": "rcv-2026-01923",
     "material_id": "RM-042",
-    "received_quantity": 500.82,
+    "received_quantity": 411.56,
+    "unit": "kg",
+    "receipt_date": "2026-04-07",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-07T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01924",
+    "material_id": "RM-042",
+    "received_quantity": 417.35,
     "unit": "kg",
     "receipt_date": "2026-04-12",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -22058,53 +22278,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01905",
+    "id": "rcv-2026-01925",
     "material_id": "RM-042",
-    "received_quantity": 488.79,
+    "received_quantity": 468.95,
     "unit": "kg",
-    "receipt_date": "2026-04-18",
+    "receipt_date": "2026-04-17",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-18T08:30:00Z"
+    "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01906",
+    "id": "rcv-2026-01926",
     "material_id": "RM-042",
-    "received_quantity": 548.37,
+    "received_quantity": 439.76,
     "unit": "kg",
-    "receipt_date": "2026-04-24",
+    "receipt_date": "2026-04-22",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-24T08:30:00Z"
+    "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01907",
+    "id": "rcv-2026-01927",
     "material_id": "RM-042",
-    "received_quantity": 555.67,
+    "received_quantity": 401.4,
     "unit": "kg",
-    "receipt_date": "2026-04-30",
+    "receipt_date": "2026-04-27",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-30T08:30:00Z"
+    "created_at": "2026-04-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01908",
+    "id": "rcv-2026-01928",
     "material_id": "RM-042",
-    "received_quantity": 495.52,
+    "received_quantity": 447.99,
     "unit": "kg",
-    "receipt_date": "2026-05-06",
+    "receipt_date": "2026-05-02",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-06T08:30:00Z"
+    "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01909",
+    "id": "rcv-2026-01929",
     "material_id": "RM-042",
-    "received_quantity": 492.98,
+    "received_quantity": 465.22,
+    "unit": "kg",
+    "receipt_date": "2026-05-07",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-07T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01930",
+    "material_id": "RM-042",
+    "received_quantity": 410.82,
     "unit": "kg",
     "receipt_date": "2026-05-12",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -22113,53 +22344,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01910",
+    "id": "rcv-2026-01931",
     "material_id": "RM-042",
-    "received_quantity": 553.34,
+    "received_quantity": 418.26,
     "unit": "kg",
-    "receipt_date": "2026-05-18",
+    "receipt_date": "2026-05-17",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-18T08:30:00Z"
+    "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01911",
+    "id": "rcv-2026-01932",
     "material_id": "RM-042",
-    "received_quantity": 551.09,
+    "received_quantity": 469.29,
     "unit": "kg",
-    "receipt_date": "2026-05-24",
+    "receipt_date": "2026-05-22",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-24T08:30:00Z"
+    "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01912",
+    "id": "rcv-2026-01933",
     "material_id": "RM-042",
-    "received_quantity": 490.91,
+    "received_quantity": 438.7,
     "unit": "kg",
-    "receipt_date": "2026-05-30",
+    "receipt_date": "2026-05-27",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-30T08:30:00Z"
+    "created_at": "2026-05-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01913",
+    "id": "rcv-2026-01934",
     "material_id": "RM-042",
-    "received_quantity": 497.93,
+    "received_quantity": 401.54,
     "unit": "kg",
-    "receipt_date": "2026-06-05",
+    "receipt_date": "2026-06-01",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-05T08:30:00Z"
+    "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01914",
+    "id": "rcv-2026-01935",
     "material_id": "RM-042",
-    "received_quantity": 557.55,
+    "received_quantity": 448.98,
+    "unit": "kg",
+    "receipt_date": "2026-06-06",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-06-06T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01936",
+    "material_id": "RM-042",
+    "received_quantity": 464.63,
     "unit": "kg",
     "receipt_date": "2026-06-11",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -22168,53 +22410,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01915",
+    "id": "rcv-2026-01937",
     "material_id": "RM-042",
-    "received_quantity": 545.81,
+    "received_quantity": 410.09,
     "unit": "kg",
-    "receipt_date": "2026-06-17",
+    "receipt_date": "2026-06-16",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-17T08:30:00Z"
+    "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01916",
+    "id": "rcv-2026-01938",
     "material_id": "RM-042",
-    "received_quantity": 487.12,
+    "received_quantity": 419.18,
     "unit": "kg",
-    "receipt_date": "2026-06-23",
+    "receipt_date": "2026-06-21",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-23T08:30:00Z"
+    "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01917",
+    "id": "rcv-2026-01939",
     "material_id": "RM-042",
-    "received_quantity": 503.51,
+    "received_quantity": 469.59,
     "unit": "kg",
-    "receipt_date": "2026-06-29",
+    "receipt_date": "2026-06-26",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-29T08:30:00Z"
+    "created_at": "2026-06-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01918",
+    "id": "rcv-2026-01940",
     "material_id": "RM-042",
-    "received_quantity": 560.9,
+    "received_quantity": 437.64,
     "unit": "kg",
-    "receipt_date": "2026-07-05",
+    "receipt_date": "2026-07-01",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-05T08:30:00Z"
+    "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01919",
+    "id": "rcv-2026-01941",
     "material_id": "RM-042",
-    "received_quantity": 539.96,
+    "received_quantity": 401.72,
+    "unit": "kg",
+    "receipt_date": "2026-07-06",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-07-06T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01942",
+    "material_id": "RM-042",
+    "received_quantity": 449.97,
     "unit": "kg",
     "receipt_date": "2026-07-11",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -22223,53 +22476,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01920",
+    "id": "rcv-2026-01943",
     "material_id": "RM-042",
-    "received_quantity": 484.23,
+    "received_quantity": 464,
     "unit": "kg",
-    "receipt_date": "2026-07-17",
+    "receipt_date": "2026-07-16",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-17T08:30:00Z"
+    "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01921",
+    "id": "rcv-2026-01944",
     "material_id": "RM-042",
-    "received_quantity": 509.59,
+    "received_quantity": 409.39,
     "unit": "kg",
-    "receipt_date": "2026-07-23",
+    "receipt_date": "2026-07-21",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-23T08:30:00Z"
+    "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01922",
+    "id": "rcv-2026-01945",
     "material_id": "RM-042",
-    "received_quantity": 563.31,
+    "received_quantity": 420.12,
     "unit": "kg",
-    "receipt_date": "2026-07-29",
+    "receipt_date": "2026-07-26",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-29T08:30:00Z"
+    "created_at": "2026-07-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01923",
+    "id": "rcv-2026-01946",
     "material_id": "RM-042",
-    "received_quantity": 533.69,
+    "received_quantity": 469.87,
     "unit": "kg",
-    "receipt_date": "2026-08-04",
+    "receipt_date": "2026-07-31",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-04T08:30:00Z"
+    "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01924",
+    "id": "rcv-2026-01947",
     "material_id": "RM-042",
-    "received_quantity": 482.32,
+    "received_quantity": 436.58,
+    "unit": "kg",
+    "receipt_date": "2026-08-05",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-08-05T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01948",
+    "material_id": "RM-042",
+    "received_quantity": 401.93,
     "unit": "kg",
     "receipt_date": "2026-08-10",
     "supplier_name": "Southern Luzon Ingredients Supply",
@@ -22278,40 +22542,51 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01925",
+    "id": "rcv-2026-01949",
     "material_id": "RM-042",
-    "received_quantity": 516.01,
+    "received_quantity": 450.93,
     "unit": "kg",
-    "receipt_date": "2026-08-16",
+    "receipt_date": "2026-08-15",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-16T08:30:00Z"
+    "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01926",
+    "id": "rcv-2026-01950",
     "material_id": "RM-042",
-    "received_quantity": 564.71,
+    "received_quantity": 463.35,
     "unit": "kg",
-    "receipt_date": "2026-08-22",
+    "receipt_date": "2026-08-20",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-22T08:30:00Z"
+    "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01927",
+    "id": "rcv-2026-01951",
     "material_id": "RM-042",
-    "received_quantity": 527.16,
+    "received_quantity": 408.72,
     "unit": "kg",
-    "receipt_date": "2026-08-28",
+    "receipt_date": "2026-08-25",
     "supplier_name": "Southern Luzon Ingredients Supply",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-28T08:30:00Z"
+    "created_at": "2026-08-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01928",
+    "id": "rcv-2026-01952",
+    "material_id": "RM-042",
+    "received_quantity": 419.46,
+    "unit": "kg",
+    "receipt_date": "2026-08-30",
+    "supplier_name": "Southern Luzon Ingredients Supply",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-08-30T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-01953",
     "material_id": "RM-043",
     "received_quantity": 88.34,
     "unit": "kg",
@@ -22322,7 +22597,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01929",
+    "id": "rcv-2026-01954",
     "material_id": "RM-043",
     "received_quantity": 80.5,
     "unit": "kg",
@@ -22333,7 +22608,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01930",
+    "id": "rcv-2026-01955",
     "material_id": "RM-043",
     "received_quantity": 89.75,
     "unit": "kg",
@@ -22344,7 +22619,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01931",
+    "id": "rcv-2026-01956",
     "material_id": "RM-043",
     "received_quantity": 93.39,
     "unit": "kg",
@@ -22355,7 +22630,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01932",
+    "id": "rcv-2026-01957",
     "material_id": "RM-043",
     "received_quantity": 82.49,
     "unit": "kg",
@@ -22366,7 +22641,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01933",
+    "id": "rcv-2026-01958",
     "material_id": "RM-043",
     "received_quantity": 83.79,
     "unit": "kg",
@@ -22377,7 +22652,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01934",
+    "id": "rcv-2026-01959",
     "material_id": "RM-043",
     "received_quantity": 94.1,
     "unit": "kg",
@@ -22388,7 +22663,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01935",
+    "id": "rcv-2026-01960",
     "material_id": "RM-043",
     "received_quantity": 88.13,
     "unit": "kg",
@@ -22399,7 +22674,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01936",
+    "id": "rcv-2026-01961",
     "material_id": "RM-043",
     "received_quantity": 80.53,
     "unit": "kg",
@@ -22410,7 +22685,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01937",
+    "id": "rcv-2026-01962",
     "material_id": "RM-043",
     "received_quantity": 89.95,
     "unit": "kg",
@@ -22421,7 +22696,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01938",
+    "id": "rcv-2026-01963",
     "material_id": "RM-043",
     "received_quantity": 93.27,
     "unit": "kg",
@@ -22432,7 +22707,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01939",
+    "id": "rcv-2026-01964",
     "material_id": "RM-043",
     "received_quantity": 82.35,
     "unit": "kg",
@@ -22443,7 +22718,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01940",
+    "id": "rcv-2026-01965",
     "material_id": "RM-043",
     "received_quantity": 83.98,
     "unit": "kg",
@@ -22454,7 +22729,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01941",
+    "id": "rcv-2026-01966",
     "material_id": "RM-043",
     "received_quantity": 94.16,
     "unit": "kg",
@@ -22465,7 +22740,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01942",
+    "id": "rcv-2026-01967",
     "material_id": "RM-043",
     "received_quantity": 87.91,
     "unit": "kg",
@@ -22476,7 +22751,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01943",
+    "id": "rcv-2026-01968",
     "material_id": "RM-043",
     "received_quantity": 80.56,
     "unit": "kg",
@@ -22487,7 +22762,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01944",
+    "id": "rcv-2026-01969",
     "material_id": "RM-043",
     "received_quantity": 90.14,
     "unit": "kg",
@@ -22498,7 +22773,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01945",
+    "id": "rcv-2026-01970",
     "material_id": "RM-043",
     "received_quantity": 93.15,
     "unit": "kg",
@@ -22509,7 +22784,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01946",
+    "id": "rcv-2026-01971",
     "material_id": "RM-043",
     "received_quantity": 82.2,
     "unit": "kg",
@@ -22520,7 +22795,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01947",
+    "id": "rcv-2026-01972",
     "material_id": "RM-043",
     "received_quantity": 84.16,
     "unit": "kg",
@@ -22531,7 +22806,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01948",
+    "id": "rcv-2026-01973",
     "material_id": "RM-043",
     "received_quantity": 94.22,
     "unit": "kg",
@@ -22542,7 +22817,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01949",
+    "id": "rcv-2026-01974",
     "material_id": "RM-043",
     "received_quantity": 87.7,
     "unit": "kg",
@@ -22553,7 +22828,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01950",
+    "id": "rcv-2026-01975",
     "material_id": "RM-043",
     "received_quantity": 80.6,
     "unit": "kg",
@@ -22564,7 +22839,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01951",
+    "id": "rcv-2026-01976",
     "material_id": "RM-043",
     "received_quantity": 90.34,
     "unit": "kg",
@@ -22575,7 +22850,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01952",
+    "id": "rcv-2026-01977",
     "material_id": "RM-043",
     "received_quantity": 93.02,
     "unit": "kg",
@@ -22586,7 +22861,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01953",
+    "id": "rcv-2026-01978",
     "material_id": "RM-043",
     "received_quantity": 82.06,
     "unit": "kg",
@@ -22597,7 +22872,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01954",
+    "id": "rcv-2026-01979",
     "material_id": "RM-043",
     "received_quantity": 84.35,
     "unit": "kg",
@@ -22608,7 +22883,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01955",
+    "id": "rcv-2026-01980",
     "material_id": "RM-043",
     "received_quantity": 94.27,
     "unit": "kg",
@@ -22619,7 +22894,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01956",
+    "id": "rcv-2026-01981",
     "material_id": "RM-043",
     "received_quantity": 87.49,
     "unit": "kg",
@@ -22630,7 +22905,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01957",
+    "id": "rcv-2026-01982",
     "material_id": "RM-043",
     "received_quantity": 80.64,
     "unit": "kg",
@@ -22641,7 +22916,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01958",
+    "id": "rcv-2026-01983",
     "material_id": "RM-043",
     "received_quantity": 90.53,
     "unit": "kg",
@@ -22652,7 +22927,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01959",
+    "id": "rcv-2026-01984",
     "material_id": "RM-043",
     "received_quantity": 92.89,
     "unit": "kg",
@@ -22663,7 +22938,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01960",
+    "id": "rcv-2026-01985",
     "material_id": "RM-043",
     "received_quantity": 81.93,
     "unit": "kg",
@@ -22674,7 +22949,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01961",
+    "id": "rcv-2026-01986",
     "material_id": "RM-043",
     "received_quantity": 84.55,
     "unit": "kg",
@@ -22685,7 +22960,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01962",
+    "id": "rcv-2026-01987",
     "material_id": "RM-043",
     "received_quantity": 94.32,
     "unit": "kg",
@@ -22696,7 +22971,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01963",
+    "id": "rcv-2026-01988",
     "material_id": "RM-043",
     "received_quantity": 87.27,
     "unit": "kg",
@@ -22707,7 +22982,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01964",
+    "id": "rcv-2026-01989",
     "material_id": "RM-043",
     "received_quantity": 80.69,
     "unit": "kg",
@@ -22718,7 +22993,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01965",
+    "id": "rcv-2026-01990",
     "material_id": "RM-043",
     "received_quantity": 90.72,
     "unit": "kg",
@@ -22729,7 +23004,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01966",
+    "id": "rcv-2026-01991",
     "material_id": "RM-043",
     "received_quantity": 92.75,
     "unit": "kg",
@@ -22740,7 +23015,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01967",
+    "id": "rcv-2026-01992",
     "material_id": "RM-043",
     "received_quantity": 81.8,
     "unit": "kg",
@@ -22751,7 +23026,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01968",
+    "id": "rcv-2026-01993",
     "material_id": "RM-043",
     "received_quantity": 84.74,
     "unit": "kg",
@@ -22762,7 +23037,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01969",
+    "id": "rcv-2026-01994",
     "material_id": "RM-043",
     "received_quantity": 94.36,
     "unit": "kg",
@@ -22773,7 +23048,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01970",
+    "id": "rcv-2026-01995",
     "material_id": "RM-043",
     "received_quantity": 87.06,
     "unit": "kg",
@@ -22784,7 +23059,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01971",
+    "id": "rcv-2026-01996",
     "material_id": "RM-043",
     "received_quantity": 80.75,
     "unit": "kg",
@@ -22795,7 +23070,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01972",
+    "id": "rcv-2026-01997",
     "material_id": "RM-043",
     "received_quantity": 90.91,
     "unit": "kg",
@@ -22806,7 +23081,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01973",
+    "id": "rcv-2026-01998",
     "material_id": "RM-043",
     "received_quantity": 92.61,
     "unit": "kg",
@@ -22817,7 +23092,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01974",
+    "id": "rcv-2026-01999",
     "material_id": "RM-043",
     "received_quantity": 81.68,
     "unit": "kg",
@@ -22828,7 +23103,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01975",
+    "id": "rcv-2026-02000",
     "material_id": "RM-043",
     "received_quantity": 84.94,
     "unit": "kg",
@@ -22839,7 +23114,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01976",
+    "id": "rcv-2026-02001",
     "material_id": "RM-043",
     "received_quantity": 93.67,
     "unit": "kg",
@@ -22850,7 +23125,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01977",
+    "id": "rcv-2026-02002",
     "material_id": "RM-044",
     "received_quantity": 117.4,
     "unit": "kg",
@@ -22861,7 +23136,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01978",
+    "id": "rcv-2026-02003",
     "material_id": "RM-044",
     "received_quantity": 118.71,
     "unit": "kg",
@@ -22872,7 +23147,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01979",
+    "id": "rcv-2026-02004",
     "material_id": "RM-044",
     "received_quantity": 133,
     "unit": "kg",
@@ -22883,7 +23158,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01980",
+    "id": "rcv-2026-02005",
     "material_id": "RM-044",
     "received_quantity": 130.56,
     "unit": "kg",
@@ -22894,7 +23169,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01981",
+    "id": "rcv-2026-02006",
     "material_id": "RM-044",
     "received_quantity": 116.46,
     "unit": "kg",
@@ -22905,7 +23180,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01982",
+    "id": "rcv-2026-02007",
     "material_id": "RM-044",
     "received_quantity": 120.02,
     "unit": "kg",
@@ -22916,7 +23191,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01983",
+    "id": "rcv-2026-02008",
     "material_id": "RM-044",
     "received_quantity": 133.84,
     "unit": "kg",
@@ -22927,7 +23202,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01984",
+    "id": "rcv-2026-02009",
     "material_id": "RM-044",
     "received_quantity": 129.18,
     "unit": "kg",
@@ -22938,7 +23213,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01985",
+    "id": "rcv-2026-02010",
     "material_id": "RM-044",
     "received_quantity": 115.73,
     "unit": "kg",
@@ -22949,7 +23224,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01986",
+    "id": "rcv-2026-02011",
     "material_id": "RM-044",
     "received_quantity": 121.46,
     "unit": "kg",
@@ -22960,7 +23235,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01987",
+    "id": "rcv-2026-02012",
     "material_id": "RM-044",
     "received_quantity": 134.45,
     "unit": "kg",
@@ -22971,7 +23246,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01988",
+    "id": "rcv-2026-02013",
     "material_id": "RM-044",
     "received_quantity": 127.7,
     "unit": "kg",
@@ -22982,7 +23257,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01989",
+    "id": "rcv-2026-02014",
     "material_id": "RM-044",
     "received_quantity": 115.24,
     "unit": "kg",
@@ -22993,7 +23268,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01990",
+    "id": "rcv-2026-02015",
     "material_id": "RM-044",
     "received_quantity": 122.98,
     "unit": "kg",
@@ -23004,7 +23279,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01991",
+    "id": "rcv-2026-02016",
     "material_id": "RM-044",
     "received_quantity": 134.82,
     "unit": "kg",
@@ -23015,7 +23290,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01992",
+    "id": "rcv-2026-02017",
     "material_id": "RM-044",
     "received_quantity": 126.14,
     "unit": "kg",
@@ -23026,7 +23301,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01993",
+    "id": "rcv-2026-02018",
     "material_id": "RM-044",
     "received_quantity": 114.99,
     "unit": "kg",
@@ -23037,7 +23312,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01994",
+    "id": "rcv-2026-02019",
     "material_id": "RM-044",
     "received_quantity": 124.56,
     "unit": "kg",
@@ -23048,7 +23323,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01995",
+    "id": "rcv-2026-02020",
     "material_id": "RM-044",
     "received_quantity": 134.95,
     "unit": "kg",
@@ -23059,7 +23334,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01996",
+    "id": "rcv-2026-02021",
     "material_id": "RM-044",
     "received_quantity": 124.56,
     "unit": "kg",
@@ -23070,7 +23345,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01997",
+    "id": "rcv-2026-02022",
     "material_id": "RM-044",
     "received_quantity": 114.99,
     "unit": "kg",
@@ -23081,7 +23356,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01998",
+    "id": "rcv-2026-02023",
     "material_id": "RM-044",
     "received_quantity": 126.14,
     "unit": "kg",
@@ -23092,7 +23367,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-01999",
+    "id": "rcv-2026-02024",
     "material_id": "RM-044",
     "received_quantity": 134.83,
     "unit": "kg",
@@ -23103,7 +23378,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02000",
+    "id": "rcv-2026-02025",
     "material_id": "RM-044",
     "received_quantity": 122.99,
     "unit": "kg",
@@ -23114,7 +23389,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02001",
+    "id": "rcv-2026-02026",
     "material_id": "RM-044",
     "received_quantity": 115.24,
     "unit": "kg",
@@ -23125,7 +23400,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02002",
+    "id": "rcv-2026-02027",
     "material_id": "RM-044",
     "received_quantity": 127.69,
     "unit": "kg",
@@ -23136,7 +23411,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02003",
+    "id": "rcv-2026-02028",
     "material_id": "RM-044",
     "received_quantity": 134.45,
     "unit": "kg",
@@ -23147,7 +23422,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02004",
+    "id": "rcv-2026-02029",
     "material_id": "RM-044",
     "received_quantity": 121.46,
     "unit": "kg",
@@ -23158,7 +23433,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02005",
+    "id": "rcv-2026-02030",
     "material_id": "RM-044",
     "received_quantity": 115.73,
     "unit": "kg",
@@ -23169,7 +23444,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02006",
+    "id": "rcv-2026-02031",
     "material_id": "RM-044",
     "received_quantity": 129.17,
     "unit": "kg",
@@ -23180,7 +23455,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02007",
+    "id": "rcv-2026-02032",
     "material_id": "RM-044",
     "received_quantity": 133.84,
     "unit": "kg",
@@ -23191,7 +23466,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02008",
+    "id": "rcv-2026-02033",
     "material_id": "RM-044",
     "received_quantity": 120.03,
     "unit": "kg",
@@ -23202,7 +23477,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02009",
+    "id": "rcv-2026-02034",
     "material_id": "RM-044",
     "received_quantity": 116.46,
     "unit": "kg",
@@ -23213,7 +23488,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02010",
+    "id": "rcv-2026-02035",
     "material_id": "RM-044",
     "received_quantity": 130.55,
     "unit": "kg",
@@ -23224,7 +23499,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02011",
+    "id": "rcv-2026-02036",
     "material_id": "RM-044",
     "received_quantity": 133.01,
     "unit": "kg",
@@ -23235,7 +23510,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02012",
+    "id": "rcv-2026-02037",
     "material_id": "RM-044",
     "received_quantity": 118.72,
     "unit": "kg",
@@ -23246,7 +23521,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02013",
+    "id": "rcv-2026-02038",
     "material_id": "RM-044",
     "received_quantity": 117.4,
     "unit": "kg",
@@ -23257,7 +23532,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02014",
+    "id": "rcv-2026-02039",
     "material_id": "RM-044",
     "received_quantity": 131.79,
     "unit": "kg",
@@ -23268,7 +23543,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02015",
+    "id": "rcv-2026-02040",
     "material_id": "RM-044",
     "received_quantity": 131.97,
     "unit": "kg",
@@ -23279,7 +23554,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02016",
+    "id": "rcv-2026-02041",
     "material_id": "RM-044",
     "received_quantity": 117.56,
     "unit": "kg",
@@ -23290,7 +23565,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02017",
+    "id": "rcv-2026-02042",
     "material_id": "RM-044",
     "received_quantity": 111.53,
     "unit": "kg",
@@ -23301,31 +23576,31 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02018",
+    "id": "rcv-2026-02043",
     "material_id": "RM-045",
-    "received_quantity": 104.84,
+    "received_quantity": 84.82,
     "unit": "kg",
-    "receipt_date": "2026-01-03",
+    "receipt_date": "2026-01-05",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-03T08:30:00Z"
+    "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02019",
+    "id": "rcv-2026-02044",
     "material_id": "RM-045",
-    "received_quantity": 93.76,
+    "received_quantity": 86.77,
     "unit": "kg",
-    "receipt_date": "2026-01-09",
+    "receipt_date": "2026-01-10",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-09T08:30:00Z"
+    "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02020",
+    "id": "rcv-2026-02045",
     "material_id": "RM-045",
-    "received_quantity": 91.83,
+    "received_quantity": 76.53,
     "unit": "kg",
     "receipt_date": "2026-01-15",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23334,53 +23609,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02021",
+    "id": "rcv-2026-02046",
     "material_id": "RM-045",
-    "received_quantity": 103.06,
+    "received_quantity": 79.22,
     "unit": "kg",
-    "receipt_date": "2026-01-21",
+    "receipt_date": "2026-01-20",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-21T08:30:00Z"
+    "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02022",
+    "id": "rcv-2026-02047",
     "material_id": "RM-045",
-    "received_quantity": 104.1,
+    "received_quantity": 88.24,
     "unit": "kg",
-    "receipt_date": "2026-01-27",
+    "receipt_date": "2026-01-25",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-01-27T08:30:00Z"
+    "created_at": "2026-01-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02023",
+    "id": "rcv-2026-02048",
     "material_id": "RM-045",
-    "received_quantity": 92.79,
+    "received_quantity": 81.46,
     "unit": "kg",
-    "receipt_date": "2026-02-02",
+    "receipt_date": "2026-01-30",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-02T08:30:00Z"
+    "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02024",
+    "id": "rcv-2026-02049",
     "material_id": "RM-045",
-    "received_quantity": 92.65,
+    "received_quantity": 75.51,
     "unit": "kg",
-    "receipt_date": "2026-02-08",
+    "receipt_date": "2026-02-04",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-08T08:30:00Z"
+    "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02025",
+    "id": "rcv-2026-02050",
     "material_id": "RM-045",
-    "received_quantity": 103.97,
+    "received_quantity": 85,
+    "unit": "kg",
+    "receipt_date": "2026-02-09",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-02-09T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02051",
+    "material_id": "RM-045",
+    "received_quantity": 86.64,
     "unit": "kg",
     "receipt_date": "2026-02-14",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23389,53 +23675,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02026",
+    "id": "rcv-2026-02052",
     "material_id": "RM-045",
-    "received_quantity": 103.21,
+    "received_quantity": 76.41,
     "unit": "kg",
-    "receipt_date": "2026-02-20",
+    "receipt_date": "2026-02-19",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-20T08:30:00Z"
+    "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02027",
+    "id": "rcv-2026-02053",
     "material_id": "RM-045",
-    "received_quantity": 91.95,
+    "received_quantity": 79.41,
     "unit": "kg",
-    "receipt_date": "2026-02-26",
+    "receipt_date": "2026-02-24",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-02-26T08:30:00Z"
+    "created_at": "2026-02-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02028",
+    "id": "rcv-2026-02054",
     "material_id": "RM-045",
-    "received_quantity": 93.6,
+    "received_quantity": 88.28,
     "unit": "kg",
-    "receipt_date": "2026-03-04",
+    "receipt_date": "2026-03-01",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-04T08:30:00Z"
+    "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02029",
+    "id": "rcv-2026-02055",
     "material_id": "RM-045",
-    "received_quantity": 104.73,
+    "received_quantity": 81.26,
     "unit": "kg",
-    "receipt_date": "2026-03-10",
+    "receipt_date": "2026-03-06",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-10T08:30:00Z"
+    "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02030",
+    "id": "rcv-2026-02056",
     "material_id": "RM-045",
-    "received_quantity": 102.2,
+    "received_quantity": 75.57,
+    "unit": "kg",
+    "receipt_date": "2026-03-11",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-03-11T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02057",
+    "material_id": "RM-045",
+    "received_quantity": 85.17,
     "unit": "kg",
     "receipt_date": "2026-03-16",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23444,53 +23741,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02031",
+    "id": "rcv-2026-02058",
     "material_id": "RM-045",
-    "received_quantity": 91.27,
+    "received_quantity": 86.5,
     "unit": "kg",
-    "receipt_date": "2026-03-22",
+    "receipt_date": "2026-03-21",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-22T08:30:00Z"
+    "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02032",
+    "id": "rcv-2026-02059",
     "material_id": "RM-045",
-    "received_quantity": 94.67,
+    "received_quantity": 76.3,
     "unit": "kg",
-    "receipt_date": "2026-03-28",
+    "receipt_date": "2026-03-26",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-03-28T08:30:00Z"
+    "created_at": "2026-03-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02033",
+    "id": "rcv-2026-02060",
     "material_id": "RM-045",
-    "received_quantity": 105.33,
+    "received_quantity": 79.59,
     "unit": "kg",
-    "receipt_date": "2026-04-03",
+    "receipt_date": "2026-03-31",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-03T08:30:00Z"
+    "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02034",
+    "id": "rcv-2026-02061",
     "material_id": "RM-045",
-    "received_quantity": 101.09,
+    "received_quantity": 88.3,
     "unit": "kg",
-    "receipt_date": "2026-04-09",
+    "receipt_date": "2026-04-05",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-09T08:30:00Z"
+    "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02035",
+    "id": "rcv-2026-02062",
     "material_id": "RM-045",
-    "received_quantity": 90.76,
+    "received_quantity": 81.06,
+    "unit": "kg",
+    "receipt_date": "2026-04-10",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-04-10T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02063",
+    "material_id": "RM-045",
+    "received_quantity": 75.64,
     "unit": "kg",
     "receipt_date": "2026-04-15",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23499,53 +23807,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02036",
+    "id": "rcv-2026-02064",
     "material_id": "RM-045",
-    "received_quantity": 95.82,
+    "received_quantity": 85.34,
     "unit": "kg",
-    "receipt_date": "2026-04-21",
+    "receipt_date": "2026-04-20",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-21T08:30:00Z"
+    "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02037",
+    "id": "rcv-2026-02065",
     "material_id": "RM-045",
-    "received_quantity": 105.74,
+    "received_quantity": 86.36,
     "unit": "kg",
-    "receipt_date": "2026-04-27",
+    "receipt_date": "2026-04-25",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-04-27T08:30:00Z"
+    "created_at": "2026-04-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02038",
+    "id": "rcv-2026-02066",
     "material_id": "RM-045",
-    "received_quantity": 99.9,
+    "received_quantity": 76.2,
     "unit": "kg",
-    "receipt_date": "2026-05-03",
+    "receipt_date": "2026-04-30",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-03T08:30:00Z"
+    "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02039",
+    "id": "rcv-2026-02067",
     "material_id": "RM-045",
-    "received_quantity": 90.44,
+    "received_quantity": 79.78,
     "unit": "kg",
-    "receipt_date": "2026-05-09",
+    "receipt_date": "2026-05-05",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-09T08:30:00Z"
+    "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02040",
+    "id": "rcv-2026-02068",
     "material_id": "RM-045",
-    "received_quantity": 97.03,
+    "received_quantity": 88.32,
+    "unit": "kg",
+    "receipt_date": "2026-05-10",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-05-10T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02069",
+    "material_id": "RM-045",
+    "received_quantity": 80.86,
     "unit": "kg",
     "receipt_date": "2026-05-15",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23554,53 +23873,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02041",
+    "id": "rcv-2026-02070",
     "material_id": "RM-045",
-    "received_quantity": 105.97,
+    "received_quantity": 75.71,
     "unit": "kg",
-    "receipt_date": "2026-05-21",
+    "receipt_date": "2026-05-20",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-21T08:30:00Z"
+    "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02042",
+    "id": "rcv-2026-02071",
     "material_id": "RM-045",
-    "received_quantity": 98.67,
+    "received_quantity": 85.5,
     "unit": "kg",
-    "receipt_date": "2026-05-27",
+    "receipt_date": "2026-05-25",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-05-27T08:30:00Z"
+    "created_at": "2026-05-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02043",
+    "id": "rcv-2026-02072",
     "material_id": "RM-045",
-    "received_quantity": 90.31,
+    "received_quantity": 86.22,
     "unit": "kg",
-    "receipt_date": "2026-06-02",
+    "receipt_date": "2026-05-30",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-02T08:30:00Z"
+    "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02044",
+    "id": "rcv-2026-02073",
     "material_id": "RM-045",
-    "received_quantity": 98.28,
+    "received_quantity": 76.1,
     "unit": "kg",
-    "receipt_date": "2026-06-08",
+    "receipt_date": "2026-06-04",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-08T08:30:00Z"
+    "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02045",
+    "id": "rcv-2026-02074",
     "material_id": "RM-045",
-    "received_quantity": 106,
+    "received_quantity": 79.97,
+    "unit": "kg",
+    "receipt_date": "2026-06-09",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-06-09T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02075",
+    "material_id": "RM-045",
+    "received_quantity": 88.34,
     "unit": "kg",
     "receipt_date": "2026-06-14",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23609,53 +23939,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02046",
+    "id": "rcv-2026-02076",
     "material_id": "RM-045",
-    "received_quantity": 97.43,
+    "received_quantity": 80.66,
     "unit": "kg",
-    "receipt_date": "2026-06-20",
+    "receipt_date": "2026-06-19",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-20T08:30:00Z"
+    "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02047",
+    "id": "rcv-2026-02077",
     "material_id": "RM-045",
-    "received_quantity": 90.38,
+    "received_quantity": 75.78,
     "unit": "kg",
-    "receipt_date": "2026-06-26",
+    "receipt_date": "2026-06-24",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-06-26T08:30:00Z"
+    "created_at": "2026-06-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02048",
+    "id": "rcv-2026-02078",
     "material_id": "RM-045",
-    "received_quantity": 99.51,
+    "received_quantity": 85.67,
     "unit": "kg",
-    "receipt_date": "2026-07-02",
+    "receipt_date": "2026-06-29",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-02T08:30:00Z"
+    "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02049",
+    "id": "rcv-2026-02079",
     "material_id": "RM-045",
-    "received_quantity": 105.84,
+    "received_quantity": 86.07,
     "unit": "kg",
-    "receipt_date": "2026-07-08",
+    "receipt_date": "2026-07-04",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-08T08:30:00Z"
+    "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02050",
+    "id": "rcv-2026-02080",
     "material_id": "RM-045",
-    "received_quantity": 96.2,
+    "received_quantity": 76,
+    "unit": "kg",
+    "receipt_date": "2026-07-09",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-07-09T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02081",
+    "material_id": "RM-045",
+    "received_quantity": 80.17,
     "unit": "kg",
     "receipt_date": "2026-07-14",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23664,53 +24005,64 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02051",
+    "id": "rcv-2026-02082",
     "material_id": "RM-045",
-    "received_quantity": 90.64,
+    "received_quantity": 88.34,
     "unit": "kg",
-    "receipt_date": "2026-07-20",
+    "receipt_date": "2026-07-19",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-20T08:30:00Z"
+    "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02052",
+    "id": "rcv-2026-02083",
     "material_id": "RM-045",
-    "received_quantity": 100.72,
+    "received_quantity": 80.47,
     "unit": "kg",
-    "receipt_date": "2026-07-26",
+    "receipt_date": "2026-07-24",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-07-26T08:30:00Z"
+    "created_at": "2026-07-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02053",
+    "id": "rcv-2026-02084",
     "material_id": "RM-045",
-    "received_quantity": 105.48,
+    "received_quantity": 75.86,
     "unit": "kg",
-    "receipt_date": "2026-08-01",
+    "receipt_date": "2026-07-29",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-01T08:30:00Z"
+    "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02054",
+    "id": "rcv-2026-02085",
     "material_id": "RM-045",
-    "received_quantity": 95.02,
+    "received_quantity": 85.83,
     "unit": "kg",
-    "receipt_date": "2026-08-07",
+    "receipt_date": "2026-08-03",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-07T08:30:00Z"
+    "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02055",
+    "id": "rcv-2026-02086",
     "material_id": "RM-045",
-    "received_quantity": 91.09,
+    "received_quantity": 85.91,
+    "unit": "kg",
+    "receipt_date": "2026-08-08",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-08-08T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02087",
+    "material_id": "RM-045",
+    "received_quantity": 75.91,
     "unit": "kg",
     "receipt_date": "2026-08-13",
     "supplier_name": "Quezon Agricultural Producers Coop",
@@ -23719,40 +24071,51 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02056",
+    "id": "rcv-2026-02088",
     "material_id": "RM-045",
-    "received_quantity": 101.86,
+    "received_quantity": 80.36,
     "unit": "kg",
-    "receipt_date": "2026-08-19",
+    "receipt_date": "2026-08-18",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-19T08:30:00Z"
+    "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02057",
+    "id": "rcv-2026-02089",
     "material_id": "RM-045",
-    "received_quantity": 104.94,
+    "received_quantity": 88.34,
     "unit": "kg",
-    "receipt_date": "2026-08-25",
+    "receipt_date": "2026-08-23",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-25T08:30:00Z"
+    "created_at": "2026-08-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02058",
+    "id": "rcv-2026-02090",
     "material_id": "RM-045",
-    "received_quantity": 75.17,
+    "received_quantity": 80.27,
     "unit": "kg",
-    "receipt_date": "2026-08-31",
+    "receipt_date": "2026-08-28",
     "supplier_name": "Quezon Agricultural Producers Coop",
     "received_by": "Warehouse Inbound Team",
     "remarks": "Authorized supplier stock replenishment",
-    "created_at": "2026-08-31T08:30:00Z"
+    "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02059",
+    "id": "rcv-2026-02091",
+    "material_id": "RM-045",
+    "received_quantity": 75.95,
+    "unit": "kg",
+    "receipt_date": "2026-09-02",
+    "supplier_name": "Quezon Agricultural Producers Coop",
+    "received_by": "Warehouse Inbound Team",
+    "remarks": "Authorized supplier stock replenishment",
+    "created_at": "2026-09-02T08:30:00Z"
+  },
+  {
+    "id": "rcv-2026-02092",
     "material_id": "RM-046",
     "received_quantity": 68.28,
     "unit": "kg",
@@ -23763,7 +24126,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02060",
+    "id": "rcv-2026-02093",
     "material_id": "RM-046",
     "received_quantity": 69.25,
     "unit": "kg",
@@ -23774,7 +24137,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02061",
+    "id": "rcv-2026-02094",
     "material_id": "RM-046",
     "received_quantity": 61.09,
     "unit": "kg",
@@ -23785,7 +24148,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02062",
+    "id": "rcv-2026-02095",
     "material_id": "RM-046",
     "received_quantity": 63.82,
     "unit": "kg",
@@ -23796,7 +24159,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02063",
+    "id": "rcv-2026-02096",
     "material_id": "RM-046",
     "received_quantity": 70.74,
     "unit": "kg",
@@ -23807,7 +24170,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02064",
+    "id": "rcv-2026-02097",
     "material_id": "RM-046",
     "received_quantity": 64.87,
     "unit": "kg",
@@ -23818,7 +24181,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02065",
+    "id": "rcv-2026-02098",
     "material_id": "RM-046",
     "received_quantity": 60.61,
     "unit": "kg",
@@ -23829,7 +24192,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02066",
+    "id": "rcv-2026-02099",
     "material_id": "RM-046",
     "received_quantity": 68.41,
     "unit": "kg",
@@ -23840,7 +24203,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02067",
+    "id": "rcv-2026-02100",
     "material_id": "RM-046",
     "received_quantity": 69.13,
     "unit": "kg",
@@ -23851,7 +24214,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02068",
+    "id": "rcv-2026-02101",
     "material_id": "RM-046",
     "received_quantity": 61,
     "unit": "kg",
@@ -23862,7 +24225,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02069",
+    "id": "rcv-2026-02102",
     "material_id": "RM-046",
     "received_quantity": 63.97,
     "unit": "kg",
@@ -23873,7 +24236,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02070",
+    "id": "rcv-2026-02103",
     "material_id": "RM-046",
     "received_quantity": 70.75,
     "unit": "kg",
@@ -23884,7 +24247,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02071",
+    "id": "rcv-2026-02104",
     "material_id": "RM-046",
     "received_quantity": 64.71,
     "unit": "kg",
@@ -23895,7 +24258,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02072",
+    "id": "rcv-2026-02105",
     "material_id": "RM-046",
     "received_quantity": 60.67,
     "unit": "kg",
@@ -23906,7 +24269,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02073",
+    "id": "rcv-2026-02106",
     "material_id": "RM-046",
     "received_quantity": 68.55,
     "unit": "kg",
@@ -23917,7 +24280,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02074",
+    "id": "rcv-2026-02107",
     "material_id": "RM-046",
     "received_quantity": 69.01,
     "unit": "kg",
@@ -23928,7 +24291,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02075",
+    "id": "rcv-2026-02108",
     "material_id": "RM-046",
     "received_quantity": 60.92,
     "unit": "kg",
@@ -23939,7 +24302,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02076",
+    "id": "rcv-2026-02109",
     "material_id": "RM-046",
     "received_quantity": 64.13,
     "unit": "kg",
@@ -23950,7 +24313,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02077",
+    "id": "rcv-2026-02110",
     "material_id": "RM-046",
     "received_quantity": 70.76,
     "unit": "kg",
@@ -23961,7 +24324,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02078",
+    "id": "rcv-2026-02111",
     "material_id": "RM-046",
     "received_quantity": 64.55,
     "unit": "kg",
@@ -23972,7 +24335,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02079",
+    "id": "rcv-2026-02112",
     "material_id": "RM-046",
     "received_quantity": 60.73,
     "unit": "kg",
@@ -23983,7 +24346,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02080",
+    "id": "rcv-2026-02113",
     "material_id": "RM-046",
     "received_quantity": 68.68,
     "unit": "kg",
@@ -23994,7 +24357,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02081",
+    "id": "rcv-2026-02114",
     "material_id": "RM-046",
     "received_quantity": 68.89,
     "unit": "kg",
@@ -24005,7 +24368,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02082",
+    "id": "rcv-2026-02115",
     "material_id": "RM-046",
     "received_quantity": 60.85,
     "unit": "kg",
@@ -24016,7 +24379,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02083",
+    "id": "rcv-2026-02116",
     "material_id": "RM-046",
     "received_quantity": 64.28,
     "unit": "kg",
@@ -24027,7 +24390,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02084",
+    "id": "rcv-2026-02117",
     "material_id": "RM-046",
     "received_quantity": 70.77,
     "unit": "kg",
@@ -24038,7 +24401,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02085",
+    "id": "rcv-2026-02118",
     "material_id": "RM-046",
     "received_quantity": 64.39,
     "unit": "kg",
@@ -24049,7 +24412,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02086",
+    "id": "rcv-2026-02119",
     "material_id": "RM-046",
     "received_quantity": 60.8,
     "unit": "kg",
@@ -24060,7 +24423,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02087",
+    "id": "rcv-2026-02120",
     "material_id": "RM-046",
     "received_quantity": 68.8,
     "unit": "kg",
@@ -24071,7 +24434,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02088",
+    "id": "rcv-2026-02121",
     "material_id": "RM-046",
     "received_quantity": 68.77,
     "unit": "kg",
@@ -24082,7 +24445,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02089",
+    "id": "rcv-2026-02122",
     "material_id": "RM-046",
     "received_quantity": 60.78,
     "unit": "kg",
@@ -24093,7 +24456,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02090",
+    "id": "rcv-2026-02123",
     "material_id": "RM-046",
     "received_quantity": 64.44,
     "unit": "kg",
@@ -24104,7 +24467,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02091",
+    "id": "rcv-2026-02124",
     "material_id": "RM-046",
     "received_quantity": 70.77,
     "unit": "kg",
@@ -24115,7 +24478,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02092",
+    "id": "rcv-2026-02125",
     "material_id": "RM-046",
     "received_quantity": 64.24,
     "unit": "kg",
@@ -24126,7 +24489,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02093",
+    "id": "rcv-2026-02126",
     "material_id": "RM-046",
     "received_quantity": 60.87,
     "unit": "kg",
@@ -24137,7 +24500,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02094",
+    "id": "rcv-2026-02127",
     "material_id": "RM-046",
     "received_quantity": 68.93,
     "unit": "kg",
@@ -24148,7 +24511,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02095",
+    "id": "rcv-2026-02128",
     "material_id": "RM-046",
     "received_quantity": 68.64,
     "unit": "kg",
@@ -24159,7 +24522,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02096",
+    "id": "rcv-2026-02129",
     "material_id": "RM-046",
     "received_quantity": 60.71,
     "unit": "kg",
@@ -24170,7 +24533,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02097",
+    "id": "rcv-2026-02130",
     "material_id": "RM-046",
     "received_quantity": 64.59,
     "unit": "kg",
@@ -24181,7 +24544,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02098",
+    "id": "rcv-2026-02131",
     "material_id": "RM-046",
     "received_quantity": 70.76,
     "unit": "kg",
@@ -24192,7 +24555,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02099",
+    "id": "rcv-2026-02132",
     "material_id": "RM-046",
     "received_quantity": 64.08,
     "unit": "kg",
@@ -24203,7 +24566,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02100",
+    "id": "rcv-2026-02133",
     "material_id": "RM-046",
     "received_quantity": 60.94,
     "unit": "kg",
@@ -24214,7 +24577,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02101",
+    "id": "rcv-2026-02134",
     "material_id": "RM-046",
     "received_quantity": 69.05,
     "unit": "kg",
@@ -24225,7 +24588,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02102",
+    "id": "rcv-2026-02135",
     "material_id": "RM-046",
     "received_quantity": 68.51,
     "unit": "kg",
@@ -24236,7 +24599,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02103",
+    "id": "rcv-2026-02136",
     "material_id": "RM-046",
     "received_quantity": 60.65,
     "unit": "kg",
@@ -24247,7 +24610,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02104",
+    "id": "rcv-2026-02137",
     "material_id": "RM-046",
     "received_quantity": 64.75,
     "unit": "kg",
@@ -24258,7 +24621,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02105",
+    "id": "rcv-2026-02138",
     "material_id": "RM-046",
     "received_quantity": 70.75,
     "unit": "kg",
@@ -24269,7 +24632,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02106",
+    "id": "rcv-2026-02139",
     "material_id": "RM-046",
     "received_quantity": 63.93,
     "unit": "kg",
@@ -24280,7 +24643,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02107",
+    "id": "rcv-2026-02140",
     "material_id": "RM-046",
     "received_quantity": 61.02,
     "unit": "kg",
@@ -24291,7 +24654,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02108",
+    "id": "rcv-2026-02141",
     "material_id": "RM-047",
     "received_quantity": 80.77,
     "unit": "kg",
@@ -24302,7 +24665,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02109",
+    "id": "rcv-2026-02142",
     "material_id": "RM-047",
     "received_quantity": 71.32,
     "unit": "kg",
@@ -24313,7 +24676,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02110",
+    "id": "rcv-2026-02143",
     "material_id": "RM-047",
     "received_quantity": 75.18,
     "unit": "kg",
@@ -24324,7 +24687,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02111",
+    "id": "rcv-2026-02144",
     "material_id": "RM-047",
     "received_quantity": 82.88,
     "unit": "kg",
@@ -24335,7 +24698,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02112",
+    "id": "rcv-2026-02145",
     "material_id": "RM-047",
     "received_quantity": 75.53,
     "unit": "kg",
@@ -24346,7 +24709,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02113",
+    "id": "rcv-2026-02146",
     "material_id": "RM-047",
     "received_quantity": 71.16,
     "unit": "kg",
@@ -24357,7 +24720,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02114",
+    "id": "rcv-2026-02147",
     "material_id": "RM-047",
     "received_quantity": 80.5,
     "unit": "kg",
@@ -24368,7 +24731,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02115",
+    "id": "rcv-2026-02148",
     "material_id": "RM-047",
     "received_quantity": 80.63,
     "unit": "kg",
@@ -24379,7 +24742,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02116",
+    "id": "rcv-2026-02149",
     "material_id": "RM-047",
     "received_quantity": 71.24,
     "unit": "kg",
@@ -24390,7 +24753,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02117",
+    "id": "rcv-2026-02150",
     "material_id": "RM-047",
     "received_quantity": 75.36,
     "unit": "kg",
@@ -24401,7 +24764,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02118",
+    "id": "rcv-2026-02151",
     "material_id": "RM-047",
     "received_quantity": 82.89,
     "unit": "kg",
@@ -24412,7 +24775,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02119",
+    "id": "rcv-2026-02152",
     "material_id": "RM-047",
     "received_quantity": 75.35,
     "unit": "kg",
@@ -24423,7 +24786,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02120",
+    "id": "rcv-2026-02153",
     "material_id": "RM-047",
     "received_quantity": 71.24,
     "unit": "kg",
@@ -24434,7 +24797,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02121",
+    "id": "rcv-2026-02154",
     "material_id": "RM-047",
     "received_quantity": 80.65,
     "unit": "kg",
@@ -24445,7 +24808,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02122",
+    "id": "rcv-2026-02155",
     "material_id": "RM-047",
     "received_quantity": 80.48,
     "unit": "kg",
@@ -24456,7 +24819,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02123",
+    "id": "rcv-2026-02156",
     "material_id": "RM-047",
     "received_quantity": 71.16,
     "unit": "kg",
@@ -24467,7 +24830,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02124",
+    "id": "rcv-2026-02157",
     "material_id": "RM-047",
     "received_quantity": 75.55,
     "unit": "kg",
@@ -24478,7 +24841,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02125",
+    "id": "rcv-2026-02158",
     "material_id": "RM-047",
     "received_quantity": 82.88,
     "unit": "kg",
@@ -24489,7 +24852,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02126",
+    "id": "rcv-2026-02159",
     "material_id": "RM-047",
     "received_quantity": 75.16,
     "unit": "kg",
@@ -24500,7 +24863,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02127",
+    "id": "rcv-2026-02160",
     "material_id": "RM-047",
     "received_quantity": 71.33,
     "unit": "kg",
@@ -24511,7 +24874,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02128",
+    "id": "rcv-2026-02161",
     "material_id": "RM-047",
     "received_quantity": 80.79,
     "unit": "kg",
@@ -24522,7 +24885,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02129",
+    "id": "rcv-2026-02162",
     "material_id": "RM-047",
     "received_quantity": 80.33,
     "unit": "kg",
@@ -24533,7 +24896,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02130",
+    "id": "rcv-2026-02163",
     "material_id": "RM-047",
     "received_quantity": 71.08,
     "unit": "kg",
@@ -24544,7 +24907,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02131",
+    "id": "rcv-2026-02164",
     "material_id": "RM-047",
     "received_quantity": 75.73,
     "unit": "kg",
@@ -24555,7 +24918,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02132",
+    "id": "rcv-2026-02165",
     "material_id": "RM-047",
     "received_quantity": 82.88,
     "unit": "kg",
@@ -24566,7 +24929,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02133",
+    "id": "rcv-2026-02166",
     "material_id": "RM-047",
     "received_quantity": 74.98,
     "unit": "kg",
@@ -24577,7 +24940,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02134",
+    "id": "rcv-2026-02167",
     "material_id": "RM-047",
     "received_quantity": 71.42,
     "unit": "kg",
@@ -24588,7 +24951,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02135",
+    "id": "rcv-2026-02168",
     "material_id": "RM-047",
     "received_quantity": 80.93,
     "unit": "kg",
@@ -24599,7 +24962,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02136",
+    "id": "rcv-2026-02169",
     "material_id": "RM-047",
     "received_quantity": 80.18,
     "unit": "kg",
@@ -24610,7 +24973,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02137",
+    "id": "rcv-2026-02170",
     "material_id": "RM-047",
     "received_quantity": 71.01,
     "unit": "kg",
@@ -24621,7 +24984,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02138",
+    "id": "rcv-2026-02171",
     "material_id": "RM-047",
     "received_quantity": 75.92,
     "unit": "kg",
@@ -24632,7 +24995,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02139",
+    "id": "rcv-2026-02172",
     "material_id": "RM-047",
     "received_quantity": 82.86,
     "unit": "kg",
@@ -24643,7 +25006,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02140",
+    "id": "rcv-2026-02173",
     "material_id": "RM-047",
     "received_quantity": 74.81,
     "unit": "kg",
@@ -24654,7 +25017,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02141",
+    "id": "rcv-2026-02174",
     "material_id": "RM-047",
     "received_quantity": 71.51,
     "unit": "kg",
@@ -24665,7 +25028,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02142",
+    "id": "rcv-2026-02175",
     "material_id": "RM-047",
     "received_quantity": 81.06,
     "unit": "kg",
@@ -24676,7 +25039,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02143",
+    "id": "rcv-2026-02176",
     "material_id": "RM-047",
     "received_quantity": 80.02,
     "unit": "kg",
@@ -24687,7 +25050,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02144",
+    "id": "rcv-2026-02177",
     "material_id": "RM-047",
     "received_quantity": 70.95,
     "unit": "kg",
@@ -24698,7 +25061,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02145",
+    "id": "rcv-2026-02178",
     "material_id": "RM-047",
     "received_quantity": 76.1,
     "unit": "kg",
@@ -24709,7 +25072,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02146",
+    "id": "rcv-2026-02179",
     "material_id": "RM-047",
     "received_quantity": 82.84,
     "unit": "kg",
@@ -24720,7 +25083,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02147",
+    "id": "rcv-2026-02180",
     "material_id": "RM-047",
     "received_quantity": 74.63,
     "unit": "kg",
@@ -24731,7 +25094,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02148",
+    "id": "rcv-2026-02181",
     "material_id": "RM-047",
     "received_quantity": 71.62,
     "unit": "kg",
@@ -24742,7 +25105,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02149",
+    "id": "rcv-2026-02182",
     "material_id": "RM-047",
     "received_quantity": 81.19,
     "unit": "kg",
@@ -24753,7 +25116,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02150",
+    "id": "rcv-2026-02183",
     "material_id": "RM-047",
     "received_quantity": 79.86,
     "unit": "kg",
@@ -24764,7 +25127,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02151",
+    "id": "rcv-2026-02184",
     "material_id": "RM-047",
     "received_quantity": 70.89,
     "unit": "kg",
@@ -24775,7 +25138,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02152",
+    "id": "rcv-2026-02185",
     "material_id": "RM-047",
     "received_quantity": 76.29,
     "unit": "kg",
@@ -24786,7 +25149,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02153",
+    "id": "rcv-2026-02186",
     "material_id": "RM-047",
     "received_quantity": 82.81,
     "unit": "kg",
@@ -24797,7 +25160,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02154",
+    "id": "rcv-2026-02187",
     "material_id": "RM-047",
     "received_quantity": 74.45,
     "unit": "kg",
@@ -24808,7 +25171,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02155",
+    "id": "rcv-2026-02188",
     "material_id": "RM-047",
     "received_quantity": 71.72,
     "unit": "kg",
@@ -24819,7 +25182,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02156",
+    "id": "rcv-2026-02189",
     "material_id": "RM-047",
     "received_quantity": 80.51,
     "unit": "kg",
@@ -24830,7 +25193,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02157",
+    "id": "rcv-2026-02190",
     "material_id": "RM-048",
     "received_quantity": 57.21,
     "unit": "kg",
@@ -24841,7 +25204,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02158",
+    "id": "rcv-2026-02191",
     "material_id": "RM-048",
     "received_quantity": 51.43,
     "unit": "kg",
@@ -24852,7 +25215,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02159",
+    "id": "rcv-2026-02192",
     "material_id": "RM-048",
     "received_quantity": 54.47,
     "unit": "kg",
@@ -24863,7 +25226,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02160",
+    "id": "rcv-2026-02193",
     "material_id": "RM-048",
     "received_quantity": 60,
     "unit": "kg",
@@ -24874,7 +25237,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02161",
+    "id": "rcv-2026-02194",
     "material_id": "RM-048",
     "received_quantity": 56.53,
     "unit": "kg",
@@ -24885,7 +25248,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02162",
+    "id": "rcv-2026-02195",
     "material_id": "RM-048",
     "received_quantity": 51.27,
     "unit": "kg",
@@ -24896,7 +25259,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02163",
+    "id": "rcv-2026-02196",
     "material_id": "RM-048",
     "received_quantity": 55.16,
     "unit": "kg",
@@ -24907,7 +25270,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02164",
+    "id": "rcv-2026-02197",
     "material_id": "RM-048",
     "received_quantity": 60.11,
     "unit": "kg",
@@ -24918,7 +25281,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02165",
+    "id": "rcv-2026-02198",
     "material_id": "RM-048",
     "received_quantity": 55.83,
     "unit": "kg",
@@ -24929,7 +25292,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02166",
+    "id": "rcv-2026-02199",
     "material_id": "RM-048",
     "received_quantity": 51.22,
     "unit": "kg",
@@ -24940,7 +25303,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02167",
+    "id": "rcv-2026-02200",
     "material_id": "RM-048",
     "received_quantity": 55.87,
     "unit": "kg",
@@ -24951,7 +25314,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02168",
+    "id": "rcv-2026-02201",
     "material_id": "RM-048",
     "received_quantity": 60.11,
     "unit": "kg",
@@ -24962,7 +25325,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02169",
+    "id": "rcv-2026-02202",
     "material_id": "RM-048",
     "received_quantity": 55.12,
     "unit": "kg",
@@ -24973,7 +25336,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02170",
+    "id": "rcv-2026-02203",
     "material_id": "RM-048",
     "received_quantity": 51.28,
     "unit": "kg",
@@ -24984,7 +25347,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02171",
+    "id": "rcv-2026-02204",
     "material_id": "RM-048",
     "received_quantity": 56.57,
     "unit": "kg",
@@ -24995,7 +25358,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02172",
+    "id": "rcv-2026-02205",
     "material_id": "RM-048",
     "received_quantity": 60,
     "unit": "kg",
@@ -25006,7 +25369,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02173",
+    "id": "rcv-2026-02206",
     "material_id": "RM-048",
     "received_quantity": 54.43,
     "unit": "kg",
@@ -25017,7 +25380,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02174",
+    "id": "rcv-2026-02207",
     "material_id": "RM-048",
     "received_quantity": 51.45,
     "unit": "kg",
@@ -25028,7 +25391,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02175",
+    "id": "rcv-2026-02208",
     "material_id": "RM-048",
     "received_quantity": 57.24,
     "unit": "kg",
@@ -25039,7 +25402,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02176",
+    "id": "rcv-2026-02209",
     "material_id": "RM-048",
     "received_quantity": 59.77,
     "unit": "kg",
@@ -25050,7 +25413,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02177",
+    "id": "rcv-2026-02210",
     "material_id": "RM-048",
     "received_quantity": 53.77,
     "unit": "kg",
@@ -25061,7 +25424,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02178",
+    "id": "rcv-2026-02211",
     "material_id": "RM-048",
     "received_quantity": 51.72,
     "unit": "kg",
@@ -25072,7 +25435,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02179",
+    "id": "rcv-2026-02212",
     "material_id": "RM-048",
     "received_quantity": 57.88,
     "unit": "kg",
@@ -25083,7 +25446,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02180",
+    "id": "rcv-2026-02213",
     "material_id": "RM-048",
     "received_quantity": 59.45,
     "unit": "kg",
@@ -25094,7 +25457,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02181",
+    "id": "rcv-2026-02214",
     "material_id": "RM-048",
     "received_quantity": 53.16,
     "unit": "kg",
@@ -25105,7 +25468,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02182",
+    "id": "rcv-2026-02215",
     "material_id": "RM-048",
     "received_quantity": 52.1,
     "unit": "kg",
@@ -25116,7 +25479,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02183",
+    "id": "rcv-2026-02216",
     "material_id": "RM-048",
     "received_quantity": 58.47,
     "unit": "kg",
@@ -25127,7 +25490,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02184",
+    "id": "rcv-2026-02217",
     "material_id": "RM-048",
     "received_quantity": 59.03,
     "unit": "kg",
@@ -25138,7 +25501,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02185",
+    "id": "rcv-2026-02218",
     "material_id": "RM-048",
     "received_quantity": 52.61,
     "unit": "kg",
@@ -25149,7 +25512,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02186",
+    "id": "rcv-2026-02219",
     "material_id": "RM-048",
     "received_quantity": 52.56,
     "unit": "kg",
@@ -25160,7 +25523,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02187",
+    "id": "rcv-2026-02220",
     "material_id": "RM-048",
     "received_quantity": 58.98,
     "unit": "kg",
@@ -25171,7 +25534,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02188",
+    "id": "rcv-2026-02221",
     "material_id": "RM-048",
     "received_quantity": 58.52,
     "unit": "kg",
@@ -25182,7 +25545,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02189",
+    "id": "rcv-2026-02222",
     "material_id": "RM-048",
     "received_quantity": 52.14,
     "unit": "kg",
@@ -25193,7 +25556,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02190",
+    "id": "rcv-2026-02223",
     "material_id": "RM-048",
     "received_quantity": 53.1,
     "unit": "kg",
@@ -25204,7 +25567,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02191",
+    "id": "rcv-2026-02224",
     "material_id": "RM-048",
     "received_quantity": 59.41,
     "unit": "kg",
@@ -25215,7 +25578,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02192",
+    "id": "rcv-2026-02225",
     "material_id": "RM-048",
     "received_quantity": 57.94,
     "unit": "kg",
@@ -25226,7 +25589,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02193",
+    "id": "rcv-2026-02226",
     "material_id": "RM-048",
     "received_quantity": 51.75,
     "unit": "kg",
@@ -25237,7 +25600,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02194",
+    "id": "rcv-2026-02227",
     "material_id": "RM-048",
     "received_quantity": 53.71,
     "unit": "kg",
@@ -25248,7 +25611,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02195",
+    "id": "rcv-2026-02228",
     "material_id": "RM-048",
     "received_quantity": 59.74,
     "unit": "kg",
@@ -25259,7 +25622,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02196",
+    "id": "rcv-2026-02229",
     "material_id": "RM-048",
     "received_quantity": 57.31,
     "unit": "kg",
@@ -25270,7 +25633,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02197",
+    "id": "rcv-2026-02230",
     "material_id": "RM-049",
     "received_quantity": 189.25,
     "unit": "kg",
@@ -25281,7 +25644,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02198",
+    "id": "rcv-2026-02231",
     "material_id": "RM-049",
     "received_quantity": 206.1,
     "unit": "kg",
@@ -25292,7 +25655,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02199",
+    "id": "rcv-2026-02232",
     "material_id": "RM-049",
     "received_quantity": 185.74,
     "unit": "kg",
@@ -25303,7 +25666,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02200",
+    "id": "rcv-2026-02233",
     "material_id": "RM-049",
     "received_quantity": 178.12,
     "unit": "kg",
@@ -25314,7 +25677,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02201",
+    "id": "rcv-2026-02234",
     "material_id": "RM-049",
     "received_quantity": 201.94,
     "unit": "kg",
@@ -25325,7 +25688,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02202",
+    "id": "rcv-2026-02235",
     "material_id": "RM-049",
     "received_quantity": 198.76,
     "unit": "kg",
@@ -25336,7 +25699,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02203",
+    "id": "rcv-2026-02236",
     "material_id": "RM-049",
     "received_quantity": 176.38,
     "unit": "kg",
@@ -25347,7 +25710,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02204",
+    "id": "rcv-2026-02237",
     "material_id": "RM-049",
     "received_quantity": 189.72,
     "unit": "kg",
@@ -25358,7 +25721,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02205",
+    "id": "rcv-2026-02238",
     "material_id": "RM-049",
     "received_quantity": 206.04,
     "unit": "kg",
@@ -25369,7 +25732,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02206",
+    "id": "rcv-2026-02239",
     "material_id": "RM-049",
     "received_quantity": 185.31,
     "unit": "kg",
@@ -25380,7 +25743,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02207",
+    "id": "rcv-2026-02240",
     "material_id": "RM-049",
     "received_quantity": 178.38,
     "unit": "kg",
@@ -25391,7 +25754,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02208",
+    "id": "rcv-2026-02241",
     "material_id": "RM-049",
     "received_quantity": 202.26,
     "unit": "kg",
@@ -25402,7 +25765,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02209",
+    "id": "rcv-2026-02242",
     "material_id": "RM-049",
     "received_quantity": 198.35,
     "unit": "kg",
@@ -25413,7 +25776,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02210",
+    "id": "rcv-2026-02243",
     "material_id": "RM-049",
     "received_quantity": 176.25,
     "unit": "kg",
@@ -25424,7 +25787,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02211",
+    "id": "rcv-2026-02244",
     "material_id": "RM-049",
     "received_quantity": 190.18,
     "unit": "kg",
@@ -25435,7 +25798,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02212",
+    "id": "rcv-2026-02245",
     "material_id": "RM-049",
     "received_quantity": 205.97,
     "unit": "kg",
@@ -25446,7 +25809,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02213",
+    "id": "rcv-2026-02246",
     "material_id": "RM-049",
     "received_quantity": 184.87,
     "unit": "kg",
@@ -25457,7 +25820,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02214",
+    "id": "rcv-2026-02247",
     "material_id": "RM-049",
     "received_quantity": 178.65,
     "unit": "kg",
@@ -25468,7 +25831,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02215",
+    "id": "rcv-2026-02248",
     "material_id": "RM-049",
     "received_quantity": 202.57,
     "unit": "kg",
@@ -25479,7 +25842,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02216",
+    "id": "rcv-2026-02249",
     "material_id": "RM-049",
     "received_quantity": 197.94,
     "unit": "kg",
@@ -25490,7 +25853,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02217",
+    "id": "rcv-2026-02250",
     "material_id": "RM-049",
     "received_quantity": 176.13,
     "unit": "kg",
@@ -25501,7 +25864,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02218",
+    "id": "rcv-2026-02251",
     "material_id": "RM-049",
     "received_quantity": 190.65,
     "unit": "kg",
@@ -25512,7 +25875,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02219",
+    "id": "rcv-2026-02252",
     "material_id": "RM-049",
     "received_quantity": 205.88,
     "unit": "kg",
@@ -25523,7 +25886,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02220",
+    "id": "rcv-2026-02253",
     "material_id": "RM-049",
     "received_quantity": 184.45,
     "unit": "kg",
@@ -25534,7 +25897,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02221",
+    "id": "rcv-2026-02254",
     "material_id": "RM-049",
     "received_quantity": 178.94,
     "unit": "kg",
@@ -25545,7 +25908,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02222",
+    "id": "rcv-2026-02255",
     "material_id": "RM-049",
     "received_quantity": 202.86,
     "unit": "kg",
@@ -25556,7 +25919,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02223",
+    "id": "rcv-2026-02256",
     "material_id": "RM-049",
     "received_quantity": 197.52,
     "unit": "kg",
@@ -25567,7 +25930,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02224",
+    "id": "rcv-2026-02257",
     "material_id": "RM-049",
     "received_quantity": 176.02,
     "unit": "kg",
@@ -25578,7 +25941,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02225",
+    "id": "rcv-2026-02258",
     "material_id": "RM-049",
     "received_quantity": 191.11,
     "unit": "kg",
@@ -25589,7 +25952,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02226",
+    "id": "rcv-2026-02259",
     "material_id": "RM-049",
     "received_quantity": 205.77,
     "unit": "kg",
@@ -25600,7 +25963,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02227",
+    "id": "rcv-2026-02260",
     "material_id": "RM-049",
     "received_quantity": 184.03,
     "unit": "kg",
@@ -25611,7 +25974,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02228",
+    "id": "rcv-2026-02261",
     "material_id": "RM-049",
     "received_quantity": 179.23,
     "unit": "kg",
@@ -25622,7 +25985,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02229",
+    "id": "rcv-2026-02262",
     "material_id": "RM-049",
     "received_quantity": 203.15,
     "unit": "kg",
@@ -25633,7 +25996,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02230",
+    "id": "rcv-2026-02263",
     "material_id": "RM-049",
     "received_quantity": 197.1,
     "unit": "kg",
@@ -25644,7 +26007,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02231",
+    "id": "rcv-2026-02264",
     "material_id": "RM-049",
     "received_quantity": 175.93,
     "unit": "kg",
@@ -25655,7 +26018,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02232",
+    "id": "rcv-2026-02265",
     "material_id": "RM-049",
     "received_quantity": 191.58,
     "unit": "kg",
@@ -25666,7 +26029,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02233",
+    "id": "rcv-2026-02266",
     "material_id": "RM-049",
     "received_quantity": 205.65,
     "unit": "kg",
@@ -25677,7 +26040,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02234",
+    "id": "rcv-2026-02267",
     "material_id": "RM-049",
     "received_quantity": 183.62,
     "unit": "kg",
@@ -25688,7 +26051,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02235",
+    "id": "rcv-2026-02268",
     "material_id": "RM-049",
     "received_quantity": 179.54,
     "unit": "kg",
@@ -25699,7 +26062,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02236",
+    "id": "rcv-2026-02269",
     "material_id": "RM-049",
     "received_quantity": 203.42,
     "unit": "kg",
@@ -25710,7 +26073,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02237",
+    "id": "rcv-2026-02270",
     "material_id": "RM-049",
     "received_quantity": 196.67,
     "unit": "kg",
@@ -25721,7 +26084,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02238",
+    "id": "rcv-2026-02271",
     "material_id": "RM-049",
     "received_quantity": 175.85,
     "unit": "kg",
@@ -25732,7 +26095,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02239",
+    "id": "rcv-2026-02272",
     "material_id": "RM-049",
     "received_quantity": 192.04,
     "unit": "kg",
@@ -25743,7 +26106,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02240",
+    "id": "rcv-2026-02273",
     "material_id": "RM-049",
     "received_quantity": 205.52,
     "unit": "kg",
@@ -25754,7 +26117,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02241",
+    "id": "rcv-2026-02274",
     "material_id": "RM-049",
     "received_quantity": 183.21,
     "unit": "kg",
@@ -25765,7 +26128,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02242",
+    "id": "rcv-2026-02275",
     "material_id": "RM-049",
     "received_quantity": 179.85,
     "unit": "kg",
@@ -25776,7 +26139,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02243",
+    "id": "rcv-2026-02276",
     "material_id": "RM-049",
     "received_quantity": 203.69,
     "unit": "kg",
@@ -25787,7 +26150,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02244",
+    "id": "rcv-2026-02277",
     "material_id": "RM-049",
     "received_quantity": 196.24,
     "unit": "kg",
@@ -25798,7 +26161,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02245",
+    "id": "rcv-2026-02278",
     "material_id": "RM-049",
     "received_quantity": 175.78,
     "unit": "kg",
@@ -25809,7 +26172,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02246",
+    "id": "rcv-2026-02279",
     "material_id": "RM-050",
     "received_quantity": 236.48,
     "unit": "kg",
@@ -25820,7 +26183,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02247",
+    "id": "rcv-2026-02280",
     "material_id": "RM-050",
     "received_quantity": 212.09,
     "unit": "kg",
@@ -25831,7 +26194,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02248",
+    "id": "rcv-2026-02281",
     "material_id": "RM-050",
     "received_quantity": 205.29,
     "unit": "kg",
@@ -25842,7 +26205,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02249",
+    "id": "rcv-2026-02282",
     "material_id": "RM-050",
     "received_quantity": 232.76,
     "unit": "kg",
@@ -25853,7 +26216,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02250",
+    "id": "rcv-2026-02283",
     "material_id": "RM-050",
     "received_quantity": 227.11,
     "unit": "kg",
@@ -25864,7 +26227,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02251",
+    "id": "rcv-2026-02284",
     "material_id": "RM-050",
     "received_quantity": 202.2,
     "unit": "kg",
@@ -25875,7 +26238,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02252",
+    "id": "rcv-2026-02285",
     "material_id": "RM-050",
     "received_quantity": 219.14,
     "unit": "kg",
@@ -25886,7 +26249,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02253",
+    "id": "rcv-2026-02286",
     "material_id": "RM-050",
     "received_quantity": 236.37,
     "unit": "kg",
@@ -25897,7 +26260,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02254",
+    "id": "rcv-2026-02287",
     "material_id": "RM-050",
     "received_quantity": 211.61,
     "unit": "kg",
@@ -25908,7 +26271,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02255",
+    "id": "rcv-2026-02288",
     "material_id": "RM-050",
     "received_quantity": 205.62,
     "unit": "kg",
@@ -25919,7 +26282,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02256",
+    "id": "rcv-2026-02289",
     "material_id": "RM-050",
     "received_quantity": 233.09,
     "unit": "kg",
@@ -25930,7 +26293,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02257",
+    "id": "rcv-2026-02290",
     "material_id": "RM-050",
     "received_quantity": 226.62,
     "unit": "kg",
@@ -25941,7 +26304,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02258",
+    "id": "rcv-2026-02291",
     "material_id": "RM-050",
     "received_quantity": 202.08,
     "unit": "kg",
@@ -25952,7 +26315,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02259",
+    "id": "rcv-2026-02292",
     "material_id": "RM-050",
     "received_quantity": 219.68,
     "unit": "kg",
@@ -25963,7 +26326,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02260",
+    "id": "rcv-2026-02293",
     "material_id": "RM-050",
     "received_quantity": 236.24,
     "unit": "kg",
@@ -25974,7 +26337,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02261",
+    "id": "rcv-2026-02294",
     "material_id": "RM-050",
     "received_quantity": 211.13,
     "unit": "kg",
@@ -25985,7 +26348,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02262",
+    "id": "rcv-2026-02295",
     "material_id": "RM-050",
     "received_quantity": 205.96,
     "unit": "kg",
@@ -25996,7 +26359,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02263",
+    "id": "rcv-2026-02296",
     "material_id": "RM-050",
     "received_quantity": 233.41,
     "unit": "kg",
@@ -26007,7 +26370,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02264",
+    "id": "rcv-2026-02297",
     "material_id": "RM-050",
     "received_quantity": 226.13,
     "unit": "kg",
@@ -26018,7 +26381,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02265",
+    "id": "rcv-2026-02298",
     "material_id": "RM-050",
     "received_quantity": 201.98,
     "unit": "kg",
@@ -26029,7 +26392,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02266",
+    "id": "rcv-2026-02299",
     "material_id": "RM-050",
     "received_quantity": 220.22,
     "unit": "kg",
@@ -26040,7 +26403,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02267",
+    "id": "rcv-2026-02300",
     "material_id": "RM-050",
     "received_quantity": 236.1,
     "unit": "kg",
@@ -26051,7 +26414,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02268",
+    "id": "rcv-2026-02301",
     "material_id": "RM-050",
     "received_quantity": 210.66,
     "unit": "kg",
@@ -26062,7 +26425,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02269",
+    "id": "rcv-2026-02302",
     "material_id": "RM-050",
     "received_quantity": 206.31,
     "unit": "kg",
@@ -26073,7 +26436,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02270",
+    "id": "rcv-2026-02303",
     "material_id": "RM-050",
     "received_quantity": 233.72,
     "unit": "kg",
@@ -26084,7 +26447,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02271",
+    "id": "rcv-2026-02304",
     "material_id": "RM-050",
     "received_quantity": 225.64,
     "unit": "kg",
@@ -26095,7 +26458,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02272",
+    "id": "rcv-2026-02305",
     "material_id": "RM-050",
     "received_quantity": 201.9,
     "unit": "kg",
@@ -26106,7 +26469,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02273",
+    "id": "rcv-2026-02306",
     "material_id": "RM-050",
     "received_quantity": 220.75,
     "unit": "kg",
@@ -26117,7 +26480,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02274",
+    "id": "rcv-2026-02307",
     "material_id": "RM-050",
     "received_quantity": 235.94,
     "unit": "kg",
@@ -26128,7 +26491,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02275",
+    "id": "rcv-2026-02308",
     "material_id": "RM-050",
     "received_quantity": 210.2,
     "unit": "kg",
@@ -26139,7 +26502,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02276",
+    "id": "rcv-2026-02309",
     "material_id": "RM-050",
     "received_quantity": 206.68,
     "unit": "kg",
@@ -26150,7 +26513,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02277",
+    "id": "rcv-2026-02310",
     "material_id": "RM-050",
     "received_quantity": 234.02,
     "unit": "kg",
@@ -26161,7 +26524,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02278",
+    "id": "rcv-2026-02311",
     "material_id": "RM-050",
     "received_quantity": 225.14,
     "unit": "kg",
@@ -26172,7 +26535,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02279",
+    "id": "rcv-2026-02312",
     "material_id": "RM-050",
     "received_quantity": 201.83,
     "unit": "kg",
@@ -26183,7 +26546,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02280",
+    "id": "rcv-2026-02313",
     "material_id": "RM-050",
     "received_quantity": 221.28,
     "unit": "kg",
@@ -26194,7 +26557,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02281",
+    "id": "rcv-2026-02314",
     "material_id": "RM-050",
     "received_quantity": 235.77,
     "unit": "kg",
@@ -26205,7 +26568,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02282",
+    "id": "rcv-2026-02315",
     "material_id": "RM-050",
     "received_quantity": 209.74,
     "unit": "kg",
@@ -26216,7 +26579,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02283",
+    "id": "rcv-2026-02316",
     "material_id": "RM-050",
     "received_quantity": 207.06,
     "unit": "kg",
@@ -26227,7 +26590,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02284",
+    "id": "rcv-2026-02317",
     "material_id": "RM-050",
     "received_quantity": 234.3,
     "unit": "kg",
@@ -26238,7 +26601,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02285",
+    "id": "rcv-2026-02318",
     "material_id": "RM-050",
     "received_quantity": 224.63,
     "unit": "kg",
@@ -26249,7 +26612,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02286",
+    "id": "rcv-2026-02319",
     "material_id": "RM-050",
     "received_quantity": 201.78,
     "unit": "kg",
@@ -26260,7 +26623,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02287",
+    "id": "rcv-2026-02320",
     "material_id": "RM-050",
     "received_quantity": 221.81,
     "unit": "kg",
@@ -26271,7 +26634,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02288",
+    "id": "rcv-2026-02321",
     "material_id": "RM-050",
     "received_quantity": 235.58,
     "unit": "kg",
@@ -26282,7 +26645,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02289",
+    "id": "rcv-2026-02322",
     "material_id": "RM-050",
     "received_quantity": 209.3,
     "unit": "kg",
@@ -26293,7 +26656,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02290",
+    "id": "rcv-2026-02323",
     "material_id": "RM-050",
     "received_quantity": 207.45,
     "unit": "kg",
@@ -26304,7 +26667,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02291",
+    "id": "rcv-2026-02324",
     "material_id": "RM-050",
     "received_quantity": 234.57,
     "unit": "kg",
@@ -26315,7 +26678,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02292",
+    "id": "rcv-2026-02325",
     "material_id": "RM-050",
     "received_quantity": 224.12,
     "unit": "kg",
@@ -26326,7 +26689,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02293",
+    "id": "rcv-2026-02326",
     "material_id": "RM-050",
     "received_quantity": 201.74,
     "unit": "kg",
@@ -26337,7 +26700,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02294",
+    "id": "rcv-2026-02327",
     "material_id": "RM-050",
     "received_quantity": 220.36,
     "unit": "kg",
@@ -26348,7 +26711,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02295",
+    "id": "rcv-2026-02328",
     "material_id": "RM-051",
     "received_quantity": 10.59,
     "unit": "kg",
@@ -26359,7 +26722,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02296",
+    "id": "rcv-2026-02329",
     "material_id": "RM-051",
     "received_quantity": 9.46,
     "unit": "kg",
@@ -26370,7 +26733,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02297",
+    "id": "rcv-2026-02330",
     "material_id": "RM-051",
     "received_quantity": 9.25,
     "unit": "kg",
@@ -26381,7 +26744,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02298",
+    "id": "rcv-2026-02331",
     "material_id": "RM-051",
     "received_quantity": 10.48,
     "unit": "kg",
@@ -26392,7 +26755,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02299",
+    "id": "rcv-2026-02332",
     "material_id": "RM-051",
     "received_quantity": 10.13,
     "unit": "kg",
@@ -26403,7 +26766,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02300",
+    "id": "rcv-2026-02333",
     "material_id": "RM-051",
     "received_quantity": 9.06,
     "unit": "kg",
@@ -26414,7 +26777,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02301",
+    "id": "rcv-2026-02334",
     "material_id": "RM-051",
     "received_quantity": 9.89,
     "unit": "kg",
@@ -26425,7 +26788,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02302",
+    "id": "rcv-2026-02335",
     "material_id": "RM-051",
     "received_quantity": 10.59,
     "unit": "kg",
@@ -26436,7 +26799,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02303",
+    "id": "rcv-2026-02336",
     "material_id": "RM-051",
     "received_quantity": 9.44,
     "unit": "kg",
@@ -26447,7 +26810,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02304",
+    "id": "rcv-2026-02337",
     "material_id": "RM-051",
     "received_quantity": 9.26,
     "unit": "kg",
@@ -26458,7 +26821,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02305",
+    "id": "rcv-2026-02338",
     "material_id": "RM-051",
     "received_quantity": 10.49,
     "unit": "kg",
@@ -26469,7 +26832,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02306",
+    "id": "rcv-2026-02339",
     "material_id": "RM-051",
     "received_quantity": 10.11,
     "unit": "kg",
@@ -26480,7 +26843,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02307",
+    "id": "rcv-2026-02340",
     "material_id": "RM-051",
     "received_quantity": 9.05,
     "unit": "kg",
@@ -26491,7 +26854,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02308",
+    "id": "rcv-2026-02341",
     "material_id": "RM-051",
     "received_quantity": 9.91,
     "unit": "kg",
@@ -26502,7 +26865,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02309",
+    "id": "rcv-2026-02342",
     "material_id": "RM-051",
     "received_quantity": 10.58,
     "unit": "kg",
@@ -26513,7 +26876,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02310",
+    "id": "rcv-2026-02343",
     "material_id": "RM-051",
     "received_quantity": 9.42,
     "unit": "kg",
@@ -26524,7 +26887,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02311",
+    "id": "rcv-2026-02344",
     "material_id": "RM-051",
     "received_quantity": 9.28,
     "unit": "kg",
@@ -26535,7 +26898,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02312",
+    "id": "rcv-2026-02345",
     "material_id": "RM-051",
     "received_quantity": 10.5,
     "unit": "kg",
@@ -26546,7 +26909,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02313",
+    "id": "rcv-2026-02346",
     "material_id": "RM-051",
     "received_quantity": 10.09,
     "unit": "kg",
@@ -26557,7 +26920,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02314",
+    "id": "rcv-2026-02347",
     "material_id": "RM-051",
     "received_quantity": 9.05,
     "unit": "kg",
@@ -26568,7 +26931,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02315",
+    "id": "rcv-2026-02348",
     "material_id": "RM-051",
     "received_quantity": 9.94,
     "unit": "kg",
@@ -26579,7 +26942,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02316",
+    "id": "rcv-2026-02349",
     "material_id": "RM-051",
     "received_quantity": 10.57,
     "unit": "kg",
@@ -26590,7 +26953,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02317",
+    "id": "rcv-2026-02350",
     "material_id": "RM-051",
     "received_quantity": 9.4,
     "unit": "kg",
@@ -26601,7 +26964,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02318",
+    "id": "rcv-2026-02351",
     "material_id": "RM-051",
     "received_quantity": 9.3,
     "unit": "kg",
@@ -26612,7 +26975,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02319",
+    "id": "rcv-2026-02352",
     "material_id": "RM-051",
     "received_quantity": 10.51,
     "unit": "kg",
@@ -26623,7 +26986,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02320",
+    "id": "rcv-2026-02353",
     "material_id": "RM-051",
     "received_quantity": 10.07,
     "unit": "kg",
@@ -26634,7 +26997,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02321",
+    "id": "rcv-2026-02354",
     "material_id": "RM-051",
     "received_quantity": 9.05,
     "unit": "kg",
@@ -26645,7 +27008,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02322",
+    "id": "rcv-2026-02355",
     "material_id": "RM-051",
     "received_quantity": 9.96,
     "unit": "kg",
@@ -26656,7 +27019,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02323",
+    "id": "rcv-2026-02356",
     "material_id": "RM-051",
     "received_quantity": 10.56,
     "unit": "kg",
@@ -26667,7 +27030,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02324",
+    "id": "rcv-2026-02357",
     "material_id": "RM-051",
     "received_quantity": 9.38,
     "unit": "kg",
@@ -26678,7 +27041,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02325",
+    "id": "rcv-2026-02358",
     "material_id": "RM-051",
     "received_quantity": 9.31,
     "unit": "kg",
@@ -26689,7 +27052,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02326",
+    "id": "rcv-2026-02359",
     "material_id": "RM-051",
     "received_quantity": 10.53,
     "unit": "kg",
@@ -26700,7 +27063,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02327",
+    "id": "rcv-2026-02360",
     "material_id": "RM-051",
     "received_quantity": 10.04,
     "unit": "kg",
@@ -26711,7 +27074,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02328",
+    "id": "rcv-2026-02361",
     "material_id": "RM-051",
     "received_quantity": 9.05,
     "unit": "kg",
@@ -26722,7 +27085,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02329",
+    "id": "rcv-2026-02362",
     "material_id": "RM-051",
     "received_quantity": 9.98,
     "unit": "kg",
@@ -26733,7 +27096,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02330",
+    "id": "rcv-2026-02363",
     "material_id": "RM-051",
     "received_quantity": 10.55,
     "unit": "kg",
@@ -26744,7 +27107,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02331",
+    "id": "rcv-2026-02364",
     "material_id": "RM-051",
     "received_quantity": 9.36,
     "unit": "kg",
@@ -26755,7 +27118,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02332",
+    "id": "rcv-2026-02365",
     "material_id": "RM-051",
     "received_quantity": 9.33,
     "unit": "kg",
@@ -26766,7 +27129,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02333",
+    "id": "rcv-2026-02366",
     "material_id": "RM-051",
     "received_quantity": 10.54,
     "unit": "kg",
@@ -26777,7 +27140,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02334",
+    "id": "rcv-2026-02367",
     "material_id": "RM-051",
     "received_quantity": 10.02,
     "unit": "kg",
@@ -26788,7 +27151,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02335",
+    "id": "rcv-2026-02368",
     "material_id": "RM-051",
     "received_quantity": 9.05,
     "unit": "kg",
@@ -26799,7 +27162,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02336",
+    "id": "rcv-2026-02369",
     "material_id": "RM-051",
     "received_quantity": 10.01,
     "unit": "kg",
@@ -26810,7 +27173,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02337",
+    "id": "rcv-2026-02370",
     "material_id": "RM-051",
     "received_quantity": 10.54,
     "unit": "kg",
@@ -26821,7 +27184,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02338",
+    "id": "rcv-2026-02371",
     "material_id": "RM-051",
     "received_quantity": 9.34,
     "unit": "kg",
@@ -26832,7 +27195,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02339",
+    "id": "rcv-2026-02372",
     "material_id": "RM-051",
     "received_quantity": 9.35,
     "unit": "kg",
@@ -26843,7 +27206,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02340",
+    "id": "rcv-2026-02373",
     "material_id": "RM-051",
     "received_quantity": 10.55,
     "unit": "kg",
@@ -26854,7 +27217,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02341",
+    "id": "rcv-2026-02374",
     "material_id": "RM-051",
     "received_quantity": 10,
     "unit": "kg",
@@ -26865,7 +27228,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02342",
+    "id": "rcv-2026-02375",
     "material_id": "RM-051",
     "received_quantity": 9.05,
     "unit": "kg",
@@ -26876,7 +27239,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02343",
+    "id": "rcv-2026-02376",
     "material_id": "RM-051",
     "received_quantity": 9.95,
     "unit": "kg",
@@ -26887,7 +27250,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02344",
+    "id": "rcv-2026-02377",
     "material_id": "RM-052",
     "received_quantity": 20.88,
     "unit": "kg",
@@ -26898,7 +27261,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02345",
+    "id": "rcv-2026-02378",
     "material_id": "RM-052",
     "received_quantity": 22.61,
     "unit": "kg",
@@ -26909,7 +27272,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02346",
+    "id": "rcv-2026-02379",
     "material_id": "RM-052",
     "received_quantity": 20.85,
     "unit": "kg",
@@ -26920,7 +27283,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02347",
+    "id": "rcv-2026-02380",
     "material_id": "RM-052",
     "received_quantity": 19.27,
     "unit": "kg",
@@ -26931,7 +27294,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02348",
+    "id": "rcv-2026-02381",
     "material_id": "RM-052",
     "received_quantity": 21.15,
     "unit": "kg",
@@ -26942,7 +27305,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02349",
+    "id": "rcv-2026-02382",
     "material_id": "RM-052",
     "received_quantity": 22.58,
     "unit": "kg",
@@ -26953,7 +27316,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02350",
+    "id": "rcv-2026-02383",
     "material_id": "RM-052",
     "received_quantity": 20.59,
     "unit": "kg",
@@ -26964,7 +27327,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02351",
+    "id": "rcv-2026-02384",
     "material_id": "RM-052",
     "received_quantity": 19.31,
     "unit": "kg",
@@ -26975,7 +27338,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02352",
+    "id": "rcv-2026-02385",
     "material_id": "RM-052",
     "received_quantity": 21.41,
     "unit": "kg",
@@ -26986,7 +27349,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02353",
+    "id": "rcv-2026-02386",
     "material_id": "RM-052",
     "received_quantity": 22.52,
     "unit": "kg",
@@ -26997,7 +27360,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02354",
+    "id": "rcv-2026-02387",
     "material_id": "RM-052",
     "received_quantity": 20.34,
     "unit": "kg",
@@ -27008,7 +27371,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02355",
+    "id": "rcv-2026-02388",
     "material_id": "RM-052",
     "received_quantity": 19.39,
     "unit": "kg",
@@ -27019,7 +27382,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02356",
+    "id": "rcv-2026-02389",
     "material_id": "RM-052",
     "received_quantity": 21.65,
     "unit": "kg",
@@ -27030,7 +27393,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02357",
+    "id": "rcv-2026-02390",
     "material_id": "RM-052",
     "received_quantity": 22.42,
     "unit": "kg",
@@ -27041,7 +27404,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02358",
+    "id": "rcv-2026-02391",
     "material_id": "RM-052",
     "received_quantity": 20.1,
     "unit": "kg",
@@ -27052,7 +27415,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02359",
+    "id": "rcv-2026-02392",
     "material_id": "RM-052",
     "received_quantity": 19.52,
     "unit": "kg",
@@ -27063,7 +27426,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02360",
+    "id": "rcv-2026-02393",
     "material_id": "RM-052",
     "received_quantity": 21.88,
     "unit": "kg",
@@ -27074,7 +27437,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02361",
+    "id": "rcv-2026-02394",
     "material_id": "RM-052",
     "received_quantity": 22.27,
     "unit": "kg",
@@ -27085,7 +27448,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02362",
+    "id": "rcv-2026-02395",
     "material_id": "RM-052",
     "received_quantity": 19.88,
     "unit": "kg",
@@ -27096,7 +27459,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02363",
+    "id": "rcv-2026-02396",
     "material_id": "RM-052",
     "received_quantity": 19.68,
     "unit": "kg",
@@ -27107,7 +27470,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02364",
+    "id": "rcv-2026-02397",
     "material_id": "RM-052",
     "received_quantity": 22.09,
     "unit": "kg",
@@ -27118,7 +27481,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02365",
+    "id": "rcv-2026-02398",
     "material_id": "RM-052",
     "received_quantity": 22.1,
     "unit": "kg",
@@ -27129,7 +27492,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02366",
+    "id": "rcv-2026-02399",
     "material_id": "RM-052",
     "received_quantity": 19.69,
     "unit": "kg",
@@ -27140,7 +27503,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02367",
+    "id": "rcv-2026-02400",
     "material_id": "RM-052",
     "received_quantity": 19.87,
     "unit": "kg",
@@ -27151,7 +27514,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02368",
+    "id": "rcv-2026-02401",
     "material_id": "RM-052",
     "received_quantity": 22.27,
     "unit": "kg",
@@ -27162,7 +27525,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02369",
+    "id": "rcv-2026-02402",
     "material_id": "RM-052",
     "received_quantity": 21.89,
     "unit": "kg",
@@ -27173,7 +27536,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02370",
+    "id": "rcv-2026-02403",
     "material_id": "RM-052",
     "received_quantity": 19.52,
     "unit": "kg",
@@ -27184,7 +27547,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02371",
+    "id": "rcv-2026-02404",
     "material_id": "RM-052",
     "received_quantity": 20.08,
     "unit": "kg",
@@ -27195,7 +27558,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02372",
+    "id": "rcv-2026-02405",
     "material_id": "RM-052",
     "received_quantity": 22.41,
     "unit": "kg",
@@ -27206,7 +27569,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02373",
+    "id": "rcv-2026-02406",
     "material_id": "RM-052",
     "received_quantity": 21.67,
     "unit": "kg",
@@ -27217,7 +27580,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02374",
+    "id": "rcv-2026-02407",
     "material_id": "RM-052",
     "received_quantity": 19.4,
     "unit": "kg",
@@ -27228,7 +27591,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02375",
+    "id": "rcv-2026-02408",
     "material_id": "RM-052",
     "received_quantity": 20.32,
     "unit": "kg",
@@ -27239,7 +27602,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02376",
+    "id": "rcv-2026-02409",
     "material_id": "RM-052",
     "received_quantity": 22.52,
     "unit": "kg",
@@ -27250,7 +27613,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02377",
+    "id": "rcv-2026-02410",
     "material_id": "RM-052",
     "received_quantity": 21.42,
     "unit": "kg",
@@ -27261,7 +27624,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02378",
+    "id": "rcv-2026-02411",
     "material_id": "RM-052",
     "received_quantity": 19.31,
     "unit": "kg",
@@ -27272,7 +27635,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02379",
+    "id": "rcv-2026-02412",
     "material_id": "RM-052",
     "received_quantity": 20.58,
     "unit": "kg",
@@ -27283,7 +27646,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02380",
+    "id": "rcv-2026-02413",
     "material_id": "RM-052",
     "received_quantity": 22.58,
     "unit": "kg",
@@ -27294,7 +27657,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02381",
+    "id": "rcv-2026-02414",
     "material_id": "RM-052",
     "received_quantity": 21.16,
     "unit": "kg",
@@ -27305,7 +27668,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02382",
+    "id": "rcv-2026-02415",
     "material_id": "RM-052",
     "received_quantity": 19.27,
     "unit": "kg",
@@ -27316,7 +27679,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02383",
+    "id": "rcv-2026-02416",
     "material_id": "RM-052",
     "received_quantity": 20.84,
     "unit": "kg",
@@ -27327,7 +27690,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02384",
+    "id": "rcv-2026-02417",
     "material_id": "RM-052",
     "received_quantity": 17.5,
     "unit": "kg",
@@ -27338,7 +27701,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02385",
+    "id": "rcv-2026-02418",
     "material_id": "RM-053",
     "received_quantity": 36.47,
     "unit": "kg",
@@ -27349,7 +27712,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02386",
+    "id": "rcv-2026-02419",
     "material_id": "RM-053",
     "received_quantity": 38.53,
     "unit": "kg",
@@ -27360,7 +27723,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02387",
+    "id": "rcv-2026-02420",
     "material_id": "RM-053",
     "received_quantity": 42.5,
     "unit": "kg",
@@ -27371,7 +27734,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02388",
+    "id": "rcv-2026-02421",
     "material_id": "RM-053",
     "received_quantity": 40.12,
     "unit": "kg",
@@ -27382,7 +27745,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02389",
+    "id": "rcv-2026-02422",
     "material_id": "RM-053",
     "received_quantity": 36.34,
     "unit": "kg",
@@ -27393,7 +27756,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02390",
+    "id": "rcv-2026-02423",
     "material_id": "RM-053",
     "received_quantity": 39.02,
     "unit": "kg",
@@ -27404,7 +27767,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02391",
+    "id": "rcv-2026-02424",
     "material_id": "RM-053",
     "received_quantity": 42.59,
     "unit": "kg",
@@ -27415,7 +27778,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02392",
+    "id": "rcv-2026-02425",
     "material_id": "RM-053",
     "received_quantity": 39.62,
     "unit": "kg",
@@ -27426,7 +27789,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02393",
+    "id": "rcv-2026-02426",
     "material_id": "RM-053",
     "received_quantity": 36.29,
     "unit": "kg",
@@ -27437,7 +27800,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02394",
+    "id": "rcv-2026-02427",
     "material_id": "RM-053",
     "received_quantity": 39.52,
     "unit": "kg",
@@ -27448,7 +27811,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02395",
+    "id": "rcv-2026-02428",
     "material_id": "RM-053",
     "received_quantity": 42.6,
     "unit": "kg",
@@ -27459,7 +27822,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02396",
+    "id": "rcv-2026-02429",
     "material_id": "RM-053",
     "received_quantity": 39.12,
     "unit": "kg",
@@ -27470,7 +27833,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02397",
+    "id": "rcv-2026-02430",
     "material_id": "RM-053",
     "received_quantity": 36.32,
     "unit": "kg",
@@ -27481,7 +27844,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02398",
+    "id": "rcv-2026-02431",
     "material_id": "RM-053",
     "received_quantity": 40.02,
     "unit": "kg",
@@ -27492,7 +27855,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02399",
+    "id": "rcv-2026-02432",
     "material_id": "RM-053",
     "received_quantity": 42.53,
     "unit": "kg",
@@ -27503,7 +27866,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02400",
+    "id": "rcv-2026-02433",
     "material_id": "RM-053",
     "received_quantity": 38.63,
     "unit": "kg",
@@ -27514,7 +27877,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02401",
+    "id": "rcv-2026-02434",
     "material_id": "RM-053",
     "received_quantity": 36.43,
     "unit": "kg",
@@ -27525,7 +27888,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02402",
+    "id": "rcv-2026-02435",
     "material_id": "RM-053",
     "received_quantity": 40.5,
     "unit": "kg",
@@ -27536,7 +27899,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02403",
+    "id": "rcv-2026-02436",
     "material_id": "RM-053",
     "received_quantity": 42.38,
     "unit": "kg",
@@ -27547,7 +27910,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02404",
+    "id": "rcv-2026-02437",
     "material_id": "RM-053",
     "received_quantity": 38.16,
     "unit": "kg",
@@ -27558,7 +27921,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02405",
+    "id": "rcv-2026-02438",
     "material_id": "RM-053",
     "received_quantity": 36.62,
     "unit": "kg",
@@ -27569,7 +27932,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02406",
+    "id": "rcv-2026-02439",
     "material_id": "RM-053",
     "received_quantity": 40.96,
     "unit": "kg",
@@ -27580,7 +27943,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02407",
+    "id": "rcv-2026-02440",
     "material_id": "RM-053",
     "received_quantity": 42.16,
     "unit": "kg",
@@ -27591,7 +27954,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02408",
+    "id": "rcv-2026-02441",
     "material_id": "RM-053",
     "received_quantity": 37.72,
     "unit": "kg",
@@ -27602,7 +27965,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02409",
+    "id": "rcv-2026-02442",
     "material_id": "RM-053",
     "received_quantity": 36.88,
     "unit": "kg",
@@ -27613,7 +27976,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02410",
+    "id": "rcv-2026-02443",
     "material_id": "RM-053",
     "received_quantity": 41.38,
     "unit": "kg",
@@ -27624,7 +27987,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02411",
+    "id": "rcv-2026-02444",
     "material_id": "RM-053",
     "received_quantity": 41.87,
     "unit": "kg",
@@ -27635,7 +27998,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02412",
+    "id": "rcv-2026-02445",
     "material_id": "RM-053",
     "received_quantity": 37.33,
     "unit": "kg",
@@ -27646,7 +28009,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02413",
+    "id": "rcv-2026-02446",
     "material_id": "RM-053",
     "received_quantity": 37.2,
     "unit": "kg",
@@ -27657,7 +28020,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02414",
+    "id": "rcv-2026-02447",
     "material_id": "RM-053",
     "received_quantity": 41.75,
     "unit": "kg",
@@ -27668,7 +28031,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02415",
+    "id": "rcv-2026-02448",
     "material_id": "RM-053",
     "received_quantity": 41.52,
     "unit": "kg",
@@ -27679,7 +28042,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02416",
+    "id": "rcv-2026-02449",
     "material_id": "RM-053",
     "received_quantity": 36.98,
     "unit": "kg",
@@ -27690,7 +28053,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02417",
+    "id": "rcv-2026-02450",
     "material_id": "RM-053",
     "received_quantity": 37.57,
     "unit": "kg",
@@ -27701,7 +28064,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02418",
+    "id": "rcv-2026-02451",
     "material_id": "RM-053",
     "received_quantity": 42.06,
     "unit": "kg",
@@ -27712,7 +28075,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02419",
+    "id": "rcv-2026-02452",
     "material_id": "RM-053",
     "received_quantity": 41.11,
     "unit": "kg",
@@ -27723,7 +28086,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02420",
+    "id": "rcv-2026-02453",
     "material_id": "RM-053",
     "received_quantity": 36.7,
     "unit": "kg",
@@ -27734,7 +28097,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02421",
+    "id": "rcv-2026-02454",
     "material_id": "RM-053",
     "received_quantity": 38,
     "unit": "kg",
@@ -27745,7 +28108,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02422",
+    "id": "rcv-2026-02455",
     "material_id": "RM-053",
     "received_quantity": 42.31,
     "unit": "kg",
@@ -27756,7 +28119,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02423",
+    "id": "rcv-2026-02456",
     "material_id": "RM-053",
     "received_quantity": 40.67,
     "unit": "kg",
@@ -27767,7 +28130,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02424",
+    "id": "rcv-2026-02457",
     "material_id": "RM-053",
     "received_quantity": 36.49,
     "unit": "kg",
@@ -27778,7 +28141,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02425",
+    "id": "rcv-2026-02458",
     "material_id": "RM-053",
     "received_quantity": 35.83,
     "unit": "kg",
@@ -27789,7 +28152,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02426",
+    "id": "rcv-2026-02459",
     "material_id": "RM-054",
     "received_quantity": 46.98,
     "unit": "kg",
@@ -27800,7 +28163,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02427",
+    "id": "rcv-2026-02460",
     "material_id": "RM-054",
     "received_quantity": 44.35,
     "unit": "kg",
@@ -27811,7 +28174,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02428",
+    "id": "rcv-2026-02461",
     "material_id": "RM-054",
     "received_quantity": 40.26,
     "unit": "kg",
@@ -27822,7 +28185,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02429",
+    "id": "rcv-2026-02462",
     "material_id": "RM-054",
     "received_quantity": 44.75,
     "unit": "kg",
@@ -27833,7 +28196,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02430",
+    "id": "rcv-2026-02463",
     "material_id": "RM-054",
     "received_quantity": 46.8,
     "unit": "kg",
@@ -27844,7 +28207,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02431",
+    "id": "rcv-2026-02464",
     "material_id": "RM-054",
     "received_quantity": 41.38,
     "unit": "kg",
@@ -27855,7 +28218,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02432",
+    "id": "rcv-2026-02465",
     "material_id": "RM-054",
     "received_quantity": 41.79,
     "unit": "kg",
@@ -27866,7 +28229,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02433",
+    "id": "rcv-2026-02466",
     "material_id": "RM-054",
     "received_quantity": 47.02,
     "unit": "kg",
@@ -27877,7 +28240,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02434",
+    "id": "rcv-2026-02467",
     "material_id": "RM-054",
     "received_quantity": 44.24,
     "unit": "kg",
@@ -27888,7 +28251,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02435",
+    "id": "rcv-2026-02468",
     "material_id": "RM-054",
     "received_quantity": 40.27,
     "unit": "kg",
@@ -27899,7 +28262,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02436",
+    "id": "rcv-2026-02469",
     "material_id": "RM-054",
     "received_quantity": 44.85,
     "unit": "kg",
@@ -27910,7 +28273,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02437",
+    "id": "rcv-2026-02470",
     "material_id": "RM-054",
     "received_quantity": 46.74,
     "unit": "kg",
@@ -27921,7 +28284,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02438",
+    "id": "rcv-2026-02471",
     "material_id": "RM-054",
     "received_quantity": 41.3,
     "unit": "kg",
@@ -27932,7 +28295,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02439",
+    "id": "rcv-2026-02472",
     "material_id": "RM-054",
     "received_quantity": 41.88,
     "unit": "kg",
@@ -27943,7 +28306,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02440",
+    "id": "rcv-2026-02473",
     "material_id": "RM-054",
     "received_quantity": 47.06,
     "unit": "kg",
@@ -27954,7 +28317,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02441",
+    "id": "rcv-2026-02474",
     "material_id": "RM-054",
     "received_quantity": 44.13,
     "unit": "kg",
@@ -27965,7 +28328,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02442",
+    "id": "rcv-2026-02475",
     "material_id": "RM-054",
     "received_quantity": 40.28,
     "unit": "kg",
@@ -27976,7 +28339,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02443",
+    "id": "rcv-2026-02476",
     "material_id": "RM-054",
     "received_quantity": 44.95,
     "unit": "kg",
@@ -27987,7 +28350,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02444",
+    "id": "rcv-2026-02477",
     "material_id": "RM-054",
     "received_quantity": 46.69,
     "unit": "kg",
@@ -27998,7 +28361,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02445",
+    "id": "rcv-2026-02478",
     "material_id": "RM-054",
     "received_quantity": 41.23,
     "unit": "kg",
@@ -28009,7 +28372,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02446",
+    "id": "rcv-2026-02479",
     "material_id": "RM-054",
     "received_quantity": 41.97,
     "unit": "kg",
@@ -28020,7 +28383,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02447",
+    "id": "rcv-2026-02480",
     "material_id": "RM-054",
     "received_quantity": 47.09,
     "unit": "kg",
@@ -28031,7 +28394,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02448",
+    "id": "rcv-2026-02481",
     "material_id": "RM-054",
     "received_quantity": 44.03,
     "unit": "kg",
@@ -28042,7 +28405,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02449",
+    "id": "rcv-2026-02482",
     "material_id": "RM-054",
     "received_quantity": 40.29,
     "unit": "kg",
@@ -28053,7 +28416,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02450",
+    "id": "rcv-2026-02483",
     "material_id": "RM-054",
     "received_quantity": 45.05,
     "unit": "kg",
@@ -28064,7 +28427,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02451",
+    "id": "rcv-2026-02484",
     "material_id": "RM-054",
     "received_quantity": 46.63,
     "unit": "kg",
@@ -28075,7 +28438,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02452",
+    "id": "rcv-2026-02485",
     "material_id": "RM-054",
     "received_quantity": 41.16,
     "unit": "kg",
@@ -28086,7 +28449,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02453",
+    "id": "rcv-2026-02486",
     "material_id": "RM-054",
     "received_quantity": 42.06,
     "unit": "kg",
@@ -28097,7 +28460,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02454",
+    "id": "rcv-2026-02487",
     "material_id": "RM-054",
     "received_quantity": 47.12,
     "unit": "kg",
@@ -28108,7 +28471,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02455",
+    "id": "rcv-2026-02488",
     "material_id": "RM-054",
     "received_quantity": 43.92,
     "unit": "kg",
@@ -28119,7 +28482,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02456",
+    "id": "rcv-2026-02489",
     "material_id": "RM-054",
     "received_quantity": 40.31,
     "unit": "kg",
@@ -28130,7 +28493,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02457",
+    "id": "rcv-2026-02490",
     "material_id": "RM-054",
     "received_quantity": 45.15,
     "unit": "kg",
@@ -28141,7 +28504,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02458",
+    "id": "rcv-2026-02491",
     "material_id": "RM-054",
     "received_quantity": 46.57,
     "unit": "kg",
@@ -28152,7 +28515,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02459",
+    "id": "rcv-2026-02492",
     "material_id": "RM-054",
     "received_quantity": 41.08,
     "unit": "kg",
@@ -28163,7 +28526,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02460",
+    "id": "rcv-2026-02493",
     "material_id": "RM-054",
     "received_quantity": 42.16,
     "unit": "kg",
@@ -28174,7 +28537,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02461",
+    "id": "rcv-2026-02494",
     "material_id": "RM-054",
     "received_quantity": 47.15,
     "unit": "kg",
@@ -28185,7 +28548,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02462",
+    "id": "rcv-2026-02495",
     "material_id": "RM-054",
     "received_quantity": 43.81,
     "unit": "kg",
@@ -28196,7 +28559,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02463",
+    "id": "rcv-2026-02496",
     "material_id": "RM-054",
     "received_quantity": 40.33,
     "unit": "kg",
@@ -28207,7 +28570,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02464",
+    "id": "rcv-2026-02497",
     "material_id": "RM-054",
     "received_quantity": 45.25,
     "unit": "kg",
@@ -28218,7 +28581,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02465",
+    "id": "rcv-2026-02498",
     "material_id": "RM-054",
     "received_quantity": 46.5,
     "unit": "kg",
@@ -28229,7 +28592,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02466",
+    "id": "rcv-2026-02499",
     "material_id": "RM-054",
     "received_quantity": 41.02,
     "unit": "kg",
@@ -28240,7 +28603,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02467",
+    "id": "rcv-2026-02500",
     "material_id": "RM-054",
     "received_quantity": 42.25,
     "unit": "kg",
@@ -28251,7 +28614,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02468",
+    "id": "rcv-2026-02501",
     "material_id": "RM-054",
     "received_quantity": 47.18,
     "unit": "kg",
@@ -28262,7 +28625,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02469",
+    "id": "rcv-2026-02502",
     "material_id": "RM-054",
     "received_quantity": 43.71,
     "unit": "kg",
@@ -28273,7 +28636,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02470",
+    "id": "rcv-2026-02503",
     "material_id": "RM-054",
     "received_quantity": 40.36,
     "unit": "kg",
@@ -28284,7 +28647,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02471",
+    "id": "rcv-2026-02504",
     "material_id": "RM-054",
     "received_quantity": 45.34,
     "unit": "kg",
@@ -28295,7 +28658,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02472",
+    "id": "rcv-2026-02505",
     "material_id": "RM-054",
     "received_quantity": 46.43,
     "unit": "kg",
@@ -28306,7 +28669,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02473",
+    "id": "rcv-2026-02506",
     "material_id": "RM-054",
     "received_quantity": 40.95,
     "unit": "kg",
@@ -28317,7 +28680,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02474",
+    "id": "rcv-2026-02507",
     "material_id": "RM-054",
     "received_quantity": 42.18,
     "unit": "kg",
@@ -28328,7 +28691,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02475",
+    "id": "rcv-2026-02508",
     "material_id": "RM-055",
     "received_quantity": 24.71,
     "unit": "kg",
@@ -28339,7 +28702,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02476",
+    "id": "rcv-2026-02509",
     "material_id": "RM-055",
     "received_quantity": 22.58,
     "unit": "kg",
@@ -28350,7 +28713,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02477",
+    "id": "rcv-2026-02510",
     "material_id": "RM-055",
     "received_quantity": 25.22,
     "unit": "kg",
@@ -28361,7 +28724,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02478",
+    "id": "rcv-2026-02511",
     "material_id": "RM-055",
     "received_quantity": 26.15,
     "unit": "kg",
@@ -28372,7 +28735,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02479",
+    "id": "rcv-2026-02512",
     "material_id": "RM-055",
     "received_quantity": 23.09,
     "unit": "kg",
@@ -28383,7 +28746,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02480",
+    "id": "rcv-2026-02513",
     "material_id": "RM-055",
     "received_quantity": 23.54,
     "unit": "kg",
@@ -28394,7 +28757,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02481",
+    "id": "rcv-2026-02514",
     "material_id": "RM-055",
     "received_quantity": 26.4,
     "unit": "kg",
@@ -28405,7 +28768,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02482",
+    "id": "rcv-2026-02515",
     "material_id": "RM-055",
     "received_quantity": 24.65,
     "unit": "kg",
@@ -28416,7 +28779,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02483",
+    "id": "rcv-2026-02516",
     "material_id": "RM-055",
     "received_quantity": 22.59,
     "unit": "kg",
@@ -28427,7 +28790,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02484",
+    "id": "rcv-2026-02517",
     "material_id": "RM-055",
     "received_quantity": 25.27,
     "unit": "kg",
@@ -28438,7 +28801,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02485",
+    "id": "rcv-2026-02518",
     "material_id": "RM-055",
     "received_quantity": 26.12,
     "unit": "kg",
@@ -28449,7 +28812,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02486",
+    "id": "rcv-2026-02519",
     "material_id": "RM-055",
     "received_quantity": 23.05,
     "unit": "kg",
@@ -28460,7 +28823,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02487",
+    "id": "rcv-2026-02520",
     "material_id": "RM-055",
     "received_quantity": 23.6,
     "unit": "kg",
@@ -28471,7 +28834,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02488",
+    "id": "rcv-2026-02521",
     "material_id": "RM-055",
     "received_quantity": 26.42,
     "unit": "kg",
@@ -28482,7 +28845,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02489",
+    "id": "rcv-2026-02522",
     "material_id": "RM-055",
     "received_quantity": 24.59,
     "unit": "kg",
@@ -28493,7 +28856,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02490",
+    "id": "rcv-2026-02523",
     "material_id": "RM-055",
     "received_quantity": 22.6,
     "unit": "kg",
@@ -28504,7 +28867,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02491",
+    "id": "rcv-2026-02524",
     "material_id": "RM-055",
     "received_quantity": 25.33,
     "unit": "kg",
@@ -28515,7 +28878,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02492",
+    "id": "rcv-2026-02525",
     "material_id": "RM-055",
     "received_quantity": 26.08,
     "unit": "kg",
@@ -28526,7 +28889,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02493",
+    "id": "rcv-2026-02526",
     "material_id": "RM-055",
     "received_quantity": 23.01,
     "unit": "kg",
@@ -28537,7 +28900,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02494",
+    "id": "rcv-2026-02527",
     "material_id": "RM-055",
     "received_quantity": 23.65,
     "unit": "kg",
@@ -28548,7 +28911,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02495",
+    "id": "rcv-2026-02528",
     "material_id": "RM-055",
     "received_quantity": 26.43,
     "unit": "kg",
@@ -28559,7 +28922,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02496",
+    "id": "rcv-2026-02529",
     "material_id": "RM-055",
     "received_quantity": 24.53,
     "unit": "kg",
@@ -28570,7 +28933,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02497",
+    "id": "rcv-2026-02530",
     "material_id": "RM-055",
     "received_quantity": 22.61,
     "unit": "kg",
@@ -28581,7 +28944,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02498",
+    "id": "rcv-2026-02531",
     "material_id": "RM-055",
     "received_quantity": 25.38,
     "unit": "kg",
@@ -28592,7 +28955,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02499",
+    "id": "rcv-2026-02532",
     "material_id": "RM-055",
     "received_quantity": 26.05,
     "unit": "kg",
@@ -28603,7 +28966,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02500",
+    "id": "rcv-2026-02533",
     "material_id": "RM-055",
     "received_quantity": 22.97,
     "unit": "kg",
@@ -28614,7 +28977,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02501",
+    "id": "rcv-2026-02534",
     "material_id": "RM-055",
     "received_quantity": 23.7,
     "unit": "kg",
@@ -28625,7 +28988,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02502",
+    "id": "rcv-2026-02535",
     "material_id": "RM-055",
     "received_quantity": 26.45,
     "unit": "kg",
@@ -28636,7 +28999,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02503",
+    "id": "rcv-2026-02536",
     "material_id": "RM-055",
     "received_quantity": 24.47,
     "unit": "kg",
@@ -28647,7 +29010,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02504",
+    "id": "rcv-2026-02537",
     "material_id": "RM-055",
     "received_quantity": 22.63,
     "unit": "kg",
@@ -28658,7 +29021,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02505",
+    "id": "rcv-2026-02538",
     "material_id": "RM-055",
     "received_quantity": 25.44,
     "unit": "kg",
@@ -28669,7 +29032,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02506",
+    "id": "rcv-2026-02539",
     "material_id": "RM-055",
     "received_quantity": 26.01,
     "unit": "kg",
@@ -28680,7 +29043,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02507",
+    "id": "rcv-2026-02540",
     "material_id": "RM-055",
     "received_quantity": 22.94,
     "unit": "kg",
@@ -28691,7 +29054,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02508",
+    "id": "rcv-2026-02541",
     "material_id": "RM-055",
     "received_quantity": 23.76,
     "unit": "kg",
@@ -28702,7 +29065,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02509",
+    "id": "rcv-2026-02542",
     "material_id": "RM-055",
     "received_quantity": 26.46,
     "unit": "kg",
@@ -28713,7 +29076,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02510",
+    "id": "rcv-2026-02543",
     "material_id": "RM-055",
     "received_quantity": 24.41,
     "unit": "kg",
@@ -28724,7 +29087,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02511",
+    "id": "rcv-2026-02544",
     "material_id": "RM-055",
     "received_quantity": 22.64,
     "unit": "kg",
@@ -28735,7 +29098,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02512",
+    "id": "rcv-2026-02545",
     "material_id": "RM-055",
     "received_quantity": 25.49,
     "unit": "kg",
@@ -28746,7 +29109,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02513",
+    "id": "rcv-2026-02546",
     "material_id": "RM-055",
     "received_quantity": 25.97,
     "unit": "kg",
@@ -28757,7 +29120,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02514",
+    "id": "rcv-2026-02547",
     "material_id": "RM-055",
     "received_quantity": 22.9,
     "unit": "kg",
@@ -28768,7 +29131,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02515",
+    "id": "rcv-2026-02548",
     "material_id": "RM-055",
     "received_quantity": 23.81,
     "unit": "kg",
@@ -28779,7 +29142,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02516",
+    "id": "rcv-2026-02549",
     "material_id": "RM-055",
     "received_quantity": 26.47,
     "unit": "kg",
@@ -28790,7 +29153,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02517",
+    "id": "rcv-2026-02550",
     "material_id": "RM-055",
     "received_quantity": 24.35,
     "unit": "kg",
@@ -28801,7 +29164,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02518",
+    "id": "rcv-2026-02551",
     "material_id": "RM-055",
     "received_quantity": 22.66,
     "unit": "kg",
@@ -28812,7 +29175,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02519",
+    "id": "rcv-2026-02552",
     "material_id": "RM-055",
     "received_quantity": 25.54,
     "unit": "kg",
@@ -28823,7 +29186,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02520",
+    "id": "rcv-2026-02553",
     "material_id": "RM-055",
     "received_quantity": 25.93,
     "unit": "kg",
@@ -28834,7 +29197,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02521",
+    "id": "rcv-2026-02554",
     "material_id": "RM-055",
     "received_quantity": 22.87,
     "unit": "kg",
@@ -28845,7 +29208,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02522",
+    "id": "rcv-2026-02555",
     "material_id": "RM-055",
     "received_quantity": 23.87,
     "unit": "kg",
@@ -28856,7 +29219,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02523",
+    "id": "rcv-2026-02556",
     "material_id": "RM-055",
     "received_quantity": 26.28,
     "unit": "kg",
@@ -28867,7 +29230,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02524",
+    "id": "rcv-2026-02557",
     "material_id": "RM-056",
     "received_quantity": 30.81,
     "unit": "kg",
@@ -28878,7 +29241,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02525",
+    "id": "rcv-2026-02558",
     "material_id": "RM-056",
     "received_quantity": 29.15,
     "unit": "kg",
@@ -28889,7 +29252,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02526",
+    "id": "rcv-2026-02559",
     "material_id": "RM-056",
     "received_quantity": 32.44,
     "unit": "kg",
@@ -28900,7 +29263,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02527",
+    "id": "rcv-2026-02560",
     "material_id": "RM-056",
     "received_quantity": 33.85,
     "unit": "kg",
@@ -28911,7 +29274,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02528",
+    "id": "rcv-2026-02561",
     "material_id": "RM-056",
     "received_quantity": 30.44,
     "unit": "kg",
@@ -28922,7 +29285,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02529",
+    "id": "rcv-2026-02562",
     "material_id": "RM-056",
     "received_quantity": 29.31,
     "unit": "kg",
@@ -28933,7 +29296,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02530",
+    "id": "rcv-2026-02563",
     "material_id": "RM-056",
     "received_quantity": 32.8,
     "unit": "kg",
@@ -28944,7 +29307,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02531",
+    "id": "rcv-2026-02564",
     "material_id": "RM-056",
     "received_quantity": 33.66,
     "unit": "kg",
@@ -28955,7 +29318,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02532",
+    "id": "rcv-2026-02565",
     "material_id": "RM-056",
     "received_quantity": 30.09,
     "unit": "kg",
@@ -28966,7 +29329,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02533",
+    "id": "rcv-2026-02566",
     "material_id": "RM-056",
     "received_quantity": 29.52,
     "unit": "kg",
@@ -28977,7 +29340,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02534",
+    "id": "rcv-2026-02567",
     "material_id": "RM-056",
     "received_quantity": 33.13,
     "unit": "kg",
@@ -28988,7 +29351,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02535",
+    "id": "rcv-2026-02568",
     "material_id": "RM-056",
     "received_quantity": 33.42,
     "unit": "kg",
@@ -28999,7 +29362,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02536",
+    "id": "rcv-2026-02569",
     "material_id": "RM-056",
     "received_quantity": 29.78,
     "unit": "kg",
@@ -29010,7 +29373,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02537",
+    "id": "rcv-2026-02570",
     "material_id": "RM-056",
     "received_quantity": 29.79,
     "unit": "kg",
@@ -29021,7 +29384,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02538",
+    "id": "rcv-2026-02571",
     "material_id": "RM-056",
     "received_quantity": 33.42,
     "unit": "kg",
@@ -29032,7 +29395,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02539",
+    "id": "rcv-2026-02572",
     "material_id": "RM-056",
     "received_quantity": 33.13,
     "unit": "kg",
@@ -29043,7 +29406,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02540",
+    "id": "rcv-2026-02573",
     "material_id": "RM-056",
     "received_quantity": 29.52,
     "unit": "kg",
@@ -29054,7 +29417,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02541",
+    "id": "rcv-2026-02574",
     "material_id": "RM-056",
     "received_quantity": 30.1,
     "unit": "kg",
@@ -29065,7 +29428,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02542",
+    "id": "rcv-2026-02575",
     "material_id": "RM-056",
     "received_quantity": 33.66,
     "unit": "kg",
@@ -29076,7 +29439,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02543",
+    "id": "rcv-2026-02576",
     "material_id": "RM-056",
     "received_quantity": 32.8,
     "unit": "kg",
@@ -29087,7 +29450,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02544",
+    "id": "rcv-2026-02577",
     "material_id": "RM-056",
     "received_quantity": 29.3,
     "unit": "kg",
@@ -29098,7 +29461,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02545",
+    "id": "rcv-2026-02578",
     "material_id": "RM-056",
     "received_quantity": 30.44,
     "unit": "kg",
@@ -29109,7 +29472,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02546",
+    "id": "rcv-2026-02579",
     "material_id": "RM-056",
     "received_quantity": 33.85,
     "unit": "kg",
@@ -29120,7 +29483,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02547",
+    "id": "rcv-2026-02580",
     "material_id": "RM-056",
     "received_quantity": 32.44,
     "unit": "kg",
@@ -29131,7 +29494,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02548",
+    "id": "rcv-2026-02581",
     "material_id": "RM-056",
     "received_quantity": 29.15,
     "unit": "kg",
@@ -29142,7 +29505,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02549",
+    "id": "rcv-2026-02582",
     "material_id": "RM-056",
     "received_quantity": 30.81,
     "unit": "kg",
@@ -29153,7 +29516,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02550",
+    "id": "rcv-2026-02583",
     "material_id": "RM-056",
     "received_quantity": 33.98,
     "unit": "kg",
@@ -29164,7 +29527,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02551",
+    "id": "rcv-2026-02584",
     "material_id": "RM-056",
     "received_quantity": 32.06,
     "unit": "kg",
@@ -29175,7 +29538,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02552",
+    "id": "rcv-2026-02585",
     "material_id": "RM-056",
     "received_quantity": 29.05,
     "unit": "kg",
@@ -29186,7 +29549,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02553",
+    "id": "rcv-2026-02586",
     "material_id": "RM-056",
     "received_quantity": 31.2,
     "unit": "kg",
@@ -29197,7 +29560,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02554",
+    "id": "rcv-2026-02587",
     "material_id": "RM-056",
     "received_quantity": 34.05,
     "unit": "kg",
@@ -29208,7 +29571,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02555",
+    "id": "rcv-2026-02588",
     "material_id": "RM-056",
     "received_quantity": 31.66,
     "unit": "kg",
@@ -29219,7 +29582,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02556",
+    "id": "rcv-2026-02589",
     "material_id": "RM-056",
     "received_quantity": 29.01,
     "unit": "kg",
@@ -29230,7 +29593,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02557",
+    "id": "rcv-2026-02590",
     "material_id": "RM-056",
     "received_quantity": 31.6,
     "unit": "kg",
@@ -29241,7 +29604,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-19T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02558",
+    "id": "rcv-2026-02591",
     "material_id": "RM-056",
     "received_quantity": 34.05,
     "unit": "kg",
@@ -29252,7 +29615,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02559",
+    "id": "rcv-2026-02592",
     "material_id": "RM-056",
     "received_quantity": 31.26,
     "unit": "kg",
@@ -29263,7 +29626,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02560",
+    "id": "rcv-2026-02593",
     "material_id": "RM-056",
     "received_quantity": 29.04,
     "unit": "kg",
@@ -29274,7 +29637,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02561",
+    "id": "rcv-2026-02594",
     "material_id": "RM-056",
     "received_quantity": 32,
     "unit": "kg",
@@ -29285,7 +29648,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02562",
+    "id": "rcv-2026-02595",
     "material_id": "RM-056",
     "received_quantity": 33.99,
     "unit": "kg",
@@ -29296,7 +29659,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02563",
+    "id": "rcv-2026-02596",
     "material_id": "RM-056",
     "received_quantity": 30.87,
     "unit": "kg",
@@ -29307,7 +29670,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02564",
+    "id": "rcv-2026-02597",
     "material_id": "RM-056",
     "received_quantity": 26.96,
     "unit": "kg",
@@ -29318,7 +29681,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02565",
+    "id": "rcv-2026-02598",
     "material_id": "RM-057",
     "received_quantity": 242.6,
     "unit": "kg",
@@ -29329,7 +29692,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02566",
+    "id": "rcv-2026-02599",
     "material_id": "RM-057",
     "received_quantity": 273.05,
     "unit": "kg",
@@ -29340,7 +29703,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02567",
+    "id": "rcv-2026-02600",
     "material_id": "RM-057",
     "received_quantity": 278.36,
     "unit": "kg",
@@ -29351,7 +29714,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02568",
+    "id": "rcv-2026-02601",
     "material_id": "RM-057",
     "received_quantity": 245.5,
     "unit": "kg",
@@ -29362,7 +29725,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02569",
+    "id": "rcv-2026-02602",
     "material_id": "RM-057",
     "received_quantity": 255.09,
     "unit": "kg",
@@ -29373,7 +29736,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02570",
+    "id": "rcv-2026-02603",
     "material_id": "RM-057",
     "received_quantity": 283.6,
     "unit": "kg",
@@ -29384,7 +29747,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02571",
+    "id": "rcv-2026-02604",
     "material_id": "RM-057",
     "received_quantity": 261.08,
     "unit": "kg",
@@ -29395,7 +29758,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02572",
+    "id": "rcv-2026-02605",
     "material_id": "RM-057",
     "received_quantity": 242.78,
     "unit": "kg",
@@ -29406,7 +29769,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02573",
+    "id": "rcv-2026-02606",
     "material_id": "RM-057",
     "received_quantity": 273.6,
     "unit": "kg",
@@ -29417,7 +29780,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02574",
+    "id": "rcv-2026-02607",
     "material_id": "RM-057",
     "received_quantity": 277.92,
     "unit": "kg",
@@ -29428,7 +29791,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02575",
+    "id": "rcv-2026-02608",
     "material_id": "RM-057",
     "received_quantity": 245.14,
     "unit": "kg",
@@ -29439,7 +29802,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02576",
+    "id": "rcv-2026-02609",
     "material_id": "RM-057",
     "received_quantity": 255.69,
     "unit": "kg",
@@ -29450,7 +29813,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02577",
+    "id": "rcv-2026-02610",
     "material_id": "RM-057",
     "received_quantity": 283.68,
     "unit": "kg",
@@ -29461,7 +29824,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02578",
+    "id": "rcv-2026-02611",
     "material_id": "RM-057",
     "received_quantity": 260.44,
     "unit": "kg",
@@ -29472,7 +29835,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02579",
+    "id": "rcv-2026-02612",
     "material_id": "RM-057",
     "received_quantity": 242.99,
     "unit": "kg",
@@ -29483,7 +29846,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-13T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02580",
+    "id": "rcv-2026-02613",
     "material_id": "RM-057",
     "received_quantity": 274.15,
     "unit": "kg",
@@ -29494,7 +29857,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02581",
+    "id": "rcv-2026-02614",
     "material_id": "RM-057",
     "received_quantity": 277.46,
     "unit": "kg",
@@ -29505,7 +29868,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02582",
+    "id": "rcv-2026-02615",
     "material_id": "RM-057",
     "received_quantity": 244.8,
     "unit": "kg",
@@ -29516,7 +29879,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02583",
+    "id": "rcv-2026-02616",
     "material_id": "RM-057",
     "received_quantity": 256.3,
     "unit": "kg",
@@ -29527,7 +29890,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02584",
+    "id": "rcv-2026-02617",
     "material_id": "RM-057",
     "received_quantity": 283.75,
     "unit": "kg",
@@ -29538,7 +29901,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02585",
+    "id": "rcv-2026-02618",
     "material_id": "RM-057",
     "received_quantity": 259.8,
     "unit": "kg",
@@ -29549,7 +29912,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02586",
+    "id": "rcv-2026-02619",
     "material_id": "RM-057",
     "received_quantity": 243.21,
     "unit": "kg",
@@ -29560,7 +29923,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02587",
+    "id": "rcv-2026-02620",
     "material_id": "RM-057",
     "received_quantity": 274.68,
     "unit": "kg",
@@ -29571,7 +29934,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02588",
+    "id": "rcv-2026-02621",
     "material_id": "RM-057",
     "received_quantity": 277,
     "unit": "kg",
@@ -29582,7 +29945,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02589",
+    "id": "rcv-2026-02622",
     "material_id": "RM-057",
     "received_quantity": 244.48,
     "unit": "kg",
@@ -29593,7 +29956,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02590",
+    "id": "rcv-2026-02623",
     "material_id": "RM-057",
     "received_quantity": 256.91,
     "unit": "kg",
@@ -29604,7 +29967,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-07T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02591",
+    "id": "rcv-2026-02624",
     "material_id": "RM-057",
     "received_quantity": 283.79,
     "unit": "kg",
@@ -29615,7 +29978,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02592",
+    "id": "rcv-2026-02625",
     "material_id": "RM-057",
     "received_quantity": 259.17,
     "unit": "kg",
@@ -29626,7 +29989,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02593",
+    "id": "rcv-2026-02626",
     "material_id": "RM-057",
     "received_quantity": 243.45,
     "unit": "kg",
@@ -29637,7 +30000,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02594",
+    "id": "rcv-2026-02627",
     "material_id": "RM-057",
     "received_quantity": 275.2,
     "unit": "kg",
@@ -29648,7 +30011,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02595",
+    "id": "rcv-2026-02628",
     "material_id": "RM-057",
     "received_quantity": 276.52,
     "unit": "kg",
@@ -29659,7 +30022,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02596",
+    "id": "rcv-2026-02629",
     "material_id": "RM-057",
     "received_quantity": 244.17,
     "unit": "kg",
@@ -29670,7 +30033,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02597",
+    "id": "rcv-2026-02630",
     "material_id": "RM-057",
     "received_quantity": 257.53,
     "unit": "kg",
@@ -29681,7 +30044,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02598",
+    "id": "rcv-2026-02631",
     "material_id": "RM-057",
     "received_quantity": 283.82,
     "unit": "kg",
@@ -29692,7 +30055,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02599",
+    "id": "rcv-2026-02632",
     "material_id": "RM-057",
     "received_quantity": 258.54,
     "unit": "kg",
@@ -29703,7 +30066,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02600",
+    "id": "rcv-2026-02633",
     "material_id": "RM-057",
     "received_quantity": 243.71,
     "unit": "kg",
@@ -29714,7 +30077,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02601",
+    "id": "rcv-2026-02634",
     "material_id": "RM-057",
     "received_quantity": 275.72,
     "unit": "kg",
@@ -29725,7 +30088,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02602",
+    "id": "rcv-2026-02635",
     "material_id": "RM-057",
     "received_quantity": 276.03,
     "unit": "kg",
@@ -29736,7 +30099,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02603",
+    "id": "rcv-2026-02636",
     "material_id": "RM-057",
     "received_quantity": 243.88,
     "unit": "kg",
@@ -29747,7 +30110,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02604",
+    "id": "rcv-2026-02637",
     "material_id": "RM-057",
     "received_quantity": 258.15,
     "unit": "kg",
@@ -29758,7 +30121,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02605",
+    "id": "rcv-2026-02638",
     "material_id": "RM-057",
     "received_quantity": 283.82,
     "unit": "kg",
@@ -29769,7 +30132,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02606",
+    "id": "rcv-2026-02639",
     "material_id": "RM-057",
     "received_quantity": 257.91,
     "unit": "kg",
@@ -29780,7 +30143,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02607",
+    "id": "rcv-2026-02640",
     "material_id": "RM-057",
     "received_quantity": 243.99,
     "unit": "kg",
@@ -29791,7 +30154,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-31T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02608",
+    "id": "rcv-2026-02641",
     "material_id": "RM-057",
     "received_quantity": 276.22,
     "unit": "kg",
@@ -29802,7 +30165,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02609",
+    "id": "rcv-2026-02642",
     "material_id": "RM-057",
     "received_quantity": 275.52,
     "unit": "kg",
@@ -29813,7 +30176,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02610",
+    "id": "rcv-2026-02643",
     "material_id": "RM-057",
     "received_quantity": 243.61,
     "unit": "kg",
@@ -29824,7 +30187,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02611",
+    "id": "rcv-2026-02644",
     "material_id": "RM-057",
     "received_quantity": 258.78,
     "unit": "kg",
@@ -29835,7 +30198,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02612",
+    "id": "rcv-2026-02645",
     "material_id": "RM-057",
     "received_quantity": 283.81,
     "unit": "kg",
@@ -29846,7 +30209,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-25T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02613",
+    "id": "rcv-2026-02646",
     "material_id": "RM-057",
     "received_quantity": 257.29,
     "unit": "kg",
@@ -29857,7 +30220,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02614",
+    "id": "rcv-2026-02647",
     "material_id": "RM-058",
     "received_quantity": 191.34,
     "unit": "kg",
@@ -29868,7 +30231,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02615",
+    "id": "rcv-2026-02648",
     "material_id": "RM-058",
     "received_quantity": 211.29,
     "unit": "kg",
@@ -29879,7 +30242,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02616",
+    "id": "rcv-2026-02649",
     "material_id": "RM-058",
     "received_quantity": 199.84,
     "unit": "kg",
@@ -29890,7 +30253,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02617",
+    "id": "rcv-2026-02650",
     "material_id": "RM-058",
     "received_quantity": 180.79,
     "unit": "kg",
@@ -29901,7 +30264,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02618",
+    "id": "rcv-2026-02651",
     "material_id": "RM-058",
     "received_quantity": 193.75,
     "unit": "kg",
@@ -29912,7 +30275,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02619",
+    "id": "rcv-2026-02652",
     "material_id": "RM-058",
     "received_quantity": 211.78,
     "unit": "kg",
@@ -29923,7 +30286,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02620",
+    "id": "rcv-2026-02653",
     "material_id": "RM-058",
     "received_quantity": 197.38,
     "unit": "kg",
@@ -29934,7 +30297,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02621",
+    "id": "rcv-2026-02654",
     "material_id": "RM-058",
     "received_quantity": 180.5,
     "unit": "kg",
@@ -29945,7 +30308,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02622",
+    "id": "rcv-2026-02655",
     "material_id": "RM-058",
     "received_quantity": 196.23,
     "unit": "kg",
@@ -29956,7 +30319,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02623",
+    "id": "rcv-2026-02656",
     "material_id": "RM-058",
     "received_quantity": 211.87,
     "unit": "kg",
@@ -29967,7 +30330,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02624",
+    "id": "rcv-2026-02657",
     "material_id": "RM-058",
     "received_quantity": 194.9,
     "unit": "kg",
@@ -29978,7 +30341,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02625",
+    "id": "rcv-2026-02658",
     "material_id": "RM-058",
     "received_quantity": 180.61,
     "unit": "kg",
@@ -29989,7 +30352,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02626",
+    "id": "rcv-2026-02659",
     "material_id": "RM-058",
     "received_quantity": 198.71,
     "unit": "kg",
@@ -30000,7 +30363,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02627",
+    "id": "rcv-2026-02660",
     "material_id": "RM-058",
     "received_quantity": 211.57,
     "unit": "kg",
@@ -30011,7 +30374,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02628",
+    "id": "rcv-2026-02661",
     "material_id": "RM-058",
     "received_quantity": 192.44,
     "unit": "kg",
@@ -30022,7 +30385,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02629",
+    "id": "rcv-2026-02662",
     "material_id": "RM-058",
     "received_quantity": 181.11,
     "unit": "kg",
@@ -30033,7 +30396,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02630",
+    "id": "rcv-2026-02663",
     "material_id": "RM-058",
     "received_quantity": 201.13,
     "unit": "kg",
@@ -30044,7 +30407,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02631",
+    "id": "rcv-2026-02664",
     "material_id": "RM-058",
     "received_quantity": 210.88,
     "unit": "kg",
@@ -30055,7 +30418,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02632",
+    "id": "rcv-2026-02665",
     "material_id": "RM-058",
     "received_quantity": 190.08,
     "unit": "kg",
@@ -30066,7 +30429,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02633",
+    "id": "rcv-2026-02666",
     "material_id": "RM-058",
     "received_quantity": 181.98,
     "unit": "kg",
@@ -30077,7 +30440,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02634",
+    "id": "rcv-2026-02667",
     "material_id": "RM-058",
     "received_quantity": 203.42,
     "unit": "kg",
@@ -30088,7 +30451,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02635",
+    "id": "rcv-2026-02668",
     "material_id": "RM-058",
     "received_quantity": 209.82,
     "unit": "kg",
@@ -30099,7 +30462,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02636",
+    "id": "rcv-2026-02669",
     "material_id": "RM-058",
     "received_quantity": 187.88,
     "unit": "kg",
@@ -30110,7 +30473,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02637",
+    "id": "rcv-2026-02670",
     "material_id": "RM-058",
     "received_quantity": 183.21,
     "unit": "kg",
@@ -30121,7 +30484,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02638",
+    "id": "rcv-2026-02671",
     "material_id": "RM-058",
     "received_quantity": 205.53,
     "unit": "kg",
@@ -30132,7 +30495,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02639",
+    "id": "rcv-2026-02672",
     "material_id": "RM-058",
     "received_quantity": 208.42,
     "unit": "kg",
@@ -30143,7 +30506,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02640",
+    "id": "rcv-2026-02673",
     "material_id": "RM-058",
     "received_quantity": 185.88,
     "unit": "kg",
@@ -30154,7 +30517,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02641",
+    "id": "rcv-2026-02674",
     "material_id": "RM-058",
     "received_quantity": 184.77,
     "unit": "kg",
@@ -30165,7 +30528,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02642",
+    "id": "rcv-2026-02675",
     "material_id": "RM-058",
     "received_quantity": 207.4,
     "unit": "kg",
@@ -30176,7 +30539,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02643",
+    "id": "rcv-2026-02676",
     "material_id": "RM-058",
     "received_quantity": 206.71,
     "unit": "kg",
@@ -30187,7 +30550,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02644",
+    "id": "rcv-2026-02677",
     "material_id": "RM-058",
     "received_quantity": 184.14,
     "unit": "kg",
@@ -30198,7 +30561,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02645",
+    "id": "rcv-2026-02678",
     "material_id": "RM-058",
     "received_quantity": 186.61,
     "unit": "kg",
@@ -30209,7 +30572,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02646",
+    "id": "rcv-2026-02679",
     "material_id": "RM-058",
     "received_quantity": 208.99,
     "unit": "kg",
@@ -30220,7 +30583,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02647",
+    "id": "rcv-2026-02680",
     "material_id": "RM-058",
     "received_quantity": 204.74,
     "unit": "kg",
@@ -30231,7 +30594,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02648",
+    "id": "rcv-2026-02681",
     "material_id": "RM-058",
     "received_quantity": 182.7,
     "unit": "kg",
@@ -30242,7 +30605,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02649",
+    "id": "rcv-2026-02682",
     "material_id": "RM-058",
     "received_quantity": 188.7,
     "unit": "kg",
@@ -30253,7 +30616,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-02T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02650",
+    "id": "rcv-2026-02683",
     "material_id": "RM-058",
     "received_quantity": 210.27,
     "unit": "kg",
@@ -30264,7 +30627,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-08T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02651",
+    "id": "rcv-2026-02684",
     "material_id": "RM-058",
     "received_quantity": 202.56,
     "unit": "kg",
@@ -30275,7 +30638,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-14T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02652",
+    "id": "rcv-2026-02685",
     "material_id": "RM-058",
     "received_quantity": 181.6,
     "unit": "kg",
@@ -30286,7 +30649,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-20T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02653",
+    "id": "rcv-2026-02686",
     "material_id": "RM-058",
     "received_quantity": 190.97,
     "unit": "kg",
@@ -30297,7 +30660,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-26T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02654",
+    "id": "rcv-2026-02687",
     "material_id": "RM-058",
     "received_quantity": 168.46,
     "unit": "kg",
@@ -30308,7 +30671,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-09-01T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02655",
+    "id": "rcv-2026-02688",
     "material_id": "RM-059",
     "received_quantity": 736.13,
     "unit": "kg",
@@ -30319,7 +30682,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02656",
+    "id": "rcv-2026-02689",
     "material_id": "RM-059",
     "received_quantity": 753.16,
     "unit": "kg",
@@ -30330,7 +30693,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02657",
+    "id": "rcv-2026-02690",
     "material_id": "RM-059",
     "received_quantity": 841.65,
     "unit": "kg",
@@ -30341,7 +30704,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02658",
+    "id": "rcv-2026-02691",
     "material_id": "RM-059",
     "received_quantity": 817.6,
     "unit": "kg",
@@ -30352,7 +30715,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02659",
+    "id": "rcv-2026-02692",
     "material_id": "RM-059",
     "received_quantity": 731.02,
     "unit": "kg",
@@ -30363,7 +30726,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-01-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02660",
+    "id": "rcv-2026-02693",
     "material_id": "RM-059",
     "received_quantity": 761.93,
     "unit": "kg",
@@ -30374,7 +30737,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02661",
+    "id": "rcv-2026-02694",
     "material_id": "RM-059",
     "received_quantity": 846.06,
     "unit": "kg",
@@ -30385,7 +30748,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02662",
+    "id": "rcv-2026-02695",
     "material_id": "RM-059",
     "received_quantity": 808.48,
     "unit": "kg",
@@ -30396,7 +30759,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02663",
+    "id": "rcv-2026-02696",
     "material_id": "RM-059",
     "received_quantity": 727.33,
     "unit": "kg",
@@ -30407,7 +30770,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02664",
+    "id": "rcv-2026-02697",
     "material_id": "RM-059",
     "received_quantity": 771.34,
     "unit": "kg",
@@ -30418,7 +30781,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-02-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02665",
+    "id": "rcv-2026-02698",
     "material_id": "RM-059",
     "received_quantity": 849.01,
     "unit": "kg",
@@ -30429,7 +30792,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-06T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02666",
+    "id": "rcv-2026-02699",
     "material_id": "RM-059",
     "received_quantity": 798.84,
     "unit": "kg",
@@ -30440,7 +30803,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-12T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02667",
+    "id": "rcv-2026-02700",
     "material_id": "RM-059",
     "received_quantity": 725.15,
     "unit": "kg",
@@ -30451,7 +30814,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-18T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02668",
+    "id": "rcv-2026-02701",
     "material_id": "RM-059",
     "received_quantity": 781.16,
     "unit": "kg",
@@ -30462,7 +30825,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-24T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02669",
+    "id": "rcv-2026-02702",
     "material_id": "RM-059",
     "received_quantity": 850.41,
     "unit": "kg",
@@ -30473,7 +30836,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-03-30T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02670",
+    "id": "rcv-2026-02703",
     "material_id": "RM-059",
     "received_quantity": 788.91,
     "unit": "kg",
@@ -30484,7 +30847,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02671",
+    "id": "rcv-2026-02704",
     "material_id": "RM-059",
     "received_quantity": 724.53,
     "unit": "kg",
@@ -30495,7 +30858,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02672",
+    "id": "rcv-2026-02705",
     "material_id": "RM-059",
     "received_quantity": 791.14,
     "unit": "kg",
@@ -30506,7 +30869,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02673",
+    "id": "rcv-2026-02706",
     "material_id": "RM-059",
     "received_quantity": 850.23,
     "unit": "kg",
@@ -30517,7 +30880,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02674",
+    "id": "rcv-2026-02707",
     "material_id": "RM-059",
     "received_quantity": 778.94,
     "unit": "kg",
@@ -30528,7 +30891,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-04-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02675",
+    "id": "rcv-2026-02708",
     "material_id": "RM-059",
     "received_quantity": 725.5,
     "unit": "kg",
@@ -30539,7 +30902,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-05T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02676",
+    "id": "rcv-2026-02709",
     "material_id": "RM-059",
     "received_quantity": 801.03,
     "unit": "kg",
@@ -30550,7 +30913,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-11T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02677",
+    "id": "rcv-2026-02710",
     "material_id": "RM-059",
     "received_quantity": 848.48,
     "unit": "kg",
@@ -30561,7 +30924,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-17T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02678",
+    "id": "rcv-2026-02711",
     "material_id": "RM-059",
     "received_quantity": 769.19,
     "unit": "kg",
@@ -30572,7 +30935,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-23T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02679",
+    "id": "rcv-2026-02712",
     "material_id": "RM-059",
     "received_quantity": 728.03,
     "unit": "kg",
@@ -30583,7 +30946,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-05-29T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02680",
+    "id": "rcv-2026-02713",
     "material_id": "RM-059",
     "received_quantity": 810.58,
     "unit": "kg",
@@ -30594,7 +30957,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02681",
+    "id": "rcv-2026-02714",
     "material_id": "RM-059",
     "received_quantity": 845.2,
     "unit": "kg",
@@ -30605,7 +30968,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02682",
+    "id": "rcv-2026-02715",
     "material_id": "RM-059",
     "received_quantity": 759.9,
     "unit": "kg",
@@ -30616,7 +30979,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02683",
+    "id": "rcv-2026-02716",
     "material_id": "RM-059",
     "received_quantity": 732.04,
     "unit": "kg",
@@ -30627,7 +30990,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02684",
+    "id": "rcv-2026-02717",
     "material_id": "RM-059",
     "received_quantity": 819.55,
     "unit": "kg",
@@ -30638,7 +31001,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-06-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02685",
+    "id": "rcv-2026-02718",
     "material_id": "RM-059",
     "received_quantity": 840.47,
     "unit": "kg",
@@ -30649,7 +31012,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-04T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02686",
+    "id": "rcv-2026-02719",
     "material_id": "RM-059",
     "received_quantity": 751.31,
     "unit": "kg",
@@ -30660,7 +31023,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-10T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02687",
+    "id": "rcv-2026-02720",
     "material_id": "RM-059",
     "received_quantity": 737.45,
     "unit": "kg",
@@ -30671,7 +31034,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-16T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02688",
+    "id": "rcv-2026-02721",
     "material_id": "RM-059",
     "received_quantity": 827.72,
     "unit": "kg",
@@ -30682,7 +31045,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-22T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02689",
+    "id": "rcv-2026-02722",
     "material_id": "RM-059",
     "received_quantity": 834.42,
     "unit": "kg",
@@ -30693,7 +31056,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-07-28T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02690",
+    "id": "rcv-2026-02723",
     "material_id": "RM-059",
     "received_quantity": 743.62,
     "unit": "kg",
@@ -30704,7 +31067,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-03T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02691",
+    "id": "rcv-2026-02724",
     "material_id": "RM-059",
     "received_quantity": 744.12,
     "unit": "kg",
@@ -30715,7 +31078,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-09T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02692",
+    "id": "rcv-2026-02725",
     "material_id": "RM-059",
     "received_quantity": 834.87,
     "unit": "kg",
@@ -30726,7 +31089,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-15T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02693",
+    "id": "rcv-2026-02726",
     "material_id": "RM-059",
     "received_quantity": 827.18,
     "unit": "kg",
@@ -30737,7 +31100,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-21T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02694",
+    "id": "rcv-2026-02727",
     "material_id": "RM-059",
     "received_quantity": 737.04,
     "unit": "kg",
@@ -30748,7 +31111,7 @@ export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [
     "created_at": "2026-08-27T08:30:00Z"
   },
   {
-    "id": "rcv-2026-02695",
+    "id": "rcv-2026-02728",
     "material_id": "RM-059",
     "received_quantity": 706.64,
     "unit": "kg",

@@ -117,8 +117,13 @@ async function loadAuthoritativeData() {
         state.materials = rawMats.map(m => {
             const cur = Number(m.current_stock) || 0;
             const min = Number(m.minimum_threshold) || 0;
-            const progress = min > 0 ? Math.min(100, Math.round((cur / (min * 2)) * 100)) : 100;
-            const isLow = cur < min;
+            const progress = min > 0 ? Math.min(100, Math.round((cur / (min * 2)) * 100)) : (cur > 0 ? 100 : 0);
+            let statusObj = { code: "GOOD", label: "Good", cls: "ca-badge-green" };
+            if (cur <= 0) {
+                statusObj = { code: "OUT", label: "Out of Stock", cls: "ca-badge-red" };
+            } else if (cur < min) {
+                statusObj = { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" };
+            }
             return {
                 id: m.id,
                 name: m.name || "Unnamed Material",
@@ -127,9 +132,7 @@ async function loadAuthoritativeData() {
                 minStock: min,
                 progressPct: progress,
                 unit: m.unit_of_measure || m.unit || "kg",
-                status: isLow
-                    ? { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" }
-                    : { code: "GOOD", label: "Good", cls: "ca-badge-green" },
+                status: statusObj,
                 createdAt: m.created_at || new Date().toISOString()
             };
         });

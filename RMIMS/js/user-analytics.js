@@ -130,14 +130,16 @@ async function loadAuthoritativeData() {
         state.materials = rawMats.map(m => {
             const curStock = Number(m.current_stock) || 0;
             const minStock = m.minimum_threshold !== null ? Number(m.minimum_threshold) : 0;
-            const isLow = curStock < minStock;
-            const statusInfo = isLow
-                ? { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" }
-                : { code: "GOOD", label: "Good", cls: "ca-badge-green" };
+            let statusInfo = { code: "GOOD", label: "Good", cls: "ca-badge-green" };
+            if (curStock <= 0) {
+                statusInfo = { code: "OUT", label: "Out of Stock", cls: "ca-badge-red" };
+            } else if (curStock < minStock) {
+                statusInfo = { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" };
+            }
 
             // Compute Target Baseline (safe without hardcoded max)
             const targetBaseline = Math.max(minStock * 2, curStock, 1);
-            const progressPct = Math.min(100, Math.round((curStock / targetBaseline) * 100));
+            const progressPct = curStock <= 0 ? 0 : Math.min(100, Math.round((curStock / targetBaseline) * 100));
 
             return {
                 id: m.id,
