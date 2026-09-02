@@ -657,14 +657,15 @@ function renderPrimaryChart() {
     // Connect from last historical point
     forecastData.push(null, null, null, null, historicalData[4], week1Forecast, week2Forecast);
 
-    // Calculate Dynamic Acceptance Margin (±14.5%) across combined points
+    // Calculate Locked Model Acceptance Margin (±7.51%) across combined points
+    const LOCKED_MARGIN_FACTOR = 0.0751;
     const marginUpper = labels.map((_, i) => {
         const val = (i < 5) ? historicalData[i] : forecastData[i];
-        return val != null ? Number((val * 1.145).toFixed(1)) : null;
+        return val != null ? Number((val * (1 + LOCKED_MARGIN_FACTOR)).toFixed(1)) : null;
     });
     const marginLower = labels.map((_, i) => {
         const val = (i < 5) ? historicalData[i] : forecastData[i];
-        return val != null ? Number((val * 0.855).toFixed(1)) : null;
+        return val != null ? Number((val * (1 - LOCKED_MARGIN_FACTOR)).toFixed(1)) : null;
     });
 
     consumptionForecastChartInstance = new Chart(ctx, {
@@ -684,7 +685,7 @@ function renderPrimaryChart() {
                     tension: 0.25
                 },
                 {
-                    label: "Dynamic Acceptance Margin (±14.5%)",
+                    label: "Locked Model Acceptance Margin (±7.51%)",
                     data: marginLower,
                     borderColor: "transparent",
                     backgroundColor: "rgba(203, 213, 225, 0.55)",

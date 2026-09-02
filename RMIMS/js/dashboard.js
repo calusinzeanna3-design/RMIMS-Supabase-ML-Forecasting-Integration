@@ -1546,14 +1546,15 @@ async function renderRawMaterialsTrendChart() {
     });
   }
 
-  // Calculate Dynamic Acceptance Margin (±14.5%) Bands around Forecast Model
-  const marginUpperData = forecastData.map(f => f !== null && f !== undefined ? Number((f * 1.145).toFixed(2)) : null);
-  const marginLowerData = forecastData.map(f => f !== null && f !== undefined ? Number((f * 0.855).toFixed(2)) : null);
+  // Calculate Locked Model Acceptance Margin (±7.51%) Bands around Forecast Model
+  const LOCKED_MARGIN_FACTOR = 0.0751; // 7.51%
+  const marginUpperData = forecastData.map(f => f !== null && f !== undefined ? Number((f * (1 + LOCKED_MARGIN_FACTOR)).toFixed(2)) : null);
+  const marginLowerData = forecastData.map(f => f !== null && f !== undefined ? Number((f * (1 - LOCKED_MARGIN_FACTOR)).toFixed(2)) : null);
 
   // Update Footer Meta text
   const metaEl = $("trendFooterMeta");
   if (metaEl) {
-    metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">✅ Dynamic margin visual rendering complete for ${matDisplayName}!</span> <span style="color:#64748B; margin-left:8px;">(Showing Holt-Winters Fitted Model & ±14.5% Dynamic Acceptance Margin)</span>`;
+    metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">✅ Model margin visual rendering complete for ${matDisplayName}!</span> <span style="color:#64748B; margin-left:8px;">(Showing Holt-Winters Fitted Model & ±7.51% Locked Acceptance Margin)</span>`;
   }
 
   // Destroy previous chart instance if exists
@@ -1580,7 +1581,7 @@ async function renderRawMaterialsTrendChart() {
           tension: 0.25
         },
         {
-          label: "Margin Error (±14.5%)",
+          label: "Margin Error (±7.51%)",
           data: marginLowerData,
           borderColor: "transparent",
           backgroundColor: "rgba(203, 213, 225, 0.55)",
@@ -1663,7 +1664,7 @@ async function renderRawMaterialsTrendChart() {
                 const idx = context.dataIndex;
                 const lower = marginLowerData[idx] || 0;
                 const upper = marginUpperData[idx] || 0;
-                return ` Margin Error (±14.5%): ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
+                return ` Margin Error (±7.51%): ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
               }
               return ` ${context.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
             }
