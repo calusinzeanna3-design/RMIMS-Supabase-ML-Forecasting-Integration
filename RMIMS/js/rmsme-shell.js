@@ -891,6 +891,34 @@
     }
   }
 
+  // Global Notification helper for direct system actions
+  window.RMIMS_NOTIFICATIONS = {
+    sync: syncAuthoritativeNotifications,
+    render: renderNotifications,
+    addNotification: function(notif) {
+      if (!notif) return;
+      const stored = getStoredNotifications();
+      const id = notif.id || `notif-user-act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      if (!stored.some(n => n.id === id)) {
+        stored.unshift({
+          id: id,
+          category: notif.category || 'user',
+          priority: notif.priority || 'info',
+          title: notif.title || 'System Notification',
+          message: notif.message || '',
+          actor: notif.actor || 'Source: System',
+          roleScope: notif.roleScope || 'admin',
+          timestamp: notif.timestamp || new Date().toISOString()
+        });
+        saveStoredNotifications(stored);
+        renderNotifications();
+        if (document.getElementById("rmsmeAllNotificationsOverlay")?.classList.contains("open")) {
+          renderModalList();
+        }
+      }
+    }
+  };
+
   // Initial render & sync
   renderNotifications();
   setTimeout(syncAuthoritativeNotifications, 200);

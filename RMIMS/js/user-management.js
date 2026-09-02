@@ -480,6 +480,13 @@ async function sendPasswordReset(u) {
                 });
                 if (error) throw error;
                 showToast("Password reset email sent successfully.");
+                window.RMIMS_NOTIFICATIONS?.addNotification({
+                    category: 'user',
+                    priority: 'info',
+                    title: 'Password Reset Sent',
+                    message: `Password reset email was sent to ${target.email}.`,
+                    actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                });
                 closeModal("confirmModal");
             } catch (err) {
                 console.error("Password reset error:", err);
@@ -531,6 +538,14 @@ function openDeleteUserConfirm(u) {
                 } else {
                     showToast("Account deleted successfully.");
                 }
+
+                window.RMIMS_NOTIFICATIONS?.addNotification({
+                    category: 'user',
+                    priority: 'warning',
+                    title: deleted ? 'User Account Deleted' : 'User Account Deactivated',
+                    message: `Account "${fresh.fullName || fresh.email}" was ${deleted ? 'permanently deleted' : 'deactivated'}.`,
+                    actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                });
 
                 closeModal("confirmModal");
                 await refreshAll();
@@ -908,6 +923,13 @@ function openChangeRoleConfirm(u) {
                     updated_at: new Date().toISOString()
                 }).eq("id", u.id);
                 showToast(`Role updated to ${targetLabel}.`);
+                window.RMIMS_NOTIFICATIONS?.addNotification({
+                    category: 'user',
+                    priority: 'info',
+                    title: 'User Role Updated',
+                    message: `Account "${fresh.fullName || fresh.email}" role was updated to ${targetLabel}.`,
+                    actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                });
                 closeModal("confirmModal");
                 await refreshAll();
             } catch (err) {
@@ -947,6 +969,13 @@ function openDeactivateConfirm(u) {
                     updated_at: new Date().toISOString()
                 }).eq("id", u.id);
                 showToast("Account deactivated successfully.");
+                window.RMIMS_NOTIFICATIONS?.addNotification({
+                    category: 'user',
+                    priority: 'warning',
+                    title: 'User Account Deactivated',
+                    message: `Account "${fresh.fullName || fresh.email}" was deactivated.`,
+                    actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                });
                 closeModal("confirmModal");
                 await refreshAll();
             } catch (err) {
@@ -976,6 +1005,13 @@ function openActivateConfirm(u) {
                     updated_at: new Date().toISOString()
                 }).eq("id", u.id);
                 showToast("Account activated successfully.");
+                window.RMIMS_NOTIFICATIONS?.addNotification({
+                    category: 'user',
+                    priority: 'success',
+                    title: 'User Account Activated',
+                    message: `Account "${fresh.fullName || fresh.email}" was activated successfully.`,
+                    actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+                });
                 closeModal("confirmModal");
                 await refreshAll();
             } catch (err) {
@@ -1238,6 +1274,13 @@ document.getElementById("addUserForm").addEventListener("submit", async (e) => {
         }
 
         showToast("User created successfully.");
+        window.RMIMS_NOTIFICATIONS?.addNotification({
+            category: 'user',
+            priority: 'info',
+            title: 'New User Account Created',
+            message: `Account "${fullName}" (${email}) was created with role ${roleLabel(role)}.`,
+            actor: `Admin: ${currentUser.fullName || 'Administrator'}`
+        });
         closeModal("addUserModal");
         await refreshAll();
     } catch (err) {
