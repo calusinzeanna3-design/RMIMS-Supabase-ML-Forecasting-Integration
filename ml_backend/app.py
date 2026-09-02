@@ -2,10 +2,11 @@
 RMIMS (Raw Material Inventory Management System) - ML Forecasting Backend
 ========================================================================
 Production-grade Flask REST API providing pure Holt-Winters time-series forecasts,
-multi-horizon demand planning, and automated inventory decision support.
+multi-horizon demand planning, and automated inventory stock decision support.
 
 Author: Antigravity ML Engineering Team
 Target Architecture: 59 Raw Materials + 1 OVERALL_TOTAL Aggregate Model (60 Models)
+Locked Margin of Error: Strictly ±7.51% (Model 5-Year Empirical MAPE)
 """
 
 import os
@@ -158,12 +159,17 @@ def resolve_material_key(identifier: str):
 # 4. REST API Endpoints
 # ----------------------------------------------------------------------
 
+# LOCKED CONSTANT: Single Unified Margin of Error (7.51%)
+LOCKED_MARGIN_OF_ERROR_PCT = 7.51
+MARGIN_FACTOR = LOCKED_MARGIN_OF_ERROR_PCT / 100.0  # 0.0751
+
 @app.route("/", methods=["GET"])
 def index():
     return jsonify({
         "service": "RMIMS Machine Learning Forecasting API",
         "version": "2.0.0",
         "status": "online",
+        "locked_margin_of_error": f"±{LOCKED_MARGIN_OF_ERROR_PCT}%",
         "authoritative_materials": len(AUTHORITATIVE_MATERIALS),
         "models_loaded": len(MODELS),
         "docs": {
@@ -182,6 +188,7 @@ def health_check():
         "status": "healthy" if is_healthy else "degraded",
         "service": "RMIMS Time-Series Forecasting Backend",
         "model_type": "Holt-Winters Exponential Smoothing (Multiplicative Weekly Seasonality)",
+        "margin_of_error": f"±{LOCKED_MARGIN_OF_ERROR_PCT}%",
         "total_available_models": len(MODELS),
         "expected_models": 60,
         "overall_aggregate_supported": "OVERALL_TOTAL" in MODELS,
@@ -248,14 +255,9 @@ def get_dynamic_forecast():
 
         values = [round(float(v), 2) for v in resampled.values]
         
-        # Enforce Margin of Error strictly within the target range: 5.0% to 10.0%
-        # Uses the empirical model margin (7.71%), bounded strictly so it NEVER exceeds 10.0% or drops below 5.0%
-        input_margin = float(data.get("margin_pct", 7.71))
-        clamped_margin_pct = max(5.0, min(10.0, input_margin))
-        margin_factor = clamped_margin_pct / 100.0
-
-        upper_bounds = [round(float(v * (1.0 + margin_factor)), 2) for v in values]
-        lower_bounds = [round(float(v * (1.0 - margin_factor)), 2) for v in values]
+        # Exact Single Margin of Error Calculation (Strictly ±7.51%)
+        upper_bounds = [round(float(v * (1.0 + MARGIN_FACTOR)), 2) for v in values]
+        lower_bounds = [round(float(v * (1.0 - MARGIN_FACTOR)), 2) for v in values]
 
         return jsonify({
             "success": True,
@@ -265,14 +267,14 @@ def get_dynamic_forecast():
             "category": meta.get("category"),
             "horizon_type": horizon_type,
             "horizon_value": horizon_val,
-            "margin_of_error_pct": round(clamped_margin_pct, 2),
-            "margin_of_error_range": "5.0% to 10.0%",
+            "margin_of_error_pct": LOCKED_MARGIN_OF_ERROR_PCT,
+            "margin_of_error": f"±{LOCKED_MARGIN_OF_ERROR_PCT}%",
             "total_projected_requirement": round(float(sum(values)), 2),
             "labels": labels,
             "forecast_values": values,
             "upper_margin": upper_bounds,
             "lower_margin": lower_bounds,
-            "upper_margin_10pct": upper_bounds,
+            "upper_margin_10pct": upper_bounds,  # Backward compatible for frontend chart bindings
             "lower_margin_10pct": lower_bounds
         }), 200
 
@@ -311,6 +313,7 @@ def get_inventory_operational_forecast(material_identifier):
             "raw_material_name": meta.get("raw_material_name"),
             "unit": meta.get("unit"),
             "category": meta.get("category"),
+            "margin_of_error": f"±{LOCKED_MARGIN_OF_ERROR_PCT}%",
             "operational_7_day_requirement": qty_7d,
             "planning_28_day_requirement": qty_28d,
             "current_stock": current_stock,
@@ -326,5 +329,5 @@ def get_inventory_operational_forecast(material_identifier):
 
 if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 5000))
-    logger.info(f"Starting RMIMS Flask ML Service on port {PORT}...")
+    logger.info(f"Starting RMIMS Flask ML Service on port {PORT} with locked ±{LOCKED_MARGIN_OF_ERROR_PCT}% margin...")
     app.run(host="0.0.0.0", port=PORT, debug=True)
