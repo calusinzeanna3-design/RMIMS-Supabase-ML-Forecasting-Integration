@@ -422,6 +422,7 @@ async function loadAuthoritativeData() {
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
             const mat = matMap.get(r.material_id);
+            const supName = (r.supplier_name && r.supplier_name.toLowerCase() !== "all" ? r.supplier_name : "Supplier").trim();
             return {
                 id: r.id,
                 receiptDate: r.receipt_date || (r.created_at ? r.created_at.slice(0, 10) : ""),
@@ -431,8 +432,8 @@ async function loadAuthoritativeData() {
                 receivedQuantity: Number(r.received_quantity || 0),
                 unit: (r.unit || (mat ? mat.unit : "kg")).trim(),
                 currentStock: mat ? mat.currentStock : null,
-                supplierName: r.supplier_name || "Direct Delivery",
-                receivedBy: r.received_by || "Staff",
+                supplierName: supName,
+                receivedBy: formatOperatorDisplay(r.received_by, "User"),
                 status: "Verified",
                 createdAt: r.created_at
             };
@@ -441,7 +442,8 @@ async function loadAuthoritativeData() {
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
             const mat = matMap.get(d.material_id);
-            const prodName = d.finished_product_name && d.finished_product_name.trim() !== "" ? d.finished_product_name.trim() : "General Production";
+            const prodName = (d.finished_product_name && d.finished_product_name.toLowerCase() !== "all" ? d.finished_product_name : (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "General Production")).trim();
+            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "Production Issue").trim();
             return {
                 id: d.id,
                 usageDate: d.usage_date || (d.created_at ? d.created_at.slice(0, 10) : ""),
@@ -452,8 +454,8 @@ async function loadAuthoritativeData() {
                 unit: (d.unit || (mat ? mat.unit : "kg")).trim(),
                 currentStock: mat ? mat.currentStock : null,
                 finishedProduct: prodName,
-                activityType: d.activity_type || "Production",
-                recordedBy: d.recorded_by || "Staff",
+                activityType: actType,
+                recordedBy: formatOperatorDisplay(d.recorded_by, "User"),
                 status: "Logged",
                 createdAt: d.created_at
             };
@@ -1527,7 +1529,7 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
     ];
     const rightCol = [
         ["GENERATED AT", `${genDateStr} ${genTimeStr}`],
-        ["PREPARED BY", currentUser?.fullName || "RMSME Authorized Staff"],
+        ["PREPARED BY", currentUser?.fullName || "User"],
         ["SOURCE DATABASE", "RMSME Authoritative PostgreSQL Database"]
     ];
 
@@ -1917,7 +1919,7 @@ function updatePrintDocHtml() {
                             </div>
                             <div class="print-doc-meta-right">
                                 <div><strong>Generated:</strong> ${genDate} at ${genTime}</div>
-                                <div><strong>Operator:</strong> ${esc(currentUser?.fullName || "RMSME Authorized Staff")}</div>
+                                <div><strong>Operator:</strong> ${esc(currentUser?.fullName || "User")}</div>
                                 <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
                             </div>
                         </div>
@@ -2060,7 +2062,7 @@ function updatePrintDocHtml() {
                                             <td>${esc(r.itemCode)}</td>
                                             <td>+${r.receivedQuantity}</td>
                                             <td>${esc(r.unit)}</td>
-                                            <td>${esc(r.supplierName || r.finishedProduct || "General Stock")}</td>
+                                            <td>${esc(formatContextDisplay(r.supplierName, "Supplier"))}</td>
                                             <td>${esc(r.status || "Verified")}</td>
                                         </tr>
                                     `).join("")}
@@ -2090,7 +2092,7 @@ function updatePrintDocHtml() {
                                     periodDisbursements.map(d => `
                                         <tr>
                                             <td>${esc(d.usageDate)}</td>
-                                            <td><strong>${esc(d.finishedProduct || "General Production")}</strong></td>
+                                            <td><strong>${esc(formatContextDisplay(d.finishedProduct, "General Production"))}</strong></td>
                                             <td>${esc(d.materialName)}</td>
                                             <td>${esc(d.itemCode)}</td>
                                             <td>-${d.disbursedQuantity} ${esc(d.unit)}</td>
@@ -2218,11 +2220,20 @@ function handlePrintReport() {
     }
 }
 
-function formatOperatorDisplay(val) {
-    if (!val || typeof val !== "string") return "Authorized Staff";
+function formatOperatorDisplay(val, fallback = "User") {
+    if (!val || typeof val !== "string") return fallback;
     const clean = val.trim();
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—") {
-        return "Authorized Staff";
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || clean.toLowerCase().includes("authorized") || clean.toLowerCase().includes("staff")) {
+        return fallback;
+    }
+    return clean;
+}
+
+function formatContextDisplay(val, fallback = "General Production") {
+    if (!val || typeof val !== "string") return fallback;
+    const clean = val.trim();
+    if (clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || !clean) {
+        return fallback;
     }
     return clean;
 }

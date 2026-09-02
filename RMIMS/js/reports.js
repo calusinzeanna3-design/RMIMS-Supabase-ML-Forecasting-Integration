@@ -413,6 +413,7 @@ async function loadAuthoritativeData() {
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
             const mat = matMap.get(r.material_id);
+            const supName = (r.supplier_name && r.supplier_name.toLowerCase() !== "all" ? r.supplier_name : "Supplier").trim();
             return {
                 id: r.id,
                 materialId: r.material_id,
@@ -420,8 +421,8 @@ async function loadAuthoritativeData() {
                 receivedQuantity: Number(r.received_quantity || 0),
                 receiptDate: r.receipt_date || (r.created_at ? r.created_at.split("T")[0] : "—"),
                 unit: (r.unit || (mat ? mat.unit : "kg")).trim(),
-                supplierName: r.supplier_name || "Authorized Supplier",
-                receivedBy: r.received_by || "Inventory Staff",
+                supplierName: supName,
+                receivedBy: formatOperatorDisplay(r.received_by, "Admin"),
                 createdAt: r.created_at
             };
         });
@@ -429,7 +430,8 @@ async function loadAuthoritativeData() {
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
             const mat = matMap.get(d.material_id);
-            const pName = (d.finished_product_name || d.activity_type || "Production Batch").trim();
+            const pName = (d.finished_product_name && d.finished_product_name.toLowerCase() !== "all" ? d.finished_product_name : (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "General Production")).trim();
+            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "Production Issue").trim();
             return {
                 id: d.id,
                 materialId: d.material_id,
@@ -438,8 +440,8 @@ async function loadAuthoritativeData() {
                 usageDate: d.usage_date || (d.created_at ? d.created_at.split("T")[0] : "—"),
                 unit: (d.unit || (mat ? mat.unit : "kg")).trim(),
                 finishedProduct: pName,
-                activityType: d.activity_type || "Production Issue",
-                recordedBy: d.recorded_by || "Production Staff",
+                activityType: actType,
+                recordedBy: formatOperatorDisplay(d.recorded_by, "Admin"),
                 createdAt: d.created_at
             };
         });
@@ -1594,8 +1596,8 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                     <td>${escapeHtml(r.receiptDate)}</td>
                                     <td><strong>${escapeHtml(r.materialName)}</strong></td>
                                     <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(r.unit)}</td>
-                                    <td>${escapeHtml(r.supplierName)}</td>
-                                    <td>${escapeHtml(formatOperatorDisplay(r.receivedBy))}</td>
+                                    <td>${escapeHtml(formatContextDisplay(r.supplierName, 'Supplier'))}</td>
+                                    <td>${escapeHtml(formatOperatorDisplay(r.receivedBy, 'Admin'))}</td>
                                     <td><span style="color:#059669; font-weight:600;">Verified</span></td>
                                 </tr>
                             `).join("")
@@ -1632,10 +1634,10 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
                                     <td><strong>${escapeHtml(d.materialName)}</strong></td>
-                                    <td>${escapeHtml(d.finishedProduct || 'Production Batch')}</td>
+                                    <td>${escapeHtml(formatContextDisplay(d.finishedProduct, 'General Production'))}</td>
                                     <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(d.unit)}</td>
-                                    <td>${escapeHtml(d.activityType || 'Production Issue')}</td>
-                                    <td>${escapeHtml(formatOperatorDisplay(d.recordedBy))}</td>
+                                    <td>${escapeHtml(formatContextDisplay(d.activityType, 'Production Issue'))}</td>
+                                    <td>${escapeHtml(formatOperatorDisplay(d.recordedBy, 'Admin'))}</td>
                                 </tr>
                             `).join("")
                         }
@@ -1651,8 +1653,8 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
         const activities = [];
 
-        periodReceipts.forEach(r => activities.push({ date: r.receiptDate, type: "Received", mat: r.materialName, qty: r.receivedQuantity, unit: r.unit, ref: r.supplierName, op: formatOperatorDisplay(r.receivedBy) }));
-        periodDisbursements.forEach(d => activities.push({ date: d.usageDate, type: "Disbursed", mat: d.materialName, qty: -d.disbursedQuantity, unit: d.unit, ref: d.finishedProduct || 'Production Batch', op: formatOperatorDisplay(d.recordedBy) }));
+        periodReceipts.forEach(r => activities.push({ date: r.receiptDate, type: "Received", mat: r.materialName, qty: r.receivedQuantity, unit: r.unit, ref: formatContextDisplay(r.supplierName, 'Supplier'), op: formatOperatorDisplay(r.receivedBy, 'Admin') }));
+        periodDisbursements.forEach(d => activities.push({ date: d.usageDate, type: "Disbursed", mat: d.materialName, qty: -d.disbursedQuantity, unit: d.unit, ref: formatContextDisplay(d.finishedProduct, 'General Production'), op: formatOperatorDisplay(d.recordedBy, 'Admin') }));
         activities.sort((a, b) => b.date.localeCompare(a.date));
 
         sectionsHtml += `
@@ -1804,7 +1806,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                             </div>
                             <div class="print-doc-meta-right">
                                 <div><strong>Generated:</strong> ${genDateStr} at ${genTimeStr}</div>
-                                <div><strong>Authority:</strong> RMSME Authorized System Administrator</div>
+                                <div><strong>Authority:</strong> Admin</div>
                                 <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
                             </div>
                         </div>
@@ -1844,7 +1846,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                             </div>
                             <div class="print-footer-top">
                                 <span>RMSME — Raw Material Stock Management &amp; Enterprise Forecasting System</span>
-                                <span>Document Ownership: RMSME Authorized Management</span>
+                                <span>Document Ownership: RMSME Management</span>
                             </div>
                             <div class="print-footer-contact">
                                 <span>System Support: <strong>support@rmsme.internal</strong> | Helpline: <strong>(02) 8876-RMSME</strong></span>
@@ -2714,11 +2716,20 @@ function escapeHtml(str) {
     return d.innerHTML;
 }
 
-function formatOperatorDisplay(val) {
-    if (!val || typeof val !== "string") return "Authorized Staff";
+function formatOperatorDisplay(val, fallback = "Admin") {
+    if (!val || typeof val !== "string") return fallback;
     const clean = val.trim();
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—") {
-        return "Authorized Staff";
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || clean.toLowerCase().includes("authorized") || clean.toLowerCase().includes("staff")) {
+        return fallback;
+    }
+    return clean;
+}
+
+function formatContextDisplay(val, fallback = "General Production") {
+    if (!val || typeof val !== "string") return fallback;
+    const clean = val.trim();
+    if (clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || !clean) {
+        return fallback;
     }
     return clean;
 }
