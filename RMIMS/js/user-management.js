@@ -513,13 +513,25 @@ function openDeleteUserConfirm(u) {
                     return;
                 }
 
-                // Account removal is represented safely as deactivation in the client UI.
-                // Historical records remain intact; actual Auth-user deletion requires a privileged backend function.
-                await supabase.from("user_profiles").update({
-                    status: "inactive",
-                    updated_at: new Date().toISOString()
-                }).eq("id", fresh.id);
-                showToast("Account access removed. Historical records were preserved.");
+                // Attempt direct removal first. If foreign keys exist, fallback gracefully to inactive status.
+                let deleted = false;
+                try {
+                    const { error: delErr } = await supabase.from("user_profiles").delete().eq("id", fresh.id);
+                    if (!delErr) deleted = true;
+                } catch (e) {
+                    deleted = false;
+                }
+
+                if (!deleted) {
+                    await supabase.from("user_profiles").update({
+                        status: "inactive",
+                        updated_at: new Date().toISOString()
+                    }).eq("id", fresh.id);
+                    showToast("Account deactivated. Historical activity records were preserved.");
+                } else {
+                    showToast("Account deleted successfully.");
+                }
+
                 closeModal("confirmModal");
                 await refreshAll();
             } catch (err) {
