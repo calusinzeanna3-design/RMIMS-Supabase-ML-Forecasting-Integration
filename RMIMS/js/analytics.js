@@ -114,16 +114,25 @@ async function loadAuthoritativeData() {
             rawMats = AUTHENTIC_59_RAW_MATERIALS;
         }
 
-        state.materials = rawMats.map(m => ({
-            id: m.id,
-            name: m.name || "Unnamed Material",
-            itemCode: m.item_code || m.id?.slice(0, 8) || "N/A",
-            currentStock: Number(m.current_stock) || 0,
-            minStock: Number(m.minimum_threshold) || 0,
-            unit: m.unit_of_measure || m.unit || "kg",
-            status: m.status || calculateStockStatus(Number(m.current_stock) || 0, Number(m.minimum_threshold) || 0),
-            createdAt: m.created_at || new Date().toISOString()
-        }));
+        state.materials = rawMats.map(m => {
+            const cur = Number(m.current_stock) || 0;
+            const min = Number(m.minimum_threshold) || 0;
+            const progress = min > 0 ? Math.min(100, Math.round((cur / (min * 2)) * 100)) : 100;
+            const isLow = cur < min;
+            return {
+                id: m.id,
+                name: m.name || "Unnamed Material",
+                itemCode: m.item_code || m.id?.slice(0, 8) || "N/A",
+                currentStock: cur,
+                minStock: min,
+                progressPct: progress,
+                unit: m.unit_of_measure || m.unit || "kg",
+                status: isLow
+                    ? { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" }
+                    : { code: "GOOD", label: "Good", cls: "ca-badge-green" },
+                createdAt: m.created_at || new Date().toISOString()
+            };
+        });
 
         // 2. Material Disbursements (Actual Consumption)
         let disbs = [];

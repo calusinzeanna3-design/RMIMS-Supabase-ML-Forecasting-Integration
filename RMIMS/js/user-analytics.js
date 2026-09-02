@@ -130,7 +130,10 @@ async function loadAuthoritativeData() {
         state.materials = rawMats.map(m => {
             const curStock = Number(m.current_stock) || 0;
             const minStock = m.minimum_threshold !== null ? Number(m.minimum_threshold) : 0;
-            const statusInfo = computeStockHealth(curStock, minStock);
+            const isLow = curStock < minStock;
+            const statusInfo = isLow
+                ? { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" }
+                : { code: "GOOD", label: "Good", cls: "ca-badge-green" };
 
             // Compute Target Baseline (safe without hardcoded max)
             const targetBaseline = Math.max(minStock * 2, curStock, 1);
