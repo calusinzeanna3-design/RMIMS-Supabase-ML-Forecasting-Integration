@@ -2384,29 +2384,59 @@ async function handleQuickCsvImport(file) {
             return;
         }
 
-        const headerLine = lines[0].toLowerCase();
+        // Parse CSV line with quote awareness
+        const parseCsvLine = (line) => {
+            const result = [];
+            let cur = "";
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"' || char === "'") {
+                    inQuotes = !inQuotes;
+                } else if (char === "," && !inQuotes) {
+                    result.push(cur.trim());
+                    cur = "";
+                } else {
+                    cur += char;
+                }
+            }
+            result.push(cur.trim());
+            return result.map(s => s.replace(/^["']|["']$/g, "").trim());
+        };
+
+        const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/[\s_-]+/g, ""));
         let importedCount = 0;
 
-        // Mode 1: Raw Materials Catalog CSV (item_code, name, category, unit, min, reorder, lead, current_stock)
-        if (headerLine.includes("item_code") || headerLine.includes("raw material") || headerLine.includes("unit_of_measure")) {
+        // Mode 1: Raw Materials Catalog
+        if (headers.some(h => h.includes("itemcode") || h.includes("rawmaterial") || h.includes("materialname") || h.includes("unitofmeasure"))) {
+            const idxCode = headers.findIndex(h => h.includes("code") || h.includes("id"));
+            const idxName = headers.findIndex(h => h.includes("name") || h.includes("material"));
+            const idxCat = headers.findIndex(h => h.includes("cat") || h.includes("type") || h.includes("desc"));
+            const idxUnit = headers.findIndex(h => h.includes("unit"));
+            const idxMin = headers.findIndex(h => h.includes("min") || h.includes("threshold"));
+            const idxReorder = headers.findIndex(h => h.includes("reorder"));
+            const idxLead = headers.findIndex(h => h.includes("lead"));
+            const idxStock = headers.findIndex(h => h.includes("stock") || h.includes("current") || h.includes("qty"));
+
             for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].split(",").map(p => p.replace(/^["']|["']$/g, "").trim());
-                if (!parts[0] && !parts[1]) continue;
-                
-                const itemCode = parts[0] || `RM-${String(i).padStart(3, "0")}`;
-                const name = parts[1] || parts[0];
-                const cat = parts[2] || "General";
-                const unit = parts[3] || "kg";
-                const min = num(parts[4]) || 10;
-                const reorder = num(parts[5]) || 50;
-                const lead = num(parts[6]) || 3;
-                const current = num(parts[7]) || (reorder * 0.8);
+                const p = parseCsvLine(lines[i]);
+                if (!p[0] && !p[1]) continue;
+
+                const itemCode = (idxCode !== -1 ? p[idxCode] : "") || `RM-${String(i).padStart(3, "0")}`;
+                const name = (idxName !== -1 ? p[idxName] : "") || p[0];
+                const cat = (idxCat !== -1 ? p[idxCat] : "") || "General";
+                const unit = (idxUnit !== -1 ? p[idxUnit] : "") || "kg";
+                const min = idxMin !== -1 ? num(p[idxMin]) : 10;
+                const reorder = idxReorder !== -1 ? num(p[idxReorder]) : 50;
+                const lead = idxLead !== -1 ? num(p[idxLead]) : 3;
+                const current = idxStock !== -1 ? num(p[idxStock]) : (reorder * 0.8);
 
                 const existing = state.materials.find(m => m.name.toLowerCase() === name.toLowerCase() || m.itemCode.toLowerCase() === itemCode.toLowerCase());
                 if (existing) {
                     existing.currentStock = current;
                     existing.minStock = min;
                     existing.unit = unit;
+                    existing.note = cat;
                 } else {
                     state.materials.push({
                         id: `mat-imported-${Date.now()}-${i}`,
@@ -2424,53 +2454,71 @@ async function handleQuickCsvImport(file) {
             }
             toast(`Successfully imported & updated ${importedCount} raw materials!`, "success");
         }
-        // Mode 2: Stock Receipts CSV
-        else if (headerLine.includes("receipt_date") || headerLine.includes("received_quantity")) {
+        // Mode 2: Stock Receipts
+        else if (headers.some(h => h.includes("receipt") || h.includes("received") || h.includes("supplier"))) {
+            const idxDate = headers.findIndex(h => h.includes("date"));
+            const idxCode = headers.findIndex(h => h.includes("code") || h.includes("id"));
+            const idxName = headers.findIndex(h => h.includes("name") || h.includes("material"));
+            const idxQty = headers.findIndex(h => h.includes("qty") || h.includes("received") || h.includes("quantity"));
+            const idxUnit = headers.findIndex(h => h.includes("unit"));
+            const idxSupplier = headers.findIndex(h => h.includes("supplier"));
+
             for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].split(",").map(p => p.replace(/^["']|["']$/g, "").trim());
-                if (parts.length >= 3) {
-                    const date = parts[0] || new Date().toISOString().slice(0, 10);
-                    const name = parts[2] || parts[1];
-                    const qty = num(parts[3]) || num(parts[2]);
-                    const unit = parts[4] || "kg";
-                    const supplier = parts[5] || "Imported Delivery";
-                    state.receipts.unshift({
-                        id: `rec-imp-${Date.now()}-${i}`,
-                        materialName: name,
-                        materialCode: parts[1] || "RM-CAT",
-                        receivedQuantity: qty,
-                        unit,
-                        receiptDate: date,
-                        supplierName: supplier,
-                        createdAt: new Date().toISOString()
-                    });
-                    importedCount++;
-                }
+                const p = parseCsvLine(lines[i]);
+                if (p.length < 2) continue;
+
+                const date = (idxDate !== -1 ? p[idxDate] : "") || new Date().toISOString().slice(0, 10);
+                const code = (idxCode !== -1 ? p[idxCode] : "") || "RM-CAT";
+                const name = (idxName !== -1 ? p[idxName] : "") || "Raw Material";
+                const qty = idxQty !== -1 ? num(p[idxQty]) : 100;
+                const unit = (idxUnit !== -1 ? p[idxUnit] : "") || "kg";
+                const supplier = (idxSupplier !== -1 ? p[idxSupplier] : "") || "Standard Supplier";
+
+                state.receipts.unshift({
+                    id: `rec-imp-${Date.now()}-${i}`,
+                    materialName: name,
+                    materialCode: code,
+                    receivedQuantity: qty,
+                    unit,
+                    receiptDate: date,
+                    supplierName: supplier,
+                    createdAt: new Date().toISOString()
+                });
+                importedCount++;
             }
             toast(`Successfully imported ${importedCount} stock receipt records!`, "success");
         }
-        // Mode 3: Daily Disbursements / Usage CSV
-        else if (headerLine.includes("usage_date") || headerLine.includes("consumed_quantity") || headerLine.includes("date_consumed")) {
+        // Mode 3: Daily Disbursements / Usage
+        else if (headers.some(h => h.includes("usage") || h.includes("consumed") || h.includes("disburse"))) {
+            const idxDate = headers.findIndex(h => h.includes("date"));
+            const idxCode = headers.findIndex(h => h.includes("code") || h.includes("id"));
+            const idxName = headers.findIndex(h => h.includes("name") || h.includes("material"));
+            const idxQty = headers.findIndex(h => h.includes("consumed") || h.includes("qty") || h.includes("quantity"));
+            const idxUnit = headers.findIndex(h => h.includes("unit"));
+            const idxProduct = headers.findIndex(h => h.includes("product") || h.includes("activity"));
+
             for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].split(",").map(p => p.replace(/^["']|["']$/g, "").trim());
-                if (parts.length >= 3) {
-                    const date = parts[0] || new Date().toISOString().slice(0, 10);
-                    const name = parts[2] || parts[1];
-                    const qty = num(parts[3]) || num(parts[2]);
-                    const unit = parts[4] || "kg";
-                    const activity = parts[5] || "Commercial Food Processing";
-                    state.disbursements.unshift({
-                        id: `dsb-imp-${Date.now()}-${i}`,
-                        materialName: name,
-                        materialCode: parts[1] || "RM-CAT",
-                        consumedQuantity: qty,
-                        unit,
-                        usageDate: date,
-                        productContext: activity,
-                        createdAt: new Date().toISOString()
-                    });
-                    importedCount++;
-                }
+                const p = parseCsvLine(lines[i]);
+                if (p.length < 2) continue;
+
+                const date = (idxDate !== -1 ? p[idxDate] : "") || new Date().toISOString().slice(0, 10);
+                const code = (idxCode !== -1 ? p[idxCode] : "") || "RM-CAT";
+                const name = (idxName !== -1 ? p[idxName] : "") || "Raw Material";
+                const qty = idxQty !== -1 ? num(p[idxQty]) : 10;
+                const unit = (idxUnit !== -1 ? p[idxUnit] : "") || "kg";
+                const product = (idxProduct !== -1 ? p[idxProduct] : "") || "Commercial Food Processing";
+
+                state.disbursements.unshift({
+                    id: `dsb-imp-${Date.now()}-${i}`,
+                    materialName: name,
+                    materialCode: code,
+                    consumedQuantity: qty,
+                    unit,
+                    usageDate: date,
+                    productContext: product,
+                    createdAt: new Date().toISOString()
+                });
+                importedCount++;
             }
             toast(`Successfully imported ${importedCount} consumption records!`, "success");
         }
