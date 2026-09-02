@@ -47,25 +47,7 @@ export default defineConfig({
   server: {
     port: 5500,
     strictPort: true,
-    host: '127.0.0.1',
-    proxy: {
-      '/forecast': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true
-      },
-      '/historical-usage': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true
-      },
-      '/health': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true
-      },
-      '/api': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true
-      }
-    }
+    host: '127.0.0.1'
   },
   preview: {
     port: 5500,
