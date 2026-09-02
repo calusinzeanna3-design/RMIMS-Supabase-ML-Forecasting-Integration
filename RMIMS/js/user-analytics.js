@@ -710,6 +710,17 @@ function renderStatusProgressChart() {
         }
     });
 
+    // Pre-calculate total disbs and rcvs per material
+    const matTotals = new Map();
+    state.materials.forEach(m => {
+        const matDisbs = disbByMat.get(m.id) || [];
+        const matRcvs = rcvByMat.get(m.id) || [];
+        const totDisb = matDisbs.reduce((acc, d) => acc + d.consumedQuantity, 0);
+        const totRcv = matRcvs.reduce((acc, r) => acc + r.receivedQuantity, 0);
+        const initialStock = Math.max(m.minStock * 1.5, m.currentStock + totDisb - totRcv);
+        matTotals.set(m.id, { initialStock, totDisb, totRcv });
+    });
+
     // Compute dynamic historical status at the end of each timeline interval
     intervals.forEach(inv => {
         let g = 0, s = 0, l = 0, o = 0;
@@ -719,22 +730,23 @@ function renderStatusProgressChart() {
             const min = mat.minStock;
             const matDisbs = disbByMat.get(mat.id) || [];
             const matRcvs = rcvByMat.get(mat.id) || [];
+            const { initialStock } = matTotals.get(mat.id);
 
-            let futureDisb = 0;
-            for (let i = 0; i < matDisbs.length; i++) {
-                if (matDisbs[i].usageDate > targetDate) {
-                    futureDisb += matDisbs[i].consumedQuantity;
-                }
-            }
-
-            let futureRcv = 0;
+            let rcvUpTo = 0;
             for (let i = 0; i < matRcvs.length; i++) {
-                if (matRcvs[i].receivedDate > targetDate) {
-                    futureRcv += matRcvs[i].receivedQuantity;
+                if (matRcvs[i].receivedDate <= targetDate) {
+                    rcvUpTo += matRcvs[i].receivedQuantity;
                 }
             }
 
-            const historicalStock = Math.max(0, mat.currentStock + futureDisb - futureRcv);
+            let disbUpTo = 0;
+            for (let i = 0; i < matDisbs.length; i++) {
+                if (matDisbs[i].usageDate <= targetDate) {
+                    disbUpTo += matDisbs[i].consumedQuantity;
+                }
+            }
+
+            const historicalStock = Math.max(0, initialStock + rcvUpTo - disbUpTo);
 
             if (historicalStock <= 0) {
                 o++;
@@ -753,6 +765,9 @@ function renderStatusProgressChart() {
         outCounts.push(o);
     });
 
+    const isDaily = (state.statusPeriod === "daily");
+    const pointRad = isDaily ? 0 : 2.5;
+
     statusProgressChartInstance = new Chart(ctx, {
         type: "line",
         data: {
@@ -763,40 +778,40 @@ function renderStatusProgressChart() {
                     data: goodCounts,
                     borderColor: "#16a34a",
                     backgroundColor: "transparent",
-                    borderWidth: 2.4,
-                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointRadius: pointRad,
                     pointHoverRadius: 6,
-                    tension: 0.3
+                    tension: 0.35
                 },
                 {
                     label: "Stable Stock",
                     data: stableCounts,
                     borderColor: "#2563eb",
                     backgroundColor: "transparent",
-                    borderWidth: 2.4,
-                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointRadius: pointRad,
                     pointHoverRadius: 6,
-                    tension: 0.3
+                    tension: 0.35
                 },
                 {
                     label: "Low Stock",
                     data: lowCounts,
                     borderColor: "#ea580c",
                     backgroundColor: "transparent",
-                    borderWidth: 2.4,
-                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointRadius: pointRad,
                     pointHoverRadius: 6,
-                    tension: 0.3
+                    tension: 0.35
                 },
                 {
                     label: "Out of Stock",
                     data: outCounts,
                     borderColor: "#dc2626",
                     backgroundColor: "transparent",
-                    borderWidth: 2.4,
-                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointRadius: pointRad,
                     pointHoverRadius: 6,
-                    tension: 0.3
+                    tension: 0.35
                 }
             ]
         },
