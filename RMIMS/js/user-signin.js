@@ -8,14 +8,15 @@ const togglePw = document.getElementById("togglePw");
 const passwordInput = document.getElementById("password");
 
 function setLoginError(message) {
+    loginErrorEl.style.color = "";
     loginErrorEl.textContent = message;
     loginErrorEl.classList.toggle("error", !!message);
 }
 
 function setLoginSuccess(message) {
+    loginErrorEl.style.color = "#22C55E";
     loginErrorEl.textContent = message;
     loginErrorEl.classList.remove("error");
-    loginErrorEl.style.color = "#22C55E";
 }
 
 if (togglePw && passwordInput) {

@@ -316,10 +316,15 @@
 }
 
 .auth-panel .form-note.error {
-  color: #EF4444;
+  color: #EF4444 !important;
 }
 
 .auth-panel .form-note:empty {
+  display: none;
+}
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
   display: none;
 }
 
