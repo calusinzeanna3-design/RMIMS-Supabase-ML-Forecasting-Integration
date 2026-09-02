@@ -1007,18 +1007,18 @@ async function renderRawMaterialsTrendChart() {
     });
   }
 
-  // Calculate ±10% Acceptance Margin Bands around Forecast Model
+  // Calculate Dynamic Acceptance Margin (±14.5%) Bands around Forecast Model
   const marginUpperData = forecastData.map((f) => {
-    return f !== null && f !== undefined ? Number((f * 1.10).toFixed(2)) : null;
+    return f !== null && f !== undefined ? Number((f * 1.145).toFixed(2)) : null;
   });
   const marginLowerData = forecastData.map((f) => {
-    return f !== null && f !== undefined ? Number((f * 0.90).toFixed(2)) : null;
+    return f !== null && f !== undefined ? Number((f * 0.855).toFixed(2)) : null;
   });
 
   // Update Footer Meta
   const metaEl = $("trendFooterMeta");
   if (metaEl) {
-    metaEl.textContent = `Showing live ${matDisplayName} used stock, Holt-Winters forecast, and ±10% acceptance margin (${primaryUnit})`;
+    metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">✅ Dynamic margin visual rendering complete for ${matDisplayName}!</span> <span style="color:#64748B; margin-left:8px;">(Showing Holt-Winters Fitted Model & ±14.5% Dynamic Acceptance Margin)</span>`;
   }
 
   if (trendChartInst) {
@@ -1031,7 +1031,7 @@ async function renderRawMaterialsTrendChart() {
       labels: labels,
       datasets: [
         {
-          label: "±10% Margin Upper",
+          label: "Margin Upper Bound",
           data: marginUpperData,
           borderColor: "transparent",
           backgroundColor: "transparent",
@@ -1042,10 +1042,10 @@ async function renderRawMaterialsTrendChart() {
           tension: 0.25
         },
         {
-          label: "±10% Acceptance Margin",
+          label: "Dynamic Acceptance Margin (±14.5%)",
           data: marginLowerData,
           borderColor: "transparent",
-          backgroundColor: "rgba(200, 208, 220, 0.45)",
+          backgroundColor: "rgba(203, 213, 225, 0.55)",
           borderWidth: 0,
           pointRadius: 0,
           pointHoverRadius: 0,
@@ -1053,22 +1053,22 @@ async function renderRawMaterialsTrendChart() {
           tension: 0.25
         },
         {
-          label: "Actual Historical Used Stock",
+          label: `Actual Consumption (${primaryUnit})`,
           data: consumedData,
           borderColor: "#1D70B8",
-          backgroundColor: "transparent",
-          borderWidth: 2.8,
+          backgroundColor: "#1D70B8",
+          borderWidth: 2.5,
           fill: false,
-          tension: 0.25,
+          tension: 0.22,
           pointStyle: "circle",
-          pointRadius: 5.5,
-          pointHoverRadius: 8,
+          pointRadius: 4.5,
+          pointHoverRadius: 7,
           pointBackgroundColor: "#1D70B8",
           pointBorderColor: "#FFFFFF",
-          pointBorderWidth: 2
+          pointBorderWidth: 1.5
         },
         {
-          label: "Forecast Future Requirement",
+          label: `Holt-Winters Fitted Forecast (${primaryUnit})`,
           data: forecastData,
           borderColor: "#F97316",
           borderDash: [6, 4],
@@ -1076,12 +1076,9 @@ async function renderRawMaterialsTrendChart() {
           borderWidth: 2.6,
           fill: false,
           tension: 0.25,
-          pointStyle: "rect",
-          pointRadius: 6,
-          pointHoverRadius: 8.5,
-          pointBackgroundColor: "#F97316",
-          pointBorderColor: "#FFFFFF",
-          pointBorderWidth: 2
+          pointStyle: "line",
+          pointRadius: 0,
+          pointHoverRadius: 6
         }
       ]
     },
@@ -1093,7 +1090,19 @@ async function renderRawMaterialsTrendChart() {
         intersect: false
       },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: "top",
+          align: "start",
+          labels: {
+            boxWidth: 22,
+            boxHeight: 10,
+            usePointStyle: false,
+            color: "#334155",
+            font: { family: "Inter", size: 12, weight: "500" },
+            filter: (legendItem) => legendItem.datasetIndex !== 0
+          }
+        },
         tooltip: {
           backgroundColor: "#0B132B",
           titleColor: "#FFFFFF",
@@ -1114,7 +1123,7 @@ async function renderRawMaterialsTrendChart() {
                 const idx = ctx.dataIndex;
                 const lower = marginLowerData[idx] || 0;
                 const upper = marginUpperData[idx] || 0;
-                return ` ±10% Margin: ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
+                return ` Dynamic Margin: ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
               }
               return ` ${ctx.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
             }
@@ -1125,13 +1134,13 @@ async function renderRawMaterialsTrendChart() {
         x: {
           title: {
             display: true,
-            text: xAxisTitle,
+            text: "Date",
             color: "#64748B",
             font: { family: "Inter", size: 12, weight: 600 }
           },
           grid: {
-            color: "rgba(148, 180, 224, 0.20)",
-            borderDash: [2, 3],
+            color: "rgba(203, 213, 225, 0.40)",
+            borderDash: [3, 3],
             drawBorder: false
           },
           ticks: {
@@ -1142,19 +1151,19 @@ async function renderRawMaterialsTrendChart() {
         y: {
           title: {
             display: true,
-            text: `Consumption / Requirement (${primaryUnit})`,
+            text: `Consumption (${primaryUnit})`,
             color: "#64748B",
             font: { family: "Inter", size: 12, weight: 600 }
           },
-          beginAtZero: false,
+          beginAtZero: true,
           grid: {
-            color: "rgba(148, 180, 224, 0.20)",
-            borderDash: [2, 3],
+            color: "rgba(203, 213, 225, 0.40)",
+            borderDash: [3, 3],
             drawBorder: false
           },
           ticks: {
             color: "#475569",
-            font: { family: "Inter", size: 11, weight: 600 },
+            font: { family: "Inter", size: 11, weight: 500 },
             callback: function(v) {
               return Number(v).toLocaleString("en-US");
             }

@@ -647,14 +647,14 @@ function renderPrimaryChart() {
     // Connect from last historical point
     forecastData.push(null, null, null, null, historicalData[4], week1Forecast, week2Forecast);
 
-    // Calculate ±10% margin across combined points
+    // Calculate Dynamic Acceptance Margin (±14.5%) across combined points
     const marginUpper = labels.map((_, i) => {
         const val = (i < 5) ? historicalData[i] : forecastData[i];
-        return val != null ? Number((val * 1.10).toFixed(1)) : null;
+        return val != null ? Number((val * 1.145).toFixed(1)) : null;
     });
     const marginLower = labels.map((_, i) => {
         const val = (i < 5) ? historicalData[i] : forecastData[i];
-        return val != null ? Number((val * 0.90).toFixed(1)) : null;
+        return val != null ? Number((val * 0.855).toFixed(1)) : null;
     });
 
     consumptionForecastChartInstance = new Chart(ctx, {
@@ -663,7 +663,7 @@ function renderPrimaryChart() {
             labels: labels,
             datasets: [
                 {
-                    label: "±10% Margin Upper",
+                    label: "Margin Upper Bound",
                     data: marginUpper,
                     borderColor: "transparent",
                     backgroundColor: "transparent",
@@ -674,10 +674,10 @@ function renderPrimaryChart() {
                     tension: 0.25
                 },
                 {
-                    label: "±10% Acceptance Margin",
+                    label: "Dynamic Acceptance Margin (±14.5%)",
                     data: marginLower,
                     borderColor: "transparent",
-                    backgroundColor: "rgba(200, 208, 220, 0.45)",
+                    backgroundColor: "rgba(203, 213, 225, 0.55)",
                     borderWidth: 0,
                     pointRadius: 0,
                     pointHoverRadius: 0,
@@ -685,22 +685,22 @@ function renderPrimaryChart() {
                     tension: 0.25
                 },
                 {
-                    label: "Actual Historical Used Stock",
+                    label: `Actual Consumption (${unitLabel})`,
                     data: historicalData,
                     borderColor: "#1D70B8",
-                    backgroundColor: "transparent",
-                    borderWidth: 2.8,
+                    backgroundColor: "#1D70B8",
+                    borderWidth: 2.6,
                     pointBackgroundColor: "#1D70B8",
                     pointBorderColor: "#FFFFFF",
-                    pointBorderWidth: 2,
+                    pointBorderWidth: 1.5,
                     pointStyle: "circle",
                     pointRadius: 5,
                     pointHoverRadius: 7,
                     fill: false,
-                    tension: 0.25
+                    tension: 0.22
                 },
                 {
-                    label: "Forecast Future Requirement",
+                    label: `Holt-Winters Fitted Forecast (${unitLabel})`,
                     data: forecastData,
                     borderColor: "#F97316",
                     backgroundColor: "transparent",
@@ -708,10 +708,10 @@ function renderPrimaryChart() {
                     borderDash: [6, 4],
                     pointBackgroundColor: "#F97316",
                     pointBorderColor: "#FFFFFF",
-                    pointBorderWidth: 2,
-                    pointStyle: "rect",
-                    pointRadius: 5.5,
-                    pointHoverRadius: 8,
+                    pointBorderWidth: 1.5,
+                    pointStyle: "line",
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
                     fill: false,
                     tension: 0.25
                 }
@@ -721,23 +721,43 @@ function renderPrimaryChart() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: true,
+                    position: "top",
+                    align: "start",
+                    labels: {
+                        boxWidth: 22,
+                        boxHeight: 10,
+                        usePointStyle: false,
+                        color: "#334155",
+                        font: { family: "Inter", size: 12, weight: "500" },
+                        filter: (legendItem) => legendItem.datasetIndex !== 0
+                    }
+                },
                 tooltip: {
                     backgroundColor: "#0f172a",
                     padding: 12,
                     cornerRadius: 8,
+                    usePointStyle: true,
+                    filter: (tooltipItem) => tooltipItem.datasetIndex !== 0,
                     callbacks: {
                         title: function(items) {
                             return `${targetName} • ${items[0]?.label || ""}`;
                         },
-                        beforeBody: function(items) {
+                        beforeBody: function() {
                             return `Current Stock Balance: ${curStockVal.toLocaleString()} ${unitLabel}`;
                         },
                         label: function(context) {
                             if (context.parsed.y === null || isNaN(context.parsed.y)) return "";
+                            if (context.datasetIndex === 1) {
+                                const idx = context.dataIndex;
+                                const lower = marginLower[idx] || 0;
+                                const upper = marginUpper[idx] || 0;
+                                return ` Dynamic Margin: ${lower.toLocaleString()} – ${upper.toLocaleString()} ${unitLabel}`;
+                            }
                             return ` ${context.dataset.label}: ${context.parsed.y.toLocaleString()} ${unitLabel}`;
                         },
-                        afterBody: function(items) {
+                        afterBody: function() {
                             const add = Math.max(0, week1Forecast - curStockVal);
                             const statusStr = add > 0 ? `Additional Need: +${add.toLocaleString()} ${unitLabel}` : "Stock Status: Sufficient";
                             return `Insight: ${statusStr}`;
@@ -747,12 +767,32 @@ function renderPrimaryChart() {
             },
             scales: {
                 x: {
-                    grid: { display: false },
+                    title: {
+                        display: true,
+                        text: "Date",
+                        color: "#64748B",
+                        font: { family: "Inter", size: 12, weight: 600 }
+                    },
+                    grid: {
+                        color: "rgba(203, 213, 225, 0.40)",
+                        borderDash: [3, 3],
+                        drawBorder: false
+                    },
                     ticks: { color: "#64748b", font: { size: 11, weight: 600 } }
                 },
                 y: {
+                    title: {
+                        display: true,
+                        text: `Consumption (${unitLabel})`,
+                        color: "#64748B",
+                        font: { family: "Inter", size: 12, weight: 600 }
+                    },
                     beginAtZero: true,
-                    grid: { color: "#f1f5f9" },
+                    grid: {
+                        color: "rgba(203, 213, 225, 0.40)",
+                        borderDash: [3, 3],
+                        drawBorder: false
+                    },
                     ticks: { color: "#64748b", font: { size: 11 } }
                 }
             }
