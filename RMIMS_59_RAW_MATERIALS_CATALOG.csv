@@ -1,0 +1,60 @@
+item_code,name,category,unit_of_measure,minimum_threshold,reorder_quantity,lead_time_days,initial_stock
+RM-001,"Food Grade Sunset Yellow / Orange Dye","Additives & Colors",kg,20,80,4,64
+RM-002,"Baking Powder","Baking Supplies",kg,25,100,3,80
+RM-003,"Cream of Tartar","Baking Supplies",kg,10,40,4,32
+RM-004,"Instant Dry Yeast","Baking Supplies",kg,30,120,3,96
+RM-005,"Cane Vinegar","Condiments & Acids",L,40,150,2,120
+RM-006,"Soy Sauce","Condiments & Acids",L,50,200,2,160
+RM-007,"Condensed Milk","Dairy",kg,60,250,3,200
+RM-008,"Evaporated Milk","Dairy",L,50,200,2,160
+RM-009,"Powdered Milk","Dairy",kg,45,180,3,144
+RM-010,"Fresh Whole Egg Whites","Dairy & Eggs",kg,40,160,1,128
+RM-011,"Fresh Whole Eggs","Dairy & Eggs",kg,80,350,1,280
+RM-012,"All-Vegetable Shortening","Dairy & Fats",kg,50,200,3,160
+RM-013,"Baking Shortening","Dairy & Fats",kg,55,220,3,176
+RM-014,"Salted Creamery Butter","Dairy & Fats",kg,65,260,2,208
+RM-015,"Seedless Raisins","Dry Goods",kg,20,80,4,64
+RM-016,"Vanilla Extract","Flavorings & Extracts",L,8,30,5,24
+RM-017,"All-Purpose Wheat Flour","Grains & Flours",kg,120,500,3,400
+RM-018,"Cornstarch","Grains & Flours",kg,35,140,3,112
+RM-019,"Glutinous Rice (Malagkit for Pinipig)","Grains & Flours",kg,70,300,3,240
+RM-020,"Hard Wheat Bread Flour","Grains & Flours",kg,150,600,3,480
+RM-021,"Purified Water","Liquids",L,200,800,1,640
+RM-022,"Cleaned Chicken Crop (Butse)","Meat & Poultry",kg,40,180,2,144
+RM-023,"Pork Skin with Back Fat","Meat & Poultry",kg,90,400,2,320
+RM-024,"Raw Shelled Peanuts","Nuts & Seeds",kg,85,380,3,304
+RM-025,"Toasted Sesame Seeds","Nuts & Seeds",kg,15,60,3,48
+RM-026,"Palm Cooking Oil","Oils & Fats",L,100,450,2,360
+RM-027,"Pure Pork Lard","Oils & Fats",L,60,250,2,200
+RM-028,"Refined Peanut Oil","Oils & Fats",L,35,150,3,120
+RM-029,"Fresh Carrots","Produce / Agricultural",kg,30,120,2,96
+RM-030,"Fresh Cassava Tubers","Produce / Agricultural",kg,60,260,2,208
+RM-031,"Fresh Garlic","Produce / Agricultural",kg,25,100,2,80
+RM-032,"Fresh Ginger","Produce / Agricultural",kg,20,80,2,64
+RM-033,"Fresh Grated Coconut Meat","Produce / Agricultural",kg,50,220,1,176
+RM-034,"Fresh Mature Coconut Meat","Produce / Agricultural",kg,45,190,1,152
+RM-035,"Fresh Purple Yam Tubers","Produce / Agricultural",kg,40,170,3,136
+RM-036,"Fresh Sweet Potato","Produce / Agricultural",kg,45,180,2,144
+RM-037,"Green Raw Papaya","Produce / Agricultural",kg,35,140,2,112
+RM-038,"Pandan Leaves","Produce / Agricultural",kg,8,30,2,24
+RM-039,"Red Bell Peppers","Produce / Agricultural",kg,18,70,2,56
+RM-040,"Red Chili Peppers (Siling Labuyo)","Produce / Agricultural",kg,12,50,2,40
+RM-041,"Red Onions","Produce / Agricultural",kg,30,130,2,104
+RM-042,"Unripe Green Saba Bananas","Produce / Agricultural",kg,110,480,2,384
+RM-043,"Fresh Acetes Shrimp (Alamang)","Seafood",kg,50,220,1,176
+RM-044,"Fresh Bangus (Milkfish) Skin","Seafood",kg,45,190,2,152
+RM-045,"Fresh Chiton Mollusk (Kibit)","Seafood",kg,75,320,1,256
+RM-046,"Fresh Kabasi Fish","Seafood",kg,40,160,1,128
+RM-047,"Fresh Sapsap Fish","Seafood",kg,40,170,1,136
+RM-048,"Cheese Seasoning Powder","Seasonings & Powders",kg,15,60,3,48
+RM-049,"Coarse Rock Salt","Seasonings / Salts",kg,35,150,3,120
+RM-050,"Iodized Salt","Seasonings / Salts",kg,25,100,3,80
+RM-051,"Dried Bay Leaves (Laurel)","Spices & Seasonings",kg,6,25,4,20
+RM-052,"Dried Red Chili Flakes","Spices & Seasonings",kg,10,40,4,32
+RM-053,"Garlic Powder","Spices & Seasonings",kg,15,60,4,48
+RM-054,"Ground Black Pepper","Spices & Seasonings",kg,12,50,4,40
+RM-055,"White Pepper Powder","Spices & Seasonings",kg,10,40,4,32
+RM-056,"Whole Black Peppercorns","Spices & Seasonings",kg,14,60,4,48
+RM-057,"Muscovado Brown Sugar","Sweeteners",kg,55,240,3,192
+RM-058,"Panutsa Cane Sugar","Sweeteners",kg,45,190,3,152
+RM-059,"Refined White Sugar","Sweeteners",kg,110,480,2,384
