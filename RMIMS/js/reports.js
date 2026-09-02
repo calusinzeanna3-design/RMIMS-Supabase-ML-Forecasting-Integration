@@ -636,38 +636,38 @@ function renderManagerSummaryTab() {
             <tr>
                 <td><strong>Total Materials</strong></td>
                 <td><strong>${totalMats}</strong></td>
-                <td>Full Catalog</td>
+                <td>All Raw Materials</td>
                 <td><span class="rpt-badge rpt-badge-good">${goodStock} Good / ${attentionStock} Attention</span></td>
             </tr>
             <tr>
                 <td><strong>Good Stock</strong></td>
                 <td><strong>${goodStock}</strong></td>
-                <td>Optimal Buffer</td>
+                <td>Healthy Stock Level</td>
                 <td><span class="rpt-badge rpt-badge-good">Sufficient Stock</span></td>
             </tr>
             <tr>
-                <td><strong>Low / Critical</strong></td>
+                <td><strong>Low / Critical Stock</strong></td>
                 <td><strong>${attentionStock}</strong></td>
-                <td>Safety Buffer</td>
-                <td><span class="rpt-badge ${attentionStock > 0 ? "rpt-badge-critical" : "rpt-badge-good"}">${attentionStock > 0 ? "Action Required" : "Optimal"}</span></td>
+                <td>Restock Needed</td>
+                <td><span class="rpt-badge ${attentionStock > 0 ? "rpt-badge-critical" : "rpt-badge-good"}">${attentionStock > 0 ? "Reorder Required" : "Stocked Well"}</span></td>
             </tr>
             <tr>
-                <td><strong>Receiving Records</strong></td>
+                <td><strong>Deliveries Received</strong></td>
                 <td><strong>${periodReceipts.length}</strong></td>
-                <td>Inflow Batches</td>
+                <td>Stock In (Deliveries)</td>
                 <td><span class="rpt-badge rpt-badge-good">Verified &amp; Stored</span></td>
             </tr>
             <tr>
-                <td><strong>Consumption Records</strong></td>
+                <td><strong>Production Usage</strong></td>
                 <td><strong>${periodDisbursements.length}</strong></td>
-                <td>Disbursed Usage</td>
+                <td>Stock Used in Kitchen</td>
                 <td><span class="rpt-badge rpt-badge-good">Production Use</span></td>
             </tr>
             <tr>
-                <td><strong>Disbursement Records</strong></td>
+                <td><strong>Total Stock Released</strong></td>
                 <td><strong>${periodDisbursements.length}</strong></td>
-                <td>Outflow Releases</td>
-                <td><span class="rpt-badge rpt-badge-good">Released for Operations</span></td>
+                <td>Stock Out (Disbursed)</td>
+                <td><span class="rpt-badge rpt-badge-good">Released for Baking</span></td>
             </tr>
         `;
     }
