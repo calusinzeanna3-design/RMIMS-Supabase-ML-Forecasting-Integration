@@ -1,60 +1,60 @@
-item_code,name,unit_of_measure,current_stock,minimum_threshold,reorder_quantity,lead_time_days,shortage_status
-RM-001,"Bread Flour",kg,144,200,420,3,LOW STOCK
-RM-002,"All-Purpose Flour",kg,345,160,350,3,IN STOCK
-RM-003,"Cake Flour",kg,74,100,220,4,LOW STOCK
-RM-004,"Refined White Sugar",kg,133,180,380,2,LOW STOCK
-RM-005,"Brown Sugar",kg,176,80,180,3,IN STOCK
-RM-006,"Powdered Sugar (Icing)",kg,43,60,140,3,LOW STOCK
-RM-007,"Unsalted Butter",kg,87,120,280,2,LOW STOCK
-RM-008,"Salted Butter",kg,158,70,160,2,IN STOCK
-RM-009,"Margarine",kg,194,90,230,3,IN STOCK
-RM-010,"Vegetable Shortening",kg,62,80,190,4,LOW STOCK
-RM-011,"Pasteurized Whole Eggs",kg,94,130,320,1,LOW STOCK
-RM-012,"Egg Yolks (Liquid)",kg,111,50,130,2,IN STOCK
-RM-013,"Egg Whites (Liquid)",kg,34,45,110,2,LOW STOCK
-RM-014,"Full Cream Milk",L,75,100,250,2,LOW STOCK
-RM-015,"Skimmed Milk Powder",kg,135,60,150,4,IN STOCK
-RM-016,"Evaporated Milk",L,158,70,170,3,IN STOCK
-RM-017,"Condensed Milk",kg,59,80,200,3,LOW STOCK
-RM-018,"Heavy Whipping Cream",L,49,65,150,2,LOW STOCK
-RM-019,"Instant Dry Yeast",kg,21,25,55,5,LOW STOCK
-RM-020,"Active Dry Yeast",kg,42,18,35,5,IN STOCK
-RM-021,"Baking Powder (Double Acting)",kg,58,25,60,4,IN STOCK
-RM-022,"Baking Soda",kg,15,20,48,4,LOW STOCK
-RM-023,"Iodized Fine Salt",kg,71,30,70,3,IN STOCK
-RM-024,"Dark Chocolate Couverture (65%)",kg,68,90,210,5,LOW STOCK
-RM-025,"Milk Chocolate Chips",kg,151,70,160,4,IN STOCK
-RM-026,"White Chocolate Compound",kg,40,55,130,4,LOW STOCK
-RM-027,"Alkalized Cocoa Powder",kg,41,55,135,5,LOW STOCK
-RM-028,"Pure Vanilla Extract",L,29,12,30,6,IN STOCK
-RM-029,"Artificial Vanilla Flavoring",L,43,18,42,3,IN STOCK
-RM-030,"Ube Flavor Paste",kg,33,40,95,4,LOW STOCK
-RM-031,"Pandan Extract Essence",L,9,12,26,4,LOW STOCK
-RM-032,"Ground Cinnamon Powder",kg,39,15,35,5,IN STOCK
-RM-033,"Nutmeg Powder",kg,13,6,15,6,IN STOCK
-RM-034,"Cheddar Cheese Block",kg,50,65,155,3,LOW STOCK
-RM-035,"Cream Cheese",kg,58,75,175,3,LOW STOCK
-RM-036,"Grated Parmesan Cheese",kg,68,30,70,4,IN STOCK
-RM-037,"Quick-Melt Cheese",kg,122,55,130,3,IN STOCK
-RM-038,"Roasted Almond Slices",kg,24,30,80,6,LOW STOCK
-RM-039,"Walnut Halves",kg,21,25,65,6,LOW STOCK
-RM-040,"Desiccated Coconut (Medium)",kg,104,45,105,4,IN STOCK
-RM-041,"Black Sesame Seeds",kg,39,18,40,5,IN STOCK
-RM-042,"White Sesame Seeds",kg,17,22,52,4,LOW STOCK
-RM-043,"Strawberry Jam Filling",kg,38,50,115,3,LOW STOCK
-RM-044,"Blueberry Fruit Filling",kg,89,40,95,4,IN STOCK
-RM-045,"Bavarian Cream Filling",kg,47,60,140,3,LOW STOCK
-RM-046,"Pineapple Crushed (Canned)",kg,80,35,85,4,IN STOCK
-RM-047,"Cornstarch (Maizena)",kg,114,50,125,3,IN STOCK
-RM-048,"Bread Improver (Enzyme)",kg,9,10,22,5,LOW STOCK
-RM-049,"Emulsifier Paste (Ovalette)",kg,14,15,35,5,LOW STOCK
-RM-050,"Calcium Propionate (Preservative)",kg,18,8,18,6,IN STOCK
-RM-051,"Liquid Glucose Syrup",kg,99,45,105,4,IN STOCK
-RM-052,"Honey Pure Bee",kg,19,25,58,5,LOW STOCK
-RM-053,"Matcha Green Tea Powder",kg,13,15,38,7,LOW STOCK
-RM-054,"Red Food Coloring (Gel)",L,16,5,12,4,IN STOCK
-RM-055,"Yellow Food Coloring (Gel)",L,17,5,12,4,IN STOCK
-RM-056,"Green Food Coloring (Gel)",L,3,4,10,4,LOW STOCK
-RM-057,"Instant Coffee Powder",kg,17,22,48,4,LOW STOCK
-RM-058,"Rolled Oats (Old Fashioned)",kg,66,30,75,4,IN STOCK
-RM-059,"Golden Raisins Seedless",kg,62,28,65,5,IN STOCK
+item_code,name,category,unit_of_measure,current_stock,minimum_threshold,reorder_quantity,lead_time_days,shortage_status
+RM-001,"Food Grade Sunset Yellow / Orange Dye","Additives & Colors",kg,22,10,25,5,IN STOCK
+RM-002,"Baking Powder","Baking Supplies",kg,55,25,50,3,IN STOCK
+RM-003,"Cream of Tartar","Baking Supplies",kg,10,10,20,4,LOW STOCK
+RM-004,"Instant Dry Yeast","Baking Supplies",kg,18,20,40,3,LOW STOCK
+RM-005,"Cane Vinegar","Condiments & Acids",L,176,80,150,4,IN STOCK
+RM-006,"Soy Sauce","Condiments & Acids",L,134,60,120,4,IN STOCK
+RM-007,"Condensed Milk","Dairy",kg,115,150,300,3,LOW STOCK
+RM-008,"Evaporated Milk","Dairy",L,259,120,250,3,IN STOCK
+RM-009,"Powdered Milk","Dairy",kg,432,200,400,4,IN STOCK
+RM-010,"Fresh Whole Egg Whites","Dairy & Eggs",kg,57,75,150,2,LOW STOCK
+RM-011,"Fresh Whole Eggs","Dairy & Eggs",kg,542,250,500,2,IN STOCK
+RM-012,"All-Vegetable Shortening","Dairy & Fats",kg,220,100,200,5,IN STOCK
+RM-013,"Baking Shortening","Dairy & Fats",kg,75,100,200,5,LOW STOCK
+RM-014,"Salted Creamery Butter","Dairy & Fats",kg,69,90,180,4,LOW STOCK
+RM-015,"Seedless Raisins","Dry Goods",kg,88,40,80,7,IN STOCK
+RM-016,"Vanilla Extract","Flavorings & Extracts",L,25,10,20,6,IN STOCK
+RM-017,"All-Purpose Wheat Flour","Grains & Flours",kg,1294,600,1200,3,IN STOCK
+RM-018,"Cornstarch","Grains & Flours",kg,328,150,300,4,IN STOCK
+RM-019,"Glutinous Rice (Malagkit for Pinipig)","Grains & Flours",kg,387,180,350,5,IN STOCK
+RM-020,"Hard Wheat Bread Flour","Grains & Flours",kg,341,450,900,3,LOW STOCK
+RM-021,"Purified Water","Liquids",L,2152,1000,2000,1,IN STOCK
+RM-022,"Cleaned Chicken Crop (Butse)","Meat & Poultry",kg,39,50,100,2,LOW STOCK
+RM-023,"Pork Skin with Back Fat","Meat & Poultry",kg,152,200,400,2,LOW STOCK
+RM-024,"Raw Shelled Peanuts","Nuts & Seeds",kg,116,150,300,5,LOW STOCK
+RM-025,"Toasted Sesame Seeds","Nuts & Seeds",kg,65,30,60,5,IN STOCK
+RM-026,"Palm Cooking Oil","Oils & Fats",L,526,700,1400,3,LOW STOCK
+RM-027,"Pure Pork Lard","Oils & Fats",L,217,100,200,4,IN STOCK
+RM-028,"Refined Peanut Oil","Oils & Fats",L,175,80,150,5,IN STOCK
+RM-029,"Fresh Carrots","Produce / Agricultural",kg,133,60,120,2,IN STOCK
+RM-030,"Fresh Cassava Tubers","Produce / Agricultural",kg,151,200,400,2,LOW STOCK
+RM-031,"Fresh Garlic","Produce / Agricultural",kg,92,120,240,3,LOW STOCK
+RM-032,"Fresh Ginger","Produce / Agricultural",kg,109,50,100,3,IN STOCK
+RM-033,"Fresh Grated Coconut Meat","Produce / Agricultural",kg,303,140,280,2,IN STOCK
+RM-034,"Fresh Mature Coconut Meat","Produce / Agricultural",kg,326,150,300,2,IN STOCK
+RM-035,"Fresh Purple Yam Tubers","Produce / Agricultural",kg,152,200,400,3,LOW STOCK
+RM-036,"Fresh Sweet Potato","Produce / Agricultural",kg,220,100,200,3,IN STOCK
+RM-037,"Green Raw Papaya","Produce / Agricultural",kg,194,90,180,2,IN STOCK
+RM-038,"Pandan Leaves","Produce / Agricultural",kg,23,10,20,2,IN STOCK
+RM-039,"Red Bell Peppers","Produce / Agricultural",kg,67,30,60,3,IN STOCK
+RM-040,"Red Chili Peppers (Siling Labuyo)","Produce / Agricultural",kg,14,15,30,2,LOW STOCK
+RM-041,"Red Onions","Produce / Agricultural",kg,219,100,200,3,IN STOCK
+RM-042,"Unripe Green Saba Bananas","Produce / Agricultural",kg,339,450,900,2,LOW STOCK
+RM-043,"Fresh Acetes Shrimp (Alamang)","Seafood",kg,151,70,140,2,IN STOCK
+RM-044,"Fresh Bangus (Milkfish) Skin","Seafood",kg,63,80,160,2,LOW STOCK
+RM-045,"Fresh Chiton Mollusk (Kibit)","Seafood",kg,38,50,100,2,LOW STOCK
+RM-046,"Fresh Kabasi Fish","Seafood",kg,89,40,80,2,IN STOCK
+RM-047,"Fresh Sapsap Fish","Seafood",kg,112,50,100,2,IN STOCK
+RM-048,"Cheese Seasoning Powder","Seasonings & Powders",kg,29,35,70,5,LOW STOCK
+RM-049,"Coarse Rock Salt","Seasonings / Salts",kg,323,150,300,4,IN STOCK
+RM-050,"Iodized Salt","Seasonings / Salts",kg,431,200,400,4,IN STOCK
+RM-051,"Dried Bay Leaves (Laurel)","Spices & Seasonings",kg,19,8,15,7,IN STOCK
+RM-052,"Dried Red Chili Flakes","Spices & Seasonings",kg,12,12,25,6,LOW STOCK
+RM-053,"Garlic Powder","Spices & Seasonings",kg,19,25,50,5,LOW STOCK
+RM-054,"Ground Black Pepper","Spices & Seasonings",kg,91,40,80,5,IN STOCK
+RM-055,"White Pepper Powder","Spices & Seasonings",kg,43,20,40,5,IN STOCK
+RM-056,"Whole Black Peppercorns","Spices & Seasonings",kg,18,20,40,6,LOW STOCK
+RM-057,"Muscovado Brown Sugar","Sweeteners",kg,475,220,450,4,IN STOCK
+RM-058,"Panutsa Cane Sugar","Sweeteners",kg,99,130,260,4,LOW STOCK
+RM-059,"Refined White Sugar","Sweeteners",kg,565,750,1500,3,LOW STOCK
