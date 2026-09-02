@@ -1902,13 +1902,6 @@ function updatePrintDocHtml() {
             <tbody>
                 <tr>
                     <td>
-                        <!-- TOP CONFIDENTIAL BANNER -->
-                        <div class="print-confidential-top">
-                            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
-                            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
-                            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDate} ${genTime}</div>
-                        </div>
-
                         <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
                         <div class="print-header-block">
                             <div class="print-logo-row">
@@ -2152,6 +2145,9 @@ function updatePrintDocHtml() {
                     <td>
                         <!-- Bottom System Ownership & Contact Footer on Every Page -->
                         <div class="print-doc-footer">
+                            <div class="print-confidential-bottom">
+                                <span>CONFIDENTIAL — RMSME INTERNAL AUDIT &amp; DECISION REPORT • STRICTLY FOR OPERATIONAL USE</span>
+                            </div>
                             <div class="print-footer-top">
                                 <span>RMSME — RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</span>
                                 <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM DOCUMENT</span>

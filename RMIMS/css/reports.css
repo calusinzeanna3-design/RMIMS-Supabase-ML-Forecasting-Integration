@@ -1324,15 +1324,14 @@
     position: static !important;
   }
 
-  /* Centered Watermark Overlay with System Logo & Slanted Brand Across Every Page */
+  /* Centered Watermark Overlay with System Logo & Slanted Brand (Upper Middle of Page) */
   .print-watermark-overlay {
     position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
+    top: 36% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 88vw !important;
+    max-width: 620px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1340,7 +1339,7 @@
     pointer-events: none !important;
     z-index: 0 !important;
     user-select: none !important;
-    opacity: 0.11 !important;
+    opacity: 0.12 !important;
   }
 
   .print-watermark-inner {
@@ -1350,22 +1349,21 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    width: 90%;
-    max-width: 680px;
+    width: 100%;
   }
 
   .print-watermark-logo-img {
-    width: 150px;
-    height: 150px;
+    width: 140px;
+    height: 140px;
     object-fit: contain;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     filter: grayscale(100%);
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-watermark-title {
-    font-size: 34pt;
+    font-size: 32pt;
     font-weight: 900;
     letter-spacing: 0.16em;
     color: #1e293b !important;
@@ -1374,12 +1372,12 @@
   }
 
   .print-watermark-sub {
-    font-size: 9.5pt;
+    font-size: 9pt;
     font-weight: 800;
     letter-spacing: 0.24em;
     color: #334155 !important;
     text-transform: uppercase;
-    margin-top: 5px;
+    margin-top: 4px;
     white-space: nowrap;
   }
 
@@ -1389,7 +1387,7 @@
     letter-spacing: 0.32em;
     color: #64748b !important;
     text-transform: uppercase;
-    margin-top: 4px;
+    margin-top: 3px;
     white-space: nowrap;
   }
 
@@ -1418,35 +1416,14 @@
     vertical-align: bottom;
   }
 
-  /* Top Confidentiality Banner */
-  .print-confidential-top {
-    text-align: center;
-    padding-bottom: 6px;
-    margin-bottom: 8px;
-    border-bottom: 1px dashed #cbd5e1;
-    font-size: 7pt;
-    color: #64748b;
-    line-height: 1.25;
-    position: relative;
-    z-index: 1;
-  }
-
-  .print-confidential-tag {
-    font-weight: 800;
-    color: #b91c1c !important;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 7.5pt;
-  }
-
   /* Official RMSME Header Block */
   .print-header-block {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
     border-bottom: 2px solid #059669;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     position: relative;
     z-index: 1;
   }
@@ -1500,7 +1477,7 @@
   }
 
   .print-doc-title-row {
-    margin: 8px 0 8px 0;
+    margin: 6px 0 6px 0;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -1536,8 +1513,8 @@
     background: #f8fafc !important;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    padding: 7px 12px;
-    margin-bottom: 10px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
     position: relative;
     z-index: 1;
     -webkit-print-color-adjust: exact;
@@ -1567,7 +1544,7 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     position: relative;
     z-index: 1;
   }
@@ -1576,14 +1553,14 @@
     background: #ffffff !important;
     border: 1px solid #cbd5e1;
     border-radius: 5px;
-    padding: 5px 8px;
+    padding: 4px 6px;
     text-align: center;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-kpi-box-num {
-    font-size: 12pt;
+    font-size: 11.5pt;
     font-weight: 900;
     color: #059669;
     line-height: 1.1;
@@ -1599,17 +1576,17 @@
 
   /* Compact & Continuous Print Flow without Wasted Page Breaks */
   .print-section {
-    margin-top: 8px;
-    margin-bottom: 12px;
-    break-inside: avoid;
-    page-break-inside: avoid;
+    margin-top: 6px;
+    margin-bottom: 8px;
+    page-break-inside: auto;
+    break-inside: auto;
     position: relative;
     z-index: 1;
   }
 
   .print-section.page-break {
     page-break-before: auto;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
   .print-section-header-wrap {
@@ -1617,8 +1594,10 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1.5px solid #059669;
-    padding-bottom: 3px;
-    margin-bottom: 6px;
+    padding-bottom: 2px;
+    margin-bottom: 4px;
+    break-after: avoid;
+    page-break-after: avoid;
   }
 
   .print-section-header-green {
@@ -1648,20 +1627,20 @@
     font-size: 8pt;
     font-weight: 800;
     color: #0f172a !important;
-    margin: 6px 0 4px 0;
+    margin: 4px 0 3px 0;
   }
 
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-size: 7.5pt;
   }
 
   .print-table th {
     background: #f1f5f9 !important;
     color: #334155 !important;
-    padding: 4px 6px;
+    padding: 3.5px 6px;
     font-size: 7pt;
     font-weight: 800;
     text-align: left;
@@ -1672,7 +1651,7 @@
   }
 
   .print-table td {
-    padding: 4px 6px;
+    padding: 3.5px 6px;
     font-size: 7.5pt;
     color: #0f172a !important;
     border: 1px solid #e2e8f0;
@@ -1692,8 +1671,8 @@
   /* Official Footer & Contact Ownership */
   .print-doc-footer {
     border-top: 1.5px solid #059669;
-    padding-top: 8px;
-    margin-top: 14px;
+    padding-top: 6px;
+    margin-top: 10px;
     font-size: 7pt;
     color: #475569;
     position: relative;
@@ -1703,12 +1682,24 @@
     page-break-inside: avoid;
   }
 
+  .print-confidential-bottom {
+    text-align: center;
+    font-size: 6.8pt;
+    font-weight: 700;
+    color: #64748b !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px dashed #cbd5e1;
+  }
+
   .print-footer-top {
     display: flex;
     justify-content: space-between;
     font-weight: 700;
     color: #0f172a;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
 
   .print-footer-contact {

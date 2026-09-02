@@ -1787,13 +1787,6 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
             <tbody>
                 <tr>
                     <td>
-                        <!-- TOP CONFIDENTIAL BANNER -->
-                        <div class="print-confidential-top">
-                            <span class="print-confidential-tag">THIS DOCUMENT IS CONFIDENTIAL</span>
-                            <div>RMSME Internal Management &amp; Audit Report • Do not share without authorization</div>
-                            <div style="font-size:6.8pt; color:#94a3b8; margin-top:1px;">Generated on ${genDateStr} ${genTimeStr}</div>
-                        </div>
-
                         <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
                         <div class="print-header-block">
                             <div class="print-logo-row">
@@ -1836,7 +1829,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                             </div>
                         </div>
 
-                        <!-- REPORT SECTIONS (MANAGER SUMMARY FIRST, CONTINUOUS STREAM) -->
+                        <!-- REPORT SECTIONS (CONTINUOUS STREAM) -->
                         ${sectionsHtml}
                     </td>
                 </tr>
@@ -1846,6 +1839,9 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                     <td>
                         <!-- PERMANENT SYSTEM CONTACT & OWNERSHIP FOOTER ON EVERY PAGE -->
                         <div class="print-doc-footer">
+                            <div class="print-confidential-bottom">
+                                <span>CONFIDENTIAL — RMSME INTERNAL AUDIT &amp; DECISION REPORT • STRICTLY FOR OPERATIONAL USE</span>
+                            </div>
                             <div class="print-footer-top">
                                 <span>RMSME — Raw Material Stock Management &amp; Enterprise Forecasting System</span>
                                 <span>Document Ownership: RMSME Authorized Management</span>
