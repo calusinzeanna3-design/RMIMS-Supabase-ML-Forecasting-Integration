@@ -2373,11 +2373,139 @@ async function handleExportConfirm() {
         if (closeBtn) closeBtn.style.pointerEvents = "auto";
     }
 }
+async function handleQuickCsvImport(file) {
+    if (!file) return;
+    toast(`Reading ${file.name}...`, "info");
+    try {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) {
+            toast("Selected CSV file contains no data rows.", "warning");
+            return;
+        }
+
+        const headerLine = lines[0].toLowerCase();
+        let importedCount = 0;
+
+        // Mode 1: Raw Materials Catalog CSV (item_code, name, category, unit, min, reorder, lead, current_stock)
+        if (headerLine.includes("item_code") || headerLine.includes("raw material") || headerLine.includes("unit_of_measure")) {
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(",").map(p => p.replace(/^["']|["']$/g, "").trim());
+                if (!parts[0] && !parts[1]) continue;
+                
+                const itemCode = parts[0] || `RM-${String(i).padStart(3, "0")}`;
+                const name = parts[1] || parts[0];
+                const cat = parts[2] || "General";
+                const unit = parts[3] || "kg";
+                const min = num(parts[4]) || 10;
+                const reorder = num(parts[5]) || 50;
+                const lead = num(parts[6]) || 3;
+                const current = num(parts[7]) || (reorder * 0.8);
+
+                const existing = state.materials.find(m => m.name.toLowerCase() === name.toLowerCase() || m.itemCode.toLowerCase() === itemCode.toLowerCase());
+                if (existing) {
+                    existing.currentStock = current;
+                    existing.minStock = min;
+                    existing.unit = unit;
+                } else {
+                    state.materials.push({
+                        id: `mat-imported-${Date.now()}-${i}`,
+                        itemCode,
+                        name,
+                        unit,
+                        currentStock: current,
+                        minStock: min,
+                        note: cat,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+                importedCount++;
+            }
+            toast(`Successfully imported & updated ${importedCount} raw materials!`, "success");
+        }
+        // Mode 2: Stock Receipts CSV
+        else if (headerLine.includes("receipt_date") || headerLine.includes("received_quantity")) {
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(",").map(p => p.replace(/^["']|["']$/g, "").trim());
+                if (parts.length >= 3) {
+                    const date = parts[0] || new Date().toISOString().slice(0, 10);
+                    const name = parts[2] || parts[1];
+                    const qty = num(parts[3]) || num(parts[2]);
+                    const unit = parts[4] || "kg";
+                    const supplier = parts[5] || "Imported Delivery";
+                    state.receipts.unshift({
+                        id: `rec-imp-${Date.now()}-${i}`,
+                        materialName: name,
+                        materialCode: parts[1] || "RM-CAT",
+                        receivedQuantity: qty,
+                        unit,
+                        receiptDate: date,
+                        supplierName: supplier,
+                        createdAt: new Date().toISOString()
+                    });
+                    importedCount++;
+                }
+            }
+            toast(`Successfully imported ${importedCount} stock receipt records!`, "success");
+        }
+        // Mode 3: Daily Disbursements / Usage CSV
+        else if (headerLine.includes("usage_date") || headerLine.includes("consumed_quantity") || headerLine.includes("date_consumed")) {
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(",").map(p => p.replace(/^["']|["']$/g, "").trim());
+                if (parts.length >= 3) {
+                    const date = parts[0] || new Date().toISOString().slice(0, 10);
+                    const name = parts[2] || parts[1];
+                    const qty = num(parts[3]) || num(parts[2]);
+                    const unit = parts[4] || "kg";
+                    const activity = parts[5] || "Commercial Food Processing";
+                    state.disbursements.unshift({
+                        id: `dsb-imp-${Date.now()}-${i}`,
+                        materialName: name,
+                        materialCode: parts[1] || "RM-CAT",
+                        consumedQuantity: qty,
+                        unit,
+                        usageDate: date,
+                        productContext: activity,
+                        createdAt: new Date().toISOString()
+                    });
+                    importedCount++;
+                }
+            }
+            toast(`Successfully imported ${importedCount} consumption records!`, "success");
+        }
+
+        renderSummary();
+        renderOverviewTable();
+        renderReceiveTable();
+        renderDisbursementTable();
+        populateModalDropdowns();
+
+    } catch (err) {
+        console.error("Quick Import Error:", err);
+        toast("Failed to import CSV: " + err.message, "error");
+    }
+}
+
 /* ==========================================================
    ATTACH EVENT LISTENERS & TAB NAVIGATION
    ========================================================== */
 
 function setupEventListeners() {
+    // Quick CSV / Excel Import button
+    const quickInput = $("invQuickImportInput");
+    const importBtn = $("invImportBtn");
+    if (importBtn && quickInput) {
+        importBtn.addEventListener("click", () => {
+            quickInput.value = "";
+            quickInput.click();
+        });
+        quickInput.addEventListener("change", (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleQuickCsvImport(e.target.files[0]);
+            }
+        });
+    }
     // 1. Attached Tabs Switching
     const tabBtns = document.querySelectorAll(".inv-tab-btn");
     tabBtns.forEach(btn => {
