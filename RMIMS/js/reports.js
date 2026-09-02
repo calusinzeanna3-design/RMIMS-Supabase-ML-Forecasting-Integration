@@ -173,38 +173,26 @@ function syncDateInputsInteractiveState() {
 
     if (wrap) {
         if (isCustom) {
-            wrap.classList.remove("is-preset-locked");
             wrap.classList.add("is-custom-active");
+            wrap.classList.remove("is-preset-locked");
             wrap.title = "Custom Date Range: Click date fields to modify range";
         } else {
-            wrap.classList.add("is-preset-locked");
             wrap.classList.remove("is-custom-active");
-            wrap.title = "Preset active: Dates are automatically loaded. Switch to 'Custom Date Range' in dropdown to edit.";
+            wrap.classList.remove("is-preset-locked");
+            wrap.title = "Click to pick a custom date range or select a period preset";
         }
     }
 
     if (fpStart && fpStart.altInput) {
-        if (isCustom) {
-            fpStart.altInput.style.pointerEvents = "auto";
-            fpStart.altInput.style.cursor = "pointer";
-            fpStart.altInput.classList.remove("input-locked");
-        } else {
-            fpStart.altInput.style.pointerEvents = "none";
-            fpStart.altInput.style.cursor = "default";
-            fpStart.altInput.classList.add("input-locked");
-        }
+        fpStart.altInput.style.pointerEvents = "auto";
+        fpStart.altInput.style.cursor = "pointer";
+        fpStart.altInput.classList.remove("input-locked");
     }
 
     if (fpEnd && fpEnd.altInput) {
-        if (isCustom) {
-            fpEnd.altInput.style.pointerEvents = "auto";
-            fpEnd.altInput.style.cursor = "pointer";
-            fpEnd.altInput.classList.remove("input-locked");
-        } else {
-            fpEnd.altInput.style.pointerEvents = "none";
-            fpEnd.altInput.style.cursor = "default";
-            fpEnd.altInput.classList.add("input-locked");
-        }
+        fpEnd.altInput.style.pointerEvents = "auto";
+        fpEnd.altInput.style.cursor = "pointer";
+        fpEnd.altInput.classList.remove("input-locked");
     }
 }
 
@@ -2453,25 +2441,15 @@ function initEventListeners() {
             const val = e.target.value;
             state.periodPreset = val;
 
-            const dateGroup = document.getElementById("rptDateRangeGroup");
-            const startInput = document.getElementById("rptStartDate");
-            const endInput = document.getElementById("rptEndDate");
-            const clearBtn = document.getElementById("clearReportDatesBtn");
+            setPeriodPresetDates(val);
+            syncDateInputsInteractiveState();
+            updateClearBtnVisibility();
+            updateMetadataLabels();
+            renderAllTabs();
+            updatePrintDocHtml();
 
-            if (val === "custom") {
-                if (dateGroup) dateGroup.classList.add("active");
-                if (clearBtn) clearBtn.style.display = "inline-flex";
-                if (startInput) startInput.readOnly = false;
-                if (endInput) endInput.readOnly = false;
-            } else {
-                if (dateGroup) dateGroup.classList.remove("active");
-                if (clearBtn) clearBtn.style.display = "none";
-                if (startInput) startInput.readOnly = true;
-                if (endInput) endInput.readOnly = true;
-
-                setPeriodPresetDates(val);
-                updateDateInputDisplay();
-                renderAllTabs();
+            if (val === "custom" && fpStart) {
+                fpStart.open();
             }
         });
     }
