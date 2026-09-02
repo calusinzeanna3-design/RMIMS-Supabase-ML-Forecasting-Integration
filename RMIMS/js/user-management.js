@@ -473,13 +473,16 @@ async function sendPasswordReset(u) {
         confirmLabel: "Send Reset Email",
         onConfirm: async () => {
             try {
-                const { error } = await auth.resetPasswordForEmail(target.email);
+                const redirectUrl = `${window.location.origin}/login.html`;
+                const { error } = await supabase.auth.resetPasswordForEmail(target.email, {
+                    redirectTo: redirectUrl
+                });
                 if (error) throw error;
                 showToast("Password reset email sent successfully.");
                 closeModal("confirmModal");
             } catch (err) {
-                console.error(err);
-                showToast("Unable to send the password reset email. Please try again.", "error");
+                console.error("Password reset error:", err);
+                showToast(err?.message || "Unable to send the password reset email. Please check your Supabase Email settings.", "error");
                 closeModal("confirmModal");
             }
         }
