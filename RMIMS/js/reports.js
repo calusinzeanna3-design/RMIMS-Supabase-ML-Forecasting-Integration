@@ -616,70 +616,118 @@ function renderManagerCharts() {
         });
     }
 
-    // 2. Top Consumed Materials Chart (Horizontal Bar)
-    const topConsumedCanvas = document.getElementById("topConsumedChart");
-    if (topConsumedCanvas) {
+    // 2. Material Quantity Progress Chart (Daily Inflow vs Outflow)
+    const qtyProgressCanvas = document.getElementById("qtyProgressChart");
+    if (qtyProgressCanvas) {
+        const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
 
-        // Aggregate by material name
-        const usageMap = new Map();
-        const unitMap = new Map();
-        periodDisbursements.forEach(d => {
-            usageMap.set(d.materialName, (usageMap.get(d.materialName) || 0) + d.disbursedQuantity);
-            if (!unitMap.has(d.materialName)) unitMap.set(d.materialName, d.unit);
+        // Generate date map across period range
+        const dateLabels = [];
+        const receivedMap = new Map();
+        const disbursedMap = new Map();
+
+        let totalRcv = 0;
+        let totalDisb = 0;
+
+        periodReceipts.forEach(r => {
+            if (r.receiptDate) {
+                receivedMap.set(r.receiptDate, (receivedMap.get(r.receiptDate) || 0) + r.receivedQuantity);
+                totalRcv += r.receivedQuantity;
+            }
         });
 
-        // Sort descending and take top 5
-        const sorted = Array.from(usageMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
-        const labels = sorted.map(item => item[0]);
-        const dataValues = sorted.map(item => item[1]);
-        const units = sorted.map(item => unitMap.get(item[0]) || "units");
+        periodDisbursements.forEach(d => {
+            if (d.usageDate) {
+                disbursedMap.set(d.usageDate, (disbursedMap.get(d.usageDate) || 0) + d.disbursedQuantity);
+                totalDisb += d.disbursedQuantity;
+            }
+        });
 
-        const badge = document.getElementById("topConsumedTotalBadge");
-        if (badge) badge.textContent = `${periodDisbursements.length} Records`;
+        // Collect all distinct dates or interpolate between start and end
+        if (state.startDate && state.endDate) {
+            let cur = new Date(state.startDate);
+            const end = new Date(state.endDate);
+            while (cur <= end) {
+                const s = formatDateISO(cur);
+                dateLabels.push(s);
+                cur = addDays(cur, 1);
+            }
+        } else {
+            const allDates = Array.from(new Set([...receivedMap.keys(), ...disbursedMap.keys()])).sort();
+            dateLabels.push(...allDates);
+        }
+
+        const formattedLabels = dateLabels.map(dStr => {
+            const d = parseDateOnly(dStr);
+            if (!d) return dStr;
+            return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        });
+
+        const rcvData = dateLabels.map(dStr => Number((receivedMap.get(dStr) || 0).toFixed(1)));
+        const disbData = dateLabels.map(dStr => Number((disbursedMap.get(dStr) || 0).toFixed(1)));
+
+        const badge = document.getElementById("qtyProgressTotalBadge");
+        if (badge) badge.textContent = `+${totalRcv.toLocaleString()} in / -${totalDisb.toLocaleString()} out`;
 
         if (topConsumedChartInstance) {
             topConsumedChartInstance.destroy();
             topConsumedChartInstance = null;
         }
 
-        const ctx = topConsumedCanvas.getContext("2d");
+        const ctx = qtyProgressCanvas.getContext("2d");
         topConsumedChartInstance = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: labels.length > 0 ? labels : ["No Disbursements"],
-                datasets: [{
-                    label: "Quantity Consumed",
-                    data: dataValues.length > 0 ? dataValues : [0],
-                    backgroundColor: "rgba(37, 99, 235, 0.85)", // Blue
-                    borderRadius: 4
-                }]
+                labels: formattedLabels.length > 0 ? formattedLabels : ["No Records"],
+                datasets: [
+                    {
+                        label: "Received Inflow (+)",
+                        data: rcvData.length > 0 ? rcvData : [0],
+                        backgroundColor: "#16803c", // Emerald
+                        borderRadius: 4,
+                        barPercentage: 0.7,
+                        categoryPercentage: 0.8
+                    },
+                    {
+                        label: "Disbursed Outflow (-)",
+                        data: disbData.length > 0 ? disbData : [0],
+                        backgroundColor: "#2563eb", // Blue
+                        borderRadius: 4,
+                        barPercentage: 0.7,
+                        categoryPercentage: 0.8
+                    }
+                ]
             },
             options: {
-                indexAxis: "y",
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        position: "top",
+                        labels: {
+                            boxWidth: 10,
+                            font: { size: 10.5, weight: "600" },
+                            color: "#334155"
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const idx = context.dataIndex;
-                                const u = units[idx] || "";
-                                return ` Consumed: ${context.raw?.toLocaleString()} ${u}`;
+                                return ` ${context.dataset.label}: ${context.raw?.toLocaleString()}`;
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10, weight: "600" }, color: "#475569" }
+                    },
+                    y: {
                         beginAtZero: true,
                         grid: { color: "#f1f5f9" },
                         ticks: { font: { size: 10 }, color: "#64748b" }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { font: { size: 11, weight: "600" }, color: "#1e293b" }
                     }
                 }
             }

@@ -47,32 +47,27 @@
         </header>
 
         <!-- REPORTS ON-SCREEN WORKSPACE -->
-        <!-- PAGE TITLE + PRIMARY ACTIONS -->
-        <div class="page-title">
-            <div class="page-title-text">
-                <h1>Reports &amp; Decision Support</h1>
-                <p>Generate comprehensive inventory, material receiving, disbursement, and consumption reports.</p>
-            </div>
-
-            <div class="page-actions">
-                <button id="btnSaveAs" class="btn-primary" title="Save or Export Report Package">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                    Save As
-                </button>
-
-                <button id="btnPrint" class="btn-secondary" title="Print Report Document">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                    Print
-                </button>
-
-                <button id="generateReportBtn" class="btn-icon-only" title="Refresh Live Data">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- REPORTS ON-SCREEN WORKSPACE -->
         <div class="rpt-workspace-wrap">
+
+            <!-- PAGE HEADER -->
+            <div class="rpt-page-header">
+                <div>
+                    <h1 class="rpt-page-title">Reports &amp; Decision Support</h1>
+                    <p class="rpt-page-subtitle">Generate comprehensive inventory, material receiving, disbursement, and consumption reports.</p>
+                </div>
+
+                <div class="rpt-control-right">
+                    <button id="btnSaveAs" class="btn-primary" title="Save or Export Report Package">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                        <span>Save As</span>
+                    </button>
+
+                    <button id="btnPrint" class="btn-secondary" title="Print Report Document">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                        <span>Print</span>
+                    </button>
+                </div>
+            </div>
 
             <!-- FILTER TOOLBAR (INVENTORY DESIGN) -->
             <section class="rpt-control-card" aria-label="Report Parameters and Filters">
@@ -98,10 +93,15 @@
                             <input type="date" class="inv-input-date" id="rptEndDate" title="Report End Date"/>
                         </div>
                     </div>
+
+                    <!-- Refresh Button -->
+                    <button id="generateReportBtn" class="btn-icon-only" title="Refresh Live Data" style="height:38px; width:38px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--rpt-card-border); background:#fff; cursor:pointer;">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
                 </div>
 
                 <!-- METADATA SUB-BAR -->
-                <div class="rpt-meta-bar">
+                <div class="rpt-meta-bar" style="display:flex; align-items:center; gap:12px;">
                     <div>
                         <span class="rpt-meta-item"><strong>Report Period:</strong> <span id="metaPeriodLabel">Loading...</span></span>
                         <span class="rpt-meta-sep">•</span>
@@ -109,7 +109,7 @@
                     </div>
                     <div class="rpt-status-pill">
                         <span class="rpt-status-dot"></span>
-                        <span>Live Supabase Connected</span>
+                        <span>Live Connected</span>
                     </div>
                 </div>
             </section>
@@ -186,17 +186,17 @@
                                 </div>
                             </div>
 
-                            <!-- Chart 2: Top Consumed Materials (Horizontal Bar) -->
+                            <!-- Chart 2: Material Quantity Progress (Movement & Activity Progress) -->
                             <div class="rpt-chart-card">
                                 <div class="rpt-chart-header">
                                     <div>
-                                        <h4 class="rpt-chart-title">Top Consumed Raw Materials</h4>
-                                        <p class="rpt-chart-sub">Most utilized materials in selected period</p>
+                                        <h4 class="rpt-chart-title">Material Quantity Progress</h4>
+                                        <p class="rpt-chart-sub">Daily inflow (received) vs outflow (disbursed) quantity</p>
                                     </div>
-                                    <span class="rpt-chart-badge" id="topConsumedTotalBadge">Period Usage</span>
+                                    <span class="rpt-chart-badge" id="qtyProgressTotalBadge">Period Progress</span>
                                 </div>
                                 <div class="rpt-chart-body">
-                                    <canvas id="topConsumedChart"></canvas>
+                                    <canvas id="qtyProgressChart"></canvas>
                                 </div>
                             </div>
                         </div>
