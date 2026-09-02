@@ -118,14 +118,18 @@ function esc(str) {
    INITIALIZATION
    ========================================================== */
 
+let fpStart = null;
+let fpEnd = null;
+
 async function init() {
     initPeriodDates();
+    initUserReportsFlatpickr();
     initEventListeners();
     await loadAuthoritativeData();
 }
 
 /* ==========================================================
-   PERIOD & DATE HELPERS
+   PERIOD & DATE HELPERS & FLATPICKR INITIALIZATION
    ========================================================== */
 
 function initPeriodDates() {
@@ -149,14 +153,105 @@ function setPeriodPresetDates(preset) {
         state.startDate = start;
         state.endDate = end;
     } else if (preset === "all") {
-        state.startDate = new Date(2020, 0, 1);
-        state.endDate = new Date(anchor.getFullYear() + 1, 11, 31);
+        state.startDate = null;
+        state.endDate = null;
     }
 
     const startInput = $("rptStartDate");
     const endInput = $("rptEndDate");
     if (startInput && state.startDate) startInput.value = formatDateISO(state.startDate);
     if (endInput && state.endDate) endInput.value = formatDateISO(state.endDate);
+
+    if (fpStart) {
+        if (state.startDate) fpStart.setDate(formatDateISO(state.startDate), false);
+        else fpStart.clear();
+    }
+    if (fpEnd) {
+        if (state.endDate) fpEnd.setDate(formatDateISO(state.endDate), false);
+        else fpEnd.clear();
+    }
+
+    updateUserClearBtnVisibility();
+}
+
+function updateUserClearBtnVisibility() {
+    const clearBtn = $("clearReportDatesBtn");
+    if (clearBtn) {
+        if (state.startDate || state.endDate) {
+            clearBtn.style.display = "inline-flex";
+        } else {
+            clearBtn.style.display = "none";
+        }
+    }
+}
+
+function initUserReportsFlatpickr() {
+    const startInput = $("rptStartDate");
+    const endInput = $("rptEndDate");
+    const clearBtn = $("clearReportDatesBtn");
+    const presetSelect = $("reportPeriodPreset");
+
+    if (typeof flatpickr === "undefined") return;
+
+    if (startInput && !startInput._flatpickr) {
+        fpStart = flatpickr(startInput, {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            altInputClass: "inv-input-date",
+            disableMobile: true,
+            allowInput: true,
+            defaultDate: state.startDate ? formatDateISO(state.startDate) : null,
+            onChange: (selectedDates, dateStr) => {
+                state.startDate = parseDateOnly(dateStr);
+                if (presetSelect) presetSelect.value = "custom";
+                state.periodPreset = "custom";
+                updateUserClearBtnVisibility();
+                renderAllReportSections();
+            }
+        });
+        if (fpStart && fpStart.altInput) {
+            fpStart.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+        }
+    }
+
+    if (endInput && !endInput._flatpickr) {
+        fpEnd = flatpickr(endInput, {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            altInputClass: "inv-input-date",
+            disableMobile: true,
+            allowInput: true,
+            defaultDate: state.endDate ? formatDateISO(state.endDate) : null,
+            onChange: (selectedDates, dateStr) => {
+                state.endDate = parseDateOnly(dateStr);
+                if (presetSelect) presetSelect.value = "custom";
+                state.periodPreset = "custom";
+                updateUserClearBtnVisibility();
+                renderAllReportSections();
+            }
+        });
+        if (fpEnd && fpEnd.altInput) {
+            fpEnd.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+        }
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            if (fpStart) fpStart.clear();
+            if (fpEnd) fpEnd.clear();
+            state.startDate = null;
+            state.endDate = null;
+            if (presetSelect) presetSelect.value = "all";
+            state.periodPreset = "all";
+            updateUserClearBtnVisibility();
+            renderAllReportSections();
+            showToast("Report date filter cleared.", "info");
+        });
+    }
+
+    updateUserClearBtnVisibility();
 }
 
 function formatDateISO(d) {
@@ -434,20 +529,26 @@ function initEventListeners() {
         presetSelect.addEventListener("change", (e) => {
             state.periodPreset = e.target.value;
             setPeriodPresetDates(state.periodPreset);
+            renderAllReportSections();
         });
     }
 
-    // Generate / Update Button
+    // Refresh Live Data Button
     const genBtn = $("generateReportBtn");
     if (genBtn) {
-        genBtn.addEventListener("click", () => {
-            const startInput = $("rptStartDate");
-            const endInput = $("rptEndDate");
-            if (startInput && startInput.value) state.startDate = parseDateOnly(startInput.value);
-            if (endInput && endInput.value) state.endDate = parseDateOnly(endInput.value);
-            state.generatedAt = new Date();
-            renderAllReportSections();
-            showToast("Report parameters updated successfully.", "success");
+        genBtn.addEventListener("click", async () => {
+            genBtn.classList.add("spinning");
+            try {
+                await loadAuthoritativeData();
+                showToast("System data refreshed successfully. Reports are up to date.", "success");
+            } catch (err) {
+                console.error("Refresh error:", err);
+                showToast("Error updating live report data.", "error");
+            } finally {
+                setTimeout(() => {
+                    genBtn.classList.remove("spinning");
+                }, 750);
+            }
         });
     }
 

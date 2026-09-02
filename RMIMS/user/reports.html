@@ -6,6 +6,7 @@
     <title>Reports &amp; Decision Support | RMSME User</title>
     <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
     <link href="../css/reports.css" rel="stylesheet"/>
 </head>
@@ -68,40 +69,39 @@
                 </div>
             </div>
 
-            <!-- FILTER TOOLBAR (INVENTORY DESIGN) -->
+            <!-- FILTER TOOLBAR (INVENTORY DESIGN & USER SYSTEM CALENDAR) -->
             <section class="rpt-control-card" aria-label="Report Parameters and Filters">
                 <div class="rpt-control-left">
-                    <!-- Period Preset Selector -->
-                    <div class="rpt-control-group">
-                        <label class="filter-label" for="reportPeriodPreset">Period:</label>
-                        <select class="inv-select" id="reportPeriodPreset" title="Select Report Period">
-                            <option value="weekly" selected>Weekly (Last 7 Days)</option>
-                            <option value="monthly">Monthly (Last 30 Days)</option>
-                            <option value="today">Latest Update Day</option>
-                            <option value="custom">Custom Date Range</option>
-                            <option value="all">All Available Records</option>
+                    <!-- Modern Inventory Date Range Picker with Pill & Clear button -->
+                    <div class="inv-date-range-wrap">
+                        <label for="rptStartDate" class="filter-label">FROM:</label>
+                        <input type="text" class="inv-input-date" id="rptStartDate" title="Report Start Date" placeholder="dd/mm/yyyy" readonly/>
+                        <label for="rptEndDate" class="filter-label">TO:</label>
+                        <input type="text" class="inv-input-date" id="rptEndDate" title="Report End Date" placeholder="dd/mm/yyyy" readonly/>
+                        <button type="button" id="clearReportDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
+                    </div>
+
+                    <!-- Improved Period Dropdown with Icon -->
+                    <div class="rpt-select-wrap">
+                        <select class="inv-select rpt-period-select" id="reportPeriodPreset" title="Select Report Period">
+                            <option value="weekly" selected>Period: Weekly (Last 7 Days)</option>
+                            <option value="monthly">Period: Monthly (Last 30 Days)</option>
+                            <option value="today">Period: Latest Update Day</option>
+                            <option value="custom">Period: Custom Date Range</option>
+                            <option value="all">Period: All Available Records</option>
                         </select>
                     </div>
 
-                    <!-- Modern Inventory Date Range Picker -->
-                    <div class="rpt-control-group" id="rptDateRangeGroup">
-                        <div class="inv-date-range-wrap">
-                            <label for="rptStartDate" class="filter-label">From:</label>
-                            <input type="date" class="inv-input-date" id="rptStartDate" title="Report Start Date"/>
-                            <label for="rptEndDate" class="filter-label">To:</label>
-                            <input type="date" class="inv-input-date" id="rptEndDate" title="Report End Date"/>
-                        </div>
-                    </div>
-
-                    <!-- Refresh Button -->
-                    <button id="generateReportBtn" class="btn-icon-only" title="Refresh Live Data" style="height:38px; width:38px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--rpt-card-border); background:#fff; cursor:pointer;">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <!-- Modern Refresh Button with Live Supabase Status Update -->
+                    <button id="generateReportBtn" class="btn-secondary rpt-refresh-btn" title="Refresh Live Data from Supabase">
+                        <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12C4 7.58172 7.58172 4 12 4C15.0736 4 17.7462 5.73835 19.0777 8.28638M20 12C20 16.4183 16.4183 20 12 20C8.92638 20 6.25378 18.2616 4.92224 15.7136" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19 4V8.5H14.5M5 20V15.5H9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Refresh</span>
                     </button>
                 </div>
 
                 <!-- METADATA SUB-BAR -->
-                <div class="rpt-meta-bar" style="display:flex; align-items:center; gap:12px;">
-                    <div>
+                <div class="rpt-meta-bar">
+                    <div class="rpt-meta-text-group">
                         <span class="rpt-meta-item"><strong>Report Period:</strong> <span id="metaPeriodLabel">Loading...</span></span>
                         <span class="rpt-meta-sep">•</span>
                         <span class="rpt-meta-item"><strong>Generated:</strong> <span id="metaGeneratedTime">—</span></span>
@@ -496,6 +496,7 @@
 <div class="toast-stack" id="toastStack"></div>
 
 <!-- SCRIPTS & LIBRARIES -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
