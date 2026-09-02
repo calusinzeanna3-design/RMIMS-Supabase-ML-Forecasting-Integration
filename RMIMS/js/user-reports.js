@@ -1910,7 +1910,7 @@ function updatePrintDocHtml() {
 
                         <!-- REPORT TITLE & PERIOD RIBBON -->
                         <div class="print-doc-title-row">
-                            <h2 class="print-doc-title">Operational Inventory &amp; Production Report</h2>
+                            <h2 class="print-doc-title">Document Report</h2>
                             <span class="print-period-badge">${esc(periodLabel)}</span>
                         </div>
 

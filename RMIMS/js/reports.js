@@ -1795,7 +1795,7 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
 
                         <!-- REPORT TITLE & PERIOD RIBBON -->
                         <div class="print-doc-title-row">
-                            <h2 class="print-doc-title">Executive Manager Summary &amp; Inventory Decision Report</h2>
+                            <h2 class="print-doc-title">Document Report</h2>
                             <span class="print-period-badge">${escapeHtml(periodLabel)}</span>
                         </div>
 
