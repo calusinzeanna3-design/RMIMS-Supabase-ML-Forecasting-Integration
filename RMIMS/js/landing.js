@@ -179,19 +179,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // 2. SMOOTH SCROLLING & ACTIVE NAV SPY
+  // 2. SMOOTH SCROLLING & MOBILE NAV HANDLERS
   // ==========================================
   const navLinks = document.querySelectorAll(".main-nav .nav-link");
-  const sections = document.querySelectorAll(".landing-section");
   const mainNav = document.getElementById("mainNav");
   const navToggle = document.getElementById("navToggle");
 
-  // Close mobile nav & update active state when clicking a link
+  // Close mobile nav when clicking a link
   navLinks.forEach(link => {
     link.addEventListener("click", () => {
-      navLinks.forEach(l => l.classList.remove("active"));
-      link.classList.add("active");
-
       if (mainNav && mainNav.classList.contains("is-open")) {
         mainNav.classList.remove("is-open");
         if (navToggle) {
@@ -201,56 +197,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-
-  // Helper function to set the active nav link
-  function setActiveNav(id) {
-    if (!id) return;
-    navLinks.forEach(link => {
-      const href = link.getAttribute("href");
-      if (href === `#${id}`) {
-        link.classList.add("active");
-      } else {
-        link.classList.remove("active");
-      }
-    });
-  }
-
-  // Active section auto-locate spy on scroll
-  function updateActiveNavOnScroll() {
-    const scrollY = window.scrollY;
-    const windowHeight = window.innerHeight;
-    const docHeight = document.documentElement.scrollHeight;
-    const headerHeight = document.querySelector(".landing-header")?.offsetHeight || 80;
-    const triggerPoint = headerHeight + 140; // Focal line where entering a new section activates it
-
-    // 1. Absolute bottom of page: highlight last section
-    if ((windowHeight + scrollY) >= (docHeight - 50) && sections.length > 0) {
-      setActiveNav(sections[sections.length - 1].getAttribute("id"));
-      return;
-    }
-
-    // 2. Active section is the latest section whose top has crossed the trigger point
-    let currentActiveId = "";
-    sections.forEach(section => {
-      const rect = section.getBoundingClientRect();
-      if (rect.top <= triggerPoint) {
-        currentActiveId = section.getAttribute("id");
-      }
-    });
-
-    // Default to first section if at the top
-    if (!currentActiveId && sections.length > 0) {
-      currentActiveId = sections[0].getAttribute("id");
-    }
-
-    if (currentActiveId) {
-      setActiveNav(currentActiveId);
-    }
-  }
-
-  window.addEventListener("scroll", updateActiveNavOnScroll, { passive: true });
-  window.addEventListener("resize", updateActiveNavOnScroll, { passive: true });
-  updateActiveNavOnScroll(); // Initial check on load
 
   // ==========================================
   // 3. MOBILE NAV TOGGLE

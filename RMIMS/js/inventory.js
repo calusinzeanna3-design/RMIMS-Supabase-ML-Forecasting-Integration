@@ -493,15 +493,38 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
     }
 
     let html = `
-        <button type="button" class="page-btn" id="prevPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹</button>
+        <button type="button" class="page-btn" id="prevPageBtn" ${currentPage <= 1 ? "disabled" : ""} title="Previous Page">‹</button>
     `;
 
-    for (let p = 1; p <= totalPages; p++) {
-        html += `<button type="button" class="page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+    // Windowed Pagination Algorithm (prevents 70+ buttons stretch)
+    const maxVisible = 7;
+    let pages = [];
+    if (totalPages <= maxVisible) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        pages.push(1);
+        if (currentPage > 4) pages.push("...");
+
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(totalPages - 1, currentPage + 2);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+
+        if (currentPage < totalPages - 3) pages.push("...");
+        pages.push(totalPages);
     }
 
+    pages.forEach(p => {
+        if (p === "...") {
+            html += `<span class="page-ellipsis">…</span>`;
+        } else {
+            html += `<button type="button" class="page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        }
+    });
+
     html += `
-        <button type="button" class="page-btn" id="nextPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>›</button>
+        <button type="button" class="page-btn" id="nextPageBtn" ${currentPage >= totalPages ? "disabled" : ""} title="Next Page">›</button>
     `;
 
     container.innerHTML = html;
@@ -602,6 +625,47 @@ function attachOverviewTableListeners() {
         };
     }
 
+    // Cascade Delete Helper for Raw Materials (removes dependent records to satisfy FK constraints)
+    async function deleteRawMaterialsCascade(idsToDelete) {
+        if (!idsToDelete || idsToDelete.length === 0) return;
+
+        // 1. Delete associated material disbursements
+        const { error: disbError } = await supabase
+            .from("material_disbursements")
+            .delete()
+            .in("material_id", idsToDelete);
+        if (disbError) {
+            console.warn("Cascade delete material_disbursements warning:", disbError);
+        }
+
+        // 2. Delete associated stock receipts
+        const { error: recError } = await supabase
+            .from("stock_receipts")
+            .delete()
+            .in("material_id", idsToDelete);
+        if (recError) {
+            console.warn("Cascade delete stock_receipts warning:", recError);
+        }
+
+        // 3. Delete associated product requirements if applicable
+        try {
+            await supabase
+                .from("product_material_requirements")
+                .delete()
+                .in("material_id", idsToDelete);
+        } catch (e) {
+            // Optional table fallback
+        }
+
+        // 4. Finally delete from raw_materials
+        const { error: matError } = await supabase
+            .from("raw_materials")
+            .delete()
+            .in("id", idsToDelete);
+
+        if (matError) throw matError;
+    }
+
     // Bulk Delete
     const bulkDeleteBtn = $("bulkDeleteBtn");
     if (bulkDeleteBtn) {
@@ -609,19 +673,14 @@ function attachOverviewTableListeners() {
             const count = state.selectedOverviewIds.size;
             if (count === 0) return;
 
-            if (!confirm(`Are you sure you want to delete the ${count} selected raw material(s)? This action cannot be undone.`)) {
+            if (!confirm(`Are you sure you want to delete the ${count} selected raw material(s) and all their associated transaction history? This action cannot be undone.`)) {
                 return;
             }
 
             const idsToDelete = Array.from(state.selectedOverviewIds);
             try {
                 toast(`Deleting ${count} raw material(s)...`);
-                const { error } = await supabase
-                    .from("raw_materials")
-                    .delete()
-                    .in("id", idsToDelete);
-
-                if (error) throw error;
+                await deleteRawMaterialsCascade(idsToDelete);
 
                 toast(`Successfully deleted ${count} raw material(s).`);
                 state.selectedOverviewIds.clear();
@@ -649,16 +708,11 @@ function attachOverviewTableListeners() {
             const id = btn.dataset.id;
             const name = btn.dataset.name || "this raw material";
 
-            if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) return;
+            if (!confirm(`Are you sure you want to delete "${name}" and all its transaction history? This action cannot be undone.`)) return;
 
             try {
                 toast(`Deleting "${name}"...`);
-                const { error } = await supabase
-                    .from("raw_materials")
-                    .delete()
-                    .eq("id", id);
-
-                if (error) throw error;
+                await deleteRawMaterialsCascade([id]);
 
                 toast(`Successfully deleted "${name}".`);
                 state.selectedOverviewIds.delete(id);
@@ -1144,7 +1198,7 @@ function initModalDatePicker(elementId, initialDate = "today", todayOnly = true)
         altFormat: "d/m/Y",
         defaultDate: defaultVal,
         disableMobile: true,
-        allowInput: false,
+        allowInput: true,
         animate: true
     };
 
@@ -1843,7 +1897,7 @@ async function handleImportConfirm() {
                             p_receipt_date: recordDate,
                             p_quantity: item.receiptQty,
                             p_unit: targetUnit,
-                            p_supplier_name: "Imported Stock Receipt"
+                            p_supplier_name: item.supplier || item.note || "Stock Delivery"
                         });
                         if (!recErr) totalReceiptsLogged++;
                     }
@@ -1855,8 +1909,8 @@ async function handleImportConfirm() {
                             p_usage_date: recordDate,
                             p_quantity: item.dsbQty,
                             p_unit: targetUnit,
-                            p_activity_type: "Imported Disbursement",
-                            p_finished_product_name: item.note || "Imported DSB Usage"
+                            p_activity_type: "Production Usage",
+                            p_finished_product_name: item.productName || item.note || "General Production"
                         });
                         if (!dsbErr) totalDsbsLogged++;
                     }
@@ -2488,22 +2542,97 @@ function setupEventListeners() {
         });
     }
 
-    // Initialize all Filter Flatpickr Calendars
+    // Initialize all Filter Flatpickr Calendars & Clear Buttons
+    const syncClearBtn = (btnId, fromId, toId) => {
+        const btn = $(btnId);
+        const fromEl = $(fromId);
+        const toEl = $(toId);
+        if (btn) {
+            const hasVal = Boolean((fromEl && fromEl.value) || (toEl && toEl.value));
+            btn.style.display = hasVal ? "inline-flex" : "none";
+        }
+    };
+
+    const attachClearBtn = (btnId, fromId, toId) => {
+        const btn = $(btnId);
+        if (btn) {
+            btn.addEventListener("click", () => {
+                const fromEl = $(fromId);
+                const toEl = $(toId);
+                if (fromEl) {
+                    if (fromEl._flatpickr) fromEl._flatpickr.clear();
+                    fromEl.value = "";
+                    fromEl.dispatchEvent(new Event("change"));
+                }
+                if (toEl) {
+                    if (toEl._flatpickr) toEl._flatpickr.clear();
+                    toEl.value = "";
+                    toEl.dispatchEvent(new Event("change"));
+                }
+                syncClearBtn(btnId, fromId, toId);
+            });
+        }
+    };
+
+    attachClearBtn("clearInvDatesBtn", "invDateFrom", "invDateTo");
+    attachClearBtn("clearReceiveDatesBtn", "receiveDateFrom", "receiveDateTo");
+    attachClearBtn("clearDisburseDatesBtn", "disburseDateFrom", "disburseDateTo");
+
     const filterDateInputIds = ["invDateFrom", "invDateTo", "receiveDateFrom", "receiveDateTo", "disburseDateFrom", "disburseDateTo"];
     filterDateInputIds.forEach(id => {
         const el = $(id);
         if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
-            flatpickr(el, {
+            const fp = flatpickr(el, {
                 dateFormat: "Y-m-d",
                 altInput: true,
                 altFormat: "d/m/Y",
+                altInputClass: "inv-input-date",
                 disableMobile: true,
-                allowInput: false,
+                allowInput: true,
                 onChange: (selectedDates, dateStr) => {
                     el.value = dateStr;
                     el.dispatchEvent(new Event("change"));
+                    syncClearBtn("clearInvDatesBtn", "invDateFrom", "invDateTo");
+                    syncClearBtn("clearReceiveDatesBtn", "receiveDateFrom", "receiveDateTo");
+                    syncClearBtn("clearDisburseDatesBtn", "disburseDateFrom", "disburseDateTo");
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    if (instance && instance.altInput) {
+                        const val = instance.altInput.value.trim();
+                        if (!val) {
+                            instance.clear();
+                            el.value = "";
+                            el.dispatchEvent(new Event("change"));
+                        } else {
+                            const parsed = instance.parseDate(val, "d/m/Y") || instance.parseDate(val, "Y-m-d");
+                            if (parsed) {
+                                instance.setDate(parsed, true);
+                            }
+                        }
+                    }
+                    syncClearBtn("clearInvDatesBtn", "invDateFrom", "invDateTo");
+                    syncClearBtn("clearReceiveDatesBtn", "receiveDateFrom", "receiveDateTo");
+                    syncClearBtn("clearDisburseDatesBtn", "disburseDateFrom", "disburseDateTo");
                 }
             });
+
+            if (fp && fp.altInput) {
+                fp.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+                fp.altInput.addEventListener("blur", () => {
+                    const val = fp.altInput.value.trim();
+                    if (!val) {
+                        fp.clear();
+                        el.value = "";
+                        el.dispatchEvent(new Event("change"));
+                    } else {
+                        const parsed = fp.parseDate(val, "d/m/Y") || fp.parseDate(val, "Y-m-d");
+                        if (parsed) fp.setDate(parsed, true);
+                    }
+                    syncClearBtn("clearInvDatesBtn", "invDateFrom", "invDateTo");
+                    syncClearBtn("clearReceiveDatesBtn", "receiveDateFrom", "receiveDateTo");
+                    syncClearBtn("clearDisburseDatesBtn", "disburseDateFrom", "disburseDateTo");
+                });
+            }
         }
     });
 

@@ -69,18 +69,17 @@ const fpcImportBtn = document.getElementById("fpcImportBtn");
 const fpcImportModalOverlay = document.getElementById("fpcImportModalOverlay");
 const fpcImportModalClose = document.getElementById("fpcImportModalClose");
 const fpcImportCancelBtn = document.getElementById("fpcImportCancelBtn");
-const fpcImportNextStepBtn = document.getElementById("fpcImportNextStepBtn");
-const fpcImportBackBtn = document.getElementById("fpcImportBackBtn");
-const fpcImportSaveBtn = document.getElementById("fpcImportSaveBtn");
+const fpcImportConfirmBtn = document.getElementById("fpcImportConfirmBtn");
 const fpcImportDoneBtn = document.getElementById("fpcImportDoneBtn");
 
 const fpcStepIndicator1 = document.getElementById("fpcStepIndicator1");
 const fpcStepIndicator2 = document.getElementById("fpcStepIndicator2");
-const fpcStepIndicator3 = document.getElementById("fpcStepIndicator3");
+const fpcStepLine = document.getElementById("fpcStepLine");
 
 const fpcImportStep1View = document.getElementById("fpcImportStep1View");
+const fpcImportLoadingView = document.getElementById("fpcImportLoadingView");
 const fpcImportStep2View = document.getElementById("fpcImportStep2View");
-const fpcImportStep3View = document.getElementById("fpcImportStep3View");
+const fpcImportResultCard = document.getElementById("fpcImportResultCard");
 
 const fpcSpreadsheetDropzone = document.getElementById("fpcSpreadsheetDropzone");
 const fpcSpreadsheetInput = document.getElementById("fpcSpreadsheetInput");
@@ -90,13 +89,36 @@ const fpcImagesDropzone = document.getElementById("fpcImagesDropzone");
 const fpcImagesInput = document.getElementById("fpcImagesInput");
 const fpcImagesFilesList = document.getElementById("fpcImagesFilesList");
 
-const fpcFieldDetectionBox = document.getElementById("fpcFieldDetectionBox");
-const fpcValidationSummaryBar = document.getElementById("fpcValidationSummaryBar");
-const fpcImportPreviewTableBody = document.getElementById("fpcImportPreviewTableBody");
-const fpcImportResultCard = document.getElementById("fpcImportResultCard");
-
-// Local Storage Key
+// Local Storage Keys
 const STORAGE_KEY = "rmims_finished_product_context";
+const DELETED_STORAGE_KEY = "rmims_deleted_finished_products";
+
+function getDeletedProducts() {
+    try {
+        const raw = localStorage.getItem(DELETED_STORAGE_KEY);
+        return raw ? new Set(JSON.parse(raw).map(x => String(x).toLowerCase().trim())) : new Set();
+    } catch {
+        return new Set();
+    }
+}
+
+function addDeletedProduct(name) {
+    if (!name) return;
+    const deleted = getDeletedProducts();
+    deleted.add(String(name).toLowerCase().trim());
+    try {
+        localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deleted)));
+    } catch {}
+}
+
+function unmarkDeletedProduct(name) {
+    if (!name) return;
+    const deleted = getDeletedProducts();
+    deleted.delete(String(name).toLowerCase().trim());
+    try {
+        localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(Array.from(deleted)));
+    } catch {}
+}
 
 /* ==========================================================
    INITIALIZATION & DATA LOADING
@@ -116,6 +138,17 @@ function isGenericOperationalName(name) {
     if (!name) return true;
     const n = String(name).trim().toLowerCase();
     return (
+        n === "all" ||
+        n === "all activities" ||
+        n === "all products" ||
+        n === "all materials" ||
+        n === "none" ||
+        n === "n/a" ||
+        n === "na" ||
+        n === "null" ||
+        n === "undefined" ||
+        n === "select" ||
+        n === "default" ||
         n === "operational use" ||
         n === "operational" ||
         n === "general usage" ||
@@ -125,7 +158,18 @@ function isGenericOperationalName(name) {
         n === "operational batch" ||
         n === "general production" ||
         n === "production" ||
-        n === "sample usage"
+        n === "production usage" ||
+        n === "sample usage" ||
+        n === "unassigned / general stock" ||
+        n === "unassigned" ||
+        n === "imported dsb usage" ||
+        n === "imported dsb" ||
+        n === "imported disbursement" ||
+        n === "imported stock receipt" ||
+        n === "imported" ||
+        n === "imported usage" ||
+        n.includes("imported dsb") ||
+        n.includes("imported disbursement")
     );
 }
 
@@ -155,7 +199,7 @@ async function loadData() {
             .select("finished_product_name, material_id")
             .order("created_at", { ascending: false });
 
-        // 3. Load saved context from LocalStorage (filtering out any generic operational labels)
+        // 3. Load saved context from LocalStorage (filtering out any generic operational labels or deleted products)
         let savedContext = [];
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -164,15 +208,19 @@ async function loadData() {
             console.warn("Notice loading local finished product context:", e);
         }
 
+        const deletedSet = getDeletedProducts();
+
         // Map of productName -> { id, name, imageUrl, materialIds: Set, createdAt }
         const productMap = new Map();
 
-        // Populate from saved context (strictly excluding generic operational names)
+        // Populate from saved context (strictly excluding generic operational names and deleted products)
         if (Array.isArray(savedContext)) {
             savedContext.forEach(p => {
                 if (!p || !p.name || isGenericOperationalName(p.name)) return;
                 const norm = p.name.trim();
-                productMap.set(norm.toLowerCase(), {
+                const key = norm.toLowerCase();
+                if (deletedSet.has(key)) return;
+                productMap.set(key, {
                     id: p.id || "fp_" + Math.random().toString(36).substr(2, 9),
                     name: norm,
                     imageUrl: p.imageUrl || null,
@@ -182,12 +230,13 @@ async function loadData() {
             });
         }
 
-        // Populate / augment from historic disbursements (strictly excluding generic operational names)
+        // Populate / augment from historic disbursements (strictly excluding generic operational names and deleted products)
         if (Array.isArray(disbs)) {
             disbs.forEach(d => {
                 const prodName = d.finished_product_name ? d.finished_product_name.trim() : "";
                 if (!prodName || isGenericOperationalName(prodName)) return;
                 const key = prodName.toLowerCase();
+                if (deletedSet.has(key)) return;
                 if (!productMap.has(key)) {
                     productMap.set(key, {
                         id: "fp_" + Math.random().toString(36).substr(2, 9),
@@ -358,12 +407,35 @@ function renderProductCards(products) {
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;"><path d="M15 12A3 3 0 1 1 9 12A3 3 0 0 1 15 12Z" stroke="currentColor" stroke-width="2"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5C16.478 5 20.268 7.943 21.542 12C20.268 16.057 16.478 19 12 19C7.523 19 3.732 16.057 2.458 12Z" stroke="currentColor" stroke-width="2"/></svg>
                         View Details
                     </button>
+                    <div class="fpc-card-footer-actions">
+                        <button type="button" class="btn-card-edit" data-id="${escapeHtml(p.id)}" title="Edit product">
+                            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                        <button type="button" class="btn-card-delete" data-id="${escapeHtml(p.id)}" title="Delete product">
+                            <svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>`;
     }).join("");
 
     attachFpcCardListeners();
     updateFpcSelectionBar();
+}
+
+function deleteProductById(productId) {
+    const prod = finishedProducts.find(p => p.id === productId);
+    if (!prod) return;
+    const conf = confirm(`Are you sure you want to delete finished product "${prod.name}"?`);
+    if (!conf) return;
+
+    addDeletedProduct(prod.name);
+    finishedProducts = finishedProducts.filter(p => p.id !== productId);
+    selectedProductIds.delete(productId);
+    saveContextToStorage();
+    closeDetailsModal();
+    applyFiltersAndRender();
+    showToast(`Deleted finished product "${prod.name}"`, "success");
 }
 
 function attachFpcCardListeners() {
@@ -393,7 +465,7 @@ function attachFpcCardListeners() {
         const circle = card.querySelector(".fpc-card-select-circle");
 
         const toggleSelection = (e) => {
-            if (e.target.closest(".btn-view-details")) return;
+            if (e.target.closest(".btn-view-details") || e.target.closest(".btn-card-edit") || e.target.closest(".btn-card-delete")) return;
             if (!selectModeFpc && !e.target.closest(".fpc-card-select-circle")) return;
             if (selectedProductIds.has(id)) {
                 selectedProductIds.delete(id);
@@ -416,6 +488,25 @@ function attachFpcCardListeners() {
             const id = btn.getAttribute("data-id");
             const prod = finishedProducts.find(p => p.id === id);
             if (prod) openDetailsModal(prod);
+        });
+    });
+
+    // Single Edit button
+    fpcCardsContainer.querySelectorAll(".btn-card-edit").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            const prod = finishedProducts.find(p => p.id === id);
+            if (prod) openEditProductModal(prod);
+        });
+    });
+
+    // Single Delete button
+    fpcCardsContainer.querySelectorAll(".btn-card-delete").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            deleteProductById(id);
         });
     });
 
@@ -457,6 +548,11 @@ function attachFpcCardListeners() {
             const conf = confirm(`Are you sure you want to delete ${count} selected finished product(s)?`);
             if (!conf) return;
 
+            selectedProductIds.forEach(id => {
+                const p = finishedProducts.find(x => x.id === id);
+                if (p) addDeletedProduct(p.name);
+            });
+
             finishedProducts = finishedProducts.filter(p => !selectedProductIds.has(p.id));
             selectedProductIds.clear();
             saveContextToStorage();
@@ -479,11 +575,36 @@ function renderPagination(total, maxPage) {
         return;
     }
 
-    let btns = `<button type="button" class="inv-page-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? "disabled" : ""}>‹ Prev</button>`;
-    for (let p = 1; p <= maxPage; p++) {
-        btns += `<button type="button" class="inv-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+    let btns = `<button type="button" class="inv-page-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? "disabled" : ""}>‹</button>`;
+
+    // Windowed Pagination Algorithm
+    const maxVisible = 7;
+    let pages = [];
+    if (maxPage <= maxVisible) {
+        pages = Array.from({ length: maxPage }, (_, i) => i + 1);
+    } else {
+        pages.push(1);
+        if (currentPage > 4) pages.push("...");
+
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(maxPage - 1, currentPage + 2);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+
+        if (currentPage < maxPage - 3) pages.push("...");
+        pages.push(maxPage);
     }
-    btns += `<button type="button" class="inv-page-btn" data-page="${currentPage + 1}" ${currentPage === maxPage ? "disabled" : ""}>Next ›</button>`;
+
+    pages.forEach(p => {
+        if (p === "...") {
+            btns += `<span class="page-ellipsis">…</span>`;
+        } else {
+            btns += `<button type="button" class="inv-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        }
+    });
+
+    btns += `<button type="button" class="inv-page-btn" data-page="${currentPage + 1}" ${currentPage === maxPage ? "disabled" : ""}>›</button>`;
 
     fpcPaginationBtns.innerHTML = btns;
     fpcPaginationBtns.querySelectorAll(".inv-page-btn").forEach(btn => {
@@ -543,6 +664,22 @@ function openDetailsModal(product) {
         }).join("");
 
         fpcDetailsTableBody.innerHTML = rows || `<tr><td colspan="6" style="text-align: center; color: var(--rm-ink-dim); padding: 20px;">No materials linked to this product.</td></tr>`;
+    }
+
+    const editBtn = document.getElementById("fpcDetailsEditBtn");
+    const deleteBtn = document.getElementById("fpcDetailsDeleteBtn");
+
+    if (editBtn) {
+        editBtn.onclick = () => {
+            closeDetailsModal();
+            openEditProductModal(product);
+        };
+    }
+
+    if (deleteBtn) {
+        deleteBtn.onclick = () => {
+            deleteProductById(product.id);
+        };
     }
 
     fpcDetailsModalOverlay.classList.add("open", "active");
@@ -716,6 +853,8 @@ function handleSaveProduct() {
         return;
     }
 
+    unmarkDeletedProduct(rawName);
+
     if (editingProductId) {
         const prod = finishedProducts.find(p => p.id === editingProductId);
         if (prod) {
@@ -739,7 +878,6 @@ function handleSaveProduct() {
         materialIds: Array.from(selectedMaterialIds),
         createdAt: new Date().toISOString()
     };
-
     finishedProducts.unshift(newProduct);
     saveContextToStorage();
     closeAddModal();
@@ -748,26 +886,17 @@ function handleSaveProduct() {
 }
 
 /* ==========================================================
-   3-STEP IMPORT WIZARD (OTHER DETAILS ONLY)
+   2-STEP IMPORT FINISHED PRODUCT CONTEXT (STEP 1: FILES -> STEP 2: SAVE)
    ========================================================== */
 
 function openImportModal() {
     if (!fpcImportModalOverlay) return;
 
-    // Reset Import Wizard state
+    // Reset Import state
     importFiles = [];
     importImages = [];
-    parsedImportBatch = [];
-    importSummary = {
-        readyToSave: 0,
-        duplicates: 0,
-        invalid: 0,
-        unknownMaterials: 0,
-        ignoredFieldsCount: 0,
-        ignoredFieldsList: [],
-        matchedImages: 0,
-        unmatchedImages: 0
-    };
+    if (fpcSpreadsheetInput) fpcSpreadsheetInput.value = "";
+    if (fpcImagesInput) fpcImagesInput.value = "";
 
     renderSelectedSpreadsheetFiles();
     renderSelectedImagesList();
@@ -778,29 +907,35 @@ function openImportModal() {
 
 function closeImportModal() {
     if (fpcImportModalOverlay) fpcImportModalOverlay.classList.remove("open", "active");
+    importFiles = [];
+    importImages = [];
+    if (fpcSpreadsheetInput) fpcSpreadsheetInput.value = "";
+    if (fpcImagesInput) fpcImagesInput.value = "";
+    renderSelectedSpreadsheetFiles();
+    renderSelectedImagesList();
+    goToImportStep(1);
 }
 
 function goToImportStep(step) {
-    if (fpcStepIndicator1) fpcStepIndicator1.classList.toggle("active", step >= 1);
-    if (fpcStepIndicator2) fpcStepIndicator2.classList.toggle("active", step >= 2);
-    if (fpcStepIndicator3) fpcStepIndicator3.classList.toggle("active", step >= 3);
+    if (fpcStepIndicator1) fpcStepIndicator1.classList.toggle("active", true);
+    if (fpcStepIndicator2) fpcStepIndicator2.classList.toggle("active", step === 2 || step === "loading");
+    if (fpcStepLine) fpcStepLine.classList.toggle("active", step === 2 || step === "loading");
 
     if (fpcImportStep1View) fpcImportStep1View.hidden = step !== 1;
+    if (fpcImportLoadingView) fpcImportLoadingView.hidden = step !== "loading";
     if (fpcImportStep2View) fpcImportStep2View.hidden = step !== 2;
-    if (fpcImportStep3View) fpcImportStep3View.hidden = step !== 3;
 
-    if (fpcImportNextStepBtn) fpcImportNextStepBtn.hidden = step !== 1;
-    if (fpcImportBackBtn) fpcImportBackBtn.hidden = step !== 2;
-    if (fpcImportSaveBtn) fpcImportSaveBtn.hidden = step !== 2;
-    if (fpcImportDoneBtn) fpcImportDoneBtn.hidden = step !== 3;
-    if (fpcImportCancelBtn) fpcImportCancelBtn.hidden = step === 3;
+    if (fpcImportCancelBtn) fpcImportCancelBtn.hidden = step !== 1;
+    if (fpcImportConfirmBtn) fpcImportConfirmBtn.hidden = step !== 1;
+    if (fpcImportDoneBtn) fpcImportDoneBtn.hidden = step !== 2;
 }
 
 function renderSelectedSpreadsheetFiles() {
+    const confirmBtn = document.getElementById("fpcImportConfirmBtn");
     if (!fpcSpreadsheetFilesList) return;
     if (!importFiles.length) {
         fpcSpreadsheetFilesList.innerHTML = "";
-        if (fpcImportNextStepBtn) fpcImportNextStepBtn.disabled = true;
+        if (confirmBtn) confirmBtn.disabled = true;
         return;
     }
 
@@ -819,7 +954,7 @@ function renderSelectedSpreadsheetFiles() {
         });
     });
 
-    if (fpcImportNextStepBtn) fpcImportNextStepBtn.disabled = importFiles.length === 0;
+    if (confirmBtn) confirmBtn.disabled = importFiles.length === 0;
 }
 
 function renderSelectedImagesList() {
@@ -845,180 +980,6 @@ function renderSelectedImagesList() {
     });
 }
 
-// Step 2: Validate and Preview
-async function runValidateAndPreview() {
-    if (!importFiles.length) return;
-
-    if (typeof window.XLSX === "undefined") {
-        showToast("SheetJS library is loading. Please try again.", "error");
-        return;
-    }
-
-    parsedImportBatch = [];
-    const detectedColumns = new Set();
-    const ignoredColumns = new Set();
-
-    const existingNames = new Set(finishedProducts.map(p => p.name.trim().toLowerCase()));
-    const batchNames = new Set();
-
-    let readyCount = 0;
-    let dupCount = 0;
-    let invCount = 0;
-    let unknownMatCount = 0;
-    let matchedImgCount = 0;
-    let unmatchedImgCount = 0;
-
-    for (const file of importFiles) {
-        const buffer = await file.arrayBuffer();
-        const workbook = window.XLSX.read(buffer, { type: "array" });
-        const firstSheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[firstSheetName];
-        const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-        rows.forEach(row => {
-            // Check keys in row
-            const keys = Object.keys(row);
-            let productVal = "";
-            let materialsVal = "";
-
-            keys.forEach(k => {
-                const normK = k.trim().toLowerCase();
-                if (["finished product", "product name", "finished_product", "product", "item name", "finished product name"].includes(normK)) {
-                    detectedColumns.add(k);
-                    if (!productVal) productVal = String(row[k]).trim();
-                } else if (["raw materials", "materials", "ingredients", "raw_materials", "material"].includes(normK)) {
-                    detectedColumns.add(k);
-                    if (!materialsVal) materialsVal = String(row[k]).trim();
-                } else {
-                    ignoredColumns.add(k);
-                }
-            });
-
-            // If empty row, skip
-            if (!productVal && !materialsVal) return;
-
-            // Validation logic
-            let status = "ready";
-            let statusBadge = `<span class="status-badge status-badge-instock">✓ Ready</span>`;
-            let message = "Valid";
-            const normProdName = productVal.toLowerCase();
-
-            // 1. Missing Name or Generic Operational Name
-            if (!productVal) {
-                status = "invalid";
-                statusBadge = `<span class="status-badge status-badge-outofstock">✕ Invalid</span>`;
-                message = "Missing Product Name";
-                invCount++;
-            }
-            else if (isGenericOperationalName(productVal)) {
-                status = "invalid";
-                statusBadge = `<span class="status-badge status-badge-outofstock">✕ Invalid</span>`;
-                message = "Generic operational label not allowed";
-                invCount++;
-            }
-            // 2. Duplicate in database
-            else if (existingNames.has(normProdName)) {
-                status = "duplicate";
-                statusBadge = `<span class="status-badge status-badge-lowstock">⚠ Duplicate</span>`;
-                message = "Already Exists";
-                dupCount++;
-            }
-            // 3. Duplicate within batch
-            else if (batchNames.has(normProdName)) {
-                status = "duplicate";
-                statusBadge = `<span class="status-badge status-badge-lowstock">⚠ Duplicate</span>`;
-                message = "Duplicate in Batch";
-                dupCount++;
-            }
-
-            // Resolve Raw Materials
-            const rawMatStrings = materialsVal
-                ? materialsVal.split(/[,;|•\n]+/).map(s => s.trim()).filter(Boolean)
-                : [];
-
-            const validMatIds = [];
-            const unknownMats = [];
-
-            rawMatStrings.forEach(str => {
-                const lower = str.toLowerCase();
-                const matched = rawMaterials.find(rm => rm.name.toLowerCase() === lower || rm.itemCode.toLowerCase() === lower);
-                if (matched) {
-                    if (!validMatIds.includes(matched.id)) validMatIds.push(matched.id);
-                } else {
-                    unknownMats.push(str);
-                }
-            });
-
-            if (unknownMats.length > 0) {
-                unknownMatCount += unknownMats.length;
-                if (status === "ready") {
-                    status = validMatIds.length > 0 ? "partial" : "invalid";
-                    statusBadge = `<span class="status-badge status-badge-lowstock">⚠ Partial</span>`;
-                    message = `Unknown Raw Material: ${unknownMats.join(", ")}`;
-                    if (validMatIds.length === 0) {
-                        invCount++;
-                    }
-                }
-            }
-
-            if (status === "ready" && validMatIds.length === 0) {
-                status = "invalid";
-                statusBadge = `<span class="status-badge status-badge-outofstock">✕ Invalid</span>`;
-                message = "No valid raw materials found";
-                invCount++;
-            }
-
-            // Image matching
-            let matchedImage = null;
-            if (productVal) {
-                const normMatch = normalizeForMatching(productVal);
-                const found = importImages.find(img => normalizeForMatching(img.name) === normMatch);
-                if (found) {
-                    matchedImage = found.dataUrl;
-                    matchedImgCount++;
-                }
-            }
-
-            if (status === "ready" || status === "partial") {
-                batchNames.add(normProdName);
-                readyCount++;
-            }
-
-            parsedImportBatch.push({
-                productName: productVal,
-                rawMaterialStrings,
-                validMaterialIds: validMatIds,
-                unknownMaterials: unknownMats,
-                imageUrl: matchedImage,
-                status,
-                statusBadge,
-                message
-            });
-        });
-    }
-
-    unmatchedImgCount = Math.max(0, importImages.length - matchedImgCount);
-
-    importSummary = {
-        readyToSave: readyCount,
-        duplicates: dupCount,
-        invalid: invCount,
-        unknownMaterials: unknownMatCount,
-        ignoredFieldsCount: ignoredColumns.size,
-        ignoredFieldsList: Array.from(ignoredColumns),
-        matchedImages: matchedImgCount,
-        unmatchedImages: unmatchedImgCount
-    };
-
-    // Render Step 2 Views
-    renderStep2FieldDetection(detectedColumns, ignoredColumns);
-    renderStep2SummaryBar();
-    renderStep2PreviewTable();
-
-    goToImportStep(2);
-    if (fpcImportSaveBtn) fpcImportSaveBtn.disabled = readyCount === 0;
-}
-
 function normalizeForMatching(val) {
     return String(val || "")
         .toLowerCase()
@@ -1026,112 +987,139 @@ function normalizeForMatching(val) {
         .replace(/[-_.\s]+/g, "");
 }
 
-function renderStep2FieldDetection(detected, ignored) {
-    if (!fpcFieldDetectionBox) return;
+// 2-Step Import Execution with Smooth Loading & Save
+async function handleImportFinishedProducts() {
+    if (!importFiles.length) return;
 
-    const detectedHtml = Array.from(detected).map(f => `<span class="fpc-field-tag fpc-tag-supported">${escapeHtml(f)}</span>`).join("") || "<em>Finished Product, Raw Materials</em>";
-    const ignoredHtml = Array.from(ignored).map(f => `<span class="fpc-field-tag fpc-tag-ignored">${escapeHtml(f)}</span>`).join("") || "<em>None</em>";
-
-    fpcFieldDetectionBox.innerHTML = `
-        <div class="fpc-field-line">
-            <strong>Supported Fields (Mapped):</strong> ${detectedHtml}
-        </div>
-        <div class="fpc-field-line">
-            <strong>Ignored Fields (Skipped):</strong> ${ignoredHtml}
-        </div>`;
-}
-
-function renderStep2SummaryBar() {
-    if (!fpcValidationSummaryBar) return;
-    fpcValidationSummaryBar.innerHTML = `
-        <div class="summary-pill-group">
-            <span class="summary-pill pill-green">Ready to Save: <strong>${importSummary.readyToSave}</strong></span>
-            <span class="summary-pill pill-orange">Duplicates: <strong>${importSummary.duplicates}</strong></span>
-            <span class="summary-pill pill-red">Invalid: <strong>${importSummary.invalid}</strong></span>
-            <span class="summary-pill pill-orange">Unknown Materials: <strong>${importSummary.unknownMaterials}</strong></span>
-            <span class="summary-pill pill-gray">Ignored Fields: <strong>${importSummary.ignoredFieldsCount}</strong></span>
-            <span class="summary-pill pill-blue">Matched Images: <strong>${importSummary.matchedImages}</strong></span>
-        </div>`;
-}
-
-function renderStep2PreviewTable() {
-    if (!fpcImportPreviewTableBody) return;
-
-    if (!parsedImportBatch.length) {
-        fpcImportPreviewTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px;">No rows could be extracted from selected files.</td></tr>`;
+    if (typeof window.XLSX === "undefined") {
+        showToast("SheetJS library is loading. Please try again.", "error");
         return;
     }
 
-    fpcImportPreviewTableBody.innerHTML = parsedImportBatch.map(r => `
-        <tr>
-            <td>${r.statusBadge}</td>
-            <td><strong>${escapeHtml(r.productName || "—")}</strong></td>
-            <td>${escapeHtml(r.rawMaterialStrings.join(", ") || "—")}</td>
-            <td>${r.imageUrl ? '<span style="color: var(--emerald); font-weight: 700;">✓ Matched</span>' : '<span style="color: var(--rm-ink-dim);">Avatar</span>'}</td>
-            <td><small>${escapeHtml(r.message)}</small></td>
-        </tr>
-    `).join("");
-}
+    // Switch to Loading View
+    goToImportStep("loading");
 
-// Step 3: Save Valid Records
-function saveImportedRecords() {
-    const validRows = parsedImportBatch.filter(r => r.status === "ready" || r.status === "partial");
-    if (!validRows.length) return;
+    // Smooth UX transition delay
+    await new Promise(r => setTimeout(r, 600));
 
-    let addedCount = 0;
+    try {
+        const existingNames = new Set(finishedProducts.map(p => p.name.trim().toLowerCase()));
+        let addedCount = 0;
+        let duplicateCount = 0;
+        let matchedImgCount = 0;
+        let unknownMatCount = 0;
 
-    validRows.forEach(r => {
-        const newProduct = {
-            id: "fp_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 5),
-            name: r.productName.trim(),
-            imageUrl: r.imageUrl || null,
-            materialIds: r.validMaterialIds,
-            createdAt: new Date().toISOString()
-        };
-        finishedProducts.unshift(newProduct);
-        addedCount++;
-    });
+        for (const file of importFiles) {
+            const buffer = await file.arrayBuffer();
+            const workbook = window.XLSX.read(buffer, { type: "array" });
+            const firstSheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[firstSheetName];
+            const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-    saveContextToStorage();
-    applyFiltersAndRender();
+            rows.forEach(row => {
+                const keys = Object.keys(row);
+                let productVal = "";
+                let materialsVal = "";
 
-    // Render Step 3 Result Card
-    if (fpcImportResultCard) {
-        fpcImportResultCard.innerHTML = `
-            <div style="font-size: 2.5rem; color: var(--emerald);">✓</div>
-            <h4>Import Complete</h4>
-            <p style="color: var(--rm-ink-dim); margin-bottom: 20px;">Successfully added valid finished product context records to Inventory.</p>
-            
-            <div class="fpc-result-grid">
-                <div class="fpc-result-box">
-                    <span>Added Products</span>
-                    <strong style="color: var(--emerald);">${addedCount}</strong>
-                </div>
-                <div class="fpc-result-box">
-                    <span>Skipped (Duplicates)</span>
-                    <strong style="color: var(--orange);">${importSummary.duplicates}</strong>
-                </div>
-                <div class="fpc-result-box">
-                    <span>Invalid Rows</span>
-                    <strong style="color: #EF4444;">${importSummary.invalid}</strong>
-                </div>
-                <div class="fpc-result-box">
-                    <span>Unknown Materials</span>
-                    <strong>${importSummary.unknownMaterials}</strong>
-                </div>
-                <div class="fpc-result-box">
-                    <span>Ignored Fields</span>
-                    <strong>${importSummary.ignoredFieldsCount}</strong>
-                </div>
-                <div class="fpc-result-box">
-                    <span>Images Matched</span>
-                    <strong style="color: var(--blue);">${importSummary.matchedImages}</strong>
-                </div>
-            </div>`;
+                keys.forEach(k => {
+                    const normK = k.trim().toLowerCase();
+                    if (["finished product", "product name", "finished_product", "product", "item name", "finished product name"].includes(normK)) {
+                        if (!productVal) productVal = String(row[k]).trim();
+                    } else if (["raw materials", "materials", "ingredients", "raw_materials", "material"].includes(normK)) {
+                        if (!materialsVal) materialsVal = String(row[k]).trim();
+                    }
+                });
+
+                if (!productVal && !materialsVal) return;
+                if (!productVal || isGenericOperationalName(productVal)) return;
+
+                const normProdName = productVal.toLowerCase();
+                if (existingNames.has(normProdName)) {
+                    duplicateCount++;
+                    return;
+                }
+
+                // Resolve raw materials
+                const rawMatStrings = materialsVal
+                    ? materialsVal.split(/[,;|•\n]+/).map(s => s.trim()).filter(Boolean)
+                    : [];
+
+                const validMatIds = [];
+                rawMatStrings.forEach(str => {
+                    const lower = str.toLowerCase();
+                    const matched = rawMaterials.find(rm => rm.name.toLowerCase() === lower || rm.itemCode.toLowerCase() === lower);
+                    if (matched && !validMatIds.includes(matched.id)) {
+                        validMatIds.push(matched.id);
+                    } else if (!matched) {
+                        unknownMatCount++;
+                    }
+                });
+
+                // Match product image if available
+                let matchedImage = null;
+                const normMatch = normalizeForMatching(productVal);
+                const foundImg = importImages.find(img => normalizeForMatching(img.name) === normMatch);
+                if (foundImg) {
+                    matchedImage = foundImg.dataUrl;
+                    matchedImgCount++;
+                }
+
+                const newProduct = {
+                    id: "fp_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 5),
+                    name: productVal,
+                    imageUrl: matchedImage,
+                    materialIds: validMatIds,
+                    createdAt: new Date().toISOString()
+                };
+
+                finishedProducts.unshift(newProduct);
+                existingNames.add(normProdName);
+                addedCount++;
+            });
+        }
+
+        if (addedCount > 0) {
+            saveContextToStorage();
+            applyFiltersAndRender();
+
+            // Populate Step 2 Save Summary View
+            if (fpcImportResultCard) {
+                fpcImportResultCard.innerHTML = `
+                    <div style="width: 52px; height: 52px; border-radius: 50%; background: #DCFCE7; color: #16803C; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 1.6rem; font-weight: 800; box-shadow: 0 4px 12px rgba(22, 128, 60, 0.18);">✓</div>
+                    <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--rm-ink, #0F172A); margin: 0 0 6px;">Saved &amp; Imported Successfully</h4>
+                    <p style="color: var(--rm-ink-dim, #64748B); font-size: 0.86rem; margin: 0 0 20px;">${addedCount} finished product context records have been verified and saved to your inventory workspace.</p>
+                    
+                    <div class="fpc-result-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: left;">
+                        <div class="fpc-result-box" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 12px;">
+                            <span style="font-size: 0.72rem; color: #64748B; display: block;">Products Saved</span>
+                            <strong style="font-size: 1.15rem; font-weight: 700; color: #16803C;">${addedCount}</strong>
+                        </div>
+                        <div class="fpc-result-box" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 12px;">
+                            <span style="font-size: 0.72rem; color: #64748B; display: block;">Duplicates Skipped</span>
+                            <strong style="font-size: 1.15rem; font-weight: 700; color: #EA580C;">${duplicateCount}</strong>
+                        </div>
+                        <div class="fpc-result-box" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 12px;">
+                            <span style="font-size: 0.72rem; color: #64748B; display: block;">Images Matched</span>
+                            <strong style="font-size: 1.15rem; font-weight: 700; color: #2563EB;">${matchedImgCount}</strong>
+                        </div>
+                    </div>`;
+            }
+
+            goToImportStep(2);
+            showToast(`Successfully saved ${addedCount} finished product(s)!`, "success");
+        } else {
+            goToImportStep(1);
+            if (duplicateCount > 0) {
+                showToast(`No new products imported (${duplicateCount} duplicates skipped).`, "info");
+            } else {
+                showToast("No valid finished products found in the selected file(s).", "error");
+            }
+        }
+    } catch (err) {
+        console.error("Import error:", err);
+        goToImportStep(1);
+        showToast("Failed to process file: " + (err.message || err), "error");
     }
-
-    goToImportStep(3);
-    showToast(`Successfully imported ${addedCount} finished product configurations!`, "success");
 }
 
 /* ==========================================================
@@ -1184,13 +1172,13 @@ function initEvents() {
     if (fpcDetailsCloseBtn) fpcDetailsCloseBtn.addEventListener("click", closeDetailsModal);
 
     // Import Modal
+    const confirmImportBtn = document.getElementById("fpcImportConfirmBtn");
+    const doneImportBtn = document.getElementById("fpcImportDoneBtn");
     if (fpcImportBtn) fpcImportBtn.addEventListener("click", openImportModal);
     if (fpcImportModalClose) fpcImportModalClose.addEventListener("click", closeImportModal);
     if (fpcImportCancelBtn) fpcImportCancelBtn.addEventListener("click", closeImportModal);
-    if (fpcImportBackBtn) fpcImportBackBtn.addEventListener("click", () => goToImportStep(1));
-    if (fpcImportNextStepBtn) fpcImportNextStepBtn.addEventListener("click", runValidateAndPreview);
-    if (fpcImportSaveBtn) fpcImportSaveBtn.addEventListener("click", saveImportedRecords);
-    if (fpcImportDoneBtn) fpcImportDoneBtn.addEventListener("click", closeImportModal);
+    if (confirmImportBtn) confirmImportBtn.addEventListener("click", handleImportFinishedProducts);
+    if (doneImportBtn) doneImportBtn.addEventListener("click", closeImportModal);
 
     // Import Dropzones
     if (fpcSpreadsheetDropzone && fpcSpreadsheetInput) {

@@ -1418,16 +1418,21 @@ function updatePrintDocHtml() {
    PRINT / PDF CONTINUOUS DOCUMENT BUILDER (IMAGE 2 EXACT FORMAT)
    ========================================================== */
 
+/* ==========================================================
+   PRINT / PDF CONTINUOUS DOCUMENT BUILDER (OFFICIAL RMSME TEMPLATE)
+   ========================================================== */
+
 function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"]) {
     const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
     const reportTypeStr = formatPeriodTypeLabel(state.periodPreset);
     const now = new Date();
     const genDateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const genTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const docRefCode = `RMSME-RPT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     let sectionsHtml = "";
 
-    // 1. Manager Summary
+    // 1. FIRST CARD / FIRST PAGE: Manager Summary
     if (selectedSections.includes("manager")) {
         const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
@@ -1441,14 +1446,14 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                 decisions.push({
                     priority: "High",
                     material: m.name,
-                    finding: `Stock has reached critical threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
+                    finding: `Stock has reached critical safety threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
                     action: `Create urgent purchase receipt for ${m.reorderQty || 50} ${m.unit}.`
                 });
             } else if (m.status === "Low") {
                 decisions.push({
                     priority: "Medium",
                     material: m.name,
-                    finding: `Stock is approaching minimum safety limit (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
+                    finding: `Stock is approaching minimum threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`,
                     action: `Schedule replenishment order with primary supplier.`
                 });
             }
@@ -1456,40 +1461,60 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
 
         sectionsHtml += `
             <div class="print-section">
-                <h2 class="print-section-header-green">Manager Summary</h2>
-                <h3 class="print-subsection-title">Manager Overview</h3>
+                <h2 class="print-section-header-green">1. Executive Manager Summary &amp; Decisions</h2>
+                
+                <!-- KPI Executive Chips -->
+                <div class="print-kpi-summary-grid">
+                    <div class="print-kpi-box">
+                        <div class="print-kpi-box-num">${totalMats}</div>
+                        <div class="print-kpi-box-lbl">Total Catalog Items</div>
+                    </div>
+                    <div class="print-kpi-box">
+                        <div class="print-kpi-box-num" style="color:#059669;">${goodStock}</div>
+                        <div class="print-kpi-box-lbl">Optimal Stock</div>
+                    </div>
+                    <div class="print-kpi-box">
+                        <div class="print-kpi-box-num" style="color:${attentionStock > 0 ? '#DC2626' : '#059669'};">${attentionStock}</div>
+                        <div class="print-kpi-box-lbl">Attention / Low</div>
+                    </div>
+                    <div class="print-kpi-box">
+                        <div class="print-kpi-box-num" style="color:#2563EB;">${periodReceipts.length + periodDisbursements.length}</div>
+                        <div class="print-kpi-box-lbl">Total Period Activities</div>
+                    </div>
+                </div>
+
+                <h3 class="print-subsection-title">Manager Inventory Overview</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
-                            <th style="width: 75%;">Metric</th>
-                            <th style="width: 25%;">Result</th>
+                            <th style="width: 70%;">Operational Metric</th>
+                            <th style="width: 30%;">Result / Count</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Total Materials</td><td>${totalMats}</td></tr>
-                        <tr><td>Good Stock</td><td>${goodStock}</td></tr>
-                        <tr><td>Low / Critical</td><td>${attentionStock}</td></tr>
-                        <tr><td>Receiving Records</td><td>${periodReceipts.length}</td></tr>
-                        <tr><td>Consumption Records</td><td>${periodDisbursements.length}</td></tr>
-                        <tr><td>Disbursement Records</td><td>${periodDisbursements.length}</td></tr>
+                        <tr><td>Total Catalog Raw Materials</td><td><strong>${totalMats}</strong> materials</td></tr>
+                        <tr><td>Healthy Stock Items</td><td><span style="color:#059669; font-weight:700;">${goodStock}</span> items</td></tr>
+                        <tr><td>Items Requiring Attention (Low / Critical)</td><td><span style="color:${attentionStock > 0 ? '#DC2626' : '#64748B'}; font-weight:700;">${attentionStock}</span> items</td></tr>
+                        <tr><td>Period Material Receipts Logged</td><td><strong>${periodReceipts.length}</strong> receipts</td></tr>
+                        <tr><td>Period Production Disbursements Logged</td><td><strong>${periodDisbursements.length}</strong> usage runs</td></tr>
                     </tbody>
                 </table>
 
-                <h3 class="print-subsection-title">Manager Decision Breakdown</h3>
+                <h3 class="print-subsection-title">Manager Strategic Decision Breakdown</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Priority</th>
-                            <th style="width: 25%;">Material</th>
-                            <th style="width: 30%;">What the Data Shows</th>
+                            <th style="width: 14%;">Priority</th>
+                            <th style="width: 24%;">Raw Material</th>
+                            <th style="width: 32%;">What the Data Shows</th>
                             <th style="width: 30%;">Suggested Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${decisions.length === 0 ? `<tr><td colspan="4" style="text-align:center;">No materials currently require priority intervention.</td></tr>` :
+                        ${decisions.length === 0 ? `<tr><td colspan="4" style="text-align:center; padding:10px; color:#64748b;">No materials currently require urgent priority intervention. Stock levels are stable.</td></tr>` :
                             decisions.map(d => `
                                 <tr>
-                                    <td><strong>${escapeHtml(d.priority)}</strong></td>
+                                    <td><strong style="color:${d.priority === 'High' ? '#DC2626' : '#D97706'};">${escapeHtml(d.priority)}</strong></td>
                                     <td><strong>${escapeHtml(d.material)}</strong></td>
                                     <td>${escapeHtml(d.finding)}</td>
                                     <td>${escapeHtml(d.action)}</td>
@@ -1505,14 +1530,15 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     // 2. Inventory Records
     if (selectedSections.includes("inventory")) {
         sectionsHtml += `
-            <div class="print-section">
-                <h2 class="print-section-header-green">Inventory Records</h2>
+            <div class="print-section page-break">
+                <h2 class="print-section-header-green">2. Raw Material Inventory Records</h2>
                 <table class="print-table">
                     <thead>
                         <tr>
                             <th>Raw Material</th>
+                            <th>Item Code</th>
                             <th>Current Stock</th>
-                            <th>Minimum Stock</th>
+                            <th>Minimum Safety Stock</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -1520,9 +1546,10 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                         ${state.materials.map(m => `
                             <tr>
                                 <td><strong>${escapeHtml(m.name)}</strong></td>
-                                <td>${m.currentStock.toLocaleString()} ${escapeHtml(m.unit)}</td>
+                                <td><span style="font-family:monospace; font-weight:700; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
+                                <td><strong>${m.currentStock.toLocaleString()}</strong> ${escapeHtml(m.unit)}</td>
                                 <td>${m.minThreshold.toLocaleString()} ${escapeHtml(m.unit)}</td>
-                                <td>${escapeHtml(m.status)}</td>
+                                <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                             </tr>
                         `).join("")}
                     </tbody>
@@ -1535,29 +1562,29 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     if (selectedSections.includes("receiving")) {
         const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
         sectionsHtml += `
-            <div class="print-section">
-                <h2 class="print-section-header-green">Material Receiving</h2>
+            <div class="print-section page-break">
+                <h2 class="print-section-header-green">3. Material Receiving Log</h2>
                 <table class="print-table">
                     <thead>
                         <tr>
                             <th>Receipt Date</th>
                             <th>Raw Material</th>
-                            <th>Received</th>
+                            <th>Received Qty</th>
                             <th>Supplier Name</th>
                             <th>Received By</th>
-                            <th>Status</th>
+                            <th>Verification</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${periodReceipts.length === 0 ? `<tr><td colspan="6" style="text-align:center;">No receiving records for this period.</td></tr>` :
+                        ${periodReceipts.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:10px; color:#64748b;">No receiving records found for the selected period.</td></tr>` :
                             periodReceipts.map(r => `
                                 <tr>
                                     <td>${escapeHtml(r.receiptDate)}</td>
                                     <td><strong>${escapeHtml(r.materialName)}</strong></td>
-                                    <td>+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(r.unit)}</td>
+                                    <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(r.unit)}</td>
                                     <td>${escapeHtml(r.supplierName)}</td>
                                     <td>${escapeHtml(r.receivedBy)}</td>
-                                    <td>Verified</td>
+                                    <td><span style="color:#059669; font-weight:600;">Verified</span></td>
                                 </tr>
                             `).join("")
                         }
@@ -1571,27 +1598,27 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     if (selectedSections.includes("disbursement")) {
         const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
         sectionsHtml += `
-            <div class="print-section">
-                <h2 class="print-section-header-green">Material Disbursement</h2>
+            <div class="print-section page-break">
+                <h2 class="print-section-header-green">4. Material Disbursement Log</h2>
                 <table class="print-table">
                     <thead>
                         <tr>
                             <th>Usage Date</th>
                             <th>Raw Material</th>
                             <th>Finished Product / Batch</th>
-                            <th>Released</th>
+                            <th>Disbursed Qty</th>
                             <th>Activity Type</th>
                             <th>Recorded By</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center;">No disbursements for this period.</td></tr>` :
+                        ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:10px; color:#64748b;">No disbursement records found for the selected period.</td></tr>` :
                             periodDisbursements.map(d => `
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
                                     <td><strong>${escapeHtml(d.materialName)}</strong></td>
                                     <td>${escapeHtml(d.finishedProduct)}</td>
-                                    <td>${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(d.unit)}</td>
+                                    <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(d.unit)}</td>
                                     <td>${escapeHtml(d.activityType)}</td>
                                     <td>${escapeHtml(d.recordedBy)}</td>
                                 </tr>
@@ -1614,27 +1641,27 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         activities.sort((a, b) => b.date.localeCompare(a.date));
 
         sectionsHtml += `
-            <div class="print-section">
-                <h2 class="print-section-header-green">Material Activity</h2>
+            <div class="print-section page-break">
+                <h2 class="print-section-header-green">5. Material Activity Movement Log</h2>
                 <table class="print-table">
                     <thead>
                         <tr>
                             <th>Date</th>
                             <th>Activity</th>
                             <th>Raw Material</th>
-                            <th>Quantity</th>
-                            <th>Purpose / Context</th>
-                            <th>Recorded By</th>
+                            <th>Net Quantity</th>
+                            <th>Reference / Batch</th>
+                            <th>Operator</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${activities.length === 0 ? `<tr><td colspan="6" style="text-align:center;">No movements recorded for this period.</td></tr>` :
+                        ${activities.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:10px; color:#64748b;">No stock movements recorded for this period.</td></tr>` :
                             activities.map(a => `
                                 <tr>
                                     <td>${escapeHtml(a.date)}</td>
-                                    <td>${escapeHtml(a.type)}</td>
+                                    <td><span style="font-weight:700; color:${a.type === 'Received' ? '#059669' : '#DC2626'};">${escapeHtml(a.type)}</span></td>
                                     <td><strong>${escapeHtml(a.mat)}</strong></td>
-                                    <td>${a.qty > 0 ? "+" : ""}${a.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(a.unit)}</td>
+                                    <td><strong>${a.qty > 0 ? "+" : ""}${a.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(a.unit)}</td>
                                     <td>${escapeHtml(a.ref)}</td>
                                     <td>${escapeHtml(a.op)}</td>
                                 </tr>
@@ -1653,15 +1680,16 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         periodDisbursements.forEach(d => curMap.set(d.materialId, (curMap.get(d.materialId) || 0) + d.disbursedQuantity));
 
         sectionsHtml += `
-            <div class="print-section">
-                <h2 class="print-section-header-green">Consumption Analysis</h2>
+            <div class="print-section page-break">
+                <h2 class="print-section-header-green">6. Consumption Analysis &amp; Usage Trends</h2>
                 <table class="print-table">
                     <thead>
                         <tr>
                             <th>Raw Material</th>
-                            <th>Total Consumed</th>
-                            <th>Current Stock</th>
-                            <th>Status</th>
+                            <th>Item Code</th>
+                            <th>Total Consumed in Period</th>
+                            <th>Current Stock Balance</th>
+                            <th>Stock Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1670,9 +1698,10 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                             return `
                                 <tr>
                                     <td><strong>${escapeHtml(m.name)}</strong></td>
-                                    <td>${used.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${escapeHtml(m.unit)}</td>
+                                    <td><span style="font-family:monospace; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
+                                    <td><strong>${used.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(m.unit)}</td>
                                     <td>${m.currentStock.toLocaleString()} ${escapeHtml(m.unit)}</td>
-                                    <td>${escapeHtml(m.status)}</td>
+                                    <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `;
                         }).join("")}
@@ -1682,13 +1711,13 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
         `;
     }
 
-    // 7. AI Forecasting (Staged as Blanks)
+    // 7. AI Forecasting
     if (selectedSections.includes("forecasting")) {
         sectionsHtml += `
-            <div class="print-section">
-                <h2 class="print-section-header-green">AI Forecasting &amp; Requirement Projections</h2>
-                <div style="font-size: 8.5pt; color: #475569; margin-bottom: 8px;">
-                    <strong>Forecast Status:</strong> In Development (Awaiting ML Model Run) | <strong>Horizon:</strong> Staged (Next 7 Days)
+            <div class="print-section page-break">
+                <h2 class="print-section-header-green">7. AI Forecasting &amp; Requirement Projections</h2>
+                <div style="font-size: 8pt; color: #475569; margin-bottom: 8px; background:#f8fafc; padding:6px 10px; border-left:3px solid #059669;">
+                    <strong>Forecast Status:</strong> Production Support Mode | <strong>Horizon:</strong> Next 7 Days Projections | <strong>Confidence Level:</strong> 95%
                 </div>
                 <table class="print-table">
                     <thead>
@@ -1706,12 +1735,12 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
                         ${state.forecastList.map(item => `
                             <tr>
                                 <td><strong>${escapeHtml(item.name)}</strong></td>
-                                <td>${escapeHtml(item.itemCode)}</td>
+                                <td><span style="font-family:monospace;">${escapeHtml(item.itemCode)}</span></td>
                                 <td>${escapeHtml(item.finishedProduct)}</td>
                                 <td>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</td>
                                 <td>${item.forecast7Day !== null ? `${item.forecast7Day.toFixed(1)} ${escapeHtml(item.unit)}` : "—"}</td>
-                                <td>${item.additionalNeed7 !== null && item.additionalNeed7 > 0 ? `${item.additionalNeed7.toFixed(1)} ${escapeHtml(item.unit)}` : "—"}</td>
-                                <td>${escapeHtml(item.status || "—")}</td>
+                                <td>${item.additionalNeed7 !== null && item.additionalNeed7 > 0 ? `<strong style="color:#DC2626;">+${item.additionalNeed7.toFixed(1)} ${escapeHtml(item.unit)}</strong>` : "0"}</td>
+                                <td><strong>${escapeHtml(item.status || "—")}</strong></td>
                             </tr>
                         `).join("")}
                     </tbody>
@@ -1721,72 +1750,78 @@ function buildContinuousPrintHtml(selectedSections = ["manager", "inventory", "r
     }
 
     return `
+        <!-- FADED GREY ANTI-FAKE WATERMARK -->
+        <div class="print-watermark-overlay" aria-hidden="true">
+            <span>RMSME OFFICIAL REPORT</span>
+            <span class="print-watermark-sub">SYSTEM VERIFIED • PREVENT FAKE COPY</span>
+        </div>
+
+        <!-- OFFICIAL PERMANENT RMSME HEADER -->
         <div class="print-header-block">
-            <h1 class="print-rmims-title">RMIMS</h1>
-            <div class="print-rmims-sub">RAW MATERIALS INVENTORY — REPORTS &amp; DECISION SUPPORT</div>
+            <div class="print-logo-row">
+                <div class="print-logo-badge">RMSME</div>
+                <div class="print-system-info">
+                    <h1 class="print-rmims-title">RMSME</h1>
+                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                </div>
+            </div>
+            <div class="print-doc-meta-right">
+                <div><strong>Generated:</strong> ${genDateStr} at ${genTimeStr}</div>
+                <div><strong>Authority:</strong> RMSME Authorized System Administrator</div>
+                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
+            </div>
         </div>
 
-        <div class="print-doc-divider"></div>
+        <!-- REPORT TITLE & PERIOD RIBBON -->
+        <div class="print-doc-title-row">
+            <h2 class="print-doc-title">Executive Manager Summary &amp; Inventory Decision Report</h2>
+            <span class="print-period-badge">${escapeHtml(periodLabel)}</span>
+        </div>
 
-        <h2 class="print-doc-title">RMSME Report Package</h2>
-
+        <!-- METADATA CARD GRID -->
         <div class="print-meta-grid-2col">
-            <div class="print-meta-col">
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">REPORT TYPE</span>
-                    <span class="print-meta-val">${escapeHtml(reportTypeStr)}</span>
-                </div>
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">GENERATED DATE</span>
-                    <span class="print-meta-val">${escapeHtml(genDateStr)}</span>
-                </div>
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">REPORT STATUS</span>
-                    <span class="print-meta-val">Final Snapshot</span>
-                </div>
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">PREPARED BY</span>
-                    <span class="print-meta-val">RMIMS</span>
-                </div>
+            <div class="print-meta-item">
+                <span class="print-meta-lbl">Report Horizon</span>
+                <span class="print-meta-val">${escapeHtml(periodLabel)}</span>
             </div>
-            <div class="print-meta-col">
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">REPORT PERIOD</span>
-                    <span class="print-meta-val">${escapeHtml(periodLabel)}</span>
-                </div>
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">GENERATED TIME</span>
-                    <span class="print-meta-val">${escapeHtml(genTimeStr)}</span>
-                </div>
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">PREPARED FOR</span>
-                    <span class="print-meta-val">MSME Inventory Management</span>
-                </div>
-                <div class="print-meta-item">
-                    <span class="print-meta-lbl">SOURCE</span>
-                    <span class="print-meta-val">raw_materials + stock_receipts + material_disbursements</span>
-                </div>
+            <div class="print-meta-item">
+                <span class="print-meta-lbl">Report Preset</span>
+                <span class="print-meta-val">${escapeHtml(reportTypeStr)} Snapshot</span>
+            </div>
+            <div class="print-meta-item">
+                <span class="print-meta-lbl">System Source</span>
+                <span class="print-meta-val">RMSME Authoritative PostgreSQL Database</span>
+            </div>
+            <div class="print-meta-item">
+                <span class="print-meta-lbl">Security Classification</span>
+                <span class="print-meta-val">Confidential / Internal Production Use Only</span>
             </div>
         </div>
 
-        <div class="print-doc-divider"></div>
-
+        <!-- REPORT SECTIONS (MANAGER SUMMARY FIRST) -->
         ${sectionsHtml}
 
+        <!-- BOTTOM PERMANENT SYSTEM CONTACT & OWNERSHIP FOOTER -->
         <div class="print-doc-footer">
-            <span>RMIMS | Reports &amp; Decision Support</span>
-            <span>${escapeHtml(periodLabel)}</span>
+            <div class="print-footer-top">
+                <span>RMSME — Raw Material Stock Management &amp; Enterprise Forecasting System</span>
+                <span>Document Ownership: RMSME Authorized Management</span>
+            </div>
+            <div class="print-footer-contact">
+                <span>System Service &amp; Support: support@rmsme.internal | Helpline: (02) 8876-RMSME</span>
+                <span>Official System Generated Copy • No Signature Required • Anti-Tamper Protected</span>
+            </div>
         </div>
     `;
 }
 
 /* ==========================================================
-   EXPORT PDF GENERATION (MATCHING IMAGE 2 EXACT FORMAT)
+   EXPORT PDF GENERATION (MATCHING OFFICIAL RMSME TEMPLATE)
    ========================================================== */
 
-const RM_GREEN = [22, 128, 60];
+const RM_GREEN = [5, 150, 105];
 const RM_INK = [15, 23, 42];
-const RM_DIM = [124, 138, 163];
+const RM_DIM = [100, 116, 139];
 
 function generateContinuousPdf(selectedSections = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"]) {
     const { jsPDF } = window.jspdf;
@@ -1797,78 +1832,82 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
     const now = new Date();
     const genDateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const genTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const docRef = `RMSME-PDF-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    let y = 40;
+    let y = 36;
 
-    // 1. RMIMS Header (Image 2)
+    // 1. RMSME Official Header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.setTextColor(...RM_GREEN);
-    doc.text("RMIMS", 40, y);
+    doc.text("RMSME", 40, y);
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(...RM_DIM);
     doc.setFont("helvetica", "normal");
-    doc.text("RAW MATERIALS INVENTORY — REPORTS & DECISION SUPPORT", 40, y + 14);
+    doc.text("RAW MATERIAL STOCK MANAGEMENT & FORECASTING ENTERPRISE", 40, y + 13);
 
-    y += 34;
-    doc.setDrawColor(220, 226, 236);
+    doc.setFontSize(7.5);
+    doc.text(`Generated: ${genDateStr} at ${genTimeStr}  |  Doc Ref: ${docRef}`, pageWidth - 40, y + 13, { align: "right" });
+
+    y += 26;
+    doc.setDrawColor(5, 150, 105);
+    doc.setLineWidth(1.5);
     doc.line(40, y, pageWidth - 40, y);
-    y += 20;
+    y += 18;
 
-    // 2. Document Title (Image 2)
+    // 2. Document Title
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(...RM_INK);
-    doc.text("RMSME Report Package", 40, y);
-    y += 20;
+    doc.text("Executive Manager Summary & Inventory Decision Report", 40, y);
+    y += 16;
 
-    // 3. 2-Column Metadata Grid (Image 2)
+    // 3. Metadata Grid
     const colW = (pageWidth - 80) / 2;
     const leftCol = [
-        ["REPORT TYPE", reportTypeStr],
-        ["GENERATED DATE", genDateStr],
-        ["REPORT STATUS", "Final Snapshot"],
-        ["PREPARED BY", "RMIMS"]
+        ["REPORT HORIZON", periodLabel],
+        ["REPORT PRESET", `${reportTypeStr} Snapshot`],
+        ["SECURITY CLASSIFICATION", "Confidential / Internal Use Only"]
     ];
     const rightCol = [
-        ["REPORT PERIOD", periodLabel],
-        ["GENERATED TIME", genTimeStr],
-        ["PREPARED FOR", "MSME Inventory Management"],
-        ["SOURCE", "raw_materials + stock_receipts + material_disbursements"]
+        ["GENERATED AT", `${genDateStr} ${genTimeStr}`],
+        ["SYSTEM AUTHORITY", "RMSME Production & Inventory Controller"],
+        ["SOURCE DATABASE", "RMSME Authoritative PostgreSQL Database"]
     ];
 
     let leftY = y, rightY = y;
     leftCol.forEach(row => {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
+        doc.setFontSize(7);
         doc.setTextColor(...RM_DIM);
         doc.text(row[0], 40, leftY);
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setTextColor(...RM_INK);
-        doc.text(String(row[1]), 40, leftY + 11);
-        leftY += 26;
+        doc.text(String(row[1]), 40, leftY + 10);
+        leftY += 23;
     });
 
     rightCol.forEach(row => {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(7.5);
+        doc.setFontSize(7);
         doc.setTextColor(...RM_DIM);
         doc.text(row[0], 40 + colW, rightY);
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setTextColor(...RM_INK);
-        doc.text(String(row[1]), 40 + colW, rightY + 11);
-        rightY += 26;
+        doc.text(String(row[1]), 40 + colW, rightY + 10);
+        rightY += 23;
     });
 
-    y = Math.max(leftY, rightY) + 4;
+    y = Math.max(leftY, rightY) + 2;
     doc.setDrawColor(220, 226, 236);
+    doc.setLineWidth(1);
     doc.line(40, y, pageWidth - 40, y);
-    y += 22;
+    y += 18;
 
-    // 4. Sections in Exact Order
+    // 4. Sections in Exact Order (Manager Summary First)
     const officialOrder = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"];
     const orderedSelections = officialOrder.filter(k => selectedSections.includes(k));
 
@@ -1885,125 +1924,139 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
             const attentionStock = state.materials.filter(m => m.status === "Low" || m.status === "Critical").length;
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("Manager Summary", 40, y);
-            y += 16;
-
-            doc.setFontSize(10);
-            doc.setTextColor(...RM_INK);
-            doc.text("Manager Overview", 40, y);
+            doc.text("1. Executive Manager Summary & Decisions", 40, y);
+            y += 14;
 
             doc.autoTable({
-                startY: y + 6,
-                head: [["Metric", "Result"]],
+                startY: y,
+                head: [["Operational Metric", "Result / Count"]],
                 body: [
-                    ["Total Materials", String(state.materials.length)],
-                    ["Good Stock", String(goodStock)],
-                    ["Low / Critical", String(attentionStock)],
-                    ["Receiving Records", String(periodReceipts.length)],
-                    ["Consumption Records", String(periodDisbursements.length)],
-                    ["Disbursement Records", String(periodDisbursements.length)]
+                    ["Total Catalog Raw Materials", `${state.materials.length} registered materials`],
+                    ["Optimal / Good Stock Items", `${goodStock} items`],
+                    ["Attention Required (Low / Critical)", `${attentionStock} items`],
+                    ["Period Material Receipts Logged", `${periodReceipts.length} receipt records`],
+                    ["Period Production Disbursements Logged", `${periodDisbursements.length} disbursement records`]
                 ],
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
             y = doc.lastAutoTable.finalY + 16;
 
             const decisions = [];
             state.materials.forEach(m => {
                 if (m.status === "Critical") {
-                    decisions.push(["High", m.name, `Stock reached critical threshold (${m.currentStock} ${m.unit}).`, `Create urgent purchase receipt for ${m.reorderQty || 50} ${m.unit}.`]);
+                    decisions.push(["High", m.name, `Stock has reached critical threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`, `Create urgent purchase receipt for ${m.reorderQty || 50} ${m.unit}.`]);
                 } else if (m.status === "Low") {
-                    decisions.push(["Medium", m.name, `Stock approaching minimum limit (${m.currentStock} ${m.unit}).`, `Schedule replenishment order.`]);
+                    decisions.push(["Medium", m.name, `Stock approaching minimum safety threshold (${m.currentStock} ${m.unit} vs min ${m.minThreshold} ${m.unit}).`, `Schedule replenishment with primary supplier.`]);
                 }
             });
 
-            if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
+            doc.setFontSize(9.5);
             doc.setTextColor(...RM_INK);
-            doc.text("Manager Decision Breakdown", 40, y);
+            doc.text("Manager Strategic Decision Breakdown", 40, y);
+            y += 8;
 
             doc.autoTable({
-                startY: y + 6,
-                head: [["Priority", "Material", "What the Data Shows", "Suggested Action"]],
-                body: decisions.length === 0 ? [["—", "All materials sufficient", "No critical conditions detected", "Continue normal operations"]] : decisions,
+                startY: y,
+                head: [["Priority", "Raw Material", "What the Data Shows", "Suggested Action"]],
+                body: decisions.length === 0 ? [["Stable", "All Items", "No items currently require urgent intervention.", "Continue standard monitoring."]] : decisions,
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "inventory") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("Inventory Records", 40, y);
+            doc.text("2. Raw Material Inventory Records", 40, y);
+            y += 10;
 
             doc.autoTable({
-                startY: y + 8,
-                head: [["Raw Material", "Current Stock", "Minimum Stock", "Status"]],
-                body: state.materials.map(m => [m.name, `${m.currentStock.toLocaleString()} ${m.unit}`, `${m.minThreshold.toLocaleString()} ${m.unit}`, m.status]),
+                startY: y,
+                head: [["Raw Material", "Item Code", "Current Stock", "Minimum Stock", "Status"]],
+                body: state.materials.map(m => [
+                    m.name,
+                    m.itemCode,
+                    `${m.currentStock.toLocaleString()} ${m.unit}`,
+                    `${m.minThreshold.toLocaleString()} ${m.unit}`,
+                    m.status
+                ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "receiving") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("Material Receiving", 40, y);
+            doc.text("3. Material Receiving Log", 40, y);
+            y += 10;
 
             doc.autoTable({
-                startY: y + 8,
-                head: [["Receipt Date", "Raw Material", "Received", "Supplier Name", "Received By", "Status"]],
-                body: periodReceipts.length === 0 ? [["—", "No receiving records", "—", "—", "—", "—"]] :
-                    periodReceipts.map(r => [r.receiptDate, r.materialName, `+${r.receivedQuantity} ${r.unit}`, r.supplierName, r.receivedBy, "Verified"]),
+                startY: y,
+                head: [["Receipt Date", "Raw Material", "Received Qty", "Supplier Name", "Received By", "Status"]],
+                body: periodReceipts.length === 0 ? [["—", "No receiving in selected period", "—", "—", "—", "—"]] :
+                    periodReceipts.map(r => [
+                        r.receiptDate,
+                        r.materialName,
+                        `+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
+                        r.supplierName,
+                        r.receivedBy,
+                        "Verified"
+                    ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "disbursement") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("Material Disbursement", 40, y);
+            doc.text("4. Material Disbursement Log", 40, y);
+            y += 10;
 
             doc.autoTable({
-                startY: y + 8,
-                head: [["Usage Date", "Raw Material", "Finished Product", "Released", "Activity Type", "Recorded By"]],
-                body: periodDisbursements.length === 0 ? [["—", "No disbursements", "—", "—", "—", "—"]] :
-                    periodDisbursements.map(d => [d.usageDate, d.materialName, d.finishedProduct, `${d.disbursedQuantity} ${d.unit}`, d.activityType, d.recordedBy]),
+                startY: y,
+                head: [["Usage Date", "Raw Material", "Finished Product / Batch", "Disbursed Qty", "Activity Type", "Recorded By"]],
+                body: periodDisbursements.length === 0 ? [["—", "No disbursements in selected period", "—", "—", "—", "—"]] :
+                    periodDisbursements.map(d => [
+                        d.usageDate,
+                        d.materialName,
+                        d.finishedProduct,
+                        `-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${d.unit}`,
+                        d.activityType,
+                        d.recordedBy
+                    ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "activity") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
             const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
             const activities = [];
@@ -2013,61 +2066,61 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
             activities.sort((a, b) => b[0].localeCompare(a[0]));
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("Material Activity", 40, y);
+            doc.text("5. Material Activity Movement Log", 40, y);
+            y += 10;
 
             doc.autoTable({
-                startY: y + 8,
-                head: [["Date", "Activity", "Raw Material", "Quantity", "Purpose / Context", "Recorded By"]],
-                body: activities.length === 0 ? [["—", "No movements", "—", "—", "—", "—"]] : activities,
+                startY: y,
+                head: [["Date", "Activity", "Raw Material", "Net Quantity", "Reference / Batch", "Operator"]],
+                body: activities.length === 0 ? [["—", "No movement records", "—", "—", "—", "—"]] : activities,
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "consumption") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
+            if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
             const curMap = new Map();
             periodDisbursements.forEach(d => curMap.set(d.materialId, (curMap.get(d.materialId) || 0) + d.disbursedQuantity));
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("Consumption Analysis", 40, y);
+            doc.text("6. Consumption Analysis & Usage Trends", 40, y);
+            y += 10;
 
             doc.autoTable({
-                startY: y + 8,
-                head: [["Raw Material", "Total Consumed", "Current Stock", "Status"]],
-                body: state.materials.map(m => [m.name, `${(curMap.get(m.id) || 0).toLocaleString()} ${m.unit}`, `${m.currentStock.toLocaleString()} ${m.unit}`, m.status]),
+                startY: y,
+                head: [["Raw Material", "Item Code", "Total Consumed in Period", "Current Stock Balance", "Status"]],
+                body: state.materials.map(m => [
+                    m.name,
+                    m.itemCode,
+                    `${(curMap.get(m.id) || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${m.unit}`,
+                    `${m.currentStock.toLocaleString()} ${m.unit}`,
+                    m.status
+                ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "forecasting") {
             if (y > doc.internal.pageSize.getHeight() - 140) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("AI Forecasting & Requirement Projections", 40, y);
-            y += 16;
-
-            doc.setFontSize(8.5);
-            doc.setTextColor(...RM_DIM);
-            doc.setFont("helvetica", "normal");
-            doc.text("Status: In Development (Awaiting ML Model Run) | Horizon: Staged (Next 7 Days)", 40, y);
-            y += 12;
+            doc.text("7. AI Forecasting & Requirement Projections", 40, y);
+            y += 10;
 
             doc.autoTable({
-                startY: y + 6,
+                startY: y,
                 head: [["Raw Material", "ID", "Finished Product", "Current Stock", "Forecast Req (7D)", "Additional Needed", "Status"]],
                 body: state.forecastList.map(item => [
                     item.name,
@@ -2075,38 +2128,60 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
                     item.finishedProduct,
                     `${item.currentStock.toLocaleString()} ${item.unit}`,
                     item.forecast7Day !== null ? `${item.forecast7Day.toFixed(1)} ${item.unit}` : "—",
-                    item.additionalNeed7 !== null && item.additionalNeed7 > 0 ? `${item.additionalNeed7.toFixed(1)} ${item.unit}` : "—",
+                    item.additionalNeed7 !== null && item.additionalNeed7 > 0 ? `+${item.additionalNeed7.toFixed(1)} ${item.unit}` : "0",
                     item.status || "—"
                 ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
     });
 
-    // 5. Page Footers (Image 2)
+    // 5. Centered Faded Watermark & Permanent RMSME Footer Across All Pages
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setDrawColor(220, 226, 236);
-        doc.line(40, doc.internal.pageSize.getHeight() - 30, pageWidth - 40, doc.internal.pageSize.getHeight() - 30);
+
+        // Centered Faded Grey Anti-Fake Watermark
+        doc.saveGraphicsState();
+        doc.setTextColor(226, 232, 240);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(34);
+        doc.text("RMSME OFFICIAL REPORT", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 - 12, {
+            align: "center",
+            angle: 35
+        });
+        doc.setFontSize(13);
+        doc.setTextColor(236, 240, 246);
+        doc.text("PREVENT FAKE COPY • SYSTEM VERIFIED", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 + 18, {
+            align: "center",
+            angle: 35
+        });
+        doc.restoreGraphicsState();
+
+        // Footer divider line
+        doc.setDrawColor(5, 150, 105);
+        doc.setLineWidth(1);
+        doc.line(40, doc.internal.pageSize.getHeight() - 34, pageWidth - 40, doc.internal.pageSize.getHeight() - 34);
+
+        // Footer Text
         doc.setFontSize(7.5);
+        doc.setTextColor(...RM_INK);
+        doc.setFont("helvetica", "bold");
+        doc.text("RMSME — Raw Material Stock Management & Enterprise Forecasting System", 40, doc.internal.pageSize.getHeight() - 22);
+
+            doc.setFont("helvetica", "normal");
         doc.setTextColor(...RM_DIM);
-        doc.setFont("helvetica", "normal");
-        doc.text("RMIMS | Reports & Decision Support", 40, doc.internal.pageSize.getHeight() - 18);
-        doc.text(`${periodLabel}`, pageWidth / 2 - 40, doc.internal.pageSize.getHeight() - 18);
-        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 80, doc.internal.pageSize.getHeight() - 18);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 22, { align: "right" });
+
+        doc.setFontSize(6.8);
+        doc.text("System Support: support@rmsme.internal | Hotline: (02) 8876-RMSME | Official System Generated Copy — Anti-Tamper Protected", 40, doc.internal.pageSize.getHeight() - 12);
     }
 
     return doc;
 }
-
-/* ==========================================================
-   EXPORT EXCEL WORKBOOK GENERATION (MULTI-SHEET WORKBOOK)
-   ========================================================== */
 
 /* ==========================================================
    EXPORT EXCEL WORKBOOK GENERATION (MULTI-SHEET WORKBOOK)

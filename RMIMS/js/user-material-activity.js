@@ -114,6 +114,10 @@ function getInitials(name) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+function initials(name) {
+    return getInitials(name);
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return "—";
     try {
@@ -148,6 +152,17 @@ function isGenericOperationalName(name) {
     if (!name) return true;
     const n = String(name).trim().toLowerCase();
     return (
+        n === "all" ||
+        n === "all activities" ||
+        n === "all products" ||
+        n === "all materials" ||
+        n === "none" ||
+        n === "n/a" ||
+        n === "na" ||
+        n === "null" ||
+        n === "undefined" ||
+        n === "select" ||
+        n === "default" ||
         n === "operational use" ||
         n === "operational" ||
         n === "general usage" ||
@@ -157,9 +172,18 @@ function isGenericOperationalName(name) {
         n === "operational batch" ||
         n === "general production" ||
         n === "production" ||
+        n === "production usage" ||
         n === "sample usage" ||
         n === "unassigned / general stock" ||
-        n === "unassigned"
+        n === "unassigned" ||
+        n === "imported dsb usage" ||
+        n === "imported dsb" ||
+        n === "imported disbursement" ||
+        n === "imported stock receipt" ||
+        n === "imported" ||
+        n === "imported usage" ||
+        n.includes("imported dsb") ||
+        n.includes("imported disbursement")
     );
 }
 
@@ -365,11 +389,8 @@ function buildUnifiedActivities() {
    ========================================================== */
 
 function renderCard1() {
-    if (state.card1Tab === "product") {
-        renderProductOverview();
-    } else {
-        renderMaterialOverview();
-    }
+    renderProductOverview();
+    renderMaterialOverview();
 }
 
 function renderProductOverview() {
@@ -491,26 +512,44 @@ function renderProductOverview() {
 
     // Attach Event Listeners to Product Card buttons
     container.querySelectorAll(".btn-receive-for-prod").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const pId = btn.getAttribute("data-prod-id");
-            const prod = state.finishedProducts.find(p => p.id === pId);
-            openReceiveModal(prod?.materialIds[0] || null, prod?.name || null);
+            const prod = state.finishedProducts.find(p => String(p.id) === String(pId) || p.name.toLowerCase() === String(pId).toLowerCase());
+            const isSingle = prod?.materialIds?.length === 1;
+            const allowed = (prod?.materialIds?.length > 0) ? prod.materialIds : null;
+            openReceiveModal(isSingle ? prod.materialIds[0] : null, prod?.name || null, allowed);
         });
     });
 
     container.querySelectorAll(".btn-disburse-for-prod").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const pId = btn.getAttribute("data-prod-id");
-            const prod = state.finishedProducts.find(p => p.id === pId);
-            openDisburseModal(prod?.materialIds[0] || null, prod?.name || null);
+            const prod = state.finishedProducts.find(p => String(p.id) === String(pId) || p.name.toLowerCase() === String(pId).toLowerCase());
+            const isSingle = prod?.materialIds?.length === 1;
+            const allowed = (prod?.materialIds?.length > 0) ? prod.materialIds : null;
+            openDisburseModal(isSingle ? prod.materialIds[0] : null, prod?.name || null, allowed);
         });
     });
 
     container.querySelectorAll(".btn-view-prod-breakdown").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const pId = btn.getAttribute("data-prod-id");
-            const prod = state.finishedProducts.find(p => p.id === pId);
-            if (prod) openProductBreakdownModal(prod);
+            let prod = state.finishedProducts.find(p => String(p.id) === String(pId) || p.name.toLowerCase() === String(pId).toLowerCase());
+            if (!prod) {
+                const card = btn.closest(".ma-overview-card");
+                const pName = card?.querySelector(".ma-card-item-title")?.textContent?.trim() || pId;
+                prod = {
+                    name: pName,
+                    materialIds: state.materials.filter(m => state.disbursements.some(d => (d.finished_product_name || d.activity_type || "").trim().toLowerCase() === pName.toLowerCase() && d.material_id === m.id)).map(m => m.id)
+                };
+            }
+            openProductBreakdownModal(prod);
         });
     });
 }
@@ -787,15 +826,19 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
     }
 
     let html = `
-        <button type="button" class="inv-page-btn" id="prevHistPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹</button>
+        <button type="button" class="page-btn page-nav-btn" id="prevHistPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹ Prev</button>
     `;
 
     for (let p = 1; p <= totalPages; p++) {
-        html += `<button type="button" class="inv-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+            html += `<button type="button" class="page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        } else if (p === currentPage - 2 || p === currentPage + 2) {
+            html += `<span class="page-ellipsis">…</span>`;
+        }
     }
 
     html += `
-        <button type="button" class="inv-page-btn" id="nextHistPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>›</button>
+        <button type="button" class="page-btn page-nav-btn" id="nextHistPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>Next ›</button>
     `;
 
     container.innerHTML = html;
@@ -815,7 +858,7 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
         });
     }
 
-    container.querySelectorAll(".inv-page-btn[data-page]").forEach(btn => {
+    container.querySelectorAll(".page-btn[data-page]").forEach(btn => {
         btn.addEventListener("click", () => {
             const p = Number(btn.dataset.page);
             if (p && p !== currentPage) onPageChange(p);
@@ -859,7 +902,117 @@ function setFieldError(id, msg) {
     }
 }
 
-function openReceiveModal(preselectedMatId = null, preselectedProduct = null) {
+function updateProductContextDropdown(selectEl, selectedMatId, preferredProduct = null, isOptional = false) {
+    if (!selectEl) return;
+    
+    const prodsList = Array.isArray(state.finishedProducts) ? state.finishedProducts : [];
+
+    // Find all finished products that contain this raw material
+    const associatedProds = prodsList.filter(p => 
+        Array.isArray(p.materialIds) && p.materialIds.map(String).includes(String(selectedMatId))
+    );
+    
+    let html = "";
+    if (isOptional) {
+        html += `<option value="">Unassigned / General Stock</option>`;
+    }
+    
+    if (associatedProds.length > 0) {
+        html += `<optgroup label="Associated Finished Products">`;
+        associatedProds.forEach(p => {
+            html += `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+    
+    const otherProds = prodsList.filter(p => !associatedProds.some(ap => String(ap.id) === String(p.id)));
+    if (otherProds.length > 0) {
+        html += `<optgroup label="Other Finished Products">`;
+        otherProds.forEach(p => {
+            html += `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+    
+    html += `<optgroup label="General / Operational">`;
+    html += `<option value="General Usage">General Usage</option>`;
+    html += `</optgroup>`;
+    
+    selectEl.innerHTML = html;
+    
+    // Auto-selection priority:
+    if (preferredProduct) {
+        const match = Array.from(selectEl.options).find(opt => opt.value.toLowerCase() === preferredProduct.toLowerCase());
+        if (match) {
+            selectEl.value = match.value;
+            return;
+        } else {
+            const newOpt = document.createElement("option");
+            newOpt.value = preferredProduct;
+            newOpt.textContent = preferredProduct;
+            selectEl.prepend(newOpt);
+            selectEl.value = preferredProduct;
+            return;
+        }
+    }
+    
+    // Auto-select associated finished product if available
+    if (associatedProds.length > 0) {
+        selectEl.value = associatedProds[0].name;
+    } else if (!isOptional && prodsList.length > 0) {
+        selectEl.value = prodsList[0].name;
+    } else if (!isOptional) {
+        selectEl.value = "General Usage";
+    }
+}
+
+function updateReceiveLivePreview() {
+    const previewEl = document.getElementById("maReceiveStockPreview");
+    const matSelect = document.getElementById("maReceiveMaterialSelect");
+    const qtyInput = document.getElementById("maReceiveQuantityInput");
+    if (!previewEl) return;
+
+    const matId = matSelect ? matSelect.value : "";
+    const mat = state.materials.find(m => m.id === matId);
+    if (!mat) {
+        previewEl.innerHTML = "";
+        return;
+    }
+
+    const cur = Number(mat.current_stock) || 0;
+    const qty = parseFloat(qtyInput?.value) || 0;
+    const unit = mat.unit_of_measure || "kg";
+    const next = cur + qty;
+
+    previewEl.innerHTML = `Stock: <strong>${formatQty(cur, unit)}</strong> &nbsp;→&nbsp; After Receipt: <strong style="color:#059669;">${formatQty(next, unit)}</strong>`;
+}
+
+function updateDisburseLivePreview() {
+    const previewEl = document.getElementById("maDisburseStockPreview");
+    const matSelect = document.getElementById("maDisburseMaterialSelect");
+    const qtyInput = document.getElementById("maDisburseQuantityInput");
+    if (!previewEl) return;
+
+    const matId = matSelect ? matSelect.value : "";
+    const mat = state.materials.find(m => m.id === matId);
+    if (!mat) {
+        previewEl.innerHTML = "";
+        return;
+    }
+
+    const cur = Number(mat.current_stock) || 0;
+    const qty = parseFloat(qtyInput?.value) || 0;
+    const unit = mat.unit_of_measure || "kg";
+    const next = Math.max(0, cur - qty);
+
+    if (qty > cur) {
+        previewEl.innerHTML = `<span style="color: #dc2626; font-weight:700;">⚠️ Exceeds available stock (${formatQty(cur, unit)})</span>`;
+    } else {
+        previewEl.innerHTML = `Available: <strong>${formatQty(cur, unit)}</strong> &nbsp;→&nbsp; Remaining: <strong style="color:#ea580c;">${formatQty(next, unit)}</strong>`;
+    }
+}
+
+function openReceiveModal(preselectedMatId = null, preselectedProduct = null, allowedMaterialIds = null) {
     const overlay = document.getElementById("maReceiveModalOverlay");
     const form = document.getElementById("maReceiveForm");
     const matSelect = document.getElementById("maReceiveMaterialSelect");
@@ -880,11 +1033,38 @@ function openReceiveModal(preselectedMatId = null, preselectedProduct = null) {
     if (form) form.reset();
     clearModalErrors("maReceive");
 
-    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
-    if (prodInput && preselectedProduct) prodInput.value = preselectedProduct;
-
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (dateInput) {
+        if (dateInput._flatpickr) {
+            dateInput._flatpickr.setDate(todayStr, true);
+        } else {
+            dateInput.value = todayStr;
+        }
+    }
     if (qtyInput) qtyInput.value = "1";
 
+    const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
+        ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
+        : state.materials;
+
+    if (matSelect) {
+        matSelect.innerHTML = `<option value="">Select Raw Material...</option>` + availableMats.map(m => `
+            <option value="${escapeHtml(m.id)}" data-unit="${escapeHtml(m.unit_of_measure || "kg")}" data-stock="${m.current_stock}">
+                ${escapeHtml(m.name)} (${escapeHtml(m.item_code || "RM—")}) — Available: ${formatQty(m.current_stock, m.unit_of_measure)}
+            </option>
+        `).join("");
+
+        matSelect.onchange = () => {
+            const activeId = matSelect.value;
+            const opt = matSelect.selectedOptions[0];
+            const unit = opt ? opt.getAttribute("data-unit") : "kg";
+            if (unitInput) unitInput.value = unit || "kg";
+            updateProductContextDropdown(prodInput, activeId, null, true);
+            updateReceiveLivePreview();
+        };
+    }
+
+    let activeMatId = preselectedMatId;
     if (preselectedMatId) {
         const mat = state.materials.find(m => m.id === preselectedMatId);
         if (mat) {
@@ -904,17 +1084,19 @@ function openReceiveModal(preselectedMatId = null, preselectedProduct = null) {
     } else {
         if (matSelect) {
             matSelect.style.display = "block";
-            const opt = matSelect.selectedOptions[0];
-            if (unitInput) unitInput.value = opt ? opt.getAttribute("data-unit") : "kg";
+            if (availableMats.length > 0) {
+                matSelect.value = availableMats[0].id;
+                activeMatId = availableMats[0].id;
+                if (unitInput) unitInput.value = availableMats[0].unit_of_measure || "kg";
+            }
         }
         if (matDisplayWrap) matDisplayWrap.style.display = "none";
     }
 
+    updateProductContextDropdown(prodInput, activeMatId, preselectedProduct, true);
+    updateReceiveLivePreview();
+
     overlay.classList.add("open", "active");
-    if (qtyInput) {
-        qtyInput.focus();
-        qtyInput.select();
-    }
 }
 
 function closeReceiveModal() {
@@ -927,6 +1109,7 @@ async function handleSaveReceive() {
     const qtyInput = document.getElementById("maReceiveQuantityInput");
     const dateInput = document.getElementById("maReceiveDateInput");
     const supplierInput = document.getElementById("maReceiveSupplierInput");
+    const prodInput = document.getElementById("maReceiveProductContextInput");
     const saveBtn = document.getElementById("maReceiveSaveBtn");
 
     clearModalErrors("maReceive");
@@ -953,7 +1136,10 @@ async function handleSaveReceive() {
     if (hasError) return;
 
     const mat = state.materials.find(m => m.id === matId);
-    if (saveBtn) saveBtn.disabled = true;
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+    }
 
     try {
         const { error } = await supabase.rpc("record_stock_receipt_v2", {
@@ -968,16 +1154,22 @@ async function handleSaveReceive() {
 
         toast(`Received ${formatQty(qty, mat?.unit_of_measure)} of ${mat?.name}`, "success");
         closeReceiveModal();
+        try {
+            localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "receive" }));
+        } catch {}
         await loadAuthoritativeData();
     } catch (err) {
         console.error("Save receipt error:", err);
         toast("Failed to record receipt: " + (err.message || err), "error");
     } finally {
-        if (saveBtn) saveBtn.disabled = false;
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Receipt";
+        }
     }
 }
 
-function openDisburseModal(preselectedMatId = null, preselectedProduct = null) {
+function openDisburseModal(preselectedMatId = null, preselectedProduct = null, allowedMaterialIds = null) {
     const overlay = document.getElementById("maDisburseModalOverlay");
     const form = document.getElementById("maDisburseForm");
     const matSelect = document.getElementById("maDisburseMaterialSelect");
@@ -997,11 +1189,38 @@ function openDisburseModal(preselectedMatId = null, preselectedProduct = null) {
     if (form) form.reset();
     clearModalErrors("maDisburse");
 
-    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
-    if (prodInput && preselectedProduct) prodInput.value = preselectedProduct;
-
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (dateInput) {
+        if (dateInput._flatpickr) {
+            dateInput._flatpickr.setDate(todayStr, true);
+        } else {
+            dateInput.value = todayStr;
+        }
+    }
     if (qtyInput) qtyInput.value = "1";
 
+    const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
+        ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
+        : state.materials;
+
+    if (matSelect) {
+        matSelect.innerHTML = `<option value="">Select Raw Material...</option>` + availableMats.map(m => `
+            <option value="${escapeHtml(m.id)}" data-unit="${escapeHtml(m.unit_of_measure || "kg")}" data-stock="${m.current_stock}">
+                ${escapeHtml(m.name)} (${escapeHtml(m.item_code || "RM—")}) — Available: ${formatQty(m.current_stock, m.unit_of_measure)}
+            </option>
+        `).join("");
+
+        matSelect.onchange = () => {
+            const activeId = matSelect.value;
+            const opt = matSelect.selectedOptions[0];
+            const unit = opt ? opt.getAttribute("data-unit") : "kg";
+            if (unitInput) unitInput.value = unit || "kg";
+            updateProductContextDropdown(prodInput, activeId, null, false);
+            updateDisburseLivePreview();
+        };
+    }
+
+    let activeMatId = preselectedMatId;
     if (preselectedMatId) {
         const mat = state.materials.find(m => m.id === preselectedMatId);
         if (mat) {
@@ -1021,17 +1240,19 @@ function openDisburseModal(preselectedMatId = null, preselectedProduct = null) {
     } else {
         if (matSelect) {
             matSelect.style.display = "block";
-            const opt = matSelect.selectedOptions[0];
-            if (unitInput) unitInput.value = opt ? opt.getAttribute("data-unit") : "kg";
+            if (availableMats.length > 0) {
+                matSelect.value = availableMats[0].id;
+                activeMatId = availableMats[0].id;
+                if (unitInput) unitInput.value = availableMats[0].unit_of_measure || "kg";
+            }
         }
         if (matDisplayWrap) matDisplayWrap.style.display = "none";
     }
 
+    updateProductContextDropdown(prodInput, activeMatId, preselectedProduct, false);
+    updateDisburseLivePreview();
+
     overlay.classList.add("open", "active");
-    if (qtyInput) {
-        qtyInput.focus();
-        qtyInput.select();
-    }
 }
 
 function closeDisburseModal() {
@@ -1081,7 +1302,10 @@ async function handleSaveDisburse() {
 
     if (hasError) return;
 
-    if (saveBtn) saveBtn.disabled = true;
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+    }
 
     try {
         const { error } = await supabase.rpc("record_material_disbursement_v2", {
@@ -1097,93 +1321,83 @@ async function handleSaveDisburse() {
 
         toast(`Disbursed ${formatQty(qty, mat.unit_of_measure)} for ${productContext}`, "success");
         closeDisburseModal();
+        try {
+            localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "disburse" }));
+        } catch {}
         await loadAuthoritativeData();
     } catch (err) {
         console.error("Save disbursement error:", err);
         toast("Failed to record disbursement: " + (err.message || err), "error");
     } finally {
-        if (saveBtn) saveBtn.disabled = false;
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Disbursement";
+        }
     }
 }
 
 /* ==========================================================
-   BREAKDOWN MODALS
+   MODALS: BREAKDOWN MODALS
    ========================================================== */
 
 function openProductBreakdownModal(prod) {
     const overlay = document.getElementById("productBreakdownModalOverlay");
-    const titleEl = document.getElementById("prodBreakdownTitle");
-    const subEl = document.getElementById("prodBreakdownSubtitle");
+    const title = document.getElementById("prodBreakdownTitle");
+    const subtitle = document.getElementById("prodBreakdownSubtitle");
     const tbody = document.getElementById("prodBreakdownTableBody");
 
     if (!overlay || !tbody) return;
 
-    if (titleEl) titleEl.textContent = `${prod.name} Breakdown`;
-    if (subEl) subEl.textContent = `${prod.materialIds.length} Associated Raw Materials`;
+    if (title) title.textContent = `${prod.name} — Breakdown`;
+    if (subtitle) subtitle.textContent = `Associated raw materials and actual movement for ${prod.name}`;
 
-    const matItems = prod.materialIds.map(mId => state.materials.find(m => m.id === mId)).filter(Boolean);
+    const matItems = (prod.materialIds || []).map(mId => state.materials.find(m => String(m.id) === String(mId))).filter(Boolean);
 
     if (matItems.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; color: var(--rm-ink-dim); padding: 24px;">
-                    No materials currently associated with this product.
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--rm-ink-dim);">No raw materials mapped to this product.</td></tr>`;
     } else {
         tbody.innerHTML = matItems.map(mat => {
             const unit = mat.unit_of_measure || "kg";
-            let recQty = 0;
+            let received = 0;
             state.stockReceipts.forEach(r => {
-                if (r.material_id === mat.id) recQty += Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+                if (String(r.material_id) === String(mat.id)) {
+                    received += Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+                }
             });
 
-            let disbQty = 0;
+            let disbursed = 0;
             state.disbursements.forEach(d => {
                 const pName = (d.finished_product_name || d.activity_type || "").trim().toLowerCase();
-                if (pName === prod.name.toLowerCase() && d.material_id === mat.id) {
-                    disbQty += Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
+                if (pName === prod.name.toLowerCase() && String(d.material_id) === String(mat.id)) {
+                    disbursed += Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
                 }
             });
 
             return `
                 <tr>
                     <td><strong>${escapeHtml(mat.name)}</strong></td>
-                    <td><strong class="val-received" style="color:#16a34a;">${formatQty(recQty, unit)}</strong></td>
-                    <td><strong class="val-disbursed" style="color:#ea580c;">${formatQty(disbQty, unit)}</strong></td>
+                    <td><span class="mat-id-badge">${escapeHtml(mat.item_code || "RM—")}</span></td>
+                    <td><strong class="val-received" style="color:#16a34a;">${formatQty(received, unit)}</strong></td>
+                    <td><strong class="val-disbursed" style="color:#ea580c;">${formatQty(disbursed, unit)}</strong></td>
                     <td><strong>${formatQty(mat.current_stock, unit)}</strong></td>
                     <td>${escapeHtml(unit)}</td>
-                    <td style="text-align: center; white-space: nowrap;">
-                        <button type="button" class="btn-tbl-action btn-tbl-receive btn-modal-rec" data-mat-id="${escapeHtml(mat.id)}" data-prod-name="${escapeHtml(prod.name)}">Receive</button>
-                        <button type="button" class="btn-tbl-action btn-tbl-disburse btn-modal-disb" data-mat-id="${escapeHtml(mat.id)}" data-prod-name="${escapeHtml(prod.name)}">Disburse</button>
-                    </td>
                 </tr>
             `;
         }).join("");
-
-        tbody.querySelectorAll(".btn-modal-rec").forEach(btn => {
-            btn.addEventListener("click", () => {
-                overlay.classList.remove("open", "active");
-                openReceiveModal(btn.dataset.matId, btn.dataset.prodName);
-            });
-        });
-
-        tbody.querySelectorAll(".btn-modal-disb").forEach(btn => {
-            btn.addEventListener("click", () => {
-                overlay.classList.remove("open", "active");
-                openDisburseModal(btn.dataset.matId, btn.dataset.prodName);
-            });
-        });
     }
 
     overlay.classList.add("open", "active");
 }
 
+function closeProductBreakdownModal() {
+    const overlay = document.getElementById("productBreakdownModalOverlay");
+    if (overlay) overlay.classList.remove("open", "active");
+}
+
 function openMaterialBreakdownModal(mat) {
     const overlay = document.getElementById("materialBreakdownModalOverlay");
-    const titleEl = document.getElementById("matBreakdownTitle");
-    const subEl = document.getElementById("matBreakdownSubtitle");
+    const title = document.getElementById("matBreakdownTitle");
+    const subtitle = document.getElementById("matBreakdownSubtitle");
     const curStockEl = document.getElementById("matBreakdownCurrentStock");
     const minStockEl = document.getElementById("matBreakdownMinStock");
     const statusEl = document.getElementById("matBreakdownStatus");
@@ -1191,29 +1405,34 @@ function openMaterialBreakdownModal(mat) {
     const totalDisbEl = document.getElementById("matBreakdownTotalDisbursed");
     const tbody = document.getElementById("matBreakdownProductsTableBody");
 
-    if (!overlay || !tbody) return;
+    if (!overlay || !mat) return;
 
     const unit = mat.unit_of_measure || "kg";
     const curStock = Number(mat.current_stock) || 0;
     const minStock = Number(mat.minimum_threshold) || 0;
     const status = computeStockStatus(curStock, minStock);
 
-    if (titleEl) titleEl.textContent = `${mat.name} Breakdown`;
-    if (subEl) subEl.textContent = `Item Code: ${mat.item_code || 'RM—'}`;
+    if (title) title.textContent = `${mat.name} (${mat.item_code || "RM—"}) — Breakdown`;
+    if (subtitle) subtitle.textContent = `Usage breakdown across finished products`;
 
     if (curStockEl) curStockEl.textContent = formatQty(curStock, unit);
     if (minStockEl) minStockEl.textContent = formatQty(minStock, unit);
-    if (statusEl) statusEl.textContent = status.label;
+    if (statusEl) {
+        statusEl.className = `status-badge ${status.cls}`;
+        statusEl.innerHTML = `<span class="badge-dot ${status.dot}"></span>${status.label}`;
+    }
 
     let totalRec = 0;
     state.stockReceipts.forEach(r => {
-        if (r.material_id === mat.id) totalRec += Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+        if (String(r.material_id) === String(mat.id)) {
+            totalRec += Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+        }
     });
 
     let totalDisb = 0;
     const prodUsage = new Map();
     state.disbursements.forEach(d => {
-        if (d.material_id === mat.id) {
+        if (String(d.material_id) === String(mat.id)) {
             const qty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
             totalDisb += qty;
             const pName = (d.finished_product_name || d.activity_type || "").trim() || "General Usage";
@@ -1223,31 +1442,156 @@ function openMaterialBreakdownModal(mat) {
         }
     });
 
+    // Map finished products that link to this material
+    const prodsList = Array.isArray(state.finishedProducts) ? state.finishedProducts : [];
+    prodsList.forEach(p => {
+        if (p.materialIds && p.materialIds.map(String).includes(String(mat.id)) && !prodUsage.has(p.name)) {
+            prodUsage.set(p.name, 0);
+        }
+    });
+
     if (totalRecEl) totalRecEl.textContent = formatQty(totalRec, unit);
     if (totalDisbEl) totalDisbEl.textContent = formatQty(totalDisb, unit);
 
-    const prods = Array.from(prodUsage.entries());
-    if (prods.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="3" style="text-align: center; color: var(--rm-ink-dim); padding: 20px;">
-                    No recorded finished product usage for this material yet.
-                </td>
-            </tr>
-        `;
-    } else {
-        tbody.innerHTML = prods.map(([pName, qty]) => {
-            return `
+    if (tbody) {
+        if (prodUsage.size === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 20px; color: var(--rm-ink-dim);">No finished products mapped to this material.</td></tr>`;
+        } else {
+            tbody.innerHTML = Array.from(prodUsage.entries()).map(([pName, qty]) => `
                 <tr>
                     <td><strong>${escapeHtml(pName)}</strong></td>
                     <td><strong class="val-disbursed" style="color:#ea580c;">${formatQty(qty, unit)}</strong></td>
                     <td>${escapeHtml(unit)}</td>
                 </tr>
-            `;
-        }).join("");
+            `).join("");
+        }
     }
 
     overlay.classList.add("open", "active");
+}
+
+function closeMaterialBreakdownModal() {
+    const overlay = document.getElementById("materialBreakdownModalOverlay");
+    if (overlay) overlay.classList.remove("open", "active");
+}
+
+/* ==========================================================
+   FLATPICKR CALENDAR INITIALIZATION (CUSTOM SYSTEM THEME)
+   ========================================================== */
+
+function initActivityFlatpickr() {
+    const clearBtn = document.getElementById("clearHistoryDatesBtn");
+
+    const updateClearBtnVisibility = () => {
+        if (clearBtn) {
+            clearBtn.style.display = (state.historyDateFrom || state.historyDateTo) ? "inline-flex" : "none";
+        }
+    };
+
+    const filterDateInputIds = ["historyDateFrom", "historyDateTo"];
+    filterDateInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
+            const fp = flatpickr(el, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                altInputClass: "inv-input-date",
+                disableMobile: true,
+                allowInput: true,
+                onChange: (selectedDates, dateStr) => {
+                    el.value = dateStr;
+                    if (id === "historyDateFrom") state.historyDateFrom = dateStr;
+                    if (id === "historyDateTo") state.historyDateTo = dateStr;
+                    updateClearBtnVisibility();
+                    state.historyPage = 1;
+                    renderCard2History();
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    if (instance && instance.altInput) {
+                        const raw = instance.altInput.value.trim();
+                        if (!raw) {
+                            instance.clear();
+                            if (id === "historyDateFrom") state.historyDateFrom = "";
+                            if (id === "historyDateTo") state.historyDateTo = "";
+                            updateClearBtnVisibility();
+                            state.historyPage = 1;
+                            renderCard2History();
+                        } else {
+                            const parsed = instance.parseDate(raw, "d/m/Y") || instance.parseDate(raw, "Y-m-d");
+                            if (parsed) {
+                                instance.setDate(parsed, true);
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (fp && fp.altInput) {
+                fp.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+                fp.altInput.addEventListener("blur", () => {
+                    const raw = fp.altInput.value.trim();
+                    if (!raw) {
+                        fp.clear();
+                        if (id === "historyDateFrom") state.historyDateFrom = "";
+                        if (id === "historyDateTo") state.historyDateTo = "";
+                        updateClearBtnVisibility();
+                        state.historyPage = 1;
+                        renderCard2History();
+                    } else {
+                        const parsed = fp.parseDate(raw, "d/m/Y") || fp.parseDate(raw, "Y-m-d");
+                        if (parsed) {
+                            fp.setDate(parsed, true);
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            const fromEl = document.getElementById("historyDateFrom");
+            const toEl = document.getElementById("historyDateTo");
+            if (fromEl && fromEl._flatpickr) fromEl._flatpickr.clear();
+            if (toEl && toEl._flatpickr) toEl._flatpickr.clear();
+            state.historyDateFrom = "";
+            state.historyDateTo = "";
+            updateClearBtnVisibility();
+            state.historyPage = 1;
+            renderCard2History();
+        });
+    }
+
+    // Modal Date Pickers (Receive & Disburse modals)
+    const modalDateIds = ["maReceiveDateInput", "maDisburseDateInput"];
+    modalDateIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
+            const modalFp = flatpickr(el, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                altInputClass: "ma-modal-date-input",
+                defaultDate: "today",
+                disableMobile: true,
+                allowInput: true,
+                onChange: (selectedDates, dateStr) => {
+                    el.value = dateStr;
+                }
+            });
+            if (modalFp && modalFp.altInput) {
+                modalFp.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+                modalFp.altInput.addEventListener("blur", () => {
+                    const raw = modalFp.altInput.value.trim();
+                    if (raw) {
+                        const parsed = modalFp.parseDate(raw, "d/m/Y") || modalFp.parseDate(raw, "Y-m-d");
+                        if (parsed) modalFp.setDate(parsed, true);
+                    }
+                });
+            }
+        }
+    });
 }
 
 /* ==========================================================
@@ -1319,8 +1663,6 @@ function initEventListeners() {
 
     // 4. Card 2 History Filters
     const histSearch = document.getElementById("historySearchInput");
-    const histDateFrom = document.getElementById("historyDateFrom");
-    const histDateTo = document.getElementById("historyDateTo");
     const histAct = document.getElementById("historyActivityFilter");
     const histSort = document.getElementById("historySortSelect");
     const histPageSize = document.getElementById("historyPageSize");
@@ -1333,21 +1675,8 @@ function initEventListeners() {
         });
     }
 
-    if (histDateFrom) {
-        histDateFrom.addEventListener("change", () => {
-            state.historyDateFrom = histDateFrom.value;
-            state.historyPage = 1;
-            renderCard2History();
-        });
-    }
-
-    if (histDateTo) {
-        histDateTo.addEventListener("change", () => {
-            state.historyDateTo = histDateTo.value;
-            state.historyPage = 1;
-            renderCard2History();
-        });
-    }
+    // Initialize Flatpickr Calendars with Custom System Theme
+    initActivityFlatpickr();
 
     if (histAct) {
         histAct.addEventListener("change", () => {
@@ -1380,32 +1709,31 @@ function initEventListeners() {
     const recMinus = document.getElementById("maReceiveMinusBtn");
     const recPlus = document.getElementById("maReceivePlusBtn");
     const recQtyInput = document.getElementById("maReceiveQuantityInput");
-    const recMatSelect = document.getElementById("maReceiveMaterialSelect");
-    const recUnitDisplay = document.getElementById("maReceiveUnitDisplay");
 
     if (recClose) recClose.addEventListener("click", closeReceiveModal);
     if (recCancel) recCancel.addEventListener("click", closeReceiveModal);
     if (recSave) recSave.addEventListener("click", handleSaveReceive);
 
     if (recMinus && recQtyInput) {
-        recMinus.addEventListener("click", () => {
+        recMinus.addEventListener("click", (e) => {
+            e.preventDefault();
             const cur = Math.max(0.01, (Number(recQtyInput.value) || 0) - 1);
-            recQtyInput.value = cur % 1 === 0 ? cur : cur.toFixed(2);
+            recQtyInput.value = cur % 1 === 0 ? Math.max(1, cur) : cur.toFixed(2);
+            recQtyInput.dispatchEvent(new Event("input"));
         });
     }
 
     if (recPlus && recQtyInput) {
-        recPlus.addEventListener("click", () => {
+        recPlus.addEventListener("click", (e) => {
+            e.preventDefault();
             const cur = (Number(recQtyInput.value) || 0) + 1;
             recQtyInput.value = cur % 1 === 0 ? cur : cur.toFixed(2);
+            recQtyInput.dispatchEvent(new Event("input"));
         });
     }
 
-    if (recMatSelect && recUnitDisplay) {
-        recMatSelect.addEventListener("change", () => {
-            const opt = recMatSelect.selectedOptions[0];
-            recUnitDisplay.value = opt ? opt.getAttribute("data-unit") : "kg";
-        });
+    if (recQtyInput) {
+        recQtyInput.addEventListener("input", updateReceiveLivePreview);
     }
 
     // 6. Modals - Disburse Modal
@@ -1415,32 +1743,31 @@ function initEventListeners() {
     const disbMinus = document.getElementById("maDisburseMinusBtn");
     const disbPlus = document.getElementById("maDisbursePlusBtn");
     const disbQtyInput = document.getElementById("maDisburseQuantityInput");
-    const disbMatSelect = document.getElementById("maDisburseMaterialSelect");
-    const disbUnitDisplay = document.getElementById("maDisburseUnitDisplay");
 
     if (disbClose) disbClose.addEventListener("click", closeDisburseModal);
     if (disbCancel) disbCancel.addEventListener("click", closeDisburseModal);
     if (disbSave) disbSave.addEventListener("click", handleSaveDisburse);
 
     if (disbMinus && disbQtyInput) {
-        disbMinus.addEventListener("click", () => {
+        disbMinus.addEventListener("click", (e) => {
+            e.preventDefault();
             const cur = Math.max(0.01, (Number(disbQtyInput.value) || 0) - 1);
-            disbQtyInput.value = cur % 1 === 0 ? cur : cur.toFixed(2);
+            disbQtyInput.value = cur % 1 === 0 ? Math.max(1, cur) : cur.toFixed(2);
+            disbQtyInput.dispatchEvent(new Event("input"));
         });
     }
 
     if (disbPlus && disbQtyInput) {
-        disbPlus.addEventListener("click", () => {
+        disbPlus.addEventListener("click", (e) => {
+            e.preventDefault();
             const cur = (Number(disbQtyInput.value) || 0) + 1;
             disbQtyInput.value = cur % 1 === 0 ? cur : cur.toFixed(2);
+            disbQtyInput.dispatchEvent(new Event("input"));
         });
     }
 
-    if (disbMatSelect && disbUnitDisplay) {
-        disbMatSelect.addEventListener("change", () => {
-            const opt = disbMatSelect.selectedOptions[0];
-            disbUnitDisplay.value = opt ? opt.getAttribute("data-unit") : "kg";
-        });
+    if (disbQtyInput) {
+        disbQtyInput.addEventListener("input", updateDisburseLivePreview);
     }
 
     // 7. Modals - Product & Material Breakdown Modal Close Buttons
@@ -1484,4 +1811,12 @@ function initEventListeners() {
             document.querySelectorAll(".modal-overlay.open, .modal-overlay.active").forEach(ov => ov.classList.remove("open", "active"));
         }
     });
+
+    // Cross-Tab / Cross-Window Real-time Sync
+    window.addEventListener("storage", (e) => {
+        if (e.key === "rmims_sync_event" || e.key === "rmims_inventory_updated") {
+            loadAuthoritativeData();
+        }
+    });
 }
+

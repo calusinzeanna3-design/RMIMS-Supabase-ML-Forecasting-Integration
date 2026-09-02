@@ -18,7 +18,7 @@ const state = {
     receipts: [],           // Normalized from public.stock_receipts
     
     // Filters & Range
-    datePreset: "this_week",
+    datePreset: "all",
     dateFrom: "",
     dateTo: "",
     
@@ -99,130 +99,94 @@ async function init() {
 
 async function loadAuthoritativeData() {
     try {
-        const [matRes, useRes, recRes] = await Promise.all([
-            supabase
-                .from("raw_materials")
-                .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at")
-                .order("name"),
-            supabase
-                .from("material_disbursements")
-                .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-                .order("usage_date", { ascending: false }),
-            supabase
-                .from("stock_receipts")
-                .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-                .order("receipt_date", { ascending: false })
-        ]);
+        // 1. Raw Materials
+        const { data: rawMats, error: rawErr } = await supabase
+            .from("raw_materials")
+            .select("*")
+            .order("name", { ascending: true });
 
-        if (matRes.error) throw matRes.error;
-        if (useRes.error) console.warn("Disbursements fetch notice:", useRes.error);
-        if (recRes.error) console.warn("Receipts fetch notice:", recRes.error);
+        if (rawErr) throw rawErr;
 
-        const rawMats = matRes.data || [];
-        const rawUsage = useRes.data || [];
-        const rawRecs = recRes.data || [];
+        state.materials = (rawMats || []).map(m => ({
+            id: m.id,
+            name: m.name || "Unnamed Material",
+            itemCode: m.item_code || m.id?.slice(0, 8) || "N/A",
+            currentStock: Number(m.current_stock) || 0,
+            minStock: Number(m.minimum_threshold) || 0,
+            unit: m.unit || "units",
+            status: m.status || calculateStockStatus(Number(m.current_stock) || 0, Number(m.minimum_threshold) || 0),
+            createdAt: m.created_at || new Date().toISOString()
+        }));
 
-        // Normalize Materials
-        state.materials = rawMats.map(m => {
-            const curStock = Number(m.current_stock) || 0;
-            const minStock = m.minimum_threshold !== null ? Number(m.minimum_threshold) : 0;
-            const statusInfo = computeStockHealth(curStock, minStock);
+        // 2. Material Disbursements (Actual Consumption)
+        const { data: disbs, error: disbErr } = await supabase
+            .from("material_disbursements")
+            .select("*")
+            .order("usage_date", { ascending: false });
 
-            // Compute Target Baseline (safe without hardcoded max)
-            const targetBaseline = Math.max(minStock * 2, curStock, 1);
-            const progressPct = Math.min(100, Math.round((curStock / targetBaseline) * 100));
+        if (disbErr) throw disbErr;
 
-            return {
-                id: m.id,
-                itemCode: m.item_code || "RM—",
-                name: m.name || "Unnamed Material",
-                unit: (m.unit_of_measure || "kg").trim(),
-                currentStock: curStock,
-                minStock: minStock,
-                status: statusInfo,
-                progressPct: isNaN(progressPct) ? 0 : progressPct,
-                createdAt: m.created_at || new Date().toISOString()
-            };
-        });
-
-        const matMap = new Map(state.materials.map(m => [m.id, m]));
-
-        // Normalize Disbursements
-        state.disbursements = rawUsage.map(d => {
-            const mat = matMap.get(d.material_id);
-            const rawProd = (d.finished_product_name || d.activity_type || "").trim();
-            return {
+        state.disbursements = (disbs || [])
+            .filter(d => !isImportedTrash(d.finished_product_name) && !isImportedTrash(d.activity_type))
+            .map(d => ({
                 id: d.id,
                 materialId: d.material_id,
-                materialName: mat ? mat.name : "Raw Material",
-                itemCode: mat ? mat.itemCode : "RM—",
                 consumedQuantity: Number(d.consumed_quantity) || 0,
-                usageDate: d.usage_date || (d.created_at ? d.created_at.split("T")[0] : null),
-                unit: (d.unit || (mat ? mat.unit : "kg")).trim(),
-                productName: rawProd && !isGenericOperationalName(rawProd) ? rawProd : null,
-                activityType: d.activity_type,
-                createdAt: d.created_at
-            };
-        });
+                usageDate: d.usage_date ? d.usage_date.slice(0, 10) : "",
+                unit: d.unit || "",
+                activityType: d.activity_type || "",
+                finishedProductName: d.finished_product_name || "General Usage",
+                recordedBy: d.recorded_by || "",
+                createdAt: d.created_at || ""
+            }));
 
-        // Normalize Receipts
-        state.receipts = rawRecs.map(r => {
-            const mat = matMap.get(r.material_id);
-            return {
+        // 3. Stock Receipts (Inflow)
+        const { data: recs, error: recErr } = await supabase
+            .from("stock_receipts")
+            .select("*")
+            .order("received_date", { ascending: false });
+
+        if (recErr) throw recErr;
+
+        state.receipts = (recs || [])
+            .filter(r => !isImportedTrash(r.supplier_name) && !isImportedTrash(r.remarks))
+            .map(r => ({
                 id: r.id,
                 materialId: r.material_id,
-                materialName: mat ? mat.name : "Raw Material",
                 receivedQuantity: Number(r.received_quantity) || 0,
-                receiptDate: r.receipt_date || (r.created_at ? r.created_at.split("T")[0] : null),
-                unit: (r.unit || (mat ? mat.unit : "kg")).trim(),
-                supplierName: r.supplier_name,
-                createdAt: r.created_at
-            };
-        });
+                receivedDate: r.received_date ? r.received_date.slice(0, 10) : "",
+                unit: r.unit || "",
+                createdAt: r.created_at || ""
+            }));
 
+        // Populate dropdown selectors
         populateMaterialSelectors();
         populateUnitFilter();
+
+        // Render entire workspace
         renderAll();
-    } catch (err) {
-        console.error("Error loading live analytics data:", err);
+
+    } catch (e) {
+        console.error("Critical error loading analytics data:", e);
     }
 }
 
-/* ==========================================================
-   STOCK HEALTH COMPUTATION
-   ========================================================== */
-
-function computeStockHealth(currentStock, minStock) {
-    const cur = Number(currentStock) || 0;
-    const min = Number(minStock) || 0;
-
-    if (cur <= 0) {
-        return { code: "OUT", label: "Out of Stock", cls: "ca-status-out" };
-    }
-    if (cur <= min) {
-        return { code: "LOW", label: "Low Stock", cls: "ca-status-low" };
-    }
-    if (min > 0 && cur <= min * 1.5) {
-        return { code: "STABLE", label: "Stable Stock", cls: "ca-status-stable" };
-    }
-    return { code: "GOOD", label: "Good Stock", cls: "ca-status-good" };
+function calculateStockStatus(current, min) {
+    if (current <= 0) return "OUT OF STOCK";
+    if (current <= min) return "LOW STOCK";
+    if (current <= min * 1.5) return "STABLE";
+    return "GOOD";
 }
 
-function isGenericOperationalName(name) {
-    if (!name) return true;
+function isImportedTrash(name) {
+    if (!name) return false;
     const n = String(name).trim().toLowerCase();
     return (
-        n === "operational use" ||
-        n === "operational" ||
-        n === "general usage" ||
-        n === "general" ||
-        n === "usage" ||
-        n === "operational material context" ||
-        n === "operational batch" ||
-        n === "general production" ||
-        n === "production" ||
-        n === "sample usage" ||
-        n === "unassigned / general stock"
+        n === "imported dsb" ||
+        n === "imported disbursement" ||
+        n === "imported stock receipt" ||
+        n === "imported" ||
+        n === "imported usage"
     );
 }
 
@@ -231,16 +195,25 @@ function isGenericOperationalName(name) {
    ========================================================== */
 
 function initDatePresets() {
-    applyPreset("this_week");
+    applyPreset("all");
 }
 
 function applyPreset(preset) {
     state.datePreset = preset;
     const now = new Date();
-    let from = new Date();
-    let to = new Date();
+    let from = null;
+    let to = null;
 
-    if (preset === "today") {
+    if (preset === "all") {
+        state.dateFrom = "";
+        state.dateTo = "";
+        const fromInput = document.getElementById("dateFromInput");
+        const toInput = document.getElementById("dateToInput");
+        if (fromInput && fromInput._flatpickr) fromInput._flatpickr.clear();
+        else if (fromInput) fromInput.value = "";
+        if (toInput && toInput._flatpickr) toInput._flatpickr.clear();
+        else if (toInput) toInput.value = "";
+    } else if (preset === "today") {
         from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } else if (preset === "this_week") {
@@ -263,17 +236,35 @@ function applyPreset(preset) {
         to = new Date();
     }
 
-    if (preset !== "custom") {
+    if (preset !== "custom" && preset !== "all" && from && to) {
         state.dateFrom = formatDateISO(from);
         state.dateTo = formatDateISO(to);
 
         const fromInput = document.getElementById("dateFromInput");
         const toInput = document.getElementById("dateToInput");
-        if (fromInput) fromInput.value = state.dateFrom;
-        if (toInput) toInput.value = state.dateTo;
+        if (fromInput) {
+            if (fromInput._flatpickr) {
+                fromInput._flatpickr.setDate(state.dateFrom, false);
+            } else {
+                fromInput.value = state.dateFrom;
+            }
+        }
+        if (toInput) {
+            if (toInput._flatpickr) {
+                toInput._flatpickr.setDate(state.dateTo, false);
+            } else {
+                toInput.value = state.dateTo;
+            }
+        }
+    }
+
+    const presetSel = document.getElementById("datePresetSelect");
+    if (presetSel && presetSel.value !== preset) {
+        presetSel.value = preset;
     }
 
     updateDateStatusTag();
+    updateClearBtnVisibility();
 }
 
 function formatDateISO(d) {
@@ -325,30 +316,17 @@ function renderTopKPIs() {
     const totalMatEl = document.getElementById("kpiTotalMaterials");
     if (totalMatEl) totalMatEl.textContent = state.materials.length.toLocaleString();
 
-    // 2. Total Consumed (Unit-Safe Aggregation)
+    // 2. Total Consumed (Overall Raw Materials Consumed)
     const activeDisbs = state.disbursements.filter(d => isDateInRange(d.usageDate));
-    const consumedByUnit = new Map();
+    const totalConsumed = activeDisbs.reduce((sum, d) => sum + (Number(d.consumedQuantity) || 0), 0);
+    const formattedConsumed = totalConsumed.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-    activeDisbs.forEach(d => {
-        const u = d.unit || "kg";
-        consumedByUnit.set(u, (consumedByUnit.get(u) || 0) + d.consumedQuantity);
-    });
-
+    const totalConsumedEl = document.getElementById("kpiTotalConsumed");
     const consumedListEl = document.getElementById("kpiTotalConsumedList");
-    if (consumedListEl) {
-        if (consumedByUnit.size === 0) {
-            consumedListEl.innerHTML = `<span class="ca-kpi-value">0</span> <span style="font-size:0.8rem; color:var(--ca-text-dim);">units</span>`;
-        } else {
-            const entries = Array.from(consumedByUnit.entries()).sort((a, b) => b[1] - a[1]);
-            consumedListEl.innerHTML = entries.map(([unit, qty]) => {
-                return `
-                    <div class="ca-kpi-unit-badge">
-                        <span>${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-                        <span style="font-size:0.75rem; color:var(--ca-text-muted);">${escapeHtml(unit)}</span>
-                    </div>
-                `;
-            }).join("");
-        }
+    if (totalConsumedEl) {
+        totalConsumedEl.textContent = formattedConsumed;
+    } else if (consumedListEl) {
+        consumedListEl.innerHTML = `<span class="ca-kpi-value">${formattedConsumed}</span>`;
     }
 
     // 3. Materials With Usage
@@ -477,15 +455,54 @@ function renderOverviewTrendChart() {
 
 function generateTimelineIntervals(period, fromStr, toStr) {
     const intervals = [];
-    const dStart = fromStr ? new Date(fromStr) : new Date(Date.now() - 28 * 86400000);
-    const dEnd = toStr ? new Date(toStr) : new Date();
+    
+    // Determine start and end dates based on active range or catalog history
+    let dStart, dEnd;
+    if (fromStr && toStr) {
+        dStart = new Date(fromStr + "T00:00:00");
+        dEnd = new Date(toStr + "T23:59:59");
+    } else if (fromStr) {
+        dStart = new Date(fromStr + "T00:00:00");
+        dEnd = new Date();
+    } else if (toStr) {
+        dStart = new Date(Date.now() - 29 * 86400000);
+        dEnd = new Date(toStr + "T23:59:59");
+    } else {
+        // "All Time": find earliest disbursement date
+        if (state.disbursements && state.disbursements.length > 0) {
+            const validDates = state.disbursements
+                .map(d => d.usageDate)
+                .filter(Boolean)
+                .sort();
+            if (validDates.length > 0) {
+                dStart = new Date(validDates[0] + "T00:00:00");
+            } else {
+                dStart = new Date(Date.now() - 29 * 86400000);
+            }
+        } else {
+            dStart = new Date(Date.now() - 29 * 86400000);
+        }
+        dEnd = new Date();
+    }
 
+    if (isNaN(dStart.getTime())) dStart = new Date(Date.now() - 29 * 86400000);
+    if (isNaN(dEnd.getTime())) dEnd = new Date();
+
+    if (dStart > dEnd) {
+        const temp = dStart;
+        dStart = dEnd;
+        dEnd = temp;
+    }
+
+    const diffDays = Math.max(1, Math.round((dEnd - dStart) / 86400000));
+
+    // Dynamic Interval Mapping
     if (period === "monthly") {
         let curr = new Date(dStart.getFullYear(), dStart.getMonth(), 1);
         while (curr <= dEnd) {
             const startStr = formatDateISO(curr);
             const nextMonth = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
-            const endStr = formatDateISO(nextMonth);
+            const endStr = formatDateISO(nextMonth > dEnd ? dEnd : nextMonth);
             intervals.push({
                 label: curr.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
                 start: startStr,
@@ -493,25 +510,93 @@ function generateTimelineIntervals(period, fromStr, toStr) {
             });
             curr.setMonth(curr.getMonth() + 1);
         }
-    } else {
-        // Weekly / Date-to-Date
+    } else if (diffDays <= 1) {
+        // Single Day ("Today")
+        const dateISO = formatDateISO(dStart);
+        const dayLabel = dStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        intervals.push({
+            label: `${dayLabel} (All Day)`,
+            start: dateISO,
+            end: dateISO
+        });
+    } else if (diffDays <= 7) {
+        // Up to 7 days ("This Week", "Last 7 Days", etc.) -> Daily intervals
         let curr = new Date(dStart);
-        let stepDays = period === "weekly" ? 7 : Math.max(1, Math.round((dEnd - dStart) / (7 * 86400000)));
-
         while (curr <= dEnd) {
-            const startStr = formatDateISO(curr);
-            const stepEnd = new Date(curr.getTime() + (stepDays - 1) * 86400000);
-            const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+            const dateISO = formatDateISO(curr);
             intervals.push({
-                label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                start: startStr,
-                end: endStr
+                label: curr.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+                start: dateISO,
+                end: dateISO
             });
-            curr.setDate(curr.getDate() + stepDays);
+            curr.setDate(curr.getDate() + 1);
+        }
+    } else if (diffDays <= 31) {
+        // Up to 1 month ("This Month", "Last Month", "Last 30 Days")
+        if (period === "date_to_date") {
+            let curr = new Date(dStart);
+            const step = Math.max(1, Math.round(diffDays / 6));
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const stepEnd = new Date(curr.getTime() + (step - 1) * 86400000);
+                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+                intervals.push({
+                    label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setDate(curr.getDate() + step);
+            }
+        } else {
+            // Weekly intervals across the month
+            let curr = new Date(dStart);
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const stepEnd = new Date(curr.getTime() + 6 * 86400000);
+                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+                const startLabel = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                const endLabel = (stepEnd > dEnd ? dEnd : stepEnd).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                intervals.push({
+                    label: `${startLabel} – ${endLabel}`,
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setDate(curr.getDate() + 7);
+            }
+        }
+    } else {
+        // Long ranges (> 31 days)
+        if (period === "weekly") {
+            let curr = new Date(dStart);
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const stepEnd = new Date(curr.getTime() + 6 * 86400000);
+                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+                intervals.push({
+                    label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setDate(curr.getDate() + 7);
+            }
+        } else {
+            // Default to monthly intervals
+            let curr = new Date(dStart.getFullYear(), dStart.getMonth(), 1);
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const nextMonth = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
+                const endStr = formatDateISO(nextMonth > dEnd ? dEnd : nextMonth);
+                intervals.push({
+                    label: curr.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setMonth(curr.getMonth() + 1);
+            }
         }
     }
 
-    return intervals.length > 0 ? intervals : [{ label: "Current Period", start: fromStr, end: toStr }];
+    return intervals.length > 0 ? intervals : [{ label: "Selected Range", start: fromStr || formatDateISO(dStart), end: toStr || formatDateISO(dEnd) }];
 }
 
 /* ==========================================================
@@ -1126,8 +1211,100 @@ function populateUnitFilter() {
     unitSel.innerHTML = `<option value="ALL">All Units</option>` + optionsHtml;
 }
 
+function updateClearBtnVisibility() {
+    const clearBtn = document.getElementById("clearDateBtn");
+    if (clearBtn) {
+        clearBtn.style.display = (state.datePreset === "custom" || state.dateFrom || state.dateTo) ? "inline-flex" : "none";
+    }
+}
+
+function initAnalyticsFlatpickr() {
+    const filterDateInputIds = ["dateFromInput", "dateToInput"];
+    filterDateInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
+            const fp = flatpickr(el, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                altInputClass: "inv-input-date",
+                disableMobile: true,
+                allowInput: true,
+                onChange: (selectedDates, dateStr) => {
+                    el.value = dateStr;
+                    if (id === "dateFromInput") state.dateFrom = dateStr;
+                    if (id === "dateToInput") state.dateTo = dateStr;
+                    const presetSel = document.getElementById("datePresetSelect");
+                    if (presetSel) presetSel.value = "custom";
+                    state.datePreset = "custom";
+                    updateDateStatusTag();
+                    updateClearBtnVisibility();
+                    renderAll();
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    if (instance && instance.altInput) {
+                        const raw = instance.altInput.value.trim();
+                        if (!raw) {
+                            instance.clear();
+                            if (id === "dateFromInput") state.dateFrom = "";
+                            if (id === "dateToInput") state.dateTo = "";
+                            const presetSel = document.getElementById("datePresetSelect");
+                            if (presetSel) presetSel.value = "custom";
+                            state.datePreset = "custom";
+                            updateDateStatusTag();
+                            updateClearBtnVisibility();
+                            renderAll();
+                        } else {
+                            const parsed = instance.parseDate(raw, "d/m/Y") || instance.parseDate(raw, "Y-m-d");
+                            if (parsed) {
+                                instance.setDate(parsed, true);
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (fp && fp.altInput) {
+                fp.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+                fp.altInput.addEventListener("blur", () => {
+                    const raw = fp.altInput.value.trim();
+                    if (!raw) {
+                        fp.clear();
+                        if (id === "dateFromInput") state.dateFrom = "";
+                        if (id === "dateToInput") state.dateTo = "";
+                        const presetSel = document.getElementById("datePresetSelect");
+                        if (presetSel) presetSel.value = "custom";
+                        state.datePreset = "custom";
+                        updateDateStatusTag();
+                        updateClearBtnVisibility();
+                        renderAll();
+                    } else {
+                        const parsed = fp.parseDate(raw, "d/m/Y") || fp.parseDate(raw, "Y-m-d");
+                        if (parsed) {
+                            fp.setDate(parsed, true);
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    const fromInput = document.getElementById("dateFromInput");
+    const toInput = document.getElementById("dateToInput");
+    if (fromInput && fromInput._flatpickr && state.dateFrom) {
+        fromInput._flatpickr.setDate(state.dateFrom, false);
+    }
+    if (toInput && toInput._flatpickr && state.dateTo) {
+        toInput._flatpickr.setDate(state.dateTo, false);
+    }
+    updateClearBtnVisibility();
+}
+
 function initEventListeners() {
-    // 1. Date Controls
+    // 1. Flatpickr Calendars
+    initAnalyticsFlatpickr();
+
+    // 2. Date Controls
     const presetSel = document.getElementById("datePresetSelect");
     if (presetSel) {
         presetSel.addEventListener("change", () => {
@@ -1136,26 +1313,11 @@ function initEventListeners() {
         });
     }
 
-    const fromInput = document.getElementById("dateFromInput");
-    const toInput = document.getElementById("dateToInput");
-    if (fromInput && toInput) {
-        const handleCustomDate = () => {
-            state.dateFrom = fromInput.value;
-            state.dateTo = toInput.value;
-            if (presetSel) presetSel.value = "custom";
-            state.datePreset = "custom";
-            updateDateStatusTag();
-            renderAll();
-        };
-        fromInput.addEventListener("change", handleCustomDate);
-        toInput.addEventListener("change", handleCustomDate);
-    }
-
     const clearBtn = document.getElementById("clearDateBtn");
     if (clearBtn) {
         clearBtn.addEventListener("click", () => {
-            if (presetSel) presetSel.value = "this_week";
-            applyPreset("this_week");
+            if (presetSel) presetSel.value = "all";
+            applyPreset("all");
             renderAll();
         });
     }

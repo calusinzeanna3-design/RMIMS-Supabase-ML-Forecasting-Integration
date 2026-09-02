@@ -419,9 +419,34 @@ function renderPagination(page, totalPages) {
     if (totalPages <= 1) { el.innerHTML = ""; return; }
 
     let html = `<button ${page === 1 ? "disabled" : ""} data-p="${page - 1}">‹</button>`;
-    for (let p = 1; p <= totalPages; p++) {
-        html += `<button class="${p === page ? "active" : ""}" data-p="${p}">${p}</button>`;
+
+    // Windowed Pagination Algorithm
+    const maxVisible = 7;
+    let pages = [];
+    if (totalPages <= maxVisible) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        pages.push(1);
+        if (page > 4) pages.push("...");
+
+        const start = Math.max(2, page - 2);
+        const end = Math.min(totalPages - 1, page + 2);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+
+        if (page < totalPages - 3) pages.push("...");
+        pages.push(totalPages);
     }
+
+    pages.forEach(p => {
+        if (p === "...") {
+            html += `<span class="page-ellipsis">…</span>`;
+        } else {
+            html += `<button class="${p === page ? "active" : ""}" data-p="${p}">${p}</button>`;
+        }
+    });
+
     html += `<button ${page === totalPages ? "disabled" : ""} data-p="${page + 1}">›</button>`;
     el.innerHTML = html;
 

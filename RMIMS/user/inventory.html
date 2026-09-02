@@ -152,9 +152,10 @@
             <div class="inv-filter-group">
                 <div class="inv-date-range-wrap">
                     <label for="invDateFrom" class="filter-label">From:</label>
-                    <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date">
+                    <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date" placeholder="dd/mm/yyyy">
                     <label for="invDateTo" class="filter-label">To:</label>
-                    <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date">
+                    <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date" placeholder="dd/mm/yyyy">
+                    <button type="button" id="clearInvDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                 </div>
 
                 <select id="invActivityStatusFilter" class="inv-select" title="Filter by Activity Status">

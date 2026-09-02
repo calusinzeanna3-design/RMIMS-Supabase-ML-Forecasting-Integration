@@ -181,9 +181,16 @@
 .fpc-card-footer {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     padding-top: 10px;
     border-top: 1px solid #F1F5F9;
+    gap: 8px;
+}
+
+.fpc-card-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .btn-view-details {
@@ -205,6 +212,33 @@
     background: var(--blue, #2563EB);
     color: #FFFFFF;
     border-color: var(--blue, #2563EB);
+}
+
+.btn-card-edit,
+.btn-card-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-card-edit:hover {
+    background: #F1F5F9;
+    color: #2563EB;
+    border-color: #BFDBFE;
+}
+
+.btn-card-delete:hover {
+    background: #FEE2E2;
+    color: #DC2626;
+    border-color: #FECACA;
 }
 
 /* Empty State */
@@ -392,12 +426,12 @@
     margin: 4px 0 0;
 }
 
-/* 3-Step Wizard Styles (Import Modal) */
+/* 2-Step Import Styles (Import Modal) */
 .fpc-wizard-steps {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
+    padding: 14px 24px;
     background: #F8FAFC;
     border-bottom: 1px solid #E2E8F0;
 }
@@ -406,38 +440,60 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 600;
     color: #94A3B8;
+    transition: all 0.2s ease;
 }
 
 .fpc-step-item.active {
-    color: var(--blue, #2563EB);
+    color: #16803C;
 }
 
 .fpc-step-num {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     background: #E2E8F0;
     color: #64748B;
-    font-size: 0.76rem;
+    font-size: 0.78rem;
     font-weight: 700;
+    transition: all 0.2s ease;
 }
 
 .fpc-step-item.active .fpc-step-num {
-    background: var(--blue, #2563EB);
+    background: #16803C;
     color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(22, 128, 60, 0.35);
 }
 
 .fpc-step-line {
     flex: 1;
     height: 2px;
     background: #E2E8F0;
-    margin: 0 12px;
+    margin: 0 16px;
+    transition: background 0.3s ease;
+}
+
+.fpc-step-line.active {
+    background: #16803C;
+}
+
+.fpc-loading-spinner {
+    width: 44px;
+    height: 44px;
+    border: 3.5px solid #E2E8F0;
+    border-top-color: #16803C;
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: fpcSpin 0.75s linear infinite;
+}
+
+@keyframes fpcSpin {
+    to { transform: rotate(360deg); }
 }
 
 .fpc-selected-files-list {

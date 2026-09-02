@@ -191,9 +191,10 @@
                     <div class="inv-filter-group">
                         <div class="inv-date-range-wrap">
                             <label for="invDateFrom" class="filter-label">From:</label>
-                            <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date">
+                            <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date" placeholder="dd/mm/yyyy">
                             <label for="invDateTo" class="filter-label">To:</label>
-                            <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date">
+                            <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date" placeholder="dd/mm/yyyy">
+                            <button type="button" id="clearInvDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                         </div>
 
                         <select id="invActivityStatusFilter" class="inv-select" title="Filter by Activity Status">
@@ -315,9 +316,10 @@
                     <div class="inv-filter-group">
                         <div class="inv-date-range-wrap">
                             <label for="receiveDateFrom" class="filter-label">From:</label>
-                            <input type="date" id="receiveDateFrom" class="inv-input-date">
+                            <input type="date" id="receiveDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                             <label for="receiveDateTo" class="filter-label">To:</label>
-                            <input type="date" id="receiveDateTo" class="inv-input-date">
+                            <input type="date" id="receiveDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                            <button type="button" id="clearReceiveDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                         </div>
                         <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectReceiveBtn" title="Toggle selection mode">
                             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -410,9 +412,10 @@
                     <div class="inv-filter-group">
                         <div class="inv-date-range-wrap">
                             <label for="disburseDateFrom" class="filter-label">From:</label>
-                            <input type="date" id="disburseDateFrom" class="inv-input-date">
+                            <input type="date" id="disburseDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                             <label for="disburseDateTo" class="filter-label">To:</label>
-                            <input type="date" id="disburseDateTo" class="inv-input-date">
+                            <input type="date" id="disburseDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                            <button type="button" id="clearDisburseDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                         </div>
                         <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectDisburseBtn" title="Toggle selection mode">
                             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1177,16 +1180,23 @@
             </div>
         </div>
 
-        <div class="modal-sticky-footer">
-            <button class="btn-secondary" id="fpcDetailsCloseBtn">Close</button>
+        <div class="modal-sticky-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <button class="btn-danger" id="fpcDetailsDeleteBtn" style="padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Delete Product
+            </button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="fpcDetailsEditBtn">Edit</button>
+                <button class="btn-primary" id="fpcDetailsCloseBtn">Close</button>
+            </div>
         </div>
 
     </div>
 </div>
 
-<!-- 3-STEP IMPORT WIZARD MODAL (OTHER DETAILS ONLY) -->
+<!-- IMPORT FINISHED PRODUCT CONTEXT MODAL (2-STEP: CHOOSE FILES -> SAVE) -->
 <div class="modal-overlay" id="fpcImportModalOverlay">
-    <div class="modal-sheet fpc-import-sheet" role="dialog" aria-modal="true" style="max-width: 680px;">
+    <div class="modal-sheet fpc-import-sheet" role="dialog" aria-modal="true" style="max-width: 620px;">
 
         <div class="modal-sticky-header">
             <div class="modal-header-info">
@@ -1195,7 +1205,7 @@
                 </span>
                 <div>
                     <h4>Import Finished Product Context</h4>
-                    <span class="modal-time">Import finished product definitions and match product images</span>
+                    <span class="modal-time">Import Excel/CSV definitions and optional product images</span>
                 </div>
             </div>
             <button class="modal-close" id="fpcImportModalClose" aria-label="Close">
@@ -1203,33 +1213,28 @@
             </button>
         </div>
 
-        <!-- 3-STEP WIZARD INDICATOR -->
+        <!-- 2-STEP STEPPER -->
         <div class="fpc-wizard-steps">
             <div class="fpc-step-item active" id="fpcStepIndicator1">
                 <span class="fpc-step-num">1</span>
-                <span class="fpc-step-label">Import Files / Images</span>
+                <span class="fpc-step-label">Excel/CSV &amp; Images</span>
             </div>
-            <span class="fpc-step-line"></span>
+            <span class="fpc-step-line" id="fpcStepLine"></span>
             <div class="fpc-step-item" id="fpcStepIndicator2">
                 <span class="fpc-step-num">2</span>
-                <span class="fpc-step-label">Validate &amp; Preview</span>
-            </div>
-            <span class="fpc-step-line"></span>
-            <div class="fpc-step-item" id="fpcStepIndicator3">
-                <span class="fpc-step-num">3</span>
                 <span class="fpc-step-label">Save</span>
             </div>
         </div>
 
         <div class="modal-body">
             
-            <!-- STEP 1: CHOOSE FILES & IMAGES -->
+            <!-- STEP 1: CHOOSE EXCEL/CSV & IMAGES -->
             <div id="fpcImportStep1View">
                 <div class="fpc-upload-section">
                     <div class="import-dropzone" id="fpcSpreadsheetDropzone">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H14L19 8V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3V8H19" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
                         <strong>Choose CSV / Excel Files</strong>
-                        <span>Supports multiple .csv, .xlsx, .xls files</span>
+                        <span>Supports .csv, .xlsx, .xls files</span>
                         <input type="file" id="fpcSpreadsheetInput" accept=".xlsx,.xls,.csv" multiple hidden>
                     </div>
 
@@ -1237,8 +1242,8 @@
 
                     <div class="import-dropzone" id="fpcImagesDropzone" style="margin-top: 14px;">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-                        <strong>Choose Product Images <span class="optional-tag">Optional</span></strong>
-                        <span>Supports multiple JPG, PNG, WEBP files matched by product name</span>
+                        <strong>Choose Product Images <span class="optional-tag" style="font-size: 0.72rem; padding: 2px 6px; background: #E2E8F0; border-radius: 4px; color: #475569; font-weight: 600; margin-left: 6px;">Optional</span></strong>
+                        <span>Supports JPG, PNG, WEBP files matched by product name</span>
                         <input type="file" id="fpcImagesInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
                     </div>
 
@@ -1246,36 +1251,15 @@
                 </div>
             </div>
 
-            <!-- STEP 2: VALIDATE & PREVIEW -->
-            <div id="fpcImportStep2View" hidden>
-                <div class="fpc-field-detection-box" id="fpcFieldDetectionBox">
-                    <!-- Supported vs Ignored columns summary -->
-                </div>
-
-                <div class="import-summary-bar" id="fpcValidationSummaryBar" style="margin-top: 12px;">
-                    <!-- Counts for Ready to Save, Duplicates, Invalid, Unknown materials -->
-                </div>
-
-                <div class="table-scroll inv-table-scroll" style="max-height: 280px; margin-top: 12px;">
-                    <table class="inv-main-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Finished Product</th>
-                                <th>Raw Materials</th>
-                                <th>Image</th>
-                                <th>Validation Result</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fpcImportPreviewTableBody">
-                            <!-- Injected dynamically via finished-product-setup.js -->
-                        </tbody>
-                    </table>
-                </div>
+            <!-- LOADING SPINNER VIEW (DURING SAVE) -->
+            <div id="fpcImportLoadingView" hidden style="text-align: center; padding: 42px 20px;">
+                <div class="fpc-loading-spinner"></div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--rm-ink, #0F172A); margin: 18px 0 6px;">Importing &amp; Saving Products...</h4>
+                <p style="font-size: 0.84rem; color: var(--rm-ink-dim, #64748B); margin: 0;">Reading spreadsheet data, mapping raw materials, and matching images</p>
             </div>
 
-            <!-- STEP 3: FINAL IMPORT RESULT REPORT -->
-            <div id="fpcImportStep3View" hidden>
+            <!-- STEP 2: SAVE RESULT / SUMMARY -->
+            <div id="fpcImportStep2View" hidden>
                 <div class="fpc-import-result-card" id="fpcImportResultCard">
                     <!-- Injected on complete -->
                 </div>
@@ -1284,10 +1268,8 @@
         </div>
 
         <div class="modal-sticky-footer">
-            <button class="btn-secondary" id="fpcImportBackBtn" hidden>Back</button>
             <button class="btn-secondary" id="fpcImportCancelBtn">Cancel</button>
-            <button class="btn-primary" id="fpcImportNextStepBtn" disabled>Next: Validate &amp; Preview</button>
-            <button class="btn-primary" id="fpcImportSaveBtn" hidden disabled>Save Valid Records</button>
+            <button class="btn-primary" id="fpcImportConfirmBtn" disabled>Save &amp; Import</button>
             <button class="btn-primary" id="fpcImportDoneBtn" hidden>Done</button>
         </div>
 

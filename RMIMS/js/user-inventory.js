@@ -196,6 +196,17 @@ function isGenericOperationalName(name) {
     if (!name) return true;
     const n = String(name).trim().toLowerCase();
     return (
+        n === "all" ||
+        n === "all activities" ||
+        n === "all products" ||
+        n === "all materials" ||
+        n === "none" ||
+        n === "n/a" ||
+        n === "na" ||
+        n === "null" ||
+        n === "undefined" ||
+        n === "select" ||
+        n === "default" ||
         n === "operational use" ||
         n === "operational" ||
         n === "general usage" ||
@@ -205,7 +216,18 @@ function isGenericOperationalName(name) {
         n === "operational batch" ||
         n === "general production" ||
         n === "production" ||
-        n === "sample usage"
+        n === "production usage" ||
+        n === "sample usage" ||
+        n === "unassigned / general stock" ||
+        n === "unassigned" ||
+        n === "imported dsb usage" ||
+        n === "imported dsb" ||
+        n === "imported disbursement" ||
+        n === "imported stock receipt" ||
+        n === "imported" ||
+        n === "imported usage" ||
+        n.includes("imported dsb") ||
+        n.includes("imported disbursement")
     );
 }
 
@@ -485,17 +507,81 @@ function setupOverviewEventListeners() {
         });
     }
 
-    if (dateFrom) {
-        dateFrom.addEventListener("change", () => {
-            state.overviewDateFrom = dateFrom.value;
-            state.overviewPage = 1;
-            renderOverviewTable();
-        });
-    }
+    const clearDatesBtn = $("clearInvDatesBtn");
+    const syncClearBtn = () => {
+        if (clearDatesBtn) {
+            clearDatesBtn.style.display = (state.overviewDateFrom || state.overviewDateTo) ? "inline-flex" : "none";
+        }
+    };
 
-    if (dateTo) {
-        dateTo.addEventListener("change", () => {
-            state.overviewDateTo = dateTo.value;
+    [dateFrom, dateTo].forEach((el, idx) => {
+        if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
+            const fp = flatpickr(el, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                altInputClass: "inv-input-date",
+                disableMobile: true,
+                allowInput: true,
+                onChange: (selectedDates, dateStr) => {
+                    el.value = dateStr;
+                    if (idx === 0) state.overviewDateFrom = dateStr;
+                    if (idx === 1) state.overviewDateTo = dateStr;
+                    syncClearBtn();
+                    state.overviewPage = 1;
+                    renderOverviewTable();
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    if (instance && instance.altInput) {
+                        const val = instance.altInput.value.trim();
+                        if (!val) {
+                            instance.clear();
+                            el.value = "";
+                            if (idx === 0) state.overviewDateFrom = "";
+                            if (idx === 1) state.overviewDateTo = "";
+                        } else {
+                            const parsed = instance.parseDate(val, "d/m/Y") || instance.parseDate(val, "Y-m-d");
+                            if (parsed) {
+                                instance.setDate(parsed, true);
+                            }
+                        }
+                    }
+                    syncClearBtn();
+                    state.overviewPage = 1;
+                    renderOverviewTable();
+                }
+            });
+
+            if (fp && fp.altInput) {
+                fp.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+                fp.altInput.addEventListener("blur", () => {
+                    const val = fp.altInput.value.trim();
+                    if (!val) {
+                        fp.clear();
+                        el.value = "";
+                        if (idx === 0) state.overviewDateFrom = "";
+                        if (idx === 1) state.overviewDateTo = "";
+                    } else {
+                        const parsed = fp.parseDate(val, "d/m/Y") || fp.parseDate(val, "Y-m-d");
+                        if (parsed) fp.setDate(parsed, true);
+                    }
+                    syncClearBtn();
+                    state.overviewPage = 1;
+                    renderOverviewTable();
+                });
+            }
+        }
+    });
+
+    if (clearDatesBtn) {
+        clearDatesBtn.addEventListener("click", () => {
+            if (dateFrom && dateFrom._flatpickr) dateFrom._flatpickr.clear();
+            if (dateTo && dateTo._flatpickr) dateTo._flatpickr.clear();
+            if (dateFrom) dateFrom.value = "";
+            if (dateTo) dateTo.value = "";
+            state.overviewDateFrom = "";
+            state.overviewDateTo = "";
+            syncClearBtn();
             state.overviewPage = 1;
             renderOverviewTable();
         });
@@ -886,7 +972,7 @@ function initModalDatePicker(elementId, initialDate = "today", todayOnly = true)
         altFormat: "d/m/Y",
         defaultDate: defaultVal,
         disableMobile: true,
-        allowInput: false,
+        allowInput: true,
         animate: true
     };
 
@@ -1555,15 +1641,38 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
     }
 
     let html = `
-        <button type="button" class="inv-page-btn" id="prevPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹</button>
+        <button type="button" class="inv-page-btn" id="prevPageBtn" ${currentPage <= 1 ? "disabled" : ""} title="Previous Page">‹</button>
     `;
 
-    for (let p = 1; p <= totalPages; p++) {
-        html += `<button type="button" class="inv-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+    // Windowed Pagination Algorithm
+    const maxVisible = 7;
+    let pages = [];
+    if (totalPages <= maxVisible) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        pages.push(1);
+        if (currentPage > 4) pages.push("...");
+
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(totalPages - 1, currentPage + 2);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+
+        if (currentPage < totalPages - 3) pages.push("...");
+        pages.push(totalPages);
     }
 
+    pages.forEach(p => {
+        if (p === "...") {
+            html += `<span class="page-ellipsis">…</span>`;
+        } else {
+            html += `<button type="button" class="inv-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        }
+    });
+
     html += `
-        <button type="button" class="inv-page-btn" id="nextPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>›</button>
+        <button type="button" class="inv-page-btn" id="nextPageBtn" ${currentPage >= totalPages ? "disabled" : ""} title="Next Page">›</button>
     `;
 
     container.innerHTML = html;

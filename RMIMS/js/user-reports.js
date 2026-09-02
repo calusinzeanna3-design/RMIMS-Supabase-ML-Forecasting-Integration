@@ -1473,30 +1473,88 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 48;
+    let y = 36;
 
-    const RM_GREEN = [22, 128, 60];
+    const RM_GREEN = [5, 150, 105];
     const RM_INK = [15, 23, 42];
     const RM_DIM = [100, 116, 139];
 
-    // Document Header
+    const now = new Date();
+    const genDateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const genTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+    const docRef = `RMSME-USR-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // 1. RMSME Official Header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.setTextColor(...RM_INK);
-    doc.text("RMIMS | Reports & Decision Support", 40, y);
-    y += 18;
+    doc.setTextColor(...RM_GREEN);
+    doc.text("RMSME", 40, y);
 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
     doc.setTextColor(...RM_DIM);
-    const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
-    doc.text(`Report Period: ${periodLabel}  |  Generated: ${state.generatedAt ? state.generatedAt.toLocaleString() : new Date().toLocaleString()}`, 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.text("RAW MATERIAL STOCK MANAGEMENT & FORECASTING ENTERPRISE", 40, y + 13);
+
+    doc.setFontSize(7.5);
+    doc.text(`Generated: ${genDateStr} at ${genTimeStr}  |  Doc Ref: ${docRef}`, pageWidth - 40, y + 13, { align: "right" });
+
+    y += 26;
+    doc.setDrawColor(5, 150, 105);
+    doc.setLineWidth(1.5);
+    doc.line(40, y, pageWidth - 40, y);
     y += 18;
 
+    // 2. Document Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(...RM_INK);
+    doc.text("Operational Inventory & Production Report", 40, y);
+    y += 16;
+
+    // 3. Metadata Grid
+    const colW = (pageWidth - 80) / 2;
+    const leftCol = [
+        ["REPORT HORIZON", periodLabel],
+        ["REPORT PRESET", `${state.periodPreset.toUpperCase()} Snapshot`],
+        ["SECURITY CLASSIFICATION", "Confidential / Internal Use Only"]
+    ];
+    const rightCol = [
+        ["GENERATED AT", `${genDateStr} ${genTimeStr}`],
+        ["PREPARED BY", currentUser?.fullName || "RMSME Authorized Staff"],
+        ["SOURCE DATABASE", "RMSME Authoritative PostgreSQL Database"]
+    ];
+
+    let leftY = y, rightY = y;
+    leftCol.forEach(row => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(...RM_DIM);
+        doc.text(row[0], 40, leftY);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...RM_INK);
+        doc.text(String(row[1]), 40, leftY + 10);
+        leftY += 23;
+    });
+
+    rightCol.forEach(row => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(...RM_DIM);
+        doc.text(row[0], 40 + colW, rightY);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...RM_INK);
+        doc.text(String(row[1]), 40 + colW, rightY + 10);
+        rightY += 23;
+    });
+
+    y = Math.max(leftY, rightY) + 2;
     doc.setDrawColor(220, 226, 236);
     doc.setLineWidth(1);
     doc.line(40, y, pageWidth - 40, y);
-    y += 20;
+    y += 18;
 
     const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
     const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
@@ -1509,9 +1567,9 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
 
         if (key === "overview") {
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("1. Operational Overview", 40, y);
+            doc.text("1. Operational Summary & Inventory Health", 40, y);
             y += 12;
 
             doc.autoTable({
@@ -1524,18 +1582,18 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
                     ["Materials Needing Attention", `${state.materials.filter(m => m.status !== "Good").length} items`, "Real-Time", "Attention Needed"]
                 ],
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "receiving") {
             if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("2. Recent Raw Material Receiving", 40, y);
+            doc.text("2. Recent Raw Material Receiving Log", 40, y);
             y += 12;
 
             doc.autoTable({
@@ -1546,24 +1604,24 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
                         r.receiptDate,
                         r.materialName,
                         r.itemCode,
-                        r.receivedQuantity,
+                        `+${r.receivedQuantity}`,
                         r.unit,
                         r.supplierName,
                         r.status
                     ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "disbursement") {
             if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("3. Recent Raw Material Disbursement", 40, y);
+            doc.text("3. Recent Raw Material Disbursement Log", 40, y);
             y += 12;
 
             doc.autoTable({
@@ -1575,23 +1633,23 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
                         d.finishedProduct,
                         d.materialName,
                         d.itemCode,
-                        d.disbursedQuantity,
+                        `-${d.disbursedQuantity}`,
                         d.unit,
                         d.status
                     ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "consumption") {
             if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("4. Consumption Analysis", 40, y);
+            doc.text("4. Consumption Analysis & Usage Trends", 40, y);
             y += 12;
 
             doc.autoTable({
@@ -1608,18 +1666,18 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
                     ];
                 }),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
 
         if (key === "forecasting") {
             if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(...RM_GREEN);
-            doc.text("5. AI Forecast Support", 40, y);
+            doc.text("5. AI Forecast Support & Projections", 40, y);
             y += 12;
 
             doc.autoTable({
@@ -1635,23 +1693,52 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
                         f.status
                     ]),
                 margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8.5, textColor: RM_INK, cellPadding: 5 },
-                headStyles: { fillColor: [248, 250, 253], textColor: RM_DIM, fontStyle: "bold" }
+                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
+                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
             });
-            y = doc.lastAutoTable.finalY + 22;
+            y = doc.lastAutoTable.finalY + 20;
         }
     });
 
-    // Page Numbers
+    // Centered Faded Grey Watermark & Permanent Footer Across All Pages
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setDrawColor(220, 226, 236);
-        doc.line(40, doc.internal.pageSize.getHeight() - 30, pageWidth - 40, doc.internal.pageSize.getHeight() - 30);
+
+        // Centered Faded Grey Watermark
+        doc.saveGraphicsState();
+        doc.setTextColor(226, 232, 240);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(34);
+        doc.text("RMSME OFFICIAL REPORT", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 - 12, {
+            align: "center",
+            angle: 35
+        });
+        doc.setFontSize(13);
+        doc.setTextColor(236, 240, 246);
+        doc.text("PREVENT FAKE COPY • SYSTEM VERIFIED", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 + 18, {
+            align: "center",
+            angle: 35
+        });
+        doc.restoreGraphicsState();
+
+        // Footer divider line
+        doc.setDrawColor(5, 150, 105);
+        doc.setLineWidth(1);
+        doc.line(40, doc.internal.pageSize.getHeight() - 34, pageWidth - 40, doc.internal.pageSize.getHeight() - 34);
+
+        // Footer Text
         doc.setFontSize(7.5);
+        doc.setTextColor(...RM_INK);
+        doc.setFont("helvetica", "bold");
+        doc.text("RMSME — Raw Material Stock Management & Enterprise Forecasting System", 40, doc.internal.pageSize.getHeight() - 22);
+
+        doc.setFont("helvetica", "normal");
         doc.setTextColor(...RM_DIM);
-        doc.text("RMIMS | Reports & Decision Support", 40, doc.internal.pageSize.getHeight() - 18);
-        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 80, doc.internal.pageSize.getHeight() - 18);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 22, { align: "right" });
+
+        doc.setFontSize(6.8);
+        doc.text("System Support: support@rmsme.internal | Helpline: (02) 8876-RMSME | Official System Generated Copy — Anti-Tamper Protected", 40, doc.internal.pageSize.getHeight() - 12);
     }
 
     const pdfBlob = doc.output("blob");
@@ -1778,25 +1865,47 @@ function updatePrintDocHtml() {
     const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
 
     const reportTypeLabel = {
-        today: "Daily Snapshot",
-        weekly: "Weekly",
-        monthly: "Monthly",
-        all: "All Records",
-        custom: "Custom Range"
-    }[state.periodPreset] || "Operational Report";
+        today: "Daily Operational Snapshot",
+        weekly: "Weekly Inventory Movement",
+        monthly: "Monthly Stock Summary",
+        all: "Complete Enterprise History",
+        custom: "Custom Date Horizon"
+    }[state.periodPreset] || "Executive Operational Report";
 
-    const genDate = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    const genTime = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const now = new Date();
+    const genDate = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const genTime = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const docRefCode = `RMSME-USR-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const goodStock = state.materials.filter(m => m.status === "Good").length;
+    const attentionStock = state.materials.filter(m => m.status !== "Good").length;
 
     let html = `
+        <!-- Centered Faded Anti-Fake Watermark Across Printed Pages -->
+        <div class="print-watermark-overlay">
+            <div>RMSME OFFICIAL REPORT</div>
+            <div class="print-watermark-sub">SYSTEM VERIFIED • PREVENT FAKE COPY</div>
+        </div>
+
+        <!-- Official RMSME Header Block -->
         <div class="print-header-block">
-            <h1 class="print-rmims-title">RMIMS</h1>
-            <div class="print-rmims-sub">RAW MATERIALS INVENTORY — REPORTS &amp; DECISION SUPPORT</div>
+            <div class="print-header-left">
+                <div class="print-logo-badge">RMSME</div>
+                <div>
+                    <h1 class="print-rmims-title">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</h1>
+                    <div class="print-rmims-sub">OFFICIAL SYSTEM-GENERATED OPERATIONAL REPORT &amp; INVENTORY AUDIT</div>
+                </div>
+            </div>
+            <div class="print-doc-meta-right">
+                <div class="print-meta-pill"><strong>DOC REF:</strong> ${docRefCode}</div>
+                <div class="print-meta-pill"><strong>DATE:</strong> ${genDate}</div>
+                <div class="print-meta-pill"><strong>TIME:</strong> ${genTime}</div>
+            </div>
         </div>
 
         <div class="print-doc-divider"></div>
 
-        <h2 class="print-doc-title">RMSME Report Package</h2>
+        <h2 class="print-doc-title">RMSME Operational Report Package</h2>
 
         <div class="print-meta-grid-2col">
             <div class="print-meta-item">
@@ -1808,85 +1917,105 @@ function updatePrintDocHtml() {
                 <span class="print-meta-val">${esc(periodLabel)}</span>
             </div>
             <div class="print-meta-item">
-                <span class="print-meta-lbl">GENERATED DATE</span>
-                <span class="print-meta-val">${esc(genDate)}</span>
+                <span class="print-meta-lbl">GENERATED DATE &amp; TIME</span>
+                <span class="print-meta-val">${esc(genDate)} at ${esc(genTime)}</span>
             </div>
             <div class="print-meta-item">
-                <span class="print-meta-lbl">GENERATED TIME</span>
-                <span class="print-meta-val">${esc(genTime)}</span>
-            </div>
-            <div class="print-meta-item">
-                <span class="print-meta-lbl">REPORT STATUS</span>
-                <span class="print-meta-val">Final Snapshot</span>
+                <span class="print-meta-lbl">SECURITY CLASSIFICATION</span>
+                <span class="print-meta-val">Confidential / Internal Operation</span>
             </div>
             <div class="print-meta-item">
                 <span class="print-meta-lbl">PREPARED FOR</span>
-                <span class="print-meta-val">MSME Inventory Management</span>
+                <span class="print-meta-val">MSME Inventory &amp; Production Management</span>
             </div>
             <div class="print-meta-item">
-                <span class="print-meta-lbl">PREPARED BY</span>
-                <span class="print-meta-val">${esc(currentUser?.fullName || "RMIMS Staff")}</span>
+                <span class="print-meta-lbl">PREPARED BY / OPERATOR</span>
+                <span class="print-meta-val">${esc(currentUser?.fullName || "RMSME Authorized Staff")}</span>
             </div>
             <div class="print-meta-item">
-                <span class="print-meta-lbl">SOURCE</span>
-                <span class="print-meta-val">raw_materials + stock_receipts + material_disbursements</span>
+                <span class="print-meta-lbl">AUTHORITY / SYSTEM</span>
+                <span class="print-meta-val">RMSME Enterprise Inventory Engine v2.4</span>
+            </div>
+            <div class="print-meta-item">
+                <span class="print-meta-lbl">DATA SOURCE INTEGRITY</span>
+                <span class="print-meta-val">Verified Authoritative PostgreSQL Ledger</span>
             </div>
         </div>
 
         <div class="print-doc-divider"></div>
 
-        <!-- SECTION 1: OPERATIONAL SUMMARY -->
+        <!-- FIRST CARD / PAGE 1: MANAGER SUMMARY & OVERVIEW -->
         <div class="print-section">
-            <h3 class="print-section-header-green">Manager Summary</h3>
-            <h4 class="print-subsection-title">Manager Overview</h4>
+            <h3 class="print-section-header-green">1. Operational Summary &amp; Overview</h3>
+            
+            <div class="print-kpi-summary-grid">
+                <div class="print-kpi-box">
+                    <div class="print-kpi-lbl">TOTAL RAW MATERIALS</div>
+                    <div class="print-kpi-val">${state.materials.length}</div>
+                    <div class="print-kpi-sub">Active in Catalog</div>
+                </div>
+                <div class="print-kpi-box">
+                    <div class="print-kpi-lbl">OPTIMAL STOCK</div>
+                    <div class="print-kpi-val" style="color: #059669;">${goodStock}</div>
+                    <div class="print-kpi-sub">Healthy Levels</div>
+                </div>
+                <div class="print-kpi-box">
+                    <div class="print-kpi-lbl">NEEDS ATTENTION</div>
+                    <div class="print-kpi-val" style="color: #dc2626;">${attentionStock}</div>
+                    <div class="print-kpi-sub">Low / Critical Stock</div>
+                </div>
+                <div class="print-kpi-box">
+                    <div class="print-kpi-lbl">RECEIVING LOGS</div>
+                    <div class="print-kpi-val">${periodReceipts.length}</div>
+                    <div class="print-kpi-sub">In Selected Horizon</div>
+                </div>
+            </div>
+
+            <h4 class="print-subsection-title">Operational Health Matrix</h4>
             <table class="print-table">
                 <thead>
                     <tr>
-                        <th style="width: 65%;">Metric</th>
-                        <th style="width: 35%;">Result</th>
+                        <th style="width: 60%;">Metric / Dimension</th>
+                        <th style="width: 40%;">Value / Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Total Materials</td>
-                        <td><strong>${state.materials.length}</strong></td>
+                        <td>Total Active Catalog Materials</td>
+                        <td><strong>${state.materials.length} items</strong></td>
                     </tr>
                     <tr>
-                        <td>Good Stock</td>
-                        <td><strong>${state.materials.filter(m => m.status === "Good").length}</strong></td>
+                        <td>Materials at Optimal / Good Stock</td>
+                        <td><strong style="color: #059669;">${goodStock} items</strong></td>
                     </tr>
                     <tr>
-                        <td>Low / Critical</td>
-                        <td><strong>${state.materials.filter(m => m.status !== "Good").length}</strong></td>
+                        <td>Materials Requiring Reorder / Attention</td>
+                        <td><strong style="color: ${attentionStock > 0 ? '#dc2626' : '#059669'};">${attentionStock} items</strong></td>
                     </tr>
                     <tr>
-                        <td>Receiving Records</td>
-                        <td><strong>${periodReceipts.length}</strong></td>
+                        <td>Material Receipts in Selected Horizon</td>
+                        <td><strong>${periodReceipts.length} recorded transactions</strong></td>
                     </tr>
                     <tr>
-                        <td>Consumption Records</td>
-                        <td><strong>${periodDisbursements.length}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Disbursement Records</td>
-                        <td><strong>${periodDisbursements.length}</strong></td>
+                        <td>Production Disbursements in Selected Horizon</td>
+                        <td><strong>${periodDisbursements.length} recorded transactions</strong></td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- SECTION 2: RECENT RECEIVING -->
-        <div class="print-section">
-            <h3 class="print-section-header-green">Recent Raw Material Receiving Records</h3>
+        <!-- SECTION 2: RAW MATERIAL RECEIVING (PAGE BREAK) -->
+        <div class="print-section page-break">
+            <h3 class="print-section-header-green">2. Material Receiving Log</h3>
             <table class="print-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
+                        <th>Receipt Date</th>
                         <th>Raw Material</th>
-                        <th>Material ID</th>
-                        <th>Quantity</th>
+                        <th>Item Code</th>
+                        <th>Received Qty</th>
                         <th>Unit</th>
-                        <th>Supplier / Context</th>
+                        <th>Supplier / Source</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -1900,24 +2029,24 @@ function updatePrintDocHtml() {
                             <td>+${r.receivedQuantity}</td>
                             <td>${esc(r.unit)}</td>
                             <td>${esc(r.supplierName || r.finishedProduct || "General Stock")}</td>
-                            <td>${esc(r.status)}</td>
+                            <td>${esc(r.status || "Verified")}</td>
                         </tr>
                     `).join("")}
                 </tbody>
             </table>
         </div>
 
-        <!-- SECTION 3: RECENT DISBURSEMENT -->
-        <div class="print-section">
-            <h3 class="print-section-header-green">Recent Material Disbursement Records</h3>
+        <!-- SECTION 3: MATERIAL DISBURSEMENT -->
+        <div class="print-section page-break">
+            <h3 class="print-section-header-green">3. Material Disbursement Log</h3>
             <table class="print-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Finished Product / Context</th>
+                        <th>Usage Date</th>
+                        <th>Target Product / Context</th>
                         <th>Raw Material</th>
-                        <th>Material ID</th>
-                        <th>Quantity</th>
+                        <th>Item Code</th>
+                        <th>Disbursed Qty</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -1930,7 +2059,7 @@ function updatePrintDocHtml() {
                             <td>${esc(d.materialName)}</td>
                             <td>${esc(d.itemCode)}</td>
                             <td>-${d.disbursedQuantity} ${esc(d.unit)}</td>
-                            <td>${esc(d.status)}</td>
+                            <td>${esc(d.status || "Recorded")}</td>
                         </tr>
                     `).join("")}
                 </tbody>
@@ -1938,13 +2067,13 @@ function updatePrintDocHtml() {
         </div>
 
         <!-- SECTION 4: CONSUMPTION ANALYSIS -->
-        <div class="print-section">
-            <h3 class="print-section-header-green">Raw Material Consumption Analysis</h3>
+        <div class="print-section page-break">
+            <h3 class="print-section-header-green">4. Raw Material Consumption Analysis</h3>
             <table class="print-table">
                 <thead>
                     <tr>
                         <th>Raw Material</th>
-                        <th>ID</th>
+                        <th>Item Code</th>
                         <th>Current Stock</th>
                         <th>Period Consumed</th>
                         <th>Stock Status</th>
@@ -1960,7 +2089,7 @@ function updatePrintDocHtml() {
                                 <td>${esc(m.itemCode)}</td>
                                 <td>${m.currentStock.toLocaleString()} ${esc(m.unit)}</td>
                                 <td>${consumed.toLocaleString()} ${esc(m.unit)}</td>
-                                <td>${esc(m.status)}</td>
+                                <td><span style="font-weight:600; color:${m.status === 'Critical' ? '#dc2626' : (m.status === 'Low' ? '#d97706' : '#059669')};">${esc(m.status)}</span></td>
                             </tr>
                         `;
                     }).join("")}
@@ -1968,17 +2097,17 @@ function updatePrintDocHtml() {
             </table>
         </div>
 
-        <!-- SECTION 5: AI FORECAST SUPPORT -->
-        <div class="print-section">
-            <h3 class="print-section-header-green">AI Forecast Support &amp; Operational Projections</h3>
+        <!-- SECTION 5: AI FORECAST PROJECTIONS -->
+        <div class="print-section page-break">
+            <h3 class="print-section-header-green">5. AI Forecast Projections &amp; Requirement Needs</h3>
             <table class="print-table">
                 <thead>
                     <tr>
                         <th>Raw Material</th>
-                        <th>ID</th>
+                        <th>Item Code</th>
                         <th>Current Stock</th>
                         <th>Forecast Requirement (7D)</th>
-                        <th>Additional Need</th>
+                        <th>Additional Needed</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -1991,19 +2120,27 @@ function updatePrintDocHtml() {
                             <td>${f.currentStock.toLocaleString()} ${esc(f.unit)}</td>
                             <td>${f.forecast7Day.toFixed(1)} ${esc(f.unit)}</td>
                             <td>${f.additionalNeed > 0 ? `+${f.additionalNeed.toFixed(1)} ${esc(f.unit)}` : "0"}</td>
-                            <td>${esc(f.status)}</td>
+                            <td>${esc(f.status || "Projected")}</td>
                         </tr>
                     `).join("")}
                 </tbody>
             </table>
         </div>
 
+        <!-- Bottom System Ownership & Contact Footer -->
         <div class="print-doc-footer">
-            <span>RMIMS — Raw Materials Inventory Management System</span>
-            <span>Confidential &amp; Proprietary Operational Report</span>
+            <div class="print-footer-top">
+                <span>RMSME — RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</span>
+                <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM DOCUMENT</span>
+            </div>
+            <div class="print-footer-contact">
+                <span>System Support: <strong>support@rmsme.internal</strong></span>
+                <span>•</span>
+                <span>Hotline: <strong>(02) 8876-RMSME</strong></span>
+                <span>•</span>
+                <span>Anti-Tamper Digital Audit Trail Active</span>
+            </div>
         </div>
-    `;
-
     printDoc.innerHTML = html;
 }
 

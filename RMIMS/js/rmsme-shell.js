@@ -1137,4 +1137,266 @@
   window.RMSME = window.RMSME || {};
   window.RMSME.pushNotification = window.RMIMS_NOTIFICATIONS.push;
 
+  // ==========================================================
+  // RMIMS MODERN CUSTOM SELECT / DROPDOWN ENGINE
+  // ==========================================================
+  function getOptionDecorator(val, text) {
+    const v = (val || '').toLowerCase().trim();
+    const t = (text || '').toLowerCase().trim();
+
+    // Activity filter
+    if (v === 'all' && (t.includes('activity') || t.includes('status: all') || t === 'all')) {
+      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>`;
+    }
+    if (v === 'receive' || t.includes('receive')) {
+      return `<span class="rm-opt-icon-wrap rm-badge-receive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg></span>`;
+    }
+    if (v === 'disbursement' || v === 'disburse' || t.includes('disburse')) {
+      return `<span class="rm-opt-icon-wrap rm-badge-disburse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V8m0 0l-4 4m4-4l4 4M4 4h16"/></svg></span>`;
+    }
+
+    // Stock status dots
+    if (v === 'in_stock' || (t.includes('in stock') && !t.includes('out') && !t.includes('low'))) {
+      return `<span class="rm-status-dot rm-dot-green"></span>`;
+    }
+    if (v === 'low_stock' || t.includes('low stock')) {
+      return `<span class="rm-status-dot rm-dot-amber"></span>`;
+    }
+    if (v === 'out_of_stock' || t.includes('out of stock')) {
+      return `<span class="rm-status-dot rm-dot-red"></span>`;
+    }
+
+    // Sort icons
+    if (v === 'latest' || t.includes('latest')) {
+      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>`;
+    }
+    if (v === 'oldest' || t.includes('oldest')) {
+      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>`;
+    }
+    if (v === 'az' || t.includes('a–z') || t.includes('a-z') || t.includes('a to z')) {
+      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h4l-4 8h4M7 4l4 4-4 4M14 4h7M14 9h5M14 14h3M14 19h1"/></svg></span>`;
+    }
+    if (v === 'za' || t.includes('z–a') || t.includes('z-a') || t.includes('z to a')) {
+      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16H3l4-8H3M7 20l4-4-4-4M14 4h1M14 9h3M14 14h5M14 19h7"/></svg></span>`;
+    }
+
+    return '';
+  }
+
+  function enhanceCustomSelect(select) {
+    if (!select || select.dataset.customEnhanced === 'true') return;
+    if (select.classList.contains('inv-select-sm') && !select.classList.contains('enhance-sm')) {
+      return;
+    }
+
+    select.dataset.customEnhanced = 'true';
+    select.classList.add('rmims-native-select-hidden');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rm-custom-select';
+    if (select.id) wrapper.dataset.selectId = select.id;
+    if (select.className) {
+      const customClasses = select.className
+        .split(' ')
+        .filter(c => c !== 'inv-select' && c !== 'rmims-native-select-hidden')
+        .join(' ');
+      if (customClasses) wrapper.className += ' ' + customClasses;
+    }
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'rm-select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (select.title) trigger.title = select.title;
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'rm-select-value';
+
+    const chevronSvg = `
+      <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>`;
+
+    trigger.appendChild(valueSpan);
+    trigger.insertAdjacentHTML('beforeend', chevronSvg);
+
+    const menu = document.createElement('div');
+    menu.className = 'rm-select-menu';
+    menu.setAttribute('role', 'listbox');
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+
+    select.parentNode.insertBefore(wrapper, select.nextSibling);
+
+    let isUpdating = false;
+
+    function renderOptions() {
+      menu.innerHTML = '';
+      const options = Array.from(select.options);
+      let selectedOption = options.find(o => o.value === select.value) || options[0];
+
+      options.forEach(opt => {
+        const isSelected = opt === selectedOption;
+        const optEl = document.createElement('div');
+        optEl.className = `rm-select-option ${isSelected ? 'selected' : ''}`;
+        optEl.setAttribute('role', 'option');
+        optEl.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        optEl.dataset.value = opt.value;
+
+        const decorator = getOptionDecorator(opt.value, opt.textContent);
+        optEl.innerHTML = `
+          <div class="rm-opt-content">
+            ${decorator}
+            <span class="rm-opt-label">${opt.textContent}</span>
+          </div>
+          <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        `;
+
+        optEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (select.value !== opt.value) {
+            select.value = opt.value;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          syncUI();
+          closeMenu();
+        });
+
+        menu.appendChild(optEl);
+      });
+
+      syncUI();
+    }
+
+    function syncUI() {
+      if (isUpdating) return;
+      isUpdating = true;
+      try {
+        const options = Array.from(select.options);
+        const selectedOption = options.find(o => o.value === select.value) || options[0];
+        if (selectedOption) {
+          const dec = getOptionDecorator(selectedOption.value, selectedOption.textContent);
+          valueSpan.innerHTML = `${dec}<span>${selectedOption.textContent}</span>`;
+
+          const allOptEls = menu.querySelectorAll('.rm-select-option');
+          allOptEls.forEach(el => {
+            const isMatch = el.dataset.value === selectedOption.value;
+            el.classList.toggle('selected', isMatch);
+            el.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+          });
+        }
+      } finally {
+        isUpdating = false;
+      }
+    }
+
+    function openMenu() {
+      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
+        if (el !== wrapper) {
+          el.classList.remove('open');
+          el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      wrapper.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth - 12) {
+        menu.classList.add('align-right');
+      } else {
+        menu.classList.remove('align-right');
+      }
+    }
+
+    function closeMenu() {
+      wrapper.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (wrapper.classList.contains('open')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    try {
+      const proto = HTMLSelectElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc && desc.set) {
+        Object.defineProperty(select, 'value', {
+          get() {
+            return desc.get.call(this);
+          },
+          set(v) {
+            desc.set.call(this, v);
+            syncUI();
+          },
+          configurable: true
+        });
+      }
+    } catch (err) {}
+
+    select.addEventListener('change', syncUI);
+    select.addEventListener('input', syncUI);
+
+    const observer = new MutationObserver(() => {
+      renderOptions();
+    });
+    observer.observe(select, { childList: true, subtree: true, attributes: true });
+
+    renderOptions();
+  }
+
+  function initAllCustomSelects() {
+    const targetSelects = document.querySelectorAll(
+      'select.inv-select, #invActivityStatusFilter, #invStatusFilter, #invSortFilter, #fpcSortSelect, #historyActivityFilter, #historySortSelect, #productSortSelect, #materialSortSelect, select[data-custom-select="true"]'
+    );
+    targetSelects.forEach(sel => {
+      enhanceCustomSelect(sel);
+    });
+  }
+
+  // Global listeners for closing dropdowns
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.rm-custom-select')) {
+      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
+
+  // Auto initialize on load and DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAllCustomSelects);
+  } else {
+    initAllCustomSelects();
+  }
+  window.addEventListener('load', initAllCustomSelects);
+  setTimeout(initAllCustomSelects, 300);
+
+  window.RMIMS_CUSTOM_SELECT = {
+    init: initAllCustomSelects,
+    enhance: enhanceCustomSelect
+  };
+
 })();
+

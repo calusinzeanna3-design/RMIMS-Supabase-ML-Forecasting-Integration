@@ -11,6 +11,10 @@
 <link rel="stylesheet" href="../css/material-activity.css">
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <link rel="stylesheet" href="../css/rmims-unified.css">
 </head>
 <body class="admin-page">
@@ -183,9 +187,12 @@
                 <div class="inv-filter-group">
                     <div class="inv-date-range-wrap">
                         <label for="historyDateFrom" class="filter-label">From:</label>
-                        <input type="date" id="historyDateFrom" class="inv-input-date">
+                        <input type="text" id="historyDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                         <label for="historyDateTo" class="filter-label">To:</label>
-                        <input type="date" id="historyDateTo" class="inv-input-date">
+                        <input type="text" id="historyDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                        <button type="button" class="date-clear-btn" id="clearHistoryDatesBtn" title="Clear Date Range" style="display: none;">
+                            ✕ Clear
+                        </button>
                     </div>
 
                     <select id="historyActivityFilter" class="inv-select">
@@ -298,6 +305,7 @@
                             <input type="number" id="maReceiveQuantityInput" min="0.01" step="any" placeholder="0" required class="ma-stepper-input">
                             <button type="button" class="ma-stepper-btn" id="maReceivePlusBtn" title="Increase quantity">+</button>
                         </div>
+                        <div id="maReceiveStockPreview" style="font-size: 0.76rem; color: #059669; margin-top: 4px; font-weight: 600;"></div>
                         <span class="field-error" id="maReceiveQuantityError"></span>
                     </div>
 
@@ -319,7 +327,7 @@
 
                     <div class="input-group span-2">
                         <label for="maReceiveProductContextInput">Finished Product / Context <span class="optional-tag">Optional</span></label>
-                        <input type="text" id="maReceiveProductContextInput" placeholder="e.g. Pandesal, Unassigned / General Stock">
+                        <select id="maReceiveProductContextInput"></select>
                     </div>
                 </div>
             </form>
@@ -380,6 +388,7 @@
                             <input type="number" id="maDisburseQuantityInput" min="0.01" step="any" placeholder="0" required class="ma-stepper-input">
                             <button type="button" class="ma-stepper-btn" id="maDisbursePlusBtn" title="Increase quantity">+</button>
                         </div>
+                        <div id="maDisburseStockPreview" style="font-size: 0.76rem; color: #ea580c; margin-top: 4px; font-weight: 600;"></div>
                         <span class="field-error" id="maDisburseQuantityError"></span>
                     </div>
 
@@ -390,7 +399,7 @@
 
                     <div class="input-group span-2">
                         <label for="maDisburseProductSelect">Finished Product / Context <span class="required-star">*</span></label>
-                        <input type="text" id="maDisburseProductSelect" placeholder="e.g. Pandesal, Banana Chips, General Usage" required>
+                        <select id="maDisburseProductSelect" required></select>
                         <span class="field-error" id="maDisburseProductError"></span>
                     </div>
 
@@ -413,16 +422,16 @@
 
 <!-- PRODUCT BREAKDOWN MODAL -->
 <div class="modal-overlay" id="productBreakdownModalOverlay">
-    <div class="modal-sheet" role="dialog" aria-modal="true" style="max-width: 660px;">
+    <div class="modal-sheet" role="dialog" aria-modal="true" style="max-width: 860px; width: 95%;">
 
         <div class="modal-sticky-header">
             <div class="modal-header-info">
-                <span class="modal-icon icon-blue">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+                <span class="modal-icon icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
                 </span>
                 <div>
                     <h4 id="prodBreakdownTitle">Finished Product Breakdown</h4>
-                    <span class="modal-time" id="prodBreakdownSubtitle">Material requirements &amp; actual movement</span>
+                    <span class="modal-time" id="prodBreakdownSubtitle">Associated raw materials and actual movement</span>
                 </div>
             </div>
             <button class="modal-close" id="productBreakdownModalClose" aria-label="Close">
@@ -436,11 +445,11 @@
                     <thead>
                         <tr>
                             <th>Raw Material</th>
+                            <th>Raw Material ID</th>
                             <th>Total Received</th>
                             <th>Total Disbursed</th>
                             <th>Current Stock</th>
                             <th>Unit</th>
-                            <th style="text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="prodBreakdownTableBody"></tbody>
@@ -457,16 +466,16 @@
 
 <!-- MATERIAL BREAKDOWN MODAL -->
 <div class="modal-overlay" id="materialBreakdownModalOverlay">
-    <div class="modal-sheet" role="dialog" aria-modal="true" style="max-width: 660px;">
+    <div class="modal-sheet" role="dialog" aria-modal="true" style="max-width: 860px; width: 95%;">
 
         <div class="modal-sticky-header">
             <div class="modal-header-info">
-                <span class="modal-icon icon-blue">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <span class="modal-icon icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
                 </span>
                 <div>
                     <h4 id="matBreakdownTitle">Raw Material Breakdown</h4>
-                    <span class="modal-time" id="matBreakdownSubtitle">Usage by finished product &amp; live metrics</span>
+                    <span class="modal-time" id="matBreakdownSubtitle">Usage breakdown across finished products</span>
                 </div>
             </div>
             <button class="modal-close" id="materialBreakdownModalClose" aria-label="Close">
@@ -475,30 +484,36 @@
         </div>
 
         <div class="modal-body">
-            <div class="ma-breakdown-hero">
-                <div class="ma-breakdown-meta">
-                    <strong id="matBreakdownCurrentStock">0 kg</strong>
-                    <span>Current Stock</span>
+            <div class="ma-breakdown-kpi-grid">
+                <div class="ma-kpi-card">
+                    <span class="ma-kpi-label">Current Stock</span>
+                    <strong class="ma-kpi-value text-emerald" id="matBreakdownCurrentStock">0 kg</strong>
                 </div>
-                <div class="ma-breakdown-meta">
-                    <strong id="matBreakdownMinStock">0 kg</strong>
-                    <span>Minimum Stock</span>
+                <div class="ma-kpi-card">
+                    <span class="ma-kpi-label">Minimum Stock</span>
+                    <strong class="ma-kpi-value" id="matBreakdownMinStock">0 kg</strong>
                 </div>
-                <div class="ma-breakdown-meta">
-                    <strong id="matBreakdownStatus">In Stock</strong>
-                    <span>Stock Status</span>
+                <div class="ma-kpi-card">
+                    <span class="ma-kpi-label">Stock Status</span>
+                    <div class="ma-kpi-badge-wrap">
+                        <span id="matBreakdownStatus" class="status-badge status-badge-instock">
+                            <span class="badge-dot dot-instock"></span>In Stock
+                        </span>
+                    </div>
                 </div>
-                <div class="ma-breakdown-meta">
-                    <strong id="matBreakdownTotalReceived">0 kg</strong>
-                    <span>Total Received</span>
+                <div class="ma-kpi-card">
+                    <span class="ma-kpi-label">Total Received</span>
+                    <strong class="ma-kpi-value text-green" id="matBreakdownTotalReceived">0 kg</strong>
                 </div>
-                <div class="ma-breakdown-meta">
-                    <strong id="matBreakdownTotalDisbursed">0 kg</strong>
-                    <span>Total Disbursed</span>
+                <div class="ma-kpi-card">
+                    <span class="ma-kpi-label">Total Disbursed</span>
+                    <strong class="ma-kpi-value text-orange" id="matBreakdownTotalDisbursed">0 kg</strong>
                 </div>
             </div>
 
-            <h5 style="font-size: 0.85rem; font-weight: 700; margin: 18px 0 8px; color: var(--rm-ink);">Disbursement by Finished Product</h5>
+            <div class="ma-breakdown-section-header">
+                <h5>Disbursement by Finished Product</h5>
+            </div>
             <div class="table-scroll inv-table-scroll">
                 <table class="inv-main-table">
                     <thead>

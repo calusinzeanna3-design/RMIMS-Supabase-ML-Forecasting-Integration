@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
     <link href="../css/analytics.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../js/chart.js"></script>
 </head>
@@ -39,15 +41,21 @@
                         <path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path>
                         <path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
                     </svg>
-                    <span>—</span>
+                    <span class="date-text">--/--/----</span>
                 </div>
-                <button class="profile-btn" id="profileBtn">
-                    <span class="avatar">U</span>
-                    <span class="profile-text">Staff Member</span>
-                    <svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-                    </svg>
-                </button>
+                <div class="profile-menu">
+                    <button aria-expanded="false" aria-haspopup="true" class="profile-btn" id="profileBtn">
+                        <span class="profile-avatar">
+                            <img alt="User Avatar" class="profile-img" src="../assets/RMIMS%20LOGO.png"/>
+                        </span>
+                        <span class="profile-text">User</span>
+                    </button>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a class="dropdown-item" href="settings.html">Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item text-danger" href="#" id="logoutBtn">Logout</a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -57,6 +65,7 @@
             <!-- PAGE HEADER -->
             <div class="ca-page-header">
                 <h1 class="ca-page-title">Consumption Analytics</h1>
+                <p class="ca-page-subtitle">Authoritative live telemetry on raw material inventory, consumption patterns, and stock health</p>
             </div>
 
             <!-- TOP SUMMARY KPI CARDS (4-GRID) -->
@@ -75,16 +84,14 @@
                     </div>
                 </div>
 
-                <!-- Card 2: Total Consumed (Unit-Safe) -->
+                <!-- Card 2: Total Consumed (Overall) -->
                 <div class="ca-kpi-card">
                     <div class="ca-kpi-content">
                         <span class="ca-kpi-label">Total Consumed</span>
                         <div class="ca-kpi-value-wrap" id="kpiTotalConsumedWrap">
-                            <div class="ca-kpi-unit-list" id="kpiTotalConsumedList">
-                                <span class="ca-kpi-value">0</span>
-                            </div>
+                            <span class="ca-kpi-value" id="kpiTotalConsumed">0</span>
                         </div>
-                        <span class="ca-kpi-subtext" id="kpiTotalConsumedSub">Selected period usage</span>
+                        <span class="ca-kpi-subtext" id="kpiTotalConsumedSub">Overall raw materials consumed</span>
                     </div>
                     <div class="ca-kpi-icon ca-icon-green">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -120,7 +127,7 @@
                 </div>
             </section>
 
-            <!-- GLOBAL DATE CONTROLS BAR -->
+            <!-- DATE PRESET & RANGE FILTER BAR -->
             <section class="ca-date-bar" aria-label="Date and Period Filters">
                 <div class="ca-date-bar-left">
                     <span class="ca-date-bar-label">
@@ -128,8 +135,9 @@
                         Date Range:
                     </span>
                     <select class="ca-select" id="datePresetSelect">
+                        <option value="all" selected>All Time</option>
                         <option value="today">Today</option>
-                        <option value="this_week" selected>This Week</option>
+                        <option value="this_week">This Week</option>
                         <option value="this_month">This Month</option>
                         <option value="last_month">Last Month</option>
                         <option value="last_7_days">Last 7 Days</option>
@@ -137,16 +145,19 @@
                         <option value="custom">Custom Date</option>
                     </select>
 
-                    <div class="ca-date-pickers" id="customDatePickerWrap">
-                        <input type="date" class="ca-input" id="dateFromInput" aria-label="From date"/>
-                        <span class="ca-date-sep">—</span>
-                        <input type="date" class="ca-input" id="dateToInput" aria-label="To date"/>
-                        <button type="button" class="ca-btn-clear-date" id="clearDateBtn" title="Reset date filters">Clear</button>
+                    <div class="inv-date-range-wrap">
+                        <label for="dateFromInput" class="filter-label">From:</label>
+                        <input type="text" id="dateFromInput" class="inv-input-date" placeholder="dd/mm/yyyy">
+                        <label for="dateToInput" class="filter-label">To:</label>
+                        <input type="text" id="dateToInput" class="inv-input-date" placeholder="dd/mm/yyyy">
+                        <button type="button" class="date-clear-btn" id="clearDateBtn" title="Reset date filters" style="display: none;">
+                            ✕ Clear
+                        </button>
                     </div>
                 </div>
 
                 <div class="ca-date-bar-right">
-                    <span class="ca-date-status-tag" id="dateRangeStatusTag">This Week</span>
+                    <span class="ca-date-status-tag" id="dateRangeStatusTag">All Records</span>
                 </div>
             </section>
 

@@ -18,7 +18,7 @@ const state = {
     receipts: [],           // Normalized from public.stock_receipts
     
     // Filters & Range
-    datePreset: "this_week",
+    datePreset: "all",
     dateFrom: "",
     dateTo: "",
     
@@ -216,6 +216,17 @@ function isGenericOperationalName(name) {
     if (!name) return true;
     const n = String(name).trim().toLowerCase();
     return (
+        n === "all" ||
+        n === "all activities" ||
+        n === "all products" ||
+        n === "all materials" ||
+        n === "none" ||
+        n === "n/a" ||
+        n === "na" ||
+        n === "null" ||
+        n === "undefined" ||
+        n === "select" ||
+        n === "default" ||
         n === "operational use" ||
         n === "operational" ||
         n === "general usage" ||
@@ -225,8 +236,18 @@ function isGenericOperationalName(name) {
         n === "operational batch" ||
         n === "general production" ||
         n === "production" ||
+        n === "production usage" ||
         n === "sample usage" ||
-        n === "unassigned / general stock"
+        n === "unassigned / general stock" ||
+        n === "unassigned" ||
+        n === "imported dsb usage" ||
+        n === "imported dsb" ||
+        n === "imported disbursement" ||
+        n === "imported stock receipt" ||
+        n === "imported" ||
+        n === "imported usage" ||
+        n.includes("imported dsb") ||
+        n.includes("imported disbursement")
     );
 }
 
@@ -235,16 +256,25 @@ function isGenericOperationalName(name) {
    ========================================================== */
 
 function initDatePresets() {
-    applyPreset("this_week");
+    applyPreset("all");
 }
 
 function applyPreset(preset) {
     state.datePreset = preset;
     const now = new Date();
-    let from = new Date();
-    let to = new Date();
+    let from = null;
+    let to = null;
 
-    if (preset === "today") {
+    if (preset === "all") {
+        state.dateFrom = "";
+        state.dateTo = "";
+        const fromInput = document.getElementById("dateFromInput");
+        const toInput = document.getElementById("dateToInput");
+        if (fromInput && fromInput._flatpickr) fromInput._flatpickr.clear();
+        else if (fromInput) fromInput.value = "";
+        if (toInput && toInput._flatpickr) toInput._flatpickr.clear();
+        else if (toInput) toInput.value = "";
+    } else if (preset === "today") {
         from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } else if (preset === "this_week") {
@@ -267,17 +297,35 @@ function applyPreset(preset) {
         to = new Date();
     }
 
-    if (preset !== "custom") {
+    if (preset !== "custom" && preset !== "all" && from && to) {
         state.dateFrom = formatDateISO(from);
         state.dateTo = formatDateISO(to);
 
         const fromInput = document.getElementById("dateFromInput");
         const toInput = document.getElementById("dateToInput");
-        if (fromInput) fromInput.value = state.dateFrom;
-        if (toInput) toInput.value = state.dateTo;
+        if (fromInput) {
+            if (fromInput._flatpickr) {
+                fromInput._flatpickr.setDate(state.dateFrom, false);
+            } else {
+                fromInput.value = state.dateFrom;
+            }
+        }
+        if (toInput) {
+            if (toInput._flatpickr) {
+                toInput._flatpickr.setDate(state.dateTo, false);
+            } else {
+                toInput.value = state.dateTo;
+            }
+        }
+    }
+
+    const presetSel = document.getElementById("datePresetSelect");
+    if (presetSel && presetSel.value !== preset) {
+        presetSel.value = preset;
     }
 
     updateDateStatusTag();
+    updateClearBtnVisibility();
 }
 
 function formatDateISO(d) {
@@ -329,30 +377,17 @@ function renderTopKPIs() {
     const totalMatEl = document.getElementById("kpiTotalMaterials");
     if (totalMatEl) totalMatEl.textContent = state.materials.length.toLocaleString();
 
-    // 2. Total Consumed (Unit-Safe Aggregation)
+    // 2. Total Consumed (Overall Raw Materials Consumed)
     const activeDisbs = state.disbursements.filter(d => isDateInRange(d.usageDate));
-    const consumedByUnit = new Map();
+    const totalConsumed = activeDisbs.reduce((sum, d) => sum + (Number(d.consumedQuantity) || 0), 0);
+    const formattedConsumed = totalConsumed.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-    activeDisbs.forEach(d => {
-        const u = d.unit || "kg";
-        consumedByUnit.set(u, (consumedByUnit.get(u) || 0) + d.consumedQuantity);
-    });
-
+    const totalConsumedEl = document.getElementById("kpiTotalConsumed");
     const consumedListEl = document.getElementById("kpiTotalConsumedList");
-    if (consumedListEl) {
-        if (consumedByUnit.size === 0) {
-            consumedListEl.innerHTML = `<span class="ca-kpi-value">0</span> <span style="font-size:0.8rem; color:var(--ca-text-dim);">units</span>`;
-        } else {
-            const entries = Array.from(consumedByUnit.entries()).sort((a, b) => b[1] - a[1]);
-            consumedListEl.innerHTML = entries.map(([unit, qty]) => {
-                return `
-                    <div class="ca-kpi-unit-badge">
-                        <span>${qty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-                        <span style="font-size:0.75rem; color:var(--ca-text-muted);">${escapeHtml(unit)}</span>
-                    </div>
-                `;
-            }).join("");
-        }
+    if (totalConsumedEl) {
+        totalConsumedEl.textContent = formattedConsumed;
+    } else if (consumedListEl) {
+        consumedListEl.innerHTML = `<span class="ca-kpi-value">${formattedConsumed}</span>`;
     }
 
     // 3. Materials With Usage
@@ -481,15 +516,54 @@ function renderOverviewTrendChart() {
 
 function generateTimelineIntervals(period, fromStr, toStr) {
     const intervals = [];
-    const dStart = fromStr ? new Date(fromStr) : new Date(Date.now() - 28 * 86400000);
-    const dEnd = toStr ? new Date(toStr) : new Date();
+    
+    // Determine start and end dates based on active range or catalog history
+    let dStart, dEnd;
+    if (fromStr && toStr) {
+        dStart = new Date(fromStr + "T00:00:00");
+        dEnd = new Date(toStr + "T23:59:59");
+    } else if (fromStr) {
+        dStart = new Date(fromStr + "T00:00:00");
+        dEnd = new Date();
+    } else if (toStr) {
+        dStart = new Date(Date.now() - 29 * 86400000);
+        dEnd = new Date(toStr + "T23:59:59");
+    } else {
+        // "All Time": find earliest disbursement date
+        if (state.disbursements && state.disbursements.length > 0) {
+            const validDates = state.disbursements
+                .map(d => d.usageDate)
+                .filter(Boolean)
+                .sort();
+            if (validDates.length > 0) {
+                dStart = new Date(validDates[0] + "T00:00:00");
+            } else {
+                dStart = new Date(Date.now() - 29 * 86400000);
+            }
+        } else {
+            dStart = new Date(Date.now() - 29 * 86400000);
+        }
+        dEnd = new Date();
+    }
 
+    if (isNaN(dStart.getTime())) dStart = new Date(Date.now() - 29 * 86400000);
+    if (isNaN(dEnd.getTime())) dEnd = new Date();
+
+    if (dStart > dEnd) {
+        const temp = dStart;
+        dStart = dEnd;
+        dEnd = temp;
+    }
+
+    const diffDays = Math.max(1, Math.round((dEnd - dStart) / 86400000));
+
+    // Dynamic Interval Mapping
     if (period === "monthly") {
         let curr = new Date(dStart.getFullYear(), dStart.getMonth(), 1);
         while (curr <= dEnd) {
             const startStr = formatDateISO(curr);
             const nextMonth = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
-            const endStr = formatDateISO(nextMonth);
+            const endStr = formatDateISO(nextMonth > dEnd ? dEnd : nextMonth);
             intervals.push({
                 label: curr.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
                 start: startStr,
@@ -497,25 +571,93 @@ function generateTimelineIntervals(period, fromStr, toStr) {
             });
             curr.setMonth(curr.getMonth() + 1);
         }
-    } else {
-        // Weekly / Date-to-Date
+    } else if (diffDays <= 1) {
+        // Single Day ("Today")
+        const dateISO = formatDateISO(dStart);
+        const dayLabel = dStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        intervals.push({
+            label: `${dayLabel} (All Day)`,
+            start: dateISO,
+            end: dateISO
+        });
+    } else if (diffDays <= 7) {
+        // Up to 7 days ("This Week", "Last 7 Days", etc.) -> Daily intervals
         let curr = new Date(dStart);
-        let stepDays = period === "weekly" ? 7 : Math.max(1, Math.round((dEnd - dStart) / (7 * 86400000)));
-
         while (curr <= dEnd) {
-            const startStr = formatDateISO(curr);
-            const stepEnd = new Date(curr.getTime() + (stepDays - 1) * 86400000);
-            const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+            const dateISO = formatDateISO(curr);
             intervals.push({
-                label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                start: startStr,
-                end: endStr
+                label: curr.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+                start: dateISO,
+                end: dateISO
             });
-            curr.setDate(curr.getDate() + stepDays);
+            curr.setDate(curr.getDate() + 1);
+        }
+    } else if (diffDays <= 31) {
+        // Up to 1 month ("This Month", "Last Month", "Last 30 Days")
+        if (period === "date_to_date") {
+            let curr = new Date(dStart);
+            const step = Math.max(1, Math.round(diffDays / 6));
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const stepEnd = new Date(curr.getTime() + (step - 1) * 86400000);
+                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+                intervals.push({
+                    label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setDate(curr.getDate() + step);
+            }
+        } else {
+            // Weekly intervals across the month
+            let curr = new Date(dStart);
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const stepEnd = new Date(curr.getTime() + 6 * 86400000);
+                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+                const startLabel = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                const endLabel = (stepEnd > dEnd ? dEnd : stepEnd).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                intervals.push({
+                    label: `${startLabel} – ${endLabel}`,
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setDate(curr.getDate() + 7);
+            }
+        }
+    } else {
+        // Long ranges (> 31 days)
+        if (period === "weekly") {
+            let curr = new Date(dStart);
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const stepEnd = new Date(curr.getTime() + 6 * 86400000);
+                const endStr = formatDateISO(stepEnd > dEnd ? dEnd : stepEnd);
+                intervals.push({
+                    label: curr.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setDate(curr.getDate() + 7);
+            }
+        } else {
+            // Default to monthly intervals
+            let curr = new Date(dStart.getFullYear(), dStart.getMonth(), 1);
+            while (curr <= dEnd) {
+                const startStr = formatDateISO(curr);
+                const nextMonth = new Date(curr.getFullYear(), curr.getMonth() + 1, 0);
+                const endStr = formatDateISO(nextMonth > dEnd ? dEnd : nextMonth);
+                intervals.push({
+                    label: curr.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+                    start: startStr,
+                    end: endStr
+                });
+                curr.setMonth(curr.getMonth() + 1);
+            }
         }
     }
 
-    return intervals.length > 0 ? intervals : [{ label: "Current Period", start: fromStr, end: toStr }];
+    return intervals.length > 0 ? intervals : [{ label: "Selected Range", start: fromStr || formatDateISO(dStart), end: toStr || formatDateISO(dEnd) }];
 }
 
 /* ==========================================================
@@ -936,9 +1078,32 @@ function renderTablePagination(container, currentPage, totalPages, onPageChange)
         <button type="button" class="ca-page-btn" id="prevPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹</button>
     `;
 
-    for (let p = 1; p <= totalPages; p++) {
-        html += `<button type="button" class="ca-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+    // Windowed Pagination Algorithm
+    const maxVisible = 7;
+    let pages = [];
+    if (totalPages <= maxVisible) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        pages.push(1);
+        if (currentPage > 4) pages.push("...");
+
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(totalPages - 1, currentPage + 2);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+
+        if (currentPage < totalPages - 3) pages.push("...");
+        pages.push(totalPages);
     }
+
+    pages.forEach(p => {
+        if (p === "...") {
+            html += `<span class="page-ellipsis">…</span>`;
+        } else {
+            html += `<button type="button" class="ca-page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        }
+    });
 
     html += `
         <button type="button" class="ca-page-btn" id="nextPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>›</button>
@@ -1148,48 +1313,115 @@ function populateUnitFilter() {
     }).join("");
 }
 
+function updateClearBtnVisibility() {
+    const clearBtn = document.getElementById("clearDateBtn");
+    if (clearBtn) {
+        clearBtn.style.display = (state.datePreset === "custom" || state.dateFrom || state.dateTo) ? "inline-flex" : "none";
+    }
+}
+
+function initAnalyticsFlatpickr() {
+    const filterDateInputIds = ["dateFromInput", "dateToInput"];
+    filterDateInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && typeof flatpickr !== "undefined" && !el._flatpickr) {
+            const fp = flatpickr(el, {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                altInputClass: "inv-input-date",
+                disableMobile: true,
+                allowInput: true,
+                onChange: (selectedDates, dateStr) => {
+                    el.value = dateStr;
+                    if (id === "dateFromInput") state.dateFrom = dateStr;
+                    if (id === "dateToInput") state.dateTo = dateStr;
+                    const presetSel = document.getElementById("datePresetSelect");
+                    if (presetSel) presetSel.value = "custom";
+                    state.datePreset = "custom";
+                    updateDateStatusTag();
+                    updateClearBtnVisibility();
+                    renderAll();
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    if (instance && instance.altInput) {
+                        const raw = instance.altInput.value.trim();
+                        if (!raw) {
+                            instance.clear();
+                            if (id === "dateFromInput") state.dateFrom = "";
+                            if (id === "dateToInput") state.dateTo = "";
+                            const presetSel = document.getElementById("datePresetSelect");
+                            if (presetSel) presetSel.value = "custom";
+                            state.datePreset = "custom";
+                            updateDateStatusTag();
+                            updateClearBtnVisibility();
+                            renderAll();
+                        } else {
+                            const parsed = instance.parseDate(raw, "d/m/Y") || instance.parseDate(raw, "Y-m-d");
+                            if (parsed) {
+                                instance.setDate(parsed, true);
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (fp && fp.altInput) {
+                fp.altInput.setAttribute("placeholder", "dd/mm/yyyy");
+                fp.altInput.addEventListener("blur", () => {
+                    const raw = fp.altInput.value.trim();
+                    if (!raw) {
+                        fp.clear();
+                        if (id === "dateFromInput") state.dateFrom = "";
+                        if (id === "dateToInput") state.dateTo = "";
+                        const presetSel = document.getElementById("datePresetSelect");
+                        if (presetSel) presetSel.value = "custom";
+                        state.datePreset = "custom";
+                        updateDateStatusTag();
+                        updateClearBtnVisibility();
+                        renderAll();
+                    } else {
+                        const parsed = fp.parseDate(raw, "d/m/Y") || fp.parseDate(raw, "Y-m-d");
+                        if (parsed) {
+                            fp.setDate(parsed, true);
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    const fromInput = document.getElementById("dateFromInput");
+    const toInput = document.getElementById("dateToInput");
+    if (fromInput && fromInput._flatpickr && state.dateFrom) {
+        fromInput._flatpickr.setDate(state.dateFrom, false);
+    }
+    if (toInput && toInput._flatpickr && state.dateTo) {
+        toInput._flatpickr.setDate(state.dateTo, false);
+    }
+    updateClearBtnVisibility();
+}
+
 function initEventListeners() {
-    // 1. Date Range Preset Select
+    // 1. Flatpickr Calendars
+    initAnalyticsFlatpickr();
+
+    // 2. Date Range Preset Select
     const presetSelect = document.getElementById("datePresetSelect");
-    const customWrap = document.getElementById("customDatePickerWrap");
-    const dateFromInput = document.getElementById("dateFromInput");
-    const dateToInput = document.getElementById("dateToInput");
     const clearDateBtn = document.getElementById("clearDateBtn");
 
     if (presetSelect) {
         presetSelect.addEventListener("change", () => {
             const val = presetSelect.value;
-            if (val === "custom") {
-                if (customWrap) customWrap.style.display = "flex";
-            } else {
-                if (customWrap) customWrap.style.display = "none";
-                applyPreset(val);
-                renderAll();
-            }
-        });
-    }
-
-    if (dateFromInput) {
-        dateFromInput.addEventListener("change", () => {
-            state.dateFrom = dateFromInput.value;
-            updateDateStatusTag();
-            renderAll();
-        });
-    }
-
-    if (dateToInput) {
-        dateToInput.addEventListener("change", () => {
-            state.dateTo = dateToInput.value;
-            updateDateStatusTag();
+            applyPreset(val);
             renderAll();
         });
     }
 
     if (clearDateBtn) {
         clearDateBtn.addEventListener("click", () => {
-            if (presetSelect) presetSelect.value = "this_week";
-            if (customWrap) customWrap.style.display = "none";
-            applyPreset("this_week");
+            if (presetSelect) presetSelect.value = "all";
+            applyPreset("all");
             renderAll();
         });
     }

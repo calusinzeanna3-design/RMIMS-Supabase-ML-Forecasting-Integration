@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
     <link href="../css/analytics.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../js/chart.js"></script>
 </head>
@@ -39,22 +41,22 @@
                         <path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path>
                         <path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
                     </svg>
-                    <span>—</span>
+                    <span class="date-text">--/--/----</span>
                 </div>
-                <button class="icon-btn" id="notificationBtn" title="Notifications">
-                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path>
-                        <path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
-                    </svg>
-                    <span class="notif-badge" hidden="" id="notifBadge">0</span>
-                </button>
-                <button class="profile-btn" id="profileBtn">
-                    <span class="avatar">AU</span>
-                    <span class="profile-text">Administrator</span>
-                    <svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-                    </svg>
-                </button>
+                <div class="profile-menu">
+                    <button aria-expanded="false" aria-haspopup="true" class="profile-btn" id="profileBtn">
+                        <span class="profile-avatar">
+                            <img alt="Admin Avatar" class="profile-img" src="../assets/RMIMS%20LOGO.png"/>
+                        </span>
+                        <span class="profile-text">Admin</span>
+                    </button>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <a class="dropdown-item" href="settings.html">Settings</a>
+                        <a class="dropdown-item" href="users.html">User Management</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item text-danger" href="#" id="logoutBtn">Logout</a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -64,11 +66,11 @@
             <!-- PAGE HEADER -->
             <div class="ca-page-header">
                 <h1 class="ca-page-title">Consumption Analytics</h1>
-                <p class="ca-page-subtitle">Understand raw-material consumption and monitor stock performance over time.</p>
+                <p class="ca-page-subtitle">Authoritative live telemetry on raw material inventory, consumption patterns, and stock health</p>
             </div>
 
             <!-- TOP SUMMARY KPI CARDS (4-GRID) -->
-            <section class="ca-kpi-grid" aria-label="Summary KPIs">
+            <section class="ca-kpi-grid" aria-label="Consumption KPI Metrics">
                 <!-- Card 1: Total Raw Materials -->
                 <div class="ca-kpi-card">
                     <div class="ca-kpi-content">
@@ -83,16 +85,14 @@
                     </div>
                 </div>
 
-                <!-- Card 2: Total Consumed (Unit-Safe) -->
+                <!-- Card 2: Total Consumed (Overall) -->
                 <div class="ca-kpi-card">
                     <div class="ca-kpi-content">
                         <span class="ca-kpi-label">Total Consumed</span>
                         <div class="ca-kpi-value-wrap" id="kpiTotalConsumedWrap">
-                            <div class="ca-kpi-unit-list" id="kpiTotalConsumedList">
-                                <span class="ca-kpi-value">0</span>
-                            </div>
+                            <span class="ca-kpi-value" id="kpiTotalConsumed">0</span>
                         </div>
-                        <span class="ca-kpi-subtext" id="kpiTotalConsumedSub">Selected period usage</span>
+                        <span class="ca-kpi-subtext" id="kpiTotalConsumedSub">Overall raw materials consumed</span>
                     </div>
                     <div class="ca-kpi-icon ca-icon-green">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7H21V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -123,12 +123,12 @@
                         <span class="ca-kpi-subtext">materials below minimum stock</span>
                     </div>
                     <div class="ca-kpi-icon ca-icon-red">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V14M12 18H12.01M5.07183 19H18.9282C20.4678 19 21.4301 17.3333 20.6603 16L13.7321 4C12.9623 2.66667 11.0377 2.66667 10.2679 4L3.33975 16C2.56995 17.3333 3.53223 19 5.07183 19Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                 </div>
             </section>
 
-            <!-- GLOBAL DATE CONTROLS BAR -->
+            <!-- DATE PRESET & RANGE FILTER BAR -->
             <section class="ca-date-bar" aria-label="Date and Period Filters">
                 <div class="ca-date-bar-left">
                     <span class="ca-date-bar-label">
@@ -136,8 +136,9 @@
                         Date Range:
                     </span>
                     <select class="ca-select" id="datePresetSelect">
+                        <option value="all" selected>All Time</option>
                         <option value="today">Today</option>
-                        <option value="this_week" selected>This Week</option>
+                        <option value="this_week">This Week</option>
                         <option value="this_month">This Month</option>
                         <option value="last_month">Last Month</option>
                         <option value="last_7_days">Last 7 Days</option>
@@ -145,16 +146,19 @@
                         <option value="custom">Custom Date</option>
                     </select>
 
-                    <div class="ca-date-pickers" id="customDatePickerWrap">
-                        <input type="date" class="ca-input" id="dateFromInput" aria-label="From date"/>
-                        <span class="ca-date-sep">—</span>
-                        <input type="date" class="ca-input" id="dateToInput" aria-label="To date"/>
-                        <button type="button" class="ca-btn-clear-date" id="clearDateBtn" title="Reset date filters">Clear</button>
+                    <div class="inv-date-range-wrap">
+                        <label for="dateFromInput" class="filter-label">From:</label>
+                        <input type="text" id="dateFromInput" class="inv-input-date" placeholder="dd/mm/yyyy">
+                        <label for="dateToInput" class="filter-label">To:</label>
+                        <input type="text" id="dateToInput" class="inv-input-date" placeholder="dd/mm/yyyy">
+                        <button type="button" class="date-clear-btn" id="clearDateBtn" title="Reset date filters" style="display: none;">
+                            ✕ Clear
+                        </button>
                     </div>
                 </div>
 
                 <div class="ca-date-bar-right">
-                    <span class="ca-date-status-tag" id="dateRangeStatusTag">This Week</span>
+                    <span class="ca-date-status-tag" id="dateRangeStatusTag">All Records</span>
                 </div>
             </section>
 
