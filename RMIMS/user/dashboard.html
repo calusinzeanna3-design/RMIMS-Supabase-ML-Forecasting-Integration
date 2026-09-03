@@ -13,6 +13,11 @@
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
 <body class="user-page">
+<!-- Shared visual backdrop; no dashboard data or controls are changed. -->
+<div class="rmims-faint-bg user-dashboard-bg" aria-hidden="true">
+    <div class="faint-grid-lines"></div>
+    <div class="faint-chart-nodes"></div>
+</div>
 <div class="container">
 
     <!-- SIDEBAR -->
@@ -581,7 +586,7 @@
 <!-- TOASTS -->
 <div class="toast-stack" id="toastStack"></div>
 
-<script type="module" src="../js/user-dashboard.js"></script>
+<script type="module" src="../js/user-dashboard.js?v=20260903-tdzfix"></script>
 
 <script>
 const headerDateEl = document.querySelector("#headerDate span");

@@ -126,23 +126,32 @@ async function loadAuthoritativeData() {
                 .order("receipt_date", { ascending: false })
         ]);
 
-        if (matRes.error) throw matRes.error;
+        if (matRes.error) console.warn("Materials fetch notice:", matRes.error);
         if (useRes.error) console.warn("Disbursements fetch notice:", useRes.error);
         if (recRes.error) console.warn("Receipts fetch notice:", recRes.error);
 
-        let rawMats = matRes.data || [];
-        let rawUsage = useRes.data || [];
-        let rawRecs = recRes.data || [];
+        // Additive merge: start from authentic baseline, overlay Supabase data by ID
+        // so live admin-entered records always take precedence without losing baseline records.
+        const matKeyMap = new Map();
+        AUTHENTIC_59_RAW_MATERIALS.forEach(m => matKeyMap.set(String(m.id), { ...m }));
+        if (matRes.data && matRes.data.length > 0) {
+            matRes.data.forEach(m => matKeyMap.set(String(m.id), { ...(matKeyMap.get(String(m.id)) || {}), ...m }));
+        }
+        const rawMats = Array.from(matKeyMap.values());
 
-        if (rawMats.length === 0) {
-            rawMats = AUTHENTIC_59_RAW_MATERIALS;
+        const disbKeyMap = new Map();
+        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+        if (useRes.data && useRes.data.length > 0) {
+            useRes.data.forEach(d => disbKeyMap.set(String(d.id), { ...(disbKeyMap.get(String(d.id)) || {}), ...d }));
         }
-        if (rawUsage.length === 0) {
-            rawUsage = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
+        const rawUsage = Array.from(disbKeyMap.values());
+
+        const recKeyMap = new Map();
+        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recKeyMap.set(String(r.id), { ...r }));
+        if (recRes.data && recRes.data.length > 0) {
+            recRes.data.forEach(r => recKeyMap.set(String(r.id), { ...(recKeyMap.get(String(r.id)) || {}), ...r }));
         }
-        if (rawRecs.length === 0) {
-            rawRecs = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
-        }
+        const rawRecs = Array.from(recKeyMap.values());
 
         // Normalize Materials
         state.materials = rawMats.map(m => {

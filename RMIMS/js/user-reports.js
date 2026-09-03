@@ -507,25 +507,90 @@ async function loadAuthoritativeForecasts() {
     state.forecastMap.clear();
     state.forecastList = [];
 
-    state.materials.forEach(mat => {
+    // Build finished-product map from disbursement records
+    const productMap = new Map();
+    state.disbursements.forEach(d => {
+        const prod = d.finishedProduct;
+        if (prod && prod !== "Production Issue" && prod !== "General Production" && prod !== "Operational Use" && prod !== "General Usage") {
+            const arr = productMap.get(d.materialId) || [];
+            if (!arr.includes(prod)) arr.push(prod);
+            productMap.set(d.materialId, arr);
+        }
+    });
+
+    // Compute total recent consumption per material (from all disbursement records)
+    const recentUsageMap = new Map();
+    state.disbursements.forEach(d => {
+        recentUsageMap.set(d.materialId, (recentUsageMap.get(d.materialId) || 0) + d.disbursedQuantity);
+    });
+
+    // Read cached AI forecast results produced by the admin Forecasting module
+    let cachedForecasts = null;
+    try {
+        const cachedData = localStorage.getItem("rmims_forecast_cache");
+        const cachedTime = localStorage.getItem("rmims_forecast_timestamp");
+        if (cachedData) {
+            cachedForecasts = JSON.parse(cachedData);
+            if (cachedTime) state.lastForecastTimestamp = new Date(cachedTime);
+        }
+    } catch (e) {
+        console.warn("Forecast cache read notice:", e);
+    }
+
+    state.materials.forEach(m => {
+        const recentUsage = recentUsageMap.get(m.id) || 0;
+        const products = productMap.get(m.id) || [];
+        const finishedProductDisplay = products.length > 0 ? products.join(", ") : "Production Operations";
+
+        let f7Qty = 0;
+        let f1mQty = 0;
+        let decisionStatus = "Sufficient";
+
+        if (cachedForecasts && cachedForecasts[m.name]) {
+            // Use AI-computed forecast from admin Forecasting module cache
+            const cf = cachedForecasts[m.name];
+            f7Qty = Number(cf.forecast7Day?.quantity || 0);
+            f1mQty = Number(cf.forecast1Month?.quantity || (f7Qty * 4));
+            decisionStatus = cf.decision_support?.decision_status || "Sufficient";
+        } else {
+            // Baseline demand projection computed from live disbursement history
+            const avgWeekly = recentUsage > 0 ? recentUsage : Math.max((m.minThreshold || 0) * 0.5, 10);
+            f7Qty = Number(avgWeekly.toFixed(1));
+            f1mQty = Number((avgWeekly * 4).toFixed(1));
+
+            const diff = m.currentStock - f7Qty;
+            if (diff < 0) decisionStatus = "Potential Shortage";
+            else if (m.currentStock <= (m.minThreshold || 0)) decisionStatus = "Needs Attention";
+            else if (diff <= (m.minThreshold || 0)) decisionStatus = "Monitor";
+            else decisionStatus = "Sufficient";
+        }
+
+        const additionalNeed = Math.max(0, Number((f7Qty - m.currentStock).toFixed(1)));
+
         const item = {
-            name: mat.name,
-            itemCode: mat.itemCode,
-            unit: mat.unit,
-            currentStock: mat.currentStock,
-            forecast7Day: null,
-            additionalNeed: null,
-            status: "—",
-            interpretation: "AI time-series demand forecasting module is currently in development."
+            id: m.id,
+            itemCode: m.itemCode,
+            name: m.name,
+            unit: m.unit,
+            currentStock: m.currentStock,
+            minThreshold: m.minThreshold,
+            finishedProduct: finishedProductDisplay,
+            forecast7Day: f7Qty,
+            additionalNeed,
+            status: decisionStatus,
+            interpretation: cachedForecasts && cachedForecasts[m.name]
+                ? (cachedForecasts[m.name].decision_support?.interpretation || decisionStatus)
+                : "Baseline demand projection from disbursement history."
         };
 
         state.forecastList.push(item);
-        state.forecastMap.set(mat.name.toLowerCase(), item);
+        state.forecastMap.set(m.name.toLowerCase(), item);
     });
 
-    state.lastForecastTimestamp = null;
-    state.forecastStatusText = "Awaiting ML Integration";
+    if (!state.lastForecastTimestamp) state.lastForecastTimestamp = new Date();
+    state.forecastStatusText = cachedForecasts ? "Forecast Ready" : "Baseline Projection";
 }
+
 
 /* ==========================================================
    SAVE AS MODAL HANDLERS

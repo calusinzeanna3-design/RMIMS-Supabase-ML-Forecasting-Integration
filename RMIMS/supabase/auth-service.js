@@ -222,15 +222,12 @@ export async function loginUser(email, password, expectedRole) {
         // Smooth 650ms completion pause for visual delight
         await sleep(650);
 
-        // Role-based destination routing
-        const isRMIMSPath = window.location.pathname.toLowerCase().includes("/rmims");
-        if (profile.role === "admin") {
-            const target = isRMIMSPath ? "/RMIMS/admin/dashboard.html" : "admin/dashboard.html";
-            window.location.href = target;
-        } else {
-            const target = isRMIMSPath ? "/RMIMS/user/dashboard.html" : "user/dashboard.html";
-            window.location.href = target;
-        }
+        // Resolve from the current sign-in page instead of using a root-absolute
+        // URL. This preserves the application's deployment subdirectory.
+        const destination = profile.role === "admin"
+            ? "admin/dashboard.html"
+            : "user/dashboard.html";
+        window.location.assign(new URL(destination, window.location.href).href);
 
     } catch (err) {
         // If authentication fails, gracefully hide the transition overlay so the error is visible

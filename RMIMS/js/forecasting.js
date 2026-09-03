@@ -1357,11 +1357,18 @@ function renderPrimaryChart() {
             });
 
             ctx.restore();
+        }
+    };
+
 let fcChartZoomLevel = 1.0;
 let fcChartFocusMode = false;
 let fcChartYShift = 0;
+let fcChartXShift = 0;
+let fcChartMaxXPan = 0;
 let isDraggingFc = false;
+let dragFcStartX = 0;
 let dragFcStartY = 0;
+let dragFcInitialXShift = 0;
 let dragFcInitialShift = 0;
 
 const precisionCrosshairPlugin = {
@@ -1449,6 +1456,11 @@ const precisionCrosshairPlugin = {
     let yAxisMin = undefined;
     let yAxisMax = undefined;
     let beginAtZero = true;
+    const visibleTimelinePoints = Math.max(2, Math.ceil(labels.length / fcChartZoomLevel));
+    fcChartMaxXPan = Math.max(0, labels.length - visibleTimelinePoints);
+    fcChartXShift = Math.max(0, Math.min(fcChartMaxXPan, fcChartXShift));
+    const xAxisMin = fcChartZoomLevel > 1 ? Math.round(fcChartXShift) : undefined;
+    const xAxisMax = fcChartZoomLevel > 1 ? Math.min(labels.length - 1, xAxisMin + visibleTimelinePoints - 1) : undefined;
 
     if (fcChartFocusMode || fcChartZoomLevel > 1.0 || fcChartYShift !== 0) {
         beginAtZero = false;
@@ -1585,6 +1597,8 @@ const precisionCrosshairPlugin = {
             },
             scales: {
                 x: {
+                    min: xAxisMin,
+                    max: xAxisMax,
                     grid: {
                         display: false,
                         drawBorder: false
@@ -2658,12 +2672,11 @@ function initEventListeners() {
         });
     }
 
-    // 2A. Card 1 Zoom, Scroll Slider & Focus Controls
+    // 2A. Card 1 zoom, pan, and reset controls
     const fcZoomInBtn = document.getElementById("fcChartZoomInBtn");
     const fcZoomOutBtn = document.getElementById("fcChartZoomOutBtn");
     const fcScrollSlider = document.getElementById("fcChartScrollSlider");
     const fcSliderBadge = document.getElementById("fcSliderValBadge");
-    const fcFocusBtn = document.getElementById("fcChartZoomFocusBtn");
     const fcResetBtn = document.getElementById("fcChartZoomResetBtn");
 
     if (fcScrollSlider) {
@@ -2671,7 +2684,6 @@ function initEventListeners() {
             const val = parseInt(e.target.value, 10) || 0;
             if (!fcChartFocusMode && fcChartZoomLevel <= 1.0) {
                 fcChartFocusMode = true;
-                if (fcFocusBtn) fcFocusBtn.classList.add("active");
             }
             fcChartYShift = (val / 100) * 3500;
             if (fcSliderBadge) {
@@ -2685,32 +2697,16 @@ function initEventListeners() {
         fcZoomInBtn.onclick = () => {
             fcChartZoomLevel = Math.min(5.0, Number((fcChartZoomLevel * 1.35).toFixed(2)));
             fcChartFocusMode = true;
-            if (fcFocusBtn) fcFocusBtn.classList.add("active");
             renderPrimaryChart();
         };
     }
     if (fcZoomOutBtn) {
         fcZoomOutBtn.onclick = () => {
             fcChartZoomLevel = Math.max(1.0, Number((fcChartZoomLevel / 1.35).toFixed(2)));
-            if (fcChartZoomLevel <= 1.0 && !fcChartFocusMode) {
+            if (fcChartZoomLevel <= 1.0) {
+                fcChartFocusMode = false;
                 fcChartYShift = 0;
-                if (fcScrollSlider) fcScrollSlider.value = 0;
-                if (fcSliderBadge) fcSliderBadge.textContent = "Center";
-                if (fcFocusBtn) fcFocusBtn.classList.remove("active");
-            }
-            renderPrimaryChart();
-        };
-    }
-    if (fcFocusBtn) {
-        fcFocusBtn.onclick = () => {
-            fcChartFocusMode = !fcChartFocusMode;
-            if (fcChartFocusMode) {
-                fcFocusBtn.classList.add("active");
-                if (fcChartZoomLevel < 1.15) fcChartZoomLevel = 1.3;
-            } else {
-                fcFocusBtn.classList.remove("active");
-                fcChartZoomLevel = 1.0;
-                fcChartYShift = 0;
+                fcChartXShift = 0;
                 if (fcScrollSlider) fcScrollSlider.value = 0;
                 if (fcSliderBadge) fcSliderBadge.textContent = "Center";
             }
@@ -2722,9 +2718,9 @@ function initEventListeners() {
             fcChartZoomLevel = 1.0;
             fcChartFocusMode = false;
             fcChartYShift = 0;
+            fcChartXShift = 0;
             if (fcScrollSlider) fcScrollSlider.value = 0;
             if (fcSliderBadge) fcSliderBadge.textContent = "Center";
-            if (fcFocusBtn) fcFocusBtn.classList.remove("active");
             renderPrimaryChart();
         };
     }
@@ -2732,6 +2728,8 @@ function initEventListeners() {
     const primaryCanvas = document.getElementById("consumptionForecastChartCanvas");
     if (primaryCanvas && !primaryCanvas.dataset.dragPanAttached) {
         primaryCanvas.dataset.dragPanAttached = "true";
+        primaryCanvas.style.cursor = "grab";
+        primaryCanvas.title = "Drag to pan the zoomed chart. Move the pointer to inspect values.";
 
         // Mousewheel vertical scrolling & zoom
         primaryCanvas.addEventListener("wheel", (e) => {
@@ -2740,22 +2738,20 @@ function initEventListeners() {
                 if (e.deltaY < 0) {
                     fcChartZoomLevel = Math.min(5.0, Number((fcChartZoomLevel * 1.15).toFixed(2)));
                     fcChartFocusMode = true;
-                    if (fcFocusBtn) fcFocusBtn.classList.add("active");
                 } else {
                     fcChartZoomLevel = Math.max(1.0, Number((fcChartZoomLevel / 1.15).toFixed(2)));
                     if (fcChartZoomLevel <= 1.0) {
                         fcChartFocusMode = false;
                         fcChartYShift = 0;
+                        fcChartXShift = 0;
                         if (fcScrollSlider) fcScrollSlider.value = 0;
                         if (fcSliderBadge) fcSliderBadge.textContent = "Center";
-                        if (fcFocusBtn) fcFocusBtn.classList.remove("active");
                     }
                 }
             } else {
                 // Regular wheel = Scroll vertically up and down accurately
                 if (!fcChartFocusMode && fcChartZoomLevel <= 1.0) {
                     fcChartFocusMode = true;
-                    if (fcFocusBtn) fcFocusBtn.classList.add("active");
                 }
                 const scrollDelta = (e.deltaY < 0 ? 1 : -1) * (250 / fcChartZoomLevel);
                 fcChartYShift += scrollDelta;
@@ -2768,25 +2764,35 @@ function initEventListeners() {
             renderPrimaryChart();
         }, { passive: false });
 
-        // Drag to Pan Up / Down in real-time
-        primaryCanvas.addEventListener("mousedown", (e) => {
+        // Pointer capture keeps panning active even if the cursor briefly
+        // leaves the canvas while examining a zoomed forecast.
+        primaryCanvas.addEventListener("pointerdown", (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
             isDraggingFc = true;
+            dragFcStartX = e.clientX;
             dragFcStartY = e.clientY;
+            dragFcInitialXShift = fcChartXShift;
             dragFcInitialShift = fcChartYShift;
+            primaryCanvas.setPointerCapture?.(e.pointerId);
             primaryCanvas.style.cursor = "grabbing";
         });
 
-        window.addEventListener("mousemove", (e) => {
+        primaryCanvas.addEventListener("pointermove", (e) => {
             if (!isDraggingFc) return;
             if (!fcChartFocusMode && fcChartZoomLevel <= 1.0) {
                 fcChartFocusMode = true;
-                if (fcFocusBtn) fcFocusBtn.classList.add("active");
             }
+            const deltaX = e.clientX - dragFcStartX;
             const deltaY = e.clientY - dragFcStartY;
+            const chartWidth = primaryCanvas.clientWidth || 640;
             const chartHeight = primaryCanvas.clientHeight || 320;
             const approxSpan = 2500 / fcChartZoomLevel;
             const shiftDelta = (deltaY / chartHeight) * approxSpan;
             fcChartYShift = dragFcInitialShift + shiftDelta;
+            fcChartXShift = Math.max(0, Math.min(
+                fcChartMaxXPan,
+                dragFcInitialXShift - (deltaX / chartWidth) * fcChartMaxXPan
+            ));
             if (fcScrollSlider) {
                 const pct = Math.max(-100, Math.min(100, Math.round((fcChartYShift / 3500) * 100)));
                 fcScrollSlider.value = pct;
@@ -2795,12 +2801,17 @@ function initEventListeners() {
             renderPrimaryChart();
         });
 
-        window.addEventListener("mouseup", () => {
+        const endForecastDrag = (e) => {
             if (isDraggingFc) {
                 isDraggingFc = false;
-                primaryCanvas.style.cursor = "crosshair";
+                primaryCanvas.style.cursor = "grab";
+                if (primaryCanvas.hasPointerCapture?.(e.pointerId)) {
+                    primaryCanvas.releasePointerCapture(e.pointerId);
+                }
             }
-        });
+        };
+        primaryCanvas.addEventListener("pointerup", endForecastDrag);
+        primaryCanvas.addEventListener("pointercancel", endForecastDrag);
     }
 
     // 2B. Card 2 (Forecast Projection) Material Dropdown & Horizon Slide Toggle

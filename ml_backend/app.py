@@ -18,6 +18,29 @@ import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# The checked-in model was serialized before SciPy added ``_xp`` to
+# LinearOperator's pickle state.  Current SciPy releases require that field
+# during unpickling, so restore its standard NumPy-compatible backend only for
+# those legacy objects.  Pickles produced by current SciPy keep their normal
+# deserialization path.
+try:
+    from scipy.sparse.linalg._interface import LinearOperator, np_compat
+
+    _linear_operator_setstate = LinearOperator.__setstate__
+
+    def _load_legacy_linear_operator_state(instance, state):
+        if "_xp" not in state:
+            instance._xp = np_compat
+            instance.__dict__.update(state)
+            return
+        _linear_operator_setstate(instance, state)
+
+    LinearOperator.__setstate__ = _load_legacy_linear_operator_state
+except (ImportError, AttributeError):
+    # SciPy is installed with statsmodels in production.  Keep startup
+    # compatible with environments whose SciPy version has no such hook.
+    pass
+
 # Configure Structured Logging
 logging.basicConfig(
     level=logging.INFO,

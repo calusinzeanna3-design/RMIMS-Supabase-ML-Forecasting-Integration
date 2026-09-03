@@ -1498,8 +1498,12 @@ function populateTrendMaterialSelect() {
 let trendChartZoomLevel = 1.0;
 let trendChartFocusMode = false;
 let trendChartYShift = 0; // Vertical pan offset in data units
+let trendChartXShift = 0; // Horizontal pan offset in timeline positions
+let trendChartMaxXPan = 0;
 let isDraggingTrend = false;
+let dragStartX = 0;
 let dragStartY = 0;
+let dragInitialXShift = 0;
 let dragInitialShift = 0;
 
 const precisionCrosshairPlugin = {
@@ -1586,6 +1590,7 @@ function setupTrendChartControls() {
     sel.addEventListener("change", () => {
       currentTrendMaterial = sel.value;
       trendChartYShift = 0;
+      trendChartXShift = 0;
       renderRawMaterialsTrendChart();
     });
   }
@@ -1598,45 +1603,31 @@ function setupTrendChartControls() {
         btn.classList.add("active");
         currentTrendGranularity = btn.getAttribute("data-gran") || "monthly";
         trendChartYShift = 0;
+        trendChartXShift = 0;
         renderRawMaterialsTrendChart();
       });
     });
   }
 
-  // Zoom & Focus Controls
+  // Zoom and reset controls. Dragging and zooming auto-fit the visible scale.
   const zoomInBtn = $("trendZoomInBtn");
   const zoomOutBtn = $("trendZoomOutBtn");
-  const focusBtn = $("trendZoomFocusBtn");
   const resetBtn = $("trendZoomResetBtn");
 
   if (zoomInBtn) {
     zoomInBtn.onclick = () => {
       trendChartZoomLevel = Math.min(5.0, Number((trendChartZoomLevel * 1.35).toFixed(2)));
       trendChartFocusMode = true;
-      if (focusBtn) focusBtn.classList.add("active");
       renderRawMaterialsTrendChart();
     };
   }
   if (zoomOutBtn) {
     zoomOutBtn.onclick = () => {
       trendChartZoomLevel = Math.max(1.0, Number((trendChartZoomLevel / 1.35).toFixed(2)));
-      if (trendChartZoomLevel <= 1.0 && !trendChartFocusMode) {
+      if (trendChartZoomLevel <= 1.0) {
+        trendChartFocusMode = false;
         trendChartYShift = 0;
-        if (focusBtn) focusBtn.classList.remove("active");
-      }
-      renderRawMaterialsTrendChart();
-    };
-  }
-  if (focusBtn) {
-    focusBtn.onclick = () => {
-      trendChartFocusMode = !trendChartFocusMode;
-      if (trendChartFocusMode) {
-        focusBtn.classList.add("active");
-        if (trendChartZoomLevel < 1.15) trendChartZoomLevel = 1.3;
-      } else {
-        focusBtn.classList.remove("active");
-        trendChartZoomLevel = 1.0;
-        trendChartYShift = 0;
+        trendChartXShift = 0;
       }
       renderRawMaterialsTrendChart();
     };
@@ -1646,7 +1637,7 @@ function setupTrendChartControls() {
       trendChartZoomLevel = 1.0;
       trendChartFocusMode = false;
       trendChartYShift = 0;
-      if (focusBtn) focusBtn.classList.remove("active");
+      trendChartXShift = 0;
       renderRawMaterialsTrendChart();
     };
   }
@@ -1655,6 +1646,7 @@ function setupTrendChartControls() {
   if (canvas && !canvas.dataset.dragPanAttached) {
     canvas.dataset.dragPanAttached = "true";
     canvas.style.cursor = "grab";
+    canvas.title = "Drag to pan the zoomed chart. Move the pointer to inspect values.";
 
     // Mousewheel vertical scrolling & zoom
     canvas.addEventListener("wheel", (e) => {
@@ -1663,20 +1655,18 @@ function setupTrendChartControls() {
         if (e.deltaY < 0) {
           trendChartZoomLevel = Math.min(5.0, Number((trendChartZoomLevel * 1.15).toFixed(2)));
           trendChartFocusMode = true;
-          if (focusBtn) focusBtn.classList.add("active");
         } else {
           trendChartZoomLevel = Math.max(1.0, Number((trendChartZoomLevel / 1.15).toFixed(2)));
           if (trendChartZoomLevel <= 1.0) {
             trendChartFocusMode = false;
             trendChartYShift = 0;
-            if (focusBtn) focusBtn.classList.remove("active");
+            trendChartXShift = 0;
           }
         }
       } else {
         // Direct wheel scroll up & down
         if (!trendChartFocusMode && trendChartZoomLevel <= 1.0) {
           trendChartFocusMode = true;
-          if (focusBtn) focusBtn.classList.add("active");
         }
         const currentSpan = (trendChartInst && trendChartInst.scales && trendChartInst.scales.y)
           ? (trendChartInst.scales.y.max - trendChartInst.scales.y.min)
@@ -1687,21 +1677,27 @@ function setupTrendChartControls() {
       renderRawMaterialsTrendChart();
     }, { passive: false });
 
-    // Direct cursor drag to target point
-    canvas.addEventListener("mousedown", (e) => {
+    // Pointer capture keeps panning active even if the cursor briefly leaves
+    // the canvas while inspecting a zoomed view.
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
       isDraggingTrend = true;
+      dragStartX = e.clientX;
       dragStartY = e.clientY;
+      dragInitialXShift = trendChartXShift;
       dragInitialShift = trendChartYShift;
+      canvas.setPointerCapture?.(e.pointerId);
       canvas.style.cursor = "grabbing";
     });
 
-    window.addEventListener("mousemove", (e) => {
+    canvas.addEventListener("pointermove", (e) => {
       if (!isDraggingTrend) return;
       if (!trendChartFocusMode && trendChartZoomLevel <= 1.0) {
         trendChartFocusMode = true;
-        if (focusBtn) focusBtn.classList.add("active");
       }
+      const deltaX = e.clientX - dragStartX;
       const deltaY = e.clientY - dragStartY;
+      const chartWidth = canvas.clientWidth || 640;
       const chartHeight = canvas.clientHeight || 285;
       const currentSpan = (trendChartInst && trendChartInst.scales && trendChartInst.scales.y)
         ? (trendChartInst.scales.y.max - trendChartInst.scales.y.min)
@@ -1709,15 +1705,26 @@ function setupTrendChartControls() {
       
       const shiftDelta = (deltaY / chartHeight) * currentSpan;
       trendChartYShift = dragInitialShift + shiftDelta;
+      // A zoomed category axis shows a smaller timeline window. Horizontal
+      // dragging moves that window through the available dates.
+      trendChartXShift = Math.max(0, Math.min(
+        trendChartMaxXPan,
+        dragInitialXShift - (deltaX / chartWidth) * trendChartMaxXPan
+      ));
       renderRawMaterialsTrendChart();
     });
 
-    window.addEventListener("mouseup", () => {
+    const endTrendDrag = (e) => {
       if (isDraggingTrend) {
         isDraggingTrend = false;
         canvas.style.cursor = "grab";
+        if (canvas.hasPointerCapture?.(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
       }
-    });
+    };
+    canvas.addEventListener("pointerup", endTrendDrag);
+    canvas.addEventListener("pointercancel", endTrendDrag);
   }
 
   trendControlsBound = true;
@@ -1875,6 +1882,11 @@ async function renderRawMaterialsTrendChart() {
   let yAxisMin = undefined;
   let yAxisMax = undefined;
   let beginAtZero = true;
+  const visibleTimelinePoints = Math.max(2, Math.ceil(labels.length / trendChartZoomLevel));
+  trendChartMaxXPan = Math.max(0, labels.length - visibleTimelinePoints);
+  trendChartXShift = Math.max(0, Math.min(trendChartMaxXPan, trendChartXShift));
+  const xAxisMin = trendChartZoomLevel > 1 ? Math.round(trendChartXShift) : undefined;
+  const xAxisMax = trendChartZoomLevel > 1 ? Math.min(labels.length - 1, xAxisMin + visibleTimelinePoints - 1) : undefined;
 
   if (trendChartFocusMode || trendChartZoomLevel > 1.0 || trendChartYShift !== 0) {
     beginAtZero = false;
@@ -2027,6 +2039,8 @@ async function renderRawMaterialsTrendChart() {
       },
       scales: {
         x: {
+          min: xAxisMin,
+          max: xAxisMax,
           title: {
             display: true,
             text: "Date",

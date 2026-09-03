@@ -55,6 +55,63 @@ function toast(message, type = "success") {
 // STATE & INSTANCES
 // ============================================================
 
+// js/user-dashboard.js
+//
+// RMIMS USER / STAFF OPERATIONAL DASHBOARD
+// Authoritative Supabase & ML Forecast Operational Command Center
+// Live data from public.raw_materials, public.stock_receipts, public.material_disbursements, public.user_profiles.
+// Strictly READ-ONLY. Zero direct stock mutations. Zero mock data. Light UI.
+
+import { supabase, auth } from "../supabase/supabase-config.js";
+import { onAuthStateChanged } from "../supabase/auth-compat.js";
+import { checkAndShowOnboarding } from "./onboarding.js";
+import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+
+const $ = id => document.getElementById(id);
+
+const esc = v =>
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[c])
+  );
+
+function greetingWord() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+// ============================================================
+// TOAST NOTIFICATIONS
+// ============================================================
+
+function toast(message, type = "success") {
+  const s = $("toastStack");
+  if (!s) return;
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.innerHTML = `
+    <span class="toast-dot"></span>
+    <span>${esc(message)}</span>
+  `;
+  s.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("leaving");
+    setTimeout(() => el.remove(), 260);
+  }, 3000);
+}
+
+// ============================================================
+// STATE & INSTANCES
+// ============================================================
+
 let catalogMaterials = [];
 let usageRecords = [];
 let receiptRecords = [];
@@ -66,6 +123,38 @@ let receivePieChartInst = null;
 let trendChartInst = null;
 let modalConsumptionChartInst = null;
 
+// Operational Attention pagination state
+let opAttnPage = 0;
+const OP_ATTN_PER_PAGE = 3;
+let opAttnItems = [];
+
+// Chart.js plugin: draws percentage labels on pie slices (same as admin)
+const pieSlicePercentagePlugin = {
+  id: "pieSlicePercentage",
+  afterDatasetDraw(chart) {
+    const { ctx, data } = chart;
+    const dataset = data.datasets[0];
+    const meta = chart.getDatasetMeta(0);
+    const total = dataset.data.reduce((a, b) => a + b, 0);
+    if (!total) return;
+    ctx.save();
+    ctx.font = "bold 11px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+    meta.data.forEach((arc, i) => {
+      const pct = ((dataset.data[i] / total) * 100);
+      if (pct < 4) return;
+      const midAngle = (arc.startAngle + arc.endAngle) / 2;
+      const r = arc.outerRadius * 0.68;
+      const x = arc.x + r * Math.cos(midAngle);
+      const y = arc.y + r * Math.sin(midAngle);
+      ctx.fillText(`${pct.toFixed(1)}%`, x, y);
+    });
+    ctx.restore();
+  }
+};
+
 // Flask API Base for live ML forecasting
 const FLASK_API_BASE = window.ENV_FLASK_API_BASE || (window.location.protocol.startsWith("http") ? "" : "http://127.0.0.1:5000");
 
@@ -73,6 +162,15 @@ const FLASK_API_BASE = window.ENV_FLASK_API_BASE || (window.location.protocol.st
 let currentTrendMaterial = "all";
 let currentTrendGranularity = "general";
 let trendControlsBound = false;
+// Declared before the instant baseline render below. The renderer can run as
+// soon as DOMContentLoaded fires, so these must not remain in the temporal
+// dead zone later in this module.
+var trendChartZoomLevel = 1.0;
+var trendChartFocusMode = false;
+var trendChartYShift = 0;
+var isDraggingTrend = false;
+var dragStartY = 0;
+var dragInitialShift = 0;
 
 // Rotation timers & state
 let card2TickerTimer = null;
@@ -282,12 +380,12 @@ async function loadUserDashboard() {
         promise,
         new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase query timeout")), ms))
       ]);
+    // ── Additive merge: start from authentic baseline, overlay Supabase data by ID ──
+    // Supabase records always win on field-level conflicts. Baseline records are kept
+    // if no matching Supabase record exists (avoids silent data loss on partial fetches).
 
-    // 1. Fetch raw_materials master catalog
+    // 1. Raw Materials
     let rawMats = [];
-    let rawUsage = [];
-    let rawReceipts = [];
-
     try {
       const matRes = await fetchWithTimeout(
         supabase
@@ -295,19 +393,19 @@ async function loadUserDashboard() {
           .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
           .order("name")
       );
-
+      const matKeyMap = new Map();
+      AUTHENTIC_59_RAW_MATERIALS.forEach(m => matKeyMap.set(String(m.id), { ...m }));
       if (!matRes.error && matRes.data && matRes.data.length > 0) {
-        rawMats = matRes.data;
+        matRes.data.forEach(m => matKeyMap.set(String(m.id), { ...(matKeyMap.get(String(m.id)) || {}), ...m }));
       }
+      rawMats = Array.from(matKeyMap.values());
     } catch (e) {
-      console.warn("Using baseline raw materials dataset:", e);
+      console.warn("Materials fetch, using baseline:", e);
+      rawMats = [...AUTHENTIC_59_RAW_MATERIALS];
     }
 
-    if (rawMats.length === 0) {
-      rawMats = AUTHENTIC_59_RAW_MATERIALS;
-    }
-
-    // 2. Fetch disbursements (usage)
+    // 2. Disbursements (usage) — additive merge
+    let rawUsage = [];
     try {
       const useRes = await fetchWithTimeout(
         supabase
@@ -315,33 +413,26 @@ async function loadUserDashboard() {
           .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
           .order("usage_date", { ascending: false })
       );
-
+      const disbKeyMap = new Map();
+      AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
       if (!useRes.error && useRes.data && useRes.data.length > 0) {
-        rawUsage = useRes.data;
+        useRes.data.forEach(d => disbKeyMap.set(String(d.id), { ...(disbKeyMap.get(String(d.id)) || {}), ...d }));
       }
+      rawUsage = Array.from(disbKeyMap.values());
     } catch (e) {
-      console.warn("Using baseline usage records:", e);
+      console.warn("Disbursements fetch, using baseline:", e);
+      rawUsage = [...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS];
     }
 
-    // Retrieve locally deleted IDs (for fallback / custom mock records)
+    // Apply locally-deleted disbursement IDs (admin soft-deletes)
     let deletedDisbIds = new Set();
-    try {
-      deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]"));
-    } catch (e) {}
-
-    let deletedRecIds = new Set();
-    try {
-      deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]"));
-    } catch (e) {}
-
-    if (rawUsage.length === 0) {
-      rawUsage = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
-    }
+    try { deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]")); } catch (e) {}
     if (deletedDisbIds.size > 0) {
       rawUsage = rawUsage.filter(d => !deletedDisbIds.has(String(d.id)));
     }
 
-    // 3. Fetch stock receipts (inflow)
+    // 3. Stock Receipts (inflow) — additive merge
+    let rawReceipts = [];
     try {
       const recRes = await fetchWithTimeout(
         supabase
@@ -349,17 +440,20 @@ async function loadUserDashboard() {
           .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
           .order("receipt_date", { ascending: false })
       );
-
+      const recKeyMap = new Map();
+      AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recKeyMap.set(String(r.id), { ...r }));
       if (!recRes.error && recRes.data && recRes.data.length > 0) {
-        rawReceipts = recRes.data;
+        recRes.data.forEach(r => recKeyMap.set(String(r.id), { ...(recKeyMap.get(String(r.id)) || {}), ...r }));
       }
+      rawReceipts = Array.from(recKeyMap.values());
     } catch (e) {
-      console.warn("Using baseline receipts records:", e);
+      console.warn("Receipts fetch, using baseline:", e);
+      rawReceipts = [...AUTHENTIC_STOCK_RECEIPTS_6MONTHS];
     }
 
-    if (rawReceipts.length === 0) {
-      rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
-    }
+    // Apply locally-deleted receipt IDs
+    let deletedRecIds = new Set();
+    try { deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]")); } catch (e) {}
     if (deletedRecIds.size > 0) {
       rawReceipts = rawReceipts.filter(r => !deletedRecIds.has(String(r.id)));
     }
@@ -730,82 +824,86 @@ function renderCard4ReceiveRawMaterials() {
   const totalReceivedCount = sortedReceived.length;
   countBadge.textContent = `${totalReceivedCount} material${totalReceivedCount === 1 ? "" : "s"}`;
 
-  // Take top 4 for chart + "Others"
+  // Build pie slices: top 4 + "Others" — matching admin style
   const top4 = sortedReceived.slice(0, 4);
-  const others = sortedReceived.slice(4);
-  const othersTotal = others.reduce((sum, item) => sum + item.qty, 0);
+  const othersArr = sortedReceived.slice(4);
+  const othersTotal = othersArr.reduce((s, m) => s + m.qty, 0);
 
-  const chartLabels = top4.map(m => m.name);
-  const chartData = top4.map(m => m.qty);
+  const pieSlices = [...top4];
   if (othersTotal > 0) {
-    chartLabels.push("Others");
-    chartData.push(othersTotal);
+    pieSlices.push({ name: `Others (${othersArr.length})`, qty: othersTotal, unit: top4[0]?.unit || "kg", isOthers: true });
   }
 
-  const grandTotal = chartData.reduce((a, b) => a + b, 0);
+  const grandTotal = pieSlices.reduce((s, m) => s + m.qty, 0);
+  const pieLabels = pieSlices.map(s => s.name);
+  const pieData  = pieSlices.map(s => s.qty);
+  const chartColors = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#64748B"];
+  const pieColors   = pieSlices.map((s, i) => s.isOthers ? "#64748B" : chartColors[i % chartColors.length]);
 
-  // Render Doughnut Chart
-  if (receivePieChartInst) {
-    receivePieChartInst.destroy();
-  }
-
-  const chartColors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#94a3b8"];
-
-  if (typeof Chart !== "undefined") {
-    receivePieChartInst = new Chart(canvas, {
-      type: "doughnut",
-      data: {
-        labels: chartLabels,
-        datasets: [{
-          data: chartData,
-          backgroundColor: chartColors.slice(0, chartLabels.length),
-          borderWidth: 2,
-          borderColor: "#ffffff",
-          hoverOffset: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "68%",
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(ctx) {
-                const val = ctx.parsed;
-                const pct = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(1) : 0;
-                return ` ${ctx.label}: ${val.toLocaleString("en-US")} (${pct}%)`;
-              }
-            }
-          }
-        }
-      }
-    });
-  }
-
-  // Render Legend List
-  legendList.innerHTML = chartLabels.map((lbl, idx) => {
-    const val = chartData[idx];
-    const pct = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(1) : "0.0";
-    const color = chartColors[idx] || "#94a3b8";
+  // Render legend rows (admin rrc-legend-row style)
+  legendList.innerHTML = pieSlices.map((s, i) => {
+    const color = pieColors[i];
+    const pct   = grandTotal > 0 ? ((s.qty / grandTotal) * 100).toFixed(2) : "0.00";
+    const clickHandler = s.isOthers ? `onclick="openUserModal('modalReceivedRecords')"` : "";
+    const cursor = s.isOthers ? "cursor:pointer;" : "";
     return `
-      <div class="rrc-legend-item">
-        <span class="rrc-dot" style="background:${color};"></span>
-        <span class="rrc-legend-label">${esc(lbl)}</span>
+      <div class="rrc-legend-row" ${clickHandler} style="${cursor}" title="${esc(s.name)}: ${s.qty.toLocaleString()} ${esc(s.unit)} (${pct}%)">
+        <div class="rrc-legend-left">
+          <span class="rrc-legend-dot" style="background:${color};"></span>
+          <span class="rrc-legend-name">${esc(s.name)}</span>
+        </div>
         <span class="rrc-legend-pct">${pct}%</span>
       </div>
     `;
   }).join("");
 
-  // Render Top 5 Received List
+  // Render Top 5 received list (admin rrc-top-row style)
   topList.innerHTML = sortedReceived.slice(0, 5).map((item, idx) => `
     <div class="rrc-top-row">
-      <span class="rrc-rank">#${idx + 1}</span>
-      <span class="rrc-mat-name">${esc(item.name)}</span>
-      <span class="rrc-mat-qty">${item.qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(item.unit)}</small></span>
+      <div class="rrc-top-left">
+        <span class="rtr-rank">#${idx + 1}</span>
+        <span class="rtr-name">${esc(item.name)}</span>
+      </div>
+      <span class="rtr-qty">${item.qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <small>${esc(item.unit)}</small></span>
     </div>
   `).join("");
+
+  // Render solid Pie Chart with percentage labels (admin style)
+  if (typeof Chart !== "undefined") {
+    if (receivePieChartInst) {
+      receivePieChartInst.data.labels = pieLabels;
+      receivePieChartInst.data.datasets[0].data = pieData;
+      receivePieChartInst.data.datasets[0].backgroundColor = pieColors;
+      receivePieChartInst.update();
+    } else {
+      const ctx = canvas.getContext("2d");
+      receivePieChartInst = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: pieLabels,
+          datasets: [{ data: pieData, backgroundColor: pieColors, borderWidth: 2, borderColor: "#FFFFFF", hoverOffset: 6 }]
+        },
+        plugins: [pieSlicePercentagePlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { animateRotate: false, duration: 400 },
+          layout: { padding: 4 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  const pct = grandTotal > 0 ? ((ctx.parsed / grandTotal) * 100).toFixed(1) : "0.0";
+                  return ` ${ctx.label}: ${pct}%`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
 }
 
 
@@ -1370,584 +1468,7 @@ function initTrendControls() {
   trendControlsBound = true;
 }
 
-let trendChartZoomLevel = 1.0;
-let trendChartFocusMode = false;
-let trendChartYShift = 0;
-let isDraggingTrend = false;
-let dragStartY = 0;
-let dragInitialShift = 0;
-
 const precisionCrosshairPlugin = {
-  id: "precisionCrosshairPlugin",
-  afterEvent(chart, args) {
-    const { event } = args;
-    if (event.type === "mousemove") {
-      chart._crosshairPos = { x: event.x, y: event.y };
-      chart.draw();
-    } else if (event.type === "mouseout" || event.type === "mouseleave") {
-      chart._crosshairPos = null;
-      chart.draw();
-    }
-  },
-  afterDraw(chart) {
-    const pos = chart._crosshairPos;
-    if (!pos) return;
-    const { ctx, chartArea, scales } = chart;
-    if (!chartArea || !scales || !scales.y) return;
-
-    const { left, right, top, bottom } = chartArea;
-    const { x, y } = pos;
-    if (x < left || x > right || y < top || y > bottom) return;
-
-    const yScale = scales.y;
-    const val = yScale.getValueForPixel(y);
-    if (val === undefined || isNaN(val)) return;
-
-    ctx.save();
-
-    // 1. Horizontal movable cursor guideline (tracks pointer up & down)
-    ctx.beginPath();
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = "rgba(16, 185, 129, 0.85)";
-    ctx.moveTo(left, y);
-    ctx.lineTo(right, y);
-    ctx.stroke();
-
-    // 2. Vertical timeline guideline
-    ctx.beginPath();
-    ctx.setLineDash([3, 3]);
-    ctx.lineWidth = 1.0;
-    ctx.strokeStyle = "rgba(14, 165, 233, 0.7)";
-    ctx.moveTo(x, top);
-    ctx.lineTo(x, bottom);
-    ctx.stroke();
-
-    // 3. Precision Y-Axis Floating Value Badge at pointer level
-    const unit = chart.config.options?._unitLabel || "kg";
-    const badgeText = `${Number(val.toFixed(1)).toLocaleString("en-US")} ${unit}`;
-    ctx.font = "bold 10px Inter, sans-serif";
-    const textWidth = ctx.measureText(badgeText).width;
-    const badgeW = Math.max(50, textWidth + 12);
-    const badgeH = 18;
-    const badgeX = Math.max(2, left - badgeW - 3);
-    const badgeY = Math.max(top, Math.min(bottom - badgeH, y - badgeH / 2));
-
-    ctx.fillStyle = "#0F172A";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-    ctx.fill();
-
-    ctx.strokeStyle = "#10B981";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = "#34D399";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
-
-    ctx.restore();
-  }
-};
-
-async function renderRawMaterialsTrendChart() {
-  const canvas = $("rawMaterialsTrendChart");
-  if (!canvas) return;
-
-  if (typeof Chart === "undefined") {
-    console.warn("Chart.js not loaded on page.");
-    return;
-  }
-
-  const selectedId = currentTrendMaterial;
-  const selectedMat = catalogMaterials.find(m => m.id === selectedId);
-  const primaryUnit = selectedMat ? selectedMat.unit : "kg";
-  const matDisplayName = selectedMat ? selectedMat.materialName : "All Raw Materials";
-
-  // Filter usage records for selected material
-  let filteredUsage = usageRecords;
-  if (selectedId !== "all") {
-    filteredUsage = usageRecords.filter(u => {
-      if (u.materialId === selectedId) return true;
-      if (selectedMat && u.materialName && selectedMat.materialName && u.materialName.toLowerCase().trim() === selectedMat.materialName.toLowerCase().trim()) return true;
-      if (selectedMat && u.itemCode && selectedMat.itemCode && u.itemCode.toUpperCase().trim() === selectedMat.itemCode.toUpperCase().trim()) return true;
-      return false;
-    });
-  }
-
-  let labels = [];
-  let consumedData = [];
-  let forecastData = [];
-  let xAxisTitle = "Month";
-
-  // Granularities: daily, weekly, monthly, yearly
-  if (currentTrendGranularity === "daily") {
-    xAxisTitle = "Day (Date)";
-    const dateMap = new Map();
-    filteredUsage.forEach(u => {
-      const d = String(u.date || u.usageDate || u.createdAt || "").split("T")[0];
-      if (d && d.length >= 8) {
-        dateMap.set(d, (dateMap.get(d) || 0) + Number(u.quantity || u.consumedQuantity || 0));
-      }
-    });
-
-    const sortedDates = Array.from(dateMap.keys()).sort();
-    const historyDates = sortedDates.length > 21 ? sortedDates.slice(-21) : (sortedDates.length > 0 ? sortedDates : [new Date().toISOString().slice(0, 10)]);
-    labels = [...historyDates];
-
-    // Actual historical daily consumption
-    consumedData = labels.map(d => {
-      return dateMap.has(d) ? Number((dateMap.get(d) || 0).toFixed(2)) : 0;
-    });
-
-    // Dynamic ML Forecast (Learned directly from authentic daily disbursements)
-    const histVals = consumedData.filter(v => v > 0);
-    const overallAvg = histVals.length > 0 ? (histVals.reduce((a, b) => a + b, 0) / histVals.length) : (selectedMat ? selectedMat.minimumThreshold * 0.25 : 150);
-
-    forecastData = labels.map((dStr, idx) => {
-      const actual = consumedData[idx] > 0 ? consumedData[idx] : overallAvg;
-      const alternatingFactor = Math.sin(idx * 1.35 + 0.4) * 0.052 + Math.cos(idx * 0.8) * 0.012;
-      const clampedFactor = Math.max(-0.062, Math.min(0.062, alternatingFactor));
-      const fitted = Math.max(0, actual * (1 + clampedFactor));
-      return Number(fitted.toFixed(2));
-    });
-
-  } else if (currentTrendGranularity === "weekly") {
-    xAxisTitle = "Weekly Horizon";
-    const weekMap = new Map();
-    filteredUsage.forEach(u => {
-      const dStr = String(u.usageDate || u.date || u.createdAt || "").split("T")[0];
-      if (dStr && dStr.length >= 8) {
-        const d = new Date(dStr);
-        if (!isNaN(d.getTime())) {
-          const startOfYear = new Date(d.getFullYear(), 0, 1);
-          const weekNo = Math.ceil((((d - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
-          const wKey = `W${String(weekNo).padStart(2, "0")}`;
-          weekMap.set(wKey, (weekMap.get(wKey) || 0) + Number(u.consumedQuantity || u.quantity || 0));
-        }
-      }
-    });
-
-    const pastWeeks = Array.from(weekMap.keys()).sort();
-    const historyWeeks = pastWeeks.length > 16 ? pastWeeks.slice(-16) : (pastWeeks.length > 0 ? pastWeeks : ["W01", "W02", "W03", "W04"]);
-    labels = historyWeeks.map((w, idx) => `Week ${idx + 1} (${w})`);
-
-    consumedData = historyWeeks.map(rawWKey => {
-      return weekMap.has(rawWKey) ? Number((weekMap.get(rawWKey) || 0).toFixed(2)) : 0;
-    });
-
-    const histWVals = consumedData.filter(v => v > 0);
-    const wAvg = histWVals.length > 0 ? histWVals.reduce((a, b) => a + b, 0) / histWVals.length : (selectedMat ? selectedMat.minimumThreshold * 0.8 : 800);
-
-    forecastData = labels.map((wStr, idx) => {
-      const actual = consumedData[idx] > 0 ? consumedData[idx] : wAvg;
-      const alternatingFactor = Math.sin(idx * 1.45 + 0.7) * 0.054 + Math.cos(idx * 0.9) * 0.011;
-      const clampedFactor = Math.max(-0.062, Math.min(0.062, alternatingFactor));
-      const fitted = Math.max(0, actual * (1 + clampedFactor));
-      return Number(fitted.toFixed(2));
-    });
-
-  } else {
-    // Default: "monthly"
-    xAxisTitle = "Month";
-    const monthMap = new Map();
-    filteredUsage.forEach(u => {
-      const dStr = String(u.usageDate || u.date || u.createdAt || "");
-      if (dStr.length >= 7) {
-        const mKey = dStr.substring(0, 7);
-        monthMap.set(mKey, (monthMap.get(mKey) || 0) + Number(u.consumedQuantity || u.quantity || 0));
-      }
-    });
-
-    const sortedMonths = Array.from(monthMap.keys()).sort();
-    const activeMonths = sortedMonths.length > 0 ? sortedMonths : ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"];
-
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    labels = activeMonths.map(mKey => {
-      const parts = mKey.split("-");
-      const mNum = parseInt(parts[1], 10);
-      return monthNames[(mNum - 1) % 12] || mKey;
-    });
-
-    consumedData = activeMonths.map(mKey => {
-      return monthMap.has(mKey) ? Number((monthMap.get(mKey)).toFixed(2)) : 0;
-    });
-
-    const recordedVals = consumedData.filter(v => v > 0);
-    const avgMonthly = recordedVals.length > 0 ? (recordedVals.reduce((a, b) => a + b, 0) / recordedVals.length) : (selectedMat ? selectedMat.minimumThreshold * 2.5 : 3000);
-
-    forecastData = labels.map((mStr, idx) => {
-      const actual = consumedData[idx] > 0 ? consumedData[idx] : avgMonthly;
-      const alternatingFactor = Math.sin(idx * 1.5 + 0.5) * 0.050 + Math.cos(idx * 0.7) * 0.012;
-      const clampedFactor = Math.max(-0.060, Math.min(0.060, alternatingFactor));
-      const fitted = Math.max(0, actual * (1 + clampedFactor));
-      return Number(fitted.toFixed(2));
-    });
-  }
-
-  // Calculate Locked Model Acceptance Margin (±7.51%) Bands around Forecast Model
-  const LOCKED_MARGIN_FACTOR = 0.0751; // 7.51% strictly locked
-  const marginLabelStr = "Margin Error (±7.51%)";
-
-  const marginUpperData = forecastData.map(f => f !== null && f !== undefined ? Number((f * (1 + LOCKED_MARGIN_FACTOR)).toFixed(2)) : null);
-  const marginLowerData = forecastData.map(f => f !== null && f !== undefined ? Math.max(0, Number((f * (1 - LOCKED_MARGIN_FACTOR)).toFixed(2))) : null);
-
-  // Dynamic scale limits based on Focus, Zoom level, and Vertical Pan Offset
-  const allActiveVals = [...consumedData, ...forecastData, ...marginUpperData, ...marginLowerData].filter(v => v !== null && v !== undefined && v > 0);
-  const dataMin = allActiveVals.length > 0 ? Math.min(...allActiveVals) : 0;
-  const dataMax = allActiveVals.length > 0 ? Math.max(...allActiveVals) : 100;
-  const dataSpan = Math.max(1, dataMax - dataMin);
-
-  let yAxisMin = undefined;
-  let yAxisMax = undefined;
-  let beginAtZero = true;
-
-  if (trendChartFocusMode || trendChartZoomLevel > 1.0 || trendChartYShift !== 0) {
-    beginAtZero = false;
-    const center = ((dataMin + dataMax) / 2) + trendChartYShift;
-    const halfSpan = (dataSpan / 2) * (1.20 / trendChartZoomLevel);
-    yAxisMin = Math.max(0, Math.floor(center - halfSpan));
-    yAxisMax = Math.ceil(center + halfSpan);
-  }
-
-  const metaEl = $("trendFooterMeta");
-  if (metaEl) {
-    const shiftNotice = trendChartYShift !== 0 ? ` • Pan Shift: ${trendChartYShift > 0 ? "+" : ""}${Math.round(trendChartYShift)} ${primaryUnit}` : "";
-    if (currentTrendGranularity === "daily") {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 24-Day Horizon (${labels[0]} to ${labels[labels.length-1]})</span> <span style="color:#64748B; margin-left:8px;">(Actual vs. ML Forecast • Locked Margin: ±7.51%${shiftNotice})</span>`;
-    } else if (currentTrendGranularity === "weekly") {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 16-Week Historical Wave</span> <span style="color:#64748B; margin-left:8px;">(4-Week Cycles • Locked Margin: ±7.51%${shiftNotice})</span>`;
-    } else if (currentTrendGranularity === "yearly") {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Production Expansion</span> <span style="color:#64748B; margin-left:8px;">(Projected: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit}${shiftNotice})</span>`;
-    } else {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 8-Month Operational Evaluation: Jan to Aug 2026</span> <span style="color:#64748B; margin-left:8px;">(Actual vs. Learned Seasonal Forecast • Margin: ±7.51%${shiftNotice})</span>`;
-    }
-  }
-
-  const pillMarginEl = document.querySelector(".pill-margin");
-  if (pillMarginEl) {
-    pillMarginEl.innerHTML = `<span class="legend-indicator margin-band"></span> ${marginLabelStr}`;
-  }
-
-  if (trendChartInst) {
-    trendChartInst.destroy();
-    trendChartInst = null;
-  }
-
-  const ctx = canvas.getContext("2d");
-  trendChartInst = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Safe Zone Upper Bound",
-          data: marginUpperData,
-          borderColor: "rgba(74, 222, 128, 0.4)",
-          backgroundColor: "transparent",
-          borderWidth: 1,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          fill: false,
-          tension: 0
-        },
-        {
-          label: `Safe Zone Range (±7.51%)`,
-          data: marginLowerData,
-          borderColor: "rgba(74, 222, 128, 0.4)",
-          backgroundColor: "rgba(134, 239, 172, 0.45)",
-          borderWidth: 1,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          fill: "-1",
-          tension: 0
-        },
-        {
-          label: `Actual (${primaryUnit})`,
-          data: consumedData,
-          borderColor: "#0284C7",
-          backgroundColor: "#0284C7",
-          borderWidth: 2.6,
-          fill: false,
-          tension: 0,
-          pointStyle: "circle",
-          pointRadius: 5,
-          pointHoverRadius: 8,
-          pointBackgroundColor: "#0284C7",
-          pointBorderColor: "#FFFFFF",
-          pointBorderWidth: 2,
-          spanGaps: false
-        },
-        {
-          label: `Forecast (${primaryUnit})`,
-          data: forecastData,
-          borderColor: "#0F172A",
-          borderDash: [3, 3],
-          backgroundColor: "#0F172A",
-          borderWidth: 2.2,
-          fill: false,
-          tension: 0,
-          pointStyle: "circle",
-          pointRadius: 4,
-          pointHoverRadius: 7,
-          pointBackgroundColor: "#0F172A",
-          pointBorderColor: "#FFFFFF",
-          pointBorderWidth: 1.5
-        }
-      ]
-    },
-    plugins: [precisionCrosshairPlugin],
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      _unitLabel: primaryUnit,
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
-      plugins: {
-        legend: {
-          display: true,
-          position: "top",
-          align: "start",
-          labels: {
-            boxWidth: 20,
-            boxHeight: 10,
-            usePointStyle: false,
-            color: "#334155",
-            font: { family: "Inter", size: 12, weight: "500" },
-            filter: legendItem => legendItem.datasetIndex !== 0
-          }
-        },
-        tooltip: {
-          backgroundColor: "#0B132B",
-          titleColor: "#FFFFFF",
-          bodyColor: "#D7E0EA",
-          borderColor: "rgba(255, 255, 255, 0.18)",
-          borderWidth: 1,
-          padding: 12,
-          boxPadding: 6,
-          usePointStyle: true,
-          filter: tooltipItem => tooltipItem.datasetIndex !== 0,
-          callbacks: {
-            title: items => items[0]?.label ? `Date: ${items[0].label}` : "",
-            beforeBody: () => `Raw Material: ${matDisplayName}`,
-            label: context => {
-              const val = context.parsed.y;
-              if (val === null || val === undefined || isNaN(val)) {
-                return ` ${context.dataset.label}: Pending (Future Cycle)`;
-              }
-              if (context.datasetIndex === 1) {
-                const idx = context.dataIndex;
-                const lower = marginLowerData[idx] || 0;
-                const upper = marginUpperData[idx] || 0;
-                return ` Acceptance Margin (±7.51%): ${lower.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} – ${upper.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
-              }
-              return ` ${context.dataset.label}: ${val.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${primaryUnit}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Date",
-            color: "#64748B",
-            font: { family: "Inter", size: 12, weight: 600 }
-          },
-          grid: {
-            color: "rgba(203, 213, 225, 0.40)",
-            borderDash: [3, 3],
-            drawBorder: false
-          },
-          ticks: {
-            color: "#64748B",
-            font: { family: "Inter", size: 11 },
-            maxRotation: 45,
-            minRotation: 30
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: `Consumption (${primaryUnit})`,
-            color: "#64748B",
-            font: { family: "Inter", size: 12, weight: 600 }
-          },
-          beginAtZero: beginAtZero,
-          min: yAxisMin,
-          max: yAxisMax,
-          grid: {
-            color: "rgba(203, 213, 225, 0.40)",
-            borderDash: [3, 3],
-            drawBorder: false
-          },
-          ticks: {
-            color: "#475569",
-            font: { family: "Inter", size: 11, weight: 500 },
-            callback: value => Number(value).toLocaleString("en-US")
-          }
-        }
-      }
-    }
-  });
-}
-
-// ============================================================
-// ADDITION #1: OPERATIONAL ATTENTION
-// ============================================================
-
-async function renderOperationalAttention() {
-  const container = $("operationalAttentionContainer");
-  if (!container) return;
-
-  container.innerHTML = `<div class="apc-loading-state">Evaluating operational inventory requirements...</div>`;
-
-  try {
-    const attentionItems = [];
-
-    // Check each catalog material against live stock, minimum threshold, and forecast
-    for (const mat of catalogMaterials) {
-      const stock = mat.currentStock;
-      const minStock = mat.minimumThreshold;
-      let forecastItem = currentForecastSupportItems.find(f => f.material.id === mat.id);
-      
-      let f7Qty = null;
-      if (forecastItem && forecastItem.forecastData?.forecast7Day?.quantity) {
-        f7Qty = Number(forecastItem.forecastData.forecast7Day.quantity);
-      }
-
-      const isOutOfStock = stock <= 0;
-      const isBelowMin = minStock !== null && stock <= minStock;
-      const isBelowForecast = f7Qty !== null && stock < f7Qty;
-
-      if (isOutOfStock || isBelowMin || isBelowForecast) {
-        let status = "Attention Needed";
-        let badgeCls = "att-badge-warn";
-        let finding = "";
-        let additionalNeed = 0;
-
-        if (isOutOfStock) {
-          status = "Out of Stock";
-          badgeCls = "att-badge-critical";
-          finding = "Stock is depleted. Immediate replenishment required.";
-          if (f7Qty !== null) {
-            additionalNeed = f7Qty;
-          } else if (minStock !== null) {
-            additionalNeed = minStock;
-          }
-        } else if (isBelowMin && isBelowForecast) {
-          status = "Critical Stock & Demand";
-          badgeCls = "att-badge-critical";
-          additionalNeed = Math.max(minStock - stock, f7Qty - stock);
-          finding = "Current stock is below minimum threshold and insufficient for forecasted demand.";
-        } else if (isBelowForecast) {
-          status = "Attention Needed";
-          badgeCls = "att-badge-warn";
-          additionalNeed = f7Qty - stock;
-          finding = "Additional stock may be needed based on the latest forecast.";
-        } else if (isBelowMin) {
-          status = "Low Stock";
-          badgeCls = "att-badge-warn";
-          additionalNeed = minStock - stock;
-          finding = "Current stock is below the minimum required threshold.";
-        }
-
-        attentionItems.push({
-          mat,
-          stock,
-          minStock,
-          f7Qty,
-          additionalNeed,
-          status,
-          badgeCls,
-          finding
-        });
-      }
-    }
-
-    if (attentionItems.length === 0) {
-      container.innerHTML = `<div class="apc-empty-state">No materials currently require attention.</div>`;
-      return;
-    }
-
-    // Sort by urgency: Out of Stock > Critical > Low Stock > Forecast Attention
-    attentionItems.sort((a, b) => {
-      const score = item => {
-        if (item.stock <= 0) return 4;
-        if (item.status === "Critical Stock & Demand") return 3;
-        if (item.minStock !== null && item.stock <= item.minStock) return 2;
-        return 1;
-      };
-      return score(b) - score(a);
-    });
-
-    container.innerHTML = attentionItems.map(item => {
-      const mat = item.mat;
-      const unit = mat.unit;
-
-      const fReqText = item.f7Qty !== null 
-        ? `${item.f7Qty.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${esc(unit)}`
-        : "—";
-
-      const addNeedText = item.additionalNeed > 0
-        ? `+${item.additionalNeed.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${esc(unit)}`
-        : "—";
-
-      const minStockText = item.minStock !== null 
-        ? `${item.minStock.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${esc(unit)}`
-        : "Not set";
-
-      const findingCls = item.stock <= 0 ? "finding-critical" : "";
-
-      return `
-        <div class="attention-card">
-          <div class="att-top">
-            <div>
-              <h4 class="att-name">${esc(mat.materialName)}</h4>
-              <span class="att-code">${esc(mat.itemCode)}</span>
-            </div>
-            <span class="att-badge ${item.badgeCls}">${esc(item.status)}</span>
-          </div>
-
-          <div class="att-metrics">
-            <div class="att-metric-item">
-              <span class="att-metric-label">Current Stock:</span>
-              <span class="att-metric-val ${item.stock <= 0 ? 'val-critical' : ''}">${item.stock.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${esc(unit)}</span>
-            </div>
-            <div class="att-metric-item">
-              <span class="att-metric-label">Minimum Stock:</span>
-              <span class="att-metric-val">${esc(minStockText)}</span>
-            </div>
-            <div class="att-metric-item">
-              <span class="att-metric-label">Forecast Requirement:</span>
-              <span class="att-metric-val">${esc(fReqText)}</span>
-            </div>
-            <div class="att-metric-item">
-              <span class="att-metric-label">Additional Need:</span>
-              <span class="att-metric-val ${item.additionalNeed > 0 ? 'val-highlight' : ''}">${esc(addNeedText)}</span>
-            </div>
-          </div>
-
-          <div class="att-finding ${findingCls}">
-            "${esc(item.finding)}"
-          </div>
-        </div>
-      `;
-    }).join("");
-
-  } catch (err) {
-    console.error("Operational Attention error:", err);
-    container.innerHTML = `<div class="apc-empty-state">No materials currently require attention.</div>`;
-  }
-}
-
-// ============================================================
-// ADDITION #2: RECENT MATERIAL ACTIVITY
 // ============================================================
 
 function renderRecentMaterialActivity() {
@@ -2540,10 +2061,10 @@ function renderModalConsumptionChart() {
     // Top 5 consumed materials
     const sumMap = {};
     usageRecords.forEach(u => {
-      if (u.materialId) sumMap[u.materialId] = (sumMap[u.materialId] || 0) + (u.consumedQuantity || 0);
+      if (u.materialId) sumMap[u.materialId] = (sumMap[u.materialId] || 0) + (u.quantity || 0);
     });
     const sortedIds = Object.keys(sumMap).sort((a, b) => sumMap[b] - sumMap[a]).slice(0, 5);
-    seriesMats = catalogMaterials.filter(m => sortedIds.includes(m.id)).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
+    seriesMats = catalogMaterials.filter(m => sortedIds.includes(String(m.id))).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
     if (seriesMats.length === 0) {
       seriesMats = catalogMaterials.slice(0, 5).map(m => ({ name: m.materialName, unit: m.unit, id: m.id }));
     }
@@ -2558,8 +2079,8 @@ function renderModalConsumptionChart() {
 
   // Relevant usage records
   const relevantUsage = isAll
-    ? usageRecords.filter(u => u.usageDate)
-    : usageRecords.filter(u => seriesMats.some(m => m.id === u.materialId || m.name === u.materialName) && u.usageDate);
+    ? usageRecords.filter(u => u.date)
+    : usageRecords.filter(u => seriesMats.some(m => m.id === u.materialId || m.name === u.materialName) && u.date);
 
   // 2. Build date buckets based on granularity (daily, week, month, year)
   let labels = [];
@@ -2567,12 +2088,12 @@ function renderModalConsumptionChart() {
 
   let referenceYear = new Date().getFullYear();
   if (relevantUsage.length > 0) {
-    const years = relevantUsage.map(u => new Date(u.usageDate).getFullYear()).filter(y => !isNaN(y));
+    const years = relevantUsage.map(u => new Date(u.date).getFullYear()).filter(y => !isNaN(y));
     if (years.length > 0) referenceYear = Math.max(...years);
   }
 
   if (currentModalGranularity === "year") {
-    const uniqueYears = Array.from(new Set(usageRecords.map(u => new Date(u.usageDate).getFullYear()).filter(y => !isNaN(y)))).sort();
+    const uniqueYears = Array.from(new Set(usageRecords.map(u => new Date(u.date).getFullYear()).filter(y => !isNaN(y)))).sort();
     if (uniqueYears.length <= 1) {
       const baseYear = uniqueYears[0] || referenceYear;
       uniqueYears.length = 0;
@@ -2594,7 +2115,7 @@ function renderModalConsumptionChart() {
   } else if (currentModalGranularity === "week") {
     let activeMonth = new Date().getMonth();
     if (relevantUsage.length > 0) {
-      const months = relevantUsage.map(u => new Date(u.usageDate).getMonth()).filter(m => !isNaN(m));
+      const months = relevantUsage.map(u => new Date(u.date).getMonth()).filter(m => !isNaN(m));
       if (months.length > 0) activeMonth = months[months.length - 1];
     }
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2610,7 +2131,7 @@ function renderModalConsumptionChart() {
 
   } else {
     // Daily (7 Days)
-    const matDates = Array.from(new Set(relevantUsage.map(u => u.usageDate).filter(Boolean))).sort();
+    const matDates = Array.from(new Set(relevantUsage.map(u => u.date).filter(Boolean))).sort();
 
     if (matDates.length >= 7) {
       const recentDates = matDates.slice(-7);
@@ -2661,10 +2182,10 @@ function renderModalConsumptionChart() {
     const data = dateBuckets.map(b => {
       let sum = 0;
       usageRecords.forEach(u => {
-        if ((u.materialId === mat.id || u.materialName === mat.name) && u.usageDate) {
-          const d = new Date(u.usageDate + "T00:00:00");
+        if ((u.materialId === mat.id || u.materialName === mat.name) && u.date) {
+          const d = new Date(u.date + "T00:00:00");
           if (!isNaN(d.getTime()) && b.filter(d)) {
-            sum += u.consumedQuantity || 0;
+            sum += u.quantity || 0;
           }
         }
       });
