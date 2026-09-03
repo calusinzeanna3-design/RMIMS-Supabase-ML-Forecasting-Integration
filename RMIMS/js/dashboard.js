@@ -306,7 +306,7 @@ function renderBaselineInstant() {
     renderReceiveRawMaterialsCard();
     populateModalCategories();
     populateTrendMaterialSelect();
-    setupTrendControls();
+    setupTrendChartControls();
     renderRawMaterialsTrendChart();
     renderAiForecastedSupportCard();
   } catch (err) {
@@ -1357,7 +1357,7 @@ function computeClientSideForecastBreakdown(matName, horizonType = "month", hori
 async function fetchForecastDataForMaterial(matNameOrId) {
   try {
     const apiBase = await getFlaskApiBase();
-    if (apiBase) {
+    if (apiBase !== null && apiBase !== undefined) {
       const headers = { "Accept": "application/json" };
       try {
         if (supabase && supabase.auth && typeof supabase.auth.getSession === "function") {
@@ -1370,7 +1370,7 @@ async function fetchForecastDataForMaterial(matNameOrId) {
 
       const encoded = encodeURIComponent(matNameOrId);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
         method: "GET",
         headers,
@@ -1379,7 +1379,26 @@ async function fetchForecastDataForMaterial(matNameOrId) {
       clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();
-        if (data && (data.status === "success" || data.forecast1Month)) return data;
+        const hasMlData = data && (data.status === "success" || data.success === true || Boolean(data.forecast1Month) || Boolean(data.operational_7_day_requirement));
+        if (hasMlData) {
+          return {
+            status: "success",
+            material_id: data.material_id || matNameOrId,
+            raw_material_name: data.raw_material_name || matNameOrId,
+            unit: data.unit || "kg",
+            forecast7Day: { quantity: data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0, unit: data.unit || "kg" },
+            forecast1Month: { quantity: data.planning_28_day_requirement ?? data.forecast1Month?.quantity ?? 0, unit: data.unit || "kg" },
+            current_inventory: {
+              current_stock: data.current_stock ?? 0,
+              minimum_threshold: data.minimum_threshold ?? 0
+            },
+            decision_support: {
+              difference: data.net_surplus_deficit_7d ?? 0,
+              decision_status: data.status || (data.reorder_recommended ? "Potential Shortage" : "Sufficient Stock"),
+              reorder_recommended: Boolean(data.reorder_recommended)
+            }
+          };
+        }
       }
     }
   } catch (err) {}
@@ -1422,9 +1441,9 @@ async function fetchForecastDataForMaterial(matNameOrId) {
 async function fetchForecastBreakdown(matName, horizonType, horizonVal) {
   try {
     const apiBase = await getFlaskApiBase();
-    if (apiBase) {
+    if (apiBase !== null && apiBase !== undefined) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(`${apiBase}/api/forecast`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1438,7 +1457,7 @@ async function fetchForecastBreakdown(matName, horizonType, horizonVal) {
       clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();
-        if (data && data.status === "success") return data;
+        if (data && (data.status === "success" || data.success)) return data;
       }
     }
   } catch (e) {}
@@ -1449,10 +1468,10 @@ async function fetchForecastBreakdown(matName, horizonType, horizonVal) {
 async function fetchHistoricalComparisonForMaterial(matNameOrId) {
   try {
     const apiBase = await getFlaskApiBase();
-    if (apiBase) {
+    if (apiBase !== null && apiBase !== undefined) {
       const encoded = encodeURIComponent(matNameOrId || "OVERALL_TOTAL");
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(`${apiBase}/api/forecast/comparison?material=${encoded}`, {
         method: "GET",
         signal: controller.signal
@@ -1460,7 +1479,7 @@ async function fetchHistoricalComparisonForMaterial(matNameOrId) {
       clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();
-        if (data && data.status === "success") return data;
+        if (data && (data.status === "success" || data.success)) return data;
       }
     }
   } catch (err) {}
@@ -1668,8 +1687,8 @@ function setupTrendChartControls() {
         if (!trendChartFocusMode && trendChartZoomLevel <= 1.0) {
           trendChartFocusMode = true;
         }
-        const currentSpan = (trendChartInst && trendChartInst.scales && trendChartInst.scales.y)
-          ? (trendChartInst.scales.y.max - trendChartInst.scales.y.min)
+        const currentSpan = (rawMaterialsTrendChartInstance && rawMaterialsTrendChartInstance.scales && rawMaterialsTrendChartInstance.scales.y)
+          ? (rawMaterialsTrendChartInstance.scales.y.max - rawMaterialsTrendChartInstance.scales.y.min)
           : (2500 / trendChartZoomLevel);
         const scrollDelta = (e.deltaY < 0 ? 1 : -1) * (currentSpan * 0.08);
         trendChartYShift += scrollDelta;
@@ -1699,8 +1718,8 @@ function setupTrendChartControls() {
       const deltaY = e.clientY - dragStartY;
       const chartWidth = canvas.clientWidth || 640;
       const chartHeight = canvas.clientHeight || 285;
-      const currentSpan = (trendChartInst && trendChartInst.scales && trendChartInst.scales.y)
-        ? (trendChartInst.scales.y.max - trendChartInst.scales.y.min)
+      const currentSpan = (rawMaterialsTrendChartInstance && rawMaterialsTrendChartInstance.scales && rawMaterialsTrendChartInstance.scales.y)
+        ? (rawMaterialsTrendChartInstance.scales.y.max - rawMaterialsTrendChartInstance.scales.y.min)
         : (2500 / trendChartZoomLevel);
       
       const shiftDelta = (deltaY / chartHeight) * currentSpan;
@@ -2543,7 +2562,7 @@ async function updateModalForecastProjection() {
 
   try {
     const apiBase = await getFlaskApiBase();
-    if (apiBase) {
+    if (apiBase !== null && apiBase !== undefined) {
       const headers = { "Content-Type": "application/json", "Accept": "application/json" };
       try {
         if (supabase && supabase.auth && typeof supabase.auth.getSession === "function") {
@@ -2555,7 +2574,7 @@ async function updateModalForecastProjection() {
       } catch (e) {}
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(`${apiBase}/api/forecast`, {
         method: "POST",
         headers,

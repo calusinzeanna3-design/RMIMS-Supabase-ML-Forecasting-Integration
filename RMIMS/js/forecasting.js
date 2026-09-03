@@ -195,7 +195,10 @@ async function loadAuthoritativeData() {
 
         // 2. Fetch 30 materials from Flask ML backend
         const apiBase = await getApiBase();
-        const mlRes = await fetch(`${apiBase}/api/ml/materials`).catch(() => null);
+        let mlRes = await fetch(`${apiBase}/api/ml/materials`).catch(() => null);
+        if (!mlRes || !mlRes.ok) {
+            mlRes = await fetch(`${apiBase}/api/materials`).catch(() => null);
+        }
         let trainedList = [];
         if (mlRes && mlRes.ok) {
             const mlData = await mlRes.json().catch(() => ({}));
