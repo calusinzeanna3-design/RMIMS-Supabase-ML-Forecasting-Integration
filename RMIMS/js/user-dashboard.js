@@ -55,63 +55,6 @@ function toast(message, type = "success") {
 // STATE & INSTANCES
 // ============================================================
 
-// js/user-dashboard.js
-//
-// RMIMS USER / STAFF OPERATIONAL DASHBOARD
-// Authoritative Supabase & ML Forecast Operational Command Center
-// Live data from public.raw_materials, public.stock_receipts, public.material_disbursements, public.user_profiles.
-// Strictly READ-ONLY. Zero direct stock mutations. Zero mock data. Light UI.
-
-import { supabase, auth } from "../supabase/supabase-config.js";
-import { onAuthStateChanged } from "../supabase/auth-compat.js";
-import { checkAndShowOnboarding } from "./onboarding.js";
-import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
-
-const $ = id => document.getElementById(id);
-
-const esc = v =>
-  String(v ?? "").replace(
-    /[&<>"']/g,
-    c => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[c])
-  );
-
-function greetingWord() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-// ============================================================
-// TOAST NOTIFICATIONS
-// ============================================================
-
-function toast(message, type = "success") {
-  const s = $("toastStack");
-  if (!s) return;
-  const el = document.createElement("div");
-  el.className = `toast ${type}`;
-  el.innerHTML = `
-    <span class="toast-dot"></span>
-    <span>${esc(message)}</span>
-  `;
-  s.appendChild(el);
-  setTimeout(() => {
-    el.classList.add("leaving");
-    setTimeout(() => el.remove(), 260);
-  }, 3000);
-}
-
-// ============================================================
-// STATE & INSTANCES
-// ============================================================
-
 let catalogMaterials = [];
 let usageRecords = [];
 let receiptRecords = [];
@@ -1468,7 +1411,6 @@ function initTrendControls() {
   trendControlsBound = true;
 }
 
-const precisionCrosshairPlugin = {
 // ============================================================
 
 function renderRecentMaterialActivity() {

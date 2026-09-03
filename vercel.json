@@ -4,6 +4,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "https://rmims-ml-backend-1052239136141.us-central1.run.app/api/:match*"
+    },
+    {
       "source": "/RMIMS",
       "destination": "/index.html"
     },

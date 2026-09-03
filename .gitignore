@@ -7,3 +7,4 @@ dist/
 notebooks/
 scratch/
 ml_backend/__pycache__/
+*.zip
