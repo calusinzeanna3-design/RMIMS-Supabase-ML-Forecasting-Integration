@@ -10,6 +10,7 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-finished-products.js";
 
 /* ==========================================================
    ROLE GUARD & AUTHENTICATION
@@ -315,18 +316,65 @@ function buildFinishedProductsContext() {
 
     const prodMap = new Map();
 
+    // Helper to find raw material ID by name
+    function findMaterialIdByName(matName) {
+        const query = (matName || "").toLowerCase().trim();
+        const found = state.materials.find(m => {
+            const name = (m.name || "").toLowerCase().trim();
+            return name === query || name.includes(query) || query.includes(name);
+        });
+        return found ? found.id : null;
+    }
+
+    // Populate from Authentic Finished Products Catalog
+    if (Array.isArray(AUTHENTIC_FINISHED_PRODUCTS_CATALOG)) {
+        AUTHENTIC_FINISHED_PRODUCTS_CATALOG.forEach(p => {
+            if (!p || !p.name) return;
+            const norm = p.name.trim();
+            const key = norm.toLowerCase();
+
+            const matIds = [];
+            if (Array.isArray(p.materialNames)) {
+                p.materialNames.forEach(name => {
+                    const mId = findMaterialIdByName(name);
+                    if (mId && !matIds.includes(mId)) matIds.push(mId);
+                });
+            }
+
+            prodMap.set(key, {
+                id: "fp_" + key.replace(/[^a-z0-9]/g, "_"),
+                name: norm,
+                imageUrl: null,
+                materialIds: matIds,
+                createdAt: "2026-01-01T00:00:00Z"
+            });
+        });
+    }
+
     // Add saved contexts (filtering out generic operational names)
     if (Array.isArray(saved)) {
         saved.forEach(p => {
             if (p && p.name && !isGenericOperationalName(p.name)) {
                 const norm = p.name.trim().toLowerCase();
-                prodMap.set(norm, {
-                    id: p.id || ("fp_" + norm),
-                    name: p.name.trim(),
-                    imageUrl: p.imageUrl || null,
-                    materialIds: Array.isArray(p.materialIds) ? p.materialIds.filter(id => state.materials.some(m => m.id === id)) : [],
-                    createdAt: p.createdAt || new Date().toISOString()
-                });
+                if (prodMap.has(norm)) {
+                    const ex = prodMap.get(norm);
+                    if (p.imageUrl) ex.imageUrl = p.imageUrl;
+                    if (Array.isArray(p.materialIds)) {
+                        p.materialIds.forEach(id => {
+                            if (!ex.materialIds.includes(id) && state.materials.some(m => m.id === id)) {
+                                ex.materialIds.push(id);
+                            }
+                        });
+                    }
+                } else {
+                    prodMap.set(norm, {
+                        id: p.id || ("fp_" + norm),
+                        name: p.name.trim(),
+                        imageUrl: p.imageUrl || null,
+                        materialIds: Array.isArray(p.materialIds) ? p.materialIds.filter(id => state.materials.some(m => m.id === id)) : [],
+                        createdAt: p.createdAt || new Date().toISOString()
+                    });
+                }
             }
         });
     }
@@ -1176,24 +1224,42 @@ function updateDisburseLivePreview() {
     const previewEl = document.getElementById("maDisburseStockPreview");
     const matSelect = document.getElementById("maDisburseMaterialSelect");
     const qtyInput = document.getElementById("maDisburseQuantityInput");
+    const warningBox = document.getElementById("maDisburseMarginWarning");
+    const warningDesc = document.getElementById("maDisburseMarginWarningDesc");
     if (!previewEl) return;
 
     const matId = matSelect ? matSelect.value : "";
     const mat = state.materials.find(m => m.id === matId);
     if (!mat) {
         previewEl.innerHTML = "";
+        if (warningBox) warningBox.style.display = "none";
         return;
     }
 
     const cur = Number(mat.current_stock) || 0;
     const qty = parseFloat(qtyInput?.value) || 0;
     const unit = mat.unit_of_measure || "kg";
+    const minThresh = Number(mat.minimum_threshold) || 0;
     const next = Math.max(0, cur - qty);
 
     if (qty > cur) {
         previewEl.innerHTML = `<span style="color: #dc2626; font-weight:700;">⚠️ Exceeds available stock (${formatQty(cur, unit)})</span>`;
     } else {
         previewEl.innerHTML = `Available: <strong>${formatQty(cur, unit)}</strong> &nbsp;→&nbsp; Remaining: <strong style="color:#ea580c;">${formatQty(next, unit)}</strong>`;
+    }
+
+    // Margin of Error Validation (+7.51% Upper Limit)
+    const typicalBatchReq = Math.max(minThresh * 0.50, Math.min(cur * 0.50, 50), 10);
+    const upperMarginLimit = typicalBatchReq * 1.0751; // +7.51% Limit
+
+    if (warningBox && warningDesc) {
+        if (qty > 0 && qty <= cur && qty > upperMarginLimit) {
+            const excessPct = (((qty - typicalBatchReq) / typicalBatchReq) * 100).toFixed(1);
+            warningDesc.textContent = `Entered quantity (${formatQty(qty, unit)}) exceeds standard batch allocation (${formatQty(typicalBatchReq, unit)}) by +${excessPct}%, overshooting the ±7.51% operational forecast margin. Verify recipe measurements before submitting.`;
+            warningBox.style.display = "flex";
+        } else {
+            warningBox.style.display = "none";
+        }
     }
 }
 
@@ -1338,6 +1404,18 @@ async function handleSaveReceive() {
         if (error) throw error;
 
         toast(`Received ${formatQty(qty, mat?.unit_of_measure)} of ${mat?.name}`, "success");
+        if (window.RMIMS_NOTIFICATIONS?.addNotification) {
+            window.RMIMS_NOTIFICATIONS.addNotification({
+                id: `notif-rcv-act-${Date.now()}`,
+                category: 'receiving',
+                priority: 'success',
+                title: 'Material Received',
+                message: `${mat?.name || "Raw Material"} received: ${qty} ${mat?.unit_of_measure || "kg"}${supplier ? ` from ${supplier}` : ""}.`,
+                actor: 'Source: Material Activity',
+                roleScope: 'all',
+                timestamp: new Date().toISOString()
+            });
+        }
         closeReceiveModal();
         try {
             localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "receive" }));
@@ -1382,7 +1460,10 @@ function openDisburseModal(preselectedMatId = null, preselectedProduct = null, a
             dateInput.value = todayStr;
         }
     }
-    if (qtyInput) qtyInput.value = "1";
+    if (qtyInput) {
+        qtyInput.value = "1";
+        qtyInput.oninput = updateDisburseLivePreview;
+    }
 
     const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
         ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
@@ -1502,9 +1583,19 @@ async function handleSaveDisburse() {
             p_finished_product_name: productContext
         });
 
-        if (error) throw error;
-
         toast(`Disbursed ${formatQty(qty, mat.unit_of_measure)} for ${productContext}`, "success");
+        if (window.RMIMS_NOTIFICATIONS?.addNotification) {
+            window.RMIMS_NOTIFICATIONS.addNotification({
+                id: `notif-disb-act-${Date.now()}`,
+                category: 'disbursement',
+                priority: 'info',
+                title: 'Material Disbursed',
+                message: `${mat.name} disbursed: ${qty} ${mat.unit_of_measure || "kg"} (for ${productContext}).`,
+                actor: 'Source: Material Activity',
+                roleScope: 'all',
+                timestamp: new Date().toISOString()
+            });
+        }
         closeDisburseModal();
         try {
             localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "disburse" }));

@@ -182,14 +182,6 @@ document.getElementById("resetConfirmBtn")?.addEventListener("click", async () =
                 const { error: recErr } = await db.from("stock_receipts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
                 if (recErr) console.warn("Stock receipts reset warning:", recErr);
             }
-            if (scopes.includes("raw_materials") || scopes.includes("finished_products") || scopes.includes("all") || currentOption.key === "all") {
-                const { error: reqErr } = await db.from("product_material_requirements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                if (reqErr) console.warn("Requirements reset warning:", reqErr);
-            }
-            if (scopes.includes("finished_products") || scopes.includes("all") || currentOption.key === "all") {
-                const { error: fpErr } = await db.from("finished_products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                if (fpErr) console.warn("Finished products reset warning:", fpErr);
-            }
             if (scopes.includes("raw_materials") || scopes.includes("all") || currentOption.key === "all") {
                 const { error: matErr } = await db.from("raw_materials").delete().neq("id", "00000000-0000-0000-0000-000000000000");
                 if (matErr) throw matErr;

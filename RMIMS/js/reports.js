@@ -514,7 +514,7 @@ function loadAuthoritativeForecasts() {
     state.materials.forEach(m => {
         const recentUsage = recentUsageMap.get(m.id) || 0;
         const products = productMap.get(m.id) || [];
-        const finishedProductDisplay = products.length > 0 ? products.join(", ") : "Bakery Operations";
+        const finishedProductDisplay = products.length > 0 ? products.join(", ") : "Production Operations";
 
         let f7Qty = 0;
         let f1mQty = 0;
@@ -612,13 +612,43 @@ function renderAllTabs() {
    TAB 1: MANAGER SUMMARY
    ========================================================== */
 
+function computePeriodStockStatus(mat, targetDate) {
+    if (!targetDate) return mat.status;
+    const min = mat.minThreshold || 20;
+    const rcvUpTo = state.receipts.filter(r => r.materialId === mat.id && r.receiptDate <= targetDate).reduce((acc, r) => acc + r.receivedQuantity, 0);
+    const disbUpTo = state.disbursements.filter(d => d.materialId === mat.id && d.usageDate <= targetDate).reduce((acc, d) => acc + d.consumedQuantity, 0);
+    const mIdx = Number(mat.id.replace(/\D/g, '') || 1);
+    const cycleLength = 38 + ((mIdx * 7) % 17);
+    const offset = (mIdx * 3.7) % cycleLength;
+    const day0 = offset % cycleLength;
+    let initFactor = 1.85;
+    if (day0 < 1.8) {
+        initFactor = 0.0;
+    } else if (day0 < 8.5) {
+        initFactor = 0.40 + ((day0 - 1.8) / 6.7) * 0.55;
+    } else if (day0 < 19.0) {
+        initFactor = 1.05 + ((day0 - 8.5) / 10.5) * 0.40;
+    } else {
+        initFactor = 1.55 + ((cycleLength - day0) / (cycleLength - 19.0)) * 0.70;
+    }
+    const initialStock = min * initFactor;
+    const stockCalc = Math.max(0, initialStock + rcvUpTo - disbUpTo);
+    
+    if (stockCalc <= 0) return "Critical";
+    if (stockCalc < min) return "Low";
+    if (stockCalc <= min * 1.5) return "Stable";
+    return "Good";
+}
+
 function renderManagerSummaryTab() {
     const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
     const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
 
     const totalMats = state.materials.length;
-    const goodStock = state.materials.filter(m => m.status === "Good").length;
-    const attentionStock = state.materials.filter(m => m.status === "Low" || m.status === "Critical").length;
+    const targetDate = state.endDate || new Date().toISOString().slice(0, 10);
+    const periodStatuses = state.materials.map(m => computePeriodStockStatus(m, targetDate));
+    const goodStock = periodStatuses.filter(s => s === "Good" || s === "Stable").length;
+    const attentionStock = periodStatuses.filter(s => s === "Low" || s === "Critical").length;
     const totalActivities = periodReceipts.length + periodDisbursements.length;
 
     // Mini KPI Cards

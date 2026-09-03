@@ -204,17 +204,17 @@
                     <div class="trend-title-area">
                         <h2 class="trend-title">Raw Materials Trend</h2>
                         <div class="trend-legend-pills">
-                            <span class="trend-legend-pill pill-consumed" title="Actual Consumption (Live Consumed Stock)">
-                                <span class="legend-indicator solid-blue-dot"></span>
-                                Actual Consumption
-                            </span>
-                            <span class="trend-legend-pill pill-forecast" title="Holt-Winters Fitted Forecast (kg)">
-                                <span class="legend-indicator dashed-orange-square"></span>
-                                Holt-Winters Fitted Forecast
-                            </span>
-                            <span class="trend-legend-pill pill-margin" title="Dynamic Acceptance Margin (&plusmn;7.51%)">
+                            <span class="trend-legend-pill pill-margin" title="Safe Zone Range (&plusmn;7.51%)">
                                 <span class="legend-indicator margin-band"></span>
-                                Dynamic Acceptance Margin (&plusmn;7.51%)
+                                Safe Zone Range (&plusmn;7.51%)
+                            </span>
+                            <span class="trend-legend-pill pill-consumed" title="Actual Consumption">
+                                <span class="legend-indicator solid-blue-dot"></span>
+                                Actual
+                            </span>
+                            <span class="trend-legend-pill pill-forecast" title="Forecast Model">
+                                <span class="legend-indicator dotted-forecast"></span>
+                                Forecast
                             </span>
                         </div>
                     </div>
@@ -227,7 +227,22 @@
                             <button type="button" class="trend-gran-btn" data-gran="daily" title="Daily Forecast (Days)">Daily</button>
                             <button type="button" class="trend-gran-btn" data-gran="weekly" title="Weekly Forecast (Weeks)">Weekly</button>
                             <button type="button" class="trend-gran-btn active" data-gran="monthly" title="Monthly Forecast (Months)">Monthly</button>
-                            <button type="button" class="trend-gran-btn" data-gran="yearly" title="Yearly Forecast (Years)">Yearly</button>
+                        </div>
+                        <div class="trend-zoom-toolbar" id="trendZoomToolbar" role="toolbar" aria-label="Chart Zoom Controls">
+                            <button type="button" class="trend-zoom-btn" id="trendZoomInBtn" title="Zoom In (+)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                            </button>
+                            <button type="button" class="trend-zoom-btn" id="trendZoomOutBtn" title="Zoom Out (-)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                            </button>
+                            <button type="button" class="trend-zoom-btn" id="trendZoomFocusBtn" title="Focus Auto-Fit Y-Scale / Full Baseline">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="13" height="13"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                <span>Focus</span>
+                            </button>
+                            <button type="button" class="trend-zoom-btn" id="trendZoomResetBtn" title="Reset Zoom &amp; Pan View">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="12" height="12"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                <span>Reset</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -464,40 +479,51 @@
         <button class="amp-close-btn" id="closeModalForecastDetail" aria-label="Close dialog">✕</button>
     </div>
 
-    <!-- Multi-Horizon Controls -->
-    <div class="amp-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
-        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <label for="modalHorizonType" class="amp-filter-label" style="font-weight: 600; color: var(--text-body);">Planning Horizon:</label>
-            <select id="modalHorizonType" class="amp-select" style="min-width: 110px; font-weight: 500;">
-                <option value="day">Days</option>
-                <option value="week">Weeks</option>
-                <option value="month" selected>Months</option>
-                <option value="year">Years</option>
-            </select>
-            <input type="number" id="modalHorizonValue" value="3" min="1" max="24" class="amp-select" style="width: 70px; text-align: center; font-weight: 600;" aria-label="Horizon Value">
-            <button type="button" class="amp-gran-btn active" id="modalRefreshBtn" style="padding: 7px 16px; cursor: pointer; border-radius: 8px; font-weight: 600;">Calculate</button>
+    <div class="amp-body" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 12px;">
+        <!-- Multi-Horizon Controls -->
+        <div class="mfd-controls-bar">
+            <div class="mfd-controls-group">
+                <label for="modalHorizonType" class="mfd-control-label">Planning Horizon:</label>
+                <div class="mfd-input-wrapper">
+                    <select id="modalHorizonType" class="mfd-select">
+                        <option value="day">Days</option>
+                        <option value="week">Weeks</option>
+                        <option value="month" selected>Months</option>
+                        <option value="year">Years</option>
+                    </select>
+                    <input type="number" id="modalHorizonValue" value="3" min="1" max="24" class="mfd-number-input" aria-label="Horizon Value">
+                </div>
+                <button type="button" class="mfd-calculate-btn" id="modalRefreshBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>Run Projection</span>
+                </button>
+            </div>
         </div>
-    </div>
 
-    <!-- Inventory Status / Decision Card -->
-    <div class="mfd-decision-box" id="decisionBox" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 14px 18px; border-radius: 12px; background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.12);">
-        <div>
-            <span class="fw-bold d-block" id="decisionStatusTitle" style="font-weight: 700; font-size: 1rem; color: #1E293B;">Analyzing inventory demand...</span>
-            <small class="text-muted" id="decisionInsightText" style="color: #64748B; font-size: 0.85rem;">Fetching data from ML backend</small>
+        <!-- Inventory Status / Decision Card -->
+        <div class="mfd-decision-box" id="decisionBox">
+            <div class="mfd-decision-left">
+                <div class="mfd-decision-header-row">
+                    <span class="mfd-decision-icon" id="decisionStatusIcon">⚠️</span>
+                    <span class="mfd-decision-title" id="decisionStatusTitle">Analyzing inventory demand...</span>
+                </div>
+                <p class="mfd-decision-desc" id="decisionInsightText">Fetching data from Holt-Winters ETS time-series engine...</p>
+            </div>
+            <div class="mfd-decision-right">
+                <span class="mfd-total-lbl">Total Requirement</span>
+                <span class="mfd-total-val" id="modalTotalReqText">--</span>
+            </div>
         </div>
-        <div style="text-align: right;">
-            <span style="display: block; font-size: 0.72rem; color: #64748B; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Total Requirement</span>
-            <h3 class="fw-bold mb-0 text-primary" id="modalTotalReqText" style="font-weight: 800; color: #2563EB; margin: 0; font-size: 1.25rem;">--</h3>
+
+        <!-- Interactive Time Series Chart Canvas -->
+        <div class="mfd-chart-wrapper">
+            <canvas id="modalForecastChart"></canvas>
         </div>
-    </div>
 
-    <!-- Interactive Time Series Chart Canvas -->
-    <div style="height: 250px; position: relative; margin-bottom: 16px; width: 100%;">
-        <canvas id="modalForecastChart"></canvas>
-    </div>
-
-    <div class="forecast-detail-content" id="forecastDetailContent">
-        <!-- Injected via JS -->
+        <!-- 4-Stat Tiles -->
+        <div class="forecast-detail-content" id="forecastDetailContent">
+            <!-- Injected via JS -->
+        </div>
     </div>
 
     <div class="amp-footer">

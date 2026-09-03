@@ -24,8 +24,6 @@ const BACKUP_VERSION = 1;
 
 const CATEGORIES = [
     { key: "raw_materials", label: "Raw Materials", table: "raw_materials" },
-    { key: "finished_products", label: "Finished Products", table: "finished_products" },
-    { key: "product_material_requirements", label: "Product Material Requirements", table: "product_material_requirements" },
     { key: "stock_receipts", label: "Material Activity — Receive", table: "stock_receipts" },
     { key: "material_disbursements", label: "Material Activity — Used / Consumption Records", table: "material_disbursements" }
 ];
@@ -105,24 +103,23 @@ export async function loadDataSummary() {
     Object.values(tiles).forEach(el => { if (el) el.textContent = "…"; });
 
     try {
-        const [materials, finishedProducts, stockReceipts, usageRecords, users, supplierRows] = await Promise.all([
-            countRows("raw_materials"),
-            countRows("finished_products"),
-            countRows("stock_receipts"),
-            countRows("material_disbursements"),
-            countRows("user_profiles"),
-            db.from("raw_materials").select("supplier").not("supplier", "is", null)
+        const [materials, stockReceipts, usageRecords, users, supplierRows] = await Promise.all([
+            countRows("raw_materials").catch(() => 0),
+            countRows("stock_receipts").catch(() => 0),
+            countRows("material_disbursements").catch(() => 0),
+            countRows("user_profiles").catch(() => 0),
+            db.from("stock_receipts").select("supplier_name").not("supplier_name", "is", null).catch(() => ({ data: [] }))
         ]);
 
         const distinctSuppliers = new Set(
             (supplierRows.data || [])
-                .map(r => (r.supplier || "").trim().toLowerCase())
+                .map(r => (r.supplier_name || "").trim().toLowerCase())
                 .filter(Boolean)
         );
 
         if (tiles.materials) tiles.materials.textContent = materials;
-        if (tiles.finished_products) tiles.finished_products.textContent = finishedProducts;
-        if (tiles.suppliers) tiles.suppliers.textContent = distinctSuppliers.size;
+        if (tiles.finished_products) tiles.finished_products.textContent = "—";
+        if (tiles.suppliers) tiles.suppliers.textContent = distinctSuppliers.size || "—";
         if (tiles.stock_receipts) tiles.stock_receipts.textContent = stockReceipts;
         if (tiles.usage_records) tiles.usage_records.textContent = usageRecords;
         if (tiles.users) tiles.users.textContent = users;

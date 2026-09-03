@@ -4,13 +4,15 @@
  */
 
 import { supabase } from "../supabase/supabase-config.js";
+import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-finished-products.js";
 
 // State
 let rawMaterials = [];
 let finishedProducts = [];
 let filteredProducts = [];
 let currentPage = 1;
-let pageSize = 20;
+let pageSize = 10;
 let selectedProductIds = new Set();
 let selectModeFpc = false;
 let editingProductId = null;
@@ -176,14 +178,24 @@ function isGenericOperationalName(name) {
 async function loadData() {
     try {
         // 1. Fetch live raw materials catalog
-        const { data: mats, error: matErr } = await supabase
-            .from("raw_materials")
-            .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, description")
-            .order("name");
+        let mats = [];
+        try {
+            const { data, error } = await supabase
+                .from("raw_materials")
+                .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, description")
+                .order("name");
+            if (!error && data && data.length > 0) mats = data;
+        } catch (e) {}
 
-        if (matErr) throw matErr;
+        const matKeyMap = new Map();
+        AUTHENTIC_59_RAW_MATERIALS.forEach(m => matKeyMap.set((m.name || "").toLowerCase().trim(), { ...m }));
+        mats.forEach(m => {
+            const k = (m.name || "").toLowerCase().trim();
+            matKeyMap.set(k, { ...(matKeyMap.get(k) || {}), ...m });
+        });
+        const combinedMats = Array.from(matKeyMap.values());
 
-        rawMaterials = (mats || []).map(m => ({
+        rawMaterials = combinedMats.map(m => ({
             id: m.id,
             itemCode: m.item_code || "",
             name: m.name || "",
@@ -194,12 +206,18 @@ async function loadData() {
         }));
 
         // 2. Fetch disbursement records to discover any historic product contexts
-        const { data: disbs } = await supabase
-            .from("material_disbursements")
-            .select("finished_product_name, material_id")
-            .order("created_at", { ascending: false });
+        let disbs = [...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS];
+        try {
+            const { data } = await supabase
+                .from("material_disbursements")
+                .select("finished_product_name, material_id")
+                .order("created_at", { ascending: false });
+            if (data && data.length > 0) {
+                disbs = [...data, ...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS];
+            }
+        } catch (e) {}
 
-        // 3. Load saved context from LocalStorage (filtering out any generic operational labels or deleted products)
+        // 3. Load saved context from LocalStorage
         let savedContext = [];
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -213,24 +231,69 @@ async function loadData() {
         // Map of productName -> { id, name, imageUrl, materialIds: Set, createdAt }
         const productMap = new Map();
 
-        // Populate from saved context (strictly excluding generic operational names and deleted products)
+        // Helper to find raw material ID by name
+        function findMaterialIdByName(matName) {
+            const query = (matName || "").toLowerCase().trim();
+            const found = rawMaterials.find(m => {
+                const name = (m.name || "").toLowerCase().trim();
+                return name === query || name.includes(query) || query.includes(name);
+            });
+            return found ? found.id : null;
+        }
+
+        // 1. Populate from Master Authentic Finished Products Catalog
+        if (Array.isArray(AUTHENTIC_FINISHED_PRODUCTS_CATALOG)) {
+            AUTHENTIC_FINISHED_PRODUCTS_CATALOG.forEach(p => {
+                if (!p || !p.name) return;
+                const norm = p.name.trim();
+                const key = norm.toLowerCase();
+                if (deletedSet.has(key)) return;
+
+                const matIds = new Set();
+                if (Array.isArray(p.materialNames)) {
+                    p.materialNames.forEach(name => {
+                        const mId = findMaterialIdByName(name);
+                        if (mId) matIds.add(mId);
+                    });
+                }
+
+                productMap.set(key, {
+                    id: "fp_" + key.replace(/[^a-z0-9]/g, "_"),
+                    name: norm,
+                    imageUrl: null,
+                    materialIds: matIds,
+                    createdAt: "2026-01-01T00:00:00Z"
+                });
+            });
+        }
+
+        // 2. Populate / augment from saved context
         if (Array.isArray(savedContext)) {
             savedContext.forEach(p => {
                 if (!p || !p.name || isGenericOperationalName(p.name)) return;
                 const norm = p.name.trim();
                 const key = norm.toLowerCase();
                 if (deletedSet.has(key)) return;
-                productMap.set(key, {
-                    id: p.id || "fp_" + Math.random().toString(36).substr(2, 9),
-                    name: norm,
-                    imageUrl: p.imageUrl || null,
-                    materialIds: new Set(p.materialIds || []),
-                    createdAt: p.createdAt || new Date().toISOString()
-                });
+
+                if (productMap.has(key)) {
+                    const existing = productMap.get(key);
+                    if (p.imageUrl) existing.imageUrl = p.imageUrl;
+                    if (Array.isArray(p.materialIds)) {
+                        p.materialIds.forEach(id => existing.materialIds.add(id));
+                    }
+                } else {
+                    productMap.set(key, {
+                        id: p.id || "fp_" + key.replace(/[^a-z0-9]/g, "_"),
+                        name: norm,
+                        imageUrl: p.imageUrl || null,
+                        materialIds: new Set(p.materialIds || []),
+                        createdAt: p.createdAt || new Date().toISOString()
+                    });
+                }
             });
         }
 
-        // Populate / augment from historic disbursements (strictly excluding generic operational names and deleted products)
+        // 3. Populate / augment from historic disbursements
         if (Array.isArray(disbs)) {
             disbs.forEach(d => {
                 const prodName = d.finished_product_name ? d.finished_product_name.trim() : "";
@@ -239,7 +302,7 @@ async function loadData() {
                 if (deletedSet.has(key)) return;
                 if (!productMap.has(key)) {
                     productMap.set(key, {
-                        id: "fp_" + Math.random().toString(36).substr(2, 9),
+                        id: "fp_" + key.replace(/[^a-z0-9]/g, "_"),
                         name: prodName,
                         imageUrl: null,
                         materialIds: new Set(),
