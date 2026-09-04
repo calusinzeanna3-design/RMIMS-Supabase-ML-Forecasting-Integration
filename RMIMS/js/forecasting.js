@@ -50,26 +50,42 @@ const state = {
 // Chart Instance
 let consumptionForecastChartInstance = null;
 
-// Resolve Flask API Base
+// Resolve Flask API Base with fast timeout
 let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
+let mlIsAvailable = null;
 
-async function getApiBase() {
-    if (resolvedApiBase !== null) return resolvedApiBase;
-    try {
-        const res = await fetch("/api/ml/status", { method: "GET" }).catch(() => null);
-        if (res && res.ok) {
-            resolvedApiBase = "";
-            return "";
-        }
-    } catch (e) {}
+async function checkMlServiceAvailable() {
+    if (mlIsAvailable !== null) return mlIsAvailable;
 
+    const candidates = [];
+    if (window.ENV_FLASK_API_BASE) candidates.push(window.ENV_FLASK_API_BASE);
+    candidates.push("");
     if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
-        resolvedApiBase = "http://127.0.0.1:5000";
-        return resolvedApiBase;
+        candidates.push("http://127.0.0.1:5000");
+    }
+
+    for (const base of candidates) {
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 350);
+            const res = await fetch(`${base}/api/ml/status`, { method: "GET", signal: controller.signal }).catch(() => null);
+            clearTimeout(timer);
+            if (res && res.ok) {
+                resolvedApiBase = base;
+                mlIsAvailable = true;
+                return true;
+            }
+        } catch (e) {}
     }
 
     resolvedApiBase = "";
-    return "";
+    mlIsAvailable = false;
+    return false;
+}
+
+async function getApiBase() {
+    await checkMlServiceAvailable();
+    return resolvedApiBase || "";
 }
 
 /* ==========================================================
@@ -534,6 +550,15 @@ async function generateAllForecasts() {
     if (genBtn) genBtn.disabled = true;
 
     try {
+        const isMlOnline = await checkMlServiceAvailable();
+        if (!isMlOnline) {
+            // Rapid authoritative baseline computation (immediate < 10ms)
+            computeAuthoritativeForecastBaseline();
+            setServiceStatus("Forecast Ready", "ready");
+            renderAll();
+            return;
+        }
+
         const apiBase = await getApiBase();
         const session = await getSession();
         const headers = { "Accept": "application/json" };
@@ -544,11 +569,16 @@ async function generateAllForecasts() {
         const fetchPromises = state.materials.map(async (m) => {
             try {
                 const encoded = encodeURIComponent(m.name);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1800);
                 const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
                     method: "GET",
-                    headers
-                });
-                if (res.ok) {
+                    headers,
+                    signal: controller.signal
+                }).catch(() => null);
+                clearTimeout(timeoutId);
+
+                if (res && res.ok) {
                     const data = await res.json();
                     if (data && (data.status === "success" || data.success === true)) {
                         const f7 = Number(data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0);
@@ -633,6 +663,7 @@ async function generateAllForecasts() {
 
             setServiceStatus("Forecast Ready", "ready");
         } else {
+            computeAuthoritativeForecastBaseline();
             setServiceStatus("Forecast Ready", "ready");
         }
 
@@ -640,7 +671,9 @@ async function generateAllForecasts() {
 
     } catch (err) {
         console.warn("ML service update notice, baseline preserved:", err);
+        computeAuthoritativeForecastBaseline();
         setServiceStatus("Forecast Ready", "ready");
+        renderAll();
     } finally {
         state.isForecasting = false;
         if (genBtn) genBtn.disabled = false;

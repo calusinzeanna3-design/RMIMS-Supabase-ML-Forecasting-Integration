@@ -1021,65 +1021,9 @@ function renderCard2History() {
     }
 
     if (paginationEl) {
-        if (totalPages <= 1) {
-            paginationEl.innerHTML = "";
-            return;
-        }
-
-        let buttonsHtml = `
-            <button type="button" class="page-btn page-nav-btn" id="histPrevBtn" ${state.historyPage === 1 ? "disabled" : ""}>
-                ‹ Prev
-            </button>
-        `;
-
-        for (let p = 1; p <= totalPages; p++) {
-            if (p === 1 || p === totalPages || (p >= state.historyPage - 1 && p <= state.historyPage + 1)) {
-                buttonsHtml += `
-                    <button type="button" class="page-btn ${p === state.historyPage ? "active" : ""}" data-page="${p}">
-                        ${p}
-                    </button>
-                `;
-            } else if (p === state.historyPage - 2 || p === state.historyPage + 2) {
-                buttonsHtml += `<span class="page-ellipsis">…</span>`;
-            }
-        }
-
-        buttonsHtml += `
-            <button type="button" class="page-btn page-nav-btn" id="histNextBtn" ${state.historyPage === totalPages ? "disabled" : ""}>
-                Next ›
-            </button>
-        `;
-
-        paginationEl.innerHTML = buttonsHtml;
-
-        const prevBtn = document.getElementById("histPrevBtn");
-        if (prevBtn) {
-            prevBtn.addEventListener("click", () => {
-                if (state.historyPage > 1) {
-                    state.historyPage--;
-                    renderCard2History();
-                }
-            });
-        }
-
-        const nextBtn = document.getElementById("histNextBtn");
-        if (nextBtn) {
-            nextBtn.addEventListener("click", () => {
-                if (state.historyPage < totalPages) {
-                    state.historyPage++;
-                    renderCard2History();
-                }
-            });
-        }
-
-        paginationEl.querySelectorAll(".page-btn[data-page]").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const p = Number(btn.getAttribute("data-page"));
-                if (p && p !== state.historyPage) {
-                    state.historyPage = p;
-                    renderCard2History();
-                }
-            });
+        renderPaginationControls(paginationEl, state.historyPage, totalPages, (newPage) => {
+            state.historyPage = newPage;
+            renderCard2History();
         });
     }
 }
@@ -1092,7 +1036,7 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
     }
 
     let html = `
-        <button type="button" class="page-btn page-nav-btn" id="prevCardPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹ Prev</button>
+        <button type="button" class="page-btn page-nav-btn page-nav-prev" ${currentPage <= 1 ? "disabled" : ""}>‹ Prev</button>
     `;
 
     for (let p = 1; p <= totalPages; p++) {
@@ -1104,13 +1048,13 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
     }
 
     html += `
-        <button type="button" class="page-btn page-nav-btn" id="nextCardPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>Next ›</button>
+        <button type="button" class="page-btn page-nav-btn page-nav-next" ${currentPage >= totalPages ? "disabled" : ""}>Next ›</button>
     `;
 
     container.innerHTML = html;
 
-    const prevBtn = container.querySelector("#prevCardPageBtn");
-    const nextBtn = container.querySelector("#nextCardPageBtn");
+    const prevBtn = container.querySelector(".page-nav-prev");
+    const nextBtn = container.querySelector(".page-nav-next");
 
     if (prevBtn) {
         prevBtn.addEventListener("click", () => {
@@ -1126,7 +1070,7 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
 
     container.querySelectorAll(".page-btn[data-page]").forEach(btn => {
         btn.addEventListener("click", () => {
-            const p = Number(btn.getAttribute("data-page"));
+            const p = Number(btn.getAttribute("data-page") || btn.dataset.page);
             if (p && p !== currentPage) onPageChange(p);
         });
     });

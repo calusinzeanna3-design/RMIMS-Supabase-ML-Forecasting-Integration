@@ -2067,17 +2067,7 @@ async function renderRawMaterialsTrendChart() {
       },
       plugins: {
         legend: {
-          display: true,
-          position: "top",
-          align: "start",
-          labels: {
-            boxWidth: 20,
-            boxHeight: 10,
-            usePointStyle: false,
-            color: "#334155",
-            font: { family: "Inter", size: 12, weight: "500" },
-            filter: legendItem => legendItem.datasetIndex !== 0
-          }
+          display: false
         },
         tooltip: {
           backgroundColor: "#0B132B",
