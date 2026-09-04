@@ -240,7 +240,15 @@ if (recSearchInput) {
 
 function renderBaselineInstant() {
   try {
-    const rawMats = AUTHENTIC_59_RAW_MATERIALS;
+    let deletedMatIds = new Set();
+    try {
+      deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+    } catch (e) {}
+
+    let rawMats = AUTHENTIC_59_RAW_MATERIALS;
+    if (deletedMatIds.size > 0) {
+      rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
+    }
     const rawUsage = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
     const rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
 
@@ -352,27 +360,12 @@ async function loadDashboard() {
       console.warn("Using baseline raw materials dataset:", e);
     }
 
-    if (rawMats.length === 0) {
-      rawMats = AUTHENTIC_59_RAW_MATERIALS;
-    }
-
-    // 2. Fetch disbursements (usage)
-    try {
-      const useRes = await fetchWithTimeout(
-        supabase
-          .from("material_disbursements")
-          .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-          .order("usage_date", { ascending: false })
-      );
-
-      if (!useRes.error && useRes.data && useRes.data.length > 0) {
-        rawUsage = useRes.data;
-      }
-    } catch (e) {
-      console.warn("Using baseline usage records:", e);
-    }
-
     // Retrieve locally deleted IDs (for fallback / custom mock records)
+    let deletedMatIds = new Set();
+    try {
+      deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+    } catch (e) {}
+
     let deletedDisbIds = new Set();
     try {
       deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]"));
@@ -382,6 +375,13 @@ async function loadDashboard() {
     try {
       deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]"));
     } catch (e) {}
+
+    if (rawMats.length === 0) {
+      rawMats = AUTHENTIC_59_RAW_MATERIALS;
+    }
+    if (deletedMatIds.size > 0) {
+      rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
+    }
 
     if (rawUsage.length === 0) {
       rawUsage = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
@@ -2122,7 +2122,29 @@ function renderReceiveRawMaterialsCard() {
     matCountBadge.textContent = `${catalogMaterials.length} materials`;
   }
 
-  // 1. Calculate aggregated received total and display stock per raw material
+  // Period filter: slice receiptRecords by selected timeframe
+  const periodSel = $("rrcPeriodFilter");
+  const periodVal = periodSel?.value || "all";
+  const now = new Date();
+  let filteredReceipts = receiptRecords;
+  if (periodVal !== "all") {
+    let cutoff;
+    if (periodVal === "month") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (periodVal === "30d") {
+      cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (periodVal === "6m") {
+      cutoff = new Date(now.getTime() - 183 * 24 * 60 * 60 * 1000);
+    }
+    if (cutoff) {
+      filteredReceipts = receiptRecords.filter(r => {
+        const d = new Date(r.receiptDate || r.createdAt || 0);
+        return !isNaN(d) && d >= cutoff;
+      });
+    }
+  }
+
+  // 1. Calculate aggregated received total per raw material (filtered)
   const matTotalsMap = new Map();
   catalogMaterials.forEach(m => {
     const key = m.materialName || m.name || "Material";
@@ -2134,7 +2156,7 @@ function renderReceiveRawMaterialsCard() {
     });
   });
 
-  receiptRecords.forEach(r => {
+  filteredReceipts.forEach(r => {
     const key = r.materialName || "Material";
     const cur = matTotalsMap.get(key) || { name: key, totalQty: 0, unit: r.unit || "kg", currentStock: 0 };
     cur.totalQty += Number(r.receivedQuantity || 0);
@@ -2281,21 +2303,44 @@ function renderReceiveRawMaterialsCard() {
   if (viewAllBtn) {
     viewAllBtn.onclick = () => openAdminModal("modalReceivedRecords");
   }
+
+  // Wire period filter dropdown
+  const periodFilterEl = $("rrcPeriodFilter");
+  if (periodFilterEl && !periodFilterEl._rrcWired) {
+    periodFilterEl._rrcWired = true;
+    periodFilterEl.addEventListener("change", () => renderReceiveRawMaterialsCard());
+  }
 }
 
 function renderReceivedModalTable() {
   const tbody = $("receivedModalTableBody");
   const countNote = $("receivedModalCountNote");
   const searchInput = $("receivedSearchInput");
+  const sortSelect = $("receivedModalSort");
   if (!tbody) return;
 
   const query = (searchInput?.value || "").toLowerCase().trim();
+  const sortVal = sortSelect?.value || "latest";
 
-  const sorted = receiptRecords.slice().sort((a, b) => {
-    const tA = new Date(a.createdAt || a.receiptDate).getTime();
-    const tB = new Date(b.createdAt || b.receiptDate).getTime();
-    return tB - tA;
-  });
+  let sorted = receiptRecords.slice();
+  if (sortVal === "oldest") {
+    sorted.sort((a, b) => {
+      const tA = new Date(a.createdAt || a.receiptDate).getTime();
+      const tB = new Date(b.createdAt || b.receiptDate).getTime();
+      return tA - tB;
+    });
+  } else if (sortVal === "a-z") {
+    sorted.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
+  } else if (sortVal === "z-a") {
+    sorted.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
+  } else {
+    // Default: latest
+    sorted.sort((a, b) => {
+      const tA = new Date(a.createdAt || a.receiptDate).getTime();
+      const tB = new Date(b.createdAt || b.receiptDate).getTime();
+      return tB - tA;
+    });
+  }
 
   const filtered = sorted.filter(r => {
     if (!query) return true;
@@ -2352,6 +2397,15 @@ function renderReceivedModalTable() {
       </tr>
     `;
   }).join("");
+
+  if (searchInput && !searchInput.dataset.bound) {
+    searchInput.dataset.bound = "true";
+    searchInput.addEventListener("input", renderReceivedModalTable);
+  }
+  if (sortSelect && !sortSelect.dataset.bound) {
+    sortSelect.dataset.bound = "true";
+    sortSelect.addEventListener("change", renderReceivedModalTable);
+  }
 }
 
 // ============================================================
@@ -2905,3 +2959,27 @@ onAuthStateChanged(auth, async user => {
   // Load dashboard data from live Supabase
   await loadDashboard();
 });
+
+// Storage sync across tabs, windows, and same-window synthetic events
+window.addEventListener("storage", (e) => {
+  // e.key is null for synthetic events dispatched by window.dispatchEvent(new Event("storage"))
+  if (!e.key || e.key.startsWith("rmims_") || e.key.includes("inventory") || e.key.includes("material") || e.key.includes("receipt") || e.key.includes("disburse")) {
+    loadDashboard();
+  }
+});
+
+// Supabase Realtime Channel Subscription for live cross-user updates (Admin Dashboard)
+if (supabase && typeof supabase.channel === "function" && !window.__rmimsAdminDashChannel) {
+  window.__rmimsAdminDashChannel = supabase
+    .channel("rmims_admin_dashboard_sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
+      loadDashboard();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
+      loadDashboard();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
+      loadDashboard();
+    })
+    .subscribe();
+}

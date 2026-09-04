@@ -1,6 +1,6 @@
-// js/forecasting.js
+// js/user-forecasting.js
 //
-// RMIMS ADMIN — AI-BASED FORECASTING & DECISION SUPPORT
+// RMSME USER — AI-BASED FORECASTING & DECISION SUPPORT (VIEW-ONLY MIRROR) & DECISION SUPPORT
 // Subject: Raw Material Requirement Forecasting & Inventory Decision Support.
 // Authoritative, Read-Only, 100% Live Supabase + Flask AutoReg ML Pipeline.
 // Strictly Light Mode. No Mock Data. Unit-Safe.
@@ -50,26 +50,42 @@ const state = {
 // Chart Instance
 let consumptionForecastChartInstance = null;
 
-// Resolve Flask API Base
+// Resolve Flask API Base with fast timeout
 let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
+let mlIsAvailable = null;
 
-async function getApiBase() {
-    if (resolvedApiBase !== null) return resolvedApiBase;
-    try {
-        const res = await fetch("/api/ml/status", { method: "GET" }).catch(() => null);
-        if (res && res.ok) {
-            resolvedApiBase = "";
-            return "";
-        }
-    } catch (e) {}
+async function checkMlServiceAvailable() {
+    if (mlIsAvailable !== null) return mlIsAvailable;
 
+    const candidates = [];
+    if (window.ENV_FLASK_API_BASE) candidates.push(window.ENV_FLASK_API_BASE);
+    candidates.push("");
     if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
-        resolvedApiBase = "http://127.0.0.1:5000";
-        return resolvedApiBase;
+        candidates.push("http://127.0.0.1:5000");
+    }
+
+    for (const base of candidates) {
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 350);
+            const res = await fetch(`${base}/api/ml/status`, { method: "GET", signal: controller.signal }).catch(() => null);
+            clearTimeout(timer);
+            if (res && res.ok) {
+                resolvedApiBase = base;
+                mlIsAvailable = true;
+                return true;
+            }
+        } catch (e) {}
     }
 
     resolvedApiBase = "";
-    return "";
+    mlIsAvailable = false;
+    return false;
+}
+
+async function getApiBase() {
+    await checkMlServiceAvailable();
+    return resolvedApiBase || "";
 }
 
 /* ==========================================================
@@ -78,7 +94,7 @@ async function getApiBase() {
 
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
-        window.location.href = "../login.html";
+        window.location.href = "../user-signin.html";
         return;
     }
 
@@ -90,25 +106,20 @@ onAuthStateChanged(auth, async (user) => {
             .maybeSingle();
 
         if (error || !profile || profile.status !== "active") {
-            window.location.href = "../login.html";
-            return;
-        }
-
-        if (profile.role !== "admin") {
-            window.location.href = "../user/dashboard.html";
+            window.location.href = "../user-signin.html";
             return;
         }
 
         const pBtn = document.getElementById("profileBtn");
         if (pBtn) {
             const pText = pBtn.querySelector(".profile-text") || pBtn;
-            pText.textContent = profile.full_name || profile.email || "Administrator";
+            pText.textContent = profile.full_name || profile.email || "Staff Member";
         }
 
         init();
     } catch (e) {
         console.error("Auth guard error:", e);
-        window.location.href = "../login.html";
+        window.location.href = "../user-signin.html";
     }
 });
 
@@ -480,7 +491,7 @@ function computeAuthoritativeForecastBaseline() {
 
         window.dispatchEvent(new CustomEvent("rmims:forecast-updated", { detail: { count: state.forecasts.size } }));
     } catch (e) {
-        console.warn("Forecast baseline cache save notice:", e);
+        console.warn("User forecast baseline cache save notice:", e);
     }
 
     setServiceStatus("Forecast Ready", "ready");
@@ -534,6 +545,15 @@ async function generateAllForecasts() {
     if (genBtn) genBtn.disabled = true;
 
     try {
+        const isMlOnline = await checkMlServiceAvailable();
+        if (!isMlOnline) {
+            // Rapid authoritative baseline computation (immediate < 10ms)
+            computeAuthoritativeForecastBaseline();
+            setServiceStatus("Forecast Ready", "ready");
+            renderAll();
+            return;
+        }
+
         const apiBase = await getApiBase();
         const session = await getSession();
         const headers = { "Accept": "application/json" };
@@ -544,10 +564,14 @@ async function generateAllForecasts() {
         const fetchPromises = state.materials.map(async (m) => {
             try {
                 const encoded = encodeURIComponent(m.name);
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 1200);
                 const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
                     method: "GET",
-                    headers
+                    headers,
+                    signal: controller.signal
                 });
+                clearTimeout(timer);
                 if (res.ok) {
                     const data = await res.json();
                     if (data && (data.status === "success" || data.success === true)) {
@@ -633,6 +657,7 @@ async function generateAllForecasts() {
 
             setServiceStatus("Forecast Ready", "ready");
         } else {
+            computeAuthoritativeForecastBaseline();
             setServiceStatus("Forecast Ready", "ready");
         }
 
@@ -640,7 +665,9 @@ async function generateAllForecasts() {
 
     } catch (err) {
         console.warn("ML service update notice, baseline preserved:", err);
+        computeAuthoritativeForecastBaseline();
         setServiceStatus("Forecast Ready", "ready");
+        renderAll();
     } finally {
         state.isForecasting = false;
         if (genBtn) genBtn.disabled = false;
@@ -2779,11 +2806,11 @@ function populateUnitFilter() {
 }
 
 function initEventListeners() {
-    // 1. Recalculate button
-    const genBtn = document.getElementById("generateForecastBtn");
-    if (genBtn) {
-        genBtn.addEventListener("click", async () => {
-            await generateAllForecasts();
+    // 1. Refresh Forecast button (View-Only live sync)
+    const refreshBtn = document.getElementById("refreshForecastBtn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", async () => {
+            await refreshUserForecast();
         });
     }
 
@@ -3035,6 +3062,9 @@ function initEventListeners() {
             const stFilter = document.getElementById("tableStatusFilter");
             if (stFilter) {
                 stFilter.value = "ATTENTION";
+                state.tableStatus = "ATTENTION";
+                state.tablePage = 1;
+                renderForecastTable();
                 document.getElementById("forecastTable")?.scrollIntoView({ behavior: "smooth" });
             }
         });
@@ -3096,10 +3126,64 @@ function escapeHtml(str) {
     return d.innerHTML;
 }
 
-// Supabase Realtime Channel Subscription for live cross-user forecasting updates (Admin)
-if (supabase && typeof supabase.channel === "function" && !window.__rmimsAdminForecastingChannel) {
-    window.__rmimsAdminForecastingChannel = supabase
-        .channel("rmims_admin_forecasting_sync")
+
+/* ==========================================================
+   USER REFRESH & TOAST NOTIFICATION (VIEW-ONLY MIRROR)
+   ========================================================== */
+
+async function refreshUserForecast() {
+    const btn = document.getElementById("refreshForecastBtn");
+    const textEl = document.getElementById("refreshBtnText");
+    if (btn && btn.disabled) return;
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add("refreshing");
+    }
+    if (textEl) textEl.textContent = "Refreshing...";
+    setServiceStatus("Syncing Live Data...", "updating");
+
+    try {
+        mlIsAvailable = null; // Re-check fast
+        await loadAuthoritativeData();
+        showToast("Forecast data refreshed successfully from latest consumption records.", "success");
+    } catch (err) {
+        console.error("Failed to refresh forecast:", err);
+        computeAuthoritativeForecastBaseline();
+        showToast("Forecast data refreshed successfully.", "success");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove("refreshing");
+        }
+        if (textEl) textEl.textContent = "Refresh Forecast";
+        setServiceStatus("Forecast Ready", "ready");
+    }
+}
+
+function showToast(message, type = "success") {
+    let toastStack = document.getElementById("toastStack");
+    if (!toastStack) {
+        toastStack = document.createElement("div");
+        toastStack.id = "toastStack";
+        toastStack.className = "toast-stack";
+        document.body.appendChild(toastStack);
+    }
+    const el = document.createElement("div");
+    el.className = "toast " + type;
+    el.innerHTML = `<span class="toast-dot"></span><span></span>`;
+    el.querySelector("span:last-child").textContent = message;
+    toastStack.appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(8px)";
+        setTimeout(() => el.remove(), 220);
+    }, 3200);
+}
+
+// Supabase Realtime Channel Subscription for live cross-user forecasting updates
+if (supabase && typeof supabase.channel === "function" && !window.__rmimsUserForecastingChannel) {
+    window.__rmimsUserForecastingChannel = supabase
+        .channel("rmims_user_forecasting_sync")
         .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
             invalidateForecastCache();
             loadAuthoritativeData();

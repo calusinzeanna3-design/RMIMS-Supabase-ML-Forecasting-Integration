@@ -74,6 +74,7 @@ export default defineConfig({
         // User pages
         userAnalytics: resolve(__dirname, 'RMIMS/user/analytics.html'),
         userDashboard: resolve(__dirname, 'RMIMS/user/dashboard.html'),
+        userForecasting: resolve(__dirname, 'RMIMS/user/forecasting.html'),
         userInventory: resolve(__dirname, 'RMIMS/user/inventory.html'),
         userMaterialActivity: resolve(__dirname, 'RMIMS/user/material-activity.html'),
         userReports: resolve(__dirname, 'RMIMS/user/reports.html'),

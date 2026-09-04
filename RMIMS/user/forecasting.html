@@ -3,14 +3,14 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>AI-Based Forecasting | RMSME Admin</title>
+    <title>AI-Based Forecasting | RMSME User</title>
     <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
     <link href="../css/forecasting.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="admin-page">
+<body class="user-page">
 <div class="container">
     <!-- SIDEBAR -->
     <aside class="sidebar" aria-label="Primary navigation"></aside>
@@ -48,8 +48,8 @@
                     <span class="notif-badge" hidden="" id="notifBadge">0</span>
                 </button>
                 <button class="profile-btn" id="profileBtn">
-                    <span class="avatar">AU</span>
-                    <span class="profile-text">Administrator</span>
+                    <span class="avatar">US</span>
+                    <span class="profile-text">Staff Member</span>
                     <svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
                     </svg>
@@ -59,20 +59,24 @@
 
         <!-- AI FORECASTING WORKSPACE -->
         <div class="fc-dashboard-wrap">
-                      <!-- PAGE HEADER -->
+            <!-- PAGE HEADER -->
             <div class="fc-page-header">
                 <div class="fc-page-header-text">
                     <h1 class="fc-page-title">AI-Based Forecasting</h1>
                     <p class="fc-page-subtitle">Forecast future raw material requirements from recorded consumption patterns for decision support.</p>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <div class="fc-service-badge ready" id="serviceBadge">
                         <span class="fc-service-dot"></span>
                         <span id="serviceBadgeText">Forecast Ready</span>
                     </div>
-                    <button type="button" class="fc-btn-recalculate" id="generateForecastBtn" title="Recalculate forecast from latest usage logs" style="padding: 7px 14px; font-size: 0.78rem;">
+                    <div class="fc-view-only-badge" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; padding:6px 12px; border-radius:8px; font-size:0.78rem; font-weight:700;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span>View Only</span>
+                    </div>
+                    <button type="button" class="fc-btn-recalculate" id="refreshForecastBtn" title="Refresh forecast data from latest usage logs" style="padding: 7px 14px; font-size: 0.78rem;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        <span id="generateBtnText">Recalculate Forecast</span>
+                        <span id="refreshBtnText">Refresh Forecast</span>
                     </button>
                 </div>
             </div>
@@ -462,7 +466,7 @@
 </div>
 
 <!-- ==========================================================
-     MODAL 2: FORECAST STATUS & EXECUTION METADATA
+     MODAL 2: FORECAST SERVICE & MODEL METADATA
      ========================================================== -->
 <div class="fc-modal-overlay" id="modalForecastStatusOverlay" role="dialog" aria-modal="true">
     <div class="fc-modal-sheet fc-modal-sheet-md">
@@ -579,7 +583,7 @@
 </div>
 
 <!-- SCRIPTS -->
-<script type="module" src="../js/forecasting.js"></script>
+<script type="module" src="../js/user-forecasting.js"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 <script>
     const headerDateEl = document.querySelector("#headerDate span");

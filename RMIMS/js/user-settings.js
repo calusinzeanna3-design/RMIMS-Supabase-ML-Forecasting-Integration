@@ -6,6 +6,7 @@
 
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
+import "./rmsme-shell.js";
 
 const $ = id => document.getElementById(id);
 let currentUser = null;
@@ -416,7 +417,7 @@ function initActions() {
                     if (parsed.receipts && parsed.disbursements) {
                         showToast(`Backup verified: ${parsed.receipts.length} receipts and ${parsed.disbursements.length} disbursements found.`, "success");
                     } else {
-                        showToast("Invalid RMIMS activity backup file format.", "error");
+                        showToast("Invalid RMSME activity backup file format.", "error");
                     }
                 } catch (_) {
                     showToast("Could not parse the selected backup file.", "error");

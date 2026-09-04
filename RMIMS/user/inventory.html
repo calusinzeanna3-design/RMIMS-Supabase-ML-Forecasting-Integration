@@ -12,7 +12,14 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
-<body>
+<body class="user-page">
+
+<!-- Subtle Engineering Background -->
+<div class="rmims-faint-bg" aria-hidden="true">
+    <div class="faint-grid-lines"></div>
+    <div class="faint-chart-nodes"></div>
+</div>
+
 <div class="container">
 <!-- SIDEBAR -->
 <aside class="sidebar" aria-label="Primary navigation"></aside>
@@ -25,9 +32,9 @@
 <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
 </button>
 <nav class="breadcrumb">
-<span>Inventory</span>
+<span>Materials</span>
 <span class="crumb-sep">›</span>
-<span class="crumb-active" id="currentCrumb">Overview</span>
+<span class="crumb-active" id="currentCrumb">Inventory</span>
 </nav>
 </div>
 <div class="header-actions">
@@ -35,6 +42,10 @@
 <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path></svg>
 <span></span>
 </div>
+<button id="notificationBtn" class="icon-btn" title="Notifications">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <span class="notif-badge" id="notifBadge" hidden>0</span>
+</button>
 <button class="profile-btn" id="profileBtn">
 <span class="avatar">U</span>
 <span class="profile-text">Loading...</span>
@@ -47,6 +58,7 @@
 <div class="page-title" style="margin-top: 18px;">
     <div class="page-title-text">
         <h1>Inventory</h1>
+        <p>Manage raw materials inventory catalog and operational activity.</p>
     </div>
     <div class="page-actions">
         <button id="refreshBtn" class="btn-icon-only" title="Refresh Live Data">
@@ -152,9 +164,9 @@
             <div class="inv-filter-group">
                 <div class="inv-date-range-wrap">
                     <label for="invDateFrom" class="filter-label">From:</label>
-                    <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date" placeholder="dd/mm/yyyy">
+                    <input type="text" id="invDateFrom" class="inv-input-date" title="Filter from date" placeholder="dd/mm/yyyy">
                     <label for="invDateTo" class="filter-label">To:</label>
-                    <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date" placeholder="dd/mm/yyyy">
+                    <input type="text" id="invDateTo" class="inv-input-date" title="Filter to date" placeholder="dd/mm/yyyy">
                     <button type="button" id="clearInvDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                 </div>
 
@@ -193,16 +205,16 @@
         <div class="inv-selection-bar" id="overviewSelectionBar" hidden>
             <div class="isb-left">
                 <span class="isb-count-badge" id="overviewSelectedCount">0 Selected</span>
-                <span class="isb-hint">Select materials to update</span>
+                <span class="isb-hint">Select materials to update or delete</span>
             </div>
             <div class="isb-actions">
                 <button type="button" class="btn-secondary isb-btn" id="bulkSelectAllBtn">
                     <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span>Select All</span>
                 </button>
-                <button type="button" class="btn-secondary isb-btn" id="bulkEditBtn">
-                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span>Update / Edit</span>
+                <button type="button" class="btn-danger isb-btn" id="bulkDeleteBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Delete Selected</span>
                 </button>
                 <button type="button" class="btn-ghost isb-btn" id="bulkDeselectBtn">
                     <span>Deselect All</span>
@@ -219,7 +231,7 @@
             <table class="inv-main-table" id="overviewTable">
                 <thead>
                     <tr>
-                        <th class="col-select hidden-col" style="width: 44px; text-align: center;"></th>
+                        <th class="col-select hidden-col" style="width: 44px; text-align: center;"><input type="checkbox" id="selectAllOverview" title="Select all items on current page"></th>
                         <th>Date</th>
                         <th>Raw Material Name</th>
                         <th>Raw Material ID</th>
@@ -268,13 +280,54 @@
             <div class="inv-filter-group">
                 <div class="inv-date-range-wrap">
                     <label for="receiveDateFrom" class="filter-label">From:</label>
-                    <input type="date" id="receiveDateFrom" class="inv-input-date">
+                    <input type="text" id="receiveDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                     <label for="receiveDateTo" class="filter-label">To:</label>
-                    <input type="date" id="receiveDateTo" class="inv-input-date">
+                    <input type="text" id="receiveDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                    <button type="button" id="clearReceiveDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                 </div>
-                <button type="button" class="btn-primary-sm btn-visit-activity" id="btnVisitReceiveActivity" title="Visit Material Activity (Unlinked until Material Activity rebuild)">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"/><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>
-                    Visit Material Activity
+                <select id="receiveSortFilter" class="inv-select" title="Sort order">
+                    <option value="latest">Sort: Latest</option>
+                    <option value="oldest">Sort: Oldest</option>
+                    <option value="az">Name: A–Z</option>
+                    <option value="za">Name: Z–A</option>
+                </select>
+                <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectReceiveBtn" title="Toggle selection mode">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="select-btn-text">Select</span>
+                    <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="btn-secondary-sm" id="receiveClearFiltersBtn" hidden title="Clear all active filters">
+                    Clear
+                </button>
+                <a href="./material-activity.html?tab=receive" class="btn-primary-sm" id="btnVisitReceiveActivity" title="Go to Material Activity Receiving" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M12 4V15M12 15L8 11M12 15L16 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    <span>Material Activity</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- MULTI-SELECTION BULK ACTION BAR FOR RECEIVE -->
+        <div class="inv-selection-bar" id="receiveSelectionBar" hidden>
+            <div class="isb-left">
+                <span class="isb-count-badge" id="receiveSelectedCount">0 Selected</span>
+                <span class="isb-hint">Select receipts to delete</span>
+            </div>
+            <div class="isb-actions">
+                <button type="button" class="btn-secondary isb-btn" id="bulkSelectAllReceiveBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Select All</span>
+                </button>
+                <button type="button" class="btn-danger isb-btn" id="bulkDeleteReceiveBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Delete Selected</span>
+                </button>
+                <button type="button" class="btn-ghost isb-btn" id="bulkDeselectReceiveBtn">
+                    <span>Deselect All</span>
+                </button>
+                <button type="button" class="btn-ghost isb-btn" id="hideSelectionReceiveBtn" title="Hide selection column">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Hide Selection</span>
                 </button>
             </div>
         </div>
@@ -283,6 +336,7 @@
             <table class="inv-main-table" id="receiveTable">
                 <thead>
                     <tr>
+                        <th class="col-select hidden-col" style="width: 44px; text-align: center;"><input type="checkbox" id="selectAllReceive" title="Select all receipts on current page"></th>
                         <th>Date</th>
                         <th>Raw Material Name</th>
                         <th>Raw Material ID</th>
@@ -292,6 +346,7 @@
                         <th>Current Stock</th>
                         <th>Minimum Stock</th>
                         <th>Status</th>
+                        <th style="text-align: right; width: 70px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="receiveTableBody">
@@ -320,13 +375,54 @@
             <div class="inv-filter-group">
                 <div class="inv-date-range-wrap">
                     <label for="disburseDateFrom" class="filter-label">From:</label>
-                    <input type="date" id="disburseDateFrom" class="inv-input-date">
+                    <input type="text" id="disburseDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                     <label for="disburseDateTo" class="filter-label">To:</label>
-                    <input type="date" id="disburseDateTo" class="inv-input-date">
+                    <input type="text" id="disburseDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                    <button type="button" id="clearDisburseDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                 </div>
-                <button type="button" class="btn-primary-sm btn-visit-activity" id="btnVisitDisburseActivity" title="Visit Material Activity (Unlinked until Material Activity rebuild)">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H15M9 2C7.89543 2 7 2.89543 7 4V5H17V4C17 2.89543 16.1046 2 15 2M9 2H7.5C6.67157 2 6 2.67157 6 3.5V20.5C6 21.3284 6.67157 22 7.5 22H16.5C17.3284 22 18 21.3284 18 20.5V3.5C18 2.67157 17.3284 2 16.5 2H15" stroke="currentColor" stroke-width="1.6"/><path d="M9 12H15M9 16H15M9 8H11" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>
-                    Visit Material Activity
+                <select id="disburseSortFilter" class="inv-select" title="Sort order">
+                    <option value="latest">Sort: Latest</option>
+                    <option value="oldest">Sort: Oldest</option>
+                    <option value="az">Name: A–Z</option>
+                    <option value="za">Name: Z–A</option>
+                </select>
+                <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectDisburseBtn" title="Toggle selection mode">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="select-btn-text">Select</span>
+                    <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="btn-secondary-sm" id="disburseClearFiltersBtn" hidden title="Clear all active filters">
+                    Clear
+                </button>
+                <a href="./material-activity.html?tab=disbursement" class="btn-primary-sm" id="btnVisitDisburseActivity" title="Go to Material Activity Disbursements" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    <span>Material Activity</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- MULTI-SELECTION BULK ACTION BAR FOR DISBURSEMENT -->
+        <div class="inv-selection-bar" id="disburseSelectionBar" hidden>
+            <div class="isb-left">
+                <span class="isb-count-badge" id="disburseSelectedCount">0 Selected</span>
+                <span class="isb-hint">Select disbursements to delete</span>
+            </div>
+            <div class="isb-actions">
+                <button type="button" class="btn-secondary isb-btn" id="bulkSelectAllDisburseBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Select All</span>
+                </button>
+                <button type="button" class="btn-danger isb-btn" id="bulkDeleteDisburseBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Delete Selected</span>
+                </button>
+                <button type="button" class="btn-ghost isb-btn" id="bulkDeselectDisburseBtn">
+                    <span>Deselect All</span>
+                </button>
+                <button type="button" class="btn-ghost isb-btn" id="hideSelectionDisburseBtn" title="Hide selection column">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Hide Selection</span>
                 </button>
             </div>
         </div>
@@ -335,6 +431,7 @@
             <table class="inv-main-table" id="disbursementTable">
                 <thead>
                     <tr>
+                        <th class="col-select hidden-col" style="width: 44px; text-align: center;"><input type="checkbox" id="selectAllDisburse" title="Select all disbursements on current page"></th>
                         <th>Date</th>
                         <th>Raw Material Name</th>
                         <th>Raw Material ID</th>
@@ -344,6 +441,7 @@
                         <th>Current Stock</th>
                         <th>Minimum Stock</th>
                         <th>Status</th>
+                        <th style="text-align: right; width: 70px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="disbursementTableBody">
@@ -368,6 +466,38 @@
             <div class="fpc-header-text">
                 <h3>Finished Product Context</h3>
                 <p>Identify the raw materials associated with each finished product.</p>
+            </div>
+            <div class="fpc-header-actions">
+                <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectFpcBtn" title="Toggle selection mode">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="select-btn-text">Select</span>
+                    <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- MULTI-SELECTION BULK ACTION BAR FOR FINISHED PRODUCTS -->
+        <div class="inv-selection-bar" id="fpcSelectionBar" hidden style="margin-top: 14px;">
+            <div class="isb-left">
+                <span class="isb-count-badge" id="fpcSelectedCount">0 Selected</span>
+                <span class="isb-hint">Select finished products to delete</span>
+            </div>
+            <div class="isb-actions">
+                <button type="button" class="btn-secondary isb-btn" id="fpcBulkSelectAllBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Select All</span>
+                </button>
+                <button type="button" class="btn-danger isb-btn" id="fpcBulkDeleteBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Delete Selected</span>
+                </button>
+                <button type="button" class="btn-ghost isb-btn" id="fpcBulkDeselectBtn">
+                    <span>Deselect All</span>
+                </button>
+                <button type="button" class="btn-ghost isb-btn" id="hideSelectionFpcBtn" title="Hide selection">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span>Hide Selection</span>
+                </button>
             </div>
         </div>
 
@@ -467,7 +597,7 @@
 
                     <div class="input-group span-2">
                         <label for="editMatDate">Catalog Date <span class="optional-tag">Optional</span></label>
-                        <input type="date" id="editMatDate">
+                        <input type="text" id="editMatDate" class="inv-input-date" placeholder="dd/mm/yyyy">
                     </div>
 
                     <div class="input-group span-2">
@@ -512,34 +642,45 @@
     </div>
 </div>
 
-<!-- VIEW FINISHED PRODUCT READ-ONLY DETAILS MODAL -->
+<!-- VIEW FINISHED PRODUCT DETAILS MODAL (OTHER DETAILS) -->
 <div class="modal-overlay" id="fpcDetailsModalOverlay">
-    <div class="modal-sheet" style="max-width: 680px;">
+    <div class="modal-sheet" role="dialog" aria-modal="true">
+
         <div class="modal-sticky-header">
             <div class="modal-header-info">
-                <div class="modal-icon" id="fpcDetailsAvatarWrap" style="background: none; border: none; padding: 0;">
-                    <div class="fpc-avatar"><span id="fpcDetailsInitials">FP</span></div>
-                </div>
+                <span class="modal-icon icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5M9 12H15M9 16H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
                 <div>
-                    <h4 id="fpcDetailsName">Finished Product Details</h4>
-                    <span class="modal-time" id="fpcDetailsMatCount">0 Associated Raw Materials</span>
+                    <h4 id="fpcDetailsTitle">Finished Product</h4>
+                    <span class="modal-time" id="fpcDetailsSubtitle">Raw material relationships &amp; live stock metrics</span>
                 </div>
             </div>
-            <button aria-label="Close" class="modal-close" id="fpcDetailsModalClose">
-                <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+            <button class="modal-close" id="fpcDetailsModalClose" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </button>
         </div>
-        <div class="modal-body" style="padding: 16px 20px;">
-            <div class="table-scroll" style="border: 1px solid var(--rm-line, #E2E8F0); border-radius: 8px;">
-                <table>
+
+        <div class="modal-body">
+            <div class="fpc-details-hero">
+                <div id="fpcDetailsAvatarWrap" class="fpc-details-avatar-wrap"></div>
+                <div class="fpc-details-hero-text">
+                    <h3 id="fpcDetailsName">Product Name</h3>
+                    <p id="fpcDetailsMatCount">0 Linked Raw Materials</p>
+                </div>
+            </div>
+
+            <h5 style="font-size: 0.84rem; font-weight: 700; margin: 18px 0 10px; color: var(--rm-ink);">Associated Raw Materials (Live Metrics)</h5>
+            <div class="table-scroll inv-table-scroll">
+                <table class="inv-main-table">
                     <thead>
                         <tr>
                             <th>Raw Material</th>
-                            <th>Item Code</th>
+                            <th>Material ID</th>
                             <th>Current Stock</th>
                             <th>Minimum Stock</th>
                             <th>Unit</th>
-                            <th>Stock Status</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="fpcDetailsTableBody">
@@ -548,8 +689,13 @@
                 </table>
             </div>
         </div>
-        <div class="modal-sticky-footer">
-            <button class="btn-outline-sm" id="fpcDetailsModalCancel" type="button">Close</button>
+
+        <div class="modal-sticky-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--rm-line, #E2E8F0); background: #F8FAFC; border-radius: 0 0 16px 16px;">
+            <button type="button" class="btn-danger" id="fpcDetailsDeleteBtn">
+                <svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Delete Product</span>
+            </button>
+            <button class="btn-primary" id="fpcDetailsCloseBtn">Close</button>
         </div>
     </div>
 </div>
@@ -558,6 +704,7 @@
 <div class="toast-stack" id="toastStack"></div>
 
 <script src="../js/user-inventory.js" type="module"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
 <script>
 const headerDateEl = document.querySelector("#headerDate span");
 if(headerDateEl){
@@ -572,6 +719,5 @@ if(menuToggle && sidebarEl){
     });
 }
 </script>
-<script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 </html>

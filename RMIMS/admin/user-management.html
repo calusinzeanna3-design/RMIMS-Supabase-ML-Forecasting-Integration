@@ -91,7 +91,7 @@
             <div class="section-heading">
                 <div>
                     <h3>Roles Management</h3>
-                    <p>View the roles available in RMIMS and the users assigned to each role.</p>
+                    <p>View the roles available in RMSME and the users assigned to each role.</p>
                 </div>
             </div>
 
@@ -104,7 +104,7 @@
                         <span class="role role-admin">Admin</span>
                     </div>
                     <h4>Administrator</h4>
-                    <p>Full access to RMIMS, including user management and system administration.</p>
+                    <p>Full access to RMSME, including user management and system administration.</p>
                     <div class="role-card-footer">
                         <span><strong id="roleAdminCount">0</strong> user<span id="roleAdminPlural">s</span></span>
                         <button type="button" class="btn-outline-sm role-view-users" data-role="admin">View Users</button>
@@ -201,6 +201,13 @@
                 <option value="user">User</option>
             </select>
 
+            <select id="sortFilter" aria-label="Sort users">
+                <option value="latest">Sort: Latest</option>
+                <option value="oldest">Sort: Oldest</option>
+                <option value="az">Name: A–Z</option>
+                <option value="za">Name: Z–A</option>
+            </select>
+
             <button type="button" id="clearUserFilters" class="filter-clear" hidden>Clear filters</button>
 
         </section>
@@ -253,7 +260,7 @@
                 </div>
                 <div>
                     <h4>Add User</h4>
-                    <span class="modal-time">Create a new RMIMS account</span>
+                    <span class="modal-time">Create a new RMSME account</span>
                 </div>
             </div>
             <button class="modal-close" data-close-modal="addUserModal" aria-label="Close">

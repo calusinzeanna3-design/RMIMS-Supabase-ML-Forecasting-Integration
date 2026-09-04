@@ -335,11 +335,56 @@ body.admin-page {
 .btn-orange:hover {
   background: #d97706 !important;
 }
-.btn-danger {
-  background: var(--red) !important;
+.btn-danger,
+.btn-danger-soft {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 8px 16px !important;
+  background: #FEF2F2 !important;
+  color: #DC2626 !important;
+  border: 1px solid #FECACA !important;
+  border-radius: var(--radius-sm, 8px) !important;
+  font-family: inherit !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
 }
-.btn-danger:hover {
-  background: #dc2626 !important;
+
+.btn-danger:hover,
+.btn-danger-soft:hover {
+  background: #FEE2E2 !important;
+  border-color: #F87171 !important;
+  color: #B91C1C !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-danger-solid {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 8px 16px !important;
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #DC2626 !important;
+  border-radius: var(--radius-sm, 8px) !important;
+  font-family: inherit !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.25) !important;
+  transition: all 0.18s ease !important;
+}
+
+.btn-danger-solid:hover {
+  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
+  border-color: #B91C1C !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+  transform: translateY(-1px) !important;
 }
 
 .btn-icon-only {
@@ -1982,18 +2027,24 @@ tr.row-selected {
   height: 15px;
 }
 
-.row-action-btn.edit-direct-btn:hover {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: #10B981;
-  color: #059669;
-  transform: scale(1.05);
+.row-action-btn.delete-direct-btn,
+.row-action-btn.delete-card-btn,
+.row-action-btn.delete-rec-btn,
+.row-action-btn.delete-dsb-btn {
+  border: 1px solid #FECACA;
+  background: #FEF2F2;
+  color: #EF4444;
 }
 
-.row-action-btn.delete-direct-btn:hover {
+.row-action-btn.delete-direct-btn:hover,
+.row-action-btn.delete-card-btn:hover,
+.row-action-btn.delete-rec-btn:hover,
+.row-action-btn.delete-dsb-btn:hover {
   background: #FEE2E2;
   border-color: #F87171;
   color: #DC2626;
-  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18);
+  transform: translateY(-1px) scale(1.05);
 }
 
 /* Select Mode Hide/Show Toggle */
@@ -2047,5 +2098,38 @@ th.col-select.hidden-col, td.col-select.hidden-col {
   display: none !important;
 }
 
+/* ==========================================================
+   FLATPICKR CALENDAR OVERRIDES & INPUT STYLING
+   ========================================================== */
+.flatpickr-calendar {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid #CBD5E1 !important;
+  z-index: 99999 !important;
+  background: #FFFFFF !important;
+}
 
+.flatpickr-calendar .flatpickr-day.selected, 
+.flatpickr-calendar .flatpickr-day.startRange, 
+.flatpickr-calendar .flatpickr-day.endRange {
+  background: #10B981 !important;
+  border-color: #10B981 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
 
+.flatpickr-calendar .flatpickr-day:hover {
+  background: #ECFDF5 !important;
+  border-color: #A7F3D0 !important;
+  color: #065F46 !important;
+}
+
+.flatpickr-calendar .flatpickr-day.today {
+  border-color: #10B981 !important;
+}
+
+.inv-input-date {
+  cursor: pointer !important;
+  background-color: #FFFFFF !important;
+}

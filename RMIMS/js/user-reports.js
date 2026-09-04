@@ -13,6 +13,8 @@ import {
     AUTHENTIC_STOCK_RECEIPTS_6MONTHS,
     AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS
 } from "./authentic-59-dataset.js";
+import { getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
+import "./rmsme-shell.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -376,33 +378,80 @@ function formatPeriodTypeLabel(preset) {
 
 async function loadAuthoritativeData() {
     try {
-        const [matRes, rcvRes, disbRes] = await Promise.all([
-            supabase
-                .from("raw_materials")
-                .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
-                .order("name"),
-            supabase
-                .from("stock_receipts")
-                .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-                .order("receipt_date", { ascending: false }),
-            supabase
-                .from("material_disbursements")
-                .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-                .order("usage_date", { ascending: false })
-        ]);
+        let rawMats = [];
+        let rawReceipts = [];
+        let rawDisbursements = [];
 
-        let rawMats = matRes.data || [];
-        let rawReceipts = rcvRes.data || [];
-        let rawDisbursements = disbRes.data || [];
+        try {
+            const fetchWithTimeout = (promise, ms = 3500) =>
+                Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+                ]);
+
+            const [matRes, rcvRes, disbRes] = await Promise.allSettled([
+                fetchWithTimeout(supabase
+                    .from("raw_materials")
+                    .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
+                    .order("name")),
+                fetchWithTimeout(supabase
+                    .from("stock_receipts")
+                    .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
+                    .order("receipt_date", { ascending: false })),
+                fetchWithTimeout(supabase
+                    .from("material_disbursements")
+                    .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
+                    .order("usage_date", { ascending: false }))
+            ]);
+
+            if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
+            if (rcvRes.status === "fulfilled" && rcvRes.value?.data && rcvRes.value.data.length > 0) rawReceipts = rcvRes.value.data;
+            if (disbRes.status === "fulfilled" && disbRes.value?.data && disbRes.value.data.length > 0) rawDisbursements = disbRes.value.data;
+        } catch (e) {
+            console.warn("Using baseline user reports dataset:", e);
+        }
 
         if (rawMats.length === 0) {
             rawMats = AUTHENTIC_59_RAW_MATERIALS;
         }
-        if (rawReceipts.length === 0) {
-            rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
+
+        // Always merge baseline + custom localStorage entries so newly added records appear
+        const recBaseMap = new Map();
+        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));
+        getSystemCustomReceipts().forEach(r => recBaseMap.set(String(r.id), { ...r }));
+        rawReceipts.forEach(r => recBaseMap.set(String(r.id), { ...(recBaseMap.get(String(r.id)) || {}), ...r }));
+        rawReceipts = Array.from(recBaseMap.values());
+
+        const disbBaseMap = new Map();
+        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbBaseMap.set(String(d.id), { ...d }));
+        getSystemCustomDisbursements().forEach(d => disbBaseMap.set(String(d.id), { ...d }));
+        rawDisbursements.forEach(d => disbBaseMap.set(String(d.id), { ...(disbBaseMap.get(String(d.id)) || {}), ...d }));
+        rawDisbursements = Array.from(disbBaseMap.values());
+
+        // Retrieve locally deleted IDs
+        let deletedMatIds = new Set();
+        try {
+            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+        } catch (e) {}
+
+        let deletedDisbIds = new Set();
+        try {
+            deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        let deletedRecIds = new Set();
+        try {
+            deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        if (deletedMatIds.size > 0) {
+            rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
         }
-        if (rawDisbursements.length === 0) {
-            rawDisbursements = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
+        if (deletedRecIds.size > 0) {
+            rawReceipts = rawReceipts.filter(r => !deletedRecIds.has(String(r.id)));
+        }
+        if (deletedDisbIds.size > 0) {
+            rawDisbursements = rawDisbursements.filter(d => !deletedDisbIds.has(String(d.id)));
         }
 
         // Normalize Materials
@@ -545,18 +594,33 @@ async function loadAuthoritativeForecasts() {
         let f7Qty = 0;
         let f1mQty = 0;
         let decisionStatus = "Sufficient";
+        let interpretation = "";
 
-        if (cachedForecasts && cachedForecasts[m.name]) {
+        // Robust matching against cached forecast keys
+        let cf = null;
+        if (cachedForecasts) {
+            cf = cachedForecasts[m.name] || cachedForecasts[m.name.trim()] || Object.entries(cachedForecasts).find(([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase())?.[1];
+        }
+
+        if (cf) {
             // Use AI-computed forecast from admin Forecasting module cache
-            const cf = cachedForecasts[m.name];
-            f7Qty = Number(cf.forecast7Day?.quantity || 0);
-            f1mQty = Number(cf.forecast1Month?.quantity || (f7Qty * 4));
-            decisionStatus = cf.decision_support?.decision_status || "Sufficient";
+            f7Qty = Number(cf.forecast7Day?.quantity ?? cf.forecast7Day ?? 0);
+            f1mQty = Number(cf.forecast1Month?.quantity ?? cf.forecast1Month ?? Number((f7Qty * 4.15).toFixed(1)));
+            const curStock = m.currentStock;
+            const diff = Number(cf.decision_support?.difference ?? (curStock - f7Qty));
+            decisionStatus = cf.decision_support?.decision_status || cf.decision_support?.status;
+            if (!decisionStatus) {
+                if (diff < 0) decisionStatus = "Potential Shortage";
+                else if (curStock <= (m.minThreshold || 0)) decisionStatus = "Needs Attention";
+                else if (diff <= (m.minThreshold || 0)) decisionStatus = "Monitor";
+                else decisionStatus = "Sufficient";
+            }
+            interpretation = cf.decision_support?.interpretation || "";
         } else {
-            // Baseline demand projection computed from live disbursement history
+            // Baseline dynamic demand projection computed from live disbursement history
             const avgWeekly = recentUsage > 0 ? recentUsage : Math.max((m.minThreshold || 0) * 0.5, 10);
             f7Qty = Number(avgWeekly.toFixed(1));
-            f1mQty = Number((avgWeekly * 4).toFixed(1));
+            f1mQty = Number((avgWeekly * 4.15).toFixed(1));
 
             const diff = m.currentStock - f7Qty;
             if (diff < 0) decisionStatus = "Potential Shortage";
@@ -567,6 +631,18 @@ async function loadAuthoritativeForecasts() {
 
         const additionalNeed = Math.max(0, Number((f7Qty - m.currentStock).toFixed(1)));
 
+        if (!interpretation) {
+            if (additionalNeed > 0) {
+                interpretation = `Projected 7-day requirement (${f7Qty.toFixed(1)} ${m.unit}) exceeds stock. Deficit of +${additionalNeed.toFixed(1)} ${m.unit}. Replenishment recommended.`;
+            } else if (decisionStatus === "Needs Attention" || m.currentStock <= (m.minThreshold || 0)) {
+                interpretation = `Current stock near minimum safety threshold (${m.minThreshold || 0} ${m.unit}). Reorder recommended.`;
+            } else if (decisionStatus === "Monitor") {
+                interpretation = `Stock levels adequate for 7-day projection. Standard consumption monitoring.`;
+            } else {
+                interpretation = `Stock optimal. Current stock satisfies projected 7-day requirement.`;
+            }
+        }
+
         const item = {
             id: m.id,
             itemCode: m.itemCode,
@@ -576,11 +652,10 @@ async function loadAuthoritativeForecasts() {
             minThreshold: m.minThreshold,
             finishedProduct: finishedProductDisplay,
             forecast7Day: f7Qty,
+            forecast1Month: f1mQty,
             additionalNeed,
             status: decisionStatus,
-            interpretation: cachedForecasts && cachedForecasts[m.name]
-                ? (cachedForecasts[m.name].decision_support?.interpretation || decisionStatus)
-                : "Baseline demand projection from disbursement history."
+            interpretation
         };
 
         state.forecastList.push(item);
@@ -805,6 +880,20 @@ function initEventListeners() {
             renderTabForecasting();
         });
     }
+
+    // Live Cross-Module Sync with Admin Forecasting module
+    window.addEventListener("storage", (e) => {
+        if (e.key === "rmims_forecast_cache" || e.key === "rmims_latest_forecast" || e.key === "rmims_forecast_timestamp") {
+            loadAuthoritativeForecasts();
+            renderTabForecasting();
+            updateContinuousPrintHtml();
+        }
+    });
+    window.addEventListener("rmims:forecast-updated", () => {
+        loadAuthoritativeForecasts();
+        renderTabForecasting();
+        updateContinuousPrintHtml();
+    });
 
     // Save As Modal
     const btnSaveAs = $("btnSaveAs");
@@ -1164,6 +1253,10 @@ function renderTabReceiving() {
         filtered.sort((a, b) => new Date(b.receiptDate || b.createdAt).getTime() - new Date(a.receiptDate || a.createdAt).getTime());
     } else if (state.rcvSort === "oldest") {
         filtered.sort((a, b) => new Date(a.receiptDate || a.createdAt).getTime() - new Date(b.receiptDate || b.createdAt).getTime());
+    } else if (state.rcvSort === "az") {
+        filtered.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
+    } else if (state.rcvSort === "za") {
+        filtered.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
     } else if (state.rcvSort === "highest") {
         filtered.sort((a, b) => b.receivedQuantity - a.receivedQuantity);
     }
@@ -1232,6 +1325,10 @@ function renderTabDisbursement() {
         filtered.sort((a, b) => new Date(b.usageDate || b.createdAt).getTime() - new Date(a.usageDate || a.createdAt).getTime());
     } else if (state.disbSort === "oldest") {
         filtered.sort((a, b) => new Date(a.usageDate || a.createdAt).getTime() - new Date(b.usageDate || b.createdAt).getTime());
+    } else if (state.disbSort === "az") {
+        filtered.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
+    } else if (state.disbSort === "za") {
+        filtered.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
     } else if (state.disbSort === "highest") {
         filtered.sort((a, b) => b.disbursedQuantity - a.disbursedQuantity);
     }
@@ -1417,9 +1514,9 @@ function renderTabForecasting() {
     }
 
     if (state.fcStatus === "shortage") {
-        filtered = filtered.filter(f => f.status.includes("Attention") || f.status.includes("Critical") || f.additionalNeed > 0);
+        filtered = filtered.filter(f => f.additionalNeed > 0 || f.status === "Potential Shortage" || f.status === "Needs Attention" || f.status === "Low Stock Attention" || f.status === "Critical" || f.status === "Low");
     } else if (state.fcStatus === "sufficient") {
-        filtered = filtered.filter(f => f.status.includes("Sufficient") || f.additionalNeed === 0);
+        filtered = filtered.filter(f => f.additionalNeed === 0 && (f.status === "Sufficient" || f.status === "Normal" || f.status === "Monitor"));
     }
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / state.fcPageSize));
@@ -1431,16 +1528,27 @@ function renderTabForecasting() {
         tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No matching forecast records found.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(f => {
+            let statusBadge = "";
+            if (f.status === "Potential Shortage" || f.additionalNeed > 0) {
+                statusBadge = `<span class="rpt-badge rpt-badge-shortage" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#dc2626;"></span>Potential Shortage</span>`;
+            } else if (f.status === "Needs Attention" || f.status === "Low Stock Attention" || f.status === "Critical" || f.status === "Low" || f.currentStock <= (f.minThreshold || 0)) {
+                statusBadge = `<span class="rpt-badge rpt-badge-attention" style="background:#ffedd5; color:#c2410c; border:1px solid #fdba74; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#ea580c;"></span>Needs Attention</span>`;
+            } else if (f.status === "Monitor") {
+                statusBadge = `<span class="rpt-badge rpt-badge-monitor" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#2563eb;"></span>Monitor</span>`;
+            } else {
+                statusBadge = `<span class="rpt-badge rpt-badge-good" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#16a34a;"></span>Sufficient Stock</span>`;
+            }
+
             return `
                 <tr>
                     <td><strong>${esc(f.name)}</strong></td>
                     <td><span class="rpt-code-badge">${esc(f.itemCode)}</span></td>
                     <td><span style="font-weight:600; color:#475569;">Next 7 Days</span></td>
                     <td><strong>${f.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(f.unit)}</small></td>
-                    <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
-                    <td><span style="color:#94a3b8; font-weight:600;">—</span></td>
-                    <td><span class="status-pill status-neutral">—</span></td>
-                    <td><span style="font-size:0.8rem; color:#475569;">${esc(f.interpretation)}</span></td>
+                    <td><strong style="color:var(--rpt-blue-dark, #1e40af); font-weight:700;">${f.forecast7Day.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${esc(f.unit)}</strong></td>
+                    <td><strong style="color:${f.additionalNeed > 0 ? '#dc2626' : '#64748b'}; font-weight:700;">${f.additionalNeed > 0 ? `+${f.additionalNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${esc(f.unit)}` : `0 ${esc(f.unit)}`}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td><span style="font-size:0.8rem; color:#475569; line-height:1.4;">${esc(f.interpretation)}</span></td>
                 </tr>
             `;
         }).join("");
@@ -1471,7 +1579,7 @@ function buildUserExcelWorkbook(selectedSections = ["overview", "receiving", "di
     selectedSections.forEach(key => {
         if (key === "overview") {
             const rows = [
-                ["RMIMS - Reports & Decision Support (User Overview)"],
+                ["RMSME - Reports & Decision Support (User Overview)"],
                 ["Report Period", formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset)],
                 ["Generated At", state.generatedAt ? state.generatedAt.toLocaleString() : new Date().toLocaleString()],
                 [],
@@ -1873,7 +1981,7 @@ async function generateUserCsvPackage(selectedSections, fileName) {
     const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
     const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
 
-    let csvContent = `RMIMS User Report\nPeriod,${formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset)}\nGenerated,${new Date().toISOString()}\n\n`;
+    let csvContent = `RMSME User Report\nPeriod,${formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset)}\nGenerated,${new Date().toISOString()}\n\n`;
 
     if (selectedSections.includes("receiving")) {
         csvContent += `--- RECENT RECEIVING ---\nDate,Raw Material,Item Code,Quantity,Unit,Supplier,Status\n`;
@@ -1919,7 +2027,7 @@ async function generateUserCsvPackage(selectedSections, fileName) {
 async function generateUserJsonExport(selectedSections, fileName) {
     const exportObj = {
         meta: {
-            title: "RMIMS User Report Export",
+            title: "RMSME User Report Export",
             periodPreset: state.periodPreset,
             startDate: state.startDate ? formatDateISO(state.startDate) : null,
             endDate: state.endDate ? formatDateISO(state.endDate) : null,
@@ -2330,6 +2438,7 @@ function handlePrintReport() {
 function formatOperatorDisplay(val, fallback = "User") {
     if (!val || typeof val !== "string") return fallback;
     const clean = val.trim();
+    if (/warehouse/i.test(clean)) return "KXC Enterprises";
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || clean.toLowerCase().includes("authorized") || clean.toLowerCase().includes("staff")) {
         return fallback;
     }
@@ -2370,4 +2479,33 @@ function showToast(message, type = "info") {
         toast.style.opacity = "0";
         setTimeout(() => toast.remove(), 300);
     }, 3500);
+}
+
+// Storage sync across tabs and windows (debounced to prevent UI lag)
+let _urptStorageDebounce = null;
+window.addEventListener("storage", (e) => {
+    if (!e.key || e.key.startsWith("rmims_") || e.key.includes("inventory") || e.key.includes("material") || e.key.includes("receipt") || e.key.includes("disburse")) {
+        clearTimeout(_urptStorageDebounce);
+        _urptStorageDebounce = setTimeout(() => loadAuthoritativeData(), 150);
+    }
+});
+
+// Supabase Realtime Channel Subscription for live cross-user reports updates
+if (supabase && typeof supabase.channel === "function" && !window.__rmimsUserReportsChannel) {
+    let _urptRealtimeDebounce = null;
+    window.__rmimsUserReportsChannel = supabase
+        .channel("rmims_user_reports_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
+            clearTimeout(_urptRealtimeDebounce);
+            _urptRealtimeDebounce = setTimeout(() => loadAuthoritativeData(), 150);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
+            clearTimeout(_urptRealtimeDebounce);
+            _urptRealtimeDebounce = setTimeout(() => loadAuthoritativeData(), 150);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
+            clearTimeout(_urptRealtimeDebounce);
+            _urptRealtimeDebounce = setTimeout(() => loadAuthoritativeData(), 150);
+        })
+        .subscribe();
 }

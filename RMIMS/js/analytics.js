@@ -8,6 +8,7 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 
 /* ==========================================================
    GLOBAL STATE
@@ -91,10 +92,34 @@ onAuthStateChanged(auth, async (user) => {
    INITIALIZATION
    ========================================================== */
 
+/* ==========================================================
+   INITIALIZATION
+   ========================================================== */
+
 async function init() {
     initDatePresets();
     initEventListeners();
     await loadAuthoritativeData();
+    setupSyncListeners();
+}
+
+function setupSyncListeners() {
+    window.addEventListener("storage", (e) => {
+        if (e.key === "rmims_sync_event" || e.key === "rmims_inventory_updated") {
+            loadAuthoritativeData();
+        }
+    });
+
+    try {
+        supabase
+            .channel("admin-consumption-analytics-sync")
+            .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => loadAuthoritativeData())
+            .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => loadAuthoritativeData())
+            .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => loadAuthoritativeData())
+            .subscribe();
+    } catch (e) {
+        console.warn("Realtime subscription notice:", e);
+    }
 }
 
 /* ==========================================================
@@ -103,97 +128,172 @@ async function init() {
 
 async function loadAuthoritativeData() {
     try {
-        let rawMats = [];
+        const fetchWithTimeout = (promise, ms = 4000) => 
+            Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+            ]);
+
+        const [matRes, useRes, recRes] = await Promise.allSettled([
+            fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")),
+            fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false })),
+            fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false }))
+        ]);
+
+        // Retrieve locally deleted IDs across all registries
+        let deletedMatIds = new Set();
         try {
-            const { data, error } = await supabase
-                .from("raw_materials")
-                .select("*")
-                .order("name", { ascending: true });
-            if (!error && data && data.length > 0) rawMats = data;
-        } catch (e) {
-            console.warn("Analytics using baseline raw materials:", e);
+            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+        } catch (e) {}
+
+        let deletedDisbIds = new Set();
+        try {
+            deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        let deletedRecIds = new Set();
+        try {
+            deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        // Master Materials (Additive baseline + Live Supabase updates)
+        const matKeyMap = new Map();
+        getSystemRawMaterials().forEach(m => matKeyMap.set((m.name || "").toLowerCase().trim(), { ...m }));
+        if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) {
+            matRes.value.data.forEach(m => {
+                const k = (m.name || "").toLowerCase().trim();
+                matKeyMap.set(k, { ...(matKeyMap.get(k) || {}), ...m });
+            });
         }
-        if (!rawMats || rawMats.length === 0) {
-            rawMats = AUTHENTIC_59_RAW_MATERIALS;
+        let rawMats = Array.from(matKeyMap.values());
+        if (deletedMatIds.size > 0) {
+            rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
         }
 
-        state.materials = rawMats.map(m => {
-            const cur = Number(m.current_stock) || 0;
-            const min = Number(m.minimum_threshold) || 0;
+        // Master Disbursements
+        const disbKeyMap = new Map();
+        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+        getSystemCustomDisbursements().forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+        if (useRes.status === "fulfilled" && useRes.value?.data && useRes.value.data.length > 0) {
+            useRes.value.data.forEach(d => disbKeyMap.set(String(d.id), { ...(disbKeyMap.get(String(d.id)) || {}), ...d }));
+        }
+        let rawUsage = Array.from(disbKeyMap.values());
+        if (deletedDisbIds.size > 0) {
+            rawUsage = rawUsage.filter(d => !deletedDisbIds.has(String(d.id)));
+        }
+
+        // Master Receipts
+        const recKeyMap = new Map();
+        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recKeyMap.set(String(r.id), { ...r }));
+        getSystemCustomReceipts().forEach(r => recKeyMap.set(String(r.id), { ...r }));
+        if (recRes.status === "fulfilled" && recRes.value?.data && recRes.value.data.length > 0) {
+            recRes.value.data.forEach(r => recKeyMap.set(String(r.id), { ...(recKeyMap.get(String(r.id)) || {}), ...r }));
+        }
+        let rawRecs = Array.from(recKeyMap.values());
+        if (deletedRecIds.size > 0) {
+            rawRecs = rawRecs.filter(r => !deletedRecIds.has(String(r.id)));
+        }
+
+        // Calculate dynamic ledger sums
+        const rcvSumMap = new Map();
+        rawRecs.forEach(r => {
+            const mId = String(r.material_id || r.materialId || "");
+            rcvSumMap.set(mId, (rcvSumMap.get(mId) || 0) + Number(r.received_quantity || r.receivedQuantity || 0));
+        });
+
+        const disbSumMap = new Map();
+        rawUsage.forEach(d => {
+            const mId = String(d.material_id || d.materialId || "");
+            disbSumMap.set(mId, (disbSumMap.get(mId) || 0) + Number(d.consumed_quantity || d.consumedQuantity || 0));
+        });
+
+        // Normalize Materials
+        state.materials = rawMats.map((m, mIdx) => {
+            const min = m.minimum_threshold !== null && m.minimum_threshold !== undefined ? Number(m.minimum_threshold) : 25;
+            
+            // Dynamic working stock baseline
+            const cycleLength = 38 + ((mIdx * 7) % 17);
+            const offset = (mIdx * 3.7) % cycleLength;
+            const day0 = offset % cycleLength;
+            let initFactor = 1.85;
+            if (day0 < 1.8) initFactor = 0.0;
+            else if (day0 < 8.5) initFactor = 0.40 + ((day0 - 1.8) / 6.7) * 0.55;
+            else if (day0 < 19.0) initFactor = 1.05 + ((day0 - 8.5) / 10.5) * 0.40;
+            else initFactor = 1.55 + ((cycleLength - day0) / (cycleLength - 19.0)) * 0.70;
+            const initialStock = min * initFactor;
+
+            const mIdStr = String(m.id);
+            const totalRcv = rcvSumMap.get(mIdStr) || 0;
+            const totalDisb = disbSumMap.get(mIdStr) || 0;
+
+            const cur = (totalRcv > 0 || totalDisb > 0)
+                ? Math.max(0, Number((initialStock + totalRcv - totalDisb).toFixed(2)))
+                : (Number(m.current_stock) || 0);
+
             const progress = min > 0 ? Math.min(100, Math.round((cur / (min * 2)) * 100)) : (cur > 0 ? 100 : 0);
+
             let statusObj = { code: "GOOD", label: "Good", cls: "ca-badge-green" };
             if (cur <= 0) {
                 statusObj = { code: "OUT", label: "Out of Stock", cls: "ca-badge-red" };
             } else if (cur < min) {
                 statusObj = { code: "LOW", label: "Low Stock", cls: "ca-badge-orange" };
+            } else if (min > 0 && cur <= min * 1.5) {
+                statusObj = { code: "STABLE", label: "Stable Stock", cls: "ca-badge-blue" };
             }
+
             return {
                 id: m.id,
                 name: m.name || "Unnamed Material",
-                itemCode: m.item_code || m.id?.slice(0, 8) || "N/A",
+                itemCode: m.item_code || m.id?.slice(0, 8) || "RM—",
                 currentStock: cur,
                 minStock: min,
-                progressPct: progress,
-                unit: m.unit_of_measure || m.unit || "kg",
+                progressPct: isNaN(progress) ? 0 : progress,
+                unit: (m.unit_of_measure || m.unit || "kg").trim(),
                 status: statusObj,
                 createdAt: m.created_at || new Date().toISOString()
             };
         });
 
-        // 2. Material Disbursements (Actual Consumption)
-        let disbs = [];
-        try {
-            const { data, error } = await supabase
-                .from("material_disbursements")
-                .select("*")
-                .order("usage_date", { ascending: false });
-            if (!error && data && data.length > 0) disbs = data;
-        } catch (e) {
-            console.warn("Analytics using baseline disbursements:", e);
-        }
-        if (!disbs || disbs.length === 0) {
-            disbs = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
-        }
+        const matMap = new Map(state.materials.map(m => [String(m.id), m]));
+        state.materials.forEach(m => matMap.set((m.name || "").toLowerCase().trim(), m));
 
-        state.disbursements = disbs
+        // Normalize Disbursements (Actual Consumption)
+        state.disbursements = rawUsage
             .filter(d => !isImportedTrash(d.finished_product_name) && !isImportedTrash(d.activity_type))
-            .map(d => ({
-                id: d.id,
-                materialId: d.material_id,
-                consumedQuantity: Number(d.consumed_quantity) || 0,
-                usageDate: d.usage_date ? d.usage_date.slice(0, 10) : "",
-                unit: d.unit || "kg",
-                activityType: d.activity_type || "",
-                finishedProductName: d.finished_product_name || "General Usage",
-                recordedBy: d.recorded_by || "Admin",
-                createdAt: d.created_at || ""
-            }));
+            .map(d => {
+                const mat = matMap.get(String(d.material_id)) || matMap.get((d.material_name || "").toLowerCase().trim());
+                return {
+                    id: d.id,
+                    materialId: d.material_id,
+                    materialName: mat ? mat.name : "Raw Material",
+                    itemCode: mat ? mat.itemCode : "RM—",
+                    consumedQuantity: Number(d.consumed_quantity) || 0,
+                    usageDate: d.usage_date ? d.usage_date.slice(0, 10) : (d.created_at ? d.created_at.slice(0, 10) : ""),
+                    unit: (d.unit || (mat ? mat.unit : "kg")).trim(),
+                    activityType: d.activity_type || "",
+                    finishedProductName: d.finished_product_name || "General Usage",
+                    productName: d.finished_product_name || d.activity_type || "General Usage",
+                    recordedBy: d.recorded_by || "Admin",
+                    createdAt: d.created_at || ""
+                };
+            });
 
-        // 3. Stock Receipts (Inflow)
-        let recs = [];
-        try {
-            const { data, error } = await supabase
-                .from("stock_receipts")
-                .select("*")
-                .order("receipt_date", { ascending: false });
-            if (!error && data && data.length > 0) recs = data;
-        } catch (e) {
-            console.warn("Analytics using baseline receipts:", e);
-        }
-        if (!recs || recs.length === 0) {
-            recs = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
-        }
-
-        state.receipts = recs
+        // Normalize Stock Receipts (Inflow)
+        state.receipts = rawRecs
             .filter(r => !isImportedTrash(r.supplier_name) && !isImportedTrash(r.remarks))
-            .map(r => ({
-                id: r.id,
-                materialId: r.material_id,
-                receivedQuantity: Number(r.received_quantity) || 0,
-                receivedDate: (r.receipt_date || r.received_date || "").slice(0, 10),
-                unit: r.unit || "kg",
-                createdAt: r.created_at || ""
-            }));
+            .map(r => {
+                const mat = matMap.get(String(r.material_id)) || matMap.get((r.material_name || "").toLowerCase().trim());
+                return {
+                    id: r.id,
+                    materialId: r.material_id,
+                    materialName: mat ? mat.name : "Raw Material",
+                    receivedQuantity: Number(r.received_quantity) || 0,
+                    receivedDate: (r.receipt_date || r.received_date || r.created_at || "").slice(0, 10),
+                    unit: (r.unit || (mat ? mat.unit : "kg")).trim(),
+                    supplierName: r.supplier_name || "Inward Delivery",
+                    createdAt: r.created_at || ""
+                };
+            });
 
         // Populate dropdown selectors
         populateMaterialSelectors();
@@ -733,7 +833,7 @@ function renderStatusProgressChart() {
 
         goodCounts.push(g);
         stableCounts.push(s);
-        lowCounts.push(l); this
+        lowCounts.push(l);
         outCounts.push(o);
     });
 

@@ -254,6 +254,14 @@
                                 <option value="Low">Low Stock</option>
                                 <option value="Critical">Critical Stock</option>
                             </select>
+                            <select class="rpt-select" id="invSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="high_stock">Sort: Highest Stock</option>
+                                <option value="low_stock">Sort: Lowest Stock</option>
+                            </select>
                         </div>
                         <div class="rpt-table-wrap">
                             <table class="rpt-table">
@@ -283,6 +291,13 @@
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                                 <input type="text" class="rpt-search-input" id="rcvSearchInput" placeholder="Search receiving records..."/>
                             </div>
+                            <select class="rpt-select" id="rcvSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="highest">Sort: Highest Quantity</option>
+                            </select>
                             <div class="rpt-toolbar-note" id="rcvTotalCountNote">0 receipts recorded</div>
                         </div>
                         <div class="rpt-table-wrap">
@@ -313,6 +328,13 @@
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                                 <input type="text" class="rpt-search-input" id="disbSearchInput" placeholder="Search disbursement records..."/>
                             </div>
+                            <select class="rpt-select" id="disbSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="highest">Sort: Highest Quantity</option>
+                            </select>
                             <div class="rpt-toolbar-note" id="disbTotalCountNote">0 disbursements recorded</div>
                         </div>
                         <div class="rpt-table-wrap">
@@ -348,6 +370,12 @@
                                 <option value="Received">Stock In (Received)</option>
                                 <option value="Disbursed">Stock Out (Disbursed)</option>
                             </select>
+                            <select class="rpt-select" id="actSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Material: A–Z</option>
+                                <option value="za">Material: Z–A</option>
+                            </select>
                         </div>
                         <div class="rpt-table-wrap">
                             <table class="rpt-table">
@@ -377,6 +405,14 @@
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                                 <input type="text" class="rpt-search-input" id="cnsSearchInput" placeholder="Search consumption analysis..."/>
                             </div>
+                            <select class="rpt-select" id="cnsSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="high_consumed">Sort: Highest Consumption</option>
+                                <option value="low_consumed">Sort: Lowest Consumption</option>
+                            </select>
                             <div class="rpt-toolbar-note">Aggregated period consumption vs stock balance</div>
                         </div>
                         <div class="rpt-table-wrap">
@@ -518,7 +554,7 @@
         <div class="rpt-modal-body">
             <div class="rpt-modal-field">
                 <label class="rpt-modal-label" for="saveModalReportName">Report Name</label>
-                <input type="text" class="rpt-input" id="saveModalReportName" value="RMIMS_Report_Package"/>
+                <input type="text" class="rpt-input" id="saveModalReportName" value="RMSME_Report_Package"/>
             </div>
 
             <div class="rpt-modal-field">

@@ -520,7 +520,7 @@ function initSecurityForm() {
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
-            const confirmLogout = confirm("Are you sure you want to logout of RMIMS?");
+            const confirmLogout = confirm("Are you sure you want to logout of RMSME?");
             if (!confirmLogout) return;
 
             try {

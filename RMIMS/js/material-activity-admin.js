@@ -11,6 +11,7 @@ import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-finished-products.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, saveCustomReceipt, getSystemCustomDisbursements, saveCustomDisbursement, invalidateForecastCache } from "./system-materials.js";
 
 /* ==========================================================
    ROLE GUARD & AUTHENTICATION
@@ -79,8 +80,12 @@ const state = {
     card1Tab: "product",     // "product" or "material"
     productSearch: "",
     productSort: "latest",
+    productPage: 1,
+    productPageSize: 9,
     materialSearch: "",
     materialSort: "latest",
+    materialPage: 1,
+    materialPageSize: 10,
 
     // Card 2 History state
     historySearch: "",
@@ -117,6 +122,15 @@ function getInitials(name) {
 
 function initials(name) {
     return getInitials(name);
+}
+
+function getUserDisplayName() {
+    try {
+        const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+        return u.full_name || u.email || (u.role === 'admin' ? 'Administrator' : 'Staff User');
+    } catch (e) {
+        return 'Administrator';
+    }
 }
 
 function formatDate(dateStr) {
@@ -212,78 +226,111 @@ function initPage() {
 
 async function loadAuthoritativeData() {
     try {
-        // 1. Fetch live raw materials
-        let mats = [];
-        try {
-            const { data, error } = await supabase
-                .from("raw_materials")
-                .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, description, created_at")
-                .order("name");
-            if (!error && data && data.length > 0) mats = data;
-        } catch (e) {
-            console.warn("Using baseline raw materials dataset:", e);
-        }
-        if (!mats || mats.length === 0) {
-            mats = AUTHENTIC_59_RAW_MATERIALS.map(m => ({
-                id: m.id,
-                item_code: m.item_code,
+        const fetchWithTimeout = (promise, ms = 3000) => 
+            Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+            ]);
+
+        // Run all queries in PARALLEL
+        const [matsRes, recsRes, disbsRes] = await Promise.allSettled([
+            fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, description, created_at").order("name")),
+            fetchWithTimeout(supabase.from("stock_receipts").select("id, material_id, received_quantity, unit, receipt_date, supplier_name, created_at").order("receipt_date", { ascending: false })),
+            fetchWithTimeout(supabase.from("material_disbursements").select("id, material_id, consumed_quantity, unit, usage_date, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false }))
+        ]);
+
+        // 1. Merge Materials (Baseline 59 + System Custom Materials + Supabase)
+        const matMap = new Map();
+        const baselineMats = getSystemRawMaterials();
+        baselineMats.forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            matMap.set(k, {
+                id: String(m.id || m.item_code),
+                item_code: m.item_code || m.itemCode || m.id,
                 name: m.name,
-                unit_of_measure: m.unit_of_measure,
-                current_stock: m.current_stock,
-                minimum_threshold: m.minimum_threshold,
-                description: m.description,
-                created_at: m.created_at
-            }));
+                unit_of_measure: m.unit_of_measure || m.unit || "kg",
+                current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                description: m.description || "",
+                created_at: m.created_at || new Date().toISOString()
+            });
+        });
+
+        if (matsRes.status === "fulfilled" && matsRes.value?.data && matsRes.value.data.length > 0) {
+            matsRes.value.data.forEach(m => {
+                const k = String(m.name || m.id || "").toLowerCase().trim();
+                const ex = matMap.get(k) || {};
+                matMap.set(k, { ...ex, ...m });
+            });
         }
+        let mats = Array.from(matMap.values());
+
+        // 2. Merge Receipts (Baseline 6 Months + System Custom Receipts + Supabase)
+        const recMap = new Map();
+        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recMap.set(String(r.id), { ...r }));
+        getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
+        if (recsRes.status === "fulfilled" && recsRes.value?.data && recsRes.value.data.length > 0) {
+            recsRes.value.data.forEach(r => recMap.set(String(r.id), { ...(recMap.get(String(r.id)) || {}), ...r }));
+        }
+        let receipts = Array.from(recMap.values());
+
+        // 3. Merge Disbursements (Baseline 6 Months + System Custom Disbursements + Supabase)
+        const disbMap = new Map();
+        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbMap.set(String(d.id), { ...d }));
+        getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
+        if (disbsRes.status === "fulfilled" && disbsRes.value?.data && disbsRes.value.data.length > 0) {
+            disbsRes.value.data.forEach(d => disbMap.set(String(d.id), { ...(disbMap.get(String(d.id)) || {}), ...d }));
+        }
+        let disbs = Array.from(disbMap.values());
+
+        // Retrieve locally deleted IDs across all registries
+        let deletedMatIds = new Set();
+        try {
+            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+        } catch (e) {}
+
+        let deletedDisbIds = new Set();
+        try {
+            deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        let deletedRecIds = new Set();
+        try {
+            deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        if (deletedMatIds.size > 0) {
+            mats = mats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
+        }
+        if (deletedRecIds.size > 0) {
+            receipts = receipts.filter(r => !deletedRecIds.has(String(r.id)));
+        }
+        if (deletedDisbIds.size > 0) {
+            disbs = disbs.filter(d => !deletedDisbIds.has(String(d.id)));
+        }
+
+        // Compute dynamic live stock for each raw material based on full transaction ledger
+        mats.forEach(m => {
+            const mId = String(m.id).toLowerCase().trim();
+            const mCode = String(m.item_code || "").toLowerCase().trim();
+            const mName = String(m.name || "").toLowerCase().trim();
+
+            const isMatch = (tid, tmat) => {
+                const s = String(tid || tmat || "").toLowerCase().trim();
+                return s === mId || s === mCode || s === mName;
+            };
+
+            const totRec = receipts.filter(r => isMatch(r.material_id, r.material_name)).reduce((s, r) => s + Number(r.received_quantity ?? r.receivedQuantity ?? r.quantity ?? 0), 0);
+            const totDisb = disbs.filter(d => isMatch(d.material_id, d.material_name)).reduce((s, d) => s + Number(d.consumed_quantity ?? d.consumedQuantity ?? d.quantity ?? 0), 0);
+            
+            // If receipts & disbursements exist, calculate dynamically
+            if (totRec > 0 || totDisb > 0) {
+                m.current_stock = Math.max(0, Number((totRec - totDisb).toFixed(2)));
+            }
+        });
+
         state.materials = mats;
-
-        // 2. Fetch stock receipts
-        let receipts = [];
-        try {
-            const { data, error } = await supabase
-                .from("stock_receipts")
-                .select("id, material_id, received_quantity, unit, receipt_date, supplier_name, created_at")
-                .order("receipt_date", { ascending: false });
-            if (!error && data && data.length > 0) receipts = data;
-        } catch (e) {
-            console.warn("Using baseline stock receipts dataset:", e);
-        }
-        if (!receipts || receipts.length === 0) {
-            receipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS.map((r, idx) => ({
-                id: r.id || `rcv-pre-${idx + 1}`,
-                material_id: r.material_id,
-                received_quantity: Number(r.received_quantity || 0),
-                unit: r.unit || "kg",
-                receipt_date: r.receipt_date,
-                supplier_name: r.supplier_name || "Authorized Supplier",
-                created_at: r.created_at || new Date().toISOString()
-            }));
-        }
         state.stockReceipts = receipts;
-
-        // 3. Fetch material disbursements
-        let disbs = [];
-        try {
-            const { data, error } = await supabase
-                .from("material_disbursements")
-                .select("id, material_id, consumed_quantity, unit, usage_date, activity_type, finished_product_name, created_at")
-                .order("usage_date", { ascending: false });
-            if (!error && data && data.length > 0) disbs = data;
-        } catch (e) {
-            console.warn("Using baseline disbursements dataset:", e);
-        }
-        if (!disbs || disbs.length === 0) {
-            disbs = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.map((d, idx) => ({
-                id: d.id || `dsb-pre-${idx + 1}`,
-                material_id: d.material_id,
-                consumed_quantity: Number(d.consumed_quantity || 0),
-                unit: d.unit || "kg",
-                usage_date: d.usage_date,
-                activity_type: d.activity_type || "Production Issue",
-                finished_product_name: d.finished_product_name || "General Production",
-                created_at: d.created_at || new Date().toISOString()
-            }));
-        }
         state.disbursements = disbs;
 
         // 4. Build Finished Product Relationships
@@ -314,6 +361,11 @@ function buildFinishedProductsContext() {
         saved = [];
     }
 
+    let deletedProdNames = new Set();
+    try {
+        deletedProdNames = new Set(JSON.parse(localStorage.getItem("rmims_deleted_finished_products") || "[]").map(x => String(x).toLowerCase().trim()));
+    } catch (e) {}
+
     const prodMap = new Map();
 
     // Helper to find raw material ID by name
@@ -332,6 +384,7 @@ function buildFinishedProductsContext() {
             if (!p || !p.name) return;
             const norm = p.name.trim();
             const key = norm.toLowerCase();
+            if (deletedProdNames.has(key)) return;
 
             const matIds = [];
             if (Array.isArray(p.materialNames)) {
@@ -351,11 +404,12 @@ function buildFinishedProductsContext() {
         });
     }
 
-    // Add saved contexts (filtering out generic operational names)
+    // Add saved contexts (filtering out generic operational names and deleted products)
     if (Array.isArray(saved)) {
         saved.forEach(p => {
             if (p && p.name && !isGenericOperationalName(p.name)) {
                 const norm = p.name.trim().toLowerCase();
+                if (deletedProdNames.has(norm)) return;
                 if (prodMap.has(norm)) {
                     const ex = prodMap.get(norm);
                     if (p.imageUrl) ex.imageUrl = p.imageUrl;
@@ -435,12 +489,17 @@ function buildUnifiedActivities() {
             const mat = state.materials.find(m => m.id === r.material_id);
             const qty = Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
             const dateVal = r.receipt_date || r.received_date || r.created_at;
+            let contextVal = (r.supplier_name || "").trim();
+            if (!contextVal || isGenericOperationalName(contextVal)) {
+                const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(r.material_id));
+                contextVal = linked.length > 0 ? linked.map(p => p.name).join(", ") : "Inward Delivery";
+            }
             list.push({
                 id: "rec_" + r.id,
                 type: "receive",
                 typeLabel: "Receive",
                 date: dateVal,
-                context: "Unassigned / General Stock",
+                context: contextVal,
                 materialId: r.material_id,
                 materialName: mat ? mat.name : "Unknown Material",
                 itemCode: mat ? (mat.item_code || "—") : "—",
@@ -456,7 +515,11 @@ function buildUnifiedActivities() {
     // Disbursements as "Disbursement"
     state.disbursements.forEach(d => {
         const mat = state.materials.find(m => m.id === d.material_id);
-        const contextName = (d.finished_product_name || d.activity_type || "").trim();
+        let contextName = (d.finished_product_name || d.activity_type || "").trim();
+        if (!contextName || isGenericOperationalName(contextName)) {
+            const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(d.material_id));
+            contextName = linked.length > 0 ? linked.map(p => p.name).join(", ") : "Production Usage";
+        }
         const qty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
         const dateVal = d.usage_date || d.disbursement_date || d.created_at;
         list.push({
@@ -464,7 +527,7 @@ function buildUnifiedActivities() {
             type: "disbursement",
             typeLabel: "Disbursement",
             date: dateVal,
-            context: contextName || "General Production",
+            context: contextName,
             materialId: d.material_id,
             materialName: mat ? mat.name : "Unknown Material",
             itemCode: mat ? (mat.item_code || "—") : "—",
@@ -490,6 +553,8 @@ function renderCard1() {
 
 function renderProductOverview() {
     const container = document.getElementById("productCardsContainer");
+    const countEl = document.getElementById("productResultCount");
+    const paginationEl = document.getElementById("productPaginationBtns");
     if (!container) return;
 
     const search = state.productSearch.trim().toLowerCase();
@@ -518,23 +583,49 @@ function renderProductOverview() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-    if (filtered.length === 0) {
+    const total = filtered.length;
+
+    if (total === 0) {
         container.innerHTML = `
-            <div class="ma-empty-state">
+            <div class="ma-empty-state" style="grid-column: 1 / -1;">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                 <p>No finished products match your search criteria.</p>
             </div>
         `;
+        if (countEl) countEl.textContent = `Showing 0 of ${state.finishedProducts.length} finished products`;
+        if (paginationEl) paginationEl.innerHTML = "";
         return;
     }
 
-    container.innerHTML = filtered.map(prod => {
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(total / state.productPageSize));
+    if (state.productPage > totalPages) state.productPage = totalPages;
+    if (state.productPage < 1) state.productPage = 1;
+
+    const start = (state.productPage - 1) * state.productPageSize;
+    const end = Math.min(start + state.productPageSize, total);
+    const paged = filtered.slice(start, end);
+
+    if (countEl) {
+        countEl.textContent = `Showing ${start + 1}–${end} of ${total} finished products`;
+    }
+
+    container.innerHTML = paged.map(prod => {
         // Compute bundled metrics
         // 1. Material chips
         const matItems = prod.materialIds.map(mId => state.materials.find(m => m.id === mId)).filter(Boolean);
-        const chipsHtml = matItems.length > 0
-            ? matItems.map(m => `<span class="ma-item-chip">${escapeHtml(m.name)}</span>`).join("")
-            : `<span style="font-size:0.75rem; color: var(--rm-ink-dim);">No linked materials</span>`;
+        
+        let chipsHtml = "";
+        if (matItems.length === 0) {
+            chipsHtml = `<span style="font-size:0.75rem; color: var(--rm-ink-dim);">No linked materials</span>`;
+        } else {
+            const visible = matItems.slice(0, 3).map(m => `<span class="ma-item-chip" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</span>`).join("");
+            const remaining = matItems.length - 3;
+            const moreChip = remaining > 0
+                ? `<span class="ma-chip-more btn-view-prod-breakdown" data-prod-id="${escapeHtml(prod.id)}" title="Click to view all ${matItems.length} materials">+${remaining} more</span>`
+                : "";
+            chipsHtml = visible + moreChip;
+        }
 
         // 2. Total received for this product's materials
         let totalReceived = 0;
@@ -611,6 +702,11 @@ function renderProductOverview() {
         `;
     }).join("");
 
+    renderPaginationControls(paginationEl, state.productPage, totalPages, (newPage) => {
+        state.productPage = newPage;
+        renderProductOverview();
+    });
+
     // Attach Event Listeners to Product Card buttons
     container.querySelectorAll(".btn-receive-for-prod").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -618,9 +714,7 @@ function renderProductOverview() {
             e.stopPropagation();
             const pId = btn.getAttribute("data-prod-id");
             const prod = state.finishedProducts.find(p => String(p.id) === String(pId) || p.name.toLowerCase() === String(pId).toLowerCase());
-            const isSingle = prod?.materialIds?.length === 1;
-            const allowed = (prod?.materialIds?.length > 0) ? prod.materialIds : null;
-            openReceiveModal(isSingle ? prod.materialIds[0] : null, prod?.name || null, allowed);
+            openReceiveModal(null, prod?.name || pId, prod?.materialIds || []);
         });
     });
 
@@ -630,9 +724,7 @@ function renderProductOverview() {
             e.stopPropagation();
             const pId = btn.getAttribute("data-prod-id");
             const prod = state.finishedProducts.find(p => String(p.id) === String(pId) || p.name.toLowerCase() === String(pId).toLowerCase());
-            const isSingle = prod?.materialIds?.length === 1;
-            const allowed = (prod?.materialIds?.length > 0) ? prod.materialIds : null;
-            openDisburseModal(isSingle ? prod.materialIds[0] : null, prod?.name || null, allowed);
+            openDisburseModal(null, prod?.name || pId, prod?.materialIds || []);
         });
     });
 
@@ -657,6 +749,8 @@ function renderProductOverview() {
 
 function renderMaterialOverview() {
     const tbody = document.getElementById("materialOverviewTableBody");
+    const countEl = document.getElementById("materialResultCount");
+    const paginationEl = document.getElementById("materialPaginationBtns");
     if (!tbody) return;
 
     const search = state.materialSearch.trim().toLowerCase();
@@ -684,7 +778,9 @@ function renderMaterialOverview() {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-    if (filtered.length === 0) {
+    const total = filtered.length;
+
+    if (total === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" style="text-align:center; padding: 32px; color: var(--rm-ink-dim);">
@@ -692,10 +788,25 @@ function renderMaterialOverview() {
                 </td>
             </tr>
         `;
+        if (countEl) countEl.textContent = `Showing 0 of ${state.materials.length} materials`;
+        if (paginationEl) paginationEl.innerHTML = "";
         return;
     }
 
-    tbody.innerHTML = filtered.map(mat => {
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(total / state.materialPageSize));
+    if (state.materialPage > totalPages) state.materialPage = totalPages;
+    if (state.materialPage < 1) state.materialPage = 1;
+
+    const start = (state.materialPage - 1) * state.materialPageSize;
+    const end = Math.min(start + state.materialPageSize, total);
+    const paged = filtered.slice(start, end);
+
+    if (countEl) {
+        countEl.textContent = `Showing ${start + 1}–${end} of ${total} materials`;
+    }
+
+    tbody.innerHTML = paged.map(mat => {
         const curStock = Number(mat.current_stock) || 0;
         const minStock = Number(mat.minimum_threshold) || 0;
         const unit = mat.unit_of_measure || "kg";
@@ -704,7 +815,7 @@ function renderMaterialOverview() {
         // Calculate total received for this material
         let totalReceived = 0;
         state.stockReceipts.forEach(r => {
-            if (r.material_id === mat.id) {
+            if (String(r.material_id) === String(mat.id)) {
                 totalReceived += Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
             }
         });
@@ -714,7 +825,7 @@ function renderMaterialOverview() {
         const prodUsageMap = new Map();
 
         state.disbursements.forEach(d => {
-            if (d.material_id === mat.id) {
+            if (String(d.material_id) === String(mat.id)) {
                 const qty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
                 totalDisbursed += qty;
                 const pName = (d.finished_product_name || d.activity_type || "").trim() || "General Usage";
@@ -725,7 +836,7 @@ function renderMaterialOverview() {
         });
 
         // Associated products list
-        const associatedProds = state.finishedProducts.filter(p => p.materialIds.includes(mat.id));
+        const associatedProds = (state.finishedProducts || []).filter(p => p.materialIds && p.materialIds.map(String).includes(String(mat.id)));
         associatedProds.forEach(p => {
             if (!prodUsageMap.has(p.name)) {
                 prodUsageMap.set(p.name, 0);
@@ -768,6 +879,11 @@ function renderMaterialOverview() {
             </tr>
         `;
     }).join("");
+
+    renderPaginationControls(paginationEl, state.materialPage, totalPages, (newPage) => {
+        state.materialPage = newPage;
+        renderMaterialOverview();
+    });
 
     // Attach Event Listeners to Table Row buttons
     tbody.querySelectorAll(".btn-receive-for-mat").forEach(btn => {
@@ -1037,7 +1153,7 @@ function openMaterialBreakdownModal(mat) {
     const totalDisbEl = document.getElementById("matBreakdownTotalDisbursed");
     const tbody = document.getElementById("matBreakdownProductsTableBody");
 
-    if (!overlay) return;
+    if (!overlay || !mat) return;
 
     const unit = mat.unit_of_measure || "kg";
     const curStock = Number(mat.current_stock) || 0;
@@ -1045,12 +1161,38 @@ function openMaterialBreakdownModal(mat) {
     const status = computeStockStatus(curStock, minStock);
 
     if (title) title.textContent = `${mat.name} (${mat.item_code || "RM—"}) — Breakdown`;
-    if (subtitle) subtitle.textContent = `Usage breakdown across finished products`;
+    if (subtitle) subtitle.textContent = `Usage and movement breakdown across finished products`;
+
+    if (curStockEl) curStockEl.textContent = formatQty(curStock, unit);
+    if (minStockEl) minStockEl.textContent = formatQty(minStock, unit);
+    if (statusEl) {
+        statusEl.className = `status-badge ${status.cls}`;
+        statusEl.innerHTML = `<span class="badge-dot ${status.dot}"></span>${status.label}`;
+    }
 
     let totalReceived = 0;
+    const prodRecMap = new Map();
     state.stockReceipts.forEach(r => {
-        if (r.material_id === mat.id) {
-            totalReceived += Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+        if (String(r.material_id) === String(mat.id)) {
+            const qty = Number(r.received_quantity != null ? r.received_quantity : r.quantity) || 0;
+            totalReceived += qty;
+            const supplier = (r.supplier_name || "").trim();
+
+            let matchedProd = null;
+            if (Array.isArray(state.finishedProducts)) {
+                for (const p of state.finishedProducts) {
+                    if (supplier.toLowerCase().includes(p.name.toLowerCase())) {
+                        matchedProd = p.name;
+                        break;
+                    }
+                }
+            }
+            if (matchedProd) {
+                prodRecMap.set(matchedProd, (prodRecMap.get(matchedProd) || 0) + qty);
+            } else {
+                const contextKey = supplier ? (supplier.toLowerCase().includes("package") ? supplier : `Inbound (${supplier})`) : "Direct / Inbound Stock";
+                prodRecMap.set(contextKey, (prodRecMap.get(contextKey) || 0) + qty);
+            }
         }
     });
 
@@ -1058,7 +1200,7 @@ function openMaterialBreakdownModal(mat) {
     const prodUsageMap = new Map();
 
     state.disbursements.forEach(d => {
-        if (d.material_id === mat.id) {
+        if (String(d.material_id) === String(mat.id)) {
             const qty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
             totalDisbursed += qty;
             const pName = (d.finished_product_name || d.activity_type || "").trim() || "General Usage";
@@ -1068,27 +1210,48 @@ function openMaterialBreakdownModal(mat) {
         }
     });
 
-    if (curStockEl) curStockEl.textContent = formatQty(curStock, unit);
-    if (minStockEl) minStockEl.textContent = formatQty(minStock, unit);
-    if (statusEl) {
-        statusEl.className = `status-badge ${status.cls}`;
-        statusEl.innerHTML = `<span class="badge-dot ${status.dot}"></span>${status.label}`;
-    }
+    // Map finished products that link to this material
+    const prodsList = Array.isArray(state.finishedProducts) ? state.finishedProducts : [];
+    const associatedProds = prodsList.filter(p => p.materialIds && p.materialIds.map(String).includes(String(mat.id)));
+
+    associatedProds.forEach(p => {
+        if (!prodUsageMap.has(p.name)) {
+            prodUsageMap.set(p.name, 0);
+        }
+        if (!prodRecMap.has(p.name)) {
+            prodRecMap.set(p.name, 0);
+        }
+    });
+
     if (totalRecEl) totalRecEl.textContent = formatQty(totalReceived, unit);
     if (totalDisbEl) totalDisbEl.textContent = formatQty(totalDisbursed, unit);
 
     if (tbody) {
-        const entries = Array.from(prodUsageMap.entries());
-        if (entries.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 24px; color: var(--rm-ink-dim); font-size: 0.85rem;">No product disbursements recorded yet.</td></tr>`;
+        const allKeys = new Set([...associatedProds.map(p => p.name), ...prodUsageMap.keys(), ...prodRecMap.keys()]);
+
+        if (allKeys.size === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 24px; color: var(--rm-ink-dim); font-size: 0.85rem;">No product movement recorded yet.</td></tr>`;
         } else {
-            tbody.innerHTML = entries.map(([pName, qty]) => `
-                <tr>
-                    <td><strong>${escapeHtml(pName)}</strong></td>
-                    <td><strong class="val-disbursed" style="color:#ea580c; font-weight:700;">${formatQty(qty, unit)}</strong></td>
-                    <td>${escapeHtml(unit)}</td>
-                </tr>
-            `).join("");
+            const sortedKeys = Array.from(allKeys).sort((a, b) => {
+                const aIsProd = associatedProds.some(p => p.name === a);
+                const bIsProd = associatedProds.some(p => p.name === b);
+                if (aIsProd && !bIsProd) return -1;
+                if (!aIsProd && bIsProd) return 1;
+                return a.localeCompare(b);
+            });
+
+            tbody.innerHTML = sortedKeys.map(key => {
+                const rec = prodRecMap.get(key) || 0;
+                const disb = prodUsageMap.get(key) || 0;
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(key)}</strong></td>
+                        <td><strong class="val-received" style="color:#16a34a; font-weight:700;">${formatQty(rec, unit)}</strong></td>
+                        <td><strong class="val-disbursed" style="color:#ea580c; font-weight:700;">${formatQty(disb, unit)}</strong></td>
+                        <td>${escapeHtml(unit)}</td>
+                    </tr>
+                `;
+            }).join("");
         }
     }
 
@@ -1135,68 +1298,86 @@ function populateMaterialDropdowns() {
     }
 }
 
-function updateProductContextDropdown(selectEl, selectedMatId, preferredProduct = null, isOptional = false) {
-    if (!selectEl) return;
-    
-    const prodsList = Array.isArray(state.finishedProducts) ? state.finishedProducts : [];
+let currentReceiveMode = "single"; // "single" | "package"
+let currentReceiveProduct = null;  // { id, name, materialIds }
 
-    // Find all finished products that contain this raw material
-    const associatedProds = prodsList.filter(p => 
-        Array.isArray(p.materialIds) && p.materialIds.map(String).includes(String(selectedMatId))
-    );
-    
-    let html = "";
-    if (isOptional) {
-        html += `<option value="">Unassigned / General Stock</option>`;
+let currentDisburseMode = "single"; // "single" | "package"
+let currentDisburseProduct = null;  // { id, name, materialIds }
+
+function renderReceivePackageTable(pkgCount = 1) {
+    const tbody = document.getElementById("maReceivePackageTableBody");
+    if (!tbody || !currentReceiveProduct) return;
+
+    const matItems = (currentReceiveProduct.materialIds || [])
+        .map(id => state.materials.find(m => String(m.id) === String(id)))
+        .filter(Boolean);
+
+    if (matItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--rm-ink-dim);">No raw materials mapped to this finished product package.</td></tr>`;
+        return;
     }
-    
-    if (associatedProds.length > 0) {
-        html += `<optgroup label="Associated Finished Products">`;
-        associatedProds.forEach(p => {
-            html += `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`;
-        });
-        html += `</optgroup>`;
+
+    tbody.innerHTML = matItems.map(mat => {
+        const curStock = Number(mat.current_stock) || 0;
+        const minStock = Number(mat.minimum_threshold) || 0;
+        const unit = mat.unit_of_measure || "kg";
+        // Calculate quantity to add ahead of minimum threshold:
+        const baseQty = minStock > 0 ? minStock : 10;
+        const qtyToAdd = baseQty * pkgCount;
+        const projected = curStock + qtyToAdd;
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(mat.name)}</strong></td>
+                <td><span class="mat-id-badge">${escapeHtml(mat.item_code || "RM—")}</span></td>
+                <td>${formatQty(curStock, unit)}</td>
+                <td><span style="color: var(--rm-ink-dim); font-weight: 500;">${formatQty(minStock, unit)}</span></td>
+                <td><strong style="color: #16a34a; font-weight: 800;">+${formatQty(qtyToAdd, unit)}</strong></td>
+                <td><strong style="color: #059669; font-weight: 800;">${formatQty(projected, unit)}</strong></td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function renderDisbursePackageTable(pkgCount = 1) {
+    const tbody = document.getElementById("maDisbursePackageTableBody");
+    if (!tbody || !currentDisburseProduct) return;
+
+    const matItems = (currentDisburseProduct.materialIds || [])
+        .map(id => state.materials.find(m => String(m.id) === String(id)))
+        .filter(Boolean);
+
+    if (matItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--rm-ink-dim);">No raw materials mapped to this finished product package.</td></tr>`;
+        return;
     }
-    
-    const otherProds = prodsList.filter(p => !associatedProds.some(ap => String(ap.id) === String(p.id)));
-    if (otherProds.length > 0) {
-        html += `<optgroup label="Other Finished Products">`;
-        otherProds.forEach(p => {
-            html += `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`;
-        });
-        html += `</optgroup>`;
-    }
-    
-    html += `<optgroup label="General / Operational">`;
-    html += `<option value="General Usage">General Usage</option>`;
-    html += `</optgroup>`;
-    
-    selectEl.innerHTML = html;
-    
-    // Auto-selection priority:
-    if (preferredProduct) {
-        const match = Array.from(selectEl.options).find(opt => opt.value.toLowerCase() === preferredProduct.toLowerCase());
-        if (match) {
-            selectEl.value = match.value;
-            return;
-        } else {
-            const newOpt = document.createElement("option");
-            newOpt.value = preferredProduct;
-            newOpt.textContent = preferredProduct;
-            selectEl.prepend(newOpt);
-            selectEl.value = preferredProduct;
-            return;
-        }
-    }
-    
-    // Auto-select associated finished product if available
-    if (associatedProds.length > 0) {
-        selectEl.value = associatedProds[0].name;
-    } else if (!isOptional && prodsList.length > 0) {
-        selectEl.value = prodsList[0].name;
-    } else if (!isOptional) {
-        selectEl.value = "General Usage";
-    }
+
+    tbody.innerHTML = matItems.map(mat => {
+        const curStock = Number(mat.current_stock) || 0;
+        const minStock = Number(mat.minimum_threshold) || 0;
+        const unit = mat.unit_of_measure || "kg";
+        // Usage per batch formula:
+        const baseUsage = Math.max(1, Math.round((minStock > 0 ? minStock : 10) * 0.5));
+        const qtyToDeduct = baseUsage * pkgCount;
+        const remaining = Math.max(0, curStock - qtyToDeduct);
+        const isExceeded = qtyToDeduct > curStock;
+
+        return `
+            <tr class="${isExceeded ? 'pkg-row-exceeded' : ''}">
+                <td><strong>${escapeHtml(mat.name)}</strong></td>
+                <td><span class="mat-id-badge">${escapeHtml(mat.item_code || "RM—")}</span></td>
+                <td><strong>${formatQty(curStock, unit)}</strong></td>
+                <td><span style="color: var(--rm-ink-dim); font-weight: 500;">${formatQty(minStock, unit)}</span></td>
+                <td><strong style="color: #ea580c; font-weight: 800;">−${formatQty(qtyToDeduct, unit)}</strong></td>
+                <td>
+                    ${isExceeded 
+                        ? `<span style="color: #dc2626; font-weight: 800;">⚠️ Short (${formatQty(curStock, unit)})</span>` 
+                        : `<strong style="color: #d97706;">${formatQty(remaining, unit)}</strong>`
+                    }
+                </td>
+            </tr>
+        `;
+    }).join("");
 }
 
 function updateReceiveLivePreview() {
@@ -1250,7 +1431,7 @@ function updateDisburseLivePreview() {
 
     // Margin of Error Validation (+7.51% Upper Limit)
     const typicalBatchReq = Math.max(minThresh * 0.50, Math.min(cur * 0.50, 50), 10);
-    const upperMarginLimit = typicalBatchReq * 1.0751; // +7.51% Limit
+    const upperMarginLimit = typicalBatchReq * 1.0751;
 
     if (warningBox && warningDesc) {
         if (qty > 0 && qty <= cur && qty > upperMarginLimit) {
@@ -1263,9 +1444,15 @@ function updateDisburseLivePreview() {
     }
 }
 
-function openReceiveModal(preselectedMatId = null, preselectedContext = null, allowedMaterialIds = null) {
+function openReceiveModal(preselectedMatId = null, preselectedProduct = null, allowedMaterialIds = null) {
     const overlay = document.getElementById("maReceiveModalOverlay");
     const form = document.getElementById("maReceiveForm");
+    const titleEl = document.getElementById("maReceiveModalTitle");
+    const subtitleEl = document.getElementById("maReceiveModalSubtitle");
+
+    const pkgWrap = document.getElementById("maReceivePackageWrap");
+    const singleWrap = document.getElementById("maReceiveSingleWrap");
+
     const matSelect = document.getElementById("maReceiveMaterialSelect");
     const matDisplayWrap = document.getElementById("maReceiveMaterialDisplayWrap");
     const matAvatar = document.getElementById("maReceiveMatAvatar");
@@ -1277,7 +1464,7 @@ function openReceiveModal(preselectedMatId = null, preselectedContext = null, al
     const unitInput = document.getElementById("maReceiveUnitDisplay");
     const dateInput = document.getElementById("maReceiveDateInput");
     const supplierInput = document.getElementById("maReceiveSupplierInput");
-    const contextInput = document.getElementById("maReceiveProductContextInput");
+    const prodInput = document.getElementById("maReceiveProductContextInput");
 
     if (!overlay) return;
 
@@ -1292,60 +1479,113 @@ function openReceiveModal(preselectedMatId = null, preselectedContext = null, al
             dateInput.value = todayStr;
         }
     }
-    if (qtyInput) qtyInput.value = "1";
 
-    const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
-        ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
-        : state.materials;
-
-    if (matSelect) {
-        matSelect.innerHTML = `<option value="">Select Raw Material...</option>` + availableMats.map(m => `
-            <option value="${escapeHtml(m.id)}" data-unit="${escapeHtml(m.unit_of_measure || "kg")}" data-stock="${m.current_stock}">
-                ${escapeHtml(m.name)} (${escapeHtml(m.item_code || "RM—")}) — Current Stock: ${formatQty(m.current_stock, m.unit_of_measure)}
-            </option>
-        `).join("");
-
-        matSelect.onchange = () => {
-            const activeId = matSelect.value;
-            const opt = matSelect.selectedOptions[0];
-            const unit = opt ? opt.getAttribute("data-unit") : "kg";
-            if (unitInput) unitInput.value = unit || "kg";
-            updateProductContextDropdown(contextInput, activeId, null, true);
-            updateReceiveLivePreview();
-        };
-    }
-
-    let activeMatId = preselectedMatId;
-    if (preselectedMatId) {
-        const mat = state.materials.find(m => m.id === preselectedMatId);
-        if (mat) {
-            if (matSelect) {
-                matSelect.value = mat.id;
-                matSelect.style.display = "none";
-            }
-            if (matDisplayWrap) {
-                matDisplayWrap.style.display = "block";
-                if (matAvatar) matAvatar.textContent = initials(mat.name);
-                if (matNameDisplay) matNameDisplay.textContent = mat.name;
-                if (matCodeDisplay) matCodeDisplay.textContent = mat.item_code || "RM—";
-                if (matStockDisplay) matStockDisplay.textContent = formatQty(mat.current_stock, mat.unit_of_measure);
-            }
-            if (unitInput) unitInput.value = mat.unit_of_measure || "kg";
+    if (preselectedProduct) {
+        // PACKAGE MODE (Finished Product Card action)
+        currentReceiveMode = "package";
+        let prod = state.finishedProducts.find(p => p.name.toLowerCase() === preselectedProduct.toLowerCase() || String(p.id) === String(preselectedProduct));
+        if (!prod) {
+            prod = {
+                id: "fp_" + preselectedProduct.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+                name: preselectedProduct,
+                materialIds: allowedMaterialIds || []
+            };
+        } else if (allowedMaterialIds && allowedMaterialIds.length > 0 && (!prod.materialIds || prod.materialIds.length === 0)) {
+            prod.materialIds = allowedMaterialIds;
         }
+        currentReceiveProduct = prod;
+
+        if (pkgWrap) pkgWrap.style.display = "block";
+        if (singleWrap) singleWrap.style.display = "none";
+
+        if (titleEl) titleEl.textContent = `Receive Package — ${prod.name}`;
+        if (subtitleEl) subtitleEl.textContent = `Replenish all bundled raw materials for ${prod.name}`;
+
+        const pkgTitle = document.getElementById("maReceivePackageTitle");
+        const pkgAvatar = document.getElementById("maReceivePackageAvatar");
+        const pkgCountInput = document.getElementById("maReceivePackageCountInput");
+
+        if (pkgTitle) pkgTitle.textContent = prod.name;
+        if (pkgAvatar) pkgAvatar.textContent = initials(prod.name);
+        if (pkgCountInput) pkgCountInput.value = "1";
+
+        renderReceivePackageTable(1);
     } else {
-        if (matSelect) {
-            matSelect.style.display = "block";
-            if (availableMats.length > 0) {
-                matSelect.value = availableMats[0].id;
-                activeMatId = availableMats[0].id;
-                if (unitInput) unitInput.value = availableMats[0].unit_of_measure || "kg";
-            }
-        }
-        if (matDisplayWrap) matDisplayWrap.style.display = "none";
-    }
+        // SINGLE MATERIAL MODE (Material Overview Table action)
+        currentReceiveMode = "single";
+        currentReceiveProduct = null;
 
-    updateProductContextDropdown(contextInput, activeMatId, preselectedContext, true);
-    updateReceiveLivePreview();
+        if (pkgWrap) pkgWrap.style.display = "none";
+        if (singleWrap) singleWrap.style.display = "block";
+
+        if (titleEl) titleEl.textContent = "Record Stock Receipt";
+        if (subtitleEl) subtitleEl.textContent = "Record individual raw material inflow";
+
+        if (qtyInput) qtyInput.value = "1";
+
+        const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
+            ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
+            : state.materials;
+
+        if (matSelect) {
+            matSelect.innerHTML = `<option value="">Select Raw Material...</option>` + availableMats.map(m => `
+                <option value="${escapeHtml(m.id)}" data-unit="${escapeHtml(m.unit_of_measure || "kg")}" data-stock="${m.current_stock}">
+                    ${escapeHtml(m.name)} (${escapeHtml(m.item_code || "RM—")}) — Current Stock: ${formatQty(m.current_stock, m.unit_of_measure)}
+                </option>
+            `).join("");
+
+            matSelect.onchange = () => {
+                const activeId = matSelect.value;
+                const opt = matSelect.selectedOptions[0];
+                const unit = opt ? opt.getAttribute("data-unit") : "kg";
+                if (unitInput) unitInput.value = unit || "kg";
+                if (prodInput) {
+                    const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(activeId));
+                    prodInput.value = linked.length > 0 ? linked.map(p => p.name).join(", ") : "Unassigned / General Stock";
+                }
+                updateReceiveLivePreview();
+            };
+        }
+
+        let activeMatId = preselectedMatId;
+        if (preselectedMatId) {
+            const mat = state.materials.find(m => m.id === preselectedMatId);
+            if (mat) {
+                if (matSelect) {
+                    matSelect.value = mat.id;
+                    matSelect.style.display = "none";
+                }
+                if (matDisplayWrap) {
+                    matDisplayWrap.style.display = "block";
+                    if (matAvatar) matAvatar.textContent = initials(mat.name);
+                    if (matNameDisplay) matNameDisplay.textContent = mat.name;
+                    if (matCodeDisplay) matCodeDisplay.textContent = mat.item_code || "RM—";
+                    if (matStockDisplay) matStockDisplay.textContent = formatQty(mat.current_stock, mat.unit_of_measure);
+                }
+                if (unitInput) unitInput.value = mat.unit_of_measure || "kg";
+                if (prodInput) {
+                    const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(mat.id));
+                    prodInput.value = linked.length > 0 ? linked.map(p => p.name).join(", ") : "Unassigned / General Stock";
+                }
+            }
+        } else {
+            if (matSelect) {
+                matSelect.style.display = "block";
+                if (availableMats.length > 0) {
+                    matSelect.value = availableMats[0].id;
+                    activeMatId = availableMats[0].id;
+                    if (unitInput) unitInput.value = availableMats[0].unit_of_measure || "kg";
+                    if (prodInput) {
+                        const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(availableMats[0].id));
+                        prodInput.value = linked.length > 0 ? linked.map(p => p.name).join(", ") : "Unassigned / General Stock";
+                    }
+                }
+            }
+            if (matDisplayWrap) matDisplayWrap.style.display = "none";
+        }
+
+        updateReceiveLivePreview();
+    }
 
     overlay.classList.add("open", "active");
 }
@@ -1356,19 +1596,121 @@ function closeReceiveModal() {
 }
 
 async function handleSaveReceive() {
-    const matSelect = document.getElementById("maReceiveMaterialSelect");
-    const qtyInput = document.getElementById("maReceiveQuantityInput");
-    const dateInput = document.getElementById("maReceiveDateInput");
-    const supplierInput = document.getElementById("maReceiveSupplierInput");
-    const contextInput = document.getElementById("maReceiveProductContextInput");
-    const saveBtn = document.getElementById("maReceiveSaveBtn");
-
     clearModalErrors("maReceive");
 
-    const matId = matSelect ? matSelect.value : "";
-    const qty = Number(qtyInput ? qtyInput.value : 0);
+    const dateInput = document.getElementById("maReceiveDateInput");
+    const supplierInput = document.getElementById("maReceiveSupplierInput");
     const date = dateInput ? dateInput.value : "";
     const supplier = supplierInput ? supplierInput.value.trim() : "";
+
+    if (!date) {
+        setFieldError("maReceiveDateError", "Receipt date is required.");
+        return;
+    }
+
+    if (currentReceiveMode === "package") {
+        if (!currentReceiveProduct) return;
+        const countInput = document.getElementById("maReceivePackageCountInput");
+        const pkgCount = Math.max(1, parseInt(countInput?.value) || 1);
+
+        const matItems = (currentReceiveProduct.materialIds || [])
+            .map(id => state.materials.find(m => String(m.id) === String(id)))
+            .filter(Boolean);
+
+        if (matItems.length === 0) {
+            toast("No raw materials found in this product bundle to receive.", "error");
+            return;
+        }
+
+        const supplierName = supplier || `${currentReceiveProduct.name} Package Batch`;
+        const nowIso = new Date().toISOString();
+        const newReceipts = [];
+        const stockUpdates = [];
+
+        // 1. Instant Optimistic Local Update
+        matItems.forEach(mat => {
+            const minStock = Number(mat.minimum_threshold) || 0;
+            const baseQty = minStock > 0 ? minStock : 10;
+            const qtyToAdd = baseQty * pkgCount;
+            const newStock = (Number(mat.current_stock) || 0) + qtyToAdd;
+
+            mat.current_stock = newStock;
+
+            const recObj = {
+                id: `rec-pkg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                material_id: mat.id,
+                receipt_date: date,
+                received_quantity: qtyToAdd,
+                unit: mat.unit_of_measure || "kg",
+                supplier_name: supplierName,
+                created_at: nowIso
+            };
+            newReceipts.push(recObj);
+            stockUpdates.push({ id: mat.id, stock: newStock });
+        });
+
+        state.stockReceipts = [...newReceipts, ...state.stockReceipts];
+        newReceipts.forEach(r => saveCustomReceipt(r));
+        invalidateForecastCache();
+        buildUnifiedActivities();
+        renderCard1();
+        renderCard2History();
+
+        // 2. Immediate feedback & Close Modal (<50ms response)
+        toast(`Received ${pkgCount} package(s) of ${currentReceiveProduct.name} (${matItems.length} ingredients restocked ahead of minimum stock)`, "success");
+        closeReceiveModal();
+
+        // 3. Local sync broadcast
+        try {
+            localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "receive_package", product: currentReceiveProduct.name, pkgCount }));
+            localStorage.setItem("rmims_inventory_updated", Date.now().toString());
+        } catch {}
+
+        if (window.RMIMS_NOTIFICATIONS?.addNotification) {
+            window.RMIMS_NOTIFICATIONS.addNotification({
+                id: `notif-rcv-pkg-${Date.now()}`,
+                category: 'receiving',
+                priority: 'success',
+                title: 'Package Received',
+                message: `${currentReceiveProduct.name} package received (${pkgCount} batch, ${matItems.length} materials replenished).`,
+                actor: `Source: Material Activity (${getUserDisplayName()})`,
+                roleScope: 'all',
+                timestamp: nowIso
+            });
+        }
+
+        // 4. Background Database Batch Persistence (High-speed bulk insert & parallel stock updates)
+        (async () => {
+            try {
+                const insertPayload = newReceipts.map(r => ({
+                    material_id: r.material_id,
+                    receipt_date: r.receipt_date,
+                    received_quantity: r.received_quantity,
+                    unit: r.unit,
+                    supplier_name: r.supplier_name,
+                    created_at: r.created_at
+                }));
+                await supabase.from("stock_receipts").insert(insertPayload);
+
+                await Promise.allSettled(stockUpdates.map(u => 
+                    supabase.from("raw_materials").update({
+                        current_stock: u.stock,
+                        updated_at: new Date().toISOString()
+                    }).eq("id", u.id)
+                ));
+            } catch (err) {
+                console.warn("Background persistence notice:", err);
+            }
+        })();
+
+        return;
+    }
+
+    // SINGLE MATERIAL MODE
+    const matSelect = document.getElementById("maReceiveMaterialSelect");
+    const qtyInput = document.getElementById("maReceiveQuantityInput");
+    const matId = matSelect ? matSelect.value : "";
+    const qty = Number(qtyInput ? qtyInput.value : 0);
 
     let hasError = false;
     if (!matId) {
@@ -1379,62 +1721,88 @@ async function handleSaveReceive() {
         setFieldError("maReceiveQuantityError", "Quantity must be greater than 0.");
         hasError = true;
     }
-    if (!date) {
-        setFieldError("maReceiveDateError", "Receipt date is required.");
-        hasError = true;
-    }
 
     if (hasError) return;
 
-    const mat = state.materials.find(m => m.id === matId);
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-    }
+    const mat = state.materials.find(m => String(m.id) === String(matId));
+    if (!mat) return;
 
+    const supplierName = supplier || "Direct Inward Delivery";
+    const nowIso = new Date().toISOString();
+    const newStock = (Number(mat.current_stock) || 0) + qty;
+
+    // 1. Optimistic Local Update
+    mat.current_stock = newStock;
+    const newRec = {
+        id: `rec-sng-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        material_id: mat.id,
+        receipt_date: date,
+        received_quantity: qty,
+        unit: mat.unit_of_measure || "kg",
+        supplier_name: supplierName,
+        created_at: nowIso
+    };
+    state.stockReceipts = [newRec, ...state.stockReceipts];
+    saveCustomReceipt(newRec);
+    invalidateForecastCache();
+    buildUnifiedActivities();
+    renderCard1();
+    renderCard2History();
+
+    // 2. Immediate feedback & Close Modal
+    toast(`Received ${formatQty(qty, mat.unit_of_measure)} of ${mat.name}`, "success");
+    closeReceiveModal();
+
+    // 3. Local sync
     try {
-        const { error } = await supabase.rpc("record_stock_receipt_v2", {
-            p_material_id: matId,
-            p_receipt_date: date,
-            p_quantity: qty,
-            p_unit: mat?.unit_of_measure || "kg",
-            p_supplier_name: supplier || null
+        localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "receive", materialId: matId, qty }));
+        localStorage.setItem("rmims_inventory_updated", Date.now().toString());
+    } catch {}
+
+    if (window.RMIMS_NOTIFICATIONS?.addNotification) {
+        window.RMIMS_NOTIFICATIONS.addNotification({
+            id: `notif-rcv-mat-${Date.now()}`,
+            category: 'receiving',
+            priority: 'success',
+            title: 'Material Received',
+            message: `${mat.name} received: ${qty} ${mat.unit_of_measure || "kg"}.`,
+            actor: `Source: Material Activity (${getUserDisplayName()})`,
+            roleScope: 'all',
+            timestamp: nowIso
         });
-
-        if (error) throw error;
-
-        toast(`Received ${formatQty(qty, mat?.unit_of_measure)} of ${mat?.name}`, "success");
-        if (window.RMIMS_NOTIFICATIONS?.addNotification) {
-            window.RMIMS_NOTIFICATIONS.addNotification({
-                id: `notif-rcv-act-${Date.now()}`,
-                category: 'receiving',
-                priority: 'success',
-                title: 'Material Received',
-                message: `${mat?.name || "Raw Material"} received: ${qty} ${mat?.unit_of_measure || "kg"}${supplier ? ` from ${supplier}` : ""}.`,
-                actor: 'Source: Material Activity',
-                roleScope: 'all',
-                timestamp: new Date().toISOString()
-            });
-        }
-        closeReceiveModal();
-        try {
-            localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "receive" }));
-        } catch {}
-        await loadAuthoritativeData();
-    } catch (err) {
-        console.error("Save receipt error:", err);
-        toast("Failed to record receipt: " + (err.message || err), "error");
-    } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = "Save Receipt";
-        }
     }
+
+    // 4. Background Database Persistence
+    (async () => {
+        try {
+            await supabase.from("stock_receipts").insert([{
+                material_id: mat.id,
+                receipt_date: date,
+                received_quantity: qty,
+                unit: mat.unit_of_measure || "kg",
+                supplier_name: supplierName,
+                created_at: nowIso
+            }]);
+
+            await supabase.from("raw_materials").update({
+                current_stock: newStock,
+                updated_at: new Date().toISOString()
+            }).eq("id", mat.id);
+        } catch (err) {
+            console.warn("Background persistence notice:", err);
+        }
+    })();
 }
 
 function openDisburseModal(preselectedMatId = null, preselectedProduct = null, allowedMaterialIds = null) {
     const overlay = document.getElementById("maDisburseModalOverlay");
     const form = document.getElementById("maDisburseForm");
+    const titleEl = document.getElementById("maDisburseModalTitle");
+    const subtitleEl = document.getElementById("maDisburseModalSubtitle");
+
+    const pkgWrap = document.getElementById("maDisbursePackageWrap");
+    const singleWrap = document.getElementById("maDisburseSingleWrap");
+
     const matSelect = document.getElementById("maDisburseMaterialSelect");
     const matDisplayWrap = document.getElementById("maDisburseMaterialDisplayWrap");
     const matAvatar = document.getElementById("maDisburseMatAvatar");
@@ -1460,63 +1828,116 @@ function openDisburseModal(preselectedMatId = null, preselectedProduct = null, a
             dateInput.value = todayStr;
         }
     }
-    if (qtyInput) {
-        qtyInput.value = "1";
-        qtyInput.oninput = updateDisburseLivePreview;
-    }
 
-    const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
-        ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
-        : state.materials;
-
-    if (matSelect) {
-        matSelect.innerHTML = `<option value="">Select Raw Material...</option>` + availableMats.map(m => `
-            <option value="${escapeHtml(m.id)}" data-unit="${escapeHtml(m.unit_of_measure || "kg")}" data-stock="${m.current_stock}">
-                ${escapeHtml(m.name)} (${escapeHtml(m.item_code || "RM—")}) — Available: ${formatQty(m.current_stock, m.unit_of_measure)}
-            </option>
-        `).join("");
-
-        matSelect.onchange = () => {
-            const activeId = matSelect.value;
-            const opt = matSelect.selectedOptions[0];
-            const unit = opt ? opt.getAttribute("data-unit") : "kg";
-            if (unitInput) unitInput.value = unit || "kg";
-            updateProductContextDropdown(prodInput, activeId, null, false);
-            updateDisburseLivePreview();
-        };
-    }
-
-    let activeMatId = preselectedMatId;
-    if (preselectedMatId) {
-        const mat = state.materials.find(m => m.id === preselectedMatId);
-        if (mat) {
-            if (matSelect) {
-                matSelect.value = mat.id;
-                matSelect.style.display = "none";
-            }
-            if (matDisplayWrap) {
-                matDisplayWrap.style.display = "block";
-                if (matAvatar) matAvatar.textContent = initials(mat.name);
-                if (matNameDisplay) matNameDisplay.textContent = mat.name;
-                if (matCodeDisplay) matCodeDisplay.textContent = mat.item_code || "RM—";
-                if (matStockDisplay) matStockDisplay.textContent = formatQty(mat.current_stock, mat.unit_of_measure);
-            }
-            if (unitInput) unitInput.value = mat.unit_of_measure || "kg";
+    if (preselectedProduct) {
+        // PACKAGE MODE (Finished Product Card action)
+        currentDisburseMode = "package";
+        let prod = state.finishedProducts.find(p => p.name.toLowerCase() === preselectedProduct.toLowerCase() || String(p.id) === String(preselectedProduct));
+        if (!prod) {
+            prod = {
+                id: "fp_" + preselectedProduct.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+                name: preselectedProduct,
+                materialIds: allowedMaterialIds || []
+            };
+        } else if (allowedMaterialIds && allowedMaterialIds.length > 0 && (!prod.materialIds || prod.materialIds.length === 0)) {
+            prod.materialIds = allowedMaterialIds;
         }
+        currentDisburseProduct = prod;
+
+        if (pkgWrap) pkgWrap.style.display = "block";
+        if (singleWrap) singleWrap.style.display = "none";
+
+        if (titleEl) titleEl.textContent = `Disburse Package — ${prod.name}`;
+        if (subtitleEl) subtitleEl.textContent = `Deduct batch ingredients for ${prod.name}`;
+
+        const pkgTitle = document.getElementById("maDisbursePackageTitle");
+        const pkgAvatar = document.getElementById("maDisbursePackageAvatar");
+        const pkgCountInput = document.getElementById("maDisbursePackageCountInput");
+
+        if (pkgTitle) pkgTitle.textContent = prod.name;
+        if (pkgAvatar) pkgAvatar.textContent = initials(prod.name);
+        if (pkgCountInput) pkgCountInput.value = "1";
+
+        renderDisbursePackageTable(1);
     } else {
-        if (matSelect) {
-            matSelect.style.display = "block";
-            if (availableMats.length > 0) {
-                matSelect.value = availableMats[0].id;
-                activeMatId = availableMats[0].id;
-                if (unitInput) unitInput.value = availableMats[0].unit_of_measure || "kg";
-            }
-        }
-        if (matDisplayWrap) matDisplayWrap.style.display = "none";
-    }
+        // SINGLE MATERIAL MODE (Material Overview Table action)
+        currentDisburseMode = "single";
+        currentDisburseProduct = null;
 
-    updateProductContextDropdown(prodInput, activeMatId, preselectedProduct, false);
-    updateDisburseLivePreview();
+        if (pkgWrap) pkgWrap.style.display = "none";
+        if (singleWrap) singleWrap.style.display = "block";
+
+        if (titleEl) titleEl.textContent = "Record Material Disbursement";
+        if (subtitleEl) subtitleEl.textContent = "Record individual raw material usage";
+
+        if (qtyInput) {
+            qtyInput.value = "1";
+            qtyInput.oninput = updateDisburseLivePreview;
+        }
+
+        const availableMats = (allowedMaterialIds && allowedMaterialIds.length > 0)
+            ? state.materials.filter(m => allowedMaterialIds.includes(m.id))
+            : state.materials;
+
+        if (matSelect) {
+            matSelect.innerHTML = `<option value="">Select Raw Material...</option>` + availableMats.map(m => `
+                <option value="${escapeHtml(m.id)}" data-unit="${escapeHtml(m.unit_of_measure || "kg")}" data-stock="${m.current_stock}">
+                    ${escapeHtml(m.name)} (${escapeHtml(m.item_code || "RM—")}) — Available: ${formatQty(m.current_stock, m.unit_of_measure)}
+                </option>
+            `).join("");
+
+            matSelect.onchange = () => {
+                const activeId = matSelect.value;
+                const opt = matSelect.selectedOptions[0];
+                const unit = opt ? opt.getAttribute("data-unit") : "kg";
+                if (unitInput) unitInput.value = unit || "kg";
+                if (prodInput) {
+                    const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(activeId));
+                    prodInput.value = linked.length > 0 ? linked[0].name : "General Usage";
+                }
+                updateDisburseLivePreview();
+            };
+        }
+
+        let activeMatId = preselectedMatId;
+        if (preselectedMatId) {
+            const mat = state.materials.find(m => m.id === preselectedMatId);
+            if (mat) {
+                if (matSelect) {
+                    matSelect.value = mat.id;
+                    matSelect.style.display = "none";
+                }
+                if (matDisplayWrap) {
+                    matDisplayWrap.style.display = "block";
+                    if (matAvatar) matAvatar.textContent = initials(mat.name);
+                    if (matNameDisplay) matNameDisplay.textContent = mat.name;
+                    if (matCodeDisplay) matCodeDisplay.textContent = mat.item_code || "RM—";
+                    if (matStockDisplay) matStockDisplay.textContent = formatQty(mat.current_stock, mat.unit_of_measure);
+                }
+                if (unitInput) unitInput.value = mat.unit_of_measure || "kg";
+                if (prodInput) {
+                    const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(mat.id));
+                    prodInput.value = linked.length > 0 ? linked[0].name : "General Usage";
+                }
+            }
+        } else {
+            if (matSelect) {
+                matSelect.style.display = "block";
+                if (availableMats.length > 0) {
+                    matSelect.value = availableMats[0].id;
+                    activeMatId = availableMats[0].id;
+                    if (unitInput) unitInput.value = availableMats[0].unit_of_measure || "kg";
+                    if (prodInput) {
+                        const linked = state.finishedProducts.filter(p => p.materialIds && p.materialIds.includes(availableMats[0].id));
+                        prodInput.value = linked.length > 0 ? linked[0].name : "General Usage";
+                    }
+                }
+            }
+            if (matDisplayWrap) matDisplayWrap.style.display = "none";
+        }
+
+        updateDisburseLivePreview();
+    }
 
     overlay.classList.add("open", "active");
 }
@@ -1527,20 +1948,138 @@ function closeDisburseModal() {
 }
 
 async function handleSaveDisburse() {
+    clearModalErrors("maDisburse");
+
+    const dateInput = document.getElementById("maDisburseDateInput");
+    const notesInput = document.getElementById("maDisburseNotesInput");
+    const date = dateInput ? dateInput.value : "";
+    const notes = notesInput ? notesInput.value.trim() : "";
+
+    if (!date) {
+        setFieldError("maDisburseDateError", "Disbursement date is required.");
+        return;
+    }
+
+    if (currentDisburseMode === "package") {
+        if (!currentDisburseProduct) return;
+        const countInput = document.getElementById("maDisbursePackageCountInput");
+        const pkgCount = Math.max(1, parseInt(countInput?.value) || 1);
+
+        const matItems = (currentDisburseProduct.materialIds || [])
+            .map(id => state.materials.find(m => String(m.id) === String(id)))
+            .filter(Boolean);
+
+        if (matItems.length === 0) {
+            toast("No raw materials found in this product bundle to disburse.", "error");
+            return;
+        }
+
+        // Validate stock sufficiency for all materials
+        for (const mat of matItems) {
+            const minStock = Number(mat.minimum_threshold) || 0;
+            const baseUsage = Math.max(1, Math.round((minStock > 0 ? minStock : 10) * 0.5));
+            const qtyToDeduct = baseUsage * pkgCount;
+            const curStock = Number(mat.current_stock) || 0;
+            if (qtyToDeduct > curStock) {
+                toast(`Insufficient stock for ${mat.name}. Requires ${formatQty(qtyToDeduct, mat.unit_of_measure)}, available: ${formatQty(curStock, mat.unit_of_measure)}.`, "error");
+                return;
+            }
+        }
+
+        const nowIso = new Date().toISOString();
+        const newDisbursements = [];
+        const stockUpdates = [];
+
+        // 1. Instant Optimistic Local Update
+        matItems.forEach(mat => {
+            const minStock = Number(mat.minimum_threshold) || 0;
+            const baseUsage = Math.max(1, Math.round((minStock > 0 ? minStock : 10) * 0.5));
+            const qtyToDeduct = baseUsage * pkgCount;
+            const newStock = Math.max(0, (Number(mat.current_stock) || 0) - qtyToDeduct);
+
+            mat.current_stock = newStock;
+
+            const dsbObj = {
+                id: `dsb-pkg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                material_id: mat.id,
+                usage_date: date,
+                consumed_quantity: qtyToDeduct,
+                unit: mat.unit_of_measure || "kg",
+                activity_type: currentDisburseProduct.name,
+                finished_product_name: currentDisburseProduct.name,
+                created_at: nowIso
+            };
+            newDisbursements.push(dsbObj);
+            stockUpdates.push({ id: mat.id, stock: newStock });
+        });
+
+        state.disbursements = [...newDisbursements, ...state.disbursements];
+        newDisbursements.forEach(d => saveCustomDisbursement(d));
+        invalidateForecastCache();
+        buildUnifiedActivities();
+        renderCard1();
+        renderCard2History();
+
+        // 2. Immediate feedback & Close Modal
+        toast(`Disbursed ${pkgCount} package(s) for ${currentDisburseProduct.name} (${matItems.length} ingredients deducted)`, "success");
+        closeDisburseModal();
+
+        // 3. Local sync broadcast
+        try {
+            localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "disburse_package", product: currentDisburseProduct.name, pkgCount }));
+            localStorage.setItem("rmims_inventory_updated", Date.now().toString());
+        } catch {}
+
+        if (window.RMIMS_NOTIFICATIONS?.addNotification) {
+            window.RMIMS_NOTIFICATIONS.addNotification({
+                id: `notif-disb-pkg-${Date.now()}`,
+                category: 'disbursement',
+                priority: 'info',
+                title: 'Package Disbursed',
+                message: `${currentDisburseProduct.name} package disbursed (${pkgCount} batch, ${matItems.length} materials consumed).`,
+                actor: `Source: Material Activity (${getUserDisplayName()})`,
+                roleScope: 'all',
+                timestamp: nowIso
+            });
+        }
+
+        // 4. Background Database Batch Persistence (High-speed bulk insert & parallel stock updates)
+        (async () => {
+            try {
+                const insertPayload = newDisbursements.map(d => ({
+                    material_id: d.material_id,
+                    usage_date: d.usage_date,
+                    consumed_quantity: d.consumed_quantity,
+                    unit: d.unit,
+                    activity_type: d.activity_type,
+                    finished_product_name: d.finished_product_name,
+                    created_at: d.created_at
+                }));
+                await supabase.from("material_disbursements").insert(insertPayload);
+
+                await Promise.allSettled(stockUpdates.map(u => 
+                    supabase.from("raw_materials").update({
+                        current_stock: u.stock,
+                        updated_at: new Date().toISOString()
+                    }).eq("id", u.id)
+                ));
+            } catch (err) {
+                console.warn("Background persistence notice:", err);
+            }
+        })();
+
+        return;
+    }
+
+    // SINGLE MATERIAL MODE
     const matSelect = document.getElementById("maDisburseMaterialSelect");
     const qtyInput = document.getElementById("maDisburseQuantityInput");
     const prodInput = document.getElementById("maDisburseProductSelect");
-    const dateInput = document.getElementById("maDisburseDateInput");
-    const saveBtn = document.getElementById("maDisburseSaveBtn");
-
-    clearModalErrors("maDisburse");
-
     const matId = matSelect ? matSelect.value : "";
     const qty = Number(qtyInput ? qtyInput.value : 0);
-    const productContext = prodInput ? prodInput.value.trim() : "";
-    const date = dateInput ? dateInput.value : "";
+    const productContext = prodInput ? (prodInput.value.trim() || "General Usage") : "General Usage";
 
-    const mat = state.materials.find(m => m.id === matId);
+    const mat = state.materials.find(m => String(m.id) === String(matId));
 
     let hasError = false;
     if (!matId || !mat) {
@@ -1551,16 +2090,6 @@ async function handleSaveDisburse() {
         setFieldError("maDisburseQuantityError", "Quantity must be greater than 0.");
         hasError = true;
     }
-    if (!productContext) {
-        setFieldError("maDisburseProductError", "Finished product or context is required.");
-        hasError = true;
-    }
-    if (!date) {
-        setFieldError("maDisburseDateError", "Disbursement date is required.");
-        hasError = true;
-    }
-
-    // Critical Stock Protection: Reject if requested > available stock
     if (mat && qty > Number(mat.current_stock)) {
         setFieldError("maDisburseQuantityError", `Insufficient stock. Available: ${formatQty(mat.current_stock, mat.unit_of_measure)}.`);
         hasError = true;
@@ -1568,48 +2097,72 @@ async function handleSaveDisburse() {
 
     if (hasError) return;
 
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-    }
+    const nowIso = new Date().toISOString();
+    const newStock = Math.max(0, (Number(mat.current_stock) || 0) - qty);
 
+    // 1. Optimistic Local Update
+    mat.current_stock = newStock;
+    const newDsb = {
+        id: `dsb-sng-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        material_id: mat.id,
+        usage_date: date,
+        consumed_quantity: qty,
+        unit: mat.unit_of_measure || "kg",
+        activity_type: productContext,
+        finished_product_name: productContext,
+        created_at: nowIso
+    };
+    state.disbursements = [newDsb, ...state.disbursements];
+    saveCustomDisbursement(newDsb);
+    invalidateForecastCache();
+    buildUnifiedActivities();
+    renderCard1();
+    renderCard2History();
+
+    // 2. Immediate feedback & Close Modal
+    toast(`Disbursed ${formatQty(qty, mat.unit_of_measure)} for ${productContext}`, "success");
+    closeDisburseModal();
+
+    // 3. Local sync
     try {
-        const { error } = await supabase.rpc("record_material_disbursement_v2", {
-            p_material_id: matId,
-            p_usage_date: date,
-            p_quantity: qty,
-            p_unit: mat.unit_of_measure || "kg",
-            p_activity_type: productContext,
-            p_finished_product_name: productContext
-        });
+        localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "disburse", materialId: matId, qty, context: productContext }));
+        localStorage.setItem("rmims_inventory_updated", Date.now().toString());
+    } catch {}
 
-        toast(`Disbursed ${formatQty(qty, mat.unit_of_measure)} for ${productContext}`, "success");
-        if (window.RMIMS_NOTIFICATIONS?.addNotification) {
-            window.RMIMS_NOTIFICATIONS.addNotification({
-                id: `notif-disb-act-${Date.now()}`,
-                category: 'disbursement',
-                priority: 'info',
-                title: 'Material Disbursed',
-                message: `${mat.name} disbursed: ${qty} ${mat.unit_of_measure || "kg"} (for ${productContext}).`,
-                actor: 'Source: Material Activity',
-                roleScope: 'all',
-                timestamp: new Date().toISOString()
-            });
-        }
-        closeDisburseModal();
-        try {
-            localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "disburse" }));
-        } catch {}
-        await loadAuthoritativeData();
-    } catch (err) {
-        console.error("Save disbursement error:", err);
-        toast("Failed to record disbursement: " + (err.message || err), "error");
-    } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = "Save Disbursement";
-        }
+    if (window.RMIMS_NOTIFICATIONS?.addNotification) {
+        window.RMIMS_NOTIFICATIONS.addNotification({
+            id: `notif-disb-mat-${Date.now()}`,
+            category: 'disbursement',
+            priority: 'info',
+            title: 'Material Disbursed',
+            message: `${mat.name} disbursed: ${qty} ${mat.unit_of_measure || "kg"} (for ${productContext}).`,
+            actor: `Source: Material Activity (${getUserDisplayName()})`,
+            roleScope: 'all',
+            timestamp: nowIso
+        });
     }
+
+    // 4. Background Database Persistence
+    (async () => {
+        try {
+            await supabase.from("material_disbursements").insert([{
+                material_id: mat.id,
+                usage_date: date,
+                consumed_quantity: qty,
+                unit: mat.unit_of_measure || "kg",
+                activity_type: productContext,
+                finished_product_name: productContext,
+                created_at: nowIso
+            }]);
+
+            await supabase.from("raw_materials").update({
+                current_stock: newStock,
+                updated_at: new Date().toISOString()
+            }).eq("id", mat.id);
+        } catch (err) {
+            console.warn("Background persistence notice:", err);
+        }
+    })();
 }
 
 function setFieldError(elementId, msg = "") {
@@ -1773,34 +2326,58 @@ function initEventListeners() {
 
     // Card 1: Product Overview Filters
     const prodSearch = document.getElementById("productSearchInput");
+    const prodSort = document.getElementById("productSortSelect");
+    const prodPageSize = document.getElementById("productPageSize");
+
     if (prodSearch) {
         prodSearch.addEventListener("input", () => {
             state.productSearch = prodSearch.value;
+            state.productPage = 1;
             renderProductOverview();
         });
     }
 
-    const prodSort = document.getElementById("productSortSelect");
     if (prodSort) {
         prodSort.addEventListener("change", () => {
             state.productSort = prodSort.value;
+            state.productPage = 1;
+            renderProductOverview();
+        });
+    }
+
+    if (prodPageSize) {
+        prodPageSize.addEventListener("change", () => {
+            state.productPageSize = Number(prodPageSize.value) || 9;
+            state.productPage = 1;
             renderProductOverview();
         });
     }
 
     // Card 1: Material Overview Filters
     const matSearch = document.getElementById("materialSearchInput");
+    const matSort = document.getElementById("materialSortSelect");
+    const matPageSize = document.getElementById("materialPageSize");
+
     if (matSearch) {
         matSearch.addEventListener("input", () => {
             state.materialSearch = matSearch.value;
+            state.materialPage = 1;
             renderMaterialOverview();
         });
     }
 
-    const matSort = document.getElementById("materialSortSelect");
     if (matSort) {
         matSort.addEventListener("change", () => {
             state.materialSort = matSort.value;
+            state.materialPage = 1;
+            renderMaterialOverview();
+        });
+    }
+
+    if (matPageSize) {
+        matPageSize.addEventListener("change", () => {
+            state.materialPageSize = Number(matPageSize.value) || 10;
+            state.materialPage = 1;
             renderMaterialOverview();
         });
     }
@@ -1873,6 +2450,34 @@ function initEventListeners() {
         recQty.addEventListener("input", updateReceiveLivePreview);
     }
 
+    // Package Stepper - Receive Modal (Admin)
+    const recPkgMinus = document.getElementById("maReceivePackageMinusBtn");
+    const recPkgPlus = document.getElementById("maReceivePackagePlusBtn");
+    const recPkgCount = document.getElementById("maReceivePackageCountInput");
+
+    if (recPkgMinus && recPkgCount) {
+        recPkgMinus.addEventListener("click", (e) => {
+            e.preventDefault();
+            const cur = Math.max(1, (parseInt(recPkgCount.value) || 1) - 1);
+            recPkgCount.value = cur;
+            renderReceivePackageTable(cur);
+        });
+    }
+    if (recPkgPlus && recPkgCount) {
+        recPkgPlus.addEventListener("click", (e) => {
+            e.preventDefault();
+            const cur = (parseInt(recPkgCount.value) || 1) + 1;
+            recPkgCount.value = cur;
+            renderReceivePackageTable(cur);
+        });
+    }
+    if (recPkgCount) {
+        recPkgCount.addEventListener("input", () => {
+            const val = Math.max(1, parseInt(recPkgCount.value) || 1);
+            renderReceivePackageTable(val);
+        });
+    }
+
     // Stepper buttons for Disburse Modal (+ and -)
     const disbMinus = document.getElementById("maDisburseMinusBtn");
     const disbPlus = document.getElementById("maDisbursePlusBtn");
@@ -1899,6 +2504,34 @@ function initEventListeners() {
     }
     if (disbQty) {
         disbQty.addEventListener("input", updateDisburseLivePreview);
+    }
+
+    // Package Stepper - Disburse Modal (Admin)
+    const disbPkgMinus = document.getElementById("maDisbursePackageMinusBtn");
+    const disbPkgPlus = document.getElementById("maDisbursePackagePlusBtn");
+    const disbPkgCount = document.getElementById("maDisbursePackageCountInput");
+
+    if (disbPkgMinus && disbPkgCount) {
+        disbPkgMinus.addEventListener("click", (e) => {
+            e.preventDefault();
+            const cur = Math.max(1, (parseInt(disbPkgCount.value) || 1) - 1);
+            disbPkgCount.value = cur;
+            renderDisbursePackageTable(cur);
+        });
+    }
+    if (disbPkgPlus && disbPkgCount) {
+        disbPkgPlus.addEventListener("click", (e) => {
+            e.preventDefault();
+            const cur = (parseInt(disbPkgCount.value) || 1) + 1;
+            disbPkgCount.value = cur;
+            renderDisbursePackageTable(cur);
+        });
+    }
+    if (disbPkgCount) {
+        disbPkgCount.addEventListener("input", () => {
+            const val = Math.max(1, parseInt(disbPkgCount.value) || 1);
+            renderDisbursePackageTable(val);
+        });
     }
 
     // Modal Action Buttons & Close Triggers
@@ -1960,9 +2593,29 @@ function initEventListeners() {
     });
 
     // Cross-Tab / Cross-Window Real-time Sync
+    let _storageDebounceTimer = null;
     window.addEventListener("storage", (e) => {
-        if (e.key === "rmims_sync_event" || e.key === "rmims_inventory_updated") {
-            loadAuthoritativeData();
+        if (!e.key || e.key.startsWith("rmims_") || e.key.includes("receipt") || e.key.includes("disbursement")) {
+            clearTimeout(_storageDebounceTimer);
+            _storageDebounceTimer = setTimeout(() => {
+                loadAuthoritativeData();
+            }, 120);
         }
     });
+
+    // Supabase Realtime Channel Subscription for live cross-user updates (Admin)
+    if (supabase && typeof supabase.channel === "function" && !window.__rmimsMaAdminChannel) {
+        window.__rmimsMaAdminChannel = supabase
+            .channel("rmims_admin_material_activity_sync")
+            .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
+                loadAuthoritativeData();
+            })
+            .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
+                loadAuthoritativeData();
+            })
+            .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
+                loadAuthoritativeData();
+            })
+            .subscribe();
+    }
 }

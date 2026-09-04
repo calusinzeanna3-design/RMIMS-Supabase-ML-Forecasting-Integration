@@ -25,8 +25,8 @@ function ensureOnboardingCSS() {
 const adminSteps = [
   {
     stepTag: "Step 1 of 7 — Welcome",
-    title: "Welcome to RMIMS Administrator Portal",
-    desc: "RMIMS helps micro, small, and medium enterprises manage raw materials, monitor movement ledgers, analyze usage patterns, and support inventory planning through AI forecasting.",
+    title: "Welcome to RMSME Administrator Portal",
+    desc: "RMSME helps micro, small, and medium enterprises manage raw materials, monitor movement ledgers, analyze usage patterns, and support inventory planning through AI forecasting.",
     features: [
       { icon: "📦", title: "Master Catalog", text: "Maintain raw material specifications and safety thresholds." },
       { icon: "📋", title: "Movement Ledgers", text: "Record factual stock receipts and disbursements." },
@@ -64,7 +64,7 @@ const adminSteps = [
   {
     stepTag: "Step 5 of 7 — AI Forecasting",
     title: "AI-Based Forecasting & Decision Support",
-    desc: "RMIMS utilizes 30 trained AutoReg time-series models to project future raw material requirements over 7-day and 4-week planning horizons to assist replenishment decisions.",
+    desc: "RMSME utilizes 30 trained AutoReg time-series models to project future raw material requirements over 7-day and 4-week planning horizons to assist replenishment decisions.",
     features: [
       { icon: "🔮", title: "Time-Series Models", text: "AutoReg models trained on historical consumption." },
       { icon: "💡", title: "Decision Support", text: "Compare current stock against projected requirements." }
@@ -73,7 +73,7 @@ const adminSteps = [
   {
     stepTag: "Step 6 of 7 — Administration",
     title: "User Management & Administrative Controls",
-    desc: "As an Administrator, you manage team access profiles, enforce role separation (Admin vs Staff), monitor system activity audit logs, and maintain system settings.",
+    desc: "As an Administrator, you manage user access profiles, enforce role separation (Admin vs Staff), monitor system activity audit logs, and maintain system settings.",
     features: [
       { icon: "👥", title: "User Management", text: "Provision and review active staff user profiles." },
       { icon: "🛡️", title: "Role Security", text: "Strict role separation enforced by database RLS." }
@@ -82,9 +82,9 @@ const adminSteps = [
   {
     stepTag: "Step 7 of 7 — Educational Check",
     title: "Understanding Check (Educational Only)",
-    desc: "A quick 3-question understanding check on RMIMS operations. (This test is for your learning only and does NOT alter account permissions or access).",
+    desc: "A quick 3-question understanding check on RMSME operations. (This test is for your learning only and does NOT alter account permissions or access).",
     quiz: {
-      question: "What is the primary authority for user permissions in RMIMS?",
+      question: "What is the primary authority for user permissions in RMSME?",
       options: [
         { text: "The onboarding completion popup status", correct: false },
         { text: "Your authenticated account profile and Supabase database RLS", correct: true },
@@ -98,8 +98,8 @@ const adminSteps = [
 const staffSteps = [
   {
     stepTag: "Step 1 of 5 — Welcome",
-    title: "Welcome to RMIMS Operations Staff View",
-    desc: "As an Operational User, RMIMS provides you with clean tools to log raw material receipts, record disbursements, and monitor current stock balances.",
+    title: "Welcome to RMSME Operations Staff View",
+    desc: "As an Operational User, RMSME provides you with clean tools to log raw material receipts, record disbursements, and monitor current stock balances.",
     features: [
       { icon: "📦", title: "Stock Visibility", text: "Check current raw material inventory levels." },
       { icon: "📥", title: "Receive Stock", text: "Log incoming raw material deliveries from suppliers." },

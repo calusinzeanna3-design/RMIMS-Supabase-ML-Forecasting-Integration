@@ -87,7 +87,7 @@
     margin-top: 16px;
 }
 
-/* Overview Card Item */
+/* Overview Card Item - Unified Proportions */
 .ma-overview-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -96,13 +96,15 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 14px;
+    gap: 12px;
+    min-height: 295px;
     transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .ma-overview-card:hover {
     border-color: #cbd5e1;
-    box-shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.1);
     transform: translateY(-2px);
 }
 
@@ -113,8 +115,8 @@
 }
 
 .ma-card-avatar {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: 10px;
     background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     color: #334155;
@@ -156,12 +158,13 @@
     flex-wrap: wrap;
 }
 
-/* Bundled Chips List */
+/* Bundled Chips List - Unified Height */
 .ma-bundled-section {
     background: #f8fafc;
     border-radius: 8px;
     padding: 10px;
     border: 1px solid #edf2f7;
+    margin-top: 10px;
 }
 
 .ma-bundled-label {
@@ -179,20 +182,47 @@
 .ma-bundled-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    align-content: flex-start;
+    gap: 5px;
+    min-height: 52px;
+    max-height: 52px;
+    overflow: hidden;
 }
 
 .ma-item-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     font-weight: 500;
     background: #ffffff;
     border: 1px solid #cbd5e1;
     color: #334155;
-    padding: 2px 8px;
+    padding: 3px 8px;
     border-radius: 6px;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ma-chip-more {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 7px;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--blue, #2563EB);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ma-chip-more:hover {
+    background: #DBEAFE;
+    color: #1D4ED8;
 }
 
 /* Metrics Row */
@@ -898,6 +928,120 @@
     font-size: 0.76rem;
     color: #92400e;
     line-height: 1.35;
+}
+
+/* Package Mode Modal Styles */
+.ma-pkg-header-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.ma-pkg-header-box.pkg-emerald {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.ma-pkg-header-box.pkg-orange {
+    background: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.ma-pkg-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #334155;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.ma-pkg-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--rm-ink, #0f172a);
+    margin: 0 0 2px 0;
+}
+
+.ma-pkg-subtitle {
+    font-size: 0.75rem;
+    color: var(--rm-ink-dim, #64748b);
+    margin: 0;
+}
+
+.ma-pkg-table-wrap {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    background: #ffffff;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.ma-pkg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.ma-pkg-table th {
+    background: #f8fafc;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ma-pkg-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.ma-pkg-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ma-pkg-stepper-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    gap: 12px;
+}
+
+.ma-pkg-stepper-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.ma-pkg-stepper-desc {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 1px;
 }
 
 

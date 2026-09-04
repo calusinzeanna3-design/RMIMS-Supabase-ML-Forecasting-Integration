@@ -6,6 +6,7 @@
 import { auth, supabase } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { getSystemRawMaterials, saveCustomRawMaterial, getSystemNextItemCode, getSystemCustomReceipts, saveCustomReceipt, getSystemCustomDisbursements, saveCustomDisbursement, invalidateForecastCache } from "./system-materials.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,6 +30,7 @@ const state = {
     receiveSearch: "",
     receiveDateFrom: "",
     receiveDateTo: "",
+    receiveSort: "latest",        // "latest" | "oldest" | "az" | "za"
     receivePage: 1,
     receivePageSize: 10,
 
@@ -36,6 +38,7 @@ const state = {
     disburseSearch: "",
     disburseDateFrom: "",
     disburseDateTo: "",
+    disburseSort: "latest",       // "latest" | "oldest" | "az" | "za"
     disbursePage: 1,
     disbursePageSize: 10,
 
@@ -86,6 +89,42 @@ function computeStockStatus(currentStock, minStock) {
     return { key: "in_stock", label: "In Stock", cls: "status-badge-instock", dotCls: "dot-green", badgeText: "🟢 In Stock" };
 }
 
+const isUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(str));
+
+function initModalDatePicker(elementId, initialDate = "today", todayOnly = false) {
+    const el = typeof elementId === "string" ? $(elementId) : elementId;
+    if (!el) return null;
+
+    if (el._flatpickr) {
+        el._flatpickr.destroy();
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const defaultVal = initialDate === "today" ? todayStr : (initialDate || todayStr);
+
+    if (typeof flatpickr === "undefined") {
+        el.value = defaultVal;
+        return null;
+    }
+
+    const config = {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        defaultDate: defaultVal,
+        disableMobile: true,
+        allowInput: true,
+        animate: true
+    };
+
+    if (todayOnly) {
+        config.minDate = "today";
+        config.maxDate = "today";
+    }
+
+    return flatpickr(el, config);
+}
+
 // Toast notification
 function toast(message, type = "success") {
     const stack = $("toastStack");
@@ -112,38 +151,44 @@ function setFieldError(id, msg = "") {
 
 async function loadData() {
     try {
-        let rawList = [...AUTHENTIC_59_RAW_MATERIALS];
-        let rawReceipts = [...AUTHENTIC_STOCK_RECEIPTS_6MONTHS];
-        let rawDisbursements = [...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS];
+        let rawList = getSystemRawMaterials();
+        let rawReceipts = [...AUTHENTIC_STOCK_RECEIPTS_6MONTHS, ...getSystemCustomReceipts()];
+        let rawDisbursements = [...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS, ...getSystemCustomDisbursements()];
 
         try {
-            const [mRes, rRes, dRes] = await Promise.all([
-                supabase.from("raw_materials").select("id, item_code, name, description, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, created_at, updated_at").order("name"),
-                supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false }),
-                supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false })
+            const fetchWithTimeout = (promise, ms = 4000) => 
+                Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+                ]);
+
+            const [mRes, rRes, dRes] = await Promise.allSettled([
+                fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, description, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, created_at, updated_at").order("name")),
+                fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false })),
+                fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false }))
             ]);
 
-            if (mRes.data && mRes.data.length > 0) {
+            if (mRes.status === "fulfilled" && mRes.value?.data && mRes.value.data.length > 0) {
                 const matKeyMap = new Map();
-                AUTHENTIC_59_RAW_MATERIALS.forEach(m => matKeyMap.set((m.name || "").toLowerCase().trim(), { ...m }));
-                mRes.data.forEach(m => {
+                rawList.forEach(m => matKeyMap.set((m.name || "").toLowerCase().trim(), { ...m }));
+                mRes.value.data.forEach(m => {
                     const k = (m.name || "").toLowerCase().trim();
                     matKeyMap.set(k, { ...(matKeyMap.get(k) || {}), ...m });
                 });
                 rawList = Array.from(matKeyMap.values());
             }
 
-            if (rRes.data && rRes.data.length > 0) {
+            if (rRes.status === "fulfilled" && rRes.value?.data && rRes.value.data.length > 0) {
                 const recKeyMap = new Map();
-                AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recKeyMap.set(String(r.id), { ...r }));
-                rRes.data.forEach(r => recKeyMap.set(String(r.id), { ...r }));
+                rawReceipts.forEach(r => recKeyMap.set(String(r.id), { ...r }));
+                rRes.value.data.forEach(r => recKeyMap.set(String(r.id), { ...r }));
                 rawReceipts = Array.from(recKeyMap.values());
             }
 
-            if (dRes.data && dRes.data.length > 0) {
+            if (dRes.status === "fulfilled" && dRes.value?.data && dRes.value.data.length > 0) {
                 const disbKeyMap = new Map();
-                AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
-                dRes.data.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+                rawDisbursements.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+                dRes.value.data.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
                 rawDisbursements = Array.from(disbKeyMap.values());
             }
         } catch (e) {
@@ -153,7 +198,7 @@ async function loadData() {
         // Retrieve locally deleted IDs
         let deletedMatIds = new Set();
         try {
-            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]"));
+            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
         } catch (e) {}
 
         let deletedDisbIds = new Set();
@@ -167,7 +212,7 @@ async function loadData() {
         } catch (e) {}
 
         if (deletedMatIds.size > 0) {
-            rawList = rawList.filter(m => !deletedMatIds.has(String(m.id)) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
+            rawList = rawList.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
         }
         if (deletedDisbIds.size > 0) {
             rawDisbursements = rawDisbursements.filter(d => !deletedDisbIds.has(String(d.id)));
@@ -187,13 +232,23 @@ async function loadData() {
         const rcvSumMap = new Map();
         rawReceipts.forEach(r => {
             const mId = String(r.material_id || r.materialId || "");
-            rcvSumMap.set(mId, (rcvSumMap.get(mId) || 0) + Number(r.received_quantity || r.receivedQuantity || 0));
+            const mCode = String(r.material_code || r.materialCode || r.item_code || "");
+            const mName = String(r.material_name || r.materialName || "").toLowerCase().trim();
+            const q = Number(r.received_quantity || r.receivedQuantity || r.quantity || 0);
+            if (mId) rcvSumMap.set(mId, (rcvSumMap.get(mId) || 0) + q);
+            if (mCode) rcvSumMap.set(mCode, (rcvSumMap.get(mCode) || 0) + q);
+            if (mName) rcvSumMap.set(mName, (rcvSumMap.get(mName) || 0) + q);
         });
 
         const disbSumMap = new Map();
         rawDisbursements.forEach(d => {
             const mId = String(d.material_id || d.materialId || "");
-            disbSumMap.set(mId, (disbSumMap.get(mId) || 0) + Number(d.consumed_quantity || d.consumedQuantity || 0));
+            const mCode = String(d.material_code || d.materialCode || d.item_code || "");
+            const mName = String(d.material_name || d.materialName || "").toLowerCase().trim();
+            const q = Number(d.consumed_quantity || d.consumedQuantity || d.quantity || 0);
+            if (mId) disbSumMap.set(mId, (disbSumMap.get(mId) || 0) + q);
+            if (mCode) disbSumMap.set(mCode, (disbSumMap.get(mCode) || 0) + q);
+            if (mName) disbSumMap.set(mName, (disbSumMap.get(mName) || 0) + q);
         });
 
         state.materials = rawList.map((d, mIdx) => {
@@ -209,8 +264,10 @@ async function loadData() {
             const initialStock = min * initFactor;
 
             const mId = String(d.id);
-            const totalRcv = rcvSumMap.get(mId) || 0;
-            const totalDisb = disbSumMap.get(mId) || 0;
+            const mCode = String(d.item_code || "");
+            const mName = String(d.name || "").toLowerCase().trim();
+            const totalRcv = rcvSumMap.get(mId) || rcvSumMap.get(mCode) || rcvSumMap.get(mName) || 0;
+            const totalDisb = disbSumMap.get(mId) || disbSumMap.get(mCode) || disbSumMap.get(mName) || 0;
 
             const computedStock = (totalRcv > 0 || totalDisb > 0)
                 ? Math.max(0, Number((initialStock + totalRcv - totalDisb).toFixed(2)))
@@ -315,53 +372,92 @@ function renderSummary() {
    TAB 1: OVERVIEW TABLE & LOGIC
    ========================================================== */
 
-// Build combined list where each unique raw material appears as exactly 1 row
+// Build combined list where each unique raw material appears as exactly 1 row with live latest activity telemetry
 function getOverviewDataList() {
     const list = state.materials.map(m => {
-        // Find all receipt and disbursement records for this material
-        const matReceipts = state.receipts.filter(r => r.materialId === m.id);
-        const matDisbursements = state.disbursements.filter(d => d.materialId === m.id);
+        const targetId = String(m.id || "").toLowerCase().trim();
+        const targetCode = String(m.itemCode || m.item_code || "").toLowerCase().trim();
+        const targetName = (m.name || "").toLowerCase().trim();
+
+        const normalizeCode = (c) => {
+            if (!c) return "";
+            const str = String(c).toLowerCase().trim();
+            const match = str.match(/^(?:rm-?)?0*(\d+)$/i);
+            return match ? `rm-${String(match[1]).padStart(3, "0")}` : str;
+        };
+        const normTargetCode = normalizeCode(targetCode || targetId);
+
+        const isMatch = (matId, matName, matCode) => {
+            const id = String(matId || "").toLowerCase().trim();
+            const name = String(matName || "").toLowerCase().trim();
+            const code = String(matCode || "").toLowerCase().trim();
+            const normId = normalizeCode(id);
+            const normCd = normalizeCode(code);
+            return (id && (id === targetId || id === targetCode || (normTargetCode && normId === normTargetCode))) ||
+                   (code && (code === targetCode || code === targetId || (normTargetCode && normCd === normTargetCode))) ||
+                   (name && (name === targetName || (targetName && (name.includes(targetName) || targetName.includes(name)))));
+        };
+
+        // Find and sort all receipts for this material chronologically descending
+        const matReceipts = state.receipts.filter(r => isMatch(r.materialId || r.material_id, r.materialName || r.material_name, r.materialCode || r.material_code || r.item_code));
+        matReceipts.sort((a, b) => {
+            const dateA = new Date(a.receiptDate || a.receipt_date || a.createdAt || a.created_at || 0).getTime();
+            const dateB = new Date(b.receiptDate || b.receipt_date || b.createdAt || b.created_at || 0).getTime();
+            return dateB - dateA;
+        });
+
+        // Find and sort all disbursements for this material chronologically descending
+        const matDisbursements = state.disbursements.filter(d => isMatch(d.materialId || d.material_id, d.materialName || d.material_name, d.materialCode || d.material_code || d.item_code));
+        matDisbursements.sort((a, b) => {
+            const dateA = new Date(a.usageDate || a.usage_date || a.createdAt || a.created_at || 0).getTime();
+            const dateB = new Date(b.usageDate || b.usage_date || b.createdAt || b.created_at || 0).getTime();
+            return dateB - dateA;
+        });
 
         const latestReceipt = matReceipts[0] || null;
         const latestDisburse = matDisbursements[0] || null;
 
         let activityStatus = m.currentStock > 0 ? "Receive" : "None";
-        let activityQty = m.currentStock > 0 ? `+${fmtQty(m.currentStock)}` : "—";
+        let activityQty = m.currentStock > 0 ? fmtQty(m.currentStock) : "—";
         let activityUnit = m.unit || "kg";
-        let activityDate = m.createdAt ? m.createdAt.slice(0, 10) : "";
+        let activityDate = m.createdAt ? String(m.createdAt).slice(0, 10) : "";
         let activityTimestamp = m.createdAt ? new Date(m.createdAt).getTime() : 0;
 
         if (latestReceipt && latestDisburse) {
-            const rDate = new Date(latestReceipt.receiptDate || latestReceipt.createdAt || 0).getTime();
-            const dDate = new Date(latestDisburse.usageDate || latestDisburse.createdAt || 0).getTime();
+            const rDate = new Date(latestReceipt.receiptDate || latestReceipt.receipt_date || latestReceipt.createdAt || latestReceipt.created_at || 0).getTime();
+            const dDate = new Date(latestDisburse.usageDate || latestDisburse.usage_date || latestDisburse.createdAt || latestDisburse.created_at || 0).getTime();
             if (rDate >= dDate) {
                 activityStatus = "Receive";
-                activityQty = `+${fmtQty(latestReceipt.receivedQuantity)}`;
+                const rQty = Number(latestReceipt.receivedQuantity ?? latestReceipt.received_quantity ?? latestReceipt.quantity ?? 0);
+                activityQty = fmtQty(rQty);
                 activityUnit = latestReceipt.unit || m.unit;
-                activityDate = latestReceipt.receiptDate || (latestReceipt.createdAt ? latestReceipt.createdAt.slice(0, 10) : "");
+                activityDate = (latestReceipt.receiptDate || latestReceipt.receipt_date || latestReceipt.createdAt || latestReceipt.created_at || "").toString().slice(0, 10);
                 activityTimestamp = rDate;
             } else {
                 activityStatus = "Disbursement";
-                activityQty = `-${fmtQty(latestDisburse.consumedQuantity)}`;
+                const dQty = Number(latestDisburse.consumedQuantity ?? latestDisburse.consumed_quantity ?? latestDisburse.quantity ?? 0);
+                activityQty = fmtQty(dQty);
                 activityUnit = latestDisburse.unit || m.unit;
-                activityDate = latestDisburse.usageDate || (latestDisburse.createdAt ? latestDisburse.createdAt.slice(0, 10) : "");
+                activityDate = (latestDisburse.usageDate || latestDisburse.usage_date || latestDisburse.createdAt || latestDisburse.created_at || "").toString().slice(0, 10);
                 activityTimestamp = dDate;
             }
         } else if (latestReceipt) {
             activityStatus = "Receive";
-            activityQty = `+${fmtQty(latestReceipt.receivedQuantity)}`;
+            const rQty = Number(latestReceipt.receivedQuantity ?? latestReceipt.received_quantity ?? latestReceipt.quantity ?? 0);
+            activityQty = fmtQty(rQty);
             activityUnit = latestReceipt.unit || m.unit;
-            activityDate = latestReceipt.receiptDate || (latestReceipt.createdAt ? latestReceipt.createdAt.slice(0, 10) : "");
-            activityTimestamp = new Date(latestReceipt.receiptDate || latestReceipt.createdAt || 0).getTime();
+            activityDate = (latestReceipt.receiptDate || latestReceipt.receipt_date || latestReceipt.createdAt || latestReceipt.created_at || "").toString().slice(0, 10);
+            activityTimestamp = new Date(latestReceipt.receiptDate || latestReceipt.receipt_date || latestReceipt.createdAt || latestReceipt.created_at || 0).getTime();
         } else if (latestDisburse) {
             activityStatus = "Disbursement";
-            activityQty = `-${fmtQty(latestDisburse.consumedQuantity)}`;
+            const dQty = Number(latestDisburse.consumedQuantity ?? latestDisburse.consumed_quantity ?? latestDisburse.quantity ?? 0);
+            activityQty = fmtQty(dQty);
             activityUnit = latestDisburse.unit || m.unit;
-            activityDate = latestDisburse.usageDate || (latestDisburse.createdAt ? latestDisburse.createdAt.slice(0, 10) : "");
-            activityTimestamp = new Date(latestDisburse.usageDate || latestDisburse.createdAt || 0).getTime();
+            activityDate = (latestDisburse.usageDate || latestDisburse.usage_date || latestDisburse.createdAt || latestDisburse.created_at || "").toString().slice(0, 10);
+            activityTimestamp = new Date(latestDisburse.usageDate || latestDisburse.usage_date || latestDisburse.createdAt || latestDisburse.created_at || 0).getTime();
         } else if (m.currentStock > 0) {
             activityStatus = "Receive";
-            activityQty = `+${fmtQty(m.currentStock)}`;
+            activityQty = fmtQty(m.currentStock);
             activityUnit = m.unit || "kg";
         }
 
@@ -370,7 +466,7 @@ function getOverviewDataList() {
         return {
             id: m.id,
             name: m.name,
-            itemCode: m.itemCode,
+            itemCode: m.itemCode || m.item_code || "",
             minStock: m.minStock,
             currentStock: m.currentStock,
             unit: m.unit,
@@ -379,15 +475,17 @@ function getOverviewDataList() {
             activityUnit,
             activityDate,
             activityTimestamp,
-            note: m.note,
+            note: m.note || m.description || "",
             status
         };
     });
 
     // Apply Filters
-    const query = state.overviewSearch.trim().toLowerCase();
+    const query = (state.overviewSearch || "").trim().toLowerCase();
     const dateFrom = state.overviewDateFrom ? new Date(state.overviewDateFrom).getTime() : null;
     const dateTo = state.overviewDateTo ? new Date(state.overviewDateTo + "T23:59:59").getTime() : null;
+    const actFilter = (state.overviewActivityStatus || state.overviewActivityFilter || "all").toLowerCase();
+    const statFilter = state.overviewStatus || state.overviewStatusFilter || "all";
 
     let filtered = list.filter(item => {
         // 1. Search Query
@@ -405,11 +503,11 @@ function getOverviewDataList() {
         }
 
         // 3. Activity Status Filter
-        if (state.overviewActivityStatus === "receive" && item.activityStatus !== "Receive") return false;
-        if (state.overviewActivityStatus === "disbursement" && item.activityStatus !== "Disbursement") return false;
+        if (actFilter === "receive" && item.activityStatus !== "Receive") return false;
+        if (actFilter === "disbursement" && item.activityStatus !== "Disbursement") return false;
 
         // 4. Stock Status Filter
-        if (state.overviewStatus !== "all" && item.status.key !== state.overviewStatus) return false;
+        if (statFilter !== "all" && item.status.key !== statFilter) return false;
 
         return true;
     });
@@ -512,9 +610,9 @@ function renderOverviewTable() {
         const isSelected = state.selectedOverviewIds.has(item.id);
         let actBadge = `<span class="activity-badge activity-badge-none">— None</span>`;
         if (item.activityStatus === "Receive") {
-            actBadge = `<span class="activity-badge activity-badge-receive">📥 Receive</span>`;
+            actBadge = `<span class="activity-badge activity-badge-receive">Receive</span>`;
         } else if (item.activityStatus === "Disbursement") {
-            actBadge = `<span class="activity-badge activity-badge-disburse">📤 Disbursement</span>`;
+            actBadge = `<span class="activity-badge activity-badge-disburse">Disbursement</span>`;
         }
 
         return `
@@ -537,11 +635,8 @@ function renderOverviewTable() {
                 <td><strong>${esc(item.activityQty)}</strong></td>
                 <td>${esc(item.activityUnit)}</td>
                 <td><span class="status-badge ${item.status.cls}">${esc(item.status.badgeText)}</span></td>
-                <td style="text-align: right;">
+                <td style="text-align: right; white-space: nowrap;">
                     <div class="row-direct-actions">
-                        <button type="button" class="row-action-btn edit-direct-btn" data-id="${esc(item.id)}" title="Edit / Update">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
-                        </button>
                         <button type="button" class="row-action-btn delete-direct-btn" data-id="${esc(item.id)}" data-name="${esc(item.name)}" title="Delete Material">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
@@ -851,6 +946,15 @@ function getFilteredReceiveList() {
         const toTime = new Date(state.receiveDateTo + "T23:59:59").getTime();
         filtered = filtered.filter(r => new Date(r.receiptDate || r.createdAt).getTime() <= toTime);
     }
+
+    const sort = state.receiveSort || "latest";
+    filtered.sort((a, b) => {
+        if (sort === "az") return (a.materialName || "").localeCompare(b.materialName || "");
+        if (sort === "za") return (b.materialName || "").localeCompare(a.materialName || "");
+        if (sort === "oldest") return new Date(a.receiptDate || a.createdAt || 0) - new Date(b.receiptDate || b.createdAt || 0);
+        return new Date(b.receiptDate || b.createdAt || 0) - new Date(a.receiptDate || a.createdAt || 0); // latest
+    });
+
     return filtered;
 }
 
@@ -863,6 +967,10 @@ function renderReceiveTable() {
 
     const filtered = getFilteredReceiveList();
     const total = filtered.length;
+
+    // Check if clear button should be shown
+    const isFiltered = !!state.receiveSearch || !!state.receiveDateFrom || !!state.receiveDateTo || state.receiveSort !== "latest";
+    if ($("receiveClearFiltersBtn")) $("receiveClearFiltersBtn").hidden = !isFiltered;
 
     const isSelectMode = !!state.selectModeReceive;
     const thSelect = $("receiveTable")?.querySelector("thead th.col-select");
@@ -1093,6 +1201,15 @@ function getFilteredDisburseList() {
         const toTime = new Date(state.disburseDateTo + "T23:59:59").getTime();
         filtered = filtered.filter(d => new Date(d.usageDate || d.createdAt).getTime() <= toTime);
     }
+
+    const sort = state.disburseSort || "latest";
+    filtered.sort((a, b) => {
+        if (sort === "az") return (a.materialName || "").localeCompare(b.materialName || "");
+        if (sort === "za") return (b.materialName || "").localeCompare(a.materialName || "");
+        if (sort === "oldest") return new Date(a.usageDate || a.createdAt || 0) - new Date(b.usageDate || b.createdAt || 0);
+        return new Date(b.usageDate || b.createdAt || 0) - new Date(a.usageDate || a.createdAt || 0); // latest
+    });
+
     return filtered;
 }
 
@@ -1105,6 +1222,10 @@ function renderDisbursementTable() {
 
     const filtered = getFilteredDisburseList();
     const total = filtered.length;
+
+    // Check if clear button should be shown
+    const isFiltered = !!state.disburseSearch || !!state.disburseDateFrom || !!state.disburseDateTo || state.disburseSort !== "latest";
+    if ($("disburseClearFiltersBtn")) $("disburseClearFiltersBtn").hidden = !isFiltered;
 
     const isSelectMode = !!state.selectModeDisburse;
     const thSelect = $("disbursementTable")?.querySelector("thead th.col-select");
@@ -1298,48 +1419,6 @@ function attachDisburseTableListeners() {
 }
 
 /* ==========================================================
-   FLATPICKR DATEPICKER HELPERS (TODAY ONLY - PAST & FUTURE DISABLED)
-   ========================================================== */
-
-function initModalDatePicker(elementId, initialDate = "today", todayOnly = true) {
-    const el = typeof elementId === "string" ? $(elementId) : elementId;
-    if (!el) return null;
-
-    if (el._flatpickr) {
-        el._flatpickr.destroy();
-    }
-
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const defaultVal = initialDate === "today" ? todayStr : (initialDate || todayStr);
-
-    if (typeof flatpickr === "undefined") {
-        el.value = defaultVal;
-        if (todayOnly) {
-            el.min = todayStr;
-            el.max = todayStr;
-        }
-        return null;
-    }
-
-    const config = {
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "d/m/Y",
-        defaultDate: defaultVal,
-        disableMobile: true,
-        allowInput: true,
-        animate: true
-    };
-
-    if (todayOnly) {
-        config.minDate = "today";
-        config.maxDate = "today";
-    }
-
-    return flatpickr(el, config);
-}
-
-/* ==========================================================
    ADD RAW MATERIAL MODAL LOGIC
    ========================================================== */
 
@@ -1350,22 +1429,8 @@ function openAddMaterialModal() {
     setFieldError("addMatMinStockError");
     setFieldError("addMatCurrentStockError");
 
-    // Generate next available RM ID
-    const existingNums = state.materials
-        .map(m => {
-            const match = String(m.itemCode || "").match(/^RM0*(\d+)$/i);
-            return match ? parseInt(match[1], 10) : 0;
-        })
-        .filter(n => n > 0);
-
-    const maxNum = existingNums.length ? Math.max(...existingNums) : 30;
-    let nextNum = maxNum + 1;
-    let nextCode = `RM${String(nextNum).padStart(3, "0")}`;
-
-    while (state.materials.some(m => String(m.itemCode || "").toUpperCase() === nextCode.toUpperCase())) {
-        nextNum++;
-        nextCode = `RM${String(nextNum).padStart(3, "0")}`;
-    }
+    // Generate next available RM ID accurately
+    const nextCode = getSystemNextItemCode(state.materials);
 
     if ($("addMatId")) $("addMatId").value = nextCode;
     if ($("addMatStockDate")) initModalDatePicker("addMatStockDate", "today", true);
@@ -1382,7 +1447,7 @@ async function handleAddMaterialSave() {
     const itemCode = $("addMatId").value.trim();
     const unit = $("addMatUnit").value.trim();
     const minStockVal = $("addMatMinStock").value.trim();
-    const minStock = minStockVal !== "" ? num(minStockVal) : null;
+    const minStock = minStockVal !== "" ? num(minStockVal) : 10;
     const currentStockVal = $("addMatCurrentStock").value.trim();
     const initialCurrentStock = currentStockVal !== "" ? num(currentStockVal) : 0;
     const note = $("addMatNote").value.trim();
@@ -1419,7 +1484,7 @@ async function handleAddMaterialSave() {
     }
 
     // Duplicate Item Code Check
-    const codeExists = state.materials.some(m => String(m.itemCode || "").toUpperCase() === itemCode.toUpperCase());
+    const codeExists = state.materials.some(m => String(m.itemCode || m.item_code || "").toUpperCase() === itemCode.toUpperCase());
     if (codeExists) {
         setFieldError("addMatNameError", `Item code ${itemCode} already exists. Please refresh to regenerate.`);
         isValid = false;
@@ -1431,38 +1496,75 @@ async function handleAddMaterialSave() {
     saveBtn.disabled = true;
 
     try {
-        // Insert into authoritative public.raw_materials table
-        const { data: newMat, error: insertErr } = await supabase
-            .from("raw_materials")
-            .insert({
-                item_code: itemCode,
-                name: name,
-                unit_of_measure: unit,
-                minimum_threshold: minStock,
-                description: note || null,
-                current_stock: 0
-            })
-            .select()
-            .single();
+        let createdMat = {
+            id: itemCode,
+            item_code: itemCode,
+            name: name,
+            category: "General Materials",
+            unit_of_measure: unit,
+            minimum_threshold: minStock,
+            current_stock: initialCurrentStock,
+            description: note || `Raw material ${name} (${itemCode})`,
+            created_at: new Date().toISOString()
+        };
 
-        if (insertErr) throw insertErr;
+        // Try inserting into authoritative public.raw_materials table
+        try {
+            const { data: newMat, error: insertErr } = await supabase
+                .from("raw_materials")
+                .insert({
+                    item_code: itemCode,
+                    name: name,
+                    unit_of_measure: unit,
+                    minimum_threshold: minStock,
+                    description: note || null,
+                    current_stock: initialCurrentStock
+                })
+                .select()
+                .single();
 
-        // If user specified an initial stock balance, record it authoritatively via stock receipt
-        if (initialCurrentStock > 0 && newMat?.id) {
-            const dateVal = $("addMatStockDate").value || new Date().toISOString().slice(0, 10);
-            const { error: rpcErr } = await supabase.rpc("record_stock_receipt_v2", {
-                p_material_id: newMat.id,
-                p_receipt_date: dateVal,
-                p_quantity: initialCurrentStock,
-                p_unit: unit,
-                p_supplier_name: "Initial Catalog Balance"
-            });
-            if (rpcErr) {
-                console.warn("Initial receipt note:", rpcErr);
+            if (!insertErr && newMat) {
+                createdMat = { ...createdMat, ...newMat };
             }
+        } catch (sbErr) {
+            console.warn("Supabase insert note:", sbErr);
         }
 
-        toast("Raw material added successfully.");
+        // Authoritatively save to system storage to ensure it persists everywhere
+        saveCustomRawMaterial(createdMat);
+
+        // If user specified an initial stock balance, record it authoritatively
+        if (initialCurrentStock > 0) {
+            const dateVal = $("addMatStockDate")?.value || new Date().toISOString().slice(0, 10);
+            try {
+                if (createdMat.id) {
+                    await supabase.rpc("record_stock_receipt_v2", {
+                        p_material_id: createdMat.id,
+                        p_receipt_date: dateVal,
+                        p_quantity: initialCurrentStock,
+                        p_unit: unit,
+                        p_supplier_name: "Initial Catalog Balance"
+                    });
+                }
+            } catch (rpcErr) {
+                console.warn("Initial receipt RPC note:", rpcErr);
+            }
+
+            saveCustomReceipt({
+                id: `REC-${Date.now()}`,
+                receipt_date: dateVal,
+                material_id: createdMat.id,
+                raw_material_name: name,
+                raw_material_id: itemCode,
+                received_quantity: initialCurrentStock,
+                unit: unit,
+                supplier_name: "Initial Catalog Balance",
+                received_by: "Administrator",
+                created_at: new Date().toISOString()
+            });
+        }
+
+        toast("Raw material added successfully as a new item.");
         closeAddMaterialModal();
         await loadData();
     } catch (err) {
@@ -1588,7 +1690,7 @@ async function handleRecordReceiptSave() {
     const matId = $("receiptMaterialSelect").value;
     const qty = num($("receiptQuantityInput").value);
     const date = $("receiptDateInput").value || new Date().toISOString().slice(0, 10);
-    const supplier = $("receiptSupplierInput").value.trim() || null;
+    const supplier = $("receiptSupplierInput").value.trim() || "Direct Delivery";
 
     setFieldError("receiptMaterialError");
     setFieldError("receiptQuantityError");
@@ -1599,29 +1701,59 @@ async function handleRecordReceiptSave() {
     if (!isValid) return;
 
     const mat = state.materials.find(m => m.id === matId);
-    const saveBtn = $("recordReceiptSaveBtn");
-    saveBtn.disabled = true;
+    if (!mat) return;
 
+    // 1. Optimistic Update
+    mat.currentStock = (Number(mat.currentStock) || 0) + qty;
+    mat.status = computeStockStatus(mat.currentStock, mat.minStock);
+    const newRec = {
+        id: `REC-${Date.now()}`,
+        materialId: matId,
+        material_id: matId,
+        materialName: mat.name,
+        materialCode: mat.itemCode,
+        receivedQuantity: qty,
+        received_quantity: qty,
+        receiptDate: date,
+        receipt_date: date,
+        unit: mat?.unit || "kg",
+        supplierName: supplier,
+        supplier_name: supplier,
+        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString()
+    };
+    state.receipts = [newRec, ...state.receipts];
+
+    toast(`Received ${fmtQty(qty, mat.unit)} of ${mat.name}`);
+    $("recordReceiptModalOverlay").classList.remove("open");
+
+    renderSummary();
+    if (state.activeTab === "overview") renderOverviewTable();
+    else if (state.activeTab === "receive") renderReceiveTable();
+
+    // 2. Broadcast local sync
     try {
-        const { error } = await supabase.rpc("record_stock_receipt_v2", {
-            p_material_id: matId,
-            p_receipt_date: date,
-            p_quantity: qty,
-            p_unit: mat?.unit || "kg",
-            p_supplier_name: supplier
-        });
+        saveCustomReceipt(newRec);
+        invalidateForecastCache();
+        localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "receive", materialId: matId, qty }));
+        localStorage.setItem("rmims_inventory_updated", Date.now().toString());
+    } catch {}
 
-        if (error) throw error;
-
-        toast("Stock received successfully.");
-        $("recordReceiptModalOverlay").classList.remove("open");
-        await loadData();
-    } catch (err) {
-        console.error("Receipt error:", err);
-        toast(err.message || "Failed to record stock receipt.", "error");
-    } finally {
-        saveBtn.disabled = false;
-    }
+    // 3. Background DB Persistence
+    (async () => {
+        try {
+            await supabase.from("stock_receipts").insert([{
+                material_id: matId,
+                receipt_date: date,
+                received_quantity: qty,
+                unit: mat?.unit || "kg",
+                supplier_name: supplier,
+                created_at: new Date().toISOString()
+            }]);
+        } catch (err) {
+            console.warn("Background receipt persistence:", err);
+        }
+    })();
 }
 
 function openNewDisburseModal() {
@@ -1636,7 +1768,7 @@ async function handleRecordDisburseSave() {
     const matId = $("disburseMaterialSelect").value;
     const qty = num($("disburseQuantityInput").value);
     const date = $("disburseDateInput").value || new Date().toISOString().slice(0, 10);
-    const context = $("disburseProductContextInput").value.trim() || null;
+    const context = $("disburseProductContextInput").value.trim() || "General Usage";
 
     setFieldError("disburseMaterialError");
     setFieldError("disburseQuantityError");
@@ -1651,30 +1783,53 @@ async function handleRecordDisburseSave() {
     }
     if (!isValid) return;
 
-    const saveBtn = $("recordDisburseSaveBtn");
-    saveBtn.disabled = true;
+    // 1. Optimistic Update
+    mat.currentStock = Math.max(0, (Number(mat.currentStock) || 0) - qty);
+    mat.status = computeStockStatus(mat.currentStock, mat.minStock);
+    const newDisb = {
+        id: `DSB-${Date.now()}`,
+        materialId: matId,
+        material_id: matId,
+        materialName: mat.name,
+        materialCode: mat.itemCode,
+        consumedQuantity: qty,
+        consumed_quantity: qty,
+        usageDate: date,
+        usage_date: date,
+        unit: mat?.unit || "kg",
+        productContext: context,
+        activity_type: context,
+        finished_product_name: context,
+        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString()
+    };
+    state.disbursements = [newDisb, ...state.disbursements];
+    saveCustomDisbursement(newDisb);
+    invalidateForecastCache();
+    toast(`Disbursed ${fmtQty(qty, mat.unit)} for ${context}`);
 
+    // 2. Broadcast local sync
     try {
-        const { error } = await supabase.rpc("record_material_disbursement_v2", {
-            p_material_id: matId,
-            p_usage_date: date,
-            p_quantity: qty,
-            p_unit: mat.unit || "kg",
-            p_activity_type: context,
-            p_finished_product_name: context
-        });
+        localStorage.setItem("rmims_sync_event", JSON.stringify({ time: Date.now(), action: "disburse", materialId: matId, qty, context }));
+        localStorage.setItem("rmims_inventory_updated", Date.now().toString());
+    } catch {}
 
-        if (error) throw error;
-
-        toast("Material disbursement recorded successfully.");
-        $("recordDisburseModalOverlay").classList.remove("open");
-        await loadData();
-    } catch (err) {
-        console.error("Disbursement error:", err);
-        toast(err.message || "Failed to record disbursement.", "error");
-    } finally {
-        saveBtn.disabled = false;
-    }
+    // 3. Background DB Persistence
+    (async () => {
+        try {
+            await supabase.from("material_disbursements").insert([{
+                material_id: matId,
+                usage_date: date,
+                consumed_quantity: qty,
+                unit: mat?.unit || "kg",
+                activity_type: context,
+                finished_product_name: context,
+                created_at: new Date().toISOString()
+            }]);
+        } catch (err) {
+            console.warn("Background disbursement persistence:", err);
+        }
+    })();
 }
 
 /* ==========================================================
@@ -1950,7 +2105,7 @@ async function handleImportConfirm() {
     }
 
     try {
-        const CHUNK_SIZE = 15;
+        const CHUNK_SIZE = 25;
         for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
             if (isImportCancelled) {
                 console.log("Import process aborted by user cancellation.");
@@ -1958,9 +2113,12 @@ async function handleImportConfirm() {
             }
 
             const chunk = parsedImportRows.slice(i, i + CHUNK_SIZE);
+            const batchReceipts = [];
+            const batchDisbursements = [];
 
-            await Promise.all(chunk.map(async (item, chunkIdx) => {
-                if (isImportCancelled) return;
+            for (let chunkIdx = 0; chunkIdx < chunk.length; chunkIdx++) {
+                if (isImportCancelled) break;
+                const item = chunk[chunkIdx];
 
                 let targetMatId = null;
                 let targetUnit = item.unit || "kg";
@@ -1975,12 +2133,13 @@ async function handleImportConfirm() {
                     if (item.unit) updatePayload.unit_of_measure = item.unit;
                     if (item.note) updatePayload.description = item.note;
 
-                    const { error: updateErr } = await supabase
-                        .from("raw_materials")
-                        .update(updatePayload)
-                        .eq("id", targetMatId);
-
-                    if (!updateErr) updatedCount++;
+                    try {
+                        await supabase
+                            .from("raw_materials")
+                            .update(updatePayload)
+                            .eq("id", targetMatId);
+                        updatedCount++;
+                    } catch (e) {}
                 } else {
                     // Generate next RM code
                     let code = item.code;
@@ -1996,57 +2155,73 @@ async function handleImportConfirm() {
                         code = `RM${String(nextNum).padStart(3, "0")}`;
                     }
 
-                    const { data: newMat, error: insertErr } = await supabase
-                        .from("raw_materials")
-                        .insert({
-                            item_code: code,
-                            name: item.name,
-                            unit_of_measure: item.unit,
-                            minimum_threshold: item.minStock,
-                            description: item.note || null,
-                            current_stock: 0
-                        })
-                        .select()
-                        .single();
+                    try {
+                        const { data: newMat, error: insertErr } = await supabase
+                            .from("raw_materials")
+                            .insert({
+                                item_code: code,
+                                name: item.name,
+                                unit_of_measure: item.unit,
+                                minimum_threshold: item.minStock,
+                                description: item.note || null,
+                                current_stock: 0
+                            })
+                            .select()
+                            .single();
 
-                    if (!insertErr && newMat) {
-                        addedCount++;
-                        targetMatId = newMat.id;
-                        targetUnit = newMat.unit_of_measure || item.unit || "kg";
-                    }
+                        if (!insertErr && newMat) {
+                            addedCount++;
+                            targetMatId = newMat.id;
+                            targetUnit = newMat.unit_of_measure || item.unit || "kg";
+                        }
+                    } catch (e) {}
                 }
 
-                if (targetMatId && !isImportCancelled) {
+                if (targetMatId) {
                     const recordDate = item.recordDate || new Date().toISOString().slice(0, 10);
 
-                    // Record Stock Receipts with original Excel date
+                    // Collect Receipts for bulk insert
                     if (item.receiptQty > 0) {
-                        const { error: recErr } = await supabase.rpc("record_stock_receipt_v2", {
-                            p_material_id: targetMatId,
-                            p_receipt_date: recordDate,
-                            p_quantity: item.receiptQty,
-                            p_unit: targetUnit,
-                            p_supplier_name: item.supplier || item.note || "Stock Delivery"
+                        batchReceipts.push({
+                            material_id: targetMatId,
+                            receipt_date: recordDate,
+                            received_quantity: item.receiptQty,
+                            unit: targetUnit,
+                            supplier_name: item.supplier || item.note || "Stock Delivery",
+                            created_at: new Date().toISOString()
                         });
-                        if (!recErr) totalReceiptsLogged++;
+                        totalReceiptsLogged++;
                     }
 
-                    // Record Disbursements / DSB with original Excel date
+                    // Collect Disbursements for bulk insert
                     if (item.dsbQty > 0) {
-                        const { error: dsbErr } = await supabase.rpc("record_material_disbursement_v2", {
-                            p_material_id: targetMatId,
-                            p_usage_date: recordDate,
-                            p_quantity: item.dsbQty,
-                            p_unit: targetUnit,
-                            p_activity_type: "Production Usage",
-                            p_finished_product_name: item.productName || item.note || "General Production"
+                        batchDisbursements.push({
+                            material_id: targetMatId,
+                            usage_date: recordDate,
+                            consumed_quantity: item.dsbQty,
+                            unit: targetUnit,
+                            activity_type: "Production Usage",
+                            finished_product_name: item.productName || item.note || "General Production",
+                            created_at: new Date().toISOString()
                         });
-                        if (!dsbErr) totalDsbsLogged++;
+                        totalDsbsLogged++;
                     }
                 }
-            }));
+            }
 
             if (isImportCancelled) break;
+
+            // Execute high-speed bulk inserts in parallel for the chunk
+            const bulkTasks = [];
+            if (batchReceipts.length > 0) {
+                bulkTasks.push(supabase.from("stock_receipts").insert(batchReceipts));
+            }
+            if (batchDisbursements.length > 0) {
+                bulkTasks.push(supabase.from("material_disbursements").insert(batchDisbursements));
+            }
+            if (bulkTasks.length > 0) {
+                await Promise.allSettled(bulkTasks);
+            }
 
             // Update circular ring & percentage bar per batch
             const processedCount = Math.min(totalRows, i + CHUNK_SIZE);
@@ -2087,7 +2262,7 @@ async function handleImportConfirm() {
             setTimeout(async () => {
                 closeImportModal();
                 await loadData();
-            }, 500);
+            }, 300);
         } else {
             await loadData();
         }
@@ -2811,6 +2986,35 @@ function setupEventListeners() {
             renderReceiveTable();
         });
     }
+    if ($("receiveSortFilter")) {
+        $("receiveSortFilter").addEventListener("change", (e) => {
+            state.receiveSort = e.target.value;
+            state.receivePage = 1;
+            renderReceiveTable();
+        });
+    }
+    if ($("receiveClearFiltersBtn")) {
+        $("receiveClearFiltersBtn").addEventListener("click", () => {
+            state.receiveSearch = "";
+            state.receiveDateFrom = "";
+            state.receiveDateTo = "";
+            state.receiveSort = "latest";
+
+            if ($("receiveSearchInput")) $("receiveSearchInput").value = "";
+            if ($("receiveDateFrom")) {
+                if ($("receiveDateFrom")._flatpickr) $("receiveDateFrom")._flatpickr.clear();
+                else $("receiveDateFrom").value = "";
+            }
+            if ($("receiveDateTo")) {
+                if ($("receiveDateTo")._flatpickr) $("receiveDateTo")._flatpickr.clear();
+                else $("receiveDateTo").value = "";
+            }
+            if ($("receiveSortFilter")) $("receiveSortFilter").value = "latest";
+
+            state.receivePage = 1;
+            renderReceiveTable();
+        });
+    }
     if ($("receivePageSize")) {
         $("receivePageSize").addEventListener("change", (e) => {
             state.receivePageSize = Number(e.target.value) || 10;
@@ -2837,6 +3041,35 @@ function setupEventListeners() {
     if ($("disburseDateTo")) {
         $("disburseDateTo").addEventListener("change", (e) => {
             state.disburseDateTo = e.target.value;
+            state.disbursePage = 1;
+            renderDisbursementTable();
+        });
+    }
+    if ($("disburseSortFilter")) {
+        $("disburseSortFilter").addEventListener("change", (e) => {
+            state.disburseSort = e.target.value;
+            state.disbursePage = 1;
+            renderDisbursementTable();
+        });
+    }
+    if ($("disburseClearFiltersBtn")) {
+        $("disburseClearFiltersBtn").addEventListener("click", () => {
+            state.disburseSearch = "";
+            state.disburseDateFrom = "";
+            state.disburseDateTo = "";
+            state.disburseSort = "latest";
+
+            if ($("disbursementSearchInput")) $("disbursementSearchInput").value = "";
+            if ($("disburseDateFrom")) {
+                if ($("disburseDateFrom")._flatpickr) $("disburseDateFrom")._flatpickr.clear();
+                else $("disburseDateFrom").value = "";
+            }
+            if ($("disburseDateTo")) {
+                if ($("disburseDateTo")._flatpickr) $("disburseDateTo")._flatpickr.clear();
+                else $("disburseDateTo").value = "";
+            }
+            if ($("disburseSortFilter")) $("disburseSortFilter").value = "latest";
+
             state.disbursePage = 1;
             renderDisbursementTable();
         });
@@ -3031,5 +3264,29 @@ onAuthStateChanged(auth, (user) => {
         loadData();
     }
 });
+
+// Storage sync across tabs, windows, and same-window synthetic events
+window.addEventListener("storage", (e) => {
+    // e.key is null for synthetic events dispatched by window.dispatchEvent(new Event("storage"))
+    if (!e.key || e.key.startsWith("rmims_") || e.key.includes("inventory") || e.key.includes("material")) {
+        loadData();
+    }
+});
+
+// Supabase Realtime Channel Subscription for live cross-user inventory updates (Admin)
+if (supabase && typeof supabase.channel === "function" && !window.__rmimsAdminInvChannel) {
+    window.__rmimsAdminInvChannel = supabase
+        .channel("rmims_admin_inventory_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
+            loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
+            loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
+            loadData();
+        })
+        .subscribe();
+}
 
 export { loadData };

@@ -165,9 +165,12 @@
                             <span class="rrc-badge-sub" id="rrcUnitBadge">Top Inflow</span>
                         </div>
                     </div>
-                    <a href="inventory.html" class="rrc-icon-btn" title="Receive Delivery in Inventory">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    </a>
+                    <select id="rrcPeriodFilter" class="rrc-period-select" aria-label="Filter period">
+                        <option value="all">All Time</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="6m">Last 6 Months</option>
+                    </select>
                 </div>
 
                 <div class="rrc-chart-section">
@@ -430,6 +433,15 @@
         <div class="amp-search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
             <input type="search" id="receivedSearchInput" placeholder="Search received material, code, or supplier..." aria-label="Search receiving records">
+        </div>
+        <div class="amp-filter-box">
+            <label for="receivedModalSort" class="amp-filter-label">Sort By:</label>
+            <select id="receivedModalSort" class="amp-select">
+                <option value="latest">Latest</option>
+                <option value="oldest">Oldest</option>
+                <option value="a-z">A - Z</option>
+                <option value="z-a">Z - A</option>
+            </select>
         </div>
     </div>
 

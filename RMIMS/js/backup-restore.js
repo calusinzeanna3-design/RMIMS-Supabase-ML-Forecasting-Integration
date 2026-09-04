@@ -429,9 +429,9 @@ async function verifyRestoreFile() {
 
     } catch (err) {
         const messages = {
-            invalid: "This is not a valid RMIMS backup file.",
+            invalid: "This is not a valid RMSME backup file.",
             corrupted: "This backup file is corrupted or incomplete.",
-            incompatible: "This backup was created for an incompatible RMIMS version."
+            incompatible: "This backup was created for an incompatible RMSME version."
         };
         const code = err && err.code ? err.code : null;
         console.error(err);

@@ -233,6 +233,24 @@ document.getElementById("roleFilter")?.addEventListener("change", (e) => {
     tableState.page = 1;
     renderTable();
 });
+document.getElementById("sortFilter")?.addEventListener("change", (e) => {
+    const val = e.target.value;
+    if (val === "latest") {
+        tableState.sortBy = "createdAt";
+        tableState.sortDir = "desc";
+    } else if (val === "oldest") {
+        tableState.sortBy = "createdAt";
+        tableState.sortDir = "asc";
+    } else if (val === "az") {
+        tableState.sortBy = "fullName";
+        tableState.sortDir = "asc";
+    } else if (val === "za") {
+        tableState.sortBy = "fullName";
+        tableState.sortDir = "desc";
+    }
+    tableState.page = 1;
+    renderTable();
+});
 
 function applyUserFilter(status = "all") {
     tableState.status = status;
@@ -245,10 +263,14 @@ function clearUserFilters() {
     tableState.search = "";
     tableState.status = "all";
     tableState.role = "all";
+    tableState.sortBy = "createdAt";
+    tableState.sortDir = "desc";
     tableState.page = 1;
     document.getElementById("searchInput").value = "";
     document.getElementById("statusFilter").value = "all";
     document.getElementById("roleFilter").value = "all";
+    const sortEl = document.getElementById("sortFilter");
+    if (sortEl) sortEl.value = "latest";
     renderTable();
 }
 
@@ -949,7 +971,7 @@ function openDeactivateConfirm(u) {
     }
     openConfirm({
         title: "Deactivate this account?",
-        message: `The user will no longer be able to access RMIMS. Existing records will be preserved.<div class="confirm-note">Deactivating <strong>${escapeHtml(u.fullName)}</strong> (${roleLabel(u.role)}) does not delete any material activity, receiving, or usage history already recorded under this account.</div>`,
+        message: `The user will no longer be able to access RMSME. Existing records will be preserved.<div class="confirm-note">Deactivating <strong>${escapeHtml(u.fullName)}</strong> (${roleLabel(u.role)}) does not delete any material activity, receiving, or usage history already recorded under this account.</div>`,
         confirmLabel: "Deactivate",
         loadingLabel: "Deactivating...",
         danger: true,
@@ -991,7 +1013,7 @@ function openDeactivateConfirm(u) {
 function openActivateConfirm(u) {
     openConfirm({
         title: "Activate this account?",
-        message: `<strong>${escapeHtml(u.fullName)}</strong> will be able to access RMIMS again as ${roleLabel(u.role)}.`,
+        message: `<strong>${escapeHtml(u.fullName)}</strong> will be able to access RMSME again as ${roleLabel(u.role)}.`,
         confirmLabel: "Activate",
         loadingLabel: "Activating...",
         onConfirm: async () => {

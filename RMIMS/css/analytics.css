@@ -539,7 +539,7 @@ span.flatpickr-weekday {
 
 .ca-grid-row-2 {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1.35fr 1.15fr;
   gap: 20px;
 }
 
@@ -776,17 +776,17 @@ span.flatpickr-weekday {
 }
 
 .ca-btn-link {
-  background: none;
+  background: transparent;
   border: none;
-  color: var(--ca-green-dark);
-  font-size: 0.82rem;
+  color: var(--ca-green);
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--ca-radius-sm);
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  border-radius: var(--ca-radius-sm);
   transition: background 0.15s ease;
 }
 
@@ -799,15 +799,16 @@ span.flatpickr-weekday {
    ========================================================== */
 .ca-donut-layout {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 16px;
+  grid-template-columns: minmax(130px, 150px) 1fr;
+  gap: 14px;
   align-items: center;
+  width: 100%;
 }
 
 .ca-donut-wrap {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 175px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -823,7 +824,7 @@ span.flatpickr-weekday {
 }
 
 .ca-donut-center-sub {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--ca-text-dim);
   text-transform: uppercase;
@@ -831,7 +832,7 @@ span.flatpickr-weekday {
 }
 
 .ca-donut-center-val {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--ca-text-main);
   line-height: 1.1;
@@ -840,24 +841,28 @@ span.flatpickr-weekday {
 .ca-dist-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
+  width: 100%;
 }
 
 .ca-dist-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.8rem;
-  gap: 8px;
+  font-size: 0.78rem;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
 }
 
 .ca-dist-item-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .ca-dist-dot {
@@ -873,12 +878,18 @@ span.flatpickr-weekday {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  font-size: 0.78rem;
 }
 
 .ca-dist-pct {
   font-weight: 700;
   color: var(--ca-text-mid);
   flex-shrink: 0;
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
 }
 
 /* ==========================================================
@@ -1168,6 +1179,71 @@ span.flatpickr-weekday {
   font-size: 0.78rem;
   color: var(--ca-text-muted);
   margin: 0;
+}
+
+/* When no icon, remove the gap in header-info */
+.ca-modal-header-info {
+  gap: 0;
+}
+
+/* ID Pill Badge in Modal Table */
+.ca-id-pill {
+  display: inline-block;
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: center;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Table column sizing for the modal table */
+.ca-table td:nth-child(2),
+.ca-table th:nth-child(2) {
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+.ca-table td:nth-child(1),
+.ca-table th:nth-child(1) {
+  min-width: 140px;
+}
+
+.ca-table td:nth-child(3),
+.ca-table th:nth-child(3) {
+  min-width: 90px;
+  white-space: nowrap;
+}
+
+.ca-table td:nth-child(4),
+.ca-table th:nth-child(4) {
+  min-width: 45px;
+  white-space: nowrap;
+}
+
+.ca-table td:nth-child(5),
+.ca-table th:nth-child(5) {
+  min-width: 90px;
+  white-space: nowrap;
+}
+
+.ca-table td:nth-child(6),
+.ca-table th:nth-child(6) {
+  min-width: 60px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.ca-table td:nth-child(7),
+.ca-table th:nth-child(7) {
+  min-width: 100px;
+  white-space: nowrap;
 }
 
 .ca-modal-close {

@@ -8,6 +8,7 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -79,23 +80,28 @@ const state = {
     // Tab Specific Filter States
     invSearch: "",
     invStatus: "all",
+    invSort: "latest",
     invPage: 1,
     invPageSize: 10,
 
     rcvSearch: "",
+    rcvSort: "latest",
     rcvPage: 1,
     rcvPageSize: 10,
 
     disbSearch: "",
+    disbSort: "latest",
     disbPage: 1,
     disbPageSize: 10,
 
     actSearch: "",
     actType: "all",
+    actSort: "latest",
     actPage: 1,
     actPageSize: 10,
 
     cnsSearch: "",
+    cnsSort: "latest",
     cnsPage: 1,
     cnsPageSize: 10,
 
@@ -360,33 +366,80 @@ function formatPeriodTypeLabel(preset) {
 
 async function loadAuthoritativeData() {
     try {
-        const [matRes, rcvRes, disbRes] = await Promise.all([
-            supabase
-                .from("raw_materials")
-                .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
-                .order("name"),
-            supabase
-                .from("stock_receipts")
-                .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-                .order("receipt_date", { ascending: false }),
-            supabase
-                .from("material_disbursements")
-                .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-                .order("usage_date", { ascending: false })
-        ]);
+        let rawMats = [];
+        let rawReceipts = [];
+        let rawDisbursements = [];
 
-        let rawMats = matRes.data || [];
-        let rawReceipts = rcvRes.data || [];
-        let rawDisbursements = disbRes.data || [];
+        try {
+            const fetchWithTimeout = (promise, ms = 3500) =>
+                Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+                ]);
+
+            const [matRes, rcvRes, disbRes] = await Promise.allSettled([
+                fetchWithTimeout(supabase
+                    .from("raw_materials")
+                    .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
+                    .order("name")),
+                fetchWithTimeout(supabase
+                    .from("stock_receipts")
+                    .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
+                    .order("receipt_date", { ascending: false })),
+                fetchWithTimeout(supabase
+                    .from("material_disbursements")
+                    .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
+                    .order("usage_date", { ascending: false }))
+            ]);
+
+            if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
+            if (rcvRes.status === "fulfilled" && rcvRes.value?.data && rcvRes.value.data.length > 0) rawReceipts = rcvRes.value.data;
+            if (disbRes.status === "fulfilled" && disbRes.value?.data && disbRes.value.data.length > 0) rawDisbursements = disbRes.value.data;
+        } catch (e) {
+            console.warn("Using baseline reports dataset:", e);
+        }
 
         if (rawMats.length === 0) {
             rawMats = AUTHENTIC_59_RAW_MATERIALS;
         }
-        if (rawReceipts.length === 0) {
-            rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
+
+        // Always merge baseline datasets so any custom entry stacks on top
+        const recBaseMap = new Map();
+        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));
+        getSystemCustomReceipts().forEach(r => recBaseMap.set(String(r.id), { ...r }));
+        rawReceipts.forEach(r => recBaseMap.set(String(r.id), { ...(recBaseMap.get(String(r.id)) || {}), ...r }));
+        rawReceipts = Array.from(recBaseMap.values());
+
+        const disbBaseMap = new Map();
+        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbBaseMap.set(String(d.id), { ...d }));
+        getSystemCustomDisbursements().forEach(d => disbBaseMap.set(String(d.id), { ...d }));
+        rawDisbursements.forEach(d => disbBaseMap.set(String(d.id), { ...(disbBaseMap.get(String(d.id)) || {}), ...d }));
+        rawDisbursements = Array.from(disbBaseMap.values());
+
+        // Retrieve locally deleted IDs across all registries
+        let deletedMatIds = new Set();
+        try {
+            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+        } catch (e) {}
+
+        let deletedDisbIds = new Set();
+        try {
+            deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        let deletedRecIds = new Set();
+        try {
+            deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
+        } catch (e) {}
+
+        if (deletedMatIds.size > 0) {
+            rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
         }
-        if (rawDisbursements.length === 0) {
-            rawDisbursements = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
+        if (deletedRecIds.size > 0) {
+            rawReceipts = rawReceipts.filter(r => !deletedRecIds.has(String(r.id)));
+        }
+        if (deletedDisbIds.size > 0) {
+            rawDisbursements = rawDisbursements.filter(d => !deletedDisbIds.has(String(d.id)));
         }
 
         // Normalize Materials
@@ -511,6 +564,8 @@ function loadAuthoritativeForecasts() {
         console.warn("Forecast cache notice:", e);
     }
 
+    const generatedCacheObj = {};
+
     state.materials.forEach(m => {
         const recentUsage = recentUsageMap.get(m.id) || 0;
         const products = productMap.get(m.id) || [];
@@ -519,17 +574,32 @@ function loadAuthoritativeForecasts() {
         let f7Qty = 0;
         let f1mQty = 0;
         let decisionStatus = "Sufficient";
+        let interpretation = "";
 
-        if (cachedForecasts && cachedForecasts[m.name]) {
-            const cf = cachedForecasts[m.name];
-            f7Qty = Number(cf.forecast7Day?.quantity || 0);
-            f1mQty = Number(cf.forecast1Month?.quantity || (f7Qty * 4));
-            decisionStatus = cf.decision_support?.decision_status || "Sufficient";
+        // Robust matching against cached forecast keys
+        let cf = null;
+        if (cachedForecasts) {
+            cf = cachedForecasts[m.name] || cachedForecasts[m.name.trim()] || Object.entries(cachedForecasts).find(([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase())?.[1];
+        }
+
+        if (cf) {
+            f7Qty = Number(cf.forecast7Day?.quantity ?? cf.forecast7Day ?? 0);
+            f1mQty = Number(cf.forecast1Month?.quantity ?? cf.forecast1Month ?? Number((f7Qty * 4.15).toFixed(1)));
+            const curStock = m.currentStock;
+            const diff = Number(cf.decision_support?.difference ?? (curStock - f7Qty));
+            decisionStatus = cf.decision_support?.decision_status || cf.decision_support?.status;
+            if (!decisionStatus) {
+                if (diff < 0) decisionStatus = "Potential Shortage";
+                else if (curStock <= m.minThreshold) decisionStatus = "Needs Attention";
+                else if (diff <= m.minThreshold) decisionStatus = "Monitor";
+                else decisionStatus = "Sufficient";
+            }
+            interpretation = cf.decision_support?.interpretation || "";
         } else {
-            // Baseline demand projection from live disbursements
+            // Baseline dynamic demand projection matching forecasting.js momentum velocity
             const avgWeekly = recentUsage > 0 ? recentUsage : Math.max(m.minThreshold * 0.5, 10);
             f7Qty = Number(avgWeekly.toFixed(1));
-            f1mQty = Number((avgWeekly * 4).toFixed(1));
+            f1mQty = Number((avgWeekly * 4.15).toFixed(1));
 
             const diff = m.currentStock - f7Qty;
             if (diff < 0) decisionStatus = "Potential Shortage";
@@ -541,6 +611,18 @@ function loadAuthoritativeForecasts() {
         // Additional Need
         const additionalNeed7 = Math.max(0, Number((f7Qty - m.currentStock).toFixed(1)));
         const additionalNeed1m = Math.max(0, Number((f1mQty - m.currentStock).toFixed(1)));
+
+        if (!interpretation) {
+            if (additionalNeed7 > 0) {
+                interpretation = `Projected 7-day requirement (${f7Qty.toFixed(1)} ${m.unit}) exceeds current stock. Deficit of ${additionalNeed7.toFixed(1)} ${m.unit}. Reorder recommended.`;
+            } else if (decisionStatus === "Needs Attention" || m.currentStock <= m.minThreshold) {
+                interpretation = `Current stock near minimum threshold (${m.minThreshold} ${m.unit}). Monitor disbursements closely.`;
+            } else if (decisionStatus === "Monitor") {
+                interpretation = `Stock adequate for 7-day projection. Standard monitoring recommended.`;
+            } else {
+                interpretation = `Optimal inventory cushion. Projected demand fully satisfied by existing stock.`;
+            }
+        }
 
         const item = {
             id: m.id,
@@ -555,15 +637,50 @@ function loadAuthoritativeForecasts() {
             forecast1Month: f1mQty,
             additionalNeed7,
             additionalNeed1m,
-            status: decisionStatus
+            status: decisionStatus,
+            interpretation
         };
 
         state.forecastMap.set(m.name, item);
+
+        // Keep baseline cache entry
+        generatedCacheObj[m.name] = {
+            status: "success",
+            material_id: m.itemCode,
+            raw_material_name: m.name,
+            unit: m.unit,
+            forecast7Day: { quantity: f7Qty, unit: m.unit },
+            forecast1Month: { quantity: f1mQty, unit: m.unit },
+            current_inventory: {
+                current_stock: m.currentStock,
+                minimum_threshold: m.minThreshold
+            },
+            decision_support: {
+                difference: m.currentStock - f7Qty,
+                decision_status: decisionStatus,
+                status: decisionStatus,
+                interpretation
+            }
+        };
     });
 
     state.forecastList = Array.from(state.forecastMap.values());
     if (!state.lastForecastTimestamp) state.lastForecastTimestamp = new Date();
     state.forecastStatusText = "Forecast Ready";
+
+    // If cache was empty, prime it so all tabs & user view see unified authoritative figures
+    if (!cachedForecasts && state.forecastList.length > 0) {
+        try {
+            localStorage.setItem("rmims_forecast_cache", JSON.stringify(generatedCacheObj));
+            localStorage.setItem("rmims_forecast_timestamp", state.lastForecastTimestamp.toISOString());
+            localStorage.setItem("rmims_latest_forecast", JSON.stringify({
+                generatedAt: state.lastForecastTimestamp.toISOString(),
+                generatedDate: state.lastForecastTimestamp.toISOString().slice(0, 10),
+                materialsCount: state.forecastList.length,
+                attentionCount: state.forecastList.filter(f => f.additionalNeed7 > 0 || f.status !== "Sufficient").length
+            }));
+        } catch (e) {}
+    }
 
     // Populate unit dropdown in forecasting tab
     populateForecastUnitFilter();
@@ -1023,6 +1140,18 @@ function renderInventoryRecordsTab() {
         return true;
     });
 
+    if (state.invSort === "oldest") {
+        filtered = [...filtered].reverse();
+    } else if (state.invSort === "az") {
+        filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (state.invSort === "za") {
+        filtered.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+    } else if (state.invSort === "high_stock") {
+        filtered.sort((a, b) => (b.currentStock || 0) - (a.currentStock || 0));
+    } else if (state.invSort === "low_stock") {
+        filtered.sort((a, b) => (a.currentStock || 0) - (b.currentStock || 0));
+    }
+
     const totalPages = Math.max(1, Math.ceil(filtered.length / state.invPageSize));
     if (state.invPage > totalPages) state.invPage = totalPages;
 
@@ -1076,6 +1205,18 @@ function renderMaterialReceivingTab() {
         filtered = filtered.filter(r => r.materialName.toLowerCase().includes(term) || r.supplierName.toLowerCase().includes(term) || r.receivedBy.toLowerCase().includes(term));
     }
 
+    if (state.rcvSort === "oldest") {
+        filtered.sort((a, b) => (a.receiptDate || "").localeCompare(b.receiptDate || ""));
+    } else if (state.rcvSort === "az") {
+        filtered.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
+    } else if (state.rcvSort === "za") {
+        filtered.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
+    } else if (state.rcvSort === "highest") {
+        filtered.sort((a, b) => (b.receivedQuantity || 0) - (a.receivedQuantity || 0));
+    } else {
+        filtered.sort((a, b) => (b.receiptDate || "").localeCompare(a.receiptDate || ""));
+    }
+
     if (countNote) countNote.textContent = `${filtered.length} receipt${filtered.length === 1 ? "" : "s"} recorded`;
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / state.rcvPageSize));
@@ -1126,6 +1267,18 @@ function renderMaterialDisbursementTab() {
 
     if (term) {
         filtered = filtered.filter(d => d.materialName.toLowerCase().includes(term) || d.finishedProduct.toLowerCase().includes(term) || d.activityType.toLowerCase().includes(term));
+    }
+
+    if (state.disbSort === "oldest") {
+        filtered.sort((a, b) => (a.usageDate || "").localeCompare(b.usageDate || ""));
+    } else if (state.disbSort === "az") {
+        filtered.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
+    } else if (state.disbSort === "za") {
+        filtered.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
+    } else if (state.disbSort === "highest") {
+        filtered.sort((a, b) => (b.disbursedQuantity || 0) - (a.disbursedQuantity || 0));
+    } else {
+        filtered.sort((a, b) => (b.usageDate || "").localeCompare(a.usageDate || ""));
     }
 
     if (countNote) countNote.textContent = `${filtered.length} disbursement${filtered.length === 1 ? "" : "s"} recorded`;
@@ -1201,7 +1354,15 @@ function renderMaterialActivityTab() {
         });
     });
 
-    activities.sort((a, b) => b.date.localeCompare(a.date));
+    if (state.actSort === "oldest") {
+        activities.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    } else if (state.actSort === "az") {
+        activities.sort((a, b) => (a.material || "").localeCompare(b.material || ""));
+    } else if (state.actSort === "za") {
+        activities.sort((a, b) => (b.material || "").localeCompare(a.material || ""));
+    } else {
+        activities.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    }
 
     const term = state.actSearch.trim().toLowerCase();
     const typeFilter = state.actType;
@@ -1304,6 +1465,18 @@ function renderConsumptionAnalysisTab() {
         list = list.filter(l => l.material.toLowerCase().includes(term));
     }
 
+    if (state.cnsSort === "oldest") {
+        list = [...list].reverse();
+    } else if (state.cnsSort === "az") {
+        list.sort((a, b) => (a.material || "").localeCompare(b.material || ""));
+    } else if (state.cnsSort === "za") {
+        list.sort((a, b) => (b.material || "").localeCompare(a.material || ""));
+    } else if (state.cnsSort === "high_consumed") {
+        list.sort((a, b) => (b.currentUsage || 0) - (a.currentUsage || 0));
+    } else if (state.cnsSort === "low_consumed") {
+        list.sort((a, b) => (a.currentUsage || 0) - (b.currentUsage || 0));
+    }
+
     const totalPages = Math.max(1, Math.ceil(list.length / state.cnsPageSize));
     if (state.cnsPage > totalPages) state.cnsPage = totalPages;
 
@@ -1347,43 +1520,141 @@ function renderConsumptionAnalysisTab() {
    ========================================================== */
 
 function renderAiForecastingTab() {
+    const isMonthly = state.fcHorizon === "1month";
+
     // 1. Forecast Status & Horizon KPI Cards
     const statusEl = document.getElementById("fcReportStatus");
     const matCountEl = document.getElementById("fcReportMatCount");
     const horizonEl = document.getElementById("fcReportHorizon");
     const lastTimeEl = document.getElementById("fcReportLastTime");
 
-    if (statusEl) statusEl.textContent = "In Development";
-    if (matCountEl) matCountEl.textContent = state.materials.length.toString();
-    if (horizonEl) horizonEl.textContent = "Horizon: Staged (Next 7 Days)";
+    const shortageCount = state.forecastList.filter(item => {
+        const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+        return addNeed > 0 || item.status === "Potential Shortage";
+    }).length;
+
+    const attentionCount = state.forecastList.filter(item => {
+        const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+        return addNeed === 0 && (item.status === "Needs Attention" || item.status === "Low Stock Attention" || item.currentStock <= item.minThreshold);
+    }).length;
+
+    if (statusEl) {
+        if (shortageCount > 0) {
+            statusEl.textContent = `${shortageCount} Shortage Risk${shortageCount > 1 ? "s" : ""}`;
+            statusEl.className = "rpt-kpi-val text-red";
+        } else if (attentionCount > 0) {
+            statusEl.textContent = `${attentionCount} Attention Needed`;
+            statusEl.className = "rpt-kpi-val text-orange";
+        } else {
+            statusEl.textContent = "Forecast Ready";
+            statusEl.className = "rpt-kpi-val text-green";
+        }
+    }
+
+    if (matCountEl) matCountEl.textContent = `${state.materials.length} Materials`;
+    if (horizonEl) {
+        horizonEl.textContent = isMonthly ? "Horizon: 30-Day Projections" : "Horizon: 7-Day Operational";
+    }
 
     if (lastTimeEl) {
-        lastTimeEl.textContent = "Status: Awaiting ML Integration";
+        if (state.lastForecastTimestamp) {
+            const dt = new Date(state.lastForecastTimestamp);
+            lastTimeEl.textContent = `Synced: ${dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ${dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+        } else {
+            lastTimeEl.textContent = "Status: Live AI Projections";
+        }
     }
 
-    // 2. Unit-Safe Requirement Summary Placeholder
+    // 2. Unit-Safe Requirement Summary Pills
     const pillsContainer = document.getElementById("fcReportReqPills");
     if (pillsContainer) {
-        pillsContainer.innerHTML = `<span class="fc-unit-pill" style="background:#f1f5f9; color:#64748b; font-weight:500;">— Awaiting Model Run —</span>`;
+        const unitMap = new Map();
+        state.forecastList.forEach(item => {
+            const req = isMonthly ? item.forecast1Month : item.forecast7Day;
+            const u = item.unit || "units";
+            unitMap.set(u, (unitMap.get(u) || 0) + req);
+        });
+
+        if (unitMap.size === 0) {
+            pillsContainer.innerHTML = `<span class="fc-unit-pill">0 Projected</span>`;
+        } else {
+            pillsContainer.innerHTML = Array.from(unitMap.entries()).map(([unit, total]) => `
+                <span class="fc-unit-pill">
+                    <strong>${total.toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong>&nbsp;${escapeHtml(unit)}
+                </span>
+            `).join("");
+        }
     }
 
-    // 3. AI Forecast Decision Support Findings Placeholder
+    // 3. AI Forecast Decision Support Findings
     const decisionListEl = document.getElementById("fcReportDecisionList");
     if (decisionListEl) {
-        decisionListEl.innerHTML = `
-            <div class="rpt-fc-decision-card">
-                <div class="rpt-fc-decision-title">
-                    <span>AI Forecasting Module In Progress</span>
-                    <span class="rpt-badge rpt-badge-monitor">Staging</span>
+        const criticalItems = state.forecastList.filter(item => {
+            const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+            return addNeed > 0 || item.status === "Potential Shortage";
+        });
+        const attentionItems = state.forecastList.filter(item => {
+            const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+            return addNeed === 0 && (item.status === "Needs Attention" || item.status === "Low Stock Attention" || item.currentStock <= item.minThreshold);
+        });
+
+        let cardsHtml = "";
+
+        if (criticalItems.length > 0) {
+            criticalItems.slice(0, 3).forEach(item => {
+                const req = isMonthly ? item.forecast1Month : item.forecast7Day;
+                const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+                cardsHtml += `
+                    <div class="rpt-fc-decision-card warning">
+                        <div class="rpt-fc-decision-title">
+                            <span style="color:#b91c1c;">${escapeHtml(item.name)} — Potential Deficit</span>
+                            <span class="rpt-badge rpt-badge-shortage">Deficit Warning</span>
+                        </div>
+                        <div class="rpt-fc-decision-body">
+                            Projected ${isMonthly ? "30-day" : "7-day"} requirement is <strong>${req.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong> vs current stock of <strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong>. Additional <strong>+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong> required to satisfy operations.
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        if (attentionItems.length > 0 && criticalItems.length < 3) {
+            attentionItems.slice(0, 3 - criticalItems.length).forEach(item => {
+                cardsHtml += `
+                    <div class="rpt-fc-decision-card attention">
+                        <div class="rpt-fc-decision-title">
+                            <span style="color:#c2410c;">${escapeHtml(item.name)} — Threshold Alert</span>
+                            <span class="rpt-badge rpt-badge-attention">Needs Attention</span>
+                        </div>
+                        <div class="rpt-fc-decision-body">
+                            Current stock (<strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong>) is within minimum safety threshold (<strong>${item.minThreshold} ${escapeHtml(item.unit)}</strong>). Place replenishment order with supplier to avoid kitchen stockout.
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        if (!cardsHtml) {
+            cardsHtml = `
+                <div class="rpt-fc-decision-card">
+                    <div class="rpt-fc-decision-title">
+                        <span style="color:#15803d;">All Raw Materials Within Safe Operational Buffers</span>
+                        <span class="rpt-badge rpt-badge-good">Sufficient Stock</span>
+                    </div>
+                    <div class="rpt-fc-decision-body">
+                        Current inventory cushions across all registered materials fully satisfy projected ${isMonthly ? "30-day" : "7-day"} operational demand. No immediate shortage risks detected.
+                    </div>
                 </div>
-                <div class="rpt-fc-decision-body">Statistical time-series demand predictions and shortage warnings will automatically populate this section once the forecasting module is developed.</div>
-            </div>
-        `;
+            `;
+        }
+
+        decisionListEl.innerHTML = cardsHtml;
     }
 
     // 4. Filter & Search Table Rows
     const term = state.fcSearch.trim().toLowerCase();
     const unitFilter = state.fcUnit;
+    const statusFilter = state.fcStatus;
 
     let filtered = state.forecastList.filter(item => {
         if (term) {
@@ -1393,6 +1664,13 @@ function renderAiForecastingTab() {
             if (!matchName && !matchCode && !matchProduct) return false;
         }
         if (unitFilter !== "all" && item.unit !== unitFilter) return false;
+
+        const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+        if (statusFilter === "Sufficient" && (addNeed > 0 || item.status === "Potential Shortage" || item.status === "Needs Attention" || item.status === "Low Stock Attention")) return false;
+        if (statusFilter === "Monitor" && item.status !== "Monitor") return false;
+        if (statusFilter === "Needs Attention" && item.status !== "Needs Attention" && item.status !== "Low Stock Attention" && item.currentStock > item.minThreshold) return false;
+        if (statusFilter === "Potential Shortage" && addNeed === 0 && item.status !== "Potential Shortage") return false;
+
         return true;
     });
 
@@ -1412,17 +1690,31 @@ function renderAiForecastingTab() {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No materials match the forecast search criteria.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(item => {
+            const req = isMonthly ? item.forecast1Month : item.forecast7Day;
+            const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
+
+            let badge = "";
+            if (item.status === "Potential Shortage" || addNeed > 0) {
+                badge = `<span class="rpt-badge rpt-badge-shortage"><span class="rpt-status-dot" style="background:#dc2626;"></span>Potential Shortage</span>`;
+            } else if (item.status === "Needs Attention" || item.status === "Low Stock Attention" || item.currentStock <= item.minThreshold) {
+                badge = `<span class="rpt-badge rpt-badge-attention"><span class="rpt-status-dot" style="background:#ea580c;"></span>Needs Attention</span>`;
+            } else if (item.status === "Monitor") {
+                badge = `<span class="rpt-badge rpt-badge-monitor"><span class="rpt-status-dot" style="background:#2563eb;"></span>Monitor</span>`;
+            } else {
+                badge = `<span class="rpt-badge rpt-badge-good"><span class="rpt-status-dot" style="background:#16a34a;"></span>Sufficient</span>`;
+            }
+
             return `
                 <tr>
                     <td><strong>${escapeHtml(item.name)}</strong></td>
-                    <td><span style="font-size:0.75rem; color:var(--rpt-text-mid);">${escapeHtml(item.itemCode)}</span></td>
+                    <td><span style="font-size:0.75rem; color:var(--rpt-text-mid); font-family:monospace;">${escapeHtml(item.itemCode)}</span></td>
                     <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span></td>
-                    <td><strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong></td>
+                    <td><strong>${item.currentStock.toLocaleString()}</strong> <small style="color:var(--rpt-text-dim);">${escapeHtml(item.unit)}</small></td>
                     <td>${escapeHtml(item.unit)}</td>
-                    <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : "—"}</td>
-                    <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
-                    <td><span style="color:var(--rpt-text-dim); font-weight:600;">—</span></td>
-                    <td><span class="rpt-badge rpt-badge-monitor">—</span></td>
+                    <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : `0 ${escapeHtml(item.unit)}`}</td>
+                    <td><strong style="color:var(--rpt-blue-dark, #1e40af); font-weight:700;">${req.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong></td>
+                    <td><strong style="color:${addNeed > 0 ? '#DC2626' : 'var(--rpt-text-mid)'}; font-weight:700;">${addNeed > 0 ? `+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : `0 ${escapeHtml(item.unit)}`}</strong></td>
+                    <td>${badge}</td>
                 </tr>
             `;
         }).join("");
@@ -1903,6 +2195,10 @@ const RM_INK = [15, 23, 42];
 const RM_DIM = [100, 116, 139];
 
 function generateContinuousPdf(selectedSections = ["manager", "inventory", "receiving", "disbursement", "activity", "consumption", "forecasting"]) {
+    if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
+        showToast("PDF generation library is still loading. Please wait a moment and try again.", "error");
+        return null;
+    }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -2542,20 +2838,30 @@ function initEventListeners() {
     if (invSearch) invSearch.addEventListener("input", (e) => { state.invSearch = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); });
     const invStatus = document.getElementById("invStatusFilter");
     if (invStatus) invStatus.addEventListener("change", (e) => { state.invStatus = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); });
+    const invSort = document.getElementById("invSortFilter");
+    if (invSort) invSort.addEventListener("change", (e) => { state.invSort = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); });
 
     const rcvSearch = document.getElementById("rcvSearchInput");
     if (rcvSearch) rcvSearch.addEventListener("input", (e) => { state.rcvSearch = e.target.value; state.rcvPage = 1; renderMaterialReceivingTab(); });
+    const rcvSort = document.getElementById("rcvSortFilter");
+    if (rcvSort) rcvSort.addEventListener("change", (e) => { state.rcvSort = e.target.value; state.rcvPage = 1; renderMaterialReceivingTab(); });
 
     const disbSearch = document.getElementById("disbSearchInput");
     if (disbSearch) disbSearch.addEventListener("input", (e) => { state.disbSearch = e.target.value; state.disbPage = 1; renderMaterialDisbursementTab(); });
+    const disbSort = document.getElementById("disbSortFilter");
+    if (disbSort) disbSort.addEventListener("change", (e) => { state.disbSort = e.target.value; state.disbPage = 1; renderMaterialDisbursementTab(); });
 
     const actSearch = document.getElementById("actSearchInput");
     if (actSearch) actSearch.addEventListener("input", (e) => { state.actSearch = e.target.value; state.actPage = 1; renderMaterialActivityTab(); });
     const actType = document.getElementById("actTypeFilter");
     if (actType) actType.addEventListener("change", (e) => { state.actType = e.target.value; state.actPage = 1; renderMaterialActivityTab(); });
+    const actSort = document.getElementById("actSortFilter");
+    if (actSort) actSort.addEventListener("change", (e) => { state.actSort = e.target.value; state.actPage = 1; renderMaterialActivityTab(); });
 
     const cnsSearch = document.getElementById("cnsSearchInput");
     if (cnsSearch) cnsSearch.addEventListener("input", (e) => { state.cnsSearch = e.target.value; state.cnsPage = 1; renderConsumptionAnalysisTab(); });
+    const cnsSort = document.getElementById("cnsSortFilter");
+    if (cnsSort) cnsSort.addEventListener("change", (e) => { state.cnsSort = e.target.value; state.cnsPage = 1; renderConsumptionAnalysisTab(); });
 
     // AI Forecasting Filters & Search
     const fcSearch = document.getElementById("fcSearchInput");
@@ -2566,6 +2872,20 @@ function initEventListeners() {
     if (fcUnit) fcUnit.addEventListener("change", (e) => { state.fcUnit = e.target.value; state.fcPage = 1; renderAiForecastingTab(); });
     const fcHorizon = document.getElementById("fcHorizonFilter");
     if (fcHorizon) fcHorizon.addEventListener("change", (e) => { state.fcHorizon = e.target.value; state.fcPage = 1; renderAiForecastingTab(); });
+
+    // Live Cross-Module Sync with Admin Forecasting module
+    window.addEventListener("storage", (e) => {
+        if (e.key === "rmims_forecast_cache" || e.key === "rmims_latest_forecast" || e.key === "rmims_forecast_timestamp") {
+            loadAuthoritativeForecasts();
+            renderAiForecastingTab();
+            updatePrintDocHtml();
+        }
+    });
+    window.addEventListener("rmims:forecast-updated", () => {
+        loadAuthoritativeForecasts();
+        renderAiForecastingTab();
+        updatePrintDocHtml();
+    });
 
     // 4. Print Action -> Single debounced print trigger
     const printBtn = document.getElementById("btnPrint");
@@ -2682,6 +3002,7 @@ function initEventListeners() {
             try {
                 if (format === "pdf") {
                     const doc = generateContinuousPdf(selectedKeys);
+                    if (!doc) return;
                     const pdfBlob = doc.output("blob");
                     const res = await saveExportBlob({ blob: pdfBlob, fileName: rawName, defaultExtension: "pdf" });
                     if (res.mode === "custom-directory") {
@@ -2699,6 +3020,7 @@ function initEventListeners() {
                     }
                 } else if (format === "both") {
                     const doc = generateContinuousPdf(selectedKeys);
+                    if (!doc) return;
                     const pdfBlob = doc.output("blob");
                     const excelBlob = generateMultiSheetExcelBlob(selectedKeys);
                     
@@ -2767,3 +3089,28 @@ function formatContextDisplay(val, fallback = "General Production") {
 window.addEventListener("beforeprint", updatePrintDocHtml);
 
 window.__rmimsPrintReport = handlePrintReport;
+
+// Storage sync across tabs and windows (debounced to prevent UI lag)
+let _rptStorageDebounce = null;
+window.addEventListener("storage", (e) => {
+    if (!e.key || e.key.startsWith("rmims_") || e.key.includes("inventory") || e.key.includes("material") || e.key.includes("receipt") || e.key.includes("disburse")) {
+        clearTimeout(_rptStorageDebounce);
+        _rptStorageDebounce = setTimeout(() => loadAuthoritativeData(), 150);
+    }
+});
+
+// Supabase Realtime Channel Subscription for live cross-user reports updates (Admin)
+if (supabase && typeof supabase.channel === "function" && !window.__rmimsAdminReportsChannel) {
+    window.__rmimsAdminReportsChannel = supabase
+        .channel("rmims_admin_reports_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
+            loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
+            loadData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
+            loadData();
+        })
+        .subscribe();
+}

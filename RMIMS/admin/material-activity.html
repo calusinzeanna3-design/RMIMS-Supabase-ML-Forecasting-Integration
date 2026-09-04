@@ -113,6 +113,23 @@
                     <!-- Injected dynamically via material-activity-admin.js -->
                 </div>
 
+                <!-- PRODUCT OVERVIEW PAGINATION -->
+                <div class="inv-pagination-bar" id="productPaginationBar" style="margin-top: 18px;">
+                    <div class="inv-pagination-info">
+                        <span id="productResultCount">Showing 0 of 0 finished products</span>
+                        <div class="page-size-selector">
+                            <label for="productPageSize">Cards per page:</label>
+                            <select id="productPageSize" class="inv-select-sm">
+                                <option value="6">6</option>
+                                <option value="9" selected>9</option>
+                                <option value="12">12</option>
+                                <option value="24">24</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="inv-pagination-controls" id="productPaginationBtns"></div>
+                </div>
+
             </div>
 
             <!-- VIEW 2: MATERIAL OVERVIEW VIEW -->
@@ -154,6 +171,22 @@
                             <!-- Injected dynamically via material-activity-admin.js -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- MATERIAL OVERVIEW PAGINATION -->
+                <div class="inv-pagination-bar" id="materialPaginationBar" style="margin-top: 14px;">
+                    <div class="inv-pagination-info">
+                        <span id="materialResultCount">Showing 0 of 0 materials</span>
+                        <div class="page-size-selector">
+                            <label for="materialPageSize">Rows per page:</label>
+                            <select id="materialPageSize" class="inv-select-sm">
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="inv-pagination-controls" id="materialPaginationBtns"></div>
                 </div>
 
             </div>
@@ -260,7 +293,7 @@
 
 <!-- RECORD STOCK RECEIPT MODAL -->
 <div class="modal-overlay" id="maReceiveModalOverlay">
-    <div class="modal-sheet modal-sheet-sm" role="dialog" aria-modal="true">
+    <div class="modal-sheet" role="dialog" aria-modal="true" style="max-width: 680px; width: 95%;">
 
         <div class="modal-sticky-header">
             <div class="modal-header-info">
@@ -268,8 +301,8 @@
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V15M12 15L8 11M12 15L16 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </span>
                 <div>
-                    <h4>Record Stock Receipt</h4>
-                    <span class="modal-time">Record raw material inflow</span>
+                    <h4 id="maReceiveModalTitle">Record Stock Receipt</h4>
+                    <span class="modal-time" id="maReceiveModalSubtitle">Record raw material inflow</span>
                 </div>
             </div>
             <button class="modal-close" id="maReceiveModalClose" aria-label="Close">
@@ -279,41 +312,93 @@
 
         <div class="modal-body">
             <form id="maReceiveForm" onsubmit="return false;">
-                <div class="form-grid">
-                    <div class="input-group span-2">
-                        <label for="maReceiveMaterialSelect">Raw Material <span class="required-star">*</span></label>
-                        <!-- Dedicated display when material is obvious / preselected -->
-                        <div id="maReceiveMaterialDisplayWrap" class="ma-preselected-material-box" style="display: none;">
-                            <div class="ma-preselected-info">
-                                <span class="mat-avatar" id="maReceiveMatAvatar">RM</span>
-                                <div>
-                                    <strong id="maReceiveMatNameDisplay" style="font-size: 0.95rem; color: var(--rm-ink);">Raw Material Name</strong>
-                                    <div style="font-size: 0.78rem; color: var(--rm-ink-dim); margin-top: 2px;">
-                                        ID: <span class="mat-id-badge" id="maReceiveMatCodeDisplay">RM001</span> • Current Stock: <strong id="maReceiveMatStockDisplay" style="color: var(--rm-primary);">0 kg</strong>
+                
+                <!-- 1. PACKAGE RECEIPT VIEW (When clicked from Finished Product Card) -->
+                <div id="maReceivePackageWrap" style="display: none;">
+                    <div class="ma-pkg-header-box pkg-emerald" id="maReceivePackageHeaderBox">
+                        <div class="ma-pkg-avatar" id="maReceivePackageAvatar">FP</div>
+                        <div style="flex: 1;">
+                            <h3 class="ma-pkg-title" id="maReceivePackageTitle">Finished Product Name</h3>
+                            <p class="ma-pkg-subtitle" id="maReceivePackageSubtitle">Package of Bundled Raw Materials • Automatic recipe replenishment</p>
+                        </div>
+                    </div>
+
+                    <div class="ma-pkg-stepper-container">
+                        <div>
+                            <div class="ma-pkg-stepper-label">Number of Packages / Batches to Receive</div>
+                            <div class="ma-pkg-stepper-desc">Multiplies the minimum stock allocation for all bundled ingredients below</div>
+                        </div>
+                        <div class="ma-stepper-wrap" style="width: 140px; height: 38px;">
+                            <button type="button" class="ma-stepper-btn" id="maReceivePackageMinusBtn" title="Decrease package count">−</button>
+                            <input type="number" id="maReceivePackageCountInput" min="1" step="1" value="1" required class="ma-stepper-input" style="font-weight: 800;">
+                            <button type="button" class="ma-stepper-btn" id="maReceivePackagePlusBtn" title="Increase package count">+</button>
+                        </div>
+                    </div>
+
+                    <div class="ma-pkg-table-wrap">
+                        <table class="ma-pkg-table">
+                            <thead>
+                                <tr>
+                                    <th>Raw Material</th>
+                                    <th>Code</th>
+                                    <th>Current Stock</th>
+                                    <th>Min Stock</th>
+                                    <th>To Add</th>
+                                    <th>Projected</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maReceivePackageTableBody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. SINGLE MATERIAL RECEIPT VIEW (When clicked from Material Overview Table) -->
+                <div id="maReceiveSingleWrap">
+                    <div class="form-grid">
+                        <div class="input-group span-2">
+                            <label for="maReceiveMaterialSelect">Raw Material <span class="required-star">*</span></label>
+                            <div id="maReceiveMaterialDisplayWrap" class="ma-preselected-material-box" style="display: none;">
+                                <div class="ma-preselected-info">
+                                    <span class="mat-avatar" id="maReceiveMatAvatar">RM</span>
+                                    <div>
+                                        <strong id="maReceiveMatNameDisplay" style="font-size: 0.95rem; color: var(--rm-ink);">Raw Material Name</strong>
+                                        <div style="font-size: 0.78rem; color: var(--rm-ink-dim); margin-top: 2px;">
+                                            ID: <span class="mat-id-badge" id="maReceiveMatCodeDisplay">RM001</span> • Current Stock: <strong id="maReceiveMatStockDisplay" style="color: var(--rm-primary);">0 kg</strong>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <select id="maReceiveMaterialSelect" required></select>
+                            <span class="field-error" id="maReceiveMaterialError"></span>
                         </div>
-                        <select id="maReceiveMaterialSelect" required></select>
-                        <span class="field-error" id="maReceiveMaterialError"></span>
-                    </div>
 
-                    <div class="input-group">
-                        <label for="maReceiveQuantityInput">Quantity Received <span class="required-star">*</span></label>
-                        <div class="ma-stepper-wrap">
-                            <button type="button" class="ma-stepper-btn" id="maReceiveMinusBtn" title="Decrease quantity">−</button>
-                            <input type="number" id="maReceiveQuantityInput" min="0.01" step="any" placeholder="0" required class="ma-stepper-input">
-                            <button type="button" class="ma-stepper-btn" id="maReceivePlusBtn" title="Increase quantity">+</button>
+                        <div class="input-group">
+                            <label for="maReceiveQuantityInput">Quantity Received <span class="required-star">*</span></label>
+                            <div class="ma-stepper-wrap">
+                                <button type="button" class="ma-stepper-btn" id="maReceiveMinusBtn" title="Decrease quantity">−</button>
+                                <input type="number" id="maReceiveQuantityInput" min="0.01" step="any" placeholder="0" required class="ma-stepper-input">
+                                <button type="button" class="ma-stepper-btn" id="maReceivePlusBtn" title="Increase quantity">+</button>
+                            </div>
+                            <div id="maReceiveStockPreview" style="font-size: 0.76rem; color: #059669; margin-top: 4px; font-weight: 600;"></div>
+                            <span class="field-error" id="maReceiveQuantityError"></span>
                         </div>
-                        <div id="maReceiveStockPreview" style="font-size: 0.76rem; color: #059669; margin-top: 4px; font-weight: 600;"></div>
-                        <span class="field-error" id="maReceiveQuantityError"></span>
-                    </div>
 
-                    <div class="input-group">
-                        <label for="maReceiveUnitDisplay">Unit</label>
-                        <input type="text" id="maReceiveUnitDisplay" readonly style="background: var(--bg-app-2); font-weight: 600;">
-                    </div>
+                        <div class="input-group">
+                            <label for="maReceiveUnitDisplay">Unit</label>
+                            <input type="text" id="maReceiveUnitDisplay" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 600;">
+                        </div>
 
+                        <div class="input-group span-2" id="maReceiveContextRow">
+                            <label for="maReceiveProductContextInput">Finished Product / Context <span class="optional-tag">Optional</span></label>
+                            <input type="text" id="maReceiveProductContextInput" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 600;" placeholder="Unassigned / General Stock">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMMON FIELDS -->
+                <div class="form-grid" style="margin-top: 10px;">
                     <div class="input-group">
                         <label for="maReceiveDateInput">Receipt Date <span class="required-star">*</span></label>
                         <input type="date" id="maReceiveDateInput" required>
@@ -322,14 +407,10 @@
 
                     <div class="input-group">
                         <label for="maReceiveSupplierInput">Supplier Name <span class="optional-tag">Optional</span></label>
-                        <input type="text" id="maReceiveSupplierInput" placeholder="e.g. Standard Supplier">
-                    </div>
-
-                    <div class="input-group span-2">
-                        <label for="maReceiveProductContextInput">Finished Product / Context <span class="optional-tag">Optional</span></label>
-                        <select id="maReceiveProductContextInput"></select>
+                        <input type="text" id="maReceiveSupplierInput" placeholder="e.g. Inward Delivery">
                     </div>
                 </div>
+
             </form>
         </div>
 
@@ -343,7 +424,7 @@
 
 <!-- RECORD MATERIAL DISBURSEMENT MODAL -->
 <div class="modal-overlay" id="maDisburseModalOverlay">
-    <div class="modal-sheet modal-sheet-sm" role="dialog" aria-modal="true">
+    <div class="modal-sheet" role="dialog" aria-modal="true" style="max-width: 680px; width: 95%;">
 
         <div class="modal-sticky-header">
             <div class="modal-header-info">
@@ -351,8 +432,8 @@
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </span>
                 <div>
-                    <h4>Record Material Disbursement</h4>
-                    <span class="modal-time">Record raw material usage</span>
+                    <h4 id="maDisburseModalTitle">Record Material Disbursement</h4>
+                    <span class="modal-time" id="maDisburseModalSubtitle">Record raw material usage for finished goods</span>
                 </div>
             </div>
             <button class="modal-close" id="maDisburseModalClose" aria-label="Close">
@@ -362,47 +443,94 @@
 
         <div class="modal-body">
             <form id="maDisburseForm" onsubmit="return false;">
-                <div class="form-grid">
-                    <div class="input-group span-2">
-                        <label for="maDisburseMaterialSelect">Raw Material <span class="required-star">*</span></label>
-                        <!-- Dedicated display when material is obvious / preselected -->
-                        <div id="maDisburseMaterialDisplayWrap" class="ma-preselected-material-box" style="display: none;">
-                            <div class="ma-preselected-info">
-                                <span class="mat-avatar" id="maDisburseMatAvatar" style="background:#ffedd5; color:#c2410c;">RM</span>
-                                <div>
-                                    <strong id="maDisburseMatNameDisplay" style="font-size: 0.95rem; color: var(--rm-ink);">Raw Material Name</strong>
-                                    <div style="font-size: 0.78rem; color: var(--rm-ink-dim); margin-top: 2px;">
-                                        ID: <span class="mat-id-badge" id="maDisburseMatCodeDisplay">RM001</span> • Available Stock: <strong id="maDisburseMatStockDisplay" style="color: #ea580c;">0 kg</strong>
+
+                <!-- 1. PACKAGE DISBURSEMENT VIEW (When clicked from Finished Product Card) -->
+                <div id="maDisbursePackageWrap" style="display: none;">
+                    <div class="ma-pkg-header-box pkg-orange" id="maDisbursePackageHeaderBox">
+                        <div class="ma-pkg-avatar" id="maDisbursePackageAvatar">FP</div>
+                        <div style="flex: 1;">
+                            <h3 class="ma-pkg-title" id="maDisbursePackageTitle">Finished Product Name</h3>
+                            <p class="ma-pkg-subtitle" id="maDisbursePackageSubtitle">Package of Bundled Raw Materials • Production batch deduction</p>
+                        </div>
+                    </div>
+
+                    <div class="ma-pkg-stepper-container">
+                        <div>
+                            <div class="ma-pkg-stepper-label">Number of Packages / Batches to Disburse</div>
+                            <div class="ma-pkg-stepper-desc">Deducts all recipe ingredients required for this production batch</div>
+                        </div>
+                        <div class="ma-stepper-wrap" style="width: 140px; height: 38px;">
+                            <button type="button" class="ma-stepper-btn" id="maDisbursePackageMinusBtn" title="Decrease package count">−</button>
+                            <input type="number" id="maDisbursePackageCountInput" min="1" step="1" value="1" required class="ma-stepper-input" style="font-weight: 800;">
+                            <button type="button" class="ma-stepper-btn" id="maDisbursePackagePlusBtn" title="Increase package count">+</button>
+                        </div>
+                    </div>
+
+                    <div class="ma-pkg-table-wrap">
+                        <table class="ma-pkg-table">
+                            <thead>
+                                <tr>
+                                    <th>Raw Material</th>
+                                    <th>Code</th>
+                                    <th>Available Stock</th>
+                                    <th>Min Stock</th>
+                                    <th>To Deduct</th>
+                                    <th>Remaining</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maDisbursePackageTableBody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. SINGLE MATERIAL DISBURSEMENT VIEW (When clicked from Material Overview Table) -->
+                <div id="maDisburseSingleWrap">
+                    <div class="form-grid">
+                        <div class="input-group span-2">
+                            <label for="maDisburseMaterialSelect">Raw Material <span class="required-star">*</span></label>
+                            <div id="maDisburseMaterialDisplayWrap" class="ma-preselected-material-box" style="display: none;">
+                                <div class="ma-preselected-info">
+                                    <span class="mat-avatar" id="maDisburseMatAvatar" style="background:#ffedd5; color:#c2410c;">RM</span>
+                                    <div>
+                                        <strong id="maDisburseMatNameDisplay" style="font-size: 0.95rem; color: var(--rm-ink);">Raw Material Name</strong>
+                                        <div style="font-size: 0.78rem; color: var(--rm-ink-dim); margin-top: 2px;">
+                                            ID: <span class="mat-id-badge" id="maDisburseMatCodeDisplay">RM001</span> • Available Stock: <strong id="maDisburseMatStockDisplay" style="color: #ea580c;">0 kg</strong>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <select id="maDisburseMaterialSelect" required></select>
+                            <span class="field-error" id="maDisburseMaterialError"></span>
                         </div>
-                        <select id="maDisburseMaterialSelect" required></select>
-                        <span class="field-error" id="maDisburseMaterialError"></span>
-                    </div>
 
-                    <div class="input-group">
-                        <label for="maDisburseQuantityInput">Quantity Disbursed <span class="required-star">*</span></label>
-                        <div class="ma-stepper-wrap">
-                            <button type="button" class="ma-stepper-btn" id="maDisburseMinusBtn" title="Decrease quantity">−</button>
-                            <input type="number" id="maDisburseQuantityInput" min="0.01" step="any" placeholder="0" required class="ma-stepper-input">
-                            <button type="button" class="ma-stepper-btn" id="maDisbursePlusBtn" title="Increase quantity">+</button>
+                        <div class="input-group">
+                            <label for="maDisburseQuantityInput">Quantity Disbursed <span class="required-star">*</span></label>
+                            <div class="ma-stepper-wrap">
+                                <button type="button" class="ma-stepper-btn" id="maDisburseMinusBtn" title="Decrease quantity">−</button>
+                                <input type="number" id="maDisburseQuantityInput" min="0.01" step="any" placeholder="0" required class="ma-stepper-input">
+                                <button type="button" class="ma-stepper-btn" id="maDisbursePlusBtn" title="Increase quantity">+</button>
+                            </div>
+                            <div id="maDisburseStockPreview" style="font-size: 0.76rem; color: #ea580c; margin-top: 4px; font-weight: 600;"></div>
+                            <span class="field-error" id="maDisburseQuantityError"></span>
                         </div>
-                        <div id="maDisburseStockPreview" style="font-size: 0.76rem; color: #ea580c; margin-top: 4px; font-weight: 600;"></div>
-                        <span class="field-error" id="maDisburseQuantityError"></span>
-                    </div>
 
-                    <div class="input-group">
-                        <label for="maDisburseUnitDisplay">Unit</label>
-                        <input type="text" id="maDisburseUnitDisplay" readonly style="background: var(--bg-app-2); font-weight: 600;">
-                    </div>
+                        <div class="input-group">
+                            <label for="maDisburseUnitDisplay">Unit</label>
+                            <input type="text" id="maDisburseUnitDisplay" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 600;">
+                        </div>
 
-                    <div class="input-group span-2">
-                        <label for="maDisburseProductSelect">Finished Product / Context <span class="required-star">*</span></label>
-                        <select id="maDisburseProductSelect" required></select>
-                        <span class="field-error" id="maDisburseProductError"></span>
+                        <div class="input-group span-2">
+                            <label for="maDisburseProductSelect">Finished Product / Context <span class="required-star">*</span></label>
+                            <input type="text" id="maDisburseProductSelect" readonly style="background: var(--bg-app-2, #F8FAFC); font-weight: 600;" placeholder="General Usage">
+                            <span class="field-error" id="maDisburseProductError"></span>
+                        </div>
                     </div>
+                </div>
 
+                <!-- COMMON FIELDS -->
+                <div class="form-grid" style="margin-top: 10px;">
                     <div class="input-group span-2">
                         <label for="maDisburseDateInput">Disbursement Date <span class="required-star">*</span></label>
                         <input type="date" id="maDisburseDateInput" required>
@@ -419,6 +547,7 @@
                         </div>
                     </div>
                 </div>
+
             </form>
         </div>
 
@@ -522,13 +651,14 @@
             </div>
 
             <div class="ma-breakdown-section-header">
-                <h5>Disbursement by Finished Product</h5>
+                <h5 id="matBreakdownSectionTitle">Product & Activity Movement Breakdown</h5>
             </div>
             <div class="table-scroll inv-table-scroll">
                 <table class="inv-main-table">
                     <thead>
                         <tr>
-                            <th>Finished Product</th>
+                            <th>Finished Product / Context</th>
+                            <th>Total Received</th>
                             <th>Total Disbursed</th>
                             <th>Unit</th>
                         </tr>

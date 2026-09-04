@@ -29,7 +29,7 @@
     ['inventory.html', 'Inventory', 'materials', 'material-group'],
     ['material-activity.html', 'Material Activity', 'activity', 'material-child'],
     ['analytics.html', 'Consumption Analytics', 'analytics'],
-    ...(role === 'admin' ? [['forecasting.html', 'AI-Based Forecasting', 'forecasting']] : []),
+    ['forecasting.html', 'AI-Based Forecasting', 'forecasting'],
     ['reports.html', 'Reports', 'reports'],
     ...(role === 'admin' ? [['user-management.html', 'User Management', 'users']] : []),
     ['settings.html', 'Settings', 'settings']
@@ -148,7 +148,6 @@
         <div class="rmsme-popover rmsme-help" id="rmsmeHelp" hidden>
           <strong>Help & Information</strong>
           <button type="button" id="rmsmeSystemGuideBtn">📖 System User Guide</button>
-          <button type="button" id="rmsmeAboutBtn">ℹ About RMIMS</button>
         </div>
         <div class="rmsme-popover rmsme-profile" id="rmsmeProfile" hidden>
           <div class="rmsme-profile-head"><span class="rmsme-avatar large" data-shell-avatar>A</span><div><strong data-shell-name>Account</strong><small>${role === 'admin' ? 'Administrator' : 'User'}</small><small data-shell-email></small></div></div>
@@ -281,68 +280,274 @@
     location.href = isUser ? '../user-signin.html' : '../login.html';
   });
 
-  // System Guide & About Modal
+  // System Guide Modal (Fully Responsive Exit & Got It for Entire System)
   function showHelpModal(title, bodyHtml) {
     let overlay = document.getElementById("rmsmeGuideModalOverlay");
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.id = "rmsmeGuideModalOverlay";
-      overlay.className = "modal-overlay open";
+      overlay.className = "modal-overlay open rmsme-guide-overlay";
       overlay.innerHTML = `
-        <div class="modal-card" style="max-width:560px; padding:24px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-            <h3 id="rmsmeGuideModalTitle" style="font-size:1.15rem; font-weight:700; color:var(--ink);"></h3>
-            <button type="button" id="rmsmeGuideModalClose" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-soft);">&times;</button>
+        <style>
+          .rmsme-guide-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(15, 23, 42, 0.78) !important;
+            backdrop-filter: blur(5px) !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 16px !important;
+            z-index: 10000 !important;
+            box-sizing: border-box !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+          }
+          .rmsme-guide-overlay.open {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+          }
+          .rmsme-guide-card {
+            max-width: min(640px, 96vw) !important;
+            width: 100% !important;
+            max-height: min(88vh, 760px) !important;
+            padding: 24px !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-radius: 16px !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.45) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            animation: rmsmeModalZoom 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+          @keyframes rmsmeModalZoom {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          .rmsme-guide-head {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-bottom: 14px !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding-bottom: 12px !important;
+            flex-shrink: 0 !important;
+            gap: 12px !important;
+          }
+          .rmsme-guide-title {
+            font-size: 1.18rem !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            line-height: 1.3 !important;
+          }
+          .rmsme-guide-close-btn {
+            background: #f1f5f9 !important;
+            border: 1px solid #e2e8f0 !important;
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            border-radius: 50% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 1.45rem !important;
+            cursor: pointer !important;
+            color: #475569 !important;
+            transition: all 0.18s ease !important;
+            line-height: 1 !important;
+            padding: 0 !important;
+            flex-shrink: 0 !important;
+          }
+          .rmsme-guide-close-btn:hover {
+            background: #fee2e2 !important;
+            color: #dc2626 !important;
+            border-color: #fca5a5 !important;
+            transform: scale(1.05) !important;
+          }
+          .rmsme-guide-close-btn:active {
+            transform: scale(0.95) !important;
+          }
+          .rmsme-guide-body {
+            font-size: 0.9rem !important;
+            line-height: 1.6 !important;
+            color: #334155 !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-right: 6px !important;
+            flex: 1 1 auto !important;
+          }
+          .rmsme-guide-foot {
+            margin-top: 16px !important;
+            padding-top: 12px !important;
+            border-top: 1px solid #e2e8f0 !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            flex-shrink: 0 !important;
+          }
+          .rmsme-guide-ok-btn {
+            padding: 10px 28px !important;
+            font-size: 0.92rem !important;
+            font-weight: 600 !important;
+            border-radius: 9px !important;
+            background: #16803c !important;
+            color: #ffffff !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.18s ease !important;
+            box-shadow: 0 2px 6px rgba(22, 128, 60, 0.28) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 42px !important;
+          }
+          .rmsme-guide-ok-btn:hover {
+            background: #14532d !important;
+            box-shadow: 0 4px 12px rgba(20, 83, 45, 0.35) !important;
+            transform: translateY(-1px) !important;
+          }
+          .rmsme-guide-ok-btn:active {
+            transform: translateY(0) !important;
+          }
+
+          /* Responsive tweaks for exit & got it buttons across entire system */
+          @media (max-width: 580px) {
+            .rmsme-guide-overlay {
+              padding: 10px !important;
+            }
+            .rmsme-guide-card {
+              padding: 16px 14px !important;
+              max-height: 94vh !important;
+              border-radius: 14px !important;
+            }
+            .rmsme-guide-title {
+              font-size: 1.05rem !important;
+            }
+            .rmsme-guide-close-btn {
+              width: 44px !important;
+              height: 44px !important;
+              min-width: 44px !important;
+              min-height: 44px !important;
+              font-size: 1.55rem !important;
+            }
+            .rmsme-guide-foot {
+              margin-top: 12px !important;
+              padding-top: 10px !important;
+            }
+            .rmsme-guide-ok-btn {
+              width: 100% !important;
+              padding: 12px 20px !important;
+              font-size: 0.98rem !important;
+              min-height: 46px !important;
+            }
+          }
+        </style>
+        <div class="modal-card rmsme-guide-card">
+          <div class="rmsme-guide-head">
+            <h3 id="rmsmeGuideModalTitle" class="rmsme-guide-title"></h3>
+            <button type="button" id="rmsmeGuideModalClose" class="rmsme-guide-close-btn" aria-label="Close user guide" title="Exit User Guide">&times;</button>
           </div>
-          <div id="rmsmeGuideModalBody" style="font-size:.9rem; line-height:1.6; color:var(--text-body); max-height:65vh; overflow-y:auto;"></div>
-          <div style="margin-top:20px; text-align:right;">
-            <button type="button" id="rmsmeGuideModalOk" class="btn-primary" style="padding:8px 20px;">Got it</button>
+          <div id="rmsmeGuideModalBody" class="rmsme-guide-body"></div>
+          <div class="rmsme-guide-foot">
+            <button type="button" id="rmsmeGuideModalOk" class="rmsme-guide-ok-btn" title="Close and return to system">Got it</button>
           </div>
         </div>`;
       document.body.appendChild(overlay);
-      const close = () => overlay.classList.remove("open");
-      overlay.querySelector("#rmsmeGuideModalClose").addEventListener("click", close);
-      overlay.querySelector("#rmsmeGuideModalOk").addEventListener("click", close);
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+      const close = () => {
+        overlay.classList.remove("open");
+        overlay.style.setProperty("display", "none", "important");
+        overlay.style.setProperty("visibility", "hidden", "important");
+        overlay.style.setProperty("pointer-events", "none", "important");
+        document.removeEventListener("keydown", handleKeydown);
+      };
+      const handleKeydown = (e) => {
+        if (e.key === "Escape" || e.key === "Esc") close();
+      };
+
+      overlay.querySelector("#rmsmeGuideModalClose")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      });
+      overlay.querySelector("#rmsmeGuideModalOk")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      });
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+        }
+      });
+      document.addEventListener("keydown", handleKeydown);
     }
     overlay.querySelector("#rmsmeGuideModalTitle").textContent = title;
     overlay.querySelector("#rmsmeGuideModalBody").innerHTML = bodyHtml;
+    overlay.style.setProperty("display", "flex", "important");
+    overlay.style.setProperty("visibility", "visible", "important");
+    overlay.style.setProperty("pointer-events", "auto", "important");
     overlay.classList.add("open");
   }
 
   document.getElementById("rmsmeSystemGuideBtn")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeMenus(null);
-    showHelpModal("RMIMS System User Guide", `
-      <p style="margin-bottom:12px;">Welcome to the <strong>Raw Materials Inventory Management System (RMIMS)</strong>. Below is a quick overview of how to use each core section:</p>
-      <ul style="padding-left:20px; margin-bottom:12px;">
-        <li style="margin-bottom:8px;"><strong>Dashboard:</strong> View stock summaries, alert counts, and recent activity logs at a glance.</li>
-        <li style="margin-bottom:8px;"><strong>Inventory Management:</strong> Manage raw material items, minimum thresholds, categories, and supplier details.</li>
-        <li style="margin-bottom:8px;"><strong>Material Activity:</strong> Log raw materials received from suppliers or issued for finished product batches.</li>
-        <li style="margin-bottom:8px;"><strong>Consumption Analytics:</strong> Monitor material usage trends, rankings, and historical consumption.</li>
-        <li style="margin-bottom:8px;"><strong>Forecasting (Admin):</strong> Generate 7-day operational and 1-month planning forecasts based on recorded consumption patterns.</li>
-        <li style="margin-bottom:8px;"><strong>Reports & Decision Support:</strong> Export structured PDF/Excel inventory and consumption reports.</li>
-      </ul>
-      <p>For additional assistance, contact your system administrator.</p>
+    showHelpModal("RMSME System User Guide", `
+      <p style="margin-bottom:14px; font-size:0.95rem; color:#334155; line-height:1.5;">
+        Welcome to <strong>RMSME</strong>! This system helps keep track of all raw materials and ingredients accurately, prevent running out of stock, and make sure daily operations run smoothly.
+      </p>
+
+      <!-- STAFF / USER SECTION -->
+      <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:14px 16px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.8rem; padding:3px 8px; border-radius:6px;">👤 Staff / User Access</span>
+          <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Daily Material Operations</span>
+        </div>
+        <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
+          <li style="margin-bottom:6px;"><strong>Dashboard:</strong> Check what ingredients are running low and view urgent restocking alerts before daily production.</li>
+          <li style="margin-bottom:6px;"><strong>Inventory:</strong> Look up available raw materials (sugar, flour, oil, etc.) and see how much stock is on hand.</li>
+          <li style="margin-bottom:6px;"><strong>Material Activity:</strong> Record incoming items delivered by suppliers, and log materials taken out for daily production batches.</li>
+          <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> View 7-day and 30-day projected ingredient requirements (view-only) to plan ahead for upcoming material needs.</li>
+          <li style="margin-bottom:6px;"><strong>Daily Reports:</strong> Review past usage history and check how much was consumed each day.</li>
+        </ul>
+      </div>
+
+      <!-- ADMIN SECTION -->
+      <div style="background:#faf5ff; border:1px solid #e9d5ff; border-radius:12px; padding:14px 16px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="background:#f3e8ff; color:#7e22ce; font-weight:700; font-size:0.8rem; padding:3px 8px; border-radius:6px;">🛡️ Administrator Access</span>
+          <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Management & Master Controls</span>
+        </div>
+        <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
+          <li style="margin-bottom:6px;"><strong>Add & Import Ingredients:</strong> Register new ingredients, import supplier spreadsheets (Excel/CSV), and set low-stock warning limits.</li>
+          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update production recipes for finished items and snacks (e.g., Shing-a-ling, Banana Chips).</li>
+          <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> Estimate how many kilograms of materials will be needed over the next 7 days and 30 days to purchase supplies ahead of time.</li>
+          <li style="margin-bottom:6px;"><strong>System Audits & Exports:</strong> Download official PDF and Excel reports for inventory audits and monitor all activity records.</li>
+        </ul>
+      </div>
+
+      <!-- HELPFUL TIPS -->
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px;">
+        <div style="font-weight:700; color:#166534; font-size:0.84rem; margin-bottom:4px;">💡 Helpful Tips</div>
+        <ul style="padding-left:18px; margin:0; font-size:0.82rem; color:#166534; line-height:1.5;">
+          <li><strong>Check measurements:</strong> Always confirm units (kg, liters, packs) when recording incoming or used materials.</li>
+          <li><strong>Record right away:</strong> Logging materials immediately after receiving or using keeps current stock accurate across the system.</li>
+        </ul>
+      </div>
     `);
   });
 
-  document.getElementById("rmsmeAboutBtn")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeMenus(null);
-    showHelpModal("About RMIMS", `
-      <p style="margin-bottom:12px;"><strong>Raw Materials Inventory Management System (RMIMS)</strong></p>
-      <p style="margin-bottom:12px;">RMIMS is a raw materials management platform built for precision inventory tracking, consumption analytics, and decision support.</p>
-      <p style="margin-bottom:8px;"><strong>Key Capabilities:</strong></p>
-      <ul style="padding-left:20px; margin-bottom:12px;">
-        <li>Automated stock status monitoring & alert notifications</li>
-        <li>Predictive raw material requirement forecasting (7-day & 1-month horizons)</li>
-        <li>Separation of units (kg, L, loaf) for data integrity</li>
-        <li>Role-based access control (Administrator & User roles)</li>
-      </ul>
-      <p style="font-size:.82rem; color:var(--text-soft);">System Version 2.0 · Raw Materials Inventory Management System</p>
-    `);
-  });
 
   /* ==========================================================
      RMIMS LIVE SHARED NOTIFICATION SYSTEM (AUTHORITATIVE ENGINE)

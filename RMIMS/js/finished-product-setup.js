@@ -436,17 +436,29 @@ function renderProductCards(products) {
     fpcCardsContainer.innerHTML = products.map(p => {
         const isSelected = selectedProductIds.has(p.id);
         const matCount = p.materialIds.length;
-        const matNames = p.materialIds
-            .map(id => {
-                const m = rawMaterials.find(rm => rm.id === id);
-                return m ? m.name : null;
-            })
-            .filter(Boolean)
-            .join(" · ") || "No raw materials linked";
+        const linkedMaterials = p.materialIds
+            .map(id => rawMaterials.find(rm => rm.id === id))
+            .filter(Boolean);
 
         const avatarHtml = p.imageUrl
             ? `<div class="fpc-avatar"><img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" class="fpc-avatar-img"></div>`
             : `<div class="fpc-avatar"><span>${escapeHtml(getInitials(p.name))}</span></div>`;
+
+        let chipsHtml = "";
+        if (linkedMaterials.length > 0) {
+            const visibleChips = linkedMaterials.slice(0, 3).map(m => `
+                <span class="fpc-mat-chip" title="${escapeHtml(m.name)}: ${m.currentStock} ${escapeHtml(m.unit)}">${escapeHtml(m.name)}</span>
+            `).join("");
+
+            const extraCount = linkedMaterials.length - 3;
+            const moreBadge = extraCount > 0 
+                ? `<span class="fpc-mat-chip fpc-mat-chip-more btn-open-card-modal" data-id="${escapeHtml(p.id)}" title="Click to view all ${matCount} raw materials">+${extraCount} more</span>` 
+                : "";
+
+            chipsHtml = visibleChips + moreBadge;
+        } else {
+            chipsHtml = `<span class="fpc-no-mats-label">No raw materials linked</span>`;
+        }
 
         return `
             <div class="fpc-card ${isSelected ? "card-selected" : ""}" data-id="${escapeHtml(p.id)}">
@@ -461,8 +473,8 @@ function renderProductCards(products) {
                             <span class="fpc-mat-count-badge">${matCount} Raw Material${matCount === 1 ? "" : "s"}</span>
                         </div>
                     </div>
-                    <div class="fpc-card-materials" title="${escapeHtml(matNames)}">
-                        ${escapeHtml(matNames)}
+                    <div class="fpc-card-materials">
+                        ${chipsHtml}
                     </div>
                 </div>
                 <div class="fpc-card-footer">
@@ -544,8 +556,8 @@ function attachFpcCardListeners() {
         card.addEventListener("click", toggleSelection);
     });
 
-    // View Details button
-    fpcCardsContainer.querySelectorAll(".btn-view-details").forEach(btn => {
+    // View Details button and +N more badge
+    fpcCardsContainer.querySelectorAll(".btn-view-details, .btn-open-card-modal").forEach(btn => {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
             const id = btn.getAttribute("data-id");

@@ -13,7 +13,14 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../js/chart.js"></script>
 </head>
-<body>
+<body class="user-page">
+
+<!-- Subtle Engineering Background -->
+<div class="rmims-faint-bg" aria-hidden="true">
+    <div class="faint-grid-lines"></div>
+    <div class="faint-chart-nodes"></div>
+</div>
+
 <div class="container">
     <!-- SIDEBAR -->
     <aside class="sidebar" aria-label="Primary navigation"></aside>
@@ -43,6 +50,10 @@
                     </svg>
                     <span class="date-text">--/--/----</span>
                 </div>
+                <button id="notificationBtn" class="icon-btn" title="Notifications">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <span class="notif-badge" id="notifBadge" hidden>0</span>
+                </button>
                 <div class="profile-menu">
                     <button aria-expanded="false" aria-haspopup="true" class="profile-btn" id="profileBtn">
                         <span class="profile-avatar">
@@ -90,6 +101,7 @@
                         <span class="ca-kpi-label">Total Consumed</span>
                         <div class="ca-kpi-value-wrap" id="kpiTotalConsumedWrap">
                             <span class="ca-kpi-value" id="kpiTotalConsumed">0</span>
+                            <div id="kpiTotalConsumedList" style="display:none;"></div>
                         </div>
                         <span class="ca-kpi-subtext" id="kpiTotalConsumedSub">Overall raw materials consumed</span>
                     </div>
@@ -381,9 +393,6 @@
     <div class="ca-modal-sheet ca-modal-sheet-lg">
         <div class="ca-modal-header">
             <div class="ca-modal-header-info">
-                <div class="ca-modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 19V6L21 3V16M9 19C9 20.6569 7.65685 22 6 22C4.34315 22 3 20.6569 3 19C3 17.3431 4.34315 16 6 16C7.65685 16 9 17.3431 9 19ZM21 16C21 17.6569 19.6569 19 18 19C16.3431 19 15 17.6569 15 16C15 14.3431 16.3431 13 18 13C19.6569 13 21 14.3431 21 16Z" stroke="currentColor" stroke-width="1.8"/></svg>
-                </div>
                 <div>
                     <h3 class="ca-modal-title">All Raw Materials Stock Progress</h3>
                     <p class="ca-modal-subtitle">Complete catalog stock health vs target baselines</p>
@@ -426,9 +435,6 @@
     <div class="ca-modal-sheet ca-modal-sheet-md">
         <div class="ca-modal-header">
             <div class="ca-modal-header-info">
-                <div class="ca-modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                </div>
                 <div>
                     <h3 class="ca-modal-title" id="matDetailTitle">Raw Material Detail</h3>
                     <p class="ca-modal-subtitle" id="matDetailSubtitle">Item ID: RM—</p>
@@ -543,7 +549,6 @@
 
 <!-- SCRIPTS -->
 <script type="module" src="../js/user-analytics.js"></script>
-<script type="module" src="../js/rmsme-shell.js"></script>
 <script>
     const headerDateEl = document.querySelector("#headerDate span");
     if (headerDateEl) {

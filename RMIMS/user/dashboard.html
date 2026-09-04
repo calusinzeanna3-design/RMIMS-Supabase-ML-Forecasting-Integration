@@ -13,11 +13,13 @@
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
 </head>
 <body class="user-page">
-<!-- Shared visual backdrop; no dashboard data or controls are changed. -->
-<div class="rmims-faint-bg user-dashboard-bg" aria-hidden="true">
+
+<!-- Subtle Engineering Background -->
+<div class="rmims-faint-bg" aria-hidden="true">
     <div class="faint-grid-lines"></div>
     <div class="faint-chart-nodes"></div>
 </div>
+
 <div class="container">
 
     <!-- SIDEBAR -->
@@ -44,6 +46,12 @@
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"/><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
                     <span></span>
                 </div>
+
+                <button id="notificationBtn" class="icon-btn" title="Notifications">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    <span class="notif-badge" id="notifBadge" hidden>0</span>
+                </button>
+
                 <button id="profileBtn" class="profile-btn" title="Account profile">
                     <span class="avatar">U</span>
                     <span class="profile-text">Staff Member</span>
@@ -58,7 +66,7 @@
                 <h1>Dashboard</h1>
                 <p id="welcomeGreeting" style="font-size: 0.84rem; color: #64748b; margin-top: 4px; font-weight: 500;">Welcome back! Here is your daily operational summary.</p>
             </div>
-            <div class="page-actions">
+            <div class="page-title-actions">
                 <div class="live-pill" id="livePill">
                     <span class="live-dot"></span>
                     Live Data
@@ -149,9 +157,12 @@
                             <span class="rrc-badge-sub" id="rrcUnitBadge">Top Inflow</span>
                         </div>
                     </div>
-                    <a href="inventory.html" class="rrc-icon-btn" title="Open Inventory Management">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    </a>
+                    <select id="rrcPeriodFilter" class="rrc-period-select" aria-label="Filter period">
+                        <option value="all">All Time</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="6m">Last 6 Months</option>
+                    </select>
                 </div>
 
                 <div class="rrc-chart-section">
@@ -219,10 +230,6 @@
                             <button type="button" class="trend-zoom-btn" id="trendZoomOutBtn" title="Zoom Out (-)">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                             </button>
-                            <button type="button" class="trend-zoom-btn" id="trendZoomFocusBtn" title="Focus Auto-Fit Y-Scale / Full Baseline">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="13" height="13"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                                <span>Focus</span>
-                            </button>
                             <button type="button" class="trend-zoom-btn" id="trendZoomResetBtn" title="Reset Zoom &amp; Pan View">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="12" height="12"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                                 <span>Reset</span>
@@ -235,11 +242,11 @@
                     <canvas id="rawMaterialsTrendChart"></canvas>
                 </div>
 
-                <div class="trend-footer">
-                    <span class="trend-footer-meta" id="trendFooterMeta">Live disbursement records &amp; AutoReg ML forecast</span>
-                    <a href="analytics.html" class="trend-nav-arrow-btn" title="View Consumption Analytics">
+                <div class="trend-chart-footer">
+                    <span class="trend-footer-note">📊 <strong>8-Month Operational Evaluation: Jan to Aug 2026</strong> (Actual vs. Learned Seasonal Forecast &bull; Margin: &plusmn;7.51%)</span>
+                    <a href="analytics.html" class="trend-nav-link" title="Open Consumption Analytics">
                         <span>View Consumption Analytics</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </a>
                 </div>
             </div>
@@ -280,23 +287,37 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </div>
                         <div>
-                            <h3 class="apc-title">Operational Attention</h3>
-                            <p class="apc-subtitle">Materials that may require staff attention based on current inventory and the latest available forecast.</p>
+                            <h3 class="apc-title">Needs Your Attention</h3>
+                            <p class="apc-subtitle">Items running low or expected to run short — restock these soon.</p>
                         </div>
                     </div>
                     <a href="inventory.html" class="apc-view-all-btn" id="btnViewOperationalAttention" title="View Inventory Overview">
                         <span>View Inventory</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </a>
                 </div>
 
                 <div class="operational-attention-grid" id="operationalAttentionContainer">
-                    <div class="apc-loading-state">Evaluating operational inventory requirements...</div>
+                    <div class="apc-loading-state">Checking stock levels, please wait...</div>
+                </div>
+
+                <!-- Pagination bar — shown only when items > 3 -->
+                <div class="op-attn-pagination" id="opAttnPagination" hidden>
+                    <button class="op-pg-btn" id="opAttnPrev" aria-label="Previous page">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M15 18L9 12L15 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Prev
+                    </button>
+                    <span class="op-pg-info" id="opAttnPageInfo">Page 1 of 1</span>
+                    <button class="op-pg-btn" id="opAttnNext" aria-label="Next page">
+                        Next
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M9 18L15 12L9 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
                 </div>
             </div>
         </section>
 
-        <!-- ADDITION #2: RECENT CONSUMPTION ACTIVITY -->
+
+        <!-- ADDITION #2: ACTIVITY RECORD USERS -->
         <section class="admin-lower-section fade-in" id="userRecentActivitySection" style="margin-top: 24px;">
             <div class="admin-panel-card" id="cardRecentMaterialActivity">
                 <div class="apc-header">
@@ -305,14 +326,217 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6H20M4 12H20M4 18H14" stroke-linecap="round"/><path d="M17 15L20 18L17 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </div>
                         <div>
-                            <h3 class="apc-title">Recent Consumption Activity</h3>
-                            <p class="apc-subtitle">Latest recorded raw-material consumption and disbursement activity.</p>
+                            <h3 class="apc-title">Activity Record Users</h3>
+                            <p class="apc-subtitle">Complete chronological activity log recorded by users and administrators.</p>
                         </div>
                     </div>
-                    <a href="analytics.html" class="apc-view-all-btn" id="btnViewRecentActivity" title="Open Consumption Analytics">
-                        <span>View Consumption Analytics</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <a href="material-activity.html" class="apc-view-all-btn" id="btnViewRecentActivity" title="Open Material Activity">
+                        <span>View Material Activity</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </a>
+                </div>
+
+                <!-- Activity Toolbar: Search on Left, Filters on Right -->
+                <div class="act-toolbar">
+                    <div class="act-search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
+                        <input type="search" id="actSearchInput" placeholder="Search any column (material, recorder, activity, locator, date, qty)..." aria-label="Search all activity columns and data">
+                    </div>
+                    <div class="act-filters">
+                        <!-- 1. RECORDER DROPDOWN -->
+                        <div class="rm-custom-select" id="actRecorderDropdown">
+                            <button type="button" class="rm-select-trigger" id="actRecorderTrigger" aria-haspopup="listbox" aria-expanded="false" title="Filter by user or admin">
+                                <span class="rm-select-value" id="actRecorderValue">
+                                    <span class="rm-opt-icon-wrap rm-icon-all">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    </span>
+                                    <span class="rm-opt-label">All Recorders</span>
+                                </span>
+                                <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+                            <div class="rm-select-menu" id="actRecorderMenu" role="listbox">
+                                <div class="rm-select-option selected" data-value="all" role="option" aria-selected="true">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-icon-all">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">All Recorders</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="user" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap" style="background:#eff6ff; color:#2563eb;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Users</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="admin" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap" style="background:#faf5ff; color:#7e22ce;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Admin</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. ACTIVITY DROPDOWN -->
+                        <div class="rm-custom-select" id="actTypeDropdown">
+                            <button type="button" class="rm-select-trigger" id="actTypeTrigger" aria-haspopup="listbox" aria-expanded="false" title="Filter by activity">
+                                <span class="rm-select-value" id="actTypeValue">
+                                    <span class="rm-opt-icon-wrap rm-icon-all">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                                    </span>
+                                    <span class="rm-opt-label">All Activities</span>
+                                </span>
+                                <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+                            <div class="rm-select-menu" id="actTypeMenu" role="listbox">
+                                <div class="rm-select-option selected" data-value="all" role="option" aria-selected="true">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-icon-all">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">All Activities</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="received" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-badge-receive">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Receive</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="disbursed" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-badge-disburse">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V8m0 0l-4 4m4-4l4 4M4 4h16"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Disburse</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="add_material" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap" style="background:#fef3c7; color:#b45309;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Add New Material (Admin only)</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="import_edit_product" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap" style="background:#ede9fe; color:#6d28d9;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Import / Edit Finished Product (Admin only)</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="import_edit_material" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap" style="background:#e0f2fe; color:#0369a1;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Import / Edit Raw Material (Admin only)</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. SORT DROPDOWN -->
+                        <div class="rm-custom-select" id="actSortDropdown">
+                            <button type="button" class="rm-select-trigger" id="actSortTrigger" aria-haspopup="listbox" aria-expanded="false" title="Sort activity records">
+                                <span class="rm-select-value" id="actSortValue">
+                                    <span class="rm-opt-icon-wrap rm-icon-all">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                                    </span>
+                                    <span class="rm-opt-label">Sort: Latest</span>
+                                </span>
+                                <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+                            <div class="rm-select-menu align-right" id="actSortMenu" role="listbox">
+                                <div class="rm-select-option selected" data-value="latest" role="option" aria-selected="true">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-icon-all">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Sort: Latest</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="oldest" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-icon-all">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Sort: Oldest</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="az" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-icon-all">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h4l-4 8h4M7 4l4 4-4 4M14 4h7M14 9h5M14 14h3M14 19h1"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Name: A–Z</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="rm-select-option" data-value="za" role="option" aria-selected="false">
+                                    <div class="rm-opt-content">
+                                        <span class="rm-opt-icon-wrap rm-icon-all">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16H3l4-8H3M7 20l4-4-4-4M14 4h1M14 9h3M14 14h5M14 19h7"/></svg>
+                                        </span>
+                                        <span class="rm-opt-label">Name: Z–A</span>
+                                    </div>
+                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="recent-activity-table-wrap">
@@ -320,20 +544,36 @@
                         <thead>
                             <tr>
                                 <th>DATE</th>
-                                <th>FINISHED PRODUCT / CONTEXT</th>
+                                <th>RECORDER (ADMIN / USER)</th>
                                 <th>RAW MATERIAL</th>
                                 <th>ACTIVITY</th>
+                                <th>LOCATOR</th>
                                 <th>QUANTITY</th>
                                 <th>CURRENT STOCK</th>
-                                <th>STATUS</th>
                             </tr>
                         </thead>
                         <tbody id="recentActivityTableBody">
                             <tr>
-                                <td colspan="7" class="apc-table-empty">Loading recent consumption activity...</td>
+                                <td colspan="7" class="apc-table-empty">Loading activity records...</td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Activity Pagination Bar -->
+                <div class="act-pagination" id="actPagination">
+                    <span class="act-pg-count" id="actPgCount">Showing 0 of 0 activities</span>
+                    <div class="act-pg-controls">
+                        <button class="op-pg-btn" id="actPgPrev" aria-label="Previous page">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M15 18L9 12L15 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Prev
+                        </button>
+                        <span class="op-pg-info" id="actPgInfo">Page 1 of 1</span>
+                        <button class="op-pg-btn" id="actPgNext" aria-label="Next page">
+                            Next
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M9 18L15 12L9 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -483,6 +723,15 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
             <input type="search" id="receivedSearchInput" placeholder="Search received material, code, or supplier..." aria-label="Search receiving records">
         </div>
+        <div class="amp-filter-box">
+            <label for="receivedModalSort" class="amp-filter-label">Sort By:</label>
+            <select id="receivedModalSort" class="amp-select">
+                <option value="latest">Latest</option>
+                <option value="oldest">Oldest</option>
+                <option value="a-z">A - Z</option>
+                <option value="z-a">Z - A</option>
+            </select>
+        </div>
     </div>
 
     <div class="amp-table-scroll">
@@ -586,7 +835,7 @@
 <!-- TOASTS -->
 <div class="toast-stack" id="toastStack"></div>
 
-<script type="module" src="../js/user-dashboard.js?v=20260903-tdzfix"></script>
+<script type="module" src="../js/user-dashboard.js"></script>
 
 <script>
 const headerDateEl = document.querySelector("#headerDate span");

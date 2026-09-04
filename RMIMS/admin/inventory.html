@@ -192,9 +192,9 @@
                     <div class="inv-filter-group">
                         <div class="inv-date-range-wrap">
                             <label for="invDateFrom" class="filter-label">From:</label>
-                            <input type="date" id="invDateFrom" class="inv-input-date" title="Filter from date" placeholder="dd/mm/yyyy">
+                            <input type="text" id="invDateFrom" class="inv-input-date" title="Filter from date" placeholder="dd/mm/yyyy">
                             <label for="invDateTo" class="filter-label">To:</label>
-                            <input type="date" id="invDateTo" class="inv-input-date" title="Filter to date" placeholder="dd/mm/yyyy">
+                            <input type="text" id="invDateTo" class="inv-input-date" title="Filter to date" placeholder="dd/mm/yyyy">
                             <button type="button" id="clearInvDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                         </div>
 
@@ -241,10 +241,6 @@
                             <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             <span>Select All</span>
                         </button>
-                        <button type="button" class="btn-secondary isb-btn" id="bulkEditBtn">
-                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span>Update / Edit</span>
-                        </button>
                         <button type="button" class="btn-danger isb-btn" id="bulkDeleteBtn">
                             <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             <span>Delete Selected</span>
@@ -264,7 +260,7 @@
                     <table class="inv-main-table" id="overviewTable">
                         <thead>
                             <tr>
-                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"></th>
+                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"><input type="checkbox" id="selectAllOverview" title="Select all items on current page"></th>
                                 <th>Date</th>
                                 <th>Raw Material Name</th>
                                 <th>Raw Material ID</th>
@@ -317,16 +313,29 @@
                     <div class="inv-filter-group">
                         <div class="inv-date-range-wrap">
                             <label for="receiveDateFrom" class="filter-label">From:</label>
-                            <input type="date" id="receiveDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
+                            <input type="text" id="receiveDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                             <label for="receiveDateTo" class="filter-label">To:</label>
-                            <input type="date" id="receiveDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                            <input type="text" id="receiveDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
                             <button type="button" id="clearReceiveDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                         </div>
+                        <select id="receiveSortFilter" class="inv-select" title="Sort order">
+                            <option value="latest">Sort: Latest</option>
+                            <option value="oldest">Sort: Oldest</option>
+                            <option value="az">Name: A–Z</option>
+                            <option value="za">Name: Z–A</option>
+                        </select>
                         <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectReceiveBtn" title="Toggle selection mode">
                             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             <span class="select-btn-text">Select</span>
                             <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </button>
+                        <button type="button" class="btn-secondary-sm" id="receiveClearFiltersBtn" hidden title="Clear all active filters">
+                            Clear
+                        </button>
+                        <a href="./material-activity.html?tab=receive" class="btn-secondary-sm" id="btnVisitReceiveActivity" title="Go to Material Activity Module" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M12 4V15M12 15L8 11M12 15L16 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                            <span>Material Activity</span>
+                        </a>
                         <button type="button" class="btn-primary-sm" id="btnOpenNewReceiveModal">
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                             Record Receipt
@@ -363,7 +372,7 @@
                     <table class="inv-main-table" id="receiveTable">
                         <thead>
                             <tr>
-                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"></th>
+                                <th class="col-select hidden-col" style="width: 44px; text-align: center;"><input type="checkbox" id="selectAllReceive" title="Select all receipts on current page"></th>
                                 <th>Date</th>
                                 <th>Raw Material Name</th>
                                 <th>Raw Material ID</th>
@@ -413,16 +422,29 @@
                     <div class="inv-filter-group">
                         <div class="inv-date-range-wrap">
                             <label for="disburseDateFrom" class="filter-label">From:</label>
-                            <input type="date" id="disburseDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
+                            <input type="text" id="disburseDateFrom" class="inv-input-date" placeholder="dd/mm/yyyy">
                             <label for="disburseDateTo" class="filter-label">To:</label>
-                            <input type="date" id="disburseDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
+                            <input type="text" id="disburseDateTo" class="inv-input-date" placeholder="dd/mm/yyyy">
                             <button type="button" id="clearDisburseDatesBtn" class="date-clear-btn" title="Clear date range" style="display: none;">✕ Clear</button>
                         </div>
+                        <select id="disburseSortFilter" class="inv-select" title="Sort order">
+                            <option value="latest">Sort: Latest</option>
+                            <option value="oldest">Sort: Oldest</option>
+                            <option value="az">Name: A–Z</option>
+                            <option value="za">Name: Z–A</option>
+                        </select>
                         <button type="button" class="btn-secondary-sm select-toggle-btn" id="toggleSelectDisburseBtn" title="Toggle selection mode">
                             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             <span class="select-btn-text">Select</span>
                             <svg class="toggle-arrow" viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </button>
+                        <button type="button" class="btn-secondary-sm" id="disburseClearFiltersBtn" hidden title="Clear all active filters">
+                            Clear
+                        </button>
+                        <a href="./material-activity.html?tab=disbursement" class="btn-secondary-sm" id="btnVisitDisburseActivity" title="Go to Material Activity Module" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                            <span>Material Activity</span>
+                        </a>
                         <button type="button" class="btn-primary-sm" id="btnOpenNewDisburseModal">
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                             Record Disbursement
@@ -1181,14 +1203,14 @@
             </div>
         </div>
 
-        <div class="modal-sticky-footer" style="display: flex; justify-content: space-between; align-items: center;">
-            <button class="btn-danger" id="fpcDetailsDeleteBtn" style="padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
-                <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Delete Product
+        <div class="modal-sticky-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--rm-line, #E2E8F0); background: #F8FAFC; border-radius: 0 0 16px 16px;">
+            <button type="button" class="btn-danger" id="fpcDetailsDeleteBtn">
+                <svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Delete Product</span>
             </button>
             <div style="display: flex; gap: 8px;">
-                <button class="btn-secondary" id="fpcDetailsEditBtn">Edit</button>
-                <button class="btn-primary" id="fpcDetailsCloseBtn">Close</button>
+                <button type="button" class="btn-secondary" id="fpcDetailsEditBtn">Edit</button>
+                <button type="button" class="btn-primary" id="fpcDetailsCloseBtn">Close</button>
             </div>
         </div>
 
