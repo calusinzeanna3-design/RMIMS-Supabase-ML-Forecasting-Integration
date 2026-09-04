@@ -3,6 +3,15 @@
    SCROLLABLE • THEME TOGGLE • 3D • TOUCH-FRIENDLY
    ========================================================== */
 
+// Auto-forward Supabase password recovery tokens if arriving at landing page root
+(function checkLandingRecovery() {
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+  if (hash.includes("type=recovery") || search.includes("type=recovery") || (hash.includes("access_token=") && !hash.includes("type=signup"))) {
+    window.location.replace("login.html" + search + hash);
+  }
+})();
+
 const featureDetails = {
   "1": {
     num: "01 Capability",

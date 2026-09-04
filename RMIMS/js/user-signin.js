@@ -169,6 +169,18 @@ let recoveryTokens = null;
 function checkRecoveryState() {
     const hash = window.location.hash || "";
     const search = window.location.search || "";
+
+    if (hash.includes("error=") || search.includes("error=")) {
+        try {
+            const raw = hash.startsWith("#") ? hash.substring(1) : (search.startsWith("?") ? search.substring(1) : "");
+            const params = new URLSearchParams(raw);
+            const desc = params.get("error_description");
+            if (desc) {
+                setLoginError(decodeURIComponent(desc.replace(/\+/g, " ")));
+            }
+        } catch (e) {}
+    }
+
     const isRecovery = hash.includes("type=recovery") || search.includes("type=recovery") || hash.includes("access_token=");
     
     if (isRecovery) {
