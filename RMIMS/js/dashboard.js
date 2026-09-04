@@ -5,8 +5,8 @@
 
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
-import { checkAndShowOnboarding } from "./onboarding.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 
 const $ = id => document.getElementById(id);
 
@@ -245,12 +245,12 @@ function renderBaselineInstant() {
       deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
     } catch (e) {}
 
-    let rawMats = AUTHENTIC_59_RAW_MATERIALS;
+    let rawMats = getSystemRawMaterials();
     if (deletedMatIds.size > 0) {
       rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
     }
-    const rawUsage = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
-    const rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
+    const rawUsage = [...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS, ...getSystemCustomDisbursements()];
+    const rawReceipts = [...AUTHENTIC_STOCK_RECEIPTS_6MONTHS, ...getSystemCustomReceipts()];
 
     catalogMaterials = rawMats.map(m => {
       const stock = Number(m.current_stock || 0);
@@ -340,24 +340,73 @@ async function loadDashboard() {
         new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase query timeout")), ms))
       ]);
 
-    // 1. Fetch raw_materials master catalog
+    // 1. Fetch raw_materials, receipts, and disbursements in PARALLEL
     let rawMats = [];
     let rawUsage = [];
     let rawReceipts = [];
 
     try {
-      const matRes = await fetchWithTimeout(
-        supabase
-          .from("raw_materials")
-          .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
-          .order("name")
-      );
+      const [matRes, recRes, disbRes] = await Promise.allSettled([
+        fetchWithTimeout(
+          supabase
+            .from("raw_materials")
+            .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
+            .order("name")
+        ),
+        fetchWithTimeout(
+          supabase
+            .from("stock_receipts")
+            .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
+            .order("receipt_date", { ascending: false })
+        ),
+        fetchWithTimeout(
+          supabase
+            .from("material_disbursements")
+            .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
+            .order("usage_date", { ascending: false })
+        )
+      ]);
 
-      if (!matRes.error && matRes.data && matRes.data.length > 0) {
-        rawMats = matRes.data;
+      // Additive merge: start with baseline authentic dataset + system custom materials
+      const matKeyMap = new Map();
+      AUTHENTIC_59_RAW_MATERIALS.forEach(m => {
+        const k = (m.name || m.id || "").toLowerCase().trim();
+        matKeyMap.set(k, { ...m });
+      });
+      getSystemRawMaterials().forEach(m => {
+        const k = (m.name || m.id || "").toLowerCase().trim();
+        matKeyMap.set(k, { ...(matKeyMap.get(k) || {}), ...m });
+      });
+      if (matRes.status === "fulfilled" && !matRes.value?.error && matRes.value?.data && matRes.value.data.length > 0) {
+        matRes.value.data.forEach(m => {
+          const k = (m.name || m.id || "").toLowerCase().trim();
+          matKeyMap.set(k, { ...(matKeyMap.get(k) || {}), ...m });
+        });
       }
+      rawMats = Array.from(matKeyMap.values());
+
+      // Additive merge: receipts
+      const recKeyMap = new Map();
+      AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recKeyMap.set(String(r.id), { ...r }));
+      getSystemCustomReceipts().forEach(r => recKeyMap.set(String(r.id), { ...r }));
+      if (recRes.status === "fulfilled" && !recRes.value?.error && recRes.value?.data && recRes.value.data.length > 0) {
+        recRes.value.data.forEach(r => recKeyMap.set(String(r.id), { ...(recKeyMap.get(String(r.id)) || {}), ...r }));
+      }
+      rawReceipts = Array.from(recKeyMap.values());
+
+      // Additive merge: disbursements
+      const disbKeyMap = new Map();
+      AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+      getSystemCustomDisbursements().forEach(d => disbKeyMap.set(String(d.id), { ...d }));
+      if (disbRes.status === "fulfilled" && !disbRes.value?.error && disbRes.value?.data && disbRes.value.data.length > 0) {
+        disbRes.value.data.forEach(d => disbKeyMap.set(String(d.id), { ...(disbKeyMap.get(String(d.id)) || {}), ...d }));
+      }
+      rawUsage = Array.from(disbKeyMap.values());
     } catch (e) {
-      console.warn("Using baseline raw materials dataset:", e);
+      console.warn("Using baseline raw materials dataset fallback:", e);
+      rawMats = getSystemRawMaterials();
+      rawReceipts = [...AUTHENTIC_STOCK_RECEIPTS_6MONTHS, ...getSystemCustomReceipts()];
+      rawUsage = [...AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS, ...getSystemCustomDisbursements()];
     }
 
     // Retrieve locally deleted IDs (for fallback / custom mock records)
@@ -376,47 +425,50 @@ async function loadDashboard() {
       deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]"));
     } catch (e) {}
 
-    if (rawMats.length === 0) {
-      rawMats = AUTHENTIC_59_RAW_MATERIALS;
-    }
     if (deletedMatIds.size > 0) {
       rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
     }
-
-    if (rawUsage.length === 0) {
-      rawUsage = AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS;
-    }
     if (deletedDisbIds.size > 0) {
       rawUsage = rawUsage.filter(d => !deletedDisbIds.has(String(d.id)));
-    }
-
-    // 3. Fetch stock receipts (inflow)
-    try {
-      const recRes = await fetchWithTimeout(
-        supabase
-          .from("stock_receipts")
-          .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-          .order("receipt_date", { ascending: false })
-      );
-
-      if (!recRes.error && recRes.data && recRes.data.length > 0) {
-        rawReceipts = recRes.data;
-      }
-    } catch (e) {
-      console.warn("Using baseline receipts records:", e);
-    }
-
-    if (rawReceipts.length === 0) {
-      rawReceipts = AUTHENTIC_STOCK_RECEIPTS_6MONTHS;
     }
     if (deletedRecIds.size > 0) {
       rawReceipts = rawReceipts.filter(r => !deletedRecIds.has(String(r.id)));
     }
 
+    // Dynamic stock calculation from full transaction ledger
+    const rcvTotals = new Map();
+    rawReceipts.forEach(r => {
+      const k1 = String(r.material_id || "").toLowerCase().trim();
+      const k2 = String(r.material_name || r.materialName || "").toLowerCase().trim();
+      const q = Number(r.received_quantity ?? r.receivedQuantity ?? r.quantity ?? 0);
+      if (k1) rcvTotals.set(k1, (rcvTotals.get(k1) || 0) + q);
+      if (k2) rcvTotals.set(k2, (rcvTotals.get(k2) || 0) + q);
+    });
+
+    const disbTotals = new Map();
+    rawUsage.forEach(d => {
+      const k1 = String(d.material_id || "").toLowerCase().trim();
+      const k2 = String(d.material_name || d.materialName || "").toLowerCase().trim();
+      const q = Number(d.consumed_quantity ?? d.consumedQuantity ?? d.quantity ?? 0);
+      if (k1) disbTotals.set(k1, (disbTotals.get(k1) || 0) + q);
+      if (k2) disbTotals.set(k2, (disbTotals.get(k2) || 0) + q);
+    });
+
     // Normalize materials
     catalogMaterials = rawMats.map(m => {
-      const stock = Number(m.current_stock || 0);
-      const minThreshold = m.minimum_threshold !== null ? Number(m.minimum_threshold) : null;
+      const mId = String(m.id || "").toLowerCase().trim();
+      const mCode = String(m.item_code || "").toLowerCase().trim();
+      const mName = String(m.name || "").toLowerCase().trim();
+
+      const totalRcv = rcvTotals.get(mId) || rcvTotals.get(mCode) || rcvTotals.get(mName) || 0;
+      const totalDisb = disbTotals.get(mId) || disbTotals.get(mCode) || disbTotals.get(mName) || 0;
+
+      let stock = Number(m.current_stock ?? m.currentStock ?? 0);
+      if (totalRcv > 0 || totalDisb > 0) {
+        stock = Math.max(0, Number((totalRcv - totalDisb).toFixed(2)));
+      }
+
+      const minThreshold = m.minimum_threshold !== null && m.minimum_threshold !== undefined ? Number(m.minimum_threshold) : null;
       let matStatus = "Available";
       if (stock <= 0) {
         matStatus = "Out of Stock";

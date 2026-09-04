@@ -1084,6 +1084,54 @@ function renderCard2History() {
     }
 }
 
+function renderPaginationControls(container, currentPage, totalPages, onPageChange) {
+    if (!container) return;
+    if (totalPages <= 1) {
+        container.innerHTML = "";
+        return;
+    }
+
+    let html = `
+        <button type="button" class="page-btn page-nav-btn" id="prevCardPageBtn" ${currentPage <= 1 ? "disabled" : ""}>‹ Prev</button>
+    `;
+
+    for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+            html += `<button type="button" class="page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        } else if (p === currentPage - 2 || p === currentPage + 2) {
+            html += `<span class="page-ellipsis">…</span>`;
+        }
+    }
+
+    html += `
+        <button type="button" class="page-btn page-nav-btn" id="nextCardPageBtn" ${currentPage >= totalPages ? "disabled" : ""}>Next ›</button>
+    `;
+
+    container.innerHTML = html;
+
+    const prevBtn = container.querySelector("#prevCardPageBtn");
+    const nextBtn = container.querySelector("#nextCardPageBtn");
+
+    if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+            if (currentPage > 1) onPageChange(currentPage - 1);
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            if (currentPage < totalPages) onPageChange(currentPage + 1);
+        });
+    }
+
+    container.querySelectorAll(".page-btn[data-page]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const p = Number(btn.getAttribute("data-page"));
+            if (p && p !== currentPage) onPageChange(p);
+        });
+    });
+}
+
 /* ==========================================================
    MODALS: BREAKDOWN MODALS
    ========================================================== */
@@ -2324,7 +2372,41 @@ function initEventListeners() {
         });
     }
 
-    // Card 1: Product Overview Filters
+    // Quick action buttons in Card 1 header
+    const btnQuickRec = document.getElementById("btnQuickRecordReceipt");
+    if (btnQuickRec) btnQuickRec.addEventListener("click", () => openReceiveModal());
+
+    const btnQuickDisb = document.getElementById("btnQuickRecordDisburse");
+    if (btnQuickDisb) btnQuickDisb.addEventListener("click", () => openDisburseModal());
+
+    // Check URL parameters for navigation from other modules (e.g. inventory.html?tab=receive)
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get("tab") || urlParams.get("action");
+        if (tabParam === "receive") {
+            if (tabMat && tabProd && viewMat && viewProd) {
+                state.card1Tab = "material";
+                tabMat.classList.add("active");
+                tabProd.classList.remove("active");
+                viewMat.hidden = false;
+                viewProd.hidden = true;
+            }
+            const histActivity = document.getElementById("historyActivityFilter");
+            if (histActivity) histActivity.value = "receive";
+            state.historyActivity = "receive";
+        } else if (tabParam === "disbursement" || tabParam === "disburse") {
+            if (tabMat && tabProd && viewMat && viewProd) {
+                state.card1Tab = "material";
+                tabMat.classList.add("active");
+                tabProd.classList.remove("active");
+                viewMat.hidden = false;
+                viewProd.hidden = true;
+            }
+            const histActivity = document.getElementById("historyActivityFilter");
+            if (histActivity) histActivity.value = "disbursement";
+            state.historyActivity = "disbursement";
+        }
+    } catch (e) {}
     const prodSearch = document.getElementById("productSearchInput");
     const prodSort = document.getElementById("productSortSelect");
     const prodPageSize = document.getElementById("productPageSize");
