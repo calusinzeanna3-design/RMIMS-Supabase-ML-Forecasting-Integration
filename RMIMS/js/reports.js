@@ -8,7 +8,7 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
-import { getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -399,9 +399,51 @@ async function loadAuthoritativeData() {
             console.warn("Using baseline reports dataset:", e);
         }
 
-        if (rawMats.length === 0) {
-            rawMats = AUTHENTIC_59_RAW_MATERIALS;
-        }
+        const matBaseMap = new Map();
+        const baseMats = getSystemRawMaterials();
+        (baseMats && baseMats.length > 0 ? baseMats : AUTHENTIC_59_RAW_MATERIALS).forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            matBaseMap.set(k, {
+                id: String(m.id || m.item_code || m.itemCode || k),
+                item_code: m.item_code || m.itemCode || m.id || "RM—",
+                name: m.name,
+                unit_of_measure: m.unit_of_measure || m.unit || "kg",
+                current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                reorder_quantity: Number(m.reorder_quantity ?? 50),
+                lead_time_days: Number(m.lead_time_days ?? 3)
+            });
+        });
+
+        // Merge all new or updated raw materials from Supabase
+        (rawMats || []).forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            const existing = matBaseMap.get(k);
+            if (existing) {
+                existing.id = String(m.id || existing.id);
+                if (m.current_stock !== undefined && m.current_stock !== null) {
+                    existing.current_stock = Number(m.current_stock);
+                }
+                if (m.item_code) existing.item_code = m.item_code;
+                if (m.unit_of_measure) existing.unit_of_measure = m.unit_of_measure;
+                if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
+                if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
+                if (m.lead_time_days !== undefined && m.lead_time_days !== null) existing.lead_time_days = Number(m.lead_time_days);
+            } else {
+                matBaseMap.set(k, {
+                    id: String(m.id || k),
+                    item_code: m.item_code || "RM—",
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || "kg",
+                    current_stock: Number(m.current_stock || 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? 10),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
+            }
+        });
+
+        rawMats = Array.from(matBaseMap.values());
 
         // Always merge baseline datasets so any custom entry stacks on top
         const recBaseMap = new Map();

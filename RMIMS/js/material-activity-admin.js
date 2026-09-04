@@ -1035,20 +1035,38 @@ function renderPaginationControls(container, currentPage, totalPages, onPageChan
         return;
     }
 
-    let html = `
-        <button type="button" class="page-btn page-nav-btn page-nav-prev" ${currentPage <= 1 ? "disabled" : ""}>‹ Prev</button>
-    `;
+    const maxVisible = 7;
+    let pages = [];
+    if (totalPages <= maxVisible) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        pages.push(1);
+        if (currentPage > 4) pages.push("...");
 
-    for (let p = 1; p <= totalPages; p++) {
-        if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
-            html += `<button type="button" class="page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
-        } else if (p === currentPage - 2 || p === currentPage + 2) {
-            html += `<span class="page-ellipsis">…</span>`;
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(totalPages - 1, currentPage + 2);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
         }
+
+        if (currentPage < totalPages - 3) pages.push("...");
+        pages.push(totalPages);
     }
 
+    let html = `
+        <button type="button" class="page-btn page-nav-btn page-nav-prev" ${currentPage <= 1 ? "disabled" : ""} title="Previous Page">‹ Prev</button>
+    `;
+
+    pages.forEach(p => {
+        if (p === "...") {
+            html += `<span class="page-ellipsis">…</span>`;
+        } else {
+            html += `<button type="button" class="page-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+        }
+    });
+
     html += `
-        <button type="button" class="page-btn page-nav-btn page-nav-next" ${currentPage >= totalPages ? "disabled" : ""}>Next ›</button>
+        <button type="button" class="page-btn page-nav-btn page-nav-next" ${currentPage >= totalPages ? "disabled" : ""} title="Next Page">Next ›</button>
     `;
 
     container.innerHTML = html;

@@ -85,9 +85,16 @@ function closeModal(id) { document.getElementById(id).classList.remove("open"); 
    ========================================================== */
 
 async function countRows(table) {
-    const { count, error } = await db.from(table).select("*", { count: "exact", head: true });
-    if (error) throw error;
-    return count || 0;
+    try {
+        const { count, error } = await db.from(table).select("*", { count: "exact", head: true });
+        if (error) {
+            const { data } = await db.from(table).select("id");
+            return Array.isArray(data) ? data.length : 0;
+        }
+        return count || 0;
+    } catch (e) {
+        return 0;
+    }
 }
 
 export async function loadDataSummary() {
@@ -100,34 +107,43 @@ export async function loadDataSummary() {
         users: document.getElementById("summaryUsers")
     };
 
+    const hasAnyTile = Object.values(tiles).some(Boolean);
+    if (!hasAnyTile) return;
+
     Object.values(tiles).forEach(el => { if (el) el.textContent = "…"; });
 
     try {
-        const [materials, stockReceipts, usageRecords, users, supplierRows] = await Promise.all([
-            countRows("raw_materials").catch(() => 0),
-            countRows("stock_receipts").catch(() => 0),
-            countRows("material_disbursements").catch(() => 0),
-            countRows("user_profiles").catch(() => 0),
-            db.from("stock_receipts").select("supplier_name").not("supplier_name", "is", null).catch(() => ({ data: [] }))
+        let supplierData = [];
+        try {
+            const res = await db.from("stock_receipts").select("supplier_name");
+            if (res && res.data) supplierData = res.data;
+        } catch (se) {
+            supplierData = [];
+        }
+
+        const [materials, stockReceipts, usageRecords, users] = await Promise.all([
+            countRows("raw_materials"),
+            countRows("stock_receipts"),
+            countRows("material_disbursements"),
+            countRows("user_profiles")
         ]);
 
         const distinctSuppliers = new Set(
-            (supplierRows.data || [])
+            (supplierData || [])
                 .map(r => (r.supplier_name || "").trim().toLowerCase())
                 .filter(Boolean)
         );
 
-        if (tiles.materials) tiles.materials.textContent = materials;
+        if (tiles.materials) tiles.materials.textContent = materials || 0;
         if (tiles.finished_products) tiles.finished_products.textContent = "—";
-        if (tiles.suppliers) tiles.suppliers.textContent = distinctSuppliers.size || "—";
-        if (tiles.stock_receipts) tiles.stock_receipts.textContent = stockReceipts;
-        if (tiles.usage_records) tiles.usage_records.textContent = usageRecords;
-        if (tiles.users) tiles.users.textContent = users;
+        if (tiles.suppliers) tiles.suppliers.textContent = distinctSuppliers.size || 0;
+        if (tiles.stock_receipts) tiles.stock_receipts.textContent = stockReceipts || 0;
+        if (tiles.usage_records) tiles.usage_records.textContent = usageRecords || 0;
+        if (tiles.users) tiles.users.textContent = users || 0;
 
     } catch (err) {
-        console.error(err);
-        Object.values(tiles).forEach(el => { if (el) el.textContent = "—"; });
-        showToast("Unable to load the data summary. Please try again.", "error");
+        console.warn("loadDataSummary fallback warning:", err);
+        Object.values(tiles).forEach(el => { if (el) el.textContent = "0"; });
     }
 }
 
