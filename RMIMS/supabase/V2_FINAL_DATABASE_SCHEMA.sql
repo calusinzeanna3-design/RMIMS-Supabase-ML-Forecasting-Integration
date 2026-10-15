@@ -27,8 +27,13 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL UNIQUE,
     full_name TEXT,
+    username TEXT,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
-    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    operational_role TEXT NOT NULL DEFAULT 'staff',
+    branch_name TEXT,
+    branch_location TEXT,
+    branch_store TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('active', 'inactive', 'pending', 'pending_approval')),
     onboarding_status TEXT DEFAULT 'pending' CHECK (onboarding_status IN ('pending', 'completed', 'skipped')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -167,9 +172,9 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-    -- If current user is not admin, prevent modifying role or status
+    -- If current user is not admin, prevent modifying role, operational role, or status
     IF NOT public.is_admin_user() THEN
-        IF NEW.role <> OLD.role OR NEW.status <> OLD.status THEN
+        IF NEW.role <> OLD.role OR NEW.status <> OLD.status OR NEW.operational_role <> OLD.operational_role THEN
             RAISE EXCEPTION 'Access Denied: Only active administrators can modify roles or account status.';
         END IF;
     END IF;

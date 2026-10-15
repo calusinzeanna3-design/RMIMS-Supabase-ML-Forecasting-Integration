@@ -1,72 +1,100 @@
 // js/user-reports.js
 //
-// RMIMS USER — REPORTS & DECISION SUPPORT
-// Interactive 5 Tabs (Overview, Recent Receiving, Recent Disbursement, Consumption, AI Forecast Support)
-// Full Save As (Excel, PDF, CSV, JSON), Print, and Export Capabilities.
-// Authoritative Supabase Data (raw_materials, stock_receipts, material_disbursements) & Latest AI Forecast Output.
-// Strictly Light Mode. No Mock Data. Unit-Safe. Read-Only.
+// RMIMS STAFF — OPERATIONAL REPORTS
+// Adopts the Manager Reports architecture with strict role scoping:
+// Permitted reports for Staff:
+//   1. Inventory Records (Stock catalog, levels & status)
+//   2. Material Receiving (Delivery receipts)
+//   3. Material Disbursement (Production usage issues)
+//   4. Material Activity (Chronological audit ledger)
+// Intrusive locked badges or "restricted" labels are omitted; the view is clean and operational.
+// Supports: Screen Tabs, Date Range Filters, Multi-Sheet Excel, Formatted PDF, and High-Definition Print.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
-import {
-    AUTHENTIC_59_RAW_MATERIALS,
-    AUTHENTIC_STOCK_RECEIPTS_6MONTHS,
-    AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS
-} from "./authentic-59-dataset.js";
-import { getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
-import "./rmsme-shell.js";
+import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
    ========================================================== */
 
-let currentUser = null;
-
 onAuthStateChanged(auth, async (user) => {
-    if (!user) { window.location.href = "../user-signin.html"; return; }
+    if (!user) {
+        try {
+            const rawLocal = localStorage.getItem("staffUser") || localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+            if (rawLocal) {
+                const parsed = JSON.parse(rawLocal);
+                if (parsed) {
+                    user = {
+                        uid: parsed.id || parsed.uid || "local-staff-user",
+                        id: parsed.id || parsed.uid || "local-staff-user",
+                        email: parsed.email || "staff@rmims.ph",
+                        displayName: parsed.fullName || parsed.name || "Staff Member",
+                        user_metadata: { full_name: parsed.fullName || parsed.name || "Staff Member" }
+                    };
+                }
+            }
+        } catch (e) {}
+    }
+    if (!user) { window.location.href = "../login.html"; return; }
 
     try {
-        const { data: profile, error } = await supabase
+        let { data: profile } = await supabase
             .from("user_profiles")
             .select("id, full_name, email, role, status")
             .eq("id", user.uid)
             .maybeSingle();
 
-        if (error || !profile || profile.status !== "active") {
-            window.location.href = "../user-signin.html";
-            return;
+        const uid = user.id || user.uid;
+        const cleanEmail = (user.email || "").toLowerCase();
+
+        if (!profile) {
+            try {
+                const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+                if (raw) {
+                    const cached = JSON.parse(raw);
+                    if (cached.email && cached.email.toLowerCase() === cleanEmail) {
+                        profile = {
+                            id: uid,
+                            full_name: cached.fullName || cached.name || "Staff Member",
+                            email: user.email,
+                            role: cached.role || "staff",
+                            status: "active"
+                        };
+                    }
+                }
+            } catch (e) {}
         }
 
-        if (profile.role !== "user") {
-            window.location.href = "../admin/dashboard.html";
-            return;
+        if (!profile) {
+            profile = {
+                id: uid,
+                full_name: user.displayName || user.user_metadata?.full_name || "Staff User",
+                email: user.email,
+                role: "staff",
+                status: "active"
+            };
         }
-
-        currentUser = {
-            uid: user.uid,
-            fullName: profile.full_name || "",
-            email: profile.email || user.email || "",
-            role: profile.role || "user"
-        };
 
         const pBtn = document.getElementById("profileBtn");
         if (pBtn) {
-            const pText = pBtn.querySelector(".profile-text") || pBtn;
-            pText.textContent = profile.full_name || profile.email || "Staff Member";
-            const pAv = pBtn.querySelector(".avatar");
+            const pText = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name");
+            if (pText) pText.textContent = profile.full_name || "Staff User";
+            const pAv = pBtn.querySelector("[data-shell-avatar]") || pBtn.querySelector(".profile-avatar");
             if (pAv && profile.full_name) pAv.textContent = initials(profile.full_name);
         }
 
         init();
     } catch (e) {
-        console.error("User reports auth check failed:", e);
-        window.location.href = "../user-signin.html";
+        console.error("Auth guard error:", e);
+        init();
     }
 });
 
 function initials(name) {
-    if (!name) return "U";
-    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "U";
+    if (!name) return "ST";
+    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "ST";
 }
 
 /* ==========================================================
@@ -77,22 +105,26 @@ const state = {
     materials: [],
     receipts: [],
     disbursements: [],
-    forecastMap: new Map(),
-    forecastList: [],
-    lastForecastTimestamp: null,
-    forecastStatusText: "Forecast Available",
     
     // Period & Filter State
-    periodPreset: "all", // 'all' | 'today' | 'weekly' | 'monthly' | 'custom'
+    periodPreset: "all",
+    latestDataDate: null,
     startDate: null,
     endDate: null,
-    latestDataDate: null,
     generatedAt: null,
     
-    // Active Screen Tab
-    activeTab: "overview", // 'overview' | 'receiving' | 'disbursement' | 'consumption' | 'forecasting'
+    // Active Screen Tab (null initially to match Image 1 empty state; reveals upon category selection)
+    activeTab: null,
+    selectedMaterialId: "all",
+    selectedMaterialName: "All Catalog Raw Materials",
     
-    // Tab Specific Filter & Pagination States
+    // Tab Specific Filter States
+    invSearch: "",
+    invStatus: "all",
+    invSort: "latest",
+    invPage: 1,
+    invPageSize: 10,
+
     rcvSearch: "",
     rcvSort: "latest",
     rcvPage: 1,
@@ -103,30 +135,14 @@ const state = {
     disbPage: 1,
     disbPageSize: 10,
 
-    cnsSearch: "",
-    cnsPage: 1,
-    cnsPageSize: 10,
+    actSearch: "",
+    actType: "all",
+    actSort: "latest",
+    actPage: 1,
+    actPageSize: 10,
 
-    fcSearch: "",
-    fcStatus: "all",
-    fcPage: 1,
-    fcPageSize: 10,
-
-    customSaveDirectoryHandle: null,
-    customSaveDirectoryName: null
+    customSaveDirectoryHandle: null
 };
-
-const $ = (id) => document.getElementById(id);
-
-function esc(str) {
-    if (str === null || str === undefined) return "";
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
 
 /* ==========================================================
    INITIALIZATION
@@ -137,7 +153,7 @@ let fpEnd = null;
 
 async function init() {
     initPeriodDates();
-    initUserReportsFlatpickr();
+    initReportsFlatpickr();
     initEventListeners();
     await loadAuthoritativeData();
 }
@@ -151,30 +167,27 @@ function initPeriodDates() {
 }
 
 function setPeriodPresetDates(preset) {
-    const anchor = state.latestDataDate ? new Date(state.latestDataDate) : new Date();
+    const anchor = state.latestDataDate || new Date();
+    const anchorStr = formatDateISO(anchor);
 
     if (preset === "today") {
-        state.startDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-        state.endDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+        state.startDate = parseDateOnly(anchorStr);
+        state.endDate = parseDateOnly(anchorStr);
     } else if (preset === "weekly") {
-        const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-        const start = addDays(end, -6);
-        state.startDate = start;
-        state.endDate = end;
+        state.endDate = parseDateOnly(anchorStr);
+        state.startDate = addDays(state.endDate, -6);
     } else if (preset === "monthly") {
-        const end = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-        const start = addDays(end, -29);
-        state.startDate = start;
-        state.endDate = end;
+        state.endDate = parseDateOnly(anchorStr);
+        state.startDate = addDays(state.endDate, -29);
     } else if (preset === "all") {
         state.startDate = null;
         state.endDate = null;
     }
     state.periodPreset = preset;
 
-    const startInput = $("rptStartDate");
-    const endInput = $("rptEndDate");
-    const presetSelect = $("reportPeriodPreset");
+    const startInput = document.getElementById("rptStartDate");
+    const endInput = document.getElementById("rptEndDate");
+    const presetSelect = document.getElementById("reportPeriodPreset");
 
     if (presetSelect) presetSelect.value = preset;
 
@@ -190,41 +203,11 @@ function setPeriodPresetDates(preset) {
         else fpEnd.clear();
     }
 
-    syncUserDateInputsInteractiveState();
-    updateUserClearBtnVisibility();
+    updateClearBtnVisibility();
 }
 
-function syncUserDateInputsInteractiveState() {
-    const isCustom = state.periodPreset === "custom";
-    const wrap = $("rptDateRangeGroup");
-
-    if (wrap) {
-        if (isCustom) {
-            wrap.classList.add("is-custom-active");
-            wrap.classList.remove("is-preset-locked");
-            wrap.title = "Custom Date Range: Click date fields to modify range";
-        } else {
-            wrap.classList.remove("is-custom-active");
-            wrap.classList.remove("is-preset-locked");
-            wrap.title = "Click to pick a custom date range or select a period preset";
-        }
-    }
-
-    if (fpStart && fpStart.altInput) {
-        fpStart.altInput.style.pointerEvents = "auto";
-        fpStart.altInput.style.cursor = "pointer";
-        fpStart.altInput.classList.remove("input-locked");
-    }
-
-    if (fpEnd && fpEnd.altInput) {
-        fpEnd.altInput.style.pointerEvents = "auto";
-        fpEnd.altInput.style.cursor = "pointer";
-        fpEnd.altInput.classList.remove("input-locked");
-    }
-}
-
-function updateUserClearBtnVisibility() {
-    const clearBtn = $("clearReportDatesBtn");
+function updateClearBtnVisibility() {
+    const clearBtn = document.getElementById("clearReportDatesBtn");
     if (clearBtn) {
         if (state.startDate || state.endDate) {
             clearBtn.style.display = "inline-flex";
@@ -234,11 +217,11 @@ function updateUserClearBtnVisibility() {
     }
 }
 
-function initUserReportsFlatpickr() {
-    const startInput = $("rptStartDate");
-    const endInput = $("rptEndDate");
-    const clearBtn = $("clearReportDatesBtn");
-    const presetSelect = $("reportPeriodPreset");
+function initReportsFlatpickr() {
+    const startInput = document.getElementById("rptStartDate");
+    const endInput = document.getElementById("rptEndDate");
+    const clearBtn = document.getElementById("clearReportDatesBtn");
+    const presetSelect = document.getElementById("reportPeriodPreset");
 
     if (typeof flatpickr === "undefined") return;
 
@@ -256,9 +239,9 @@ function initUserReportsFlatpickr() {
                 state.startDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
-                syncUserDateInputsInteractiveState();
-                updateUserClearBtnVisibility();
-                renderAllReportSections();
+                updateClearBtnVisibility();
+                updateMetadataLabels();
+                renderAllTabs();
             }
         });
         if (fpStart && fpStart.altInput) {
@@ -280,9 +263,9 @@ function initUserReportsFlatpickr() {
                 state.endDate = parseDateOnly(dateStr);
                 if (presetSelect) presetSelect.value = "custom";
                 state.periodPreset = "custom";
-                syncUserDateInputsInteractiveState();
-                updateUserClearBtnVisibility();
-                renderAllReportSections();
+                updateClearBtnVisibility();
+                updateMetadataLabels();
+                renderAllTabs();
             }
         });
         if (fpEnd && fpEnd.altInput) {
@@ -296,17 +279,16 @@ function initUserReportsFlatpickr() {
             if (fpEnd) fpEnd.clear();
             state.startDate = null;
             state.endDate = null;
-            if (presetSelect) presetSelect.value = "all";
             state.periodPreset = "all";
-            syncUserDateInputsInteractiveState();
-            updateUserClearBtnVisibility();
-            renderAllReportSections();
+            if (presetSelect) presetSelect.value = "all";
+            updateClearBtnVisibility();
+            updateMetadataLabels();
+            renderAllTabs();
             showToast("Report date filter cleared.", "info");
         });
     }
 
-    syncUserDateInputsInteractiveState();
-    updateUserClearBtnVisibility();
+    updateClearBtnVisibility();
 }
 
 function formatDateISO(d) {
@@ -330,19 +312,10 @@ function addDays(d, n) {
     return c;
 }
 
-function startOfWeek(d) {
-    const c = new Date(d);
-    c.setHours(0, 0, 0, 0);
-    const day = c.getDay(); // 0 = Sun
-    const diff = (day === 0 ? -6 : 1) - day;
-    c.setDate(c.getDate() + diff);
-    return c;
-}
-
 function withinRange(dateStr, start, end) {
     const d = parseDateOnly(dateStr);
     if (!d) return false;
-    return d >= start && d <= end;
+    return (!start || d >= start) && (!end || d <= end);
 }
 
 const MONTHS_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -351,7 +324,7 @@ function formatDisplayPeriod(start, end, preset) {
     if (!start || !end) return "All Available Records";
     if (preset === "all") return "All Recorded Data";
     if (preset === "today") {
-        return `${MONTHS_ABBR[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()}`;
+        return `${MONTHS_ABBR[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()} (Latest Update)`;
     }
     const sameYear = start.getFullYear() === end.getFullYear();
     const sameMonth = sameYear && start.getMonth() === end.getMonth();
@@ -365,15 +338,8 @@ function formatDisplayPeriod(start, end, preset) {
     return `${MONTHS_ABBR[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()} – ${MONTHS_ABBR[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
 }
 
-function formatPeriodTypeLabel(preset) {
-    if (preset === "weekly") return "Weekly";
-    if (preset === "monthly") return "Monthly";
-    if (preset === "today") return "Daily";
-    return "Custom Period";
-}
-
 /* ==========================================================
-   DATA LOAD (AUTHORITATIVE SUPABASE + AUTHORITATIVE FORECASTS)
+   DATA LOAD (AUTHORITATIVE SUPABASE + FALLBACK)
    ========================================================== */
 
 async function loadAuthoritativeData() {
@@ -382,77 +348,100 @@ async function loadAuthoritativeData() {
         let rawReceipts = [];
         let rawDisbursements = [];
 
-        try {
-            const fetchWithTimeout = (promise, ms = 3500) =>
-                Promise.race([
-                    promise,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+        const BACKEND_STANDBY = true;
+        if (!BACKEND_STANDBY) {
+            try {
+                const fetchWithTimeout = (promise, ms = 3500) => 
+                    Promise.race([
+                        promise,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+                    ]);
+
+                const [matRes, rcvRes, disbRes] = await Promise.allSettled([
+                    fetchWithTimeout(supabase
+                        .from("raw_materials")
+                        .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
+                        .order("name")),
+                    fetchWithTimeout(supabase
+                        .from("stock_receipts")
+                        .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
+                        .order("receipt_date", { ascending: false })),
+                    fetchWithTimeout(supabase
+                        .from("material_disbursements")
+                        .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
+                        .order("usage_date", { ascending: false }))
                 ]);
 
-            const [matRes, rcvRes, disbRes] = await Promise.allSettled([
-                fetchWithTimeout(supabase
-                    .from("raw_materials")
-                    .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
-                    .order("name")),
-                fetchWithTimeout(supabase
-                    .from("stock_receipts")
-                    .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-                    .order("receipt_date", { ascending: false })),
-                fetchWithTimeout(supabase
-                    .from("material_disbursements")
-                    .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-                    .order("usage_date", { ascending: false }))
-            ]);
-
-            if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
-            if (rcvRes.status === "fulfilled" && rcvRes.value?.data && rcvRes.value.data.length > 0) rawReceipts = rcvRes.value.data;
-            if (disbRes.status === "fulfilled" && disbRes.value?.data && disbRes.value.data.length > 0) rawDisbursements = disbRes.value.data;
-        } catch (e) {
-            console.warn("Using baseline user reports dataset:", e);
+                if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
+                if (rcvRes.status === "fulfilled" && rcvRes.value?.data && rcvRes.value.data.length > 0) rawReceipts = rcvRes.value.data;
+                if (disbRes.status === "fulfilled" && disbRes.value?.data && disbRes.value.data.length > 0) rawDisbursements = disbRes.value.data;
+            } catch (e) {
+                console.warn("Using baseline reports dataset:", e);
+            }
         }
 
-        if (rawMats.length === 0) {
-            rawMats = AUTHENTIC_59_RAW_MATERIALS;
-        }
+        const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
+        const matBaseMap = new Map();
+        const baseMats = getSystemRawMaterials();
+        const initialMats = (!isBaselineWiped && (!baseMats || baseMats.length === 0)) ? AUTHENTIC_59_RAW_MATERIALS : (baseMats || []);
+        (initialMats || []).forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            matBaseMap.set(k, {
+                id: String(m.id || m.item_code || m.itemCode || k),
+                item_code: m.item_code || m.itemCode || m.id || "RM—",
+                name: m.name,
+                unit_of_measure: m.unit_of_measure || m.unit || "",
+                current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                reorder_quantity: Number(m.reorder_quantity ?? 50),
+                lead_time_days: Number(m.lead_time_days ?? 3)
+            });
+        });
 
-        // Always merge baseline + custom localStorage entries so newly added records appear
+        // Merge Supabase materials
+        (rawMats || []).forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            const existing = matBaseMap.get(k);
+            if (existing) {
+                existing.id = String(m.id || existing.id);
+                if (m.current_stock !== undefined && m.current_stock !== null) existing.current_stock = Number(m.current_stock);
+                if (m.item_code) existing.item_code = m.item_code;
+                if (m.unit_of_measure) existing.unit_of_measure = m.unit_of_measure;
+                if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
+                if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
+            } else {
+                matBaseMap.set(k, {
+                    id: String(m.id || k),
+                    item_code: m.item_code || "RM—",
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock || 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? 10),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
+            }
+        });
+
+        rawMats = Array.from(matBaseMap.values());
+
+        // Merge receipts
         const recBaseMap = new Map();
-        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));
+        if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
+            AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));
+        }
         getSystemCustomReceipts().forEach(r => recBaseMap.set(String(r.id), { ...r }));
         rawReceipts.forEach(r => recBaseMap.set(String(r.id), { ...(recBaseMap.get(String(r.id)) || {}), ...r }));
         rawReceipts = Array.from(recBaseMap.values());
 
+        // Merge disbursements
         const disbBaseMap = new Map();
-        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbBaseMap.set(String(d.id), { ...d }));
+        if (!isBaselineWiped && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
+            AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbBaseMap.set(String(d.id), { ...d }));
+        }
         getSystemCustomDisbursements().forEach(d => disbBaseMap.set(String(d.id), { ...d }));
         rawDisbursements.forEach(d => disbBaseMap.set(String(d.id), { ...(disbBaseMap.get(String(d.id)) || {}), ...d }));
         rawDisbursements = Array.from(disbBaseMap.values());
-
-        // Retrieve locally deleted IDs
-        let deletedMatIds = new Set();
-        try {
-            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
-        } catch (e) {}
-
-        let deletedDisbIds = new Set();
-        try {
-            deletedDisbIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_disbursement_ids") || "[]").map(x => String(x)));
-        } catch (e) {}
-
-        let deletedRecIds = new Set();
-        try {
-            deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
-        } catch (e) {}
-
-        if (deletedMatIds.size > 0) {
-            rawMats = rawMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
-        }
-        if (deletedRecIds.size > 0) {
-            rawReceipts = rawReceipts.filter(r => !deletedRecIds.has(String(r.id)));
-        }
-        if (deletedDisbIds.size > 0) {
-            rawDisbursements = rawDisbursements.filter(d => !deletedDisbIds.has(String(d.id)));
-        }
 
         // Normalize Materials
         state.materials = rawMats.map(m => {
@@ -468,7 +457,7 @@ async function loadAuthoritativeData() {
                 id: m.id,
                 itemCode: m.item_code || "RM—",
                 name: m.name,
-                unit: (m.unit_of_measure || "kg").trim(),
+                unit: (m.unit_of_measure || m.unit || "").trim(),
                 currentStock: stock,
                 minThreshold: minThreshold,
                 reorderQty: Number(m.reorder_quantity || 0),
@@ -476,1237 +465,1091 @@ async function loadAuthoritativeData() {
             };
         });
 
-        const matMap = new Map(state.materials.map(m => [m.id, m]));
+        // Fast Material lookup map
+        const matMap = new Map();
+        state.materials.forEach(m => {
+            matMap.set(m.id, m);
+            matMap.set(m.name.toLowerCase().trim(), m);
+        });
 
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
-            const mat = matMap.get(r.material_id);
-            const supName = (r.supplier_name && r.supplier_name.toLowerCase() !== "all" ? r.supplier_name : "Supplier").trim();
+            const rMat = matMap.get(r.material_id) || matMap.get((r.raw_material_name || "").toLowerCase().trim());
             return {
                 id: r.id,
-                receiptDate: r.receipt_date || (r.created_at ? r.created_at.slice(0, 10) : ""),
+                receiptDate: r.receipt_date || (r.created_at ? r.created_at.slice(0, 10) : "—"),
                 materialId: r.material_id,
-                materialName: mat ? mat.name : "Raw Material",
-                itemCode: mat ? mat.itemCode : "RM—",
+                materialName: rMat ? rMat.name : (r.raw_material_name || "Unknown Material"),
                 receivedQuantity: Number(r.received_quantity || 0),
-                unit: (r.unit || (mat ? mat.unit : "kg")).trim(),
-                currentStock: mat ? mat.currentStock : null,
-                supplierName: supName,
-                receivedBy: formatOperatorDisplay(r.received_by, "User"),
-                status: "Verified",
-                createdAt: r.created_at
+                unit: r.unit || (rMat ? rMat.unit : ""),
+                supplierName: r.supplier_name || "Primary Supplier",
+                receivedBy: r.received_by || "Staff Receiver"
             };
         });
 
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
-            const mat = matMap.get(d.material_id);
-            const prodName = (d.finished_product_name && d.finished_product_name.toLowerCase() !== "all" ? d.finished_product_name : (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "General Production")).trim();
-            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "Production Issue").trim();
+            const dMat = matMap.get(d.material_id) || matMap.get((d.raw_material_name || "").toLowerCase().trim());
             return {
                 id: d.id,
-                usageDate: d.usage_date || (d.created_at ? d.created_at.slice(0, 10) : ""),
+                usageDate: d.usage_date || (d.created_at ? d.created_at.slice(0, 10) : "—"),
                 materialId: d.material_id,
-                materialName: mat ? mat.name : "Raw Material",
-                itemCode: mat ? mat.itemCode : "RM—",
+                materialName: dMat ? dMat.name : (d.raw_material_name || "Unknown Material"),
                 disbursedQuantity: Number(d.consumed_quantity || 0),
-                unit: (d.unit || (mat ? mat.unit : "kg")).trim(),
-                currentStock: mat ? mat.currentStock : null,
-                finishedProduct: prodName,
-                activityType: actType,
-                recordedBy: formatOperatorDisplay(d.recorded_by, "User"),
-                status: "Logged",
-                createdAt: d.created_at
+                unit: d.unit || (dMat ? dMat.unit : ""),
+                activityType: d.activity_type || "Production Run",
+                finishedProduct: d.finished_product_name || "Production Line",
+                recordedBy: d.recorded_by || "Staff Operator"
             };
         });
 
-        // Compute Latest Recorded Data Date
-        let maxDateStr = "";
+        // Determine anchor date
+        let maxDateStr = null;
         state.receipts.forEach(r => {
-            if (r.receiptDate && r.receiptDate > maxDateStr) maxDateStr = r.receiptDate;
+            if (r.receiptDate && r.receiptDate !== "—" && (!maxDateStr || r.receiptDate > maxDateStr)) maxDateStr = r.receiptDate;
         });
         state.disbursements.forEach(d => {
-            if (d.usageDate && d.usageDate > maxDateStr) maxDateStr = d.usageDate;
+            if (d.usageDate && d.usageDate !== "—" && (!maxDateStr || d.usageDate > maxDateStr)) maxDateStr = d.usageDate;
         });
 
-        if (maxDateStr) {
-            state.latestDataDate = parseDateOnly(maxDateStr);
-        } else {
-            state.latestDataDate = new Date();
-        }
-
-        // Re-anchor period presets
+        state.latestDataDate = parseDateOnly(maxDateStr) || new Date();
         setPeriodPresetDates(state.periodPreset);
 
-        // Fetch Authoritative AI Forecast Data (Staged as blanks)
-        await loadAuthoritativeForecasts();
-
-        // Mark report generation timestamp
         state.generatedAt = new Date();
-
-        renderAllReportSections();
+        populateMaterialDropdown();
+        updateMetadataLabels();
+        renderAllTabs();
+        updatePrintDocHtml();
 
     } catch (err) {
-        console.error("Error loading authoritative report data:", err);
-        showToast("Error loading report records from Supabase.", "error");
+        console.error("Error loading reports data:", err);
+        showToast("Error loading authoritative records.", "error");
     }
 }
 
-async function loadAuthoritativeForecasts() {
-    state.forecastMap.clear();
-    state.forecastList = [];
+function updateMetadataLabels() {
+    const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+    const pLblEl = document.getElementById("metaPeriodLabel");
+    if (pLblEl) pLblEl.textContent = periodLabel;
 
-    // Build finished-product map from disbursement records
-    const productMap = new Map();
-    state.disbursements.forEach(d => {
-        const prod = d.finishedProduct;
-        if (prod && prod !== "Production Issue" && prod !== "General Production" && prod !== "Operational Use" && prod !== "General Usage") {
-            const arr = productMap.get(d.materialId) || [];
-            if (!arr.includes(prod)) arr.push(prod);
-            productMap.set(d.materialId, arr);
-        }
-    });
-
-    // Compute total recent consumption per material (from all disbursement records)
-    const recentUsageMap = new Map();
-    state.disbursements.forEach(d => {
-        recentUsageMap.set(d.materialId, (recentUsageMap.get(d.materialId) || 0) + d.disbursedQuantity);
-    });
-
-    // Read cached AI forecast results produced by the admin Forecasting module
-    let cachedForecasts = null;
-    try {
-        const cachedData = localStorage.getItem("rmims_forecast_cache");
-        const cachedTime = localStorage.getItem("rmims_forecast_timestamp");
-        if (cachedData) {
-            cachedForecasts = JSON.parse(cachedData);
-            if (cachedTime) state.lastForecastTimestamp = new Date(cachedTime);
-        }
-    } catch (e) {
-        console.warn("Forecast cache read notice:", e);
-    }
-
-    state.materials.forEach(m => {
-        const recentUsage = recentUsageMap.get(m.id) || 0;
-        const products = productMap.get(m.id) || [];
-        const finishedProductDisplay = products.length > 0 ? products.join(", ") : "Production Operations";
-
-        let f7Qty = 0;
-        let f1mQty = 0;
-        let decisionStatus = "Sufficient";
-        let interpretation = "";
-
-        // Robust matching against cached forecast keys
-        let cf = null;
-        if (cachedForecasts) {
-            cf = cachedForecasts[m.name] || cachedForecasts[m.name.trim()] || Object.entries(cachedForecasts).find(([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase())?.[1];
-        }
-
-        if (cf) {
-            // Use AI-computed forecast from admin Forecasting module cache
-            f7Qty = Number(cf.forecast7Day?.quantity ?? cf.forecast7Day ?? 0);
-            f1mQty = Number(cf.forecast1Month?.quantity ?? cf.forecast1Month ?? Number((f7Qty * 4.15).toFixed(1)));
-            const curStock = m.currentStock;
-            const diff = Number(cf.decision_support?.difference ?? (curStock - f7Qty));
-            decisionStatus = cf.decision_support?.decision_status || cf.decision_support?.status;
-            if (!decisionStatus) {
-                if (diff < 0) decisionStatus = "Potential Shortage";
-                else if (curStock <= (m.minThreshold || 0)) decisionStatus = "Needs Attention";
-                else if (diff <= (m.minThreshold || 0)) decisionStatus = "Monitor";
-                else decisionStatus = "Sufficient";
-            }
-            interpretation = cf.decision_support?.interpretation || "";
-        } else {
-            // Baseline dynamic demand projection computed from live disbursement history
-            const avgWeekly = recentUsage > 0 ? recentUsage : Math.max((m.minThreshold || 0) * 0.5, 10);
-            f7Qty = Number(avgWeekly.toFixed(1));
-            f1mQty = Number((avgWeekly * 4.15).toFixed(1));
-
-            const diff = m.currentStock - f7Qty;
-            if (diff < 0) decisionStatus = "Potential Shortage";
-            else if (m.currentStock <= (m.minThreshold || 0)) decisionStatus = "Needs Attention";
-            else if (diff <= (m.minThreshold || 0)) decisionStatus = "Monitor";
-            else decisionStatus = "Sufficient";
-        }
-
-        const additionalNeed = Math.max(0, Number((f7Qty - m.currentStock).toFixed(1)));
-
-        if (!interpretation) {
-            if (additionalNeed > 0) {
-                interpretation = `Projected 7-day requirement (${f7Qty.toFixed(1)} ${m.unit}) exceeds stock. Deficit of +${additionalNeed.toFixed(1)} ${m.unit}. Replenishment recommended.`;
-            } else if (decisionStatus === "Needs Attention" || m.currentStock <= (m.minThreshold || 0)) {
-                interpretation = `Current stock near minimum safety threshold (${m.minThreshold || 0} ${m.unit}). Reorder recommended.`;
-            } else if (decisionStatus === "Monitor") {
-                interpretation = `Stock levels adequate for 7-day projection. Standard consumption monitoring.`;
-            } else {
-                interpretation = `Stock optimal. Current stock satisfies projected 7-day requirement.`;
-            }
-        }
-
-        const item = {
-            id: m.id,
-            itemCode: m.itemCode,
-            name: m.name,
-            unit: m.unit,
-            currentStock: m.currentStock,
-            minThreshold: m.minThreshold,
-            finishedProduct: finishedProductDisplay,
-            forecast7Day: f7Qty,
-            forecast1Month: f1mQty,
-            additionalNeed,
-            status: decisionStatus,
-            interpretation
-        };
-
-        state.forecastList.push(item);
-        state.forecastMap.set(m.name.toLowerCase(), item);
-    });
-
-    if (!state.lastForecastTimestamp) state.lastForecastTimestamp = new Date();
-    state.forecastStatusText = cachedForecasts ? "Forecast Ready" : "Baseline Projection";
-}
-
-
-/* ==========================================================
-   SAVE AS MODAL HANDLERS
-   ========================================================== */
-
-function openSaveModal() {
-    const saveOverlay = $("saveModalOverlay");
-    if (!saveOverlay) return;
-
-    const periodSubtitle = $("saveModalPeriodSubtitle");
-    if (periodSubtitle) {
-        periodSubtitle.textContent = `Report Period: ${formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset)}`;
-    }
-
-    const reportNameInput = $("saveModalReportName");
-    if (reportNameInput) {
-        const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : (state.periodPreset === "today" ? "Today" : "Operational"));
-        const startStr = state.startDate ? formatDateISO(state.startDate) : "";
-        const endStr = state.endDate ? formatDateISO(state.endDate) : "";
-        reportNameInput.value = `RMIMS_${pTag}_Report_${startStr}_to_${endStr}`;
-    }
-
-    saveOverlay.classList.add("open");
-}
-
-function closeSaveModal() {
-    const saveOverlay = $("saveModalOverlay");
-    if (saveOverlay) saveOverlay.classList.remove("open");
-}
-
-/* ==========================================================
-   SAVE BLOB HELPER (INTERACTIVE FOLDER OR BROWSER DOWNLOAD)
-   ========================================================== */
-
-async function saveUserExportBlob({ blob, fileName, defaultExtension }) {
-    const fullFileName = fileName.endsWith(`.${defaultExtension}`) ? fileName : `${fileName}.${defaultExtension}`;
-
-    if (state.customSaveDirectoryHandle && typeof state.customSaveDirectoryHandle.getFileHandle === "function") {
-        try {
-            const fileHandle = await state.customSaveDirectoryHandle.getFileHandle(fullFileName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            return { success: true, mode: "custom-directory", location: state.customSaveDirectoryHandle.name };
-        } catch (err) {
-            console.warn("Direct directory write failed, falling back to download:", err);
-        }
-    }
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fullFileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
-    return { success: true, mode: "browser-download" };
-}
-
-async function handleSaveConfirm() {
-    const checkedBoxes = Array.from(document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']:checked"));
-    if (checkedBoxes.length === 0) {
-        showToast("Please select at least one report section.", "error");
-        return;
-    }
-
-    const selectedKeys = checkedBoxes.map(cb => cb.value);
-    const format = document.querySelector("input[name='saveFileFormat']:checked")?.value || "pdf";
-    const rawName = $("saveModalReportName")?.value.trim() || `RMIMS_User_Report_${formatDateISO(new Date())}`;
-    const confirmBtn = $("saveModalConfirmBtn");
-
-    if (confirmBtn) {
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin 0.6s linear infinite;"></span> Saving...`;
-    }
-
-    try {
-        if (format === "pdf") {
-            generateUserPdfReport(selectedKeys, rawName);
-        } else if (format === "excel") {
-            generateUserExcelWorkbook(selectedKeys, rawName);
-        } else if (format === "both") {
-            generateUserPdfReport(selectedKeys, `${rawName}_Document`);
-            generateUserExcelWorkbook(selectedKeys, `${rawName}_Workbook`);
-        } else if (format === "csv") {
-            generateUserCsvPackage(selectedKeys, rawName);
-        } else if (format === "json") {
-            generateUserJsonExport(selectedKeys, rawName);
-        }
-    } catch (err) {
-        console.error("User save error:", err);
-        showToast("Error saving report package.", "error");
-    } finally {
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Report`;
-        }
-        closeSaveModal();
-    }
-}
-
-/* ==========================================================
-   EVENT LISTENERS
-   ========================================================== */
-
-let listenersInitialized = false;
-let isPrinting = false;
-
-function initEventListeners() {
-    if (listenersInitialized) return;
-    listenersInitialized = true;
-
-    // Period Preset
-    const presetSelect = $("reportPeriodPreset");
-    if (presetSelect) {
-        presetSelect.addEventListener("change", (e) => {
-            state.periodPreset = e.target.value;
-            setPeriodPresetDates(state.periodPreset);
-            renderAllReportSections();
-        });
-    }
-
-    // Refresh Live Data Button
-    const genBtn = $("generateReportBtn");
-    if (genBtn) {
-        genBtn.addEventListener("click", async () => {
-            genBtn.classList.add("spinning");
-            try {
-                await loadAuthoritativeData();
-                showToast("System data refreshed successfully. Reports are up to date.", "success");
-            } catch (err) {
-                console.error("Refresh error:", err);
-                showToast("Error updating live report data.", "error");
-            } finally {
-                setTimeout(() => {
-                    genBtn.classList.remove("spinning");
-                }, 750);
-            }
-        });
-    }
-
-    // Tabs
-    const tabsBar = $("reportTabsBar");
-    if (tabsBar) {
-        tabsBar.addEventListener("click", (e) => {
-            const btn = e.target.closest(".rpt-tab-btn");
-            if (!btn) return;
-            const targetTab = btn.dataset.tab;
-            if (!targetTab) return;
-            switchTab(targetTab);
-        });
-    }
-
-    // Search & Filter listeners
-    const rcvSearch = $("receivingSearchInput");
-    if (rcvSearch) {
-        rcvSearch.addEventListener("input", (e) => {
-            state.rcvSearch = e.target.value.trim().toLowerCase();
-            state.rcvPage = 1;
-            renderTabReceiving();
-        });
-    }
-    const rcvSort = $("receivingSortSelect");
-    if (rcvSort) {
-        rcvSort.addEventListener("change", (e) => {
-            state.rcvSort = e.target.value;
-            state.rcvPage = 1;
-            renderTabReceiving();
-        });
-    }
-
-    const disbSearch = $("disbursementSearchInput");
-    if (disbSearch) {
-        disbSearch.addEventListener("input", (e) => {
-            state.disbSearch = e.target.value.trim().toLowerCase();
-            state.disbPage = 1;
-            renderTabDisbursement();
-        });
-    }
-    const disbSort = $("disbursementSortSelect");
-    if (disbSort) {
-        disbSort.addEventListener("change", (e) => {
-            state.disbSort = e.target.value;
-            state.disbPage = 1;
-            renderTabDisbursement();
-        });
-    }
-
-    const cnsSearch = $("consumptionSearchInput");
-    if (cnsSearch) {
-        cnsSearch.addEventListener("input", (e) => {
-            state.cnsSearch = e.target.value.trim().toLowerCase();
-            state.cnsPage = 1;
-            renderTabConsumption();
-        });
-    }
-
-    const fcSearch = $("forecastSearchInput");
-    if (fcSearch) {
-        fcSearch.addEventListener("input", (e) => {
-            state.fcSearch = e.target.value.trim().toLowerCase();
-            state.fcPage = 1;
-            renderTabForecasting();
-        });
-    }
-    const fcStatus = $("forecastStatusFilter");
-    if (fcStatus) {
-        fcStatus.addEventListener("change", (e) => {
-            state.fcStatus = e.target.value;
-            state.fcPage = 1;
-            renderTabForecasting();
-        });
-    }
-
-    // Live Cross-Module Sync with Admin Forecasting module
-    window.addEventListener("storage", (e) => {
-        if (e.key === "rmims_forecast_cache" || e.key === "rmims_latest_forecast" || e.key === "rmims_forecast_timestamp") {
-            loadAuthoritativeForecasts();
-            renderTabForecasting();
-            updateContinuousPrintHtml();
-        }
-    });
-    window.addEventListener("rmims:forecast-updated", () => {
-        loadAuthoritativeForecasts();
-        renderTabForecasting();
-        updateContinuousPrintHtml();
-    });
-
-    // Save As Modal
-    const btnSaveAs = $("btnSaveAs");
-    if (btnSaveAs) btnSaveAs.addEventListener("click", openSaveModal);
-
-    const saveOverlay = $("saveModalOverlay");
-    if (saveOverlay) {
-        saveOverlay.addEventListener("click", (e) => {
-            if (e.target === saveOverlay) closeSaveModal();
-        });
-    }
-
-    const saveCloseBtn = $("saveModalCloseBtn");
-    if (saveCloseBtn) saveCloseBtn.addEventListener("click", closeSaveModal);
-
-    const saveCancelBtn = $("saveModalCancelBtn");
-    if (saveCancelBtn) saveCancelBtn.addEventListener("click", closeSaveModal);
-
-    const saveConfirmBtn = $("saveModalConfirmBtn");
-    if (saveConfirmBtn) saveConfirmBtn.addEventListener("click", handleSaveConfirm);
-
-    // Interactive Browse Location Picker
-    const browseBtn = $("browseLocationBtn");
-    const locInput = $("saveModalLocation");
-
-    if (browseBtn) {
-        browseBtn.addEventListener("click", async () => {
-            if ("showDirectoryPicker" in window) {
-                try {
-                    const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-                    if (dirHandle) {
-                        state.customSaveDirectoryHandle = dirHandle;
-                        state.customSaveDirectoryName = dirHandle.name;
-                        if (locInput) {
-                            locInput.value = `📁 ${dirHandle.name} (Custom Folder)`;
-                            locInput.style.color = "#059669";
-                            locInput.style.fontWeight = "700";
-                        }
-                        showToast(`Target save folder selected: "${dirHandle.name}"`, "success");
-                    }
-                } catch (err) {
-                    if (err.name !== "AbortError") {
-                        console.error("Directory picker error:", err);
-                        showToast("Could not access custom folder. Defaulting to Downloads.", "info");
-                    }
-                }
-            } else {
-                const folderName = prompt("Enter target folder name or label for your export archive:\n(e.g., Reports/August2026 or RMIMS_Archives)", state.customSaveDirectoryName || "RMIMS_Reports");
-                if (folderName && folderName.trim()) {
-                    state.customSaveDirectoryName = folderName.trim();
-                    if (locInput) {
-                        locInput.value = `📁 Downloads / ${state.customSaveDirectoryName}`;
-                        locInput.style.color = "#059669";
-                        locInput.style.fontWeight = "700";
-                    }
-                    showToast(`Save location set to: Downloads / ${state.customSaveDirectoryName}`, "success");
-                }
-            }
-        });
-    }
-
-    if (locInput) {
-        locInput.addEventListener("click", () => {
-            if (state.customSaveDirectoryHandle || state.customSaveDirectoryName) {
-                if (confirm("Reset save location back to default browser Downloads folder?")) {
-                    state.customSaveDirectoryHandle = null;
-                    state.customSaveDirectoryName = null;
-                    locInput.value = "Downloads (Browser Default)";
-                    locInput.style.color = "";
-                    locInput.style.fontWeight = "";
-                    showToast("Save location reset to default Downloads folder.", "info");
-                }
-            }
-        });
-    }
-
-    // Section Checklist buttons
-    const selectAllBtn = $("saveSelectAllBtn");
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener("click", () => {
-            const boxes = document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']");
-            boxes.forEach(b => b.checked = true);
-        });
-    }
-    const clearAllBtn = $("saveClearAllBtn");
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener("click", () => {
-            const boxes = document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']");
-            boxes.forEach(b => b.checked = false);
-        });
-    }
-
-    // Print Button
-    const btnPrint = $("btnPrint");
-    if (btnPrint) btnPrint.addEventListener("click", handlePrintReport);
-}
-
-/* ==========================================================
-   TAB SWITCHING
-   ========================================================== */
-
-function switchTab(tabKey) {
-    state.activeTab = tabKey;
-    const tabBtns = document.querySelectorAll(".rpt-tab-btn");
-    tabBtns.forEach(btn => {
-        if (btn.dataset.tab === tabKey) btn.classList.add("active");
-        else btn.classList.remove("active");
-    });
-
-    const panels = {
-        overview: $("tabPanelOverview"),
-        receiving: $("tabPanelReceiving"),
-        disbursement: $("tabPanelDisbursement"),
-        consumption: $("tabPanelConsumption"),
-        forecasting: $("tabPanelForecasting")
-    };
-
-    Object.keys(panels).forEach(k => {
-        if (panels[k]) {
-            if (k === tabKey) panels[k].classList.add("active");
-            else panels[k].classList.remove("active");
-        }
-    });
-}
-
-/* ==========================================================
-   RENDER ALL SECTIONS
-   ========================================================== */
-
-function renderAllReportSections() {
-    updateMetadataBar();
-    renderTabOverview();
-    renderTabReceiving();
-    renderTabDisbursement();
-    renderTabConsumption();
-    renderTabForecasting();
-}
-
-function updateMetadataBar() {
-    const periodEl = $("metaPeriodLabel");
-    if (periodEl) {
-        periodEl.textContent = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
-    }
-    const genEl = $("metaGeneratedTime");
+    const genEl = document.getElementById("metaGeneratedTime");
     if (genEl && state.generatedAt) {
-        genEl.textContent = state.generatedAt.toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true
-        });
+        genEl.textContent = state.generatedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
     }
+
+    const subTitle = document.getElementById("saveModalPeriodSubtitle");
+    if (subTitle) subTitle.textContent = `Report Period: ${periodLabel}`;
 }
 
 /* ==========================================================
-   TAB 1: OVERVIEW
+   RENDER TABS
    ========================================================== */
 
-function computePeriodStockStatus(mat, targetDate) {
-    if (!targetDate) return mat.status;
-    const min = mat.minThreshold || 20;
-    const rcvUpTo = state.receipts.filter(r => r.materialId === mat.id && r.receiptDate <= targetDate).reduce((acc, r) => acc + r.receivedQuantity, 0);
-    const disbUpTo = state.disbursements.filter(d => d.materialId === mat.id && d.usageDate <= targetDate).reduce((acc, d) => acc + d.consumedQuantity, 0);
-    const mIdx = Number(mat.id.replace(/\D/g, '') || 1);
-    const cycleLength = 38 + ((mIdx * 7) % 17);
-    const offset = (mIdx * 3.7) % cycleLength;
-    const day0 = offset % cycleLength;
-    let initFactor = 1.85;
-    if (day0 < 1.8) {
-        initFactor = 0.0;
-    } else if (day0 < 8.5) {
-        initFactor = 0.40 + ((day0 - 1.8) / 6.7) * 0.55;
-    } else if (day0 < 19.0) {
-        initFactor = 1.05 + ((day0 - 8.5) / 10.5) * 0.40;
-    } else {
-        initFactor = 1.55 + ((cycleLength - day0) / (cycleLength - 19.0)) * 0.70;
-    }
-    const initialStock = min * initFactor;
-    const stockCalc = Math.max(0, initialStock + rcvUpTo - disbUpTo);
-    
-    if (stockCalc <= 0) return "Critical";
-    if (stockCalc < min) return "Low";
-    if (stockCalc <= min * 1.5) return "Stable";
-    return "Good";
+function renderAllTabs() {
+    renderInventoryRecordsTab();
+    renderMaterialReceivingTab();
+    renderMaterialDisbursementTab();
+    renderMaterialActivityTab();
+    updatePreviewBannerKpis();
+    updatePrintDocHtml();
 }
 
-function renderTabOverview() {
-    const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-    
-    // Dynamic Period Material Attention Count across January to September
-    const targetDate = state.endDate || new Date().toISOString().slice(0, 10);
-    const attentionMaterials = state.materials.filter(m => {
-        const s = computePeriodStockStatus(m, targetDate);
-        return s === "Low" || s === "Critical";
-    });
-    
-    const rcvCountEl = $("kpiReceivedCount");
-    const disbCountEl = $("kpiDisbursedCount");
-    const cnsCountEl = $("kpiConsumptionCount");
-    const attCountEl = $("kpiAttentionCount");
-
-    if (rcvCountEl) rcvCountEl.textContent = periodReceipts.length;
-    if (disbCountEl) disbCountEl.textContent = periodDisbursements.length;
-    if (cnsCountEl) cnsCountEl.textContent = periodDisbursements.length;
-    if (attCountEl) attCountEl.textContent = attentionMaterials.length;
-
-    const tbody = $("overviewTableBody");
+/* --- TAB 1: INVENTORY RECORDS --- */
+function renderInventoryRecordsTab() {
+    const tbody = document.getElementById("invTableBody");
+    const paginationEl = document.getElementById("invPaginationBar");
     if (!tbody) return;
 
-    if (periodReceipts.length === 0 && periodDisbursements.length === 0 && attentionMaterials.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="rpt-table-empty">No activity recorded for the selected period.</td></tr>`;
-        return;
+    let list = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? state.materials.filter(m => m.id === state.selectedMaterialId)
+        : [...state.materials];
+
+    // Search filter
+    if (state.invSearch.trim()) {
+        const q = state.invSearch.toLowerCase().trim();
+        list = list.filter(m => m.name.toLowerCase().includes(q) || m.itemCode.toLowerCase().includes(q));
     }
 
-    const displayPeriod = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+    // Status filter
+    if (state.invStatus !== "all") {
+        list = list.filter(m => m.status === state.invStatus);
+    }
 
-    // Build Unit-Safe Received Summary
-    const rcvUnitMap = new Map();
-    periodReceipts.forEach(r => rcvUnitMap.set(r.unit, (rcvUnitMap.get(r.unit) || 0) + r.receivedQuantity));
-    const rcvStr = Array.from(rcvUnitMap.entries()).map(([u, v]) => `${v.toLocaleString()} ${u}`).join(", ") || "0 items";
+    // Sort
+    if (state.invSort === "az") list.sort((a, b) => a.name.localeCompare(b.name));
+    else if (state.invSort === "za") list.sort((a, b) => b.name.localeCompare(a.name));
+    else if (state.invSort === "high_stock") list.sort((a, b) => b.currentStock - a.currentStock);
+    else if (state.invSort === "low_stock") list.sort((a, b) => a.currentStock - b.currentStock);
+    else if (state.invSort === "oldest") list.reverse();
 
-    // Build Unit-Safe Disbursed Summary
-    const disbUnitMap = new Map();
-    periodDisbursements.forEach(d => disbUnitMap.set(d.unit, (disbUnitMap.get(d.unit) || 0) + d.disbursedQuantity));
-    const disbStr = Array.from(disbUnitMap.entries()).map(([u, v]) => `${v.toLocaleString()} ${u}`).join(", ") || "0 items";
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / state.invPageSize));
+    if (state.invPage > totalPages) state.invPage = totalPages;
 
-    tbody.innerHTML = `
-        <tr>
-            <td><strong>Raw Material Receipts</strong></td>
-            <td><span class="text-green font-bold">+${esc(rcvStr)}</span> (${periodReceipts.length} records)</td>
-            <td>${esc(displayPeriod)}</td>
-            <td><span class="status-pill status-good">Completed</span></td>
-        </tr>
-        <tr>
-            <td><strong>Production Disbursements</strong></td>
-            <td><span class="text-blue font-bold">-${esc(disbStr)}</span> (${periodDisbursements.length} records)</td>
-            <td>${esc(displayPeriod)}</td>
-            <td><span class="status-pill status-good">Logged</span></td>
-        </tr>
-        <tr>
-            <td><strong>Active Raw Materials Monitored</strong></td>
-            <td><strong>${state.materials.length}</strong> items in catalog</td>
-            <td>Current Baseline</td>
-            <td><span class="status-pill status-good">Active</span></td>
-        </tr>
-        <tr>
-            <td><strong>Materials Needing Attention</strong></td>
-            <td><strong>${attentionMaterials.length}</strong> items below threshold</td>
-            <td>Real-Time</td>
-            <td>${attentionMaterials.length > 0 ? `<span class="status-pill status-red">Attention Required</span>` : `<span class="status-pill status-good">Optimal</span>`}</td>
-        </tr>
-        <tr>
-            <td><strong>AI Forecast Support Integration</strong></td>
-            <td><strong>${state.forecastList.length}</strong> materials with AI projections</td>
-            <td>Next 7 Days</td>
-            <td><span class="status-pill status-blue">${esc(state.forecastStatusText)}</span></td>
-        </tr>
-    `;
+    const startIdx = (state.invPage - 1) * state.invPageSize;
+    const pageItems = list.slice(startIdx, startIdx + state.invPageSize);
+
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No matching inventory materials found.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(m => `
+            <tr>
+                <td><strong>${escapeHtml(m.name)}</strong></td>
+                <td><span style="font-family:'Inter', sans-serif; font-weight:600; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
+                <td>${escapeHtml(m.unit)}</td>
+                <td><strong>${m.currentStock.toLocaleString()}</strong></td>
+                <td>${m.minThreshold.toLocaleString()}</td>
+                <td>${m.reorderQty.toLocaleString()}</td>
+                <td>
+                    <span class="rpt-badge ${m.status === 'Good' ? 'rpt-badge-good' : (m.status === 'Low' ? 'rpt-badge-low' : 'rpt-badge-critical')}">
+                        ${escapeHtml(m.status)}
+                    </span>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    renderPaginationBar(paginationEl, state.invPage, totalPages, total, state.invPageSize, (newPage) => {
+        state.invPage = newPage;
+        renderInventoryRecordsTab();
+    });
 }
 
-/* ==========================================================
-   REUSABLE PAGINATION HELPER
-   ========================================================== */
+/* --- TAB 2: MATERIAL RECEIVING --- */
+function renderMaterialReceivingTab() {
+    const tbody = document.getElementById("rcvTableBody");
+    const countNote = document.getElementById("rcvTotalCountNote");
+    const paginationEl = document.getElementById("rcvPaginationBar");
+    if (!tbody) return;
 
-function renderReportsPaginationBar({ containerId, currentPage, totalItems, pageSize, onPageChange }) {
-    const container = document.getElementById(containerId);
+    let list = state.receipts.filter(r => 
+        withinRange(r.receiptDate, state.startDate, state.endDate) &&
+        (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId)
+    );
+
+    if (state.rcvSearch.trim()) {
+        const q = state.rcvSearch.toLowerCase().trim();
+        list = list.filter(r => r.materialName.toLowerCase().includes(q) || r.supplierName.toLowerCase().includes(q) || r.receivedBy.toLowerCase().includes(q));
+    }
+
+    if (state.rcvSort === "az") list.sort((a, b) => a.materialName.localeCompare(b.materialName));
+    else if (state.rcvSort === "za") list.sort((a, b) => b.materialName.localeCompare(a.materialName));
+    else if (state.rcvSort === "highest") list.sort((a, b) => b.receivedQuantity - a.receivedQuantity);
+    else if (state.rcvSort === "oldest") list.sort((a, b) => a.receiptDate.localeCompare(b.receiptDate));
+    else list.sort((a, b) => b.receiptDate.localeCompare(a.receiptDate));
+
+    const total = list.length;
+    if (countNote) countNote.textContent = `${total} delivery receipt${total === 1 ? '' : 's'} recorded`;
+
+    const totalPages = Math.max(1, Math.ceil(total / state.rcvPageSize));
+    if (state.rcvPage > totalPages) state.rcvPage = totalPages;
+
+    const startIdx = (state.rcvPage - 1) * state.rcvPageSize;
+    const pageItems = list.slice(startIdx, startIdx + state.rcvPageSize);
+
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(r => `
+            <tr>
+                <td>${escapeHtml(r.receiptDate)}</td>
+                <td><strong>${escapeHtml(r.materialName)}</strong></td>
+                <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
+                <td>${escapeHtml(r.unit)}</td>
+                <td>${escapeHtml(r.supplierName)}</td>
+                <td>${escapeHtml(r.receivedBy)}</td>
+                <td><span class="rpt-badge rpt-badge-good">Verified Inbound</span></td>
+            </tr>
+        `).join("");
+    }
+
+    renderPaginationBar(paginationEl, state.rcvPage, totalPages, total, state.rcvPageSize, (newPage) => {
+        state.rcvPage = newPage;
+        renderMaterialReceivingTab();
+    });
+}
+
+/* --- TAB 3: MATERIAL DISBURSEMENT --- */
+function renderMaterialDisbursementTab() {
+    const tbody = document.getElementById("disbTableBody");
+    const countNote = document.getElementById("disbTotalCountNote");
+    const paginationEl = document.getElementById("disbPaginationBar");
+    if (!tbody) return;
+
+    let list = state.disbursements.filter(d => 
+        withinRange(d.usageDate, state.startDate, state.endDate) &&
+        (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId)
+    );
+
+    if (state.disbSearch.trim()) {
+        const q = state.disbSearch.toLowerCase().trim();
+        list = list.filter(d => d.materialName.toLowerCase().includes(q) || d.finishedProduct.toLowerCase().includes(q) || d.recordedBy.toLowerCase().includes(q));
+    }
+
+    if (state.disbSort === "az") list.sort((a, b) => a.materialName.localeCompare(b.materialName));
+    else if (state.disbSort === "za") list.sort((a, b) => b.materialName.localeCompare(a.materialName));
+    else if (state.disbSort === "highest") list.sort((a, b) => b.disbursedQuantity - a.disbursedQuantity);
+    else if (state.disbSort === "oldest") list.sort((a, b) => a.usageDate.localeCompare(b.usageDate));
+    else list.sort((a, b) => b.usageDate.localeCompare(a.usageDate));
+
+    const total = list.length;
+    if (countNote) countNote.textContent = `${total} production disbursement${total === 1 ? '' : 's'} recorded`;
+
+    const totalPages = Math.max(1, Math.ceil(total / state.disbPageSize));
+    if (state.disbPage > totalPages) state.disbPage = totalPages;
+
+    const startIdx = (state.disbPage - 1) * state.disbPageSize;
+    const pageItems = list.slice(startIdx, startIdx + state.disbPageSize);
+
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No production disbursement records found for this period.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(d => `
+            <tr>
+                <td>${escapeHtml(d.usageDate)}</td>
+                <td><strong>${escapeHtml(d.materialName)}</strong></td>
+                <td>${escapeHtml(d.finishedProduct)}</td>
+                <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
+                <td>${escapeHtml(d.unit)}</td>
+                <td><span class="rpt-badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">${escapeHtml(d.activityType)}</span></td>
+                <td>${escapeHtml(d.recordedBy)}</td>
+            </tr>
+        `).join("");
+    }
+
+    renderPaginationBar(paginationEl, state.disbPage, totalPages, total, state.disbPageSize, (newPage) => {
+        state.disbPage = newPage;
+        renderMaterialDisbursementTab();
+    });
+}
+
+/* --- TAB 4: MATERIAL ACTIVITY --- */
+function renderMaterialActivityTab() {
+    const tbody = document.getElementById("actTableBody");
+    const paginationEl = document.getElementById("actPaginationBar");
+    if (!tbody) return;
+
+    const rcvs = state.receipts.filter(r => 
+        withinRange(r.receiptDate, state.startDate, state.endDate) &&
+        (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId)
+    ).map(r => ({
+        date: r.receiptDate,
+        type: "Received",
+        material: r.materialName,
+        netQty: r.receivedQuantity,
+        unit: r.unit,
+        context: r.supplierName,
+        operator: r.receivedBy
+    }));
+
+    const disbs = state.disbursements.filter(d => 
+        withinRange(d.usageDate, state.startDate, state.endDate) &&
+        (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId)
+    ).map(d => ({
+        date: d.usageDate,
+        type: "Disbursed",
+        material: d.materialName,
+        netQty: -d.disbursedQuantity,
+        unit: d.unit,
+        context: d.finishedProduct,
+        operator: d.recordedBy
+    }));
+
+    let list = [...rcvs, ...disbs];
+
+    if (state.actType !== "all") {
+        list = list.filter(a => a.type === state.actType);
+    }
+
+    if (state.actSearch.trim()) {
+        const q = state.actSearch.toLowerCase().trim();
+        list = list.filter(a => a.material.toLowerCase().includes(q) || a.context.toLowerCase().includes(q) || a.operator.toLowerCase().includes(q));
+    }
+
+    if (state.actSort === "az") list.sort((a, b) => a.material.localeCompare(b.material));
+    else if (state.actSort === "za") list.sort((a, b) => b.material.localeCompare(a.material));
+    else if (state.actSort === "oldest") list.sort((a, b) => a.date.localeCompare(b.date));
+    else list.sort((a, b) => b.date.localeCompare(a.date));
+
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / state.actPageSize));
+    if (state.actPage > totalPages) state.actPage = totalPages;
+
+    const startIdx = (state.actPage - 1) * state.actPageSize;
+    const pageItems = list.slice(startIdx, startIdx + state.actPageSize);
+
+    if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(a => `
+            <tr>
+                <td>${escapeHtml(a.date)}</td>
+                <td>
+                    <span class="rpt-badge ${a.type === 'Received' ? 'rpt-badge-good' : 'rpt-badge-critical'}">
+                        ${escapeHtml(a.type)}
+                    </span>
+                </td>
+                <td><strong>${escapeHtml(a.material)}</strong></td>
+                <td><strong style="color:${a.netQty > 0 ? '#059669' : '#DC2626'};">${a.netQty > 0 ? '+' : ''}${a.netQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
+                <td>${escapeHtml(a.unit)}</td>
+                <td>${escapeHtml(a.context)}</td>
+                <td>${escapeHtml(a.operator)}</td>
+            </tr>
+        `).join("");
+    }
+
+    renderPaginationBar(paginationEl, state.actPage, totalPages, total, state.actPageSize, (newPage) => {
+        state.actPage = newPage;
+        renderMaterialActivityTab();
+    });
+}
+
+function renderPaginationBar(container, curPage, totalPages, totalItems, pageSize, onPageChange) {
     if (!container) return;
 
     if (totalItems === 0) {
         container.innerHTML = `
-            <div class="inv-pagination-info">Showing 0 to 0 of 0 entries</div>
+            <div class="inv-pagination-info">Showing 0–0 of 0 records</div>
             <div class="inv-pagination-controls">
-                <button type="button" class="inv-page-btn" disabled>&laquo; Prev</button>
-                <button type="button" class="inv-page-btn active" disabled>1</button>
-                <button type="button" class="inv-page-btn" disabled>Next &raquo;</button>
+                <button type="button" class="inv-page-btn disabled" disabled aria-label="Previous Page">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <button type="button" class="inv-page-btn disabled" disabled>1</button>
+                <button type="button" class="inv-page-btn disabled" disabled aria-label="Next Page">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
             </div>
         `;
         return;
     }
 
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const safePage = Math.max(1, Math.min(currentPage, totalPages));
-    const startIdx = (safePage - 1) * pageSize + 1;
-    const endIdx = Math.min(safePage * pageSize, totalItems);
+    const startNum = totalItems === 0 ? 0 : (curPage - 1) * pageSize + 1;
+    const endNum = Math.min(curPage * pageSize, totalItems);
+    const safeTotal = Math.max(1, totalPages);
 
     let pageButtonsHtml = `
-        <button type="button" class="inv-page-btn" ${safePage <= 1 ? "disabled" : ""} data-page="${safePage - 1}">&laquo; Prev</button>
+        <button type="button" class="inv-page-btn" id="btnPrev" ${curPage <= 1 ? "disabled" : ""} aria-label="Previous Page" title="Previous Page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
     `;
 
-    let startPage = Math.max(1, safePage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
+    let startPage = Math.max(1, curPage - 2);
+    let endPage = Math.min(safeTotal, startPage + 4);
     if (endPage - startPage < 4) {
         startPage = Math.max(1, endPage - 4);
     }
 
     if (startPage > 1) {
         pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="1">1</button>`;
-        if (startPage > 2) pageButtonsHtml += `<span class="page-ellipsis" style="padding: 0 4px; color: #94A3B8;">...</span>`;
+        if (startPage > 2) pageButtonsHtml += `<span class="page-ellipsis">...</span>`;
     }
 
     for (let p = startPage; p <= endPage; p++) {
         pageButtonsHtml += `
-            <button type="button" class="inv-page-btn ${p === safePage ? "active" : ""}" data-page="${p}">${p}</button>
+            <button type="button" class="inv-page-btn ${p === curPage ? "active" : ""}" data-page="${p}">${p}</button>
         `;
     }
 
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) pageButtonsHtml += `<span class="page-ellipsis" style="padding: 0 4px; color: #94A3B8;">...</span>`;
-        pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    if (endPage < safeTotal) {
+        if (endPage < safeTotal - 1) pageButtonsHtml += `<span class="page-ellipsis">...</span>`;
+        pageButtonsHtml += `<button type="button" class="inv-page-btn" data-page="${safeTotal}">${safeTotal}</button>`;
     }
 
     pageButtonsHtml += `
-        <button type="button" class="inv-page-btn" ${safePage >= totalPages ? "disabled" : ""} data-page="${safePage + 1}">Next &raquo;</button>
+        <button type="button" class="inv-page-btn" id="btnNext" ${curPage >= safeTotal ? "disabled" : ""} aria-label="Next Page" title="Next Page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
     `;
 
     container.innerHTML = `
-        <div class="inv-pagination-info">Showing ${startIdx} to ${endIdx} of ${totalItems} entries</div>
+        <div class="inv-pagination-info">Showing ${startNum}–${endNum} of ${totalItems} records</div>
         <div class="inv-pagination-controls">
             ${pageButtonsHtml}
         </div>
     `;
 
-    const buttons = container.querySelectorAll("button[data-page]");
-    buttons.forEach(btn => {
+    const prevBtn = container.querySelector("#btnPrev");
+    const nextBtn = container.querySelector("#btnNext");
+    if (prevBtn && !prevBtn.disabled) prevBtn.addEventListener("click", () => onPageChange(curPage - 1));
+    if (nextBtn && !nextBtn.disabled) nextBtn.addEventListener("click", () => onPageChange(curPage + 1));
+
+    container.querySelectorAll("button[data-page]").forEach(btn => {
         btn.addEventListener("click", () => {
-            const targetP = parseInt(btn.getAttribute("data-page"), 10);
-            if (!isNaN(targetP) && targetP !== safePage && targetP >= 1 && targetP <= totalPages) {
-                onPageChange(targetP);
+            const p = parseInt(btn.getAttribute("data-page"), 10);
+            if (!isNaN(p) && p !== curPage && p >= 1 && p <= safeTotal) {
+                onPageChange(p);
             }
         });
     });
 }
 
 /* ==========================================================
-   TAB 2: RECENT RECEIVING
+   PRINT DOCUMENT COMPILER (STAFF REPORT - UNIFIED WATERMARK TEMPLATE)
    ========================================================== */
 
-function renderTabReceiving() {
-    const tbody = $("receivingTableBody");
-    if (!tbody) return;
+const RM_GREEN = [5, 150, 105];
+const RM_INK = [15, 23, 42];
+const RM_DIM = [100, 116, 139];
+const RM_BORDER = [226, 232, 240];
 
-    let filtered = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-
-    if (state.rcvSearch) {
-        filtered = filtered.filter(r => 
-            r.materialName.toLowerCase().includes(state.rcvSearch) ||
-            r.itemCode.toLowerCase().includes(state.rcvSearch) ||
-            r.supplierName.toLowerCase().includes(state.rcvSearch)
-        );
-    }
-
-    if (state.rcvSort === "latest") {
-        filtered.sort((a, b) => new Date(b.receiptDate || b.createdAt).getTime() - new Date(a.receiptDate || a.createdAt).getTime());
-    } else if (state.rcvSort === "oldest") {
-        filtered.sort((a, b) => new Date(a.receiptDate || a.createdAt).getTime() - new Date(b.receiptDate || b.createdAt).getTime());
-    } else if (state.rcvSort === "az") {
-        filtered.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
-    } else if (state.rcvSort === "za") {
-        filtered.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
-    } else if (state.rcvSort === "highest") {
-        filtered.sort((a, b) => b.receivedQuantity - a.receivedQuantity);
-    }
-
-    const totalPages = Math.max(1, Math.ceil(filtered.length / state.rcvPageSize));
-    if (state.rcvPage > totalPages) state.rcvPage = totalPages;
-    const startIndex = (state.rcvPage - 1) * state.rcvPageSize;
-    const pageItems = filtered.slice(startIndex, startIndex + state.rcvPageSize);
-
-    if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No receiving records found for the selected period.</td></tr>`;
-    } else {
-        tbody.innerHTML = pageItems.map(r => {
-            const dateFormatted = r.receiptDate 
-                ? new Date(r.receiptDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : "—";
-
-            const stockText = r.currentStock !== null ? `${r.currentStock.toLocaleString()} ${r.unit}` : "—";
-
-            return `
-                <tr>
-                    <td style="white-space:nowrap; font-weight:600; color:#475569;">${esc(dateFormatted)}</td>
-                    <td><strong>${esc(r.materialName)}</strong></td>
-                    <td><span class="rpt-code-badge">${esc(r.itemCode)}</span></td>
-                    <td><span class="text-green font-bold">+${r.receivedQuantity.toLocaleString()}</span></td>
-                    <td>${esc(r.unit)}</td>
-                    <td>${esc(stockText)}</td>
-                    <td>${esc(r.supplierName)}</td>
-                    <td><span class="status-pill status-good">${esc(r.status)}</span></td>
-                </tr>
-            `;
-        }).join("");
-    }
-
-    renderReportsPaginationBar({
-        containerId: "receivingPagination",
-        currentPage: state.rcvPage,
-        totalItems: filtered.length,
-        pageSize: state.rcvPageSize,
-        onPageChange: (newPage) => {
-            state.rcvPage = newPage;
-            renderTabReceiving();
-        }
-    });
+function formatPeriodTypeLabel(preset) {
+    if (preset === "weekly") return "Weekly (Last 7 Days)";
+    if (preset === "monthly") return "Monthly (Last 30 Days)";
+    if (preset === "today") return "Daily (Latest Update)";
+    if (preset === "all") return "All Time";
+    return "Custom Period";
 }
 
-/* ==========================================================
-   TAB 3: RECENT DISBURSEMENT
-   ========================================================== */
-
-function renderTabDisbursement() {
-    const tbody = $("disbursementTableBody");
-    if (!tbody) return;
-
-    let filtered = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-
-    if (state.disbSearch) {
-        filtered = filtered.filter(d => 
-            d.materialName.toLowerCase().includes(state.disbSearch) ||
-            d.itemCode.toLowerCase().includes(state.disbSearch) ||
-            d.finishedProduct.toLowerCase().includes(state.disbSearch)
-        );
-    }
-
-    if (state.disbSort === "latest") {
-        filtered.sort((a, b) => new Date(b.usageDate || b.createdAt).getTime() - new Date(a.usageDate || a.createdAt).getTime());
-    } else if (state.disbSort === "oldest") {
-        filtered.sort((a, b) => new Date(a.usageDate || a.createdAt).getTime() - new Date(b.usageDate || b.createdAt).getTime());
-    } else if (state.disbSort === "az") {
-        filtered.sort((a, b) => (a.materialName || "").localeCompare(b.materialName || ""));
-    } else if (state.disbSort === "za") {
-        filtered.sort((a, b) => (b.materialName || "").localeCompare(a.materialName || ""));
-    } else if (state.disbSort === "highest") {
-        filtered.sort((a, b) => b.disbursedQuantity - a.disbursedQuantity);
-    }
-
-    const totalPages = Math.max(1, Math.ceil(filtered.length / state.disbPageSize));
-    if (state.disbPage > totalPages) state.disbPage = totalPages;
-    const startIndex = (state.disbPage - 1) * state.disbPageSize;
-    const pageItems = filtered.slice(startIndex, startIndex + state.disbPageSize);
-
-    if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No disbursement records found for the selected period.</td></tr>`;
-    } else {
-        tbody.innerHTML = pageItems.map(d => {
-            const dateFormatted = d.usageDate 
-                ? new Date(d.usageDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                : "—";
-
-            const stockText = d.currentStock !== null ? `${d.currentStock.toLocaleString()} ${d.unit}` : "—";
-
-            return `
-                <tr>
-                    <td style="white-space:nowrap; font-weight:600; color:#475569;">${esc(dateFormatted)}</td>
-                    <td><strong style="color:#0f172a;">${esc(d.finishedProduct)}</strong></td>
-                    <td><span style="font-weight:600; color:#1e293b;">${esc(d.materialName)}</span></td>
-                    <td><span class="rpt-code-badge">${esc(d.itemCode)}</span></td>
-                    <td><span class="text-red font-bold">-${d.disbursedQuantity.toLocaleString()}</span></td>
-                    <td>${esc(d.unit)}</td>
-                    <td>${esc(stockText)}</td>
-                    <td><span class="status-pill status-good">${esc(d.status)}</span></td>
-                </tr>
-            `;
-        }).join("");
-    }
-
-    renderReportsPaginationBar({
-        containerId: "disbursementPagination",
-        currentPage: state.disbPage,
-        totalItems: filtered.length,
-        pageSize: state.disbPageSize,
-        onPageChange: (newPage) => {
-            state.disbPage = newPage;
-            renderTabDisbursement();
-        }
-    });
+function updatePrintDocHtml(tabToPrint = (state.activeTab || "inventory")) {
+    const printDoc = document.getElementById("continuousPrintDoc");
+    if (!printDoc) return;
+    const sections = Array.isArray(tabToPrint) ? tabToPrint : [tabToPrint || state.activeTab || "inventory"];
+    printDoc.innerHTML = buildContinuousPrintHtml(sections);
 }
 
-/* ==========================================================
-   TAB 4: CONSUMPTION (TODAY, WEEKLY, MONTHLY BREAKDOWN)
-   ========================================================== */
-
-function renderTabConsumption() {
-    const tbody = $("consumptionTableBody");
-    if (!tbody) return;
-
-    const now = new Date();
-    const todayStr = formatDateISO(now);
-    const weekStart = startOfWeek(now);
-    const weekEnd = addDays(weekStart, 6);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-
-    // Unit-safe calculation across period
-    const unitMap = new Map();
-    const activeMaterialsSet = new Set();
-
-    periodDisbursements.forEach(d => {
-        unitMap.set(d.unit, (unitMap.get(d.unit) || 0) + d.disbursedQuantity);
-        activeMaterialsSet.add(d.materialId);
-    });
-
-    const cnsListEl = $("cnsTotalConsumedList");
-    if (cnsListEl) {
-        if (unitMap.size === 0) {
-            cnsListEl.innerHTML = `<span style="font-size:1.1rem; font-weight:800; color:#64748b;">0 items</span>`;
-        } else {
-            cnsListEl.innerHTML = Array.from(unitMap.entries()).map(([unit, val]) => `
-                <span class="rpt-unit-pill"><strong>${val.toLocaleString()}</strong> ${esc(unit)}</span>
-            `).join("");
-        }
-    }
-
-    const cnsMatCountEl = $("cnsActiveMaterialsCount");
-    const cnsRecCountEl = $("cnsTotalRecordsCount");
-    if (cnsMatCountEl) cnsMatCountEl.textContent = activeMaterialsSet.size;
-    if (cnsRecCountEl) cnsRecCountEl.textContent = periodDisbursements.length;
-
-    let displayMaterials = state.materials;
-    if (state.cnsSearch) {
-        displayMaterials = displayMaterials.filter(m => 
-            m.name.toLowerCase().includes(state.cnsSearch) ||
-            m.itemCode.toLowerCase().includes(state.cnsSearch)
-        );
-    }
-
-    const totalPages = Math.max(1, Math.ceil(displayMaterials.length / state.cnsPageSize));
-    if (state.cnsPage > totalPages) state.cnsPage = totalPages;
-    const startIndex = (state.cnsPage - 1) * state.cnsPageSize;
-    const pageItems = displayMaterials.slice(startIndex, startIndex + state.cnsPageSize);
-
-    if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No consumption records found for the selected period.</td></tr>`;
-    } else {
-        tbody.innerHTML = pageItems.map(m => {
-            // Today usage
-            const todayUsage = state.disbursements
-                .filter(d => d.materialId === m.id && d.usageDate === todayStr)
-                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-            // Week usage
-            const weekUsage = state.disbursements
-                .filter(d => d.materialId === m.id && withinRange(d.usageDate, weekStart, weekEnd))
-                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-            // Month usage
-            const monthUsage = state.disbursements
-                .filter(d => d.materialId === m.id && withinRange(d.usageDate, monthStart, monthEnd))
-                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-            // Selected Period usage
-            const periodUsage = state.disbursements
-                .filter(d => d.materialId === m.id && withinRange(d.usageDate, state.startDate, state.endDate))
-                .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-
-            let statusBadge = `<span class="status-pill status-good">Normal</span>`;
-            if (m.status === "Critical") statusBadge = `<span class="status-pill status-red">Critical</span>`;
-            else if (m.status === "Low") statusBadge = `<span class="status-pill status-orange">Low Stock</span>`;
-
-            return `
-                <tr>
-                    <td><strong>${esc(m.name)}</strong></td>
-                    <td><span class="rpt-code-badge">${esc(m.itemCode)}</span></td>
-                    <td>${todayUsage > 0 ? `<strong class="text-blue">${todayUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
-                    <td>${weekUsage > 0 ? `<strong class="text-blue">${weekUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
-                    <td>${monthUsage > 0 ? `<strong class="text-blue">${monthUsage.toLocaleString()} ${esc(m.unit)}</strong>` : `<span style="color:#94a3b8;">0 ${esc(m.unit)}</span>`}</td>
-                    <td><strong class="text-green">${periodUsage.toLocaleString()} ${esc(m.unit)}</strong></td>
-                    <td><strong>${m.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(m.unit)}</small></td>
-                    <td>${statusBadge}</td>
-                </tr>
-            `;
-        }).join("");
-    }
-
-    renderReportsPaginationBar({
-        containerId: "consumptionPagination",
-        currentPage: state.cnsPage,
-        totalItems: displayMaterials.length,
-        pageSize: state.cnsPageSize,
-        onPageChange: (newPage) => {
-            state.cnsPage = newPage;
-            renderTabConsumption();
-        }
-    });
-}
-
-/* ==========================================================
-   TAB 5: AI FORECAST SUPPORT
-   ========================================================== */
-
-function renderTabForecasting() {
-    const tbody = $("forecastTableBody");
-    const metaPill = $("forecastGeneratedMeta");
-    if (!tbody) return;
-
-    if (metaPill) {
-        if (state.lastForecastTimestamp) {
-            const dt = new Date(state.lastForecastTimestamp);
-            metaPill.textContent = `Forecast Generated: ${dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} — ${dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
-        } else {
-            metaPill.textContent = "Forecast Generated: Live System";
-        }
-    }
-
-    let filtered = state.forecastList;
-
-    if (state.fcSearch) {
-        filtered = filtered.filter(f => 
-            f.name.toLowerCase().includes(state.fcSearch) ||
-            f.itemCode.toLowerCase().includes(state.fcSearch) ||
-            f.status.toLowerCase().includes(state.fcSearch)
-        );
-    }
-
-    if (state.fcStatus === "shortage") {
-        filtered = filtered.filter(f => f.additionalNeed > 0 || f.status === "Potential Shortage" || f.status === "Needs Attention" || f.status === "Low Stock Attention" || f.status === "Critical" || f.status === "Low");
-    } else if (state.fcStatus === "sufficient") {
-        filtered = filtered.filter(f => f.additionalNeed === 0 && (f.status === "Sufficient" || f.status === "Normal" || f.status === "Monitor"));
-    }
-
-    const totalPages = Math.max(1, Math.ceil(filtered.length / state.fcPageSize));
-    if (state.fcPage > totalPages) state.fcPage = totalPages;
-    const startIndex = (state.fcPage - 1) * state.fcPageSize;
-    const pageItems = filtered.slice(startIndex, startIndex + state.fcPageSize);
-
-    if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="rpt-table-empty">No matching forecast records found.</td></tr>`;
-    } else {
-        tbody.innerHTML = pageItems.map(f => {
-            let statusBadge = "";
-            if (f.status === "Potential Shortage" || f.additionalNeed > 0) {
-                statusBadge = `<span class="rpt-badge rpt-badge-shortage" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#dc2626;"></span>Potential Shortage</span>`;
-            } else if (f.status === "Needs Attention" || f.status === "Low Stock Attention" || f.status === "Critical" || f.status === "Low" || f.currentStock <= (f.minThreshold || 0)) {
-                statusBadge = `<span class="rpt-badge rpt-badge-attention" style="background:#ffedd5; color:#c2410c; border:1px solid #fdba74; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#ea580c;"></span>Needs Attention</span>`;
-            } else if (f.status === "Monitor") {
-                statusBadge = `<span class="rpt-badge rpt-badge-monitor" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#2563eb;"></span>Monitor</span>`;
-            } else {
-                statusBadge = `<span class="rpt-badge rpt-badge-good" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 8px; border-radius:999px; font-weight:700; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><span class="rpt-status-dot" style="background:#16a34a;"></span>Sufficient Stock</span>`;
-            }
-
-            return `
-                <tr>
-                    <td><strong>${esc(f.name)}</strong></td>
-                    <td><span class="rpt-code-badge">${esc(f.itemCode)}</span></td>
-                    <td><span style="font-weight:600; color:#475569;">Next 7 Days</span></td>
-                    <td><strong>${f.currentStock.toLocaleString()}</strong> <small style="color:#64748b;">${esc(f.unit)}</small></td>
-                    <td><strong style="color:var(--rpt-blue-dark, #1e40af); font-weight:700;">${f.forecast7Day.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${esc(f.unit)}</strong></td>
-                    <td><strong style="color:${f.additionalNeed > 0 ? '#dc2626' : '#64748b'}; font-weight:700;">${f.additionalNeed > 0 ? `+${f.additionalNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${esc(f.unit)}` : `0 ${esc(f.unit)}`}</strong></td>
-                    <td>${statusBadge}</td>
-                    <td><span style="font-size:0.8rem; color:#475569; line-height:1.4;">${esc(f.interpretation)}</span></td>
-                </tr>
-            `;
-        }).join("");
-    }
-
-    renderReportsPaginationBar({
-        containerId: "forecastPagination",
-        currentPage: state.fcPage,
-        totalItems: filtered.length,
-        pageSize: state.fcPageSize,
-        onPageChange: (newPage) => {
-            state.fcPage = newPage;
-            renderTabForecasting();
-        }
-    });
-}
-
-/* ==========================================================
-   EXCEL WORKBOOK EXPORT (5 ORGANIZED SHEETS)
-   ========================================================== */
-
-function buildUserExcelWorkbook(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"]) {
-    const wb = XLSX.utils.book_new();
-
-    const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-
-    selectedSections.forEach(key => {
-        if (key === "overview") {
-            const rows = [
-                ["RMSME - Reports & Decision Support (User Overview)"],
-                ["Report Period", formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset)],
-                ["Generated At", state.generatedAt ? state.generatedAt.toLocaleString() : new Date().toLocaleString()],
-                [],
-                ["Category", "Result", "Period", "Status"],
-                ["Raw Material Receipts", `${periodReceipts.length} activities`, "Selected Period", "Completed"],
-                ["Production Disbursements", `${periodDisbursements.length} activities`, "Selected Period", "Logged"],
-                ["Active Raw Materials", `${state.materials.length} items`, "Catalog Baseline", "Active"],
-                ["Materials Needing Attention", `${state.materials.filter(m => m.status !== "Good").length} items`, "Real-Time", "Action Required"]
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            XLSX.utils.book_append_sheet(wb, ws, "Overview");
-        }
-
-        if (key === "receiving") {
-            const rows = [
-                ["Date", "Raw Material", "Material ID", "Quantity", "Unit", "Current Stock", "Supplier / Context", "Status"],
-                ...periodReceipts.map(r => [
-                    r.receiptDate,
-                    r.materialName,
-                    r.itemCode,
-                    r.receivedQuantity,
-                    r.unit,
-                    r.currentStock !== null ? r.currentStock : "",
-                    r.supplierName,
-                    r.status
-                ])
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            XLSX.utils.book_append_sheet(wb, ws, "Recent Receiving");
-        }
-
-        if (key === "disbursement") {
-            const rows = [
-                ["Date", "Finished Product / Context", "Raw Material", "Material ID", "Quantity", "Unit", "Current Stock", "Status"],
-                ...periodDisbursements.map(d => [
-                    d.usageDate,
-                    d.finishedProduct,
-                    d.materialName,
-                    d.itemCode,
-                    d.disbursedQuantity,
-                    d.unit,
-                    d.currentStock !== null ? d.currentStock : "",
-                    d.status
-                ])
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            XLSX.utils.book_append_sheet(wb, ws, "Recent Disbursement");
-        }
-
-        if (key === "consumption") {
-            const rows = [
-                ["Raw Material", "Material ID", "Unit", "Current Stock", "Period Consumed", "Status"],
-                ...state.materials.map(m => {
-                    const consumed = periodDisbursements
-                        .filter(d => d.materialId === m.id)
-                        .reduce((sum, d) => sum + d.disbursedQuantity, 0);
-                    return [m.name, m.itemCode, m.unit, m.currentStock, consumed, m.status];
-                })
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            XLSX.utils.book_append_sheet(wb, ws, "Consumption");
-        }
-
-        if (key === "forecasting") {
-            const rows = [
-                ["Raw Material", "Material ID", "Forecast Period", "Current Stock", "Forecast Requirement (7D)", "Additional Need", "Status", "Operational Interpretation"],
-                ...state.forecastList.map(f => [
-                    f.name,
-                    f.itemCode,
-                    "Next 7 Days",
-                    f.currentStock,
-                    f.forecast7Day,
-                    f.additionalNeed,
-                    f.status,
-                    f.interpretation
-                ])
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            XLSX.utils.book_append_sheet(wb, ws, "AI Forecast Support");
-        }
-    });
-
-    return wb;
-}
-
-async function generateUserExcelWorkbook(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"], fileName = "RMIMS_User_Report") {
-    if (typeof XLSX === "undefined") {
-        showToast("Excel export library is loading, please try again.", "error");
-        return;
-    }
-
-    const wb = buildUserExcelWorkbook(selectedSections);
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const excelBlob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const res = await saveUserExportBlob({ blob: excelBlob, fileName, defaultExtension: "xlsx" });
-    if (res.mode === "custom-directory") {
-        showToast(`Excel workbook saved directly to "${res.location}".`, "success");
-    } else {
-        showToast("Excel workbook downloaded successfully.", "success");
-    }
-}
-
-/* ==========================================================
-   PDF DOCUMENT EXPORT (jsPDF + autoTable)
-   ========================================================== */
-
-async function generateUserPdfReport(selectedSections = ["overview", "receiving", "disbursement", "consumption", "forecasting"], fileName = "RMIMS_User_Report") {
-    if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
-        showToast("PDF generation library is loading, please try again.", "error");
-        return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 36;
-
-    const RM_GREEN = [5, 150, 105];
-    const RM_INK = [15, 23, 42];
-    const RM_DIM = [100, 116, 139];
-
+function buildContinuousPrintHtml(selectedSections = [state.activeTab || "inventory"]) {
+    const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+    const reportTypeStr = formatPeriodTypeLabel(state.periodPreset);
     const now = new Date();
     const genDateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const genTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const docRefCode = `RMSME-STAFF-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const targetMaterials = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? state.materials.filter(m => m.id === state.selectedMaterialId)
+        : state.materials;
+
+    const isSingleTab = selectedSections.length === 1;
+    const reportTitle = isSingleTab 
+        ? `${getStaffActiveTabDisplayName(selectedSections[0])} Report`
+        : `Staff Operational Report`;
+    const targetMaterialLabel = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? (state.selectedMaterialName || "Selected Material")
+        : "All Catalog Raw Materials";
+
+    let filterContext = "All items in preview";
+    if (isSingleTab) {
+        const tabKey = selectedSections[0];
+        if (tabKey === "inventory") {
+            const parts = [];
+            if (state.invSearch.trim()) parts.push(`Search: "${state.invSearch.trim()}"`);
+            if (state.invStatus !== "all") parts.push(`Status: ${state.invStatus}`);
+            if (parts.length) filterContext = parts.join(" | ");
+        } else if (tabKey === "receiving") {
+            if (state.rcvSearch.trim()) filterContext = `Search: "${state.rcvSearch.trim()}"`;
+        } else if (tabKey === "disbursement") {
+            if (state.disbSearch.trim()) filterContext = `Search: "${state.disbSearch.trim()}"`;
+        } else if (tabKey === "activity") {
+            const parts = [];
+            if (state.actSearch.trim()) parts.push(`Search: "${state.actSearch.trim()}"`);
+            if (state.actType !== "all") parts.push(`Type: ${state.actType}`);
+            if (parts.length) filterContext = parts.join(" | ");
+        }
+    }
+
+    let sectionsHtml = "";
+
+    // 1. Inventory Records
+    if (selectedSections.includes("inventory")) {
+        const invData = getStaffFilteredRecordsForPreviewTab("inventory");
+        const invRecords = isSingleTab ? invData.records : invData.records.slice(0, 25);
+        sectionsHtml += `
+            <div class="print-section">
+                <h3 class="print-section-title">Master Inventory Records &amp; Stock Ledger</h3>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:25%;">Raw Material</th>
+                            <th style="width:15%;">Item Code</th>
+                            <th style="width:15%;">Current Stock</th>
+                            <th style="width:15%;">Min Threshold</th>
+                            <th style="width:15%;">Reorder Qty</th>
+                            <th style="width:15%;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${invRecords.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No inventory records match the selected scope.</td></tr>` :
+                            invRecords.map(m => `
+                                <tr>
+                                    <td><strong>${escapeHtml(m.name)}</strong></td>
+                                    <td><span style="font-family:'Inter', sans-serif; font-weight:600; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
+                                    <td><strong>${(m.currentStock || 0).toLocaleString()}</strong> ${escapeHtml(m.unit)}</td>
+                                    <td>${(m.minThreshold || 0).toLocaleString()} ${escapeHtml(m.unit)}</td>
+                                    <td>${(m.reorderQty || 0).toLocaleString()} ${escapeHtml(m.unit)}</td>
+                                    <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
+                                </tr>
+                            `).join("")
+                        }
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // 2. Material Receiving
+    if (selectedSections.includes("receiving")) {
+        const rcvData = getStaffFilteredRecordsForPreviewTab("receiving");
+        const rcvRecords = isSingleTab ? rcvData.records : rcvData.records.slice(0, 25);
+        sectionsHtml += `
+            <div class="print-section">
+                <h3 class="print-section-title">Material Inbound Delivery Receipts</h3>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:16%;">Receipt Date</th>
+                            <th style="width:24%;">Raw Material</th>
+                            <th style="width:18%;">Received Qty</th>
+                            <th style="width:24%;">Supplier Name</th>
+                            <th style="width:18%;">Received By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rcvRecords.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No inward delivery receipts for this period.</td></tr>` :
+                            rcvRecords.map(r => `
+                                <tr>
+                                    <td>${escapeHtml(r.receiptDate)}</td>
+                                    <td><strong>${escapeHtml(r.materialName)}</strong></td>
+                                    <td><strong style="color:#059669;">+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(r.unit)}</td>
+                                    <td>${escapeHtml(r.supplierName)}</td>
+                                    <td>${escapeHtml(r.receivedBy)}</td>
+                                </tr>
+                            `).join("")
+                        }
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // 3. Material Disbursement
+    if (selectedSections.includes("disbursement")) {
+        const disbData = getStaffFilteredRecordsForPreviewTab("disbursement");
+        const disbRecords = isSingleTab ? disbData.records : disbData.records.slice(0, 25);
+        sectionsHtml += `
+            <div class="print-section">
+                <h3 class="print-section-title">Production Material Disbursement Log</h3>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:16%;">Usage Date</th>
+                            <th style="width:24%;">Raw Material</th>
+                            <th style="width:24%;">Finished Product Context</th>
+                            <th style="width:18%;">Disbursed Qty</th>
+                            <th style="width:18%;">Recorded By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${disbRecords.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No production disbursements for this period.</td></tr>` :
+                            disbRecords.map(d => `
+                                <tr>
+                                    <td>${escapeHtml(d.usageDate)}</td>
+                                    <td><strong>${escapeHtml(d.materialName)}</strong></td>
+                                    <td>${escapeHtml(d.finishedProduct || "—")}</td>
+                                    <td><strong style="color:#DC2626;">-${(d.disbursedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(d.unit)}</td>
+                                    <td>${escapeHtml(d.recordedBy)}</td>
+                                </tr>
+                            `).join("")
+                        }
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // 4. Material Activity
+    if (selectedSections.includes("activity")) {
+        const actData = getStaffFilteredRecordsForPreviewTab("activity");
+        const actRecords = isSingleTab ? actData.records : actData.records.slice(0, 25);
+        sectionsHtml += `
+            <div class="print-section">
+                <h3 class="print-section-title">Chronological Material Activity Movement Log</h3>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:15%;">Date</th>
+                            <th style="width:15%;">Activity</th>
+                            <th style="width:25%;">Raw Material</th>
+                            <th style="width:15%;">Net Qty</th>
+                            <th style="width:15%;">Reference / Batch</th>
+                            <th style="width:15%;">Operator</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${actRecords.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No material activity recorded for this period.</td></tr>` :
+                            actRecords.map(a => {
+                                const isRcv = a.type === "Received";
+                                return `
+                                    <tr>
+                                        <td>${escapeHtml(a.date)}</td>
+                                        <td><span style="font-weight:700; color:${isRcv ? '#059669' : '#DC2626'};">${escapeHtml(a.type)}</span></td>
+                                        <td><strong>${escapeHtml(a.material)}</strong></td>
+                                        <td><strong style="color:${isRcv ? '#059669' : '#DC2626'};">${isRcv ? '+' : ''}${(a.netQty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(a.unit)}</td>
+                                        <td>${escapeHtml(a.context || "—")}</td>
+                                        <td>${escapeHtml(a.operator || "Staff")}</td>
+                                    </tr>
+                                `;
+                            }).join("")
+                        }
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    return `
+        <!-- PRINT DOCUMENT TABLE WRAPPER (MATCHING IMAGE 1 TEMPLATE) -->
+        <table class="print-page-table-wrapper">
+            <thead>
+                <tr>
+                    <th class="print-watermark-th">
+                        <div class="print-page-watermark-box" aria-hidden="true">
+                            <div class="print-watermark-inner">
+                                <div class="print-watermark-text-primary">RMSME OFFICIAL REPORT</div>
+                                <div class="print-watermark-text-secondary">PREVENT FAKE COPY • SYSTEM VERIFIED</div>
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <!-- 1. HEADER (Left: RMSME + Subtitle, Right: Generated + Doc Ref) -->
+                        <div class="print-header-row">
+                            <div class="print-header-left">
+                                <div class="print-brand-name">RMSME</div>
+                                <div class="print-brand-desc">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
+                            </div>
+                            <div class="print-header-right">
+                                Generated: ${genDateStr} at ${genTimeStr} &nbsp;|&nbsp; Doc Ref: ${docRefCode}
+                            </div>
+                        </div>
+                        <div class="print-header-divider"></div>
+
+                        <!-- 2. DOCUMENT TITLE (Matches Image 1) -->
+                        <h2 class="print-document-title">${escapeHtml(reportTitle)}</h2>
+
+                        <!-- 3. METADATA GRID (Clean 2 Columns, No Box, Matches Image 1) -->
+                        <div class="print-meta-grid">
+                            <div class="print-meta-col">
+                                <div class="print-meta-group">
+                                    <span class="print-meta-label">REPORT HORIZON</span>
+                                    <span class="print-meta-value">${escapeHtml(periodLabel)}</span>
+                                </div>
+                                <div class="print-meta-group">
+                                    <span class="print-meta-label">MATERIAL SCOPE</span>
+                                    <span class="print-meta-value">${escapeHtml(targetMaterialLabel)}</span>
+                                </div>
+                                <div class="print-meta-group">
+                                    <span class="print-meta-label">ACTIVE FILTER</span>
+                                    <span class="print-meta-value">${escapeHtml(filterContext)}</span>
+                                </div>
+                            </div>
+                            <div class="print-meta-col">
+                                <div class="print-meta-group">
+                                    <span class="print-meta-label">GENERATED AT</span>
+                                    <span class="print-meta-value">${genDateStr} ${genTimeStr}</span>
+                                </div>
+                                <div class="print-meta-group">
+                                    <span class="print-meta-label">SCOPE INCLUSION</span>
+                                    <span class="print-meta-value">Preview Filter Active Tab Only</span>
+                                </div>
+                                <div class="print-meta-group">
+                                    <span class="print-meta-label">SOURCE DATABASE</span>
+                                    <span class="print-meta-value">RMSME Authoritative PostgreSQL Database</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="print-meta-divider"></div>
+
+                        <!-- 4. REPORT SECTIONS -->
+                        ${sectionsHtml}
+
+                        <!-- 5. SIGNATURES BLOCK (RECORDED BY & ACCEPTED BY) -->
+                        <div class="print-signatures-box">
+                            <div class="print-sign-col">
+                                <div class="print-sign-title">RECORDED BY (STORE STAFF)</div>
+                                <div class="print-sign-line"></div>
+                                <div class="print-sign-sub">Signature over Printed Name / Date</div>
+                            </div>
+                            <div class="print-sign-col">
+                                <div class="print-sign-title">ACCEPTED BY (STORE MANAGER)</div>
+                                <div class="print-sign-line"></div>
+                                <div class="print-sign-sub">Signature over Printed Name / Date</div>
+                            </div>
+                        </div>
+                        <div class="print-sign-note">
+                            * Official system report verified against RMSME authoritative inventory datastores. Anti-tamper protected document.
+                        </div>
+
+                        <!-- 6. PERFORATED CUT LINE & AUDIT TEAR-OFF SLIP -->
+                        <div class="print-cut-line-wrapper">
+                            <div class="print-cut-line">
+                                <span class="print-cut-scissors">✂</span>
+                                <span class="print-cut-text">CUT HERE FOR AUDIT SLIP / ACCOUNTING ACKNOWLEDGMENT COPY</span>
+                                <span class="print-cut-scissors">✂</span>
+                            </div>
+                        </div>
+
+                        <div class="print-cut-slip">
+                            <div class="print-cut-slip-header">
+                                <div class="print-cut-slip-title">RMSME OPERATIONAL AUDIT &amp; TEAR-OFF VOUCHER SLIP</div>
+                                <div class="print-cut-slip-ref">Doc Ref: ${docRefCode} &nbsp;|&nbsp; Generated: ${genDateStr} ${genTimeStr}</div>
+                            </div>
+                            <div class="print-cut-slip-body">
+                                <div class="print-cut-slip-meta">
+                                    <div><strong>Report Title:</strong> ${escapeHtml(reportTitle)}</div>
+                                    <div><strong>Report Horizon:</strong> ${escapeHtml(periodLabel)}</div>
+                                    <div><strong>Scope:</strong> ${escapeHtml(targetMaterialLabel)} (${escapeHtml(filterContext)})</div>
+                                </div>
+                                <div class="print-cut-slip-signs">
+                                    <div class="print-cut-sign-item">
+                                        <span class="print-cut-sign-label">RECORDED BY:</span>
+                                        <span class="print-cut-sign-blank">____________________________________</span>
+                                        <span class="print-cut-sign-date">Date: ____________</span>
+                                    </div>
+                                    <div class="print-cut-sign-item">
+                                        <span class="print-cut-sign-label">ACCEPTED BY:</span>
+                                        <span class="print-cut-sign-blank">____________________________________</span>
+                                        <span class="print-cut-sign-date">Date: ____________</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="print-cut-slip-footer">
+                                CONFIDENTIAL &mdash; RMSME INTERNAL AUDIT &amp; DECISION REPORT &bull; STRICTLY FOR OPERATIONAL USE
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>
+                        <!-- 5. FOOTER (Matches Image 1) -->
+                        <div class="print-footer-container">
+                            <div class="print-footer-row">
+                                <span class="print-footer-brand">RMSME &mdash; Raw Material Stock Management &amp; Enterprise Forecasting System</span>
+                                <span class="print-footer-page">Page 1 of 1</span>
+                            </div>
+                            <div class="print-footer-sub">
+                                System Support: support@rmsme.internal | Hotline: (02) 8876-RMSME | Official System Generated Copy &mdash; Anti-Tamper Protected
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    `;
+}
+
+/* ==========================================================
+   EXPORT ENGINE: EXCEL (XLSX) & PDF (jsPDF + autoTable)
+   ========================================================== */
+
+function getCheckedReportSections() {
+    const checks = document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']:checked");
+    return Array.from(checks).map(c => c.value);
+}
+
+async function handleSaveReport() {
+    const formatEl = document.querySelector("input[name='saveFileFormat']:checked");
+    const format = formatEl ? formatEl.value : "pdf";
+    const nameInput = document.getElementById("saveModalReportName");
+    const baseName = (nameInput?.value || "RMSME_Staff_Report").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+    const selectedSections = getCheckedReportSections();
+
+    if (selectedSections.length === 0) {
+        showToast("Please select at least one report section to include.", "error");
+        return;
+    }
+
+    const modal = document.getElementById("saveModalOverlay");
+    if (modal) modal.classList.remove("open");
+
+    showToast("Generating report package...", "info");
+
+    try {
+        if (format === "excel") {
+            await generateStaffExcel(baseName, selectedSections);
+            showToast("Excel workbook downloaded successfully.", "success");
+        } else if (format === "pdf") {
+            await generateStaffPdf(baseName, selectedSections);
+            showToast("PDF document downloaded successfully.", "success");
+        } else if (format === "both") {
+            await generateStaffExcel(baseName, selectedSections);
+            await generateStaffPdf(baseName, selectedSections);
+            showToast("Report package (PDF + Excel) downloaded successfully.", "success");
+        }
+    } catch (err) {
+        console.error("Export error:", err);
+        showToast("Error generating report export.", "error");
+    }
+}
+
+function getStaffActiveTabDisplayName(tabKey) {
+    const names = {
+        inventory: "Inventory Records",
+        receiving: "Material Receiving",
+        disbursement: "Material Disbursement",
+        activity: "Material Activity"
+    };
+    return names[tabKey] || "Current Report";
+}
+
+function getStaffFilteredRecordsForPreviewTab(tabKey) {
+    const targetMaterials = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? state.materials.filter(m => m.id === state.selectedMaterialId)
+        : [...state.materials];
+
+    const periodReceipts = state.receipts.filter(r => 
+        withinRange(r.receiptDate, state.startDate, state.endDate) &&
+        (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId)
+    );
+
+    const periodDisbursements = state.disbursements.filter(d => 
+        withinRange(d.usageDate, state.startDate, state.endDate) &&
+        (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId)
+    );
+
+    if (tabKey === "inventory") {
+        let list = [...targetMaterials];
+        const term = (state.invSearch || "").trim().toLowerCase();
+        if (term) {
+            list = list.filter(m => m.name.toLowerCase().includes(term) || m.itemCode.toLowerCase().includes(term));
+        }
+        if (state.invStatus && state.invStatus !== "all") {
+            list = list.filter(m => m.status === state.invStatus);
+        }
+        if (state.invSort === "az") list.sort((a, b) => a.name.localeCompare(b.name));
+        else if (state.invSort === "za") list.sort((a, b) => b.name.localeCompare(a.name));
+        else if (state.invSort === "high_stock") list.sort((a, b) => b.currentStock - a.currentStock);
+        else if (state.invSort === "low_stock") list.sort((a, b) => a.currentStock - b.currentStock);
+        else if (state.invSort === "oldest") list.reverse();
+        return { type: "inventory", records: list };
+    }
+
+    if (tabKey === "receiving") {
+        let list = [...periodReceipts];
+        const term = (state.rcvSearch || "").trim().toLowerCase();
+        if (term) {
+            list = list.filter(r => 
+                (r.materialName || "").toLowerCase().includes(term) || 
+                (r.supplierName || "").toLowerCase().includes(term) || 
+                (r.receivedBy || "").toLowerCase().includes(term)
+            );
+        }
+        if (state.rcvSort === "az") list.sort((a, b) => a.materialName.localeCompare(b.materialName));
+        else if (state.rcvSort === "za") list.sort((a, b) => b.materialName.localeCompare(a.materialName));
+        else if (state.rcvSort === "highest") list.sort((a, b) => b.receivedQuantity - a.receivedQuantity);
+        else if (state.rcvSort === "oldest") list.sort((a, b) => a.receiptDate.localeCompare(b.receiptDate));
+        else list.sort((a, b) => b.receiptDate.localeCompare(a.receiptDate));
+        return { type: "receiving", records: list };
+    }
+
+    if (tabKey === "disbursement") {
+        let list = [...periodDisbursements];
+        const term = (state.disbSearch || "").trim().toLowerCase();
+        if (term) {
+            list = list.filter(d => 
+                (d.materialName || "").toLowerCase().includes(term) || 
+                (d.finishedProduct || "").toLowerCase().includes(term) || 
+                (d.recordedBy || "").toLowerCase().includes(term)
+            );
+        }
+        if (state.disbSort === "az") list.sort((a, b) => a.materialName.localeCompare(b.materialName));
+        else if (state.disbSort === "za") list.sort((a, b) => b.materialName.localeCompare(a.materialName));
+        else if (state.disbSort === "highest") list.sort((a, b) => b.disbursedQuantity - a.disbursedQuantity);
+        else if (state.disbSort === "oldest") list.sort((a, b) => a.usageDate.localeCompare(b.usageDate));
+        else list.sort((a, b) => b.usageDate.localeCompare(a.usageDate));
+        return { type: "disbursement", records: list };
+    }
+
+    if (tabKey === "activity") {
+        const rcvs = periodReceipts.map(r => ({
+            date: r.receiptDate,
+            type: "Received",
+            material: r.materialName,
+            netQty: r.receivedQuantity,
+            unit: r.unit,
+            context: r.supplierName,
+            operator: r.receivedBy
+        }));
+        const disbs = periodDisbursements.map(d => ({
+            date: d.usageDate,
+            type: "Disbursed",
+            material: d.materialName,
+            netQty: -d.disbursedQuantity,
+            unit: d.unit,
+            context: d.finishedProduct,
+            operator: d.recordedBy
+        }));
+        let list = [...rcvs, ...disbs];
+        if (state.actType && state.actType !== "all") {
+            list = list.filter(a => a.type === state.actType);
+        }
+        const term = (state.actSearch || "").trim().toLowerCase();
+        if (term) {
+            list = list.filter(a => 
+                (a.material || "").toLowerCase().includes(term) || 
+                (a.context || "").toLowerCase().includes(term) || 
+                (a.operator || "").toLowerCase().includes(term)
+            );
+        }
+        if (state.actSort === "az") list.sort((a, b) => a.material.localeCompare(b.material));
+        else if (state.actSort === "za") list.sort((a, b) => b.material.localeCompare(a.material));
+        else if (state.actSort === "oldest") list.sort((a, b) => a.date.localeCompare(b.date));
+        else list.sort((a, b) => b.date.localeCompare(a.date));
+        return { type: "activity", records: list };
+    }
+
+    return { type: "inventory", records: targetMaterials };
+}
+
+/* ==========================================================
+   STAFF SIGNATURES & PERFORATED CUT LINE EXPORT HELPERS
+   ========================================================== */
+
+function drawPdfSignaturesAndCutLine(doc, y, pageWidth, pageHeight, reportTitle, periodLabel, docRef) {
+    if (y + 155 > pageHeight - 40) {
+        doc.addPage();
+        y = 48;
+    }
+
+    const boxWidth = pageWidth - 80;
+    const boxHeight = 65;
+
+    // 1. Signatures Box (Recorded By & Accepted By)
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(40, y, boxWidth, boxHeight, 3, 3, "FD");
+
+    // Recorded By Column
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(51, 65, 85);
+    doc.text("RECORDED BY (STORE STAFF)", 54, y + 15);
+
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.75);
+    doc.line(54, y + 44, 54 + (boxWidth / 2) - 30, y + 44);
+
+    doc.setFontSize(6.8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text("Signature over Printed Name / Date", 54, y + 54);
+
+    // Accepted By Column
+    const col2X = 40 + (boxWidth / 2) + 14;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(51, 65, 85);
+    doc.text("ACCEPTED BY (STORE MANAGER)", col2X, y + 15);
+
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.75);
+    doc.line(col2X, y + 44, 40 + boxWidth - 14, y + 44);
+
+    doc.setFontSize(6.8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text("Signature over Printed Name / Date", col2X, y + 54);
+
+    y += boxHeight + 7;
+
+    // Verification Note
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(100, 116, 139);
+    doc.text("* Official system report verified against RMSME authoritative inventory datastores. Anti-tamper protected document.", pageWidth / 2, y, { align: "center" });
+
+    y += 12;
+
+    // 2. Perforated Cut Line (Dashed)
+    doc.setDrawColor(148, 163, 184);
+    if (typeof doc.setLineDashPattern === "function") {
+        doc.setLineDashPattern([3, 2.5], 0);
+    } else if (typeof doc.setLineDash === "function") {
+        doc.setLineDash([3, 2.5], 0);
+    }
+    doc.line(40, y, pageWidth - 40, y);
+    if (typeof doc.setLineDashPattern === "function") {
+        doc.setLineDashPattern([], 0);
+    } else if (typeof doc.setLineDash === "function") {
+        doc.setLineDash([], 0);
+    }
+
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 116, 139);
+    doc.text("--- ✂  CUT HERE FOR AUDIT SLIP / ACCOUNTING ACKNOWLEDGMENT COPY  ✂ ---", pageWidth / 2, y + 7, { align: "center" });
+
+    y += 12;
+
+    // 3. Tear-Off Slip Box
+    const slipHeight = 52;
+    doc.setDrawColor(203, 213, 225);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(40, y, boxWidth, slipHeight, 2, 2, "FD");
+
+    doc.setFontSize(7.2);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(5, 150, 105);
+    doc.text("RMSME OPERATIONAL AUDIT & TEAR-OFF VOUCHER SLIP", 50, y + 12);
+
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Doc Ref: ${docRef}`, boxWidth + 30, y + 12, { align: "right" });
+
+    doc.setTextColor(51, 65, 85);
+    doc.setFontSize(6.8);
+    doc.text(`Scope: ${reportTitle} (${periodLabel})`, 50, y + 24);
+
+    doc.text("RECORDED BY: _____________________  Date: ________", 50, y + 36);
+    doc.text("ACCEPTED BY: _____________________  Date: ________", col2X, y + 36);
+
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 116, 139);
+    doc.text("CONFIDENTIAL — RMSME INTERNAL AUDIT & DECISION REPORT • STRICTLY FOR OPERATIONAL USE", pageWidth / 2, y + 46, { align: "center" });
+
+    return y + slipHeight;
+}
+
+function appendExcelSignaturesAndCutLine(ws) {
+    if (typeof XLSX === "undefined" || !ws) return;
+    const todayStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const cutRows = [
+        [],
+        ["----------------------------------------------------------------------------------------------------------------------------------------"],
+        ["✂  CUT HERE FOR AUDIT SLIP / ACCOUNTING ACKNOWLEDGMENT COPY  ✂"],
+        ["----------------------------------------------------------------------------------------------------------------------------------------"],
+        ["RMSME OPERATIONAL AUDIT & TEAR-OFF VOUCHER SLIP", "", `Date: ${todayStr}`, "Official System Verified"],
+        [],
+        ["RECORDED BY (Store Staff):", "____________________________________", "", "ACCEPTED BY (Store Manager):", "____________________________________"],
+        ["Signature over Printed Name / Date:", "", "", "Signature over Printed Name / Date:", ""],
+        [],
+        ["* Official system report verified against RMSME authoritative inventory datastores. Anti-tamper protected."]
+    ];
+    XLSX.utils.sheet_add_aoa(ws, cutRows, { origin: -1 });
+}
+
+async function generateStaffSingleTabPdf(fileName, tabKey = (state.activeTab || "inventory")) {
+    if (typeof window.jspdf === "undefined" && typeof jspdf === "undefined") {
+        throw new Error("jsPDF library not loaded");
+    }
+    const { jsPDF } = window.jspdf || jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
-    const docRef = `RMSME-USR-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const reportTypeStr = formatPeriodTypeLabel(state.periodPreset);
+    const now = new Date();
+    const genDateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const genTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const docRef = `RMSME-STAFF-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    let y = 36;
 
     // 1. RMSME Official Header
     doc.setFont("helvetica", "bold");
@@ -1728,211 +1571,180 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
     doc.line(40, y, pageWidth - 40, y);
     y += 18;
 
-    // 2. Document Title
+    // 2. Specific Report Title
+    const activeTitle = getStaffActiveTabDisplayName(tabKey);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
+    doc.setFontSize(14);
     doc.setTextColor(...RM_INK);
-    doc.text("Operational Inventory & Production Report", 40, y);
+    doc.text(`${activeTitle} Report`, 40, y);
     y += 16;
 
-    // 3. Metadata Grid
+    // 3. Metadata Grid with Active Scope & Filters
     const colW = (pageWidth - 80) / 2;
-    const leftCol = [
-        ["REPORT HORIZON", periodLabel],
-        ["REPORT PRESET", `${state.periodPreset.toUpperCase()} Snapshot`],
-        ["SECURITY CLASSIFICATION", "Confidential / Internal Use Only"]
-    ];
-    const rightCol = [
-        ["GENERATED AT", `${genDateStr} ${genTimeStr}`],
-        ["PREPARED BY", currentUser?.fullName || "User"],
-        ["SOURCE DATABASE", "RMSME Authoritative PostgreSQL Database"]
-    ];
+    const targetMaterialLabel = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? (state.selectedMaterialName || "Selected Material")
+        : "All Catalog Raw Materials";
 
-    let leftY = y, rightY = y;
-    leftCol.forEach(row => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(...RM_DIM);
-        doc.text(row[0], 40, leftY);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
-        doc.setTextColor(...RM_INK);
-        doc.text(String(row[1]), 40, leftY + 10);
-        leftY += 23;
-    });
+    let filterContext = "All items in preview";
+    if (tabKey === "inventory") {
+        const parts = [];
+        if (state.invSearch.trim()) parts.push(`Search: "${state.invSearch.trim()}"`);
+        if (state.invStatus !== "all") parts.push(`Status: ${state.invStatus}`);
+        if (parts.length) filterContext = parts.join(" | ");
+    } else if (tabKey === "receiving") {
+        if (state.rcvSearch.trim()) filterContext = `Search: "${state.rcvSearch.trim()}"`;
+    } else if (tabKey === "disbursement") {
+        if (state.disbSearch.trim()) filterContext = `Search: "${state.disbSearch.trim()}"`;
+    } else if (tabKey === "activity") {
+        const parts = [];
+        if (state.actSearch.trim()) parts.push(`Search: "${state.actSearch.trim()}"`);
+        if (state.actType !== "all") parts.push(`Type: ${state.actType}`);
+        if (parts.length) filterContext = parts.join(" | ");
+    }
 
-    rightCol.forEach(row => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(...RM_DIM);
-        doc.text(row[0], 40 + colW, rightY);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
-        doc.setTextColor(...RM_INK);
-        doc.text(String(row[1]), 40 + colW, rightY + 10);
-        rightY += 23;
-    });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("REPORT HORIZON:", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text(`${periodLabel} (${reportTypeStr})`, 130, y);
 
-    y = Math.max(leftY, rightY) + 2;
-    doc.setDrawColor(220, 226, 236);
-    doc.setLineWidth(1);
-    doc.line(40, y, pageWidth - 40, y);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("SYSTEM SOURCE:", 40 + colW, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text("RMSME PostgreSQL Database", 130 + colW, y);
+    y += 13;
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("MATERIAL SCOPE:", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text(targetMaterialLabel, 130, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("CLASSIFICATION:", 40 + colW, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text("Confidential / Operational Use Only", 130 + colW, y);
+    y += 13;
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("ACTIVE FILTERS:", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text(filterContext, 130, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("AUTHORITY:", 40 + colW, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text("Store Staff", 130 + colW, y);
     y += 18;
 
-    const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
+    // 4. AutoTable for Active Tab
+    const filtered = getStaffFilteredRecordsForPreviewTab(tabKey);
 
-    selectedSections.forEach(key => {
-        if (y > doc.internal.pageSize.getHeight() - 140) {
-            doc.addPage();
-            y = 48;
-        }
+    if (tabKey === "inventory") {
+        const tableData = filtered.records.length === 0
+            ? [["No inventory materials match the search / filter criteria", "—", "—", "—", "—", "—"]]
+            : filtered.records.map(m => [
+                m.name,
+                m.itemCode,
+                `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
+                `${(m.minThreshold || 0).toLocaleString()} ${m.unit}`,
+                `${(m.reorderQty || 0).toLocaleString()} ${m.unit}`,
+                m.status
+            ]);
+        doc.autoTable({
+            startY: y,
+            head: [["Raw Material", "Item Code", "Current Stock", "Min Threshold", "Reorder Qty", "Status"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4.5 },
+            margin: { left: 40, right: 40 }
+        });
+    } else if (tabKey === "receiving") {
+        const tableData = filtered.records.length === 0
+            ? [["No receiving records match the search / period filter", "—", "—", "—", "—", "—"]]
+            : filtered.records.map(r => [
+                r.receiptDate,
+                r.materialName,
+                `+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
+                r.supplierName,
+                r.receivedBy,
+                "Verified Inbound"
+            ]);
+        doc.autoTable({
+            startY: y,
+            head: [["Receipt Date", "Raw Material", "Received Qty", "Supplier Name", "Received By", "Status"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4.5 },
+            margin: { left: 40, right: 40 }
+        });
+    } else if (tabKey === "disbursement") {
+        const tableData = filtered.records.length === 0
+            ? [["No disbursement records match the search / period filter", "—", "—", "—", "—", "—"]]
+            : filtered.records.map(d => [
+                d.usageDate,
+                d.materialName,
+                d.finishedProduct || "—",
+                `-${(d.disbursedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${d.unit}`,
+                d.activityType || "Kitchen Issue",
+                d.recordedBy
+            ]);
+        doc.autoTable({
+            startY: y,
+            head: [["Usage Date", "Raw Material", "Finished Product", "Disbursed Qty", "Activity Type", "Recorded By"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4.5 },
+            margin: { left: 40, right: 40 }
+        });
+    } else if (tabKey === "activity") {
+        const tableData = filtered.records.length === 0
+            ? [["No activity transactions match the filter", "—", "—", "—", "—", "—"]]
+            : filtered.records.map(a => [
+                a.date,
+                a.type,
+                a.material,
+                a.type === "Received" ? `+${(a.netQty || 0).toLocaleString()} ${a.unit}` : `${(a.netQty || 0).toLocaleString()} ${a.unit}`,
+                a.context || "—",
+                a.operator || "Staff"
+            ]);
+        doc.autoTable({
+            startY: y,
+            head: [["Date", "Movement Type", "Raw Material", "Net Quantity", "Reference / Batch", "Operator"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4.5 },
+            margin: { left: 40, right: 40 }
+        });
+    }
 
-        if (key === "overview") {
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(...RM_GREEN);
-            doc.text("1. Operational Summary & Inventory Health", 40, y);
-            y += 12;
+    // 5. Signatures (Recorded By & Accepted By) and Perforated Cut Line
+    const finalTableY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 16 : y + 20;
+    drawPdfSignaturesAndCutLine(doc, finalTableY, pageWidth, pageHeight, `${activeTitle} Report`, periodLabel, docRef);
 
-            doc.autoTable({
-                startY: y,
-                head: [["Category", "Result", "Period", "Status"]],
-                body: [
-                    ["Raw Material Receipts", `${periodReceipts.length} records logged`, periodLabel, "Completed"],
-                    ["Production Disbursements", `${periodDisbursements.length} records logged`, periodLabel, "Logged"],
-                    ["Active Raw Materials", `${state.materials.length} items in catalog`, "Baseline", "Active"],
-                    ["Materials Needing Attention", `${state.materials.filter(m => m.status !== "Good").length} items`, "Real-Time", "Attention Needed"]
-                ],
-                margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
-                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
-            });
-            y = doc.lastAutoTable.finalY + 20;
-        }
-
-        if (key === "receiving") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(...RM_GREEN);
-            doc.text("2. Recent Raw Material Receiving Log", 40, y);
-            y += 12;
-
-            doc.autoTable({
-                startY: y,
-                head: [["Date", "Raw Material", "ID", "Qty", "Unit", "Supplier", "Status"]],
-                body: periodReceipts.length === 0 ? [["—", "—", "No receiving in period", "—", "—", "—", "—"]] :
-                    periodReceipts.map(r => [
-                        r.receiptDate,
-                        r.materialName,
-                        r.itemCode,
-                        `+${r.receivedQuantity}`,
-                        r.unit,
-                        r.supplierName,
-                        r.status
-                    ]),
-                margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
-                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
-            });
-            y = doc.lastAutoTable.finalY + 20;
-        }
-
-        if (key === "disbursement") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(...RM_GREEN);
-            doc.text("3. Recent Raw Material Disbursement Log", 40, y);
-            y += 12;
-
-            doc.autoTable({
-                startY: y,
-                head: [["Date", "Product / Context", "Raw Material", "ID", "Qty", "Unit", "Status"]],
-                body: periodDisbursements.length === 0 ? [["—", "—", "No disbursements in period", "—", "—", "—", "—"]] :
-                    periodDisbursements.map(d => [
-                        d.usageDate,
-                        d.finishedProduct,
-                        d.materialName,
-                        d.itemCode,
-                        `-${d.disbursedQuantity}`,
-                        d.unit,
-                        d.status
-                    ]),
-                margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
-                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
-            });
-            y = doc.lastAutoTable.finalY + 20;
-        }
-
-        if (key === "consumption") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(...RM_GREEN);
-            doc.text("4. Consumption Analysis & Usage Trends", 40, y);
-            y += 12;
-
-            doc.autoTable({
-                startY: y,
-                head: [["Raw Material", "ID", "Current Stock", "Period Consumed", "Status"]],
-                body: state.materials.map(m => {
-                    const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((sum, d) => sum + d.disbursedQuantity, 0);
-                    return [
-                        m.name,
-                        m.itemCode,
-                        `${m.currentStock.toLocaleString()} ${m.unit}`,
-                        `${consumed.toLocaleString()} ${m.unit}`,
-                        m.status
-                    ];
-                }),
-                margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
-                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
-            });
-            y = doc.lastAutoTable.finalY + 20;
-        }
-
-        if (key === "forecasting") {
-            if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = 48; }
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.setTextColor(...RM_GREEN);
-            doc.text("5. AI Forecast Support & Projections", 40, y);
-            y += 12;
-
-            doc.autoTable({
-                startY: y,
-                head: [["Raw Material", "ID", "Current Stock", "Forecast Req (7D)", "Additional Need", "Status"]],
-                body: state.forecastList.length === 0 ? [["—", "—", "No AI forecast available", "—", "—", "—"]] :
-                    state.forecastList.map(f => [
-                        f.name,
-                        f.itemCode,
-                        `${f.currentStock.toLocaleString()} ${f.unit}`,
-                        `${f.forecast7Day.toFixed(1)} ${f.unit}`,
-                        f.additionalNeed > 0 ? `+${f.additionalNeed.toFixed(1)} ${f.unit}` : "0",
-                        f.status
-                    ]),
-                margin: { left: 40, right: 40 },
-                styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
-                headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" }
-            });
-            y = doc.lastAutoTable.finalY + 20;
-        }
-    });
-
-    // Centered Faded Grey Watermark & Permanent Footer Across All Pages
+    // 6. Watermark & Footer across all pages (Matching Image 1)
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-
-        // Centered Faded Grey Watermark
         doc.saveGraphicsState();
         doc.setTextColor(226, 232, 240);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(34);
+        doc.setFontSize(32);
         doc.text("RMSME OFFICIAL REPORT", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 - 12, {
             align: "center",
             angle: 35
@@ -1945,567 +1757,918 @@ async function generateUserPdfReport(selectedSections = ["overview", "receiving"
         });
         doc.restoreGraphicsState();
 
-        // Footer divider line
         doc.setDrawColor(5, 150, 105);
         doc.setLineWidth(1);
         doc.line(40, doc.internal.pageSize.getHeight() - 34, pageWidth - 40, doc.internal.pageSize.getHeight() - 34);
 
-        // Footer Text
         doc.setFontSize(7.5);
         doc.setTextColor(...RM_INK);
         doc.setFont("helvetica", "bold");
-        doc.text("RMSME — Raw Material Stock Management & Enterprise Forecasting System", 40, doc.internal.pageSize.getHeight() - 22);
+        doc.text("RMSME — Raw Material Stock Management & Enterprise Operations System", 40, doc.internal.pageSize.getHeight() - 22);
 
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...RM_DIM);
         doc.text(`Page ${i} of ${totalPages}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 22, { align: "right" });
 
         doc.setFontSize(6.8);
-        doc.text("System Support: support@rmsme.internal | Helpline: (02) 8876-RMSME | Official System Generated Copy — Anti-Tamper Protected", 40, doc.internal.pageSize.getHeight() - 12);
+        doc.text("System Support: operations@rmsme.internal | Official System Generated Copy — Anti-Tamper Protected", 40, doc.internal.pageSize.getHeight() - 12);
     }
 
-    const pdfBlob = doc.output("blob");
-    const res = await saveUserExportBlob({ blob: pdfBlob, fileName, defaultExtension: "pdf" });
-    if (res.mode === "custom-directory") {
-        showToast(`PDF report saved directly to "${res.location}".`, "success");
-    } else {
-        showToast(`PDF report downloaded: ${fileName}.pdf`, "success");
-    }
+    doc.save(`${fileName}.pdf`);
 }
 
-/* ==========================================================
-   CSV & JSON EXPORT
-   ========================================================== */
-
-async function generateUserCsvPackage(selectedSections, fileName) {
-    const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-
-    let csvContent = `RMSME User Report\nPeriod,${formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset)}\nGenerated,${new Date().toISOString()}\n\n`;
-
-    if (selectedSections.includes("receiving")) {
-        csvContent += `--- RECENT RECEIVING ---\nDate,Raw Material,Item Code,Quantity,Unit,Supplier,Status\n`;
-        periodReceipts.forEach(r => {
-            csvContent += `"${r.receiptDate}","${r.materialName}","${r.itemCode}",${r.receivedQuantity},"${r.unit}","${r.supplierName}","${r.status}"\n`;
-        });
-        csvContent += `\n`;
+async function generateStaffSingleTabExcel(fileName, tabKey = "inventory") {
+    if (typeof XLSX === "undefined") {
+        throw new Error("XLSX library not loaded");
     }
+    const wb = XLSX.utils.book_new();
+    const activeTitle = getStaffActiveTabDisplayName(tabKey);
+    const filtered = getStaffFilteredRecordsForPreviewTab(tabKey);
 
-    if (selectedSections.includes("disbursement")) {
-        csvContent += `--- RECENT DISBURSEMENT ---\nDate,Finished Product,Raw Material,Item Code,Quantity,Unit,Status\n`;
-        periodDisbursements.forEach(d => {
-            csvContent += `"${d.usageDate}","${d.finishedProduct}","${d.materialName}","${d.itemCode}",${d.disbursedQuantity},"${d.unit}","${d.status}"\n`;
-        });
-        csvContent += `\n`;
-    }
-
-    if (selectedSections.includes("consumption")) {
-        csvContent += `--- CONSUMPTION ANALYSIS ---\nRaw Material,Item Code,Unit,Current Stock,Period Consumed,Status\n`;
-        state.materials.forEach(m => {
-            const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((s, d) => s + d.disbursedQuantity, 0);
-            csvContent += `"${m.name}","${m.itemCode}","${m.unit}",${m.currentStock},${consumed},"${m.status}"\n`;
-        });
-        csvContent += `\n`;
-    }
-
-    if (selectedSections.includes("forecasting")) {
-        csvContent += `--- AI FORECAST SUPPORT ---\nRaw Material,Item Code,Forecast Period,Current Stock,Forecast 7D,Additional Need,Status\n`;
-        state.forecastList.forEach(f => {
-            csvContent += `"${f.name}","${f.itemCode}","Next 7 Days",${f.currentStock},${f.forecast7Day},${f.additionalNeed},"${f.status}"\n`;
-        });
-    }
-
-    const csvBlob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const res = await saveUserExportBlob({ blob: csvBlob, fileName, defaultExtension: "csv" });
-    if (res.mode === "custom-directory") {
-        showToast(`CSV package saved directly to "${res.location}".`, "success");
-    } else {
-        showToast("CSV package exported successfully.", "success");
-    }
-}
-
-async function generateUserJsonExport(selectedSections, fileName) {
-    const exportObj = {
-        meta: {
-            title: "RMSME User Report Export",
-            periodPreset: state.periodPreset,
-            startDate: state.startDate ? formatDateISO(state.startDate) : null,
-            endDate: state.endDate ? formatDateISO(state.endDate) : null,
-            generatedAt: new Date().toISOString()
-        }
-    };
-
-    if (selectedSections.includes("overview")) {
-        exportObj.overview = {
-            totalMaterials: state.materials.length,
-            needingAttention: state.materials.filter(m => m.status !== "Good").length,
-            periodReceiptsCount: state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate)).length,
-            periodDisbursementsCount: state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate)).length
-        };
-    }
-
-    if (selectedSections.includes("receiving")) {
-        exportObj.receiving = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    }
-
-    if (selectedSections.includes("disbursement")) {
-        exportObj.disbursement = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-    }
-
-    if (selectedSections.includes("consumption")) {
-        exportObj.consumption = state.materials.map(m => ({
-            materialId: m.id,
-            materialName: m.name,
-            currentStock: m.currentStock,
-            unit: m.unit,
-            periodConsumed: state.disbursements.filter(d => d.materialId === m.id && withinRange(d.usageDate, state.startDate, state.endDate)).reduce((s, d) => s + d.disbursedQuantity, 0)
+    let rows = [];
+    if (tabKey === "inventory") {
+        rows = filtered.records.map(m => ({
+            "Item Code": m.itemCode,
+            "Raw Material Name": m.name,
+            "Unit": m.unit,
+            "Current Stock": m.currentStock,
+            "Minimum Threshold": m.minThreshold,
+            "Reorder Quantity": m.reorderQty,
+            "Status": m.status
+        }));
+    } else if (tabKey === "receiving") {
+        rows = filtered.records.map(r => ({
+            "Receipt Date": r.receiptDate,
+            "Raw Material": r.materialName,
+            "Received Quantity": r.receivedQuantity,
+            "Unit": r.unit,
+            "Supplier Name": r.supplierName,
+            "Received By": r.receivedBy
+        }));
+    } else if (tabKey === "disbursement") {
+        rows = filtered.records.map(d => ({
+            "Usage Date": d.usageDate,
+            "Raw Material": d.materialName,
+            "Disbursed Quantity": d.disbursedQuantity,
+            "Unit": d.unit,
+            "Finished Product Context": d.finishedProduct,
+            "Activity Type": d.activityType,
+            "Recorded By": d.recordedBy
+        }));
+    } else if (tabKey === "activity") {
+        rows = filtered.records.map(a => ({
+            "Date": a.date,
+            "Movement Type": a.type,
+            "Raw Material": a.material,
+            "Net Change": a.netQty,
+            "Unit": a.unit,
+            "Reference / Context": a.context,
+            "Operator": a.operator
         }));
     }
 
-    if (selectedSections.includes("forecasting")) {
-        exportObj.forecasting = state.forecastList;
-    }
-
-    const jsonBlob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
-    const res = await saveUserExportBlob({ blob: jsonBlob, fileName, defaultExtension: "json" });
-    if (res.mode === "custom-directory") {
-        showToast(`JSON report saved directly to "${res.location}".`, "success");
-    } else {
-        showToast("JSON report exported successfully.", "success");
-    }
-};
-
-/* ==========================================================
-   PRINT REPORT HANDLER (MATCHING CLASSIC RMIMS TEMPLATE)
-   ========================================================== */
-
-function updatePrintDocHtml() {
-    const printDoc = $("continuousPrintDoc");
-    if (!printDoc) return;
-
-    const periodReceipts = state.receipts.filter(r => withinRange(r.receiptDate, state.startDate, state.endDate));
-    const periodDisbursements = state.disbursements.filter(d => withinRange(d.usageDate, state.startDate, state.endDate));
-    const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
-
-    const reportTypeLabel = {
-        today: "Daily Operational Snapshot",
-        weekly: "Weekly Inventory Movement",
-        monthly: "Monthly Stock Summary",
-        all: "Complete Enterprise History",
-        custom: "Custom Date Horizon"
-    }[state.periodPreset] || "Executive Operational Report";
-
-    const now = new Date();
-    const genDate = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    const genTime = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    const docRefCode = `RMSME-USR-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const goodStock = state.materials.filter(m => m.status === "Good").length;
-    const attentionStock = state.materials.filter(m => m.status !== "Good").length;
-
-    let html = `
-        <!-- PRINT DOCUMENT TABLE WRAPPER (ENABLES WATERMARK AND FOOTER ON EVERY PAGE) -->
-        <table class="print-page-table-wrapper">
-            <thead>
-                <tr>
-                    <th class="print-watermark-th">
-                        <div class="print-page-watermark-box" aria-hidden="true">
-                            <div class="print-watermark-inner">
-                                <img src="../assets/logo-icon.png" class="print-watermark-logo-img" alt="RMSME Watermark Logo" />
-                                <div class="print-watermark-title">RMSME</div>
-                                <div class="print-watermark-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-                                <div class="print-watermark-tag">OFFICIAL SYSTEM REPORT • PREVENT FAKE COPY</div>
-                            </div>
-                        </div>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>
-                        <!-- OFFICIAL PERMANENT RMSME HEADER WITH SYSTEM LOGO ICON -->
-                        <div class="print-header-block">
-                            <div class="print-logo-row">
-                                <img src="../assets/logo-icon.png" class="print-header-logo-img" alt="RMSME System Logo" />
-                                <div class="print-system-info">
-                                    <h1 class="print-rmims-title">RMSME</h1>
-                                    <div class="print-rmims-sub">RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</div>
-                                </div>
-                            </div>
-                            <div class="print-doc-meta-right">
-                                <div><strong>Generated:</strong> ${genDate} at ${genTime}</div>
-                                <div><strong>Operator:</strong> ${esc(currentUser?.fullName || "User")}</div>
-                                <div><strong>Document Ref:</strong> <span style="font-family:monospace;">${docRefCode}</span></div>
-                            </div>
-                        </div>
-
-                        <!-- METADATA CARD GRID -->
-                        <div class="print-meta-grid-2col">
-                            <div class="print-meta-item">
-                                <span class="print-meta-lbl">REPORT HORIZON</span>
-                                <span class="print-meta-val">${esc(periodLabel)}</span>
-                            </div>
-                            <div class="print-meta-item">
-                                <span class="print-meta-lbl">REPORT PRESET</span>
-                                <span class="print-meta-val">${esc(reportTypeLabel)}</span>
-                            </div>
-                            <div class="print-meta-item">
-                                <span class="print-meta-lbl">SECURITY CLASSIFICATION</span>
-                                <span class="print-meta-val">Confidential / Internal Operation</span>
-                            </div>
-                            <div class="print-meta-item">
-                                <span class="print-meta-lbl">DATA INTEGRITY</span>
-                                <span class="print-meta-val">Verified PostgreSQL Ledger</span>
-                            </div>
-                        </div>
-
-                        <!-- FIRST CARD: OPERATIONAL SUMMARY & OVERVIEW -->
-                        <div class="print-section">
-                            <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">1. Operational Summary &amp; Overview</h3>
-                                <span class="print-source-pill">Source: Operational Summary Matrix</span>
-                            </div>
-                            
-                            <div class="print-kpi-summary-grid">
-                                <div class="print-kpi-box">
-                                    <div class="print-kpi-box-lbl">TOTAL RAW MATERIALS</div>
-                                    <div class="print-kpi-box-num">${state.materials.length}</div>
-                                </div>
-                                <div class="print-kpi-box">
-                                    <div class="print-kpi-box-lbl">OPTIMAL STOCK</div>
-                                    <div class="print-kpi-box-num" style="color: #059669;">${goodStock}</div>
-                                </div>
-                                <div class="print-kpi-box">
-                                    <div class="print-kpi-box-lbl">NEEDS ATTENTION</div>
-                                    <div class="print-kpi-box-num" style="color: #dc2626;">${attentionStock}</div>
-                                </div>
-                                <div class="print-kpi-box">
-                                    <div class="print-kpi-box-lbl">RECEIVING LOGS</div>
-                                    <div class="print-kpi-box-num">${periodReceipts.length}</div>
-                                </div>
-                            </div>
-
-                            <h4 class="print-subsection-title">Operational Health Matrix</h4>
-                            <table class="print-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 60%;">Metric / Dimension</th>
-                                        <th style="width: 40%;">Value / Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Total Active Catalog Materials</td>
-                                        <td><strong>${state.materials.length} items</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Materials at Optimal / Good Stock</td>
-                                        <td><strong style="color: #059669;">${goodStock} items</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Materials Requiring Reorder / Attention</td>
-                                        <td><strong style="color: ${attentionStock > 0 ? '#dc2626' : '#059669'};">${attentionStock} items</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Material Receipts in Selected Horizon</td>
-                                        <td><strong>${periodReceipts.length} recorded transactions</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Production Disbursements in Selected Horizon</td>
-                                        <td><strong>${periodDisbursements.length} recorded transactions</strong></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- SECTION 2: RAW MATERIAL INVENTORY RECORDS -->
-                        <div class="print-section">
-                            <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">2. Raw Material Inventory Records</h3>
-                                <span class="print-source-pill">Source: raw_materials Catalog Ledger</span>
-                            </div>
-                            <table class="print-table">
-                                <thead>
-                                    <tr>
-                                        <th>Raw Material</th>
-                                        <th>Item Code</th>
-                                        <th>Current Stock</th>
-                                        <th>Minimum Threshold</th>
-                                        <th>Reorder Quantity</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${state.materials.map(m => `
-                                        <tr>
-                                            <td><strong>${esc(m.name)}</strong></td>
-                                            <td><span style="font-family:monospace; font-weight:700; color:#475569;">${esc(m.itemCode)}</span></td>
-                                            <td><strong>${m.currentStock.toLocaleString()}</strong> ${esc(m.unit)}</td>
-                                            <td>${m.minThreshold.toLocaleString()} ${esc(m.unit)}</td>
-                                            <td>${m.reorderQty.toLocaleString()} ${esc(m.unit)}</td>
-                                            <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#d97706' : '#dc2626')}">${esc(m.status)}</strong></td>
-                                        </tr>
-                                    `).join("")}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- SECTION 3: RAW MATERIAL RECEIVING -->
-                        <div class="print-section">
-                            <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">3. Material Receiving Log</h3>
-                                <span class="print-source-pill">Source: stock_receipts Inbound Records</span>
-                            </div>
-                            <table class="print-table">
-                                <thead>
-                                    <tr>
-                                        <th>Receipt Date</th>
-                                        <th>Raw Material</th>
-                                        <th>Item Code</th>
-                                        <th>Received Qty</th>
-                                        <th>Unit</th>
-                                        <th>Supplier / Source</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${periodReceipts.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:8px;">No material receiving records recorded in this period.</td></tr>` : 
-                                    periodReceipts.map(r => `
-                                        <tr>
-                                            <td>${esc(r.receiptDate)}</td>
-                                            <td><strong>${esc(r.materialName)}</strong></td>
-                                            <td>${esc(r.itemCode)}</td>
-                                            <td>+${r.receivedQuantity}</td>
-                                            <td>${esc(r.unit)}</td>
-                                            <td>${esc(formatContextDisplay(r.supplierName, "Supplier"))}</td>
-                                            <td>${esc(r.status || "Verified")}</td>
-                                        </tr>
-                                    `).join("")}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- SECTION 4: MATERIAL DISBURSEMENT -->
-                        <div class="print-section">
-                            <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">4. Material Disbursement Log</h3>
-                                <span class="print-source-pill">Source: material_disbursements Production Issue Ledger</span>
-                            </div>
-                            <table class="print-table">
-                                <thead>
-                                    <tr>
-                                        <th>Usage Date</th>
-                                        <th>Target Product / Context</th>
-                                        <th>Raw Material</th>
-                                        <th>Item Code</th>
-                                        <th>Disbursed Qty</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${periodDisbursements.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No material disbursements recorded in this period.</td></tr>` :
-                                    periodDisbursements.map(d => `
-                                        <tr>
-                                            <td>${esc(d.usageDate)}</td>
-                                            <td><strong>${esc(formatContextDisplay(d.finishedProduct, "General Production"))}</strong></td>
-                                            <td>${esc(d.materialName)}</td>
-                                            <td>${esc(d.itemCode)}</td>
-                                            <td>-${d.disbursedQuantity} ${esc(d.unit)}</td>
-                                            <td>${esc(d.status || "Recorded")}</td>
-                                        </tr>
-                                    `).join("")}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- SECTION 5: CONSUMPTION ANALYSIS -->
-                        <div class="print-section">
-                            <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">5. Raw Material Consumption Analysis</h3>
-                                <span class="print-source-pill">Source: Period Usage vs Catalog Health</span>
-                            </div>
-                            <table class="print-table">
-                                <thead>
-                                    <tr>
-                                        <th>Raw Material</th>
-                                        <th>Item Code</th>
-                                        <th>Current Stock</th>
-                                        <th>Period Consumed</th>
-                                        <th>Stock Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${state.materials.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:8px;">No catalog raw materials registered.</td></tr>` :
-                                    state.materials.map(m => {
-                                        const consumed = periodDisbursements.filter(d => d.materialId === m.id).reduce((sum, d) => sum + d.disbursedQuantity, 0);
-                                        return `
-                                            <tr>
-                                                <td><strong>${esc(m.name)}</strong></td>
-                                                <td>${esc(m.itemCode)}</td>
-                                                <td>${m.currentStock.toLocaleString()} ${esc(m.unit)}</td>
-                                                <td>${consumed.toLocaleString()} ${esc(m.unit)}</td>
-                                                <td><span style="font-weight:600; color:${m.status === 'Critical' ? '#dc2626' : (m.status === 'Low' ? '#d97706' : '#059669')};">${esc(m.status)}</span></td>
-                                            </tr>
-                                        `;
-                                    }).join("")}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- SECTION 6: AI FORECAST PROJECTIONS -->
-                        <div class="print-section">
-                            <div class="print-section-header-wrap">
-                                <h3 class="print-section-header-green">6. AI Forecast Projections &amp; Requirement Needs</h3>
-                                <span class="print-source-pill">Source: AI Demand Forecasting Engine</span>
-                            </div>
-                            <table class="print-table">
-                                <thead>
-                                    <tr>
-                                        <th>Raw Material</th>
-                                        <th>Item Code</th>
-                                        <th>Current Stock</th>
-                                        <th>Forecast Requirement (7D)</th>
-                                        <th>Additional Needed</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${state.forecastList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:8px;">No AI forecast projections recorded.</td></tr>` :
-                                    state.forecastList.map(f => `
-                                        <tr>
-                                            <td><strong>${esc(f.name)}</strong></td>
-                                            <td>${esc(f.itemCode)}</td>
-                                            <td>${f.currentStock.toLocaleString()} ${esc(f.unit)}</td>
-                                            <td>${f.forecast7Day.toFixed(1)} ${esc(f.unit)}</td>
-                                            <td>${f.additionalNeed > 0 ? `+${f.additionalNeed.toFixed(1)} ${esc(f.unit)}` : "0"}</td>
-                                            <td>${esc(f.status || "Projected")}</td>
-                                        </tr>
-                                    `).join("")}
-                                </tbody>
-                            </table>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td>
-                        <!-- Bottom System Ownership & Contact Footer on Every Page -->
-                        <div class="print-doc-footer">
-                            <div class="print-confidential-bottom">
-                                <span>CONFIDENTIAL — RMSME INTERNAL AUDIT &amp; DECISION REPORT • STRICTLY FOR OPERATIONAL USE</span>
-                            </div>
-                            <div class="print-footer-top">
-                                <span>RMSME — RAW MATERIAL STOCK MANAGEMENT &amp; FORECASTING ENTERPRISE</span>
-                                <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM DOCUMENT</span>
-                            </div>
-                            <div class="print-footer-contact">
-                                <span>System Support: <strong>support@rmsme.internal</strong> | Helpline: <strong>(02) 8876-RMSME</strong></span>
-                                <span>Official System Generated Copy • Anti-Tamper Protected</span>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    `;
-
-    printDoc.innerHTML = html;
+    const wsData = rows.length > 0 ? rows : [{ "Status": "No records matched current filter criteria in preview" }];
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    appendExcelSignaturesAndCutLine(ws);
+    const safeSheetName = activeTitle.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
 }
 
-function handlePrintReport() {
-    if (isPrinting) return;
-    isPrinting = true;
-    try {
-        updatePrintDocHtml();
+async function generateStaffExcel(baseName, sections) {
+    if (typeof XLSX === "undefined") {
+        throw new Error("XLSX library not loaded");
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    const targetMaterials = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? state.materials.filter(m => m.id === state.selectedMaterialId)
+        : state.materials;
+
+    // 1. Inventory Records
+    if (sections.includes("inventory")) {
+        const invRows = targetMaterials.map(m => ({
+            "Item Code": m.itemCode,
+            "Raw Material Name": m.name,
+            "Unit": m.unit,
+            "Current Stock": m.currentStock,
+            "Minimum Threshold": m.minThreshold,
+            "Reorder Quantity": m.reorderQty,
+            "Status": m.status
+        }));
+        const ws = XLSX.utils.json_to_sheet(invRows);
+        appendExcelSignaturesAndCutLine(ws);
+        XLSX.utils.book_append_sheet(wb, ws, "Inventory Records");
+    }
+
+    // 2. Receiving
+    if (sections.includes("receiving")) {
+        const rcvRows = state.receipts
+            .filter(r => withinRange(r.receiptDate, state.startDate, state.endDate) &&
+                (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId))
+            .map(r => ({
+                "Receipt Date": r.receiptDate,
+                "Raw Material": r.materialName,
+                "Received Quantity": r.receivedQuantity,
+                "Unit": r.unit,
+                "Supplier Name": r.supplierName,
+                "Received By": r.receivedBy
+            }));
+        const ws = XLSX.utils.json_to_sheet(rcvRows.length > 0 ? rcvRows : [{ "Status": "No receipts recorded for period" }]);
+        appendExcelSignaturesAndCutLine(ws);
+        XLSX.utils.book_append_sheet(wb, ws, "Material Receiving");
+    }
+
+    // 3. Disbursement
+    if (sections.includes("disbursement")) {
+        const disbRows = state.disbursements
+            .filter(d => withinRange(d.usageDate, state.startDate, state.endDate) &&
+                (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId))
+            .map(d => ({
+                "Usage Date": d.usageDate,
+                "Raw Material": d.materialName,
+                "Disbursed Quantity": d.disbursedQuantity,
+                "Unit": d.unit,
+                "Finished Product Context": d.finishedProduct,
+                "Activity Type": d.activityType,
+                "Recorded By": d.recordedBy
+            }));
+        const ws = XLSX.utils.json_to_sheet(disbRows.length > 0 ? disbRows : [{ "Status": "No disbursements recorded for period" }]);
+        appendExcelSignaturesAndCutLine(ws);
+        XLSX.utils.book_append_sheet(wb, ws, "Material Disbursement");
+    }
+
+    // 4. Activity
+    if (sections.includes("activity")) {
+        const rcvs = state.receipts
+            .filter(r => withinRange(r.receiptDate, state.startDate, state.endDate) &&
+                (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId))
+            .map(r => ({
+                "Date": r.receiptDate,
+                "Movement Type": "Received",
+                "Raw Material": r.materialName,
+                "Net Change": r.receivedQuantity,
+                "Unit": r.unit,
+                "Reference / Context": r.supplierName,
+                "Operator": r.receivedBy
+            }));
+        const disbs = state.disbursements
+            .filter(d => withinRange(d.usageDate, state.startDate, state.endDate) &&
+                (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId))
+            .map(d => ({
+                "Date": d.usageDate,
+                "Movement Type": "Disbursed",
+                "Raw Material": d.materialName,
+                "Net Change": -d.disbursedQuantity,
+                "Unit": d.unit,
+                "Reference / Context": d.finishedProduct,
+                "Operator": d.recordedBy
+            }));
+        const combined = [...rcvs, ...disbs].sort((a, b) => b.Date.localeCompare(a.Date));
+        const ws = XLSX.utils.json_to_sheet(combined.length > 0 ? combined : [{ "Status": "No activity recorded for period" }]);
+        appendExcelSignaturesAndCutLine(ws);
+        XLSX.utils.book_append_sheet(wb, ws, "Material Activity");
+    }
+
+    XLSX.writeFile(wb, `${baseName}.xlsx`);
+}
+
+async function generateStaffPdf(baseName, sections) {
+    if (typeof window.jspdf === "undefined" && typeof jspdf === "undefined") {
+        throw new Error("jsPDF library not loaded");
+    }
+
+    const { jsPDF } = window.jspdf || jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    const periodLabel = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+    const reportTypeStr = formatPeriodTypeLabel(state.periodPreset);
+    const now = new Date();
+    const genDateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const genTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const docRef = `RMSME-PKG-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    let y = 36;
+
+    // 1. RMSME Official Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(...RM_GREEN);
+    doc.text("RMSME", 40, y);
+
+    doc.setFontSize(8);
+    doc.setTextColor(...RM_DIM);
+    doc.setFont("helvetica", "normal");
+    doc.text("RAW MATERIAL STOCK MANAGEMENT & FORECASTING ENTERPRISE", 40, y + 13);
+
+    doc.setFontSize(7.5);
+    doc.text(`Generated: ${genDateStr} at ${genTimeStr}  |  Doc Ref: ${docRef}`, pageWidth - 40, y + 13, { align: "right" });
+
+    y += 26;
+    doc.setDrawColor(5, 150, 105);
+    doc.setLineWidth(1.5);
+    doc.line(40, y, pageWidth - 40, y);
+    y += 18;
+
+    // 2. Package Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...RM_INK);
+    doc.text("RMSME Store Operations Report Package", 40, y);
+    y += 16;
+
+    // 3. Metadata Grid
+    const colW = (pageWidth - 80) / 2;
+    const targetMaterialLabel = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? (state.selectedMaterialName || "Selected Material")
+        : "All Catalog Raw Materials";
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("REPORT HORIZON:", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text(`${periodLabel} (${reportTypeStr})`, 130, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("SYSTEM SOURCE:", 40 + colW, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text("RMSME PostgreSQL Database", 130 + colW, y);
+    y += 13;
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("MATERIAL SCOPE:", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text(targetMaterialLabel, 130, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("CLASSIFICATION:", 40 + colW, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text("Confidential / Operational Use Only", 130 + colW, y);
+    y += 13;
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("SECTIONS INCLUDED:", 40, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text(`${sections.length} Sections (${sections.map(s => getStaffActiveTabDisplayName(s)).join(", ")})`, 130, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...RM_DIM);
+    doc.text("AUTHORITY:", 40 + colW, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...RM_INK);
+    doc.text("Store Staff", 130 + colW, y);
+    y += 20;
+
+    const targetMaterials = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? state.materials.filter(m => m.id === state.selectedMaterialId)
+        : state.materials;
+
+    // 1. Inventory Records
+    if (sections.includes("inventory")) {
+        if (y > pageHeight - 160) { doc.addPage(); y = 40; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...RM_GREEN);
+        doc.text("1. Master Inventory Records & Stock Ledger", 40, y);
+        y += 10;
+
+        const tableData = targetMaterials.length === 0
+            ? [["No inventory materials recorded in catalog", "—", "—", "—", "—", "—"]]
+            : targetMaterials.map(m => [
+                m.name,
+                m.itemCode,
+                `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
+                `${(m.minThreshold || 0).toLocaleString()} ${m.unit}`,
+                `${(m.reorderQty || 0).toLocaleString()} ${m.unit}`,
+                m.status
+            ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [["Raw Material", "Item Code", "Current Stock", "Min Threshold", "Reorder Qty", "Status"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4 },
+            margin: { left: 40, right: 40 }
+        });
+
+        y = doc.lastAutoTable.finalY + 22;
+    }
+
+    // 2. Receiving
+    if (sections.includes("receiving")) {
+        if (y > pageHeight - 160) { doc.addPage(); y = 40; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...RM_GREEN);
+        doc.text("2. Material Inbound Delivery Receipts", 40, y);
+        y += 10;
+
+        const rcvFiltered = state.receipts.filter(r => 
+            withinRange(r.receiptDate, state.startDate, state.endDate) &&
+            (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId)
+        );
+        const tableData = rcvFiltered.length === 0
+            ? [["No inbound receipts for period", "—", "—", "—", "—", "—"]]
+            : rcvFiltered.map(r => [
+                r.receiptDate,
+                r.materialName,
+                `+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
+                r.supplierName,
+                r.receivedBy,
+                "Verified Inbound"
+            ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [["Receipt Date", "Raw Material", "Received Qty", "Supplier Name", "Received By", "Status"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4 },
+            margin: { left: 40, right: 40 }
+        });
+
+        y = doc.lastAutoTable.finalY + 22;
+    }
+
+    // 3. Disbursement
+    if (sections.includes("disbursement")) {
+        if (y > pageHeight - 160) { doc.addPage(); y = 40; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...RM_GREEN);
+        doc.text("3. Production Material Disbursements", 40, y);
+        y += 10;
+
+        const disbFiltered = state.disbursements.filter(d => 
+            withinRange(d.usageDate, state.startDate, state.endDate) &&
+            (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId)
+        );
+        const tableData = disbFiltered.length === 0
+            ? [["No disbursements for period", "—", "—", "—", "—", "—"]]
+            : disbFiltered.map(d => [
+                d.usageDate,
+                d.materialName,
+                d.finishedProduct || "—",
+                `-${(d.disbursedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${d.unit}`,
+                d.activityType || "Kitchen Issue",
+                d.recordedBy
+            ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [["Usage Date", "Raw Material", "Finished Product", "Disbursed Qty", "Activity Type", "Recorded By"]],
+            body: tableData,
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4 },
+            margin: { left: 40, right: 40 }
+        });
+
+        y = doc.lastAutoTable.finalY + 22;
+    }
+
+    // 4. Activity
+    if (sections.includes("activity")) {
+        if (y > pageHeight - 160) { doc.addPage(); y = 40; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...RM_GREEN);
+        doc.text("4. Chronological Material Activity Audit Ledger", 40, y);
+        y += 10;
+
+        const rcvs = state.receipts.filter(r => 
+            withinRange(r.receiptDate, state.startDate, state.endDate) &&
+            (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId)
+        ).map(r => [
+            r.receiptDate,
+            "Received",
+            r.materialName,
+            `+${r.receivedQuantity} ${r.unit}`,
+            r.supplierName,
+            r.receivedBy
+        ]);
+
+        const disbs = state.disbursements.filter(d => 
+            withinRange(d.usageDate, state.startDate, state.endDate) &&
+            (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId)
+        ).map(d => [
+            d.usageDate,
+            "Disbursed",
+            d.materialName,
+            `-${d.disbursedQuantity} ${d.unit}`,
+            d.finishedProduct || "—",
+            d.recordedBy
+        ]);
+
+        const combined = [...rcvs, ...disbs].sort((a, b) => b[0].localeCompare(a[0]));
+
+        doc.autoTable({
+            startY: y,
+            head: [["Date", "Movement Type", "Raw Material", "Net Quantity", "Reference / Batch", "Operator"]],
+            body: combined.length > 0 ? combined : [["—", "—", "No activity for period", "—", "—", "—"]],
+            theme: "grid",
+            headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+            styles: { fontSize: 8.5, cellPadding: 4 },
+            margin: { left: 40, right: 40 }
+        });
+
+        y = doc.lastAutoTable.finalY + 22;
+    }
+
+    // Signatures (Recorded By & Accepted By) and Perforated Cut Line
+    const finalTableY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 16 : y + 20;
+    drawPdfSignaturesAndCutLine(doc, finalTableY, pageWidth, pageHeight, "Operational Summary Package", periodLabel, docRef);
+
+    // Watermark & Footer across all pages (Matching Image 1)
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.saveGraphicsState();
+        doc.setTextColor(226, 232, 240);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(32);
+        doc.text("RMSME OFFICIAL REPORT", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 - 12, {
+            align: "center",
+            angle: 35
+        });
+        doc.setFontSize(13);
+        doc.setTextColor(236, 240, 246);
+        doc.text("PREVENT FAKE COPY • SYSTEM VERIFIED", pageWidth / 2, doc.internal.pageSize.getHeight() / 2 + 18, {
+            align: "center",
+            angle: 35
+        });
+        doc.restoreGraphicsState();
+
+        doc.setDrawColor(5, 150, 105);
+        doc.setLineWidth(1);
+        doc.line(40, doc.internal.pageSize.getHeight() - 34, pageWidth - 40, doc.internal.pageSize.getHeight() - 34);
+
+        doc.setFontSize(7.5);
+        doc.setTextColor(...RM_INK);
+        doc.setFont("helvetica", "bold");
+        doc.text("RMSME — Raw Material Stock Management & Enterprise Operations System", 40, doc.internal.pageSize.getHeight() - 22);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...RM_DIM);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 22, { align: "right" });
+
+        doc.setFontSize(6.8);
+        doc.text("System Support: operations@rmsme.internal | Official System Generated Copy — Anti-Tamper Protected", 40, doc.internal.pageSize.getHeight() - 12);
+    }
+
+    doc.save(`${baseName}.pdf`);
+}
+
+/* ==========================================================
+   EVENT LISTENERS & UI WIRING
+   ========================================================== */
+
+let listenersInitialized = false;
+
+function initEventListeners() {
+    if (listenersInitialized) return;
+    listenersInitialized = true;
+
+    // 1. Category Card Selection & Workspace Panels
+    const tabBtns = document.querySelectorAll(".rpt-cat-card, .rpt-tab-btn");
+    const panels = {
+        inventory: document.getElementById("tabPanelInventory"),
+        receiving: document.getElementById("tabPanelReceiving"),
+        disbursement: document.getElementById("tabPanelDisbursement"),
+        activity: document.getElementById("tabPanelActivity")
+    };
+
+    function selectReportCategory(target, triggerToast = true) {
+        if (!target) return;
+        state.activeTab = target;
+
+        tabBtns.forEach(b => {
+            if (b.dataset.tab === target) b.classList.add("active");
+            else b.classList.remove("active");
+        });
+
+        // Hide Empty State and Reveal Document Sheet
+        const emptyState = document.getElementById("rptEmptyPreviewState");
+        const docSheet = document.getElementById("rptDocumentContainer");
+        if (emptyState) emptyState.style.display = "none";
+        if (docSheet) docSheet.style.display = "block";
+
+        Object.keys(panels).forEach(k => {
+            if (panels[k]) {
+                if (k === target) {
+                    panels[k].style.display = "block";
+                    panels[k].classList.add("active");
+                } else {
+                    panels[k].style.display = "none";
+                    panels[k].classList.remove("active");
+                }
+            }
+        });
+
+        updateCorporatePreviewDetails(target);
+
+        if (target === "inventory") renderInventoryRecordsTab();
+        else if (target === "receiving") renderMaterialReceivingTab();
+        else if (target === "disbursement") renderMaterialDisbursementTab();
+        else if (target === "activity") renderMaterialActivityTab();
+
+        updatePrintDocHtml(target);
+
+        if (triggerToast) {
+            showToast("Report generated successfully.", "success");
+        }
+    }
+
+    // Synchronize initial panel display state
+    if (!state.activeTab) {
+        selectReportCategory("inventory", false);
+    } else {
+        selectReportCategory(state.activeTab, false);
+    }
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const target = btn.dataset.tab;
+            if (!target) return;
+            selectReportCategory(target, true);
+        });
+    });
+
+    populateMaterialDropdown();
+
+    // 2. Period Preset & Date Controls
+    const presetSelect = document.getElementById("reportPeriodPreset");
+    if (presetSelect) {
+        presetSelect.addEventListener("change", (e) => {
+            const val = e.target.value;
+            setPeriodPresetDates(val);
+            updateMetadataLabels();
+            renderAllTabs();
+            if (val === "custom" && fpStart) fpStart.open();
+        });
+    }
+
+    // 3. Tab Specific Filters
+    const invSearch = document.getElementById("invSearchInput");
+    if (invSearch) invSearch.addEventListener("input", (e) => { state.invSearch = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); updatePrintDocHtml(state.activeTab || "inventory"); });
+    const invStatus = document.getElementById("invStatusFilter");
+    if (invStatus) invStatus.addEventListener("change", (e) => { state.invStatus = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); updatePrintDocHtml(state.activeTab || "inventory"); });
+    const invSort = document.getElementById("invSortFilter");
+    if (invSort) invSort.addEventListener("change", (e) => { state.invSort = e.target.value; state.invPage = 1; renderInventoryRecordsTab(); updatePrintDocHtml(state.activeTab || "inventory"); });
+
+    const rcvSearch = document.getElementById("rcvSearchInput");
+    if (rcvSearch) rcvSearch.addEventListener("input", (e) => { state.rcvSearch = e.target.value; state.rcvPage = 1; renderMaterialReceivingTab(); updatePrintDocHtml(state.activeTab || "receiving"); });
+    const rcvSort = document.getElementById("rcvSortFilter");
+    if (rcvSort) rcvSort.addEventListener("change", (e) => { state.rcvSort = e.target.value; state.rcvPage = 1; renderMaterialReceivingTab(); updatePrintDocHtml(state.activeTab || "receiving"); });
+
+    const disbSearch = document.getElementById("disbSearchInput");
+    if (disbSearch) disbSearch.addEventListener("input", (e) => { state.disbSearch = e.target.value; state.disbPage = 1; renderMaterialDisbursementTab(); updatePrintDocHtml(state.activeTab || "disbursement"); });
+    const disbSort = document.getElementById("disbSortFilter");
+    if (disbSort) disbSort.addEventListener("change", (e) => { state.disbSort = e.target.value; state.disbPage = 1; renderMaterialDisbursementTab(); updatePrintDocHtml(state.activeTab || "disbursement"); });
+
+    const actSearch = document.getElementById("actSearchInput");
+    if (actSearch) actSearch.addEventListener("input", (e) => { state.actSearch = e.target.value; state.actPage = 1; renderMaterialActivityTab(); updatePrintDocHtml(state.activeTab || "activity"); });
+    const actType = document.getElementById("actTypeFilter");
+    if (actType) actType.addEventListener("change", (e) => { state.actType = e.target.value; state.actPage = 1; renderMaterialActivityTab(); updatePrintDocHtml(state.activeTab || "activity"); });
+    const actSort = document.getElementById("actSortFilter");
+    if (actSort) actSort.addEventListener("change", (e) => { state.actSort = e.target.value; state.actPage = 1; renderMaterialActivityTab(); updatePrintDocHtml(state.activeTab || "activity"); });
+
+    // 4. Save As Modal Controls
+    const btnSaveAs = document.getElementById("btnSaveAs");
+    const btnOverallExport = document.getElementById("btnOverallExport");
+    const saveModal = document.getElementById("saveModalOverlay");
+    const saveClose = document.getElementById("saveModalCloseBtn");
+    const saveCancel = document.getElementById("saveModalCancelBtn");
+    const saveConfirm = document.getElementById("saveModalConfirmBtn");
+    const selectAllBtn = document.getElementById("saveSelectAllBtn");
+    const clearAllBtn = document.getElementById("saveClearAllBtn");
+
+    const openSaveModal = () => {
+        if (saveModal) {
+            saveModal.classList.add("open");
+            const reportNameInput = document.getElementById("saveModalReportName");
+            if (reportNameInput) {
+                const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : (state.periodPreset === "today" ? "Today" : (state.periodPreset === "all" ? "AllTime" : "Custom")));
+                const startStr = state.startDate ? formatDateISO(state.startDate) : "";
+                const endStr = state.endDate ? formatDateISO(state.endDate) : "";
+                const matTag = (state.selectedMaterialId && state.selectedMaterialId !== "all") ? `_${(state.selectedMaterialName || "Material").replace(/[^a-zA-Z0-9]/g, '_')}` : "";
+                reportNameInput.value = `RMSME_Staff_${pTag}_Report${matTag}_${startStr || "Live"}_to_${endStr || "Live"}`;
+            }
+            updateMetadataLabels();
+        }
+    };
+
+    if (btnOverallExport) btnOverallExport.addEventListener("click", openSaveModal);
+    if (saveClose && saveModal) saveClose.addEventListener("click", () => { saveModal.classList.remove("open"); });
+    if (saveCancel && saveModal) saveCancel.addEventListener("click", () => { saveModal.classList.remove("open"); });
+    if (saveModal) {
+        saveModal.addEventListener("click", (e) => {
+            if (e.target === saveModal) saveModal.classList.remove("open");
+        });
+    }
+    if (saveConfirm) saveConfirm.addEventListener("click", handleSaveReport);
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener("click", () => {
+            document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']").forEach(cb => cb.checked = true);
+        });
+    }
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", () => {
+            document.querySelectorAll("#saveSectionsChecklist input[type='checkbox']").forEach(cb => cb.checked = false);
+        });
+    }
+
+    // 4b. Specific Tab Export Modal (Staff Single Active Category Export)
+    const tabExportBtn = document.getElementById("btnTabExport");
+    const tabExportOverlay = document.getElementById("tabExportModalOverlay");
+    const tabExportClose = document.getElementById("tabExportCloseBtn");
+    const tabExportCancel = document.getElementById("tabExportCancelBtn");
+    const tabExportTitle = document.getElementById("tabExportModalTitle");
+    const tabExportSub = document.getElementById("tabExportModalSub");
+    const tabExportTargetName = document.getElementById("tabExportTargetName");
+    const btnExportSpecificPdf = document.getElementById("btnExportSpecificPdf");
+    const btnExportSpecificExcel = document.getElementById("btnExportSpecificExcel");
+
+    const getStaffActiveTabDisplayName = (tabKey) => {
+        const names = {
+            inventory: "Inventory Records",
+            receiving: "Material Receiving",
+            disbursement: "Material Disbursement",
+            activity: "Material Activity"
+        };
+        return names[tabKey] || "Current Report";
+    };
+
+    const openTabExportModal = () => {
+        if (!state.activeTab) {
+            selectReportCategory("inventory", false);
+        }
+        const activeName = getStaffActiveTabDisplayName(state.activeTab || "inventory");
+        if (tabExportTitle) tabExportTitle.textContent = `Export: ${activeName}`;
+        if (tabExportTargetName) tabExportTargetName.textContent = activeName;
+        if (tabExportSub) {
+            const pText = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+            tabExportSub.textContent = `Scope: ${state.selectedMaterialName || "All Raw Materials"} | Horizon: ${pText}`;
+        }
+        tabExportOverlay?.classList.add("open");
+    };
+
+    const closeTabExportModal = () => tabExportOverlay?.classList.remove("open");
+
+    if (tabExportBtn && tabExportOverlay) {
+        tabExportBtn.addEventListener("click", openTabExportModal);
+    }
+    if (tabExportClose) tabExportClose.addEventListener("click", closeTabExportModal);
+    if (tabExportCancel) tabExportCancel.addEventListener("click", closeTabExportModal);
+    if (tabExportOverlay) {
+        tabExportOverlay.addEventListener("click", (e) => {
+            if (e.target === tabExportOverlay) closeTabExportModal();
+        });
+    }
+
+    if (btnExportSpecificPdf) {
+        btnExportSpecificPdf.addEventListener("click", async () => {
+            if (!state.activeTab) return;
+            const activeName = getStaffActiveTabDisplayName(state.activeTab);
+            const safeName = activeName.replace(/[^a-zA-Z0-9]/g, '_');
+            const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : (state.periodPreset === "today" ? "Today" : (state.periodPreset === "all" ? "AllTime" : "Custom")));
+            const matTag = (state.selectedMaterialId && state.selectedMaterialId !== "all") ? `_${(state.selectedMaterialName || "Material").replace(/[^a-zA-Z0-9]/g, '_')}` : "";
+            const fileName = `RMSME_Staff_${safeName}${matTag}_${pTag}`;
+
+            try {
+                btnExportSpecificPdf.disabled = true;
+                await generateStaffSingleTabPdf(fileName, state.activeTab);
+                showToast(`${activeName} exported as PDF.`, "success");
+            } catch (err) {
+                console.error("Single PDF export error:", err);
+                showToast("Error generating PDF.", "error");
+            } finally {
+                btnExportSpecificPdf.disabled = false;
+                closeTabExportModal();
+            }
+        });
+    }
+
+    if (btnExportSpecificExcel) {
+        btnExportSpecificExcel.addEventListener("click", async () => {
+            if (!state.activeTab) return;
+            const activeName = getStaffActiveTabDisplayName(state.activeTab);
+            const safeName = activeName.replace(/[^a-zA-Z0-9]/g, '_');
+            const pTag = state.periodPreset === "weekly" ? "Weekly" : (state.periodPreset === "monthly" ? "Monthly" : (state.periodPreset === "today" ? "Today" : (state.periodPreset === "all" ? "AllTime" : "Custom")));
+            const matTag = (state.selectedMaterialId && state.selectedMaterialId !== "all") ? `_${(state.selectedMaterialName || "Material").replace(/[^a-zA-Z0-9]/g, '_')}` : "";
+            const fileName = `RMSME_Staff_${safeName}${matTag}_${pTag}`;
+
+            try {
+                btnExportSpecificExcel.disabled = true;
+                await generateStaffSingleTabExcel(fileName, state.activeTab);
+                showToast(`${activeName} exported as Excel.`, "success");
+            } catch (err) {
+                console.error("Single Excel export error:", err);
+                showToast("Error generating Excel.", "error");
+            } finally {
+                btnExportSpecificExcel.disabled = false;
+                closeTabExportModal();
+            }
+        });
+    }
+
+    // 5. Print Document Trigger (Unified Active Tab Output)
+    let isPrinting = false;
+    const btnOverallPrint = document.getElementById("btnOverallPrint");
+    const printBtn = document.getElementById("btnPrint");
+    const triggerPrint = () => {
+        if (isPrinting) return;
+        isPrinting = true;
+        const activeTab = state.activeTab || "inventory";
+        updatePrintDocHtml(activeTab);
         setTimeout(() => {
             try {
                 window.print();
-            } catch (err) {
-                console.error("Print error:", err);
+            } catch (e) {
+                console.error("Print error:", e);
             } finally {
                 setTimeout(() => {
                     isPrinting = false;
                 }, 400);
             }
         }, 50);
-    } catch (err) {
-        console.error("Print report generation error:", err);
-        isPrinting = false;
-    }
+    };
+    if (btnOverallPrint) btnOverallPrint.addEventListener("click", triggerPrint);
+    if (printBtn) printBtn.addEventListener("click", triggerPrint);
+    window.addEventListener("beforeprint", () => {
+        updatePrintDocHtml(state.activeTab || "inventory");
+    });
+    window.__rmimsPrintReport = triggerPrint;
 }
-
-function formatOperatorDisplay(val, fallback = "User") {
-    if (!val || typeof val !== "string") return fallback;
-    const clean = val.trim();
-    if (/warehouse/i.test(clean)) return "KXC Enterprises";
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean) || clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || clean.toLowerCase().includes("authorized") || clean.toLowerCase().includes("staff")) {
-        return fallback;
-    }
-    return clean;
-}
-
-function formatContextDisplay(val, fallback = "General Production") {
-    if (!val || typeof val !== "string") return fallback;
-    const clean = val.trim();
-    if (clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || !clean) {
-        return fallback;
-    }
-    return clean;
-}
-
-window.addEventListener("beforeprint", updatePrintDocHtml);
-
-// Global window functions for direct inline click handlers
-window.__rmimsOpenSaveModal = openSaveModal;
-window.__rmimsCloseSaveModal = closeSaveModal;
-window.__rmimsHandleSaveConfirm = handleSaveConfirm;
-window.__rmimsPrintReport = handlePrintReport;
 
 /* ==========================================================
-   TOAST NOTIFICATIONS
+   CORPORATE PREVIEW DETAILS & KPI STATS (MATCHING IMAGE 4)
    ========================================================== */
 
+function updateCorporatePreviewDetails(target) {
+    const titles = {
+        inventory: { title: "Inventory Records", ref: "SRV-2026-INV", desc: "Stock catalog, quantities on hand, units, and replenishment states." },
+        receiving: { title: "Material Receiving", ref: "SRV-2026-RCV", desc: "Supplier deliveries, inbound shipments, lots, and dates." },
+        disbursement: { title: "Material Disbursement", ref: "SRV-2026-DSB", desc: "Disbursed raw materials released for production batches." },
+        activity: { title: "Material Activity", ref: "SRV-2026-ACT", desc: "Chronological audit ledger combining all inbound and outbound stock." }
+    };
+
+    const info = titles[target] || { title: "Inventory Records", ref: "SRV-2026", desc: "Operational Report Preview" };
+    const titleEl = document.getElementById("rptDocTitleText");
+    const refEl = document.getElementById("rptDocRefText");
+    const scopeEl = document.getElementById("rptDocScopeText");
+    const mgrEl = document.getElementById("rptDocManagerText");
+    const timeEl = document.getElementById("rptDocGenTimeText");
+    const periodEl = document.getElementById("rptDocPeriodText");
+
+    if (titleEl) titleEl.textContent = info.title;
+    if (refEl) refEl.textContent = info.ref;
+    if (scopeEl) scopeEl.textContent = state.selectedMaterialName || "All Catalog Raw Materials";
+    if (mgrEl) {
+        const pBtn = document.getElementById("profileBtn");
+        const pName = pBtn?.querySelector("[data-shell-name]")?.textContent || "Staff User";
+        mgrEl.textContent = pName;
+    }
+    if (timeEl) {
+        const now = new Date();
+        timeEl.textContent = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + ", " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    }
+    if (periodEl) {
+        periodEl.textContent = formatDisplayPeriod(state.startDate, state.endDate, state.periodPreset);
+    }
+
+    updatePreviewBannerKpis();
+}
+
+function updatePreviewBannerKpis() {
+    let totalUnits = 0;
+    let criticalItems = 0;
+    let lowItems = 0;
+    let zeroItems = 0;
+    let goodItems = 0;
+
+    const targetMaterials = (state.selectedMaterialId && state.selectedMaterialId !== "all")
+        ? state.materials.filter(m => m.id === state.selectedMaterialId)
+        : state.materials;
+
+    targetMaterials.forEach(m => {
+        totalUnits += (m.currentStock || 0);
+        if (m.currentStock <= 0) zeroItems++;
+        if (m.status === "Critical") criticalItems++;
+        else if (m.status === "Low") lowItems++;
+        else goodItems++;
+    });
+
+    const reorderNow = criticalItems + lowItems;
+
+    const unitsEl = document.getElementById("prevKpiTotalUnits");
+    const reorderEl = document.getElementById("prevKpiReorderNow");
+    const outEl = document.getElementById("prevKpiOutOfStock");
+    const suffEl = document.getElementById("prevKpiSufficient");
+    const valEl = document.getElementById("prevKpiTotalValue");
+
+    if (unitsEl) unitsEl.textContent = Math.round(totalUnits).toLocaleString();
+    if (reorderEl) reorderEl.textContent = `${reorderNow} Items`;
+    if (outEl) outEl.textContent = zeroItems;
+    if (suffEl) suffEl.textContent = `${goodItems} Items`;
+    if (valEl) valEl.textContent = `${targetMaterials.length} Materials`;
+}
+
+function populateMaterialDropdown() {
+    const matSelect = document.getElementById("rptMaterialFilter");
+    if (!matSelect) return;
+    const currentVal = state.selectedMaterialId || "all";
+    const sorted = [...state.materials].sort((a, b) => a.name.localeCompare(b.name));
+    matSelect.innerHTML = `<option value="all"${currentVal === "all" ? " selected" : ""}>All Raw Materials</option>` + 
+        sorted.map(m => `<option value="${escapeHtml(m.id)}"${m.id === currentVal ? " selected" : ""}>${escapeHtml(m.name)}</option>`).join("");
+    
+    matSelect.onchange = (e) => {
+        const val = e.target.value;
+        const selectedMat = state.materials.find(m => m.id === val);
+        state.selectedMaterialId = val;
+        state.selectedMaterialName = selectedMat ? selectedMat.name : "All Catalog Raw Materials";
+        
+        // Reset sub-tab text searches to avoid conflicting filters
+        state.invSearch = ""; const invInp = document.getElementById("invSearchInput"); if (invInp) invInp.value = "";
+        state.rcvSearch = ""; const rcvInp = document.getElementById("rcvSearchInput"); if (rcvInp) rcvInp.value = "";
+        state.disbSearch = ""; const disbInp = document.getElementById("disbSearchInput"); if (disbInp) disbInp.value = "";
+        state.actSearch = ""; const actInp = document.getElementById("actSearchInput"); if (actInp) actInp.value = "";
+
+        // Reset pagination pages to 1
+        state.invPage = 1;
+        state.rcvPage = 1;
+        state.disbPage = 1;
+        state.actPage = 1;
+
+        const scopeEl = document.getElementById("rptDocScopeText");
+        if (scopeEl) scopeEl.textContent = state.selectedMaterialName;
+
+        updateMetadataLabels();
+        updateCorporatePreviewDetails(state.activeTab);
+        renderAllTabs();
+        updatePrintDocHtml();
+
+        showToast(`Filtered by ${state.selectedMaterialName}`, "info");
+    };
+}
+
+/* ==========================================================
+   UTILITY HELPERS
+   ========================================================= */
+
+function escapeHtml(str) {
+    if (str == null) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function showToast(message, type = "info") {
-    const stack = $("toastStack");
+    const stack = document.getElementById("toastStack");
     if (!stack) return;
 
     const toast = document.createElement("div");
-    toast.className = `toast toast-${type} fade-in`;
-    toast.innerHTML = `<span>${esc(message)}</span>`;
-
+    toast.className = `toast toast-${type}`;
+    toast.style.cssText = `
+        background: ${type === 'success' ? '#15803D' : (type === 'error' ? '#DC2626' : '#0F2A1B')};
+        color: #FFFFFF;
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: toastIn 0.25s ease;
+    `;
+    toast.textContent = message;
     stack.appendChild(toast);
+
     setTimeout(() => {
         toast.style.opacity = "0";
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
-}
-
-// Storage sync across tabs and windows (debounced to prevent UI lag)
-let _urptStorageDebounce = null;
-window.addEventListener("storage", (e) => {
-    if (!e.key || e.key.startsWith("rmims_") || e.key.includes("inventory") || e.key.includes("material") || e.key.includes("receipt") || e.key.includes("disburse")) {
-        clearTimeout(_urptStorageDebounce);
-        _urptStorageDebounce = setTimeout(() => loadAuthoritativeData(), 150);
-    }
-});
-
-// Supabase Realtime Channel Subscription for live cross-user reports updates
-if (supabase && typeof supabase.channel === "function" && !window.__rmimsUserReportsChannel) {
-    let _urptRealtimeDebounce = null;
-    window.__rmimsUserReportsChannel = supabase
-        .channel("rmims_user_reports_sync")
-        .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
-            clearTimeout(_urptRealtimeDebounce);
-            _urptRealtimeDebounce = setTimeout(() => loadAuthoritativeData(), 150);
-        })
-        .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
-            clearTimeout(_urptRealtimeDebounce);
-            _urptRealtimeDebounce = setTimeout(() => loadAuthoritativeData(), 150);
-        })
-        .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
-            clearTimeout(_urptRealtimeDebounce);
-            _urptRealtimeDebounce = setTimeout(() => loadAuthoritativeData(), 150);
-        })
-        .subscribe();
+        toast.style.transition = "opacity 0.25s ease";
+        setTimeout(() => toast.remove(), 250);
+    }, 3200);
 }

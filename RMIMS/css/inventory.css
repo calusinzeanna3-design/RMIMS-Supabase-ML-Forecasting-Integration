@@ -14,9 +14,9 @@
   --rm-ink: #0f172a;
   --rm-ink-dim: #64748b;
   --rm-ink-faint: #94a3b8;
-  --blue: #2563eb;
-  --blue-soft: rgba(37, 99, 235, 0.08);
-  --blue-hover: #1d4ed8;
+  --blue: #16A34A;
+  --blue-soft: rgba(22, 163, 74, 0.10);
+  --blue-hover: #15803D;
   --emerald: #10b981;
   --emerald-soft: rgba(16, 185, 129, 0.10);
   --emerald-border: rgba(16, 185, 129, 0.25);
@@ -42,7 +42,8 @@
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-body.admin-page {
+body.admin-page,
+body.manager-page {
   background: var(--bg-app);
   color: var(--rm-ink);
   min-height: 100vh;
@@ -236,21 +237,21 @@ body.admin-page {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--blue);
+  background: #15803D;
   color: #ffffff;
-  border: none;
+  border: 1px solid #166534;
   padding: 9px 18px;
   border-radius: var(--radius-sm);
   font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 2px 6px rgba(21, 128, 61, 0.25);
 }
 
 .btn-primary:hover {
-  background: var(--blue-hover);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  background: #166534;
+  box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
 }
 
 .btn-primary svg {
@@ -297,13 +298,15 @@ body.admin-page {
 }
 
 .btn-primary-sm {
-  background: var(--blue);
+  background: #15803D;
   color: #ffffff;
-  border: none;
+  border: 1px solid #166534;
+  box-shadow: 0 1px 3px rgba(21, 128, 61, 0.25);
 }
 
 .btn-primary-sm:hover {
-  background: var(--blue-hover);
+  background: #166534;
+  box-shadow: 0 3px 8px rgba(21, 128, 61, 0.35);
 }
 
 .btn-primary-sm svg, .btn-secondary-sm svg {
@@ -864,15 +867,24 @@ body.admin-page {
   white-space: nowrap;
 }
 
-.inv-main-table th {
-  background: #f8fafc;
-  color: var(--rm-ink-dim);
+.inv-main-table th,
+.inv-main-table thead th {
+  background: #15803D !important;
+  color: #FFFFFF !important;
   font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 13px 18px;
+  border-bottom: 2px solid #14532D;
+}
+
+.inv-main-table thead tr th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.inv-main-table thead tr th:last-child {
+  border-top-right-radius: 12px;
 }
 
 .inv-main-table td {
@@ -888,6 +900,46 @@ body.admin-page {
 
 .inv-main-table tr:hover td {
   background: #f8fafc;
+}
+
+/* Whole-line table row status colors */
+.inv-main-table tr.row-status-good,
+.inv-main-table tr.row-status-good td {
+  background-color: #DCFCE7 !important;
+  border-bottom: 1px solid #BBF7D0 !important;
+}
+.inv-main-table tr.row-status-good:hover,
+.inv-main-table tr.row-status-good:hover td {
+  background-color: #BBF7D0 !important;
+}
+.inv-main-table tr.row-status-good td:first-child {
+  border-left: 5px solid #16A34A !important;
+}
+
+.inv-main-table tr.row-status-low,
+.inv-main-table tr.row-status-low td {
+  background-color: #FEF3C7 !important;
+  border-bottom: 1px solid #FDE68A !important;
+}
+.inv-main-table tr.row-status-low:hover,
+.inv-main-table tr.row-status-low:hover td {
+  background-color: #FDE68A !important;
+}
+.inv-main-table tr.row-status-low td:first-child {
+  border-left: 5px solid #D97706 !important;
+}
+
+.inv-main-table tr.row-status-out,
+.inv-main-table tr.row-status-out td {
+  background-color: #FEE2E2 !important;
+  border-bottom: 1px solid #FECACA !important;
+}
+.inv-main-table tr.row-status-out:hover,
+.inv-main-table tr.row-status-out:hover td {
+  background-color: #FECACA !important;
+}
+.inv-main-table tr.row-status-out td:first-child {
+  border-left: 5px solid #DC2626 !important;
 }
 
 .mat-name-cell {
@@ -2006,7 +2058,9 @@ tr.row-selected {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .row-action-btn {
@@ -2045,6 +2099,27 @@ tr.row-selected {
   color: #DC2626;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18);
   transform: translateY(-1px) scale(1.05);
+}
+
+.row-action-btn.edit-direct-btn:hover {
+  background: #EFF6FF;
+  border-color: #93C5FD;
+  color: #2563EB;
+  transform: translateY(-1px);
+}
+
+.row-action-btn.history-direct-btn:hover {
+  background: #ECFDF5;
+  border-color: #86EFAC;
+  color: #15803D;
+  transform: translateY(-1px);
+}
+
+.row-action-btn.archive-direct-btn:hover {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #B45309;
+  transform: translateY(-1px);
 }
 
 /* Select Mode Hide/Show Toggle */

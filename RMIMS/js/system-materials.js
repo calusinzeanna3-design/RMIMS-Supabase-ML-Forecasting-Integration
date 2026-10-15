@@ -9,52 +9,65 @@ export const RMIMS_CUSTOM_RECEIPTS_KEY = "rmims_custom_receipts";
 export const RMIMS_CUSTOM_DISBURSEMENTS_KEY = "rmims_custom_disbursements";
 export const RMIMS_DELETED_MATERIALS_KEY = "rmims_deleted_material_ids";
 
+export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials";
+
 /**
  * Returns all active raw materials for the entire system:
- * Baseline 59 Authentic materials + any Admin/User created custom materials - locally deleted materials.
+ * Baseline materials (if not wiped) + any custom created materials - locally deleted materials.
  */
 export function getSystemRawMaterials() {
-    // Clone baseline 59 authentic materials
-    let list = AUTHENTIC_59_RAW_MATERIALS.map(m => ({
-        ...m,
-        id: String(m.id || m.item_code),
-        item_code: m.item_code || m.id,
-        current_stock: Number(m.current_stock ?? 0),
-        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-        minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-        unit_of_measure: m.unit_of_measure || m.unit || "kg",
-        unit: m.unit_of_measure || m.unit || "kg"
-    }));
+    const isWiped = typeof localStorage !== 'undefined' 
+        ? (localStorage.getItem(RMIMS_WIPE_BASELINE_MATERIALS_KEY) !== 'false') 
+        : true;
 
-    // Merge custom materials saved in localStorage
+    // If baseline materials are wiped / standby, start with clean empty list until user inputs data.
+    // If not wiped, start with the baseline 59 materials.
+    let list = isWiped 
+        ? [] 
+        : AUTHENTIC_59_RAW_MATERIALS.map(m => ({
+            ...m,
+            id: String(m.id || m.item_code),
+            item_code: m.item_code || m.id,
+            current_stock: Number(m.current_stock ?? 0),
+            minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+            minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+            unit_of_measure: m.unit_of_measure || m.unit || "kg",
+            unit: m.unit_of_measure || m.unit || "kg"
+        }));
+
+    // Merge custom materials saved in localStorage (user's real inputted data)
     try {
         const stored = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
         if (stored) {
             const customMats = JSON.parse(stored);
             if (Array.isArray(customMats)) {
                 customMats.forEach(cm => {
-                    const normName = (cm.name || "").trim().toLowerCase();
+                    const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
                     const code = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
-                    const exists = list.some(m => 
-                        (m.name || "").trim().toLowerCase() === normName ||
+                    const foundIndex = list.findIndex(m => 
+                        (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
                         String(m.item_code || m.id || "").toUpperCase().trim() === code
                     );
-                    if (!exists) {
-                        list.push({
-                            id: cm.id || code || `RM-${String(list.length + 1).padStart(3, "0")}`,
-                            item_code: cm.item_code || cm.itemCode || code,
-                            name: cm.name,
-                            category: cm.category || "General Materials",
-                            unit_of_measure: cm.unit_of_measure || cm.unit || "kg",
-                            unit: cm.unit_of_measure || cm.unit || "kg",
-                            current_stock: Number(cm.current_stock ?? cm.currentStock ?? 0),
-                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            reorder_quantity: Number(cm.reorder_quantity ?? 25),
-                            lead_time_days: Number(cm.lead_time_days ?? 3),
-                            description: cm.description || `Raw material ${cm.name}`,
-                            created_at: cm.created_at || new Date().toISOString()
-                        });
+                    const record = {
+                        id: cm.id || code || `RM-${String(list.length + 1).padStart(3, "0")}`,
+                        item_code: cm.item_code || cm.itemCode || code,
+                        name: cm.name,
+                        category: cm.category || "General Materials",
+                        unit_of_measure: cm.unit_of_measure || cm.unit || "kg",
+                        unit: cm.unit_of_measure || cm.unit || "kg",
+                        current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
+                        currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
+                        minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
+                        minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
+                        reorder_quantity: Number(cm.reorder_quantity ?? 25),
+                        lead_time_days: Number(cm.lead_time_days ?? 3),
+                        description: cm.description || `Raw material ${cm.name}`,
+                        created_at: cm.created_at || new Date().toISOString()
+                    };
+                    if (foundIndex !== -1) {
+                        list[foundIndex] = { ...list[foundIndex], ...record };
+                    } else {
+                        list.push(record);
                     }
                 });
             }
@@ -62,6 +75,48 @@ export function getSystemRawMaterials() {
     } catch (e) {
         console.warn("[SystemMaterials] Could not load custom raw materials:", e);
     }
+
+    // Also check manager inventory overrides for any user-inputted materials
+    try {
+        const ovStored = localStorage.getItem("rmims_manager_inventory_overrides");
+        if (ovStored) {
+            const ovs = JSON.parse(ovStored);
+            if (ovs && typeof ovs === 'object') {
+                Object.keys(ovs).forEach(key => {
+                    const ov = ovs[key];
+                    if (!ov || (!ov.name && !ov.raw_material_name)) return;
+                    const normName = (ov.name || ov.raw_material_name || "").trim().toLowerCase();
+                    const code = String(key || ov.id || ov.item_code || "").toUpperCase().trim();
+                    const foundIndex = list.findIndex(m =>
+                        (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
+                        String(m.item_code || m.id || "").toUpperCase().trim() === code
+                    );
+                    const record = {
+                        id: code || ov.id || `RM-${String(list.length + 1).padStart(3, "0")}`,
+                        item_code: code || ov.item_code || ov.id,
+                        name: ov.name || ov.raw_material_name,
+                        raw_material_name: ov.name || ov.raw_material_name,
+                        category: ov.category || "General Materials",
+                        unit_of_measure: ov.unit || ov.unit_of_measure || "kg",
+                        unit: ov.unit || ov.unit_of_measure || "kg",
+                        current_stock: Number(ov.current_stock ?? 0),
+                        currentStock: Number(ov.current_stock ?? 0),
+                        minimum_threshold: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
+                        minimum_stock: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
+                        reorder_quantity: Number(ov.reorder_quantity ?? 25),
+                        lead_time_days: Number(ov.lead_time_days ?? 3),
+                        description: ov.description || `Raw material ${ov.name || ov.raw_material_name}`,
+                        created_at: ov.date_added || new Date().toISOString()
+                    };
+                    if (foundIndex !== -1) {
+                        list[foundIndex] = { ...list[foundIndex], ...record };
+                    } else {
+                        list.push(record);
+                    }
+                });
+            }
+        }
+    } catch (e) {}
 
     // Filter out deleted materials
     try {
@@ -106,7 +161,8 @@ export function saveCustomRawMaterial(mat) {
         category: mat.category || "General Materials",
         unit_of_measure: mat.unit_of_measure || mat.unit || "kg",
         unit: mat.unit_of_measure || mat.unit || "kg",
-        current_stock: Number(mat.current_stock ?? mat.currentStock ?? 0),
+        current_stock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
+        currentStock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
         minimum_threshold: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
         minimum_stock: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
         reorder_quantity: Number(mat.reorder_quantity ?? 25),
@@ -143,6 +199,112 @@ export function saveCustomRawMaterial(mat) {
 }
 
 /**
+ * Permanently deletes or hides a raw material from the system and all catalogs.
+ */
+export function deleteSystemRawMaterial(idOrCodeOrName) {
+    if (!idOrCodeOrName) return false;
+    const target = String(idOrCodeOrName).trim();
+    const targetLower = target.toLowerCase();
+    const targetUpper = target.toUpperCase();
+
+    // 1. Remove from custom raw materials
+    try {
+        const stored = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
+        if (stored) {
+            let custom = JSON.parse(stored);
+            if (Array.isArray(custom)) {
+                custom = custom.filter(m => {
+                    const id = String(m.id || '').toUpperCase();
+                    const code = String(m.item_code || m.itemCode || '').toUpperCase();
+                    const name = (m.name || '').trim().toLowerCase();
+                    return id !== targetUpper && code !== targetUpper && name !== targetLower;
+                });
+                localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(custom));
+            }
+        }
+    } catch (e) {
+        console.warn("[SystemMaterials] Error removing custom raw material:", e);
+    }
+
+    // 2. Mark as deleted in global deleted IDs set
+    try {
+        const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
+        let deletedIds = deletedRaw ? JSON.parse(deletedRaw) : [];
+        if (!Array.isArray(deletedIds)) deletedIds = [];
+        
+        if (!deletedIds.includes(target)) deletedIds.push(target);
+        if (!deletedIds.includes(targetUpper)) deletedIds.push(targetUpper);
+        if (!deletedIds.includes(targetLower)) deletedIds.push(targetLower);
+
+        localStorage.setItem(RMIMS_DELETED_MATERIALS_KEY, JSON.stringify(deletedIds));
+    } catch (e) {
+        console.warn("[SystemMaterials] Error writing deleted material ID:", e);
+    }
+
+    // 3. Remove from manager overrides
+    try {
+        const ovRaw = localStorage.getItem("rmims_manager_inventory_overrides");
+        if (ovRaw) {
+            const ovs = JSON.parse(ovRaw);
+            if (ovs && typeof ovs === 'object') {
+                delete ovs[targetUpper];
+                delete ovs[target];
+                localStorage.setItem("rmims_manager_inventory_overrides", JSON.stringify(ovs));
+            }
+        }
+    } catch (e) {}
+
+    // 4. Invalidate forecast cache and broadcast
+    invalidateForecastCache();
+    localStorage.setItem("rmims_sync_event", JSON.stringify({
+        time: Date.now(),
+        action: "delete_material",
+        id: target
+    }));
+    localStorage.setItem("rmims_inventory_updated", String(Date.now()));
+    window.dispatchEvent(new Event("storage"));
+    return true;
+}
+
+/**
+ * Safely adjusts material stock by a positive or negative delta and syncs storage.
+ */
+export function adjustSystemMaterialStock(materialIdOrName, delta) {
+    if (!materialIdOrName || delta === 0 || isNaN(delta)) return null;
+    const list = getSystemRawMaterials();
+    const searchId = String(materialIdOrName).trim().toLowerCase();
+    const mat = list.find(m => 
+        String(m.id || '').toLowerCase() === searchId ||
+        String(m.item_code || '').toLowerCase() === searchId ||
+        (m.name || '').trim().toLowerCase() === searchId
+    );
+    if (!mat) return null;
+
+    const oldStock = Number(mat.current_stock || 0);
+    const newStock = Math.max(0, oldStock + delta);
+    mat.current_stock = newStock;
+    mat.last_updated = new Date().toISOString();
+
+    saveCustomRawMaterial(mat);
+
+    try {
+        const ovRaw = localStorage.getItem("rmims_manager_inventory_overrides");
+        if (ovRaw) {
+            const ovs = JSON.parse(ovRaw);
+            const idKey = String(mat.item_code || mat.id).toUpperCase();
+            if (ovs && ovs[idKey]) {
+                ovs[idKey].current_stock = newStock;
+                ovs[idKey].last_updated = mat.last_updated;
+                localStorage.setItem("rmims_manager_inventory_overrides", JSON.stringify(ovs));
+            }
+        }
+    } catch (e) {}
+
+    return mat;
+}
+
+
+/**
  * Calculates the next sequential item code (e.g. RM-060, RM-061) accurately.
  */
 export function getSystemNextItemCode(existingMaterials) {
@@ -155,7 +317,8 @@ export function getSystemNextItemCode(existingMaterials) {
         })
         .filter(n => n > 0);
 
-    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 59;
+    const isWiped = localStorage.getItem(RMIMS_WIPE_BASELINE_MATERIALS_KEY) !== 'false';
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : (isWiped ? 0 : 59);
     let nextNum = maxNum + 1;
     let nextCode = `RM-${String(nextNum).padStart(3, "0")}`;
 
@@ -277,3 +440,4 @@ export function invalidateForecastCache() {
 }
 
 export { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_FINISHED_PRODUCTS_CATALOG };
+

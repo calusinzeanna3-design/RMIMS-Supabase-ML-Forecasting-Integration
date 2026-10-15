@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Analytics | RMSME</title>
+<link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+
+<!-- Google Fonts: Inter, Sora -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- Stylesheets -->
+<link rel="stylesheet" href="../css/admin-shell.css"/>
+<link href="../css/rmims-unified.css" rel="stylesheet"/>
+<link href="../css/analytics.css" rel="stylesheet"/>
+<link rel="stylesheet" href="../css/manager-theme.css"/>
+<link rel="stylesheet" href="../css/manager-transaction.css"/>
+
+<!-- Flatpickr & Chart.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body class="manager-page admin-page">
+<div class="admin-app">
+
+  <!-- SIDEBAR (Auto-populated by rmsme-shell.js with Manager exact navigation) -->
+  <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="admin-main">
+
+    <!-- TOPBAR HEADER -->
+    <header class="admin-topbar">
+      <div class="topbar-left">
+        <span class="topbar-kicker">STORE OPERATIONS</span>
+        <h1 class="topbar-title">Consumption Analytics</h1>
+        <p class="topbar-subtitle">Authoritative real-time telemetry comparing inward deliveries, production disbursements, and consumption trends.</p>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Live Date & Time Pill -->
+        <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+        </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                      </div>
+    </header>
+
+    <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
+      <div class="an-container" style="padding: 0;">
+
+      <!-- ====================================================================
+           CARD 1: TOP RAW MATERIALS RANKING (FULL WIDTH TOP CARD)
+           ==================================================================== -->
+      <section class="an-card" id="anCardRawMaterials">
+        <div class="an-card-header">
+          <div>
+            <h2 class="an-card-title">Top Raw Materials Ranking</h2>
+            <p class="an-card-sub">Customizable inward delivery receipts vs outward production disbursements</p>
+          </div>
+
+          <div class="an-controls">
+            <!-- Top N Input (Typable number) -->
+            <div class="an-top-box" title="Type how many top raw materials to display">
+              <span class="an-top-label">Top:</span>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" id="anTopRawCount" class="an-top-input" value="5" maxlength="2" aria-label="Top Raw Materials Count">
+            </div>
+
+            <!-- Maximize Button (Reference Image 4) -->
+            <button type="button" class="an-max-btn" id="anBtnMaxRawMaterials" title="Maximize Chart & View All Materials">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+                <polyline points="21 15 21 21 15 21"/>
+                <line x1="21" y1="21" x2="14" y2="14"/>
+                <polyline points="3 9 3 3 9 3"/>
+                <line x1="3" y1="3" x2="10" y2="10"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- SHOW METRICS CHECKLIST (Reference Image 1 & 2) -->
+        <div class="an-metrics-bar">
+          <span class="an-metrics-label">Show Metrics:</span>
+          
+          <label class="an-check-pill active-received" id="anPillRawReceived">
+            <input type="checkbox" id="anChkRawReceived" checked>
+            <span class="an-check-dot dot-rec"></span>
+            <span>Received</span>
+          </label>
+
+          <label class="an-check-pill active-disburse" id="anPillRawDisburse">
+            <input type="checkbox" id="anChkRawDisburse" checked>
+            <span class="an-check-dot dot-disb"></span>
+            <span>Disburse</span>
+          </label>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div class="an-chart-wrap" style="height: 320px;">
+          <canvas id="anRawMaterialsChartCanvas"></canvas>
+          <div class="an-chart-empty" id="anRawChartEmpty">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>No metrics selected. Check Received or Disburse above to display the chart.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           CARD 2: RAW MATERIALS STOCK LEVELS (STOCKS CHART)
+           ==================================================================== -->
+      <section class="an-card" id="anCardStockLevels">
+        <div class="an-card-header">
+          <div>
+            <h2 class="an-card-title">Raw Materials Stock Levels</h2>
+            <p class="an-card-sub">Real-time warehouse on-hand stock vs minimum threshold buffer</p>
+          </div>
+
+          <div class="an-controls">
+            <!-- Top N Input (Typable number) -->
+            <div class="an-top-box" title="Type how many materials to display">
+              <span class="an-top-label">Top:</span>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" id="anTopStockCount" class="an-top-input" value="5" maxlength="2" aria-label="Top Stock Count">
+            </div>
+
+            <!-- Maximize Button (Reference Image 4) -->
+            <button type="button" class="an-max-btn" id="anBtnMaxStock" title="Maximize Stock Levels & View Full Inventory">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+                <polyline points="21 15 21 21 15 21"/>
+                <line x1="21" y1="21" x2="14" y2="14"/>
+                <polyline points="3 9 3 3 9 3"/>
+                <line x1="3" y1="3" x2="10" y2="10"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- SHOW METRICS CHECKLIST -->
+        <div class="an-metrics-bar">
+          <span class="an-metrics-label">Show Metrics:</span>
+          
+          <label class="an-check-pill active-stock-cur" id="anPillStockCurrent">
+            <input type="checkbox" id="anChkStockCurrent" checked>
+            <span class="an-check-dot dot-stock-cur"></span>
+            <span>Current Stock (kg/L)</span>
+          </label>
+
+          <label class="an-check-pill active-stock-min" id="anPillStockMin">
+            <input type="checkbox" id="anChkStockMin" checked>
+            <span class="an-check-dot dot-stock-min"></span>
+            <span>Minimum Buffer</span>
+          </label>
+        </div>
+
+        <!-- Chart Canvas -->
+        <div class="an-chart-wrap" style="height: 320px;">
+          <canvas id="anStockChartCanvas"></canvas>
+          <div class="an-chart-empty" id="anStockChartEmpty">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>No metrics selected. Check Current Stock or Minimum Buffer above to display the chart.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           BOTTOM ROW: 2-CARD GRID (REFERENCE IMAGE 3)
+           ==================================================================== -->
+      <div class="an-bottom-grid">
+
+        <!-- CARD 3: TOP FINISHED PRODUCTS (BOTTOM LEFT) -->
+        <section class="an-card" id="anCardFinishedProducts">
+          <div class="an-card-header">
+            <div>
+              <h2 class="an-card-title">Top Finished Products</h2>
+              <p class="an-card-sub">Manufacturing volume &amp; raw material utilization ranking</p>
+            </div>
+
+            <div class="an-controls">
+              <!-- Top N Input -->
+              <div class="an-top-box" title="Type how many top finished products to display">
+                <span class="an-top-label">Top:</span>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" id="anTopProdCount" class="an-top-input" value="5" maxlength="2" aria-label="Top Finished Products Count">
+              </div>
+
+              <!-- Maximize Button -->
+              <button type="button" class="an-max-btn" id="anBtnMaxProducts" title="Maximize Chart & View All Finished Products">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="21" y1="3" x2="14" y2="10"/>
+                  <polyline points="9 21 3 21 3 15"/>
+                  <line x1="3" y1="21" x2="10" y2="14"/>
+                  <polyline points="21 15 21 21 15 21"/>
+                  <line x1="21" y1="21" x2="14" y2="14"/>
+                  <polyline points="3 9 3 3 9 3"/>
+                  <line x1="3" y1="3" x2="10" y2="10"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- SHOW METRICS CHECKLIST -->
+          <div class="an-metrics-bar">
+            <span class="an-metrics-label">Show Metrics:</span>
+            
+            <label class="an-check-pill active-received" id="anPillProdConsumed">
+              <input type="checkbox" id="anChkProdConsumed" checked>
+              <span class="an-check-dot dot-prod"></span>
+              <span>Consumed (kg/L)</span>
+            </label>
+
+            <label class="an-check-pill active-disburse" id="anPillProdBatches">
+              <input type="checkbox" id="anChkProdBatches" checked>
+              <span class="an-check-dot" style="background:#8B5CF6;"></span>
+              <span>Batches Recorded</span>
+            </label>
+          </div>
+
+          <!-- Chart Canvas -->
+          <div class="an-chart-wrap" style="height: 270px;">
+            <canvas id="anFinishedProductsChartCanvas"></canvas>
+            <div class="an-chart-empty" id="anProdChartEmpty">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>No metrics selected. Check Consumed or Batches to display product usage.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- CARD 3: DISBURSED RAW MATERIALS TREND (BOTTOM RIGHT) -->
+        <section class="an-card" id="anCardDisburseTrend">
+          <div class="an-card-header">
+            <div>
+              <h2 class="an-card-title">Disbursed Raw Materials Trend</h2>
+              <p class="an-card-sub">Actual consumption trajectory over days, weeks, or months</p>
+            </div>
+
+            <div class="an-controls">
+              <!-- Material Filter Dropdown -->
+              <select id="anTrendMaterialSelect" class="mgr-form-select" style="width:auto; padding:5px 10px; font-size:12.5px;" aria-label="Select Raw Material">
+                <option value="ALL">All Disbursed Materials</option>
+              </select>
+
+              <!-- Maximize Button -->
+              <button type="button" class="an-max-btn" id="anBtnMaxTrend" title="Maximize Trend Chart">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="21" y1="3" x2="14" y2="10"/>
+                  <polyline points="9 21 3 21 3 15"/>
+                  <line x1="3" y1="21" x2="10" y2="14"/>
+                  <polyline points="21 15 21 21 15 21"/>
+                  <line x1="21" y1="21" x2="14" y2="14"/>
+                  <polyline points="3 9 3 3 9 3"/>
+                  <line x1="3" y1="3" x2="10" y2="10"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- TIMEFRAME CHECKLIST / SELECTOR -->
+          <div class="an-metrics-bar" style="justify-content: space-between;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="an-metrics-label">Timeframe:</span>
+              <button type="button" class="an-timeframe-btn active" data-timeframe="days">Days</button>
+              <button type="button" class="an-timeframe-btn" data-timeframe="weeks">Weeks</button>
+              <button type="button" class="an-timeframe-btn" data-timeframe="months">Months</button>
+            </div>
+            <span style="font-size:11.5px; color:#64748B; font-weight:600;">Continuous Production Curve</span>
+          </div>
+
+          <!-- Chart Canvas -->
+          <div class="an-chart-wrap" style="height: 270px;">
+            <canvas id="anDisbursedTrendChartCanvas"></canvas>
+            <div class="an-chart-empty" id="anTrendChartEmpty" style="display: none;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>No disbursement transactions recorded yet for this material or timeframe.</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- ======================================================================
+         MAXIMIZE SCREEN POPUP MODAL (REFERENCE IMAGE 4)
+         ====================================================================== -->
+    <div class="an-modal-backdrop" id="anMaximizeModal">
+      <div class="an-modal-window">
+        <div class="an-modal-header">
+          <div>
+            <h3 class="an-card-title" id="anModalTitle" style="font-size:19px;">Enlarged Analytics Inspection</h3>
+            <p class="an-card-sub" id="anModalSubtitle">Complete high-definition chart and authoritative data breakdown</p>
+          </div>
+          <button type="button" class="an-modal-close" id="anCloseMaximizeModal" aria-label="Close Modal">&times;</button>
+        </div>
+
+        <!-- Enlarged Chart Area -->
+        <div class="an-modal-chart-wrap">
+          <canvas id="anModalChartCanvas"></canvas>
+        </div>
+
+        <!-- Detailed Ledger Table of all items -->
+        <div class="an-modal-table-wrap" id="anModalTableContainer">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    </div>
+  </main>
+</div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="../js/system-materials.js"></script>
+<script type="module" src="../js/analytics-engine.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+
+</body>
+</html>

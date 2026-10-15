@@ -3,13 +3,15 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Settings | RMSME User</title>
+    <title>Settings | RMSME</title>
     <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link href="../css/admin-shell.css" rel="stylesheet"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <link href="../css/manager-theme.css" rel="stylesheet"/>
     <link href="../css/settings.css" rel="stylesheet"/>
 </head>
-<body class="user-page">
+<body class="manager-page admin-page">
 
 <!-- Subtle Engineering Background -->
 <div class="rmims-faint-bg" aria-hidden="true">
@@ -17,51 +19,76 @@
     <div class="faint-chart-nodes"></div>
 </div>
 
-<div class="container">
+<div class="admin-app">
     <!-- SIDEBAR (USER/STAFF) -->
-    <!-- SIDEBAR -->
-    <aside class="sidebar" aria-label="Primary navigation"></aside>
+    <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
 
     <!-- MAIN CONTENT -->
-    <main class="content">
+    <div class="admin-main">
         <!-- TOPBAR -->
-        <header class="topbar">
+        <header class="admin-topbar">
             <div class="topbar-left">
-                <button aria-label="Toggle menu" class="menu-toggle">
-                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
-                </button>
-                <nav class="breadcrumb">
-                    <span>Account</span>
-                    <span class="crumb-sep">›</span>
-                    <span class="crumb-active" id="settingsCrumb">Profile</span>
-                </nav>
+                <span class="topbar-kicker">ACCOUNT SETTINGS</span>
+                <h1 class="topbar-title">Settings &amp; Privacy</h1>
+                <p class="topbar-subtitle">Manage your personal account settings, security credentials, sessions, and data records.</p>
             </div>
-            <div class="header-actions">
-                <div class="header-date" id="headerDate">
-                    <svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="5"></rect>
-                        <path d="M3 9H21" stroke="currentColor" stroke-width="1.6"></path>
-                        <path d="M8 3V6M16 3V6" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"></path>
+
+            <div class="topbar-right">
+                <!-- Live Date & Time Pill -->
+                <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
-                    <span>—</span>
+                    <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
                 </div>
-                <button id="notificationBtn" class="icon-btn" title="Notifications">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                    <span class="notif-badge" id="notifBadge" hidden>0</span>
-                </button>
-                <button class="profile-btn" id="profileBtn">
-                    <span class="avatar" id="topbarAvatar">U</span>
-                    <span class="profile-text">Staff Member</span>
-                    <svg class="chev" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-                </button>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">SS</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Store Staff</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
+              </div>
             </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Store Staff</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                            </div>
         </header>
 
-        <!-- PAGE HEADER BANNER -->
-        <div class="settings-header-banner">
-            <h1 class="settings-main-title">Settings &amp; Privacy</h1>
-            <p class="settings-main-subtitle">Manage your personal account settings, security credentials, sessions, and data records.</p>
-        </div>
+        <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
 
         <!-- TWO-PANEL SETTINGS WORKSPACE -->
         <div class="settings-workspace-layout">
@@ -108,57 +135,6 @@
                         <div class="settings-nav-item-text">
                             <strong>Sessions &amp; Devices</strong>
                             <span>Active device session</span>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- DATA & RECORDS SECTION -->
-                <div class="settings-nav-group">
-                    <div class="settings-nav-group-label">DATA &amp; RECORDS</div>
-                    <button type="button" class="settings-nav-item" data-nav="data">
-                        <div class="settings-nav-item-icon icon-purple">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path d="M12 3V15M12 15L8 11M12 15L16 11" stroke-linecap="round" stroke-linejoin="round"></path>
-                                <path d="M4 15V18C4 19.6569 5.34315 21 7 21H17C18.6569 21 20 19.6569 20 18V15" stroke-linecap="round"></path>
-                            </svg>
-                        </div>
-                        <div class="settings-nav-item-text">
-                            <strong>Backup &amp; Restore</strong>
-                            <span>Export &amp; recover activity data</span>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- ABOUT SECTION -->
-                <div class="settings-nav-group">
-                    <div class="settings-nav-group-label">ABOUT</div>
-                    <button type="button" class="settings-nav-item" data-nav="system">
-                        <div class="settings-nav-item-icon icon-blue">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <rect x="3" y="4" width="18" height="13" rx="2"></rect>
-                                <path d="M8 21h8M12 17v4" stroke-linecap="round"></path>
-                            </svg>
-                        </div>
-                        <div class="settings-nav-item-text">
-                            <strong>System Information</strong>
-                            <span>RMSME platform info</span>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- DANGER ZONE SECTION -->
-                <div class="settings-nav-group settings-nav-group-danger">
-                    <div class="settings-nav-group-label danger-label">DANGER ZONE</div>
-                    <button type="button" class="settings-nav-item danger-item" data-nav="danger">
-                        <div class="settings-nav-item-icon danger-icon">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path d="M10.3 3.9 1.8 18A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-3l-8.5-14a2 2 0 0 0-3.4 0Z" stroke-linejoin="round"></path>
-                                <path d="M12 9v4M12 17h.01" stroke-linecap="round"></path>
-                            </svg>
-                        </div>
-                        <div class="settings-nav-item-text">
-                            <strong>Delete Account &amp; Reset Data</strong>
-                            <span>Account removal options</span>
                         </div>
                     </button>
                 </div>
@@ -352,187 +328,9 @@
                     </div>
                 </section>
 
-                <!-- DETAIL VIEW 4: BACKUP & RESTORE -->
-                <section class="settings-panel-view" id="view-data">
-                    <div class="settings-card">
-                        <div class="card-head">
-                            <div class="card-head-icon icon-purple">
-                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                    <path d="M12 3V15M12 15L8 11M12 15L16 11" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path d="M4 15V18C4 19.6569 5.34315 21 7 21H17C18.6569 21 20 19.6569 20 18V15" stroke-linecap="round"></path>
-                                </svg>
-                            </div>
-                            <div class="card-head-text">
-                                <h3>Backup &amp; Restore</h3>
-                                <p>Create a backup of your activity data or restore from an existing backup file.</p>
-                            </div>
-                        </div>
-
-                        <!-- LIVE ACTIVITY SUMMARY TILES -->
-                        <div class="info-tiles" style="margin-bottom: 24px;">
-                            <div class="info-tile">
-                                <div class="info-tile-icon icon-blue">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"></path></svg>
-                                </div>
-                                <div class="info-tile-text">
-                                    <span>Raw Materials</span>
-                                    <strong id="summaryMaterials">—</strong>
-                                </div>
-                            </div>
-                            <div class="info-tile">
-                                <div class="info-tile-icon icon-green">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M4 6H20M4 12H20M4 18H14"></path></svg>
-                                </div>
-                                <div class="info-tile-text">
-                                    <span>Stock Receipts</span>
-                                    <strong id="summaryStockReceipts">—</strong>
-                                </div>
-                            </div>
-                            <div class="info-tile">
-                                <div class="info-tile-icon icon-teal">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 17L9 11L13 15L21 7"></path></svg>
-                                </div>
-                                <div class="info-tile-text">
-                                    <span>Usage Records</span>
-                                    <strong id="summaryUsageRecords">—</strong>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="security-row">
-                            <div class="security-row-text">
-                                <strong>Create Activity Backup</strong>
-                                <span>Download a complete JSON backup file containing logged receiving and disbursement movements.</span>
-                            </div>
-                            <div class="button-group">
-                                <button type="button" class="btn-primary-sm" id="createBackupBtn">Create Backup</button>
-                            </div>
-                        </div>
-
-                        <div class="security-row" style="margin-top: 14px;">
-                            <div class="security-row-text">
-                                <strong>Restore Activity Data</strong>
-                                <span>Recover material activity history from a previously saved JSON backup file.</span>
-                            </div>
-                            <div class="button-group">
-                                <input type="file" id="restoreFileInput" accept=".json" style="display:none;"/>
-                                <button type="button" class="btn-outline-sm" id="openRestoreBtn">Choose Backup File</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- DETAIL VIEW 5: SYSTEM INFORMATION -->
-                <section class="settings-panel-view" id="view-system">
-                    <div class="settings-card">
-                        <div class="card-head">
-                            <div class="card-head-icon icon-blue">
-                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                    <rect x="3" y="4" width="18" height="13" rx="2"></rect>
-                                    <path d="M8 21h8M12 17v4" stroke-linecap="round"></path>
-                                </svg>
-                            </div>
-                            <div class="card-head-text">
-                                <h3>System Information</h3>
-                                <p>Current platform version, database connection, and deployment architecture.</p>
-                            </div>
-                        </div>
-
-                        <div class="info-tiles">
-                            <div class="info-tile">
-                                <div class="info-tile-icon icon-blue">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"></path></svg>
-                                </div>
-                                <div class="info-tile-text">
-                                    <span>System Name</span>
-                                    <strong>RMSME</strong>
-                                </div>
-                            </div>
-                            <div class="info-tile">
-                                <div class="info-tile-icon icon-teal">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="8" ry="3"></ellipse><path d="M4 6V12C4 13.66 7.58 15 12 15C16.42 15 20 13.66 20 12V6"></path></svg>
-                                </div>
-                                <div class="info-tile-text">
-                                    <span>Database Architecture</span>
-                                    <strong>Cloud Storage &amp; Data Store</strong>
-                                </div>
-                            </div>
-                            <div class="info-tile">
-                                <div class="info-tile-icon icon-green">
-                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"></path></svg>
-                                </div>
-                                <div class="info-tile-text">
-                                    <span>Platform Version</span>
-                                    <strong>Version 2.0 (Integrated)</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- DETAIL VIEW 6: DANGER ZONE -->
-                <section class="settings-panel-view" id="view-danger">
-                    <div class="settings-card danger-zone">
-                        <div class="card-head">
-                            <div class="card-head-icon icon-red">
-                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                    <path d="M10.3 3.9 1.8 18A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-3l-8.5-14a2 2 0 0 0-3.4 0Z" stroke-linejoin="round"></path>
-                                    <path d="M12 9v4M12 17h.01" stroke-linecap="round"></path>
-                                </svg>
-                            </div>
-                            <div class="card-head-text">
-                                <h3>⚠️ Danger Zone</h3>
-                                <p>Irreversible actions on your personal staff account.</p>
-                            </div>
-                        </div>
-
-                        <div class="danger-row">
-                            <div class="danger-row-text">
-                                <strong>Delete My Account</strong>
-                                <span>Permanently request deactivation or removal of your staff account. Historical transaction logs remain preserved for auditing.</span>
-                            </div>
-                            <div class="button-group">
-                                <button type="button" class="btn-danger" id="openDeleteAccountBtn">Delete My Account</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
             </div>
         </div>
     </main>
-</div>
-
-<!-- ============================================================
-     MODAL: DELETE ACCOUNT CONFIRMATION
-     ============================================================ -->
-<div class="modal-overlay" id="deleteAccountModal">
-    <div class="modal-sheet modal-sheet-sm">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon icon-warn">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke-linejoin="round"></path></svg>
-                </div>
-                <div>
-                    <h4>Delete Staff Account</h4>
-                    <span class="modal-time">This action cannot be undone</span>
-                </div>
-            </div>
-            <button aria-label="Close" class="modal-close" data-close-modal="deleteAccountModal">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M18 6L6 18M6 6L18 18" stroke-linecap="round"></path></svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p class="confirm-message">This will remove your access to RMSME. <strong>Historical inventory records</strong> logged by this account will remain safely archived for regulatory compliance.</p>
-            <div id="deleteAccountConfirmFields" style="margin-top:14px;">
-                <label class="modal-field-label" for="deleteConfirmText">Type <strong>DELETE</strong> to confirm <span class="req">*</span></label>
-                <input autocomplete="off" class="modal-input" id="deleteConfirmText" placeholder="DELETE" type="text"/>
-            </div>
-        </div>
-        <div class="modal-sticky-footer">
-            <button class="btn-outline-sm" data-close-modal="deleteAccountModal" type="button">Cancel</button>
-            <button class="btn-danger-solid" id="confirmDeleteAccountBtn" type="button">Confirm Deletion</button>
-        </div>
     </div>
 </div>
 
@@ -541,6 +339,7 @@
 
 <!-- SCRIPTS -->
 <script type="module" src="../js/user-settings.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
 <script>
     const headerDateEl = document.querySelector("#headerDate span");
     if (headerDateEl) {

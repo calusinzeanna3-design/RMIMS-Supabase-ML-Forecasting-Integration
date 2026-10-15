@@ -5,21 +5,46 @@
    ========================================================== */
 
 .workspace-panel.auth-panel {
-  max-width: 480px;
+  max-width: 470px;
+  width: 100%;
+  margin: auto;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 197, 94, 0.45) rgba(255, 255, 255, 0.03);
+  -webkit-overflow-scrolling: touch;
+  user-select: text;
   background: var(--rm-panel-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--rm-panel-border);
-  border-radius: 32px;
+  border-radius: 26px;
   box-shadow: var(--rm-panel-shadow);
-  padding: 40px 44px 38px;
-  animation: authCardFloat 6.5s ease-in-out infinite, panelEnter 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  padding: 30px 32px 26px;
+  animation: panelEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  z-index: 10;
 }
 
-@keyframes authCardFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+/* Sleek custom scrollbar on card matching system emerald theme */
+.workspace-panel.auth-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.workspace-panel.auth-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 999px;
+  margin: 12px 0;
+}
+.workspace-panel.auth-panel::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 94, 0.38);
+  border-radius: 999px;
+}
+.workspace-panel.auth-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 94, 0.75);
 }
 
 .auth-panel .panel-topbar {
@@ -311,12 +336,37 @@
 .auth-panel .form-note {
   font-size: 13px;
   line-height: 1.5;
-  margin: 4px 0 16px;
+  margin: 8px 0 16px;
   min-height: 0;
+  transition: all 0.2s ease;
+}
+
+.auth-panel .form-note.success,
+.auth-panel .form-note.pending {
+  color: #10B981 !important;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: block;
+}
+
+.auth-panel .form-note.warning {
+  color: #F59E0B !important;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: block;
 }
 
 .auth-panel .form-note.error {
   color: #EF4444 !important;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: block;
 }
 
 .auth-panel .form-note:empty {
@@ -1043,3 +1093,560 @@ input[type="password"]::-ms-clear {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* =========================================================
+   CREATE ACCOUNT (END USER) STYLES
+   ========================================================= */
+
+.auth-view {
+  animation: fadeInAuthView 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeInAuthView {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   CREATE ACCOUNT (SEPARATED SECTIONS IN SYSTEM EMERALD THEME)
+   ========================================================= */
+
+.unified-reg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reg-section {
+  animation: fadeInSection 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeInSection {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.req-star {
+  color: var(--rm-emerald-light);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+[data-theme="light"] .req-star {
+  color: var(--rm-emerald-dark);
+}
+
+.compact-header {
+  margin-bottom: 18px !important;
+  text-align: center;
+}
+
+.compact-header .ue-icon {
+  margin: 0 auto 12px auto;
+}
+
+.compact-header h1 {
+  font-size: 1.65rem !important;
+  margin-bottom: 6px !important;
+}
+
+.compact-header p {
+  font-size: 0.88rem !important;
+  color: var(--rm-text-muted);
+}
+
+/* Label row with hint */
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.label-row label {
+  margin-bottom: 0 !important;
+}
+
+.input-hint {
+  font-size: 11.5px;
+  color: var(--rm-emerald-light);
+  font-weight: 600;
+}
+
+[data-theme="light"] .input-hint {
+  color: var(--rm-emerald-dark);
+}
+
+/* Username input prefix */
+.input-prefix {
+  position: absolute;
+  left: 14px;
+  font-weight: 700;
+  color: var(--rm-emerald-light);
+  z-index: 1;
+  font-size: 15px;
+  pointer-events: none;
+}
+
+[data-theme="light"] .input-prefix {
+  color: var(--rm-emerald-dark);
+}
+
+.auth-panel .input-wrap input.with-prefix {
+  padding-left: 36px !important;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--rm-text-muted);
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+.field-hint strong {
+  color: var(--rm-emerald-light);
+  font-family: 'Sora', sans-serif;
+}
+
+[data-theme="light"] .field-hint strong {
+  color: var(--rm-emerald-dark);
+}
+
+/* Select element in input-wrap */
+.auth-panel .input-wrap select {
+  width: 100%;
+  padding: 13px 44px 13px 42px;
+  background: var(--rm-card-bg);
+  border: 1px solid var(--rm-border-light);
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--rm-text-white);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.auth-panel .input-wrap select:focus {
+  border-color: var(--rm-emerald-primary);
+  background: var(--rm-panel-bg);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25), 0 0 18px rgba(34, 197, 94, 0.2);
+}
+
+.auth-panel .input-wrap select option {
+  background: #11161B;
+  color: #FFFFFF;
+  padding: 8px 12px;
+}
+
+[data-theme="light"] .auth-panel .input-wrap select {
+  background: #FFFFFF;
+  color: #0F2A1B;
+  border-color: rgba(15, 42, 27, 0.16);
+}
+
+[data-theme="light"] .auth-panel .input-wrap select option {
+  background: #FFFFFF;
+  color: #0F2A1B;
+}
+
+.auth-panel .select-arrow {
+  position: absolute;
+  right: 14px;
+  width: 18px;
+  height: 18px;
+  color: var(--rm-text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Unified Emerald Input Box Highlight: Applied across all inputs and selects for a cohesive design */
+.unified-reg-form .input-wrap input,
+.unified-reg-form .input-wrap select {
+  border: 1.5px solid rgba(34, 197, 94, 0.45) !important;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.12), inset 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  background: rgba(17, 24, 30, 0.85) !important;
+  border-radius: 12px !important;
+  color: var(--rm-text-white) !important;
+  font-size: 14px;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.unified-reg-form .input-wrap input:hover,
+.unified-reg-form .input-wrap select:hover {
+  border-color: rgba(34, 197, 94, 0.75) !important;
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.22), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.unified-reg-form .input-wrap input:focus,
+.unified-reg-form .input-wrap select:focus {
+  border-color: var(--rm-emerald-primary) !important;
+  background: rgba(22, 30, 38, 0.98) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.28), 0 0 22px rgba(34, 197, 94, 0.35) !important;
+}
+
+.unified-reg-form .input-wrap .input-icon {
+  color: var(--rm-emerald-primary) !important;
+}
+
+.unified-reg-form .input-wrap .select-arrow {
+  color: var(--rm-emerald-light) !important;
+}
+
+[data-theme="light"] .unified-reg-form .input-wrap input,
+[data-theme="light"] .unified-reg-form .input-wrap select {
+  border: 1.5px solid rgba(22, 163, 74, 0.55) !important;
+  background: #FFFFFF !important;
+  color: #0F2A1B !important;
+  box-shadow: 0 0 10px rgba(22, 163, 74, 0.12) !important;
+}
+
+[data-theme="light"] .unified-reg-form .input-wrap input:hover,
+[data-theme="light"] .unified-reg-form .input-wrap select:hover {
+  border-color: var(--rm-emerald-dark) !important;
+  box-shadow: 0 0 14px rgba(22, 163, 74, 0.2) !important;
+}
+
+[data-theme="light"] .unified-reg-form .input-wrap input:focus,
+[data-theme="light"] .unified-reg-form .input-wrap select:focus {
+  border-color: var(--rm-emerald-dark) !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.22), 0 0 18px rgba(22, 163, 74, 0.25) !important;
+}
+
+/* Confirmed Account Handle Badge */
+.account-handle-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.account-handle-badge .handle-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--rm-emerald-primary);
+  color: #06180e;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
+}
+
+.account-handle-badge .handle-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-handle-badge .handle-title {
+  font-size: 11px;
+  color: var(--rm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.account-handle-badge .handle-tag {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--rm-emerald-light);
+  font-family: 'Sora', sans-serif;
+}
+
+[data-theme="light"] .account-handle-badge .handle-tag {
+  color: var(--rm-emerald-dark);
+}
+
+.account-handle-badge .btn-change-handle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--rm-text-white);
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.account-handle-badge .btn-change-handle:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: var(--rm-emerald-primary);
+  color: var(--rm-emerald-light);
+}
+
+[data-theme="light"] .account-handle-badge .btn-change-handle {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .account-handle-badge .btn-change-handle:hover {
+  background: #f0fdf4;
+  border-color: var(--rm-emerald-dark);
+  color: var(--rm-emerald-dark);
+}
+
+/* Role Notice Box */
+.role-notice-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-left: 3px solid var(--rm-emerald-primary);
+  border-radius: 10px;
+  margin: 10px 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--rm-text-sub);
+}
+
+[data-theme="light"] .role-notice-box {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+  border-left-color: var(--rm-emerald-dark);
+  color: #334155;
+}
+
+.role-notice-box .notice-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.role-notice-box p {
+  margin: 0;
+}
+
+.role-notice-box strong {
+  color: var(--rm-text-white);
+}
+
+[data-theme="light"] .role-notice-box strong {
+  color: #0F2A1B;
+}
+
+/* Button Actions Stack */
+.reg-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* Primary Emerald Action Button */
+.btn-primary-emerald {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--rm-emerald-primary);
+  color: #ffffff !important;
+  font-family: 'Sora', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px var(--rm-emerald-glow), 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary-emerald:hover:not(:disabled) {
+  background: var(--rm-emerald-dark);
+  box-shadow: 0 6px 24px rgba(34, 197, 94, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-primary-emerald:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.btn-primary-emerald:disabled {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+}
+
+/* Secondary Back / Ghost Button */
+.btn-ghost-back {
+  width: 100%;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost-back:hover {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: var(--rm-emerald-light);
+}
+
+[data-theme="light"] .btn-ghost-back {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+[data-theme="light"] .btn-ghost-back:hover {
+  background: #f0fdf4;
+  border-color: var(--rm-emerald-dark);
+  color: var(--rm-emerald-dark);
+}
+
+/* =========================================================
+   WIDE MODE: CREATE ACCOUNT EXPANDED LAYOUT
+   Expands wide to fit all fields without scrolling on standard screens.
+   Scrolling is preserved only when minimized or on small screens.
+   ========================================================= */
+
+.workspace-panel.auth-panel.wide-panel,
+.workspace-panel.auth-panel:has(#createAccountView.active),
+.workspace-panel.auth-panel:has(#createAccountView:not([style*="display: none"])) {
+  max-width: 780px;
+  padding: 26px 36px 22px;
+}
+
+/* 2-Column Responsive Grid for Registration Fields */
+.reg-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+  margin-bottom: 2px;
+}
+
+.reg-fields-grid .input-group {
+  margin-bottom: 0 !important;
+}
+
+.reg-fields-grid.password-grid {
+  margin-bottom: 6px;
+}
+
+/* Actions in Wide Mode: Horizontal Side-by-Side */
+.wide-panel .reg-actions-stack,
+.auth-panel:has(#createAccountView.active) .reg-actions-stack,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .reg-actions-stack {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.wide-panel .reg-actions-stack .btn-primary-emerald,
+.auth-panel:has(#createAccountView.active) .reg-actions-stack .btn-primary-emerald,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .reg-actions-stack .btn-primary-emerald {
+  flex: 1.25;
+  height: 46px;
+  margin-top: 0;
+}
+
+.wide-panel .reg-actions-stack .btn-ghost-back,
+.auth-panel:has(#createAccountView.active) .reg-actions-stack .btn-ghost-back,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .reg-actions-stack .btn-ghost-back {
+  flex: 0.85;
+  height: 46px;
+  margin-top: 0;
+}
+
+/* Compact header adjustments when wide mode is active */
+.wide-panel .compact-header,
+.auth-panel:has(#createAccountView.active) .compact-header,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .compact-header {
+  margin-bottom: 14px !important;
+}
+
+.wide-panel .compact-header .ue-icon,
+.auth-panel:has(#createAccountView.active) .compact-header .ue-icon,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .compact-header .ue-icon {
+  margin-bottom: 8px !important;
+}
+
+.wide-panel .compact-header h1,
+.auth-panel:has(#createAccountView.active) .compact-header h1,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .compact-header h1 {
+  font-size: 1.55rem !important;
+  margin-bottom: 4px !important;
+}
+
+.wide-panel .compact-header p,
+.auth-panel:has(#createAccountView.active) .compact-header p,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .compact-header p {
+  font-size: 0.86rem !important;
+}
+
+.wide-panel .switch-auth,
+.auth-panel:has(#createAccountView.active) .switch-auth,
+.auth-panel:has(#createAccountView:not([style*="display: none"])) .switch-auth {
+  margin-top: 10px;
+}
+
+/* Responsiveness: Small Screens & Minimized Windows */
+@media (max-width: 720px) {
+  .workspace-panel.auth-panel.wide-panel,
+  .workspace-panel.auth-panel:has(#createAccountView.active),
+  .workspace-panel.auth-panel:has(#createAccountView:not([style*="display: none"])) {
+    max-width: 520px;
+    padding: 22px 18px 18px;
+  }
+
+  .reg-fields-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .wide-panel .reg-actions-stack,
+  .auth-panel:has(#createAccountView.active) .reg-actions-stack,
+  .auth-panel:has(#createAccountView:not([style*="display: none"])) .reg-actions-stack {
+    flex-direction: column;
+  }
+
+  .wide-panel .reg-actions-stack .btn-primary-emerald,
+  .wide-panel .reg-actions-stack .btn-ghost-back {
+    flex: unset;
+    width: 100%;
+  }
+}
+
+@media (max-height: 600px) {
+  .workspace-panel.auth-panel {
+    max-height: calc(100vh - 20px);
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .compact-header {
+    margin-bottom: 8px !important;
+  }
+  .compact-header .ue-icon {
+    display: none;
+  }
+}
+
+

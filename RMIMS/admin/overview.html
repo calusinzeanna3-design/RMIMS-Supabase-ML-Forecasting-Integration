@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - Main Administration Overview</title>
+  <!-- Google Fonts: Inter & Sora -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for RMIMS styled emerald chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Admin Stylesheet -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+</head>
+<body>
+  <div class="admin-app">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div>
+        <a href="overview.html" class="sidebar-header" title="RMIMS Main Administration">
+          <div class="brand-logo-wrap">
+            <img src="../assets/logo-icon.png" alt="RMSME Logo" class="brand-logo-img">
+          </div>
+          <div class="brand-titles">
+            <span class="brand-name">RMSME</span>
+            <span class="brand-sub">Administration</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav">
+          <a href="overview.html" class="nav-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Overview</span>
+          </a>
+
+          <a href="activity-logs.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+            <span>Activity Logs</span>
+          </a>
+
+          <a href="user-management.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>User Management</span>
+          </a>
+
+          <a href="branch-stores.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 21h18"/>
+              <path d="M3 7v14"/>
+              <path d="M21 7v14"/>
+              <path d="M6 21V11"/>
+              <path d="M10 21V11"/>
+              <path d="M14 21V11"/>
+              <path d="M18 21V11"/>
+              <path d="M2 7l10-4 10 4"/>
+            </svg>
+            <span>Branch Stores</span>
+          </a>
+
+          <a href="system-alerts.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>System Alerts</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-bottom-nav">
+        <button type="button" class="nav-link nav-btn-help" id="btnSidebarHelp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Help Center</span>
+        </button>
+
+        <a href="settings.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+
+        <div class="sidebar-version">v2.0.0 &bull; RMSME</div>
+      </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="admin-main">
+      <!-- TOPBAR -->
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <span class="topbar-kicker">MAIN ADMINISTRATION</span>
+          <h1 class="topbar-title">System Overview</h1>
+          <p class="topbar-subtitle">Real-time inventory telemetry and multi-branch management.</p>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Admin</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Admin</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                        </div>
+      </header>
+
+      <!-- SCROLLABLE CONTENT BODY -->
+      <main class="admin-scroll-body">
+
+        <!-- WELCOME & FRONTDESK LIVE MONITORING CLOCK BAR -->
+        <div class="overview-welcome-banner">
+          <div class="overview-welcome-group">
+            <h1 class="overview-welcome-title" id="overviewWelcomeGreeting">Welcome back!</h1>
+            <p class="overview-welcome-sub">Here's what's happening across all branch stores.</p>
+          </div>
+
+          <!-- Frontdesk Monitoring Clock Card (Image 1 Style) -->
+          <div class="frontdesk-clock-card" id="frontdeskClockCard" title="Live Frontdesk Monitoring Clock (Philippine Standard Time)">
+            <div class="frontdesk-clock-time-group">
+              <span class="frontdesk-time" id="frontdeskTime">--:--:--</span>
+              <span class="frontdesk-period" id="frontdeskPeriod">AM</span>
+            </div>
+            <div class="frontdesk-date" id="frontdeskDate">Loading...</div>
+          </div>
+        </div>
+        
+        <!-- SECTION 1: BRANCH STORES USAGE OVERVIEW (Chart + 2 Stat Cards) -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M18 20V10"/>
+                  <path d="M12 20V4"/>
+                  <path d="M6 20v-6"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Branch Stores Usage Overview</h2>
+                <span class="card-subtitle">Daily system usage across all branch stores</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <span class="range-date-indicator" id="usageDateRangeSpan" style="display:none;"></span>
+              <select class="dropdown-select" id="chartRangeSelect">
+                <option value="7">Last 7 Days</option>
+                <option value="14" selected>Last 14 Days</option>
+                <option value="30">Last 30 Days</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="usage-grid">
+            <!-- Left: Interactive Dual Line Chart (RMIMS Emerald Aesthetic) -->
+            <div class="chart-card-content">
+              <div class="chart-canvas-container">
+                <canvas id="branchUsageChart"></canvas>
+              </div>
+              <div class="chart-legend-custom" id="branchUsageChartLegend">
+                <!-- Legend items dynamically injected by admin-overview.js -->
+              </div>
+            </div>
+
+            <!-- Right: 2 KPI Stat Cards -->
+            <div class="kpi-column">
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Total Active Users Today</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiActiveUsersToday">0</span>
+                    <span class="kpi-trend up" id="kpiActiveUsersTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
+                    </span>
+                  </div>
+                  <span class="kpi-subtext">Active store directory accounts</span>
+                </div>
+              </div>
+
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Total System Actions Today</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiSystemActionsToday">0</span>
+                    <span class="kpi-trend up" id="kpiSystemActionsTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
+                    </span>
+                  </div>
+                  <span class="kpi-subtext">Receipts, disbursements & logs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: AWAITING APPROVAL FOR ACCOUNTS -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge coral">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <line x1="20" y1="8" x2="20" y2="14"/>
+                  <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Awaiting Approval for Accounts</h2>
+                <span class="card-subtitle">User accounts pending approval</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <a href="user-management.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="overviewApprovalTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Branch Location</th>
+                  <th>Branch Name</th>
+                  <th>Role</th>
+                  <th>Requested On</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="overviewApprovalTableBody">
+                <!-- Dynamically populated by admin-overview.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION 3: BRANCH STORES -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M3 21h18"/>
+                  <path d="M3 7v14"/>
+                  <path d="M21 7v14"/>
+                  <path d="M6 21V11"/>
+                  <path d="M10 21V11"/>
+                  <path d="M14 21V11"/>
+                  <path d="M18 21V11"/>
+                  <path d="M2 7l10-4 10 4"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Branch Stores</h2>
+                <span class="card-subtitle">List of registered branch stores</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <a href="branch-stores.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Registered Branch Stores Table (Executive summary without action/add buttons) -->
+          <div class="table-responsive" style="margin-top: 14px;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Branch Location</th>
+                  <th>Branch Name</th>
+                  <th>Primary Manager</th>
+                  <th>Staff Personnel</th>
+                  <th>Operational Status</th>
+                </tr>
+              </thead>
+              <tbody id="overviewBranchStoresTbody">
+                <!-- Dynamically populated by renderOverviewBranchStores() -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION 4: SYSTEM MAINTENANCE ALERTS -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge coral">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">System Maintenance Alerts</h2>
+                <span class="card-subtitle">Automatically detected system issues affecting user experience</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <a href="system-alerts.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Alerts Table -->
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Error Type</th>
+                  <th>Branch Location</th>
+                  <th>Branch Name</th>
+                  <th>Occurrence</th>
+                  <th>Last Detected</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="overviewAlertsTableBody">
+                <!-- Dynamically populated by admin-overview.js with live data or clean empty state -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION 5: LATEST ACTIVITY LOGS -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Latest Activity Logs</h2>
+                <span class="card-subtitle">Recent activities across all branch stores</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <a href="activity-logs.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Branch Location</th>
+                  <th>Branch Name</th>
+                  <th>Details</th>
+                  <th>Date &amp; Time</th>
+                </tr>
+              </thead>
+              <tbody id="overviewActivityTableBody">
+                <!-- Dynamically populated by admin-overview.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Shared Admin Shell Script -->
+  <script type="module" src="../js/admin-shell.js"></script>
+  <!-- Overview Specific Controller (Chart initialization with RMIMS emerald palette) -->
+  <script type="module" src="../js/admin-overview.js"></script>
+</body>
+</html>

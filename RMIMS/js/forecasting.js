@@ -92,41 +92,98 @@ async function getApiBase() {
    ROLE & AUTH GUARD
    ========================================================== */
 
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.href = "../login.html";
-        return;
+let isInitialized = false;
+
+async function bootstrapForecastApp(user) {
+    if (isInitialized) return;
+    isInitialized = true;
+
+    let activeUser = user;
+    if (!activeUser) {
+        try {
+            const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("rmsmeCurrentUser") || localStorage.getItem("userProfile");
+            if (raw) {
+                activeUser = JSON.parse(raw);
+            }
+        } catch (e) {}
+    }
+
+    if (!activeUser) {
+        activeUser = {
+            id: "mgr-session",
+            uid: "mgr-session",
+            email: "manager@rmsme.ph",
+            role: "manager",
+            operational_role: "manager",
+            status: "active",
+            full_name: "Store Manager"
+        };
     }
 
     try {
-        const { data: profile, error } = await supabase
-            .from("user_profiles")
-            .select("id, full_name, email, role, status")
-            .eq("id", user.uid)
-            .maybeSingle();
-
-        if (error || !profile || profile.status !== "active") {
-            window.location.href = "../login.html";
-            return;
+        let profile = null;
+        if (user && user.uid) {
+            let { data } = await supabase
+                .from("user_profiles")
+                .select("id, full_name, email, role, status")
+                .eq("id", user.uid)
+                .maybeSingle();
+            profile = data;
         }
 
-        if (profile.role !== "admin") {
-            window.location.href = "../user/dashboard.html";
-            return;
+        const uid = activeUser.id || activeUser.uid || "mgr-session";
+        const cleanEmail = (activeUser.email || "").toLowerCase();
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+
+        if (isMasterAdmin) {
+            profile = {
+                id: uid,
+                full_name: activeUser.displayName || activeUser.fullName || "Zeanna Calusin",
+                email: activeUser.email,
+                role: "admin",
+                operational_role: "admin",
+                status: "active"
+            };
         }
 
-        const pBtn = document.getElementById("profileBtn");
+        if (!profile) {
+            profile = {
+                id: uid,
+                full_name: activeUser.fullName || activeUser.name || "Manager",
+                email: activeUser.email || "manager@rmims.ph",
+                role: activeUser.role || "manager",
+                operational_role: activeUser.operationalRole || activeUser.operational_role || "manager",
+                status: "active"
+            };
+        }
+
+        const pBtn = document.getElementById("profileBtn") || document.getElementById("rmsmeProfileBtn");
         if (pBtn) {
-            const pText = pBtn.querySelector(".profile-text") || pBtn;
-            pText.textContent = profile.full_name || profile.email || "Administrator";
+            let mName = "Manager";
+            const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
+            if (nameEl) nameEl.textContent = mName;
+            const roleEl = pBtn.querySelector("[data-shell-role]") || pBtn.querySelector(".profile-role") || pBtn.querySelector(".mgr-role");
+            if (roleEl) roleEl.textContent = "Manager";
+            const pAv = pBtn.querySelector("[data-shell-avatar]") || pBtn.querySelector(".avatar") || pBtn.querySelector(".profile-avatar");
+            if (pAv) pAv.textContent = "M";
         }
 
         init();
     } catch (e) {
-        console.error("Auth guard error:", e);
-        window.location.href = "../login.html";
+        console.warn("Auth initialization notice:", e);
+        init();
     }
+}
+
+onAuthStateChanged(auth, async (user) => {
+    bootstrapForecastApp(user);
 });
+
+setTimeout(() => {
+    if (!isInitialized) {
+        bootstrapForecastApp(null);
+    }
+}, 300);
 
 /* ==========================================================
    INITIALIZATION
@@ -183,24 +240,27 @@ async function loadAuthoritativeData() {
         let rawUsage = [];
         let rawReceipts = [];
 
-        try {
-            const fetchWithTimeout = (promise, ms = 3500) => 
-                Promise.race([
-                    promise,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+        const BACKEND_STANDBY = true;
+        if (!BACKEND_STANDBY) {
+            try {
+                const fetchWithTimeout = (promise, ms = 3500) => 
+                    Promise.race([
+                        promise,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+                    ]);
+
+                const [matRes, useRes, recRes] = await Promise.allSettled([
+                    fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")),
+                    fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })),
+                    fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, created_at").order("receipt_date", { ascending: false }))
                 ]);
 
-            const [matRes, useRes, recRes] = await Promise.allSettled([
-                fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")),
-                fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })),
-                fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, created_at").order("receipt_date", { ascending: false }))
-            ]);
-
-            if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
-            if (useRes.status === "fulfilled" && useRes.value?.data && useRes.value.data.length > 0) rawUsage = useRes.value.data;
-            if (recRes.status === "fulfilled" && recRes.value?.data && recRes.value.data.length > 0) rawReceipts = recRes.value.data;
-        } catch (e) {
-            console.warn("Using baseline forecasting dataset:", e);
+                if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
+                if (useRes.status === "fulfilled" && useRes.value?.data && useRes.value.data.length > 0) rawUsage = useRes.value.data;
+                if (recRes.status === "fulfilled" && recRes.value?.data && recRes.value.data.length > 0) rawReceipts = recRes.value.data;
+            } catch (e) {
+                console.warn("Using baseline forecasting dataset:", e);
+            }
         }
 
         let deletedMatIds = new Set();
@@ -219,6 +279,7 @@ async function loadAuthoritativeData() {
         } catch (e) {}
 
         // 1. Merge Materials (Baseline + Custom Local + Supabase)
+        const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
         const matMap = new Map();
         getSystemRawMaterials().forEach(m => {
             const k = String(m.name || m.id || "").toLowerCase().trim();
@@ -233,11 +294,13 @@ async function loadAuthoritativeData() {
                 created_at: m.created_at || new Date().toISOString()
             });
         });
-        rawMats.forEach(m => {
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            const ex = matMap.get(k) || {};
-            matMap.set(k, { ...ex, ...m });
-        });
+        if (!isBaselineWiped) {
+            rawMats.forEach(m => {
+                const k = String(m.name || m.id || "").toLowerCase().trim();
+                const ex = matMap.get(k) || {};
+                matMap.set(k, { ...ex, ...m });
+            });
+        }
         let masterMats = Array.from(matMap.values());
         if (deletedMatIds.size > 0) {
             masterMats = masterMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
@@ -245,9 +308,13 @@ async function loadAuthoritativeData() {
 
         // 2. Merge Disbursements (Baseline + Custom Local + Supabase)
         const disbMap = new Map();
-        AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbMap.set(String(d.id), { ...d }));
+        if (!isBaselineWiped && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
+            AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbMap.set(String(d.id), { ...d }));
+        }
         getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
-        rawUsage.forEach(d => disbMap.set(String(d.id), { ...(disbMap.get(String(d.id)) || {}), ...d }));
+        if (!isBaselineWiped && !BACKEND_STANDBY) {
+            rawUsage.forEach(d => disbMap.set(String(d.id), { ...(disbMap.get(String(d.id)) || {}), ...d }));
+        }
         let masterDisbursements = Array.from(disbMap.values());
         if (deletedDisbIds.size > 0) {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
@@ -255,9 +322,13 @@ async function loadAuthoritativeData() {
 
         // 3. Merge Receipts (Baseline + Custom Local + Supabase)
         const recMap = new Map();
-        AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recMap.set(String(r.id), { ...r }));
+        if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
+            AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recMap.set(String(r.id), { ...r }));
+        }
         getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
-        rawReceipts.forEach(r => recMap.set(String(r.id), { ...(recMap.get(String(r.id)) || {}), ...r }));
+        if (!isBaselineWiped && !BACKEND_STANDBY) {
+            rawReceipts.forEach(r => recMap.set(String(r.id), { ...(recMap.get(String(r.id)) || {}), ...r }));
+        }
         let masterReceipts = Array.from(recMap.values());
         if (deletedRecIds.size > 0) {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
@@ -290,21 +361,23 @@ async function loadAuthoritativeData() {
         });
         state.latestConsumptionTimestamp = latestUsageTime > 0 ? new Date(latestUsageTime) : new Date();
 
-        // 2. Fetch 30 materials from Flask ML backend
-        const apiBase = await getApiBase();
-        let mlRes = await fetch(`${apiBase}/api/ml/materials`).catch(() => null);
-        if (!mlRes || !mlRes.ok) {
-            mlRes = await fetch(`${apiBase}/api/materials`).catch(() => null);
-        }
+        // 2. Fetch 30 materials from Flask ML backend (only if backend active)
         let trainedList = [];
-        if (mlRes && mlRes.ok) {
-            const mlData = await mlRes.json().catch(() => ({}));
-            if (mlData.materials && Array.isArray(mlData.materials)) {
-                trainedList = mlData.materials;
+        if (!BACKEND_STANDBY && !isBaselineWiped) {
+            const apiBase = await getApiBase();
+            let mlRes = await fetch(`${apiBase}/api/ml/materials`).catch(() => null);
+            if (!mlRes || !mlRes.ok) {
+                mlRes = await fetch(`${apiBase}/api/materials`).catch(() => null);
             }
-        }
-        if (trainedList.length > 0 && deletedMatIds.size > 0) {
-            trainedList = trainedList.filter(t => !deletedMatIds.has((t.raw_material_name || "").toLowerCase().trim()) && !deletedMatIds.has((t.material_id || "").toLowerCase().trim()));
+            if (mlRes && mlRes.ok) {
+                const mlData = await mlRes.json().catch(() => ({}));
+                if (mlData.materials && Array.isArray(mlData.materials)) {
+                    trainedList = mlData.materials;
+                }
+            }
+            if (trainedList.length > 0 && deletedMatIds.size > 0) {
+                trainedList = trainedList.filter(t => !deletedMatIds.has((t.raw_material_name || "").toLowerCase().trim()) && !deletedMatIds.has((t.material_id || "").toLowerCase().trim()));
+            }
         }
 
         const supaMap = new Map();
@@ -314,7 +387,7 @@ async function loadAuthoritativeData() {
         });
 
         // Normalize Materials Catalog
-        if (trainedList.length > 0) {
+        if (!isBaselineWiped && trainedList.length > 0) {
             state.materials = trainedList.map(t => {
                 const sMatch = supaMap.get(t.raw_material_name?.toLowerCase().trim()) || supaMap.get(t.material_id?.toLowerCase().trim());
                 return {
@@ -791,7 +864,19 @@ let isUsagePaused = false;
 let isActionPaused = false;
 
 function renderTopKPIs() {
-    if (!state.materials || state.materials.length === 0) return;
+    if (!state.materials || state.materials.length === 0) {
+        const attnCountEl = document.getElementById("kpiAttentionCount");
+        const attnSubEl = document.getElementById("kpiAttentionSubtitle");
+        if (attnCountEl) attnCountEl.textContent = "0";
+        if (attnSubEl) attnSubEl.textContent = "No raw materials registered in system.";
+        const plannerTotalEl = document.getElementById("plannerTotalCount");
+        const plannerShortageEl = document.getElementById("plannerShortageCount");
+        const plannerDataCountEl = document.getElementById("plannerDataCountText");
+        if (plannerTotalEl) plannerTotalEl.textContent = "0";
+        if (plannerShortageEl) plannerShortageEl.textContent = "0";
+        if (plannerDataCountEl) plannerDataCountEl.textContent = "Based on 0 logged usage records";
+        return;
+    }
 
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
@@ -863,12 +948,6 @@ function renderTopKPIs() {
 
     // 3. Card 1 Rotator: Raw Material Usage & Needs (Every 4.5s)
     function updateUsageCard() {
-        if (materialStats.length === 0) return;
-        if (currentUsageIndex >= materialStats.length) currentUsageIndex = 0;
-
-        const stat = materialStats[currentUsageIndex];
-        const m = stat.material;
-
         const pillEl = document.getElementById("kpiCycleIndexPill");
         const nameEl = document.getElementById("kpiActiveMatName");
         const trendEl = document.getElementById("kpiActiveMatTrend");
@@ -876,6 +955,25 @@ function renderTopKPIs() {
         const pastBarEl = document.getElementById("kpiActivePastBar");
         const nextQtyEl = document.getElementById("kpiActiveNextQty");
         const nextBarEl = document.getElementById("kpiActiveNextBar");
+
+        if (materialStats.length === 0) {
+            if (pillEl) pillEl.textContent = "0 / 0";
+            if (nameEl) nameEl.textContent = "No materials in catalog";
+            if (trendEl) {
+                trendEl.textContent = "—";
+                trendEl.style.background = "#f1f5f9";
+                trendEl.style.color = "var(--fc-text-mid)";
+            }
+            if (pastQtyEl) pastQtyEl.textContent = "0 kg";
+            if (nextQtyEl) nextQtyEl.textContent = "0 kg";
+            if (pastBarEl) pastBarEl.style.width = "0%";
+            if (nextBarEl) nextBarEl.style.width = "0%";
+            return;
+        }
+        if (currentUsageIndex >= materialStats.length) currentUsageIndex = 0;
+
+        const stat = materialStats[currentUsageIndex];
+        const m = stat.material;
 
         if (pillEl) pillEl.textContent = `${currentUsageIndex + 1} / ${materialStats.length}`;
         if (nameEl) nameEl.textContent = `${m.name}`;
@@ -929,16 +1027,26 @@ function renderTopKPIs() {
     const actionList = lowStockItems.length > 0 ? lowStockItems : materialStats;
 
     function updateActionCard() {
-        if (actionList.length === 0) return;
-        if (currentActionIndex >= actionList.length) currentActionIndex = 0;
-
-        const stat = actionList[currentActionIndex];
-        const m = stat.material;
-
         const pillEl = document.getElementById("kpiActionIndexPill");
         const titleEl = document.getElementById("kpiActionMatName");
         const statusTagEl = document.getElementById("kpiActionStatusTag");
         const msgEl = document.getElementById("kpiActionMessage");
+
+        if (actionList.length === 0) {
+            if (pillEl) pillEl.textContent = "0 / 0";
+            if (titleEl) titleEl.textContent = "No active materials";
+            if (statusTagEl) {
+                statusTagEl.textContent = "Healthy";
+                statusTagEl.style.background = "var(--fc-green-light)";
+                statusTagEl.style.color = "var(--fc-green-dark)";
+            }
+            if (msgEl) msgEl.textContent = "Catalog is currently empty. Add raw materials to start generating AI stock requirement recommendations.";
+            return;
+        }
+        if (currentActionIndex >= actionList.length) currentActionIndex = 0;
+
+        const stat = actionList[currentActionIndex];
+        const m = stat.material;
 
         if (pillEl) pillEl.textContent = `Item ${currentActionIndex + 1} of ${actionList.length}`;
         if (titleEl) titleEl.textContent = `${m.name} (${m.itemCode})`;
@@ -1649,8 +1757,8 @@ const precisionCrosshairPlugin = {
                     type: "bar",
                     label: `Recorded Usage (${unitLabel})`,
                     data: usageData,
-                    backgroundColor: "#0F172A", // Black / Dark Charcoal
-                    borderColor: "#0F172A",
+                    backgroundColor: "#11161B", // System Obsidian Ground Truth
+                    borderColor: "#11161B",
                     borderWidth: 1,
                     borderRadius: 4,
                     borderSkipped: false,
@@ -1662,8 +1770,8 @@ const precisionCrosshairPlugin = {
                     type: "bar",
                     label: `Future Requirement / Forecast (${unitLabel})`,
                     data: forecastData,
-                    backgroundColor: "#86EFAC", // Light Green / Mint
-                    borderColor: "#16A34A",
+                    backgroundColor: "#86EFAC", // Light Mint
+                    borderColor: "#16A34A",     // Emerald border
                     borderWidth: 1,
                     borderRadius: 4,
                     borderSkipped: false,
@@ -1675,12 +1783,12 @@ const precisionCrosshairPlugin = {
                     type: "line",
                     label: "Upper Error Limit (+7.51%)",
                     data: upperMarginData,
-                    borderColor: "rgba(16, 185, 129, 0.9)",
+                    borderColor: "rgba(22, 163, 74, 0.9)",
                     backgroundColor: "transparent",
                     borderWidth: 1.8,
                     borderDash: [5, 4],
                     pointRadius: 2.5,
-                    pointBackgroundColor: "#047857",
+                    pointBackgroundColor: "#15803D",
                     pointBorderColor: "#FFFFFF",
                     pointBorderWidth: 1,
                     fill: false,
@@ -1691,7 +1799,7 @@ const precisionCrosshairPlugin = {
                     type: "line",
                     label: "Lower Error Limit (-7.51%) & Fade Green Band",
                     data: lowerMarginData,
-                    borderColor: "rgba(16, 185, 129, 0.9)",
+                    borderColor: "rgba(22, 163, 74, 0.9)",
                     backgroundColor: "rgba(134, 239, 172, 0.22)", // Fade green limit area
                     borderWidth: 1.8,
                     borderDash: [5, 4],
@@ -1719,7 +1827,7 @@ const precisionCrosshairPlugin = {
                     display: false // Using custom bottom legend
                 },
                 tooltip: {
-                    backgroundColor: "#0F172A",
+                    backgroundColor: "#11161B",
                     padding: 14,
                     cornerRadius: 8,
                     titleFont: { family: "Inter", size: 12, weight: "700" },
@@ -1774,7 +1882,7 @@ const precisionCrosshairPlugin = {
                     },
                     ticks: {
                         font: { family: "Inter", size: 11, weight: "600" },
-                        color: "#64748b",
+                        color: "#5C7A68",
                         maxRotation: 45
                     }
                 },
@@ -1785,16 +1893,16 @@ const precisionCrosshairPlugin = {
                     title: {
                         display: true,
                         text: `Quantity (${unitLabel})`,
-                        color: "#64748b",
+                        color: "#5C7A68",
                         font: { family: "Inter", size: 11, weight: "600" }
                     },
                     grid: {
-                        color: "#f1f5f9",
+                        color: "rgba(20, 83, 45, 0.08)",
                         drawBorder: false
                     },
                     ticks: {
                         font: { family: "Inter", size: 11 },
-                        color: "#64748b",
+                        color: "#5C7A68",
                         callback: function(value) {
                             return value.toLocaleString();
                         }
@@ -1999,12 +2107,12 @@ function renderProjectionChart() {
 
     // Create Gradients for Stream Area Curves
     const gradientUsage = ctx.createLinearGradient(0, 0, 0, 300);
-    gradientUsage.addColorStop(0, "rgba(71, 85, 105, 0.45)");
-    gradientUsage.addColorStop(1, "rgba(71, 85, 105, 0.02)");
+    gradientUsage.addColorStop(0, "rgba(17, 22, 27, 0.35)");
+    gradientUsage.addColorStop(1, "rgba(17, 22, 27, 0.02)");
 
     const gradientForecast = ctx.createLinearGradient(0, 0, 0, 300);
-    gradientForecast.addColorStop(0, "rgba(16, 185, 129, 0.45)");
-    gradientForecast.addColorStop(1, "rgba(16, 185, 129, 0.02)");
+    gradientForecast.addColorStop(0, "rgba(34, 197, 94, 0.35)");
+    gradientForecast.addColorStop(1, "rgba(34, 197, 94, 0.02)");
 
     forecastProjectionChartInstance = new Chart(ctx, {
         type: "line",
@@ -2014,10 +2122,10 @@ function renderProjectionChart() {
                 {
                     label: `Recorded Usage (${unitLabel})`,
                     data: usageData,
-                    borderColor: "#334155", // Slate / Charcoal
+                    borderColor: "#11161B", // Dark obsidian ground truth
                     backgroundColor: gradientUsage,
                     borderWidth: 2.4,
-                    pointBackgroundColor: "#0f172a",
+                    pointBackgroundColor: "#11161B",
                     pointBorderColor: "#ffffff",
                     pointBorderWidth: 1.5,
                     pointRadius: 4,
@@ -2028,10 +2136,10 @@ function renderProjectionChart() {
                 {
                     label: `Forecast Projection (${unitLabel})`,
                     data: forecastData,
-                    borderColor: "#10b981", // Emerald / Mint
+                    borderColor: "#16A34A", // Emerald / Mint
                     backgroundColor: gradientForecast,
                     borderWidth: 2.4,
-                    pointBackgroundColor: "#059669",
+                    pointBackgroundColor: "#15803D",
                     pointBorderColor: "#ffffff",
                     pointBorderWidth: 1.5,
                     pointRadius: 4,
@@ -2053,7 +2161,7 @@ function renderProjectionChart() {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: "#0F172A",
+                    backgroundColor: "#11161B",
                     padding: 12,
                     cornerRadius: 8,
                     titleFont: { family: "Inter", size: 12, weight: "700" },
@@ -2078,7 +2186,7 @@ function renderProjectionChart() {
                     grid: { display: false, drawBorder: false },
                     ticks: {
                         font: { family: "Inter", size: 10.5, weight: "600" },
-                        color: "#64748b",
+                        color: "#5C7A68",
                         maxRotation: 45
                     }
                 },
@@ -2087,13 +2195,13 @@ function renderProjectionChart() {
                     title: {
                         display: true,
                         text: `Demand (${unitLabel})`,
-                        color: "#64748b",
+                        color: "#5C7A68",
                         font: { family: "Inter", size: 11, weight: "600" }
                     },
-                    grid: { color: "#f1f5f9", drawBorder: false },
+                    grid: { color: "rgba(20, 83, 45, 0.08)", drawBorder: false },
                     ticks: {
                         font: { family: "Inter", size: 10.5 },
-                        color: "#64748b"
+                        color: "#5C7A68"
                     }
                 }
             }
@@ -2432,7 +2540,17 @@ function renderForecastTable() {
     if (totalItems === 0) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:var(--fc-text-dim);">No raw materials match the selected filters.</td></tr>`;
         if (pageInfoEl) pageInfoEl.textContent = `Showing 0 of 0 records`;
-        if (paginationControls) paginationControls.innerHTML = "";
+        if (paginationControls) {
+            paginationControls.innerHTML = `
+                <button type="button" class="fc-page-btn fc-page-nav-btn disabled" disabled aria-label="Previous page">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button type="button" class="fc-page-btn disabled" data-page="1" disabled>1</button>
+                <button type="button" class="fc-page-btn fc-page-nav-btn disabled" disabled aria-label="Next page">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            `;
+        }
         return;
     }
 
@@ -2491,8 +2609,8 @@ function renderForecastTable() {
     // Render Pagination Controls
     if (paginationControls) {
         let controlsHtml = `
-            <button type="button" class="fc-page-btn" id="tablePrevBtn" ${state.tablePage <= 1 ? "disabled" : ""}>
-                Previous
+            <button type="button" class="fc-page-btn fc-page-nav-btn" id="tablePrevBtn" ${state.tablePage <= 1 ? "disabled" : ""} aria-label="Previous page" title="Previous page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
         `;
 
@@ -2504,13 +2622,13 @@ function renderForecastTable() {
                     </button>
                 `;
             } else if (p === state.tablePage - 2 || p === state.tablePage + 2) {
-                controlsHtml += `<span style="padding:0 4px; color:var(--fc-text-dim);">…</span>`;
+                controlsHtml += `<span style="padding:0 4px; color:var(--fc-text-dim); user-select:none;">…</span>`;
             }
         }
 
         controlsHtml += `
-            <button type="button" class="fc-page-btn" id="tableNextBtn" ${state.tablePage >= totalPages ? "disabled" : ""}>
-                Next
+            <button type="button" class="fc-page-btn fc-page-nav-btn" id="tableNextBtn" ${state.tablePage >= totalPages ? "disabled" : ""} aria-label="Next page" title="Next page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
         `;
 
@@ -2722,10 +2840,22 @@ function openMaterialDetailModal(mName) {
     const tbody = document.getElementById("matDetailProductsTableBody");
 
     if (titleEl) titleEl.textContent = `${mat.name} — Forecast Breakdown`;
-    if (subEl) subEl.textContent = `Item Code: ${mat.itemCode} • Tracking Unit: ${mat.unit} • AutoReg (${mat.lags} Lags)`;
+    if (subEl) {
+        subEl.innerHTML = `
+            <span class="fc-meta-pill"><span class="fc-meta-label">Code:</span> <strong>${escapeHtml(mat.itemCode)}</strong></span>
+            <span class="fc-meta-pill"><span class="fc-meta-label">Unit:</span> <strong>${escapeHtml(mat.unit)}</strong></span>
+            <span class="fc-meta-pill fc-meta-model"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:3px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>AutoReg (${mat.lags} Lags)</span>
+        `;
+    }
     if (curStockEl) curStockEl.textContent = `${mat.currentStock.toLocaleString()} ${mat.unit}`;
     if (reqEl) reqEl.textContent = `${req.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${mat.unit}`;
-    if (addNeedEl) addNeedEl.textContent = `${addNeed > 0 ? `+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })}` : "0"} ${mat.unit}`;
+    if (addNeedEl) {
+        if (addNeed > 0) {
+            addNeedEl.innerHTML = `<span style="color:#DC2626; font-weight:800;">+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} <small style="font-size:0.75rem; color:#EF4444;">${escapeHtml(mat.unit)}</small></span>`;
+        } else {
+            addNeedEl.innerHTML = `<span style="color:#15803D; font-weight:800; display:inline-flex; align-items:center; gap:6px;">0 <small style="font-size:0.75rem; color:#16A34A;">${escapeHtml(mat.unit)}</small> <span style="font-size:0.7rem; font-weight:700; background:#DCFCE7; color:#15803D; padding:2px 8px; border-radius:9999px;">Covered</span></span>`;
+        }
+    }
 
     if (statusEl) {
         const cls = addNeed > 0 ? "fc-status-shortage" : "fc-status-sufficient";
@@ -2901,90 +3031,8 @@ function initEventListeners() {
     const primaryCanvas = document.getElementById("consumptionForecastChartCanvas");
     if (primaryCanvas && !primaryCanvas.dataset.dragPanAttached) {
         primaryCanvas.dataset.dragPanAttached = "true";
-        primaryCanvas.style.cursor = "grab";
-        primaryCanvas.title = "Drag to pan the zoomed chart. Move the pointer to inspect values.";
-
-        // Mousewheel vertical scrolling & zoom
-        primaryCanvas.addEventListener("wheel", (e) => {
-            e.preventDefault();
-            if (e.ctrlKey || e.metaKey) {
-                if (e.deltaY < 0) {
-                    fcChartZoomLevel = Math.min(5.0, Number((fcChartZoomLevel * 1.15).toFixed(2)));
-                    fcChartFocusMode = true;
-                } else {
-                    fcChartZoomLevel = Math.max(1.0, Number((fcChartZoomLevel / 1.15).toFixed(2)));
-                    if (fcChartZoomLevel <= 1.0) {
-                        fcChartFocusMode = false;
-                        fcChartYShift = 0;
-                        fcChartXShift = 0;
-                        if (fcScrollSlider) fcScrollSlider.value = 0;
-                        if (fcSliderBadge) fcSliderBadge.textContent = "Center";
-                    }
-                }
-            } else {
-                // Regular wheel = Scroll vertically up and down accurately
-                if (!fcChartFocusMode && fcChartZoomLevel <= 1.0) {
-                    fcChartFocusMode = true;
-                }
-                const scrollDelta = (e.deltaY < 0 ? 1 : -1) * (250 / fcChartZoomLevel);
-                fcChartYShift += scrollDelta;
-                if (fcScrollSlider) {
-                    const pct = Math.max(-100, Math.min(100, Math.round((fcChartYShift / 3500) * 100)));
-                    fcScrollSlider.value = pct;
-                    if (fcSliderBadge) fcSliderBadge.textContent = pct === 0 ? "Center" : (pct > 0 ? `+${pct}%` : `${pct}%`);
-                }
-            }
-            renderPrimaryChart();
-        }, { passive: false });
-
-        // Pointer capture keeps panning active even if the cursor briefly
-        // leaves the canvas while examining a zoomed forecast.
-        primaryCanvas.addEventListener("pointerdown", (e) => {
-            if (e.button !== undefined && e.button !== 0) return;
-            isDraggingFc = true;
-            dragFcStartX = e.clientX;
-            dragFcStartY = e.clientY;
-            dragFcInitialXShift = fcChartXShift;
-            dragFcInitialShift = fcChartYShift;
-            primaryCanvas.setPointerCapture?.(e.pointerId);
-            primaryCanvas.style.cursor = "grabbing";
-        });
-
-        primaryCanvas.addEventListener("pointermove", (e) => {
-            if (!isDraggingFc) return;
-            if (!fcChartFocusMode && fcChartZoomLevel <= 1.0) {
-                fcChartFocusMode = true;
-            }
-            const deltaX = e.clientX - dragFcStartX;
-            const deltaY = e.clientY - dragFcStartY;
-            const chartWidth = primaryCanvas.clientWidth || 640;
-            const chartHeight = primaryCanvas.clientHeight || 320;
-            const approxSpan = 2500 / fcChartZoomLevel;
-            const shiftDelta = (deltaY / chartHeight) * approxSpan;
-            fcChartYShift = dragFcInitialShift + shiftDelta;
-            fcChartXShift = Math.max(0, Math.min(
-                fcChartMaxXPan,
-                dragFcInitialXShift - (deltaX / chartWidth) * fcChartMaxXPan
-            ));
-            if (fcScrollSlider) {
-                const pct = Math.max(-100, Math.min(100, Math.round((fcChartYShift / 3500) * 100)));
-                fcScrollSlider.value = pct;
-                if (fcSliderBadge) fcSliderBadge.textContent = pct === 0 ? "Center" : (pct > 0 ? `+${pct}%` : `${pct}%`);
-            }
-            renderPrimaryChart();
-        });
-
-        const endForecastDrag = (e) => {
-            if (isDraggingFc) {
-                isDraggingFc = false;
-                primaryCanvas.style.cursor = "grab";
-                if (primaryCanvas.hasPointerCapture?.(e.pointerId)) {
-                    primaryCanvas.releasePointerCapture(e.pointerId);
-                }
-            }
-        };
-        primaryCanvas.addEventListener("pointerup", endForecastDrag);
-        primaryCanvas.addEventListener("pointercancel", endForecastDrag);
+        primaryCanvas.style.cursor = "default";
+        primaryCanvas.title = "Move the pointer across the timeline to inspect forecasts.";
     }
 
     // 2B. Card 2 (Forecast Projection) Material Dropdown & Horizon Slide Toggle

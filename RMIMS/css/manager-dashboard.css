@@ -1,0 +1,1270 @@
+/* ==========================================================================
+   RMSME Manager Dashboard Stylesheet
+   100% Adopted Admin Design System: Fonts, Colors, Elevation, and Animations
+   Context: Store Manager Daily Raw Materials Operations
+   ========================================================================== */
+
+/* Overall Page Layout */
+body.manager-page {
+  background-color: var(--rm-bg, #D8EEDC) !important;
+  font-family: var(--rm-font-body, 'Inter', sans-serif) !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+}
+
+body.manager-page .manager-layout {
+  display: flex !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+  background-color: var(--rm-bg, #D8EEDC) !important;
+  position: relative !important;
+}
+
+/* Main Content Area */
+body.manager-page .manager-main {
+  margin-left: var(--sidebar-w, 260px) !important;
+  width: calc(100% - var(--sidebar-w, 260px)) !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  padding: 28px 36px 48px !important;
+  box-sizing: border-box !important;
+  background-color: var(--rm-bg, #D8EEDC) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 22px !important;
+}
+
+@media (max-width: 768px) {
+  body.manager-page .manager-main {
+    margin-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    padding: 14px 14px 40px !important;
+  }
+}
+
+/* ==========================================================================
+   TOPBAR HEADER & ACTIONS (100% Adopted Admin Design)
+   ========================================================================== */
+body.manager-page .topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  padding: 0 !important;
+  margin: 0 0 6px 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  z-index: 100 !important;
+  box-shadow: none !important;
+}
+
+body.manager-page .topbar-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+body.manager-page .menu-toggle {
+  display: none !important;
+}
+
+body.manager-page .breadcrumb {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  margin: 0 !important;
+}
+
+body.manager-page .crumb-sep {
+  color: var(--rm-ink-faint, #A3B899) !important;
+  font-weight: 500 !important;
+}
+
+body.manager-page .crumb-active {
+  color: var(--rm-primary, #15803D) !important;
+  font-weight: 700 !important;
+}
+
+/* Right Header Actions */
+body.manager-page .header-actions,
+body.manager-page .topbar-right,
+body.manager-page .manager-top-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-left: auto !important;
+}
+
+/* Header Date Display */
+body.manager-page .header-date {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  padding: 6px 14px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
+  box-shadow: 0 2px 6px rgba(15, 42, 27, 0.04) !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+}
+
+body.manager-page .header-date svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  stroke: var(--rm-primary, #15803D) !important;
+  color: var(--rm-primary, #15803D) !important;
+  fill: none !important;
+  flex-shrink: 0 !important;
+}
+
+/* Notification Bell Circular Button */
+body.manager-page .icon-btn#notificationBtn,
+body.manager-page .icon-btn,
+body.manager-page .mgr-bell-btn {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  position: relative !important;
+  box-shadow: 0 2px 6px rgba(15, 42, 27, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  padding: 0 !important;
+  color: var(--rm-ink-mid, #2C4A38) !important;
+  box-sizing: border-box !important;
+}
+
+body.manager-page .icon-btn:hover,
+body.manager-page .mgr-bell-btn:hover {
+  background: #FFFFFF !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  box-shadow: 0 4px 12px rgba(15, 42, 27, 0.1) !important;
+  transform: translateY(-1px) !important;
+}
+
+body.manager-page .icon-btn svg,
+body.manager-page .mgr-bell-btn svg {
+  width: 19px !important;
+  height: 19px !important;
+  min-width: 19px !important;
+  max-width: 19px !important;
+  stroke: var(--rm-ink-mid, #2C4A38) !important;
+  fill: none !important;
+  flex-shrink: 0 !important;
+}
+
+body.manager-page .notif-badge,
+body.manager-page .mgr-bell-dot,
+body.manager-page #notifBadge {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  min-width: 8px !important;
+  height: 8px !important;
+  background: #EF4444 !important;
+  border-radius: 50% !important;
+  border: 2px solid #FFFFFF !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  padding: 0 !important;
+  box-sizing: content-box !important;
+}
+
+/* Profile Dropdown Popover Anchor */
+body.manager-page .rmsme-popover-anchor {
+  position: relative !important;
+  display: inline-block !important;
+}
+
+/* Manager Profile Pill Button */
+body.manager-page .profile-btn,
+body.manager-page .mgr-profile-pill {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 4px 14px 4px 5px !important;
+  height: 40px !important;
+  max-height: 40px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 6px rgba(15, 42, 27, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+body.manager-page .profile-btn:hover,
+body.manager-page .mgr-profile-pill:hover {
+  background: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(15, 42, 27, 0.1) !important;
+  transform: translateY(-1px) !important;
+}
+
+body.manager-page .profile-btn .avatar,
+body.manager-page .mgr-avatar {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #22C55E 0%, #15803D 100%) !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  text-transform: uppercase !important;
+}
+
+body.manager-page .profile-btn .profile-text,
+body.manager-page .mgr-name {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+body.manager-page .profile-btn .chev,
+body.manager-page .profile-btn svg.chev,
+body.manager-page .profile-btn svg,
+body.manager-page .mgr-chev {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  stroke: var(--rm-ink-dim, #5C7A68) !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  fill: none !important;
+  flex-shrink: 0 !important;
+  margin-left: 2px !important;
+}
+
+/* Profile Dropdown Popover (Aligned with Canonical Unified Design) */
+body.manager-page .mgr-profile-dropdown {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  width: 230px !important;
+  min-width: 220px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  padding: 8px !important;
+  z-index: 10001 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  box-sizing: border-box !important;
+}
+
+body.manager-page .mgr-profile-dropdown[hidden] {
+  display: none !important;
+}
+
+body.manager-page .mgr-profile-head {
+  padding: 8px 10px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+}
+
+body.manager-page .mgr-online-badge {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+body.manager-page .mgr-status-indicator {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: #22C55E !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25) !important;
+  flex-shrink: 0 !important;
+}
+
+body.manager-page .mgr-popover-divider {
+  height: 1px !important;
+  background: #E2E8F0 !important;
+  margin: 4px 0 !important;
+  border: none !important;
+}
+
+body.manager-page .mgr-popover-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #0F2A1B !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+body.manager-page .mgr-popover-item:hover {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #15803D !important;
+}
+
+body.manager-page .mgr-popover-item.text-danger {
+  color: #DC2626 !important;
+  font-weight: 600 !important;
+}
+
+body.manager-page .mgr-popover-item.text-danger:hover {
+  background: #FEE2E2 !important;
+  color: #B91C1C !important;
+}
+
+/* Page Title & Live Pill */
+body.manager-page .page-title {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 2px 0 0 0 !important;
+}
+
+body.manager-page .page-title-text {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+body.manager-page .page-title-text h1 {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+body.manager-page .page-title-text p {
+  font-size: 13.5px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  margin: 4px 0 0 0 !important;
+  font-weight: 500 !important;
+}
+
+body.manager-page .live-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 14px !important;
+  border-radius: 9999px !important;
+  background: #DCFCE7 !important;
+  color: #15803D !important;
+  border: 1px solid #BBF7D0 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 2px 6px rgba(22, 101, 52, 0.08) !important;
+}
+
+body.manager-page .live-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #22C55E !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3) !important;
+  animation: pulse-dot 2s infinite ease-in-out !important;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.7; }
+}
+
+/* ==========================================================================
+   TOP 4 PRIMARY KPI SUMMARY CARDS
+   ========================================================================== */
+body.manager-page .mgr-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+@media (max-width: 1199px) {
+  body.manager-page .mgr-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  body.manager-page .mgr-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+body.manager-page .mgr-kpi-card {
+  background: #FFFFFF !important;
+  border-radius: var(--rm-radius-card, 18px) !important;
+  padding: 22px 24px !important;
+  border: 1px solid var(--rm-card-border, rgba(20, 83, 45, 0.08)) !important;
+  box-shadow: var(--rm-shadow-md, 0 4px 20px -2px rgba(15, 42, 27, 0.07)) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  box-sizing: border-box !important;
+  transition: transform 0.25s var(--rm-ease-smooth), box-shadow 0.25s var(--rm-ease-smooth), border-color 0.25s ease !important;
+}
+
+body.manager-page .mgr-kpi-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--rm-shadow-lg, 0 16px 36px -4px rgba(15, 42, 27, 0.12)) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+}
+
+body.manager-page .mgr-kpi-icon {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+body.manager-page .mgr-kpi-icon.bg-green {
+  background-color: var(--rm-soft, #DCFCE7) !important;
+  color: var(--rm-primary, #15803D) !important;
+}
+
+body.manager-page .mgr-kpi-icon.bg-blue {
+  background-color: #DBEAFE !important;
+  color: #2563EB !important;
+}
+
+body.manager-page .mgr-kpi-icon.bg-red {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+}
+
+body.manager-page .mgr-kpi-icon.bg-slate {
+  background-color: #F1F5F9 !important;
+  color: #475569 !important;
+}
+
+body.manager-page .mgr-kpi-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+body.manager-page .mgr-kpi-body {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+}
+
+body.manager-page .mgr-kpi-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  margin-bottom: 2px !important;
+}
+
+body.manager-page .mgr-kpi-label.text-red {
+  color: #DC2626 !important;
+}
+
+body.manager-page .mgr-kpi-value {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 30px !important;
+  font-weight: 800 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  line-height: 1.1 !important;
+  margin: 1px 0 !important;
+  letter-spacing: -0.01em !important;
+}
+
+body.manager-page .mgr-kpi-value.text-red {
+  color: #DC2626 !important;
+}
+
+body.manager-page .mgr-kpi-sub {
+  font-size: 12px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  font-weight: 500 !important;
+}
+
+/* Split card for Today's Transactions */
+body.manager-page .mgr-tx-split {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 20px !important;
+  margin-top: 2px !important;
+}
+
+body.manager-page .mgr-tx-col {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+body.manager-page .mgr-tx-num.green {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  color: var(--rm-primary, #15803D) !important;
+  line-height: 1.1 !important;
+}
+
+body.manager-page .mgr-tx-num.blue {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  color: #2563EB !important;
+  line-height: 1.1 !important;
+}
+
+body.manager-page .mgr-tx-lbl {
+  font-size: 11.5px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  font-weight: 500 !important;
+}
+
+/* ==========================================================================
+   2-COLUMN SECTION ROWS & DASHBOARD CARDS
+   ========================================================================== */
+body.manager-page .mgr-grid-2col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 20px !important;
+  width: 100% !important;
+}
+
+body.manager-page .mgr-dashboard-card {
+  background: #FFFFFF !important;
+  border-radius: var(--rm-radius-card, 18px) !important;
+  padding: 24px !important;
+  border: 1px solid var(--rm-card-border, rgba(20, 83, 45, 0.08)) !important;
+  box-shadow: var(--rm-shadow-md, 0 4px 20px -2px rgba(15, 42, 27, 0.07)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  min-height: 290px !important;
+  transition: transform 0.25s var(--rm-ease-smooth), box-shadow 0.25s var(--rm-ease-smooth), border-color 0.25s ease !important;
+}
+
+body.manager-page .mgr-dashboard-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--rm-shadow-lg, 0 16px 36px -4px rgba(15, 42, 27, 0.12)) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+}
+
+body.manager-page .mgr-card-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 18px !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+body.manager-page .mgr-card-title-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+body.manager-page .mgr-badge-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 38px !important;
+}
+
+body.manager-page .mgr-badge-icon.badge-green {
+  background-color: var(--rm-soft, #DCFCE7) !important;
+  color: var(--rm-primary, #15803D) !important;
+}
+
+body.manager-page .mgr-badge-icon.badge-red {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+}
+
+body.manager-page .mgr-badge-icon svg {
+  width: 19px !important;
+  height: 19px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+body.manager-page .mgr-card-text h3 {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  margin: 0 !important;
+  line-height: 1.25 !important;
+}
+
+body.manager-page .mgr-card-text p {
+  font-size: 12.5px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  margin: 3px 0 0 0 !important;
+  font-weight: 500 !important;
+}
+
+/* Pill Dropdown Select */
+body.manager-page .mgr-pill-dropdown {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  border-radius: 9999px !important;
+  background: #FFFFFF !important;
+  border: 1px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink-mid, #2C4A38) !important;
+  cursor: pointer !important;
+  box-shadow: var(--rm-shadow-sm) !important;
+  transition: all 0.2s var(--rm-ease-smooth) !important;
+}
+
+body.manager-page .mgr-pill-dropdown:hover {
+  background: #F8FCF9 !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: var(--rm-primary, #15803D) !important;
+}
+
+body.manager-page .mgr-pill-dropdown select {
+  border: none !important;
+  background: transparent !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: inherit !important;
+  cursor: pointer !important;
+  outline: none !important;
+  padding-right: 4px !important;
+  font-family: inherit !important;
+}
+
+/* Card Header "View All ->" Link */
+body.manager-page .mgr-header-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--rm-primary, #15803D) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  background: rgba(34, 197, 94, 0.08) !important;
+  transition: all 0.2s ease !important;
+}
+
+body.manager-page .mgr-header-link:hover {
+  background: rgba(34, 197, 94, 0.16) !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  transform: translateX(2px) !important;
+}
+
+body.manager-page .mgr-header-link svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+/* --- Card 1: Inventory Status Layout --- */
+body.manager-page .inv-status-layout {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  flex: 1 !important;
+  padding: 6px 10px 10px !important;
+}
+
+body.manager-page .donut-chart-container {
+  position: relative !important;
+  width: 170px !important;
+  height: 170px !important;
+  min-width: 170px !important;
+}
+
+body.manager-page .donut-center-text {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  text-align: center !important;
+  pointer-events: none !important;
+}
+
+body.manager-page .donut-center-text .num {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  line-height: 1 !important;
+  display: block !important;
+}
+
+body.manager-page .donut-center-text .lbl {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  margin-top: 2px !important;
+  display: block !important;
+}
+
+body.manager-page .inv-status-legend {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+  padding-left: 20px !important;
+}
+
+body.manager-page .legend-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 13.5px !important;
+}
+
+body.manager-page .legend-name {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+}
+
+body.manager-page .legend-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+body.manager-page .legend-dot.dot-avail { background-color: var(--rm-mid, #22C55E) !important; }
+body.manager-page .legend-dot.dot-low   { background-color: #EAB308 !important; }
+body.manager-page .legend-dot.dot-out   { background-color: #EF4444 !important; }
+
+body.manager-page .legend-count {
+  font-weight: 700 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  margin-left: auto !important;
+  margin-right: 28px !important;
+}
+
+body.manager-page .legend-pct {
+  font-weight: 600 !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  width: 38px !important;
+  text-align: right !important;
+}
+
+/* --- Card 2: Low Stock Alerts List --- */
+body.manager-page .low-stock-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  flex: 1 !important;
+}
+
+body.manager-page .low-stock-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+body.manager-page .low-stock-item:hover {
+  background-color: rgba(220, 252, 231, 0.35) !important;
+  transform: translateX(2px) !important;
+}
+
+body.manager-page .low-stock-thumb {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  border-radius: 10px !important;
+  object-fit: cover !important;
+  background-color: #F8FCF9 !important;
+  border: 1px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
+}
+
+body.manager-page .low-stock-info {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+body.manager-page .low-stock-title {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px !important;
+}
+
+body.manager-page .low-stock-sub {
+  font-size: 12px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  font-weight: 500 !important;
+}
+
+body.manager-page .low-stock-badge {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+  margin-right: 8px !important;
+}
+
+body.manager-page .row-arrow {
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+/* --- Card 3: Top 5 Most Used Materials --- */
+body.manager-page .top5-chart-box {
+  flex: 1 !important;
+  position: relative !important;
+  height: 220px !important;
+  width: 100% !important;
+}
+
+/* ==========================================================================
+   2-COLUMN MAIN SECTIONS ARCHITECTURE (Matching Reference Image Exact)
+   ========================================================================== */
+body.manager-page .mgr-main-columns {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 20px !important;
+  width: 100% !important;
+  align-items: start !important;
+}
+
+body.manager-page .mgr-column {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+
+/* --- Recent Activity Table (Left Column Card 3) --- */
+body.manager-page .mgr-recent-table-wrap {
+  width: 100% !important;
+  overflow-x: auto !important;
+  margin-top: 4px !important;
+}
+
+body.manager-page .mgr-recent-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  text-align: left !important;
+  font-size: 13px !important;
+}
+
+body.manager-page .mgr-recent-table th {
+  padding: 13px 18px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  background: #15803D !important;
+  border-bottom: 2px solid #14532D !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  white-space: nowrap !important;
+}
+
+body.manager-page .mgr-recent-table thead tr th:first-child,
+body.manager-page .mgr-recent-table th:first-child {
+  border-top-left-radius: 10px !important;
+}
+
+body.manager-page .mgr-recent-table thead tr th:last-child,
+body.manager-page .mgr-recent-table th:last-child {
+  border-top-right-radius: 10px !important;
+}
+
+body.manager-page .mgr-recent-table td {
+  padding: 12px 12px !important;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.06) !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  vertical-align: middle !important;
+}
+
+body.manager-page .mgr-recent-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+body.manager-page .mgr-recent-table tr:hover td {
+  background-color: rgba(220, 252, 231, 0.25) !important;
+}
+
+body.manager-page .mgr-user-cell {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-weight: 600 !important;
+}
+
+body.manager-page .mgr-user-avatar-chip {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+body.manager-page .mgr-user-avatar-chip.chip-blue   { background-color: #DBEAFE !important; color: #1D4ED8 !important; }
+body.manager-page .mgr-user-avatar-chip.chip-green  { background-color: #DCFCE7 !important; color: #15803D !important; }
+body.manager-page .mgr-user-avatar-chip.chip-teal   { background-color: #CCFBF1 !important; color: #0F766E !important; }
+body.manager-page .mgr-user-avatar-chip.chip-orange { background-color: #FFEDD5 !important; color: #C2410C !important; }
+
+body.manager-page .mgr-ref-cell {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+}
+
+body.manager-page .mgr-status-pill {
+  display: inline-block !important;
+  padding: 3px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: capitalize !important;
+}
+
+body.manager-page .mgr-status-pill.status-pending {
+  background-color: #FEF3C7 !important;
+  color: #B45309 !important;
+}
+
+body.manager-page .mgr-status-pill.status-approved {
+  background-color: #DCFCE7 !important;
+  color: #15803D !important;
+}
+
+body.manager-page .mgr-status-pill.status-rejected {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+}
+
+/* --- Pending Transactions List (Right Column Card 1) --- */
+body.manager-page .pending-tx-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  flex: 1 !important;
+}
+
+body.manager-page .pending-tx-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  text-decoration: none !important;
+  background: #F8FCF9 !important;
+  border: 1px solid var(--rm-line-soft, rgba(20, 83, 45, 0.06)) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+body.manager-page .pending-tx-item:hover {
+  background: #FFFFFF !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  box-shadow: var(--rm-shadow-sm) !important;
+  transform: translateX(2px) !important;
+}
+
+body.manager-page .tx-dir-icon {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+body.manager-page .tx-dir-icon.dir-receive {
+  background-color: #DCFCE7 !important;
+  color: #15803D !important;
+}
+
+body.manager-page .tx-dir-icon.dir-disburse {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+}
+
+body.manager-page .tx-dir-icon svg {
+  width: 17px !important;
+  height: 17px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  fill: none !important;
+}
+
+body.manager-page .pending-tx-info {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+body.manager-page .pending-tx-title {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px !important;
+}
+
+body.manager-page .pending-tx-sub {
+  font-size: 12px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+  font-weight: 500 !important;
+}
+
+/* --- Smart Stock Alerts List (Right Column Card 2) --- */
+body.manager-page .smart-alerts-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  flex: 1 !important;
+}
+
+body.manager-page .smart-alert-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+body.manager-page .smart-alert-item:hover {
+  background-color: rgba(220, 252, 231, 0.35) !important;
+  transform: translateX(2px) !important;
+}
+
+body.manager-page .smart-alert-thumb {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  border-radius: 10px !important;
+  object-fit: cover !important;
+  background-color: #F8FCF9 !important;
+  border: 1px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
+}
+
+body.manager-page .smart-alert-indicator {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+body.manager-page .smart-alert-indicator.ind-red { color: #DC2626 !important; }
+body.manager-page .smart-alert-indicator.ind-amber { color: #D97706 !important; }
+body.manager-page .smart-alert-indicator.ind-green { color: #16A34A !important; }
+
+body.manager-page .smart-alert-indicator svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  fill: none !important;
+}
+
+body.manager-page .smart-alert-info {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+body.manager-page .smart-alert-header {
+  font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px !important;
+}
+
+body.manager-page .smart-alert-msg {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  margin-bottom: 2px !important;
+}
+
+body.manager-page .smart-alert-msg.msg-red { color: #DC2626 !important; }
+body.manager-page .smart-alert-msg.msg-amber { color: #D97706 !important; }
+body.manager-page .smart-alert-msg.msg-green { color: #16A34A !important; }
+
+body.manager-page .smart-alert-sub {
+  font-size: 11.5px !important;
+  color: var(--rm-ink-dim, #5C7A68) !important;
+}
+
+body.manager-page .smart-alert-badge {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+  margin-right: 6px !important;
+}
+
+body.manager-page .smart-alert-badge.badge-low {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+}
+
+body.manager-page .smart-alert-badge.badge-watch {
+  background-color: #FEF3C7 !important;
+  color: #B45309 !important;
+}
+
+body.manager-page .smart-alert-badge.badge-suff {
+  background-color: #DCFCE7 !important;
+  color: #15803D !important;
+}
+
+/* --- Forecast Summary Chart Box (Right Column Card 3) --- */
+body.manager-page .forecast-summary-legend {
+  display: flex !important;
+  align-items: center !important;
+  gap: 18px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--rm-ink-mid, #2C4A38) !important;
+  margin-bottom: 8px !important;
+}
+
+body.manager-page .forecast-legend-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+body.manager-page .forecast-legend-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #22C55E !important;
+}
+
+body.manager-page .forecast-legend-line {
+  width: 16px !important;
+  height: 2px !important;
+  border-top: 2px dashed #22C55E !important;
+}
+
+body.manager-page .forecast-summary-chart-box {
+  flex: 1 !important;
+  position: relative !important;
+  height: 160px !important;
+  width: 100% !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  body.manager-page .mgr-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  body.manager-page .mgr-main-columns {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body.manager-page .sidebar {
+    display: none !important;
+  }
+  body.manager-page .manager-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 16px !important;
+  }
+  body.manager-page .mgr-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+  body.manager-page .inv-status-layout {
+    flex-direction: column !important;
+  }
+}
+
+/* Strict Popover and Dropdown Hidden State */
+body.manager-page .rmsme-popover[hidden],
+body.manager-page .mgr-profile-dropdown[hidden],
+body.manager-page #mgrProfileDropdown[hidden],
+body.manager-page #rmsmeProfile[hidden],
+body.manager-page [hidden] {
+  display: none !important;
+}
+

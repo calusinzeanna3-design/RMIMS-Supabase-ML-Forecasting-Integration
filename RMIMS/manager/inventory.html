@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Inventory | RMSME Manager</title>
+    <link rel="icon" href="../assets/favicon-64.png" type="image/png">
+
+    <!-- Google Fonts: Inter, Sora -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Admin Shell (Unified Theme matching Inspo Image 2) -->
+    <link rel="stylesheet" href="../css/admin-shell.css">
+    <link rel="stylesheet" href="../css/manager-theme.css">
+    <!-- Manager Styles for modals and specific components -->
+    <link rel="stylesheet" href="../css/manager-inventory.css?v=20261015_v3">
+    <!-- SheetJS for Excel (.xlsx/.xls) support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* Prevent sidebar position conflicts and enforce modern flex shell */
+        .admin-app {
+            display: flex !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            overflow: hidden !important;
+            background: var(--rm-bg, #F0FDF4) !important;
+        }
+
+        @media (min-width: 769px) {
+            .admin-sidebar {
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                bottom: auto !important;
+                width: var(--sidebar-w, 260px) !important;
+                min-width: var(--sidebar-w, 260px) !important;
+                max-width: var(--sidebar-w, 260px) !important;
+                height: 100% !important;
+                flex-shrink: 0 !important;
+                z-index: 50 !important;
+            }
+        }
+
+        .admin-main {
+            flex: 1 !important;
+            min-width: 0 !important;
+            margin-left: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            background: var(--rm-bg, #F0FDF4) !important;
+        }
+
+        /* Solid Complimentary Table Header matching inspo Image 2 */
+        table.inv-main-table thead th,
+        #overviewTable thead th {
+            background-color: #15803D !important;
+            color: #FFFFFF !important;
+            font-size: 11.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.05em !important;
+            text-transform: uppercase !important;
+            padding: 14px 18px !important;
+            border-bottom: 2px solid #14532D !important;
+            white-space: nowrap !important;
+        }
+
+        table.inv-main-table tbody td,
+        #overviewTable tbody td {
+            padding: 14px 18px !important;
+            font-size: 13px !important;
+            color: #334155 !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            vertical-align: middle !important;
+        }
+
+        /* Whole-Line Table Row Status Colors */
+        #overviewTable tbody tr.row-status-good,
+        #overviewTable tbody tr.row-status-good > td {
+            background-color: #DCFCE7 !important;
+            border-bottom: 1px solid #BBF7D0 !important;
+        }
+        #overviewTable tbody tr.row-status-good:hover,
+        #overviewTable tbody tr.row-status-good:hover > td {
+            background-color: #BBF7D0 !important;
+        }
+        #overviewTable tbody tr.row-status-good > td:first-child {
+            border-left: 5px solid #16A34A !important;
+        }
+
+        #overviewTable tbody tr.row-status-low,
+        #overviewTable tbody tr.row-status-low > td {
+            background-color: #FEF3C7 !important;
+            border-bottom: 1px solid #FDE68A !important;
+        }
+        #overviewTable tbody tr.row-status-low:hover,
+        #overviewTable tbody tr.row-status-low:hover > td {
+            background-color: #FDE68A !important;
+        }
+        #overviewTable tbody tr.row-status-low > td:first-child {
+            border-left: 5px solid #D97706 !important;
+        }
+
+        #overviewTable tbody tr.row-status-out,
+        #overviewTable tbody tr.row-status-out > td {
+            background-color: #FEE2E2 !important;
+            border-bottom: 1px solid #FECACA !important;
+        }
+        #overviewTable tbody tr.row-status-out:hover,
+        #overviewTable tbody tr.row-status-out:hover > td {
+            background-color: #FECACA !important;
+        }
+        #overviewTable tbody tr.row-status-out > td:first-child {
+            border-left: 5px solid #DC2626 !important;
+        }
+
+        /* Search input refined styling */
+        .topbar-search {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .topbar-search svg {
+            position: absolute;
+            left: 12px;
+            width: 16px;
+            height: 16px;
+            stroke: var(--rm-ink-dim);
+            pointer-events: none;
+        }
+        .search-input {
+            height: 38px !important;
+            padding: 0 14px 0 38px !important;
+            border-radius: 10px !important;
+            background: #FFFFFF !important;
+            border: 1px solid var(--rm-line) !important;
+            font-size: 13px !important;
+            color: var(--rm-ink) !important;
+            width: 100% !important;
+            outline: none !important;
+            box-sizing: border-box !important;
+            transition: all 0.2s ease !important;
+        }
+        .search-input:focus {
+            border-color: var(--rm-mid) !important;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
+        }
+
+        /* Refined Custom Dropdown Select */
+        .dropdown-select {
+            height: 38px !important;
+            padding: 0 32px 0 12px !important;
+            border-radius: 10px !important;
+            background: #F1FAF4 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232C4A38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat calc(100% - 10px) center !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            border: 1px solid var(--rm-line) !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            color: var(--rm-ink-mid) !important;
+            cursor: pointer !important;
+            outline: none !important;
+            box-sizing: border-box !important;
+            transition: all 0.2s ease !important;
+        }
+        .dropdown-select:hover {
+            background-color: #E8F7ED !important;
+            border-color: rgba(34, 197, 94, 0.4) !important;
+        }
+        .dropdown-select:focus {
+            border-color: var(--rm-mid) !important;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
+        }
+
+        /* Clear filters button */
+        .btn-clear-filters {
+            height: 38px !important;
+            box-sizing: border-box !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 14px;
+            border-radius: 10px;
+            border: 1px solid var(--rm-line);
+            background: #F1FAF4;
+            color: var(--rm-ink-mid);
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-clear-filters:hover {
+            background: #FFFFFF;
+            color: var(--rm-ink);
+            border-color: var(--rm-mid);
+        }
+
+        /* Pagination controls */
+        .inv-page-btn,
+        .pagination-btn {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 10px;
+            border-radius: 8px;
+            border: 1px solid var(--rm-line);
+            background: #FFFFFF;
+            color: var(--rm-ink);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .inv-page-btn:hover:not(:disabled):not(.disabled),
+        .pagination-btn:hover:not(:disabled):not(.disabled) {
+            background: #F1FAF4;
+            border-color: var(--rm-mid);
+            color: var(--rm-primary);
+        }
+        .inv-page-btn.active,
+        .pagination-btn.active {
+            background: var(--rm-primary, #15803D) !important;
+            border-color: var(--rm-primary, #15803D) !important;
+            color: #FFFFFF !important;
+            font-weight: 700 !important;
+        }
+        .inv-page-btn:disabled,
+        .inv-page-btn.disabled,
+        .inv-page-btn.active:disabled,
+        .inv-page-btn.active.disabled,
+        .pagination-btn:disabled,
+        .pagination-btn.disabled,
+        .pagination-btn.active:disabled,
+        .pagination-btn.active.disabled {
+            opacity: 0.38 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            color: #94A3B8 !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        /* Action buttons on card header */
+        .card-action-btn-emerald {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #15803D !important;
+            background-color: #15803D !important;
+            color: #FFFFFF !important;
+            border: 1px solid #166534 !important;
+            border-radius: 9px !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(21, 128, 61, 0.25) !important;
+            transition: all 0.15s ease !important;
+        }
+        .card-action-btn-emerald:hover {
+            background: #166534 !important;
+            box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35) !important;
+        }
+
+        .card-action-btn-outline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: #FFFFFF !important;
+            color: #1E293B !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 9px !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            cursor: pointer;
+            transition: all 0.15s ease !important;
+        }
+        .card-action-btn-outline:hover {
+            background: #F8FAFC !important;
+            border-color: #94A3B8 !important;
+            color: #0F172A !important;
+        }
+    </style>
+</head>
+
+<body class="manager-page">
+
+    <div class="admin-app">
+
+        <!-- SIDEBAR (Auto-populated by rmsme-shell.js with active "My Inventory" item) -->
+        <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+        <!-- MAIN WRAPPER -->
+        <div class="admin-main">
+
+            <!-- HEADER (Exact Inspo Image 2 topbar hierarchy) -->
+            <header class="admin-topbar">
+                <div class="topbar-left">
+                    <div class="topbar-text-group">
+                        <span class="topbar-kicker">STORE OPERATIONS</span>
+                        <h1 class="topbar-title">Raw Materials Inventory</h1>
+                        <p class="topbar-subtitle">Main raw materials management module. Catalog, stock levels, specifications, and operational status.</p>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <!-- Live Date & Time Pill -->
+                    <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+                    </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                                </div>
+            </header>
+
+            <!-- SCROLLABLE CONTENT BODY -->
+            <main class="admin-scroll-body">
+
+                <!-- 4 KPI METRIC STAT CARDS (Matches inspo Image 2 layout) -->
+                <div class="admin-kpi-grid" id="invKpiGrid">
+                    <!-- Card 1: Total Materials -->
+                    <div class="kpi-stat-card">
+                        <div class="kpi-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                <line x1="12" y1="22.08" x2="12" y2="12" />
+                            </svg>
+                        </div>
+                        <div class="kpi-meta">
+                            <span class="kpi-label">Total Materials</span>
+                            <div class="kpi-value-row">
+                                <span class="kpi-number" id="kpiMgrTotalMaterials">0</span>
+                                <span class="kpi-trend up">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="12" y1="19" x2="12" y2="5" />
+                                        <polyline points="5 12 12 5 19 12" />
+                                    </svg>
+                                    Live
+                                </span>
+                            </div>
+                            <span class="kpi-subtext">Cataloged raw materials</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Healthy Stock -->
+                    <div class="kpi-stat-card">
+                        <div class="kpi-icon-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                            </svg>
+                        </div>
+                        <div class="kpi-meta">
+                            <span class="kpi-label">Healthy Stock</span>
+                            <div class="kpi-value-row">
+                                <span class="kpi-number" id="kpiMgrGoodStock">0</span>
+                                <span class="kpi-trend up">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="12" y1="19" x2="12" y2="5" />
+                                        <polyline points="5 12 12 5 19 12" />
+                                    </svg>
+                                    Live
+                                </span>
+                            </div>
+                            <span class="kpi-subtext">Above minimum buffer</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Low Stock -->
+                    <div class="kpi-stat-card">
+                        <div class="kpi-icon-box amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                        </div>
+                        <div class="kpi-meta">
+                            <span class="kpi-label">Low Stock</span>
+                            <div class="kpi-value-row">
+                                <span class="kpi-number" id="kpiMgrLowStock">0</span>
+                                <span class="kpi-trend down">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <polyline points="19 12 12 19 5 12" />
+                                    </svg>
+                                    Alert
+                                </span>
+                            </div>
+                            <span class="kpi-subtext">Approaching threshold</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Critical / Out of Stock -->
+                    <div class="kpi-stat-card">
+                        <div class="kpi-icon-box coral">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="15" y1="9" x2="9" y2="15" />
+                                <line x1="9" y1="9" x2="15" y2="15" />
+                            </svg>
+                        </div>
+                        <div class="kpi-meta">
+                            <span class="kpi-label">Critical / Out</span>
+                            <div class="kpi-value-row">
+                                <span class="kpi-number" id="kpiMgrCriticalStock">0</span>
+                                <span class="kpi-trend down">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <polyline points="19 12 12 19 5 12" />
+                                    </svg>
+                                    Urgent
+                                </span>
+                            </div>
+                            <span class="kpi-subtext">Depleted or urgent reorder</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAIN CARD: RAW MATERIALS INVENTORY (Matches inspo Image 2 layout) -->
+                <section class="admin-card">
+                    <!-- Card Header -->
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <div class="card-icon-badge emerald">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                                </svg>
+                            </div>
+                            <div class="card-headings">
+                                <h2 class="card-title">Raw Materials Inventory Records</h2>
+                                <span class="card-subtitle" id="mgrInvCountLabel">Showing 0 of 0 raw materials</span>
+                            </div>
+                        </div>
+
+                        <div class="card-actions" style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="card-action-btn-outline" id="btnOpenFinishedFoodPopup"
+                                onclick="window.openFinishedFoodCatalogPopup && window.openFinishedFoodCatalogPopup()"
+                                title="Open Finished Food formulations and raw materials">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                                </svg>
+                                Finished Food
+                            </button>
+
+                            <button type="button" class="card-action-btn-outline" id="cardExportBtn"
+                                onclick="window.openExportChoicesModal && window.openExportChoicesModal()"
+                                title="Export catalog to CSV / Excel / PDF">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 15V4M12 4L8 8M12 4L16 8" />
+                                    <path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" />
+                                </svg>
+                                Export
+                            </button>
+
+                            <button type="button" class="card-action-btn-outline" id="cardImportBtn"
+                                onclick="window.openImportRawMaterialsModal && window.openImportRawMaterialsModal()"
+                                title="Import raw materials from CSV / Excel file">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 3v12m0 0l-4-4m4 4l4-4" />
+                                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                                </svg>
+                                Import
+                            </button>
+
+                            <button type="button" class="card-action-btn-emerald" id="cardAddMaterialBtn"
+                                onclick="window.openAddMaterialModal && window.openAddMaterialModal()"
+                                title="Add a new raw material to catalog">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M12 5V19M5 12H19" />
+                                </svg>
+                                Add Material
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SEARCH, FILTERS & ACTIONS TOOLBAR -->
+                    <div class="inv-filter-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; background: #F8FCF9; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--rm-line);">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+                            <!-- Search Box -->
+                            <div class="topbar-search" style="flex: 1 1 200px; min-width: 180px; max-width: 360px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" class="search-input" id="invSearchInput"
+                                    placeholder="Search by Material Name, Spec, ID..." autocomplete="off" style="width: 100%;">
+                                <button type="button" class="search-clear-btn" id="clearSearchInputBtn"
+                                    style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; font-size:16px; cursor:pointer; color:#64748B;"
+                                    title="Clear search">&times;</button>
+                            </div>
+
+                            <!-- Status Filter -->
+                            <select id="invStatusFilter" class="dropdown-select" title="Filter by Stock Status">
+                                <option value="all">All Statuses</option>
+                                <option value="Good">Good</option>
+                                <option value="Low">Low</option>
+                                <option value="Out of Stock">Out of Stock</option>
+                            </select>
+
+                            <!-- Sort Filter -->
+                            <select id="invSortFilter" class="dropdown-select" title="Sort Order">
+                                <option value="chronological" selected>Chronological (Item Code)</option>
+                                <option value="az">Name: A – Z</option>
+                                <option value="za">Name: Z – A</option>
+                                <option value="stock_asc">Stock: Low to High</option>
+                                <option value="stock_desc">Stock: High to Low</option>
+                                <option value="latest">Recently Updated</option>
+                            </select>
+                        </div>
+
+                        <!-- Clear Filters Button -->
+                        <button type="button" class="btn-clear-filters" id="invClearFiltersBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="1 4 1 10 7 10" />
+                                <polyline points="23 20 23 14 17 14" />
+                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+                            </svg>
+                            <span>Clear Filters</span>
+                        </button>
+                    </div>
+
+                    <!-- RAW MATERIALS INVENTORY TABLE -->
+                    <div class="table-responsive" id="overviewTableWrapper">
+                        <table class="admin-table inv-main-table" id="overviewTable">
+                            <thead id="overviewTableHead">
+                                <tr style="background-color: #15803D !important;">
+                                    <th style="width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Code Raw Materials</th>
+                                    <th style="background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Raw Material Name</th>
+                                    <th style="text-align: right; width: 110px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Current Stock</th>
+                                    <th style="text-align: right; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Min Stock</th>
+                                    <th style="width: 70px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
+                                    <th style="width: 120px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Date</th>
+                                    <th style="width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Time</th>
+                                    <th style="text-align: center; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Status</th>
+                                    <th style="text-align: center; width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-right-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overviewTableBody">
+                                <!-- Populated dynamically by manager-inventory.js -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- FOOTER PAGINATION BAR (Matches inspo Image 2 layout) -->
+                    <div class="table-pagination-footer">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <span class="pagination-counter" id="overviewResultCount">Showing 0 entries</span>
+                            <div class="page-size-selector" style="display: flex; align-items: center; gap: 6px;">
+                                <label for="overviewPageSize"
+                                    style="font-size: 12px; color: var(--rm-ink-dim); font-weight: 600;">Rows:</label>
+                                <select id="overviewPageSize" class="dropdown-select"
+                                    style="padding: 0 28px 0 8px !important; font-size: 12px; height: 32px !important;">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pagination-controls" id="overviewPaginationBtns">
+                            <button type="button" class="pagination-btn inv-page-btn disabled" disabled aria-label="Previous Page" title="Previous Page">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <button type="button" class="pagination-btn inv-page-btn disabled" disabled>1</button>
+                            <button type="button" class="pagination-btn inv-page-btn disabled" disabled aria-label="Next Page" title="Next Page">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                </section>
+
+            </main>
+
+        </div>
+
+    </div>
+
+    <!-- ==========================================================
+     MODAL 1: ADD RAW MATERIAL
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalAddMaterial" hidden>
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <h3>Add New Raw Material</h3>
+                    <p>Register a new raw material record in the inventory catalog</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="addModalClose"
+                    onclick="window.closeAddModal && window.closeAddModal()" aria-label="Close modal">&times;</button>
+            </div>
+
+            <form id="addMaterialForm">
+                <div class="mgr-modal-body">
+                    <div class="mgr-form-grid">
+                        <div class="mgr-field-group">
+                            <label for="addMatId">Material ID <span class="req">*</span></label>
+                            <input type="text" id="addMatId" placeholder="RM-060" required readonly
+                                style="background: #F1F5F9; color: #334155; font-weight: 700; cursor: not-allowed; letter-spacing: 0.05em;">
+                            <small style="display:block; color:#64748B; font-size:11px; margin-top:3px;">Automatically
+                                assigned sequential code</small>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="addMatName">Raw Material Name <span class="req">*</span></label>
+                            <input type="text" id="addMatName" placeholder="e.g. Salt, Sea Salt, Sugar" required
+                                autocomplete="off">
+                            <div id="addMatNameFeedback" style="font-size:11.5px; margin-top:4px; display:none;"></div>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="addMatUnit">Unit of Measure <span class="req">*</span></label>
+                            <select id="addMatUnit" required>
+                                <option value="" disabled selected>-- Select Unit --</option>
+                                <option value="kg">kg (Kilograms)</option>
+                                <option value="g">g (Grams)</option>
+                                <option value="L">L (Liters)</option>
+                                <option value="ml">ml (Milliliters)</option>
+                                <option value="pcs">pcs (Pieces)</option>
+                                <option value="sacks">sacks</option>
+                                <option value="tins">tins</option>
+                                <option value="boxes">boxes</option>
+                            </select>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="addMatCurrentStock">Initial Current Stock <span class="req">*</span></label>
+                            <input type="number" id="addMatCurrentStock" min="0" step="any" placeholder="0" required>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="addMatMinStock">Minimum Stock Threshold <span class="req">*</span></label>
+                            <input type="number" id="addMatMinStock" min="0" step="any" placeholder="10" required>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label>Added By</label>
+                            <input type="text" id="addMatAddedBy" value="Manager" readonly>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label>Date Added</label>
+                            <input type="text" id="addMatDateAdded" value="Today (Auto-assigned)" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mgr-modal-footer">
+                    <button type="button" class="btn-secondary" id="addModalCancelBtn"
+                        onclick="window.closeAddModal && window.closeAddModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="addModalSaveBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Save Material
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL 2: EDIT RAW MATERIAL
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalEditMaterial" hidden>
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <h3>Edit Raw Material</h3>
+                    <p id="editModalSubtitle">Update material specifications and catalog settings</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="editModalClose"
+                    aria-label="Close modal">&times;</button>
+            </div>
+
+            <form id="editMaterialForm">
+                <div class="mgr-modal-body">
+                    <div class="mgr-form-grid">
+                        <div class="mgr-field-group">
+                            <label for="editMatId">Material ID</label>
+                            <input type="text" id="editMatId" readonly>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="editMatName">Raw Material Name <span class="req">*</span></label>
+                            <input type="text" id="editMatName" required>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="editMatUnit">Unit of Measure <span class="req">*</span></label>
+                            <select id="editMatUnit" required>
+                                <option value="" disabled selected>-- Select Unit --</option>
+                                <option value="kg">kg (Kilograms)</option>
+                                <option value="g">g (Grams)</option>
+                                <option value="L">L (Liters)</option>
+                                <option value="ml">ml (Milliliters)</option>
+                                <option value="pcs">pcs (Pieces)</option>
+                                <option value="sacks">sacks</option>
+                                <option value="tins">tins</option>
+                                <option value="boxes">boxes</option>
+                            </select>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="editMatCurrentStock">Current Stock <span class="req">*</span></label>
+                            <input type="number" id="editMatCurrentStock" min="0" step="any" required>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="editMatMinStock">Minimum Stock Threshold <span class="req">*</span></label>
+                            <input type="number" id="editMatMinStock" min="0" step="any" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mgr-modal-footer">
+                    <button type="button" class="btn-secondary" id="editModalCancelBtn">Cancel</button>
+                    <button type="submit" class="btn-primary" id="editModalSaveBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL 3: INFORMATION (VIEW DETAILS)
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalMaterialInfo" hidden>
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group" style="display:flex; align-items:center; gap:12px;">
+                    <span class="mgr-mat-badge" id="infoMatId" style="font-size:13px; padding:4px 10px;">RM-001</span>
+                    <div>
+                        <h3 id="infoMatName" style="font-size:18px;">Sugar</h3>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="mgr-status-badge status-instock" id="infoMatStatus">Available</span>
+                    <button type="button" class="mgr-modal-close-btn" id="infoModalClose"
+                        aria-label="Close modal">&times;</button>
+                </div>
+            </div>
+
+            <div class="mgr-modal-body">
+                <!-- Metric Cards Row -->
+                <div class="mgr-info-metric-card">
+                    <div class="mgr-metric-subcard">
+                        <span class="lbl">Current Stock</span>
+                        <strong class="val" id="infoCurrentStock" style="color:#15803D;">--</strong>
+                    </div>
+                    <div class="mgr-metric-subcard">
+                        <span class="lbl">Minimum Stock</span>
+                        <strong class="val" id="infoMinStock" style="color:#B45309;">--</strong>
+                    </div>
+                </div>
+
+                <!-- Full Spec Grid -->
+                <div class="mgr-info-spec-grid">
+                    <div class="mgr-spec-item">
+                        <span class="k">Raw Material Name</span>
+                        <span class="v" id="infoRawMaterialName">—</span>
+                    </div>
+                    <div class="mgr-spec-item">
+                        <span class="k">Unit of Measure</span>
+                        <span class="v" id="infoUnit">—</span>
+                    </div>
+                    <div class="mgr-spec-item">
+                        <span class="k">Status</span>
+                        <span class="v" id="infoStatusText">—</span>
+                    </div>
+                    <div class="mgr-spec-item">
+                        <span class="k">Date Added</span>
+                        <span class="v" id="infoDateAdded">—</span>
+                    </div>
+                    <div class="mgr-spec-item">
+                        <span class="k">Last Updated</span>
+                        <span class="v" id="infoLastUpdated">—</span>
+                    </div>
+                    <div class="mgr-spec-item">
+                        <span class="k">Added By</span>
+                        <span class="v" id="infoAddedBy">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="infoActionHistoryBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    View History
+                </button>
+                <button type="button" class="btn-secondary" id="infoActionEditBtn">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Edit Material
+                </button>
+                <button type="button" class="btn-secondary" id="infoActionArchiveBtn" style="color:#DC2626;">
+                    Archive Material
+                </button>
+                <button type="button" class="btn-primary" id="infoModalCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL 4: VIEW HISTORY
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalMaterialHistory" hidden>
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <h3 id="histMatTitle">Material History &amp; Audit Trail</h3>
+                    <p>Chronological record of registrations, stock updates, edits, and status changes</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="historyModalClose"
+                    aria-label="Close modal">&times;</button>
+            </div>
+
+            <div class="mgr-modal-body">
+                <div class="mgr-history-list" id="materialHistoryList">
+                    <!-- Timeline injected dynamically -->
+                </div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-primary" id="historyModalCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL 5: ARCHIVE / RESTORE CONFIRMATION
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalConfirmAction" hidden>
+        <div class="mgr-modal-box" style="max-width: 440px;" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <h3 id="confirmModalTitle">Confirm Action</h3>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="confirmModalClose"
+                    aria-label="Close modal">&times;</button>
+            </div>
+
+            <div class="mgr-modal-body">
+                <p id="confirmModalMessage" style="font-size: 13.5px; color: #334155; line-height: 1.5; margin: 0;">
+                    Are you sure you want to perform this action?
+                </p>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="confirmModalCancelBtn">Cancel</button>
+                <button type="button" class="btn-primary" id="confirmModalActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL: RAW MATERIAL SPECIFICATIONS POPUP & UPDATE LIST
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalRawMaterialSpecsPopup" hidden>
+        <div class="mgr-modal-box modal-xl" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group" style="display:flex; align-items:center; gap:14px;">
+                    <div class="mgr-specs-folder-icon-large">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="#15803D" stroke="#15803D">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="specsPopupTitle">Raw Material Specifications</h3>
+                        <p id="specsPopupSubtitle" style="font-size:12.5px; color:#5C7A68; margin:2px 0 0;">Folder list
+                            &amp; itemized specifications catalog with live update list</p>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button type="button" class="btn-primary-sm" id="specsPopupAddNewBtn"
+                        style="font-size:12px; padding:6px 14px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        + Add Specification
+                    </button>
+                    <button type="button" class="mgr-modal-close-btn" id="specsPopupClose"
+                        aria-label="Close modal">&times;</button>
+                </div>
+            </div>
+
+            <div class="mgr-modal-body" style="padding: 20px 24px; max-height: 75vh; overflow-y: auto;">
+                <!-- Meta Bar -->
+                <div class="specs-popup-meta-bar" id="specsPopupMetaBar">
+                    <!-- Dynamically populated stats -->
+                </div>
+
+                <!-- Popup Search & Material Filter -->
+                <div
+                    style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+                    <div class="mgr-search-box" style="max-width:320px;">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="specsPopupSearchInput" placeholder="Filter specifications or name..."
+                            autocomplete="off">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label for="specsPopupMaterialSelect"
+                            style="font-size:12px; font-weight:600; color:#334155;">Raw Material Folder:</label>
+                        <select id="specsPopupMaterialSelect" class="mgr-select-filter"
+                            style="padding:6px 12px; font-size:12px;">
+                            <option value="all">All Raw Materials</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Specifications Table List -->
+                <div class="table-scroll"
+                    style="max-height: 280px; border: 1px solid #E2E8F0; border-radius: 10px; background:#FFFFFF;">
+                    <table class="inv-main-table" id="specsPopupTable" style="margin: 0;">
+                        <thead>
+                            <tr>
+                                <th>Raw Material Name</th>
+                                <th>Specification Name</th>
+                                <th>Unit</th>
+                                <th>Minimum Stock</th>
+                                <th>Current Stock</th>
+                                <th>Status</th>
+                                <th style="text-align: right; width: 100px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="specsPopupTableBody">
+                            <!-- Populated dynamically with specifications -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Inline Update Specification Form ("The Update List") -->
+                <div class="specs-update-panel" id="specsUpdatePanel" style="display:none;">
+                    <div class="specs-update-header">
+                        <h4 id="specsUpdateFormTitle" style="font-size:14px; font-weight:700; color:#0F2A1B; margin:0;">
+                            Update Specification: <span id="specsUpdateTargetName" style="color:#15803D;">--</span>
+                        </h4>
+                        <span class="mgr-mat-badge" id="specsUpdateTargetId">--</span>
+                    </div>
+                    <form id="specsInlineUpdateForm" style="margin-top:12px;">
+                        <input type="hidden" id="specsUpdateHiddenId">
+                        <input type="hidden" id="specsUpdateHiddenMode" value="edit">
+                        <div class="mgr-form-grid" style="grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <div class="mgr-field-group span-2">
+                                <label for="specsUpdateSpecName">Specification Name <span class="req">*</span></label>
+                                <input type="text" id="specsUpdateSpecName" required
+                                    placeholder="e.g. Refined White Sugar">
+                                <small style="color:#5C7A68; font-size:10.5px; margin-top:2px;">Specific form/type/grade
+                                    only. No quantity, price, or supplier.</small>
+                            </div>
+                            <div class="mgr-field-group">
+                                <label for="specsUpdateUnit">Unit <span class="req">*</span></label>
+                                <select id="specsUpdateUnit" required>
+                                    <option value="" disabled selected>-- Select Unit --</option>
+                                    <option value="kg">kg</option>
+                                    <option value="g">g</option>
+                                    <option value="L">L</option>
+                                    <option value="ml">ml</option>
+                                    <option value="pcs">pcs</option>
+                                    <option value="sacks">sacks</option>
+                                    <option value="tins">tins</option>
+                                    <option value="boxes">boxes</option>
+                                </select>
+                            </div>
+                            <div class="mgr-field-group">
+                                <label for="specsUpdateCurrentStock">Current Stock <span class="req">*</span></label>
+                                <input type="number" id="specsUpdateCurrentStock" min="0" step="any" required>
+                            </div>
+                            <div class="mgr-field-group">
+                                <label for="specsUpdateMinStock">Min Stock <span class="req">*</span></label>
+                                <input type="number" id="specsUpdateMinStock" min="0" step="any" required>
+                            </div>
+                            <div class="mgr-field-group">
+                                <label for="specsUpdateLocation">Storage Location</label>
+                                <input type="text" id="specsUpdateLocation" placeholder="e.g. Silo 1 / Shelf A">
+                            </div>
+                            <div class="mgr-field-group">
+                                <label for="specsUpdateSupplier">Supplier / Vendor</label>
+                                <input type="text" id="specsUpdateSupplier" placeholder="e.g. Northern Cane Mills">
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+                            <button type="button" class="btn-secondary-sm" id="specsUpdateCancelBtn">Cancel</button>
+                            <button type="submit" class="btn-primary-sm" id="specsUpdateSaveBtn">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                Save Updates to List
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="specsPopupDoneBtn">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL: FINISHED FOOD CATALOG POPUP & FOLDER LIST
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalFinishedFoodCatalogPopup" hidden>
+        <div class="mgr-modal-box modal-xl" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group" style="display:flex; align-items:center; gap:12px;">
+                    <div class="mgr-specs-folder-icon-large"
+                        style="background: rgba(217, 119, 6, 0.12); color: #D97706;">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#D97706" stroke-width="2">
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <h3>Finished Food &amp; Formulations</h3>
+                        </div>
+                        <p style="font-size:12.5px; color:#5C7A68; margin:2px 0 0;">Folder list of authentic finished
+                            food products and their specified recipe raw materials</p>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button type="button" class="btn-primary-sm" id="btnOpenAddFinishedProductPopup"
+                        style="font-size:12px; padding:6px 14px; background:#D97706; border-color:#D97706; color:#FFFFFF; display:inline-flex; align-items:center; gap:6px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Finished Product
+                    </button>
+                    <button type="button" class="mgr-modal-close-btn" id="finishedFoodCatalogClose"
+                        onclick="window.closeFinishedFoodCatalogModal && window.closeFinishedFoodCatalogModal()"
+                        aria-label="Close modal">&times;</button>
+                </div>
+            </div>
+
+            <div class="mgr-modal-body" style="padding: 18px 24px; max-height: 75vh; overflow-y: auto;">
+
+                <!-- Add / Edit Finished Product Form Panel (Collapsible) -->
+                <div class="specs-update-panel" id="addFinishedProductPanel"
+                    style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; padding:16px 18px; margin-bottom:16px;">
+                    <div class="specs-update-header" style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #FDE68A; padding-bottom:8px; margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:16px;" id="addFpFormIcon">✨</span>
+                            <h4 style="font-size:14px; font-weight:700; color:#92400E; margin:0;" id="addFpFormTitle">
+                                Add Finished Product Formulation
+                            </h4>
+                        </div>
+                        <span style="font-size:11.5px; color:#B45309; font-weight:600; background:rgba(217,119,6,0.12); padding:3px 8px; border-radius:6px;">
+                            Available Inventory Only
+                        </span>
+                    </div>
+
+                    <form id="addFinishedProductForm">
+                        <input type="hidden" id="editingFpOriginalName" value="">
+                        <div class="mgr-form-grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
+                            <!-- Finished Product Name -->
+                            <div class="mgr-field-group">
+                                <label for="newFpName" style="color:#78350F; font-size:12px; font-weight:600;">
+                                    Finished Product Name <span class="req">*</span>
+                                </label>
+                                <input type="text" id="newFpName" required
+                                    placeholder="e.g. Pineapple Pastry Tart"
+                                    style="border-color:#FCD34D; font-size:13px;">
+                                <small style="color:#92400E; font-size:11px; margin-top:2px;">Enter a unique name for the finished product formulation folder.</small>
+                            </div>
+
+                            <!-- Raw Materials Selection Dropdown (Only Available in Inventory) -->
+                            <div class="mgr-field-group">
+                                <label for="newFpRawMaterialSelect" style="color:#78350F; font-size:12px; font-weight:600;">
+                                    Available Raw Materials in Inventory <span class="req">*</span>
+                                </label>
+                                <div style="display:flex; gap:8px;">
+                                    <select id="newFpRawMaterialSelect" class="mgr-select-filter" style="flex:1; border-color:#FCD34D; font-size:12.5px; height:38px;">
+                                        <!-- Dynamically populated with ONLY available raw materials in inventory -->
+                                    </select>
+                                    <button type="button" class="btn-primary-sm" id="btnAddNewFpMaterial"
+                                        style="white-space:nowrap; background:#15803D !important; border:1px solid #166534 !important; color:#FFFFFF !important; font-weight:600; padding:6px 14px; border-radius:6px;">
+                                        + Add Material
+                                    </button>
+                                </div>
+                                <small style="color:#92400E; font-size:11px; margin-top:2px;">Only raw materials currently in inventory appear in this selection.</small>
+                            </div>
+                        </div>
+
+                        <!-- Selected Materials Container / Tags -->
+                        <div style="margin-top: 12px;">
+                            <label style="font-size:11.5px; font-weight:700; color:#78350F; text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:6px;">
+                                Recipe Raw Materials (<span id="newFpSelectedCount">0</span> Added) <span class="req">*</span>
+                            </label>
+                            <div id="newFpSelectedMaterialsTags"
+                                style="display:flex; flex-wrap:wrap; gap:8px; min-height:42px; padding:8px 12px; background:#FFFFFF; border:1px solid #FCD34D; border-radius:8px; align-items:center;">
+                                <span id="newFpEmptyHint" style="font-size:12px; color:#94A3B8; font-style:italic;">
+                                    No raw materials added yet. Choose an available raw material from the dropdown above and click "+ Add Material".
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                            <button type="button" class="btn-secondary-sm" id="btnCancelAddFinishedProduct">Cancel</button>
+                            <button type="submit" class="btn-primary-sm" id="btnSubmitAddFinishedProduct"
+                                style="background:#D97706; border-color:#D97706; color:#FFFFFF; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <span id="btnSubmitAddFpText">Add Finished Product</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Toolbar inside popup -->
+                <div
+                    style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+                    <div class="mgr-search-box" style="max-width:360px;">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="finishedFoodPopupSearchInput"
+                            placeholder="Search finished food or recipe ingredient..." autocomplete="off">
+                    </div>
+                    <div style="font-size:12px; color:#64748B; font-weight:600;" id="finishedFoodCountText">
+                        Showing 0 Finished Food Formulations
+                    </div>
+                </div>
+
+                <!-- Finished Food Folders Grid -->
+                <div class="inv-specs-folder-grid" id="finishedFoodModalGrid" style="padding: 0;">
+                    <!-- Populated dynamically by manager-inventory.js -->
+                </div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="finishedFoodCatalogDoneBtn"
+                    onclick="window.closeFinishedFoodCatalogModal && window.closeFinishedFoodCatalogModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL 6: FINISHED PRODUCT FORMULATION POPUP
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalFinishedProductFolder" hidden>
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <h3 id="fpPopupTitle">Product Formulation</h3>
+                    </div>
+                    <p id="fpPopupSubtitle">Raw Materials Formulation &amp; Inventory Allocation</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn-fp-card-action btn-fp-card-edit" id="btnFpDetailEdit" title="Edit this formulation">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit Formulation
+                    </button>
+                    <button type="button" class="btn-fp-card-action btn-fp-card-delete" id="btnFpDetailDelete" title="Delete this formulation">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        Delete
+                    </button>
+                    <button type="button" class="mgr-modal-close-btn" id="fpPopupClose"
+                        aria-label="Close modal">&times;</button>
+                </div>
+            </div>
+
+            <div class="mgr-modal-body">
+                <div class="specs-popup-meta-bar" style="background:#FFFBEB; border-color:#FDE68A;">
+                    <div class="specs-popup-meta-item">
+                        <span style="color:#B45309; font-weight:700;">Role:</span>
+                        <strong style="color:#92400E;">Formulation Guide</strong>
+                    </div>
+                    <div class="specs-popup-meta-item">
+                        <span style="color:#B45309; font-weight:700;">Specified Raw Materials:</span>
+                        <strong id="fpPopupCount" style="color:#92400E;">0 Items</strong>
+                    </div>
+                </div>
+
+                <div class="table-scroll inv-table-scroll"
+                    style="margin-top: 12px; max-height: 360px; overflow-y: auto;">
+                    <table class="inv-main-table">
+                        <thead>
+                            <tr>
+                                <th>Raw Material</th>
+                                <th style="text-align: right;">Current Stock</th>
+                                <th>Unit</th>
+                                <th>Status</th>
+                                <th>How Many Products Can Produce</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fpPopupMaterialsBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div
+                    style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; margin-top: 6px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#15803D" stroke-width="2"
+                        style="flex-shrink:0;">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <p style="font-size: 11.5px; color: #64748B; margin: 0; line-height: 1.4;">
+                        <strong>Notice:</strong> This recipe formulation specifies material requirements and calculates producible output based on available inventory stock.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="fpPopupCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+     MODAL 7: EXPORT INVENTORY CHOICES
+     ========================================================== -->
+    <div class="mgr-modal-backdrop" id="modalExportChoices" hidden>
+        <div class="mgr-modal-box" role="dialog" aria-modal="true" style="max-width: 520px;">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <h3>Export Inventory Data</h3>
+                    <p>Select your export format and data scope</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="exportModalClose"
+                    aria-label="Close modal">&times;</button>
+            </div>
+
+            <div class="mgr-modal-body">
+                <label
+                    style="font-size: 11.5px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.03em;">Export
+                    Format</label>
+                <div class="mgr-export-choices-list">
+                    <label class="mgr-export-choice-card">
+                        <input type="radio" name="exportFormatRadio" value="csv" checked>
+                        <div class="mgr-export-choice-icon csv-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                        </div>
+                        <div class="mgr-export-choice-info">
+                            <strong>CSV Spreadsheet (.csv)</strong>
+                            <span>Standard comma-separated file compatible with Excel, Google Sheets, and ERP</span>
+                        </div>
+                    </label>
+
+                    <label class="mgr-export-choice-card">
+                        <input type="radio" name="exportFormatRadio" value="excel">
+                        <div class="mgr-export-choice-icon excel-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                        </div>
+                        <div class="mgr-export-choice-info">
+                            <strong>Excel Compatible Workbook (.xls)</strong>
+                            <span>Formatted tabular layout with headers, metadata, and column alignment</span>
+                        </div>
+                    </label>
+
+                    <label class="mgr-export-choice-card">
+                        <input type="radio" name="exportFormatRadio" value="pdf">
+                        <div class="mgr-export-choice-icon pdf-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="6 9 6 2 18 2 18 9" />
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                <rect x="6" y="14" width="12" height="8" />
+                            </svg>
+                        </div>
+                        <div class="mgr-export-choice-info">
+                            <strong>Printable Report / PDF View</strong>
+                            <span>Clean printable audit report view ready to print or save to PDF</span>
+                        </div>
+                    </label>
+                </div>
+
+                <label
+                    style="font-size: 11.5px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 14px; display: block;">Data
+                    Scope</label>
+                <div class="mgr-export-scope-group">
+                    <label class="mgr-export-scope-item">
+                        <input type="radio" name="exportScopeRadio" value="all" checked> All Raw Materials
+                    </label>
+                    <label class="mgr-export-scope-item">
+                        <input type="radio" name="exportScopeRadio" value="filtered"> Current Filtered View
+                    </label>
+                    <label class="mgr-export-scope-item">
+                        <input type="radio" name="exportScopeRadio" value="finished"> Finished Products &amp; Recipes
+                    </label>
+                </div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="exportModalCancelBtn">Cancel</button>
+                <button type="button" class="btn-primary" id="exportModalConfirmBtn"
+                    style="display:inline-flex; align-items:center; gap:6px;">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 15V4M12 4L8 8M12 4L16 8" />
+                        <path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" />
+                    </svg>
+                    Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: IMPORT RAW MATERIALS -->
+    <div class="mgr-modal-backdrop" id="modalImportRawMaterials" hidden>
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true" style="max-width: 680px;">
+            <div class="mgr-modal-header">
+                <div class="mgr-modal-title-group">
+                    <h3 style="display:flex; align-items:center; gap:8px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#059669" stroke-width="2">
+                            <path d="M12 3v12m0 0l-4-4m4 4l4-4" />
+                            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                        </svg>
+                        Import Raw Materials
+                    </h3>
+                    <p>Upload a CSV or Excel spreadsheet to batch register raw materials into inventory.</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="importModalCloseBtn" onclick="window.closeImportRawMaterialsModal && window.closeImportRawMaterialsModal()">&times;</button>
+            </div>
+            <div class="mgr-modal-body" style="padding: 20px 24px;">
+                <!-- File Drag & Drop Zone -->
+                <div class="mgr-import-dropzone" id="importRawMaterialsDropzone" onclick="document.getElementById('rawMaterialsImportFileInput').click()" style="border:2px dashed #CBD5E1; border-radius:12px; padding:28px 20px; text-align:center; background:#F8FAFC; cursor:pointer; transition:all 0.2s ease; position:relative;">
+                    <svg class="mgr-import-drop-icon" width="40" height="40" style="width:40px; height:40px; max-width:40px; max-height:40px; display:block; margin:0 auto 8px; color:#059669;" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <div class="mgr-import-drop-text" id="importDropzoneTitle" style="font-size:13.5px; font-weight:700; color:#0F172A; margin-bottom:3px;">Click to browse or drag &amp; drop file here</div>
+                    <div class="mgr-import-drop-sub" style="font-size:11.5px; color:#64748B;">Supports .CSV, .XLSX, and .XLS spreadsheets</div>
+                    <input type="file" id="rawMaterialsImportFileInput" accept=".csv, .xlsx, .xls, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display:none;">
+                </div>
+
+                <!-- File Selection Pill / Clear -->
+                <div id="importFileSelectedInfo" style="display:none; align-items:center; justify-content:space-between; margin-top:12px; padding:8px 12px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; font-size:12px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:16px;">📄</span>
+                        <strong id="importSelectedFileName" style="color:#0F172A;">file.csv</strong>
+                        <span id="importSelectedFileSize" style="color:#64748B;">(0 KB)</span>
+                    </div>
+                    <button type="button" class="btn btn-link text-danger" id="btnClearImportFile" onclick="window.clearImportRawMaterialsFile && window.clearImportRawMaterialsFile()" style="font-size:11.5px; padding:0; text-decoration:none; color:#DC2626; cursor:pointer; background:none; border:none; font-weight:600;">&times; Remove</button>
+                </div>
+
+                <!-- Live Loading & Percentage Progress Box (Like Old Import) -->
+                <div id="importProgressContainer" style="display:none; margin-top:14px; padding:18px 16px; background:rgba(5, 150, 105, 0.05); border:1.5px solid rgba(5, 150, 105, 0.25); border-radius:12px; text-align:center;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:12px;">
+                        <svg width="48" height="48" viewBox="0 0 44 44" style="transform: rotate(-90deg); flex-shrink: 0;">
+                            <circle cx="22" cy="22" r="18" stroke="#E2E8F0" stroke-width="4" fill="none" />
+                            <circle id="importCircleProgress" cx="22" cy="22" r="18" stroke="#059669" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition: stroke-dashoffset 0.15s ease;" />
+                        </svg>
+                        <div style="text-align: left;">
+                            <div id="importPercentText" style="font-size:1.35rem; font-weight:800; color:#0F172A; line-height:1.2;">0%</div>
+                            <div id="importStatusText" style="font-size:0.85rem; font-weight:600; color:#64748B;">Importing data... (0 / 0 records)</div>
+                        </div>
+                    </div>
+                    <div style="width:100%; height:8px; background:#E2E8F0; border-radius:4px; overflow:hidden;">
+                        <div id="importProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #059669, #10B981); transition:width 0.15s ease; border-radius:4px;"></div>
+                    </div>
+                </div>
+
+                <!-- Preview Area (Dynamically Populated) -->
+                <div class="mgr-import-preview-box" id="importPreviewBox" style="display:none; margin-top:14px; border:1px solid #E2E8F0; border-radius:10px; padding:12px; background:#FFFFFF;">
+                    <div class="mgr-import-preview-head" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span class="mgr-import-preview-title" id="importPreviewTitle" style="font-size:12.5px; font-weight:700; color:#0F172A;">Parsed Materials Preview</span>
+                        <span id="importValidationBadge" style="font-size:11px; font-weight:700; color:#15803D; background:#DCFCE7; padding:2px 8px; border-radius:4px;">Ready to Import</span>
+                    </div>
+                    <div class="mgr-import-table-wrap" style="max-height:220px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px;">
+                        <table class="mgr-import-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr style="background:#F8FAFC; border-bottom:1px solid #E2E8F0;">
+                                    <th style="padding:6px 10px; text-align:left; color:#475569; font-weight:700;">Auto Code</th>
+                                    <th style="padding:6px 10px; text-align:left; color:#475569; font-weight:700;">Raw Material Name</th>
+                                    <th style="padding:6px 10px; text-align:right; color:#475569; font-weight:700;">Current Stock</th>
+                                    <th style="padding:6px 10px; text-align:left; color:#475569; font-weight:700;">Unit</th>
+                                    <th style="padding:6px 10px; text-align:right; color:#475569; font-weight:700;">Min Stock</th>
+                                    <th style="padding:6px 10px; text-align:center; color:#475569; font-weight:700;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importPreviewTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Error / Validation Alert Container -->
+                <div id="importErrorAlert" style="display:none; margin-top:12px; background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:10px 14px; font-size:12px; color:#991B1B;"></div>
+            </div>
+
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="importModalCancelBtn" onclick="window.closeImportRawMaterialsModal && window.closeImportRawMaterialsModal()">Cancel</button>
+                <button type="button" class="btn-primary" id="importModalConfirmBtn" disabled style="display:inline-flex; align-items:center; gap:6px;">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span id="importModalConfirmText">Import Raw Materials</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DELETE MATERIAL CONFIRMATION -->
+    <div class="mgr-modal-backdrop" id="modalDeleteConfirm" hidden>
+        <div class="mgr-modal-box" role="dialog" aria-modal="true" style="max-width: 440px;">
+            <div class="mgr-modal-header" style="border-bottom: 1px solid #FEE2E2;">
+                <div class="mgr-modal-title-group">
+                    <h3 style="color: #DC2626; display: flex; align-items: center; gap: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Delete Raw Material
+                    </h3>
+                    <p style="color: #64748B;">This action removes the material from the catalog.</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="deleteConfirmCloseBtn">&times;</button>
+            </div>
+            <div class="mgr-modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.5;">
+                    Are you sure you want to delete <strong id="deleteTargetMaterialName" style="color: #0F172A;"></strong> (<code id="deleteTargetMaterialCode" style="color: #0F766E; font-weight: 700;"></code>)?
+                </p>
+                <div style="margin-top: 12px; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #991B1B;">
+                    ⚠️ Warning: The material will be removed from all inventory tables, search results, and stock views.
+                </div>
+            </div>
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="deleteConfirmCancelBtn">Cancel</button>
+                <button type="button" class="btn-primary" id="deleteConfirmSubmitBtn" style="background: #DC2626 !important; border-color: #DC2626 !important; color: #FFFFFF !important;">
+                    Delete Material
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DELETE FINISHED PRODUCT CONFIRMATION -->
+    <div class="mgr-modal-backdrop" id="modalDeleteFinishedProductConfirm" hidden>
+        <div class="mgr-modal-box" role="dialog" aria-modal="true" style="max-width: 440px;">
+            <div class="mgr-modal-header" style="border-bottom: 1px solid #FEE2E2;">
+                <div class="mgr-modal-title-group">
+                    <h3 style="color: #DC2626; display: flex; align-items: center; gap: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Delete Finished Product
+                    </h3>
+                    <p style="color: #64748B;">This action removes the formulation from the catalog.</p>
+                </div>
+                <button type="button" class="mgr-modal-close-btn" id="deleteFpConfirmCloseBtn">&times;</button>
+            </div>
+            <div class="mgr-modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.5;">
+                    Are you sure you want to delete <strong id="deleteTargetFpName" style="color: #92400E;"></strong>?
+                </p>
+                <div style="margin-top: 12px; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #991B1B;">
+                    ⚠️ Warning: This finished product formulation and its recipe raw materials mapping will be permanently removed.
+                </div>
+            </div>
+            <div class="mgr-modal-footer">
+                <button type="button" class="btn-secondary" id="deleteFpConfirmCancelBtn">Cancel</button>
+                <button type="button" class="btn-primary" id="deleteFpConfirmSubmitBtn" style="background: #DC2626 !important; border-color: #DC2626 !important; color: #FFFFFF !important;">
+                    Delete Formulation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING TOAST NOTIFICATIONS -->
+    <div class="mgr-toast-container" id="mgrToastContainer"></div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="module" src="../js/rmsme-shell.js"></script>
+    <script type="module" src="../js/manager-inventory.js?v=20261015_clean"></script>
+</body>
+
+</html>

@@ -183,12 +183,12 @@ body {
 }
 
 thead {
-  background: #F1FAF4 !important;
+  background: #15803D !important;
 }
 
 th {
-  color: #6E8979 !important;
-  border-bottom-color: var(--rm-line-soft) !important;
+  color: #FFFFFF !important;
+  border-bottom-color: #14532D !important;
 }
 
 td {
@@ -886,23 +886,22 @@ body::after {
   top: 0;
   bottom: 0;
   z-index: 1000;
-  width: 72px !important;
-  min-width: 72px !important;
-  max-width: 72px !important;
-  padding: 12px 10px !important;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  padding: 14px 12px !important;
   margin: 0 !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   background: #11161B !important;
   border-right: 1px solid rgba(255, 255, 255, .08) !important;
   box-shadow: 8px 0 30px rgba(0, 0, 0, .25) !important;
-  transition: max-width .22s ease, width .22s ease, padding .22s ease !important;
 }
 
 .sidebar:hover,
 .sidebar:focus-within {
-  width: 252px !important;
-  max-width: 252px !important;
+  width: 260px !important;
+  max-width: 260px !important;
   padding: 14px 12px !important;
 }
 
@@ -936,18 +935,18 @@ body::after {
 }
 
 .rmsme-brand-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity .16s ease, transform .16s ease;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
 }
 
 .sidebar:hover .rmsme-brand-copy,
 .sidebar:focus-within .rmsme-brand-copy {
-  opacity: 1;
-  transform: none;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .rmsme-brand-copy strong {
@@ -1037,15 +1036,16 @@ body::after {
 }
 
 .rmsme-nav-label {
-  opacity: 0;
-  transform: translateX(-5px);
-  transition: opacity .16s ease, transform .16s ease;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  display: inline-block !important;
 }
 
 .sidebar:hover .rmsme-nav-label,
 .sidebar:focus-within .rmsme-nav-label {
-  opacity: 1;
-  transform: none;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .rmsme-nav-chevron {
@@ -1195,8 +1195,8 @@ body::after {
   justify-content: space-between !important;
 }
 
-.topbar-left {
-  display: none !important
+.topbar:not(.admin-topbar) > .topbar-left {
+  display: none !important;
 }
 
 .header-date,
@@ -1956,11 +1956,15 @@ body {
 @media (min-width:901px) {
   .sidebar {
     z-index: 1100 !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
   }
 
-  .content {
-    margin-left: 72px !important;
-    width: calc(100% - 72px) !important;
+  .content,
+  .manager-main {
+    margin-left: 260px !important;
+    width: calc(100% - 260px) !important;
   }
 }
 
@@ -3469,21 +3473,22 @@ table {
 .inv-page-btn,
 .fc-page-btn,
 .ca-page-btn,
-.rpt-page-btn {
-  min-width: 36px !important;
-  height: 36px !important;
-  padding: 0 12px !important;
+.rpt-page-btn,
+.pagination-btn {
+  min-width: 32px !important;
+  height: 32px !important;
+  padding: 0 10px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   border: 1px solid #E2E8F0 !important;
   background: #FFFFFF !important;
   color: #334155 !important;
-  font-size: 0.82rem !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
   cursor: pointer !important;
-  transition: all 0.16s ease-in-out !important;
+  transition: all 0.15s ease !important;
   user-select: none !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
   text-decoration: none !important;
@@ -3497,10 +3502,11 @@ table {
 .inv-page-btn:hover:not(:disabled),
 .fc-page-btn:hover:not(:disabled),
 .ca-page-btn:hover:not(:disabled),
-.rpt-page-btn:hover:not(:disabled) {
-  background: #F8FAFC !important;
-  border-color: #CBD5E1 !important;
-  color: #0F172A !important;
+.rpt-page-btn:hover:not(:disabled),
+.pagination-btn:hover:not(:disabled) {
+  background: #F1FAF4 !important;
+  border-color: #22C55E !important;
+  color: #15803D !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08) !important;
 }
@@ -3510,27 +3516,58 @@ table {
 .inv-page-btn.active,
 .fc-page-btn.active,
 .ca-page-btn.active,
-.rpt-page-btn.active {
-  background: #16803C !important;
+.rpt-page-btn.active,
+.pagination-btn.active {
+  background: #15803D !important;
   color: #FFFFFF !important;
-  border-color: #16803C !important;
-  box-shadow: 0 2px 8px rgba(22, 128, 60, 0.35) !important;
+  border-color: #15803D !important;
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.28) !important;
   font-weight: 700 !important;
 }
 
 .page-btn:disabled,
+.page-btn.disabled,
+.page-btn.active:disabled,
+.page-btn.active.disabled,
 .btn-page:disabled,
+.btn-page.disabled,
 .inv-page-btn:disabled,
+.inv-page-btn.disabled,
+.inv-page-btn.active:disabled,
+.inv-page-btn.active.disabled,
 .fc-page-btn:disabled,
+.fc-page-btn.disabled,
+.fc-page-btn.active:disabled,
+.fc-page-btn.active.disabled,
 .ca-page-btn:disabled,
-.rpt-page-btn:disabled {
-  opacity: 0.45 !important;
+.ca-page-btn.disabled,
+.rpt-page-btn:disabled,
+.rpt-page-btn.disabled,
+.pagination-btn:disabled,
+.pagination-btn.disabled,
+.pagination-btn.active:disabled,
+.pagination-btn.active.disabled {
+  opacity: 0.38 !important;
   cursor: not-allowed !important;
-  background: #F8FAFC !important;
-  border-color: #E2E8F0 !important;
+  pointer-events: none !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
   color: #94A3B8 !important;
   box-shadow: none !important;
   transform: none !important;
+}
+
+.page-btn svg,
+.btn-page svg,
+.inv-page-btn svg,
+.fc-page-btn svg,
+.pagination-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2.5 !important;
+  display: block !important;
 }
 
 .page-ellipsis {

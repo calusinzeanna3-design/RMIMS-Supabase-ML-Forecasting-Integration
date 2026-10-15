@@ -3517,10 +3517,11 @@ body.modal-open {
   overflow: hidden;
 }
 
-.admin-modal-panel.active {
+.admin-modal-panel.active,
+.admin-modal-panel:not([hidden]) {
   transform: translate(-50%, -50%) scale(1);
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: auto !important;
 }
 
 .admin-modal-panel.admin-modal-wide,
@@ -3642,6 +3643,8 @@ body.modal-open {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 10;
 }
 
 .amp-filter-label {
@@ -3661,6 +3664,10 @@ body.modal-open {
   outline: none;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 15 !important;
 }
 
 [data-theme="dark"] .amp-select {
@@ -3720,15 +3727,16 @@ body.modal-open {
 }
 
 .amp-table th {
-  padding: 12px 24px;
-  font-size: 0.74rem;
+  padding: 13px 20px;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-dim, #7c92b3);
-  border-bottom: 1px solid var(--line, rgba(148, 180, 224, 0.16));
+  letter-spacing: 0.05em;
+  color: #FFFFFF !important;
+  border-bottom: 2px solid #14532D;
   position: sticky;
   top: 0;
-  background: var(--card-bg, #ffffff);
+  background: #15803D !important;
   z-index: 1;
 }
 

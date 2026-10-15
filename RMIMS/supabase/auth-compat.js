@@ -18,9 +18,11 @@
 function toSupabaseUser(supabaseUser, authClient) {
     if (!supabaseUser) return null;
     return {
+        id: supabaseUser.id,
         uid: supabaseUser.id,
         email: supabaseUser.email,
         displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.displayName || null,
+        user_metadata: supabaseUser.user_metadata || {},
         _authClient: authClient
     };
 }

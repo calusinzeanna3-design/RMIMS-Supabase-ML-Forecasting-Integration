@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Settings | RMSME</title>
+    <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+    <link rel="stylesheet" href="../css/admin-shell.css"/>
+    <link href="../css/settings.css" rel="stylesheet"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <link href="../css/manager-theme.css" rel="stylesheet"/>
+</head>
+<body class="manager-page admin-page">
+<div class="admin-app">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+    <!-- CONTENT -->
+    <div class="admin-main">
+        <!-- TOPBAR -->
+        <header class="admin-topbar">
+            <div class="topbar-left">
+                <span class="topbar-kicker">STORE MANAGEMENT</span>
+                <h1 class="topbar-title">Settings &amp; Privacy</h1>
+                <p class="topbar-subtitle">Store configurations, staff access, security credentials, and system preferences.</p>
+            </div>
+            <div class="topbar-right">
+                <!-- Live Date & Time Pill -->
+                <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+                </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                            </div>
+        </header>
+
+        <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
+            <!-- TWO-PANEL SETTINGS WORKSPACE -->
+            <div class="settings-workspace-layout" style="margin-top: 0;">
+            
+            <!-- LEFT SETTINGS NAVIGATION PANEL -->
+            <nav class="settings-nav-panel" aria-label="Settings navigation">
+                
+                <!-- ACCOUNT SECTION -->
+                <div class="settings-nav-group">
+                    <div class="settings-nav-group-label">ACCOUNT</div>
+                    <button type="button" class="settings-nav-item active" data-nav="profile">
+                        <div class="settings-nav-item-icon icon-green">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <circle cx="12" cy="8" r="3.5"></circle>
+                                <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"></path>
+                            </svg>
+                        </div>
+                        <div class="settings-nav-item-text">
+                            <strong>Profile</strong>
+                            <span>Account info &amp; role</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="settings-nav-item" data-nav="security">
+                        <div class="settings-nav-item-icon icon-blue">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path d="M12 2 19 5v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3Z" stroke-linejoin="round"></path>
+                                <path d="M12 8v4M12 15h.01"></path>
+                            </svg>
+                        </div>
+                        <div class="settings-nav-item-text">
+                            <strong>Password &amp; Security</strong>
+                            <span>Credentials &amp; sign-in</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="settings-nav-item" data-nav="sessions">
+                        <div class="settings-nav-item-icon icon-teal">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <rect x="2" y="4" width="20" height="13" rx="2"></rect>
+                                <path d="M8 21h8M12 17v4"></path>
+                            </svg>
+                        </div>
+                        <div class="settings-nav-item-text">
+                            <strong>Sessions &amp; Devices</strong>
+                            <span>Active login sessions</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- ABOUT SECTION -->
+                <div class="settings-nav-group">
+                    <div class="settings-nav-group-label">ABOUT</div>
+                    <button type="button" class="settings-nav-item" data-nav="system">
+                        <div class="settings-nav-item-icon icon-blue">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+                                <path d="M8 21h8M12 17v4" stroke-linecap="round"></path>
+                            </svg>
+                        </div>
+                        <div class="settings-nav-item-text">
+                            <strong>System Information</strong>
+                            <span>RMSME version &amp; platform</span>
+                        </div>
+                    </button>
+                </div>
+
+            </nav>
+
+            <!-- RIGHT SETTINGS DETAIL PANEL -->
+            <div class="settings-detail-panel">
+                
+                <!-- DETAIL VIEW 1: PROFILE (FULL EDIT PROFILE INTERFACE) -->
+                <section class="settings-panel-view active" id="view-profile">
+                    <div class="settings-card">
+                        <div class="card-head">
+                            <div class="card-head-icon icon-green">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <circle cx="12" cy="8" r="3.5"></circle>
+                                    <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"></path>
+                                </svg>
+                            </div>
+                            <div class="card-head-text">
+                                <h3>Profile</h3>
+                                <p>Your RMSME account information, photo, and authorized manager role.</p>
+                            </div>
+                        </div>
+
+                        <!-- PROFILE PHOTO UPLOADER & AVATAR -->
+                        <div class="profile-photo-strip">
+                            <div class="profile-avatar-wrap">
+                                <div class="profile-avatar-large" id="profileAvatarPreview">M</div>
+                                <input type="file" id="profilePhotoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;"/>
+                            </div>
+                            <div class="profile-photo-actions">
+                                <h4>Profile Photo</h4>
+                                <p>Upload a custom picture or avatar to personalize your manager account.</p>
+                                <div class="profile-btn-row">
+                                    <button type="button" class="btn-primary-sm" id="uploadProfilePhotoBtn">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px;margin-right:6px;"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                        Upload Image
+                                    </button>
+                                    <button type="button" class="btn-outline-sm" id="removeProfilePhotoBtn">Remove Image</button>
+                                </div>
+                                <span class="profile-photo-hint">Supports JPG, PNG, WebP or SVG up to 2MB.</span>
+                            </div>
+                        </div>
+
+                        <!-- ACCOUNT METADATA PILLS -->
+                        <div class="account-meta">
+                            <span class="meta-pill"><span class="status-dot" id="statusDot"></span>Status: <strong id="accountStatus">—</strong></span>
+                            <span class="meta-pill">Date Created: <strong id="accountCreated">—</strong></span>
+                            <span class="meta-pill">Last Login: <strong id="accountLastLogin">—</strong></span>
+                        </div>
+
+                        <!-- EDITABLE & PROTECTED ACCOUNT FIELDS -->
+                        <form id="editProfileForm" class="settings-profile-form" novalidate>
+                            <div class="settings-grid">
+                                <div class="input-group">
+                                    <label for="fullName">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"></circle><path d="M4 20C4 16 7.5 14 12 14C16.5 14 20 16 20 20"></path></svg>
+                                        Full Name <span class="req">*</span>
+                                    </label>
+                                    <input id="fullName" type="text" value="Manager" placeholder="Manager" required/>
+                                    <div class="field-error" id="fullNameError"></div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="email">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M4 5H20C21.1 5 22 5.9 22 7V17C22 18.1 21.1 19 20 19H4C2.9 19 2 18.1 2 17V7C2 5.9 2.9 5 4 5Z"></path><path d="M22 7L13.03 13.7C12.42 14.15 11.58 14.15 10.97 13.7L2 7"></path></svg>
+                                        Email Address
+                                    </label>
+                                    <input id="email" readonly type="email" title="Email address cannot be modified directly"/>
+                                    <span class="field-hint">Managed via Supabase Auth</span>
+                                </div>
+                                <div class="input-group">
+                                    <label for="role">
+                                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M12 2L3 7V12C3 16.5 6.5 20.74 12 22C17.5 20.74 21 16.5 21 12V7L12 2Z"></path><path d="M9 12L11 14L15 10"></path></svg>
+                                        System Role
+                                    </label>
+                                    <input id="role" readonly type="text" value="Manager" title="Role permissions are protected"/>
+                                    <span class="field-hint">Protected Manager Role</span>
+                                </div>
+                            </div>
+
+                            <div class="profile-form-footer">
+                                <button type="submit" class="btn-primary-sm" id="saveProfileChangesBtn">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- DETAIL VIEW 2: PASSWORD & SECURITY -->
+                <section class="settings-panel-view" id="view-security">
+                    <div class="settings-card">
+                        <div class="card-head">
+                            <div class="card-head-icon icon-blue">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M12 2 19 5v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3Z" stroke-linejoin="round"></path>
+                                    <path d="M12 8v4M12 15h.01"></path>
+                                </svg>
+                            </div>
+                            <div class="card-head-text">
+                                <h3>Password &amp; Security</h3>
+                                <p>Update your authentication password and manage account security.</p>
+                            </div>
+                        </div>
+
+                        <!-- CHANGE PASSWORD DIRECT FORM -->
+                        <div class="security-card-box">
+                            <h4 class="security-box-title">Change Password</h4>
+                            <p class="security-box-sub">Choose a strong password with at least 8 characters to protect your manager access.</p>
+                            
+                            <form id="directChangePasswordForm" class="security-password-grid" novalidate>
+                                <div class="input-group">
+                                    <label for="directCurrentPassword">Current Password <span class="req">*</span></label>
+                                    <input type="password" id="directCurrentPassword" placeholder="••••••••" required autocomplete="current-password"/>
+                                    <div class="field-error" id="directCurrentPasswordError"></div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="directNewPassword">New Password <span class="req">*</span></label>
+                                    <input type="password" id="directNewPassword" placeholder="••••••••" minlength="8" required autocomplete="new-password"/>
+                                    <span class="field-hint">Minimum 8 characters</span>
+                                    <div class="field-error" id="directNewPasswordError"></div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="directConfirmPassword">Confirm New Password <span class="req">*</span></label>
+                                    <input type="password" id="directConfirmPassword" placeholder="••••••••" required autocomplete="new-password"/>
+                                    <div class="field-error" id="directConfirmPasswordError"></div>
+                                </div>
+
+                                <div style="grid-column: span 3; display: flex; justify-content: flex-end; margin-top: 10px;">
+                                    <button type="submit" class="btn-primary-sm" id="directSavePasswordBtn">Update Password</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- SIGN OUT -->
+                        <div class="security-row" style="margin-top: 20px;">
+                            <div class="security-row-text">
+                                <strong>Sign out of RMSME</strong>
+                                <span>End your current active session on this device.</span>
+                            </div>
+                            <div class="button-group">
+                                <button id="logoutBtn" type="button">
+                                    <svg fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3 5 3H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M16 17L21 12L16 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path><path d="M21 12H9" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DETAIL VIEW 3: SESSIONS & DEVICES -->
+                <section class="settings-panel-view" id="view-sessions">
+                    <div class="settings-card">
+                        <div class="card-head">
+                            <div class="card-head-icon icon-teal">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <rect x="2" y="4" width="20" height="13" rx="2"></rect>
+                                    <path d="M8 21h8M12 17v4"></path>
+                                </svg>
+                            </div>
+                            <div class="card-head-text">
+                                <h3>Sessions &amp; Devices</h3>
+                                <p>Review active sign-in sessions and revoke credentials across other devices.</p>
+                            </div>
+                        </div>
+
+                        <div class="session-device-card">
+                            <div class="session-device-icon">⌁</div>
+                            <div>
+                                <strong>Current Device &amp; Browser</strong>
+                                <span id="sessionInfo">Loading session information…</span>
+                            </div>
+                            <span class="session-current-badge">Active Session</span>
+                        </div>
+
+                        <div class="security-row">
+                            <div class="security-row-text">
+                                <strong>Sign out other sessions</strong>
+                                <span>Sign this account out across all other devices while maintaining this session.</span>
+                            </div>
+                            <div class="button-group">
+                                <button class="btn-outline-sm" id="signOutOthersBtn" type="button">Sign Out Other Sessions</button>
+                            </div>
+                        </div>
+
+                        <div class="settings-info-note">
+                            <strong>Session Security Protocol</strong>
+                            <span>RMSME uses secure JWT tokens issued by Supabase. Revoking other sessions will immediately expire all other access tokens without affecting your active workflow.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DETAIL VIEW 4: SYSTEM INFORMATION -->
+                <section class="settings-panel-view" id="view-system">
+                    <div class="settings-card">
+                        <div class="card-head">
+                            <div class="card-head-icon icon-blue">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+                                    <path d="M8 21h8M12 17v4" stroke-linecap="round"></path>
+                                </svg>
+                            </div>
+                            <div class="card-head-text">
+                                <h3>System Information</h3>
+                                <p>Detailed platform architecture, database connection, and engine specs.</p>
+                            </div>
+                        </div>
+
+                        <div class="info-tiles">
+                            <div class="info-tile">
+                                <div class="info-tile-icon icon-blue">
+                                    <svg fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                                </div>
+                                <div class="info-tile-text">
+                                    <span>System Name</span>
+                                    <strong>RMSME</strong>
+                                </div>
+                            </div>
+                            <div class="info-tile">
+                                <div class="info-tile-icon icon-teal">
+                                    <svg fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="1.6"></ellipse><path d="M4 6V12C4 13.66 7.58 15 12 15C16.42 15 20 13.66 20 12V6" stroke="currentColor" stroke-width="1.6"></path><path d="M4 12V18C4 19.66 7.58 21 12 21C16.42 21 20 19.66 20 18V12" stroke="currentColor" stroke-width="1.6"></path></svg>
+                                </div>
+                                <div class="info-tile-text">
+                                    <span>Database Architecture</span>
+                                    <strong>Supabase PostgreSQL</strong>
+                                </div>
+                            </div>
+                            <div class="info-tile">
+                                <div class="info-tile-icon icon-green">
+                                    <svg fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6"></path><path d="M9 12L11 14L15 10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></svg>
+                                </div>
+                                <div class="info-tile-text">
+                                    <span>Application Version</span>
+                                    <strong>Version 2.0.0</strong>
+                                </div>
+                            </div>
+                            <div class="info-tile">
+                                <div class="info-tile-icon icon-purple">
+                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                </div>
+                                <div class="info-tile-text">
+                                    <span>ML Forecasting Backend</span>
+                                    <strong>Flask AutoReg Engine</strong>
+                                </div>
+                            </div>
+                            <div class="info-tile">
+                                <div class="info-tile-icon icon-orange">
+                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>
+                                </div>
+                                <div class="info-tile-text">
+                                    <span>Frontend Framework</span>
+                                    <strong>SPA + Vite Build</strong>
+                                </div>
+                            </div>
+                            <div class="info-tile">
+                                <div class="info-tile-icon icon-blue">
+                                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                </div>
+                                <div class="info-tile-text">
+                                    <span>Security Layer</span>
+                                    <strong>Supabase RLS &amp; JWT</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+    </div>
+</div>
+
+<!-- ===================== CHANGE PASSWORD MODAL ===================== -->
+<div class="modal-overlay" id="changePasswordModal">
+    <div class="modal-sheet modal-sheet-sm">
+        <div class="modal-sticky-header">
+            <div class="modal-header-info">
+                <div class="modal-icon">
+                    <svg fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="10" rx="2" stroke="currentColor" stroke-width="1.6" width="16" x="4" y="10"></rect><path d="M8 10V7A4 4 0 0116 7V10" stroke="currentColor" stroke-width="1.6"></path></svg>
+                </div>
+                <div>
+                    <h4>Change Password</h4>
+                    <span class="modal-time">Update your sign-in credentials</span>
+                </div>
+            </div>
+            <button aria-label="Close" class="modal-close" data-close-modal="changePasswordModal">
+                <svg fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path></svg>
+            </button>
+        </div>
+        <form class="modal-body" id="changePasswordForm" novalidate>
+            <label class="modal-field-label" for="currentPassword">Current Password <span class="req">*</span></label>
+            <input autocomplete="current-password" class="modal-input" id="currentPassword" required type="password"/>
+            <div class="field-error" id="currentPasswordError"></div>
+            <label class="modal-field-label" for="newPassword">New Password <span class="req">*</span></label>
+            <input autocomplete="new-password" class="modal-input" id="newPassword" minlength="8" required type="password"/>
+            <div class="field-hint">Minimum 8 characters.</div>
+            <div class="field-error" id="newPasswordError"></div>
+            <label class="modal-field-label" for="confirmNewPassword">Confirm New Password <span class="req">*</span></label>
+            <input autocomplete="new-password" class="modal-input" id="confirmNewPassword" required type="password"/>
+            <div class="field-error" id="confirmNewPasswordError"></div>
+        </form>
+        <div class="modal-sticky-footer">
+            <button class="btn-outline-sm" data-close-modal="changePasswordModal" type="button">Cancel</button>
+            <button class="btn-primary-sm" form="changePasswordForm" id="savePasswordBtn" type="submit">Save New Password</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="../js/settings.js" type="module"></script>
+<script>
+const headerDateEl = document.querySelector("#headerDate span");
+if(headerDateEl){
+    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
+}
+
+const menuToggle = document.querySelector(".menu-toggle");
+const sidebarEl = document.querySelector(".sidebar");
+if(menuToggle && sidebarEl){
+    menuToggle.addEventListener("click", ()=>{
+        sidebarEl.classList.toggle("open");
+    });
+}
+</script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>

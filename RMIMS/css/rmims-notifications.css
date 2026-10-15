@@ -1,0 +1,1042 @@
+/* ==========================================================================
+   RMIMS NOTIFICATION POPUP & INSPECTION MODAL SYSTEM
+   Matches exact reference design with role-based tabs (Admin, Manager, Staff)
+   ========================================================================== */
+
+/* 1. Backdrop Overlay (Hidden by default, pops up on bell click) */
+.rmims-notif-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 99998;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 72px 28px 24px 24px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+  box-sizing: border-box;
+}
+
+.rmims-notif-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* 2. Main Notification Card (Clean white floating card matching reference image) */
+.rmims-notif-card {
+  width: 100%;
+  max-width: 490px;
+  max-height: calc(100vh - 100px);
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(-8px) scale(0.98);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.rmims-notif-backdrop.open .rmims-notif-card {
+  transform: translateY(0) scale(1);
+}
+
+/* 3. Card Header */
+.rmims-notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px 14px;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.rmims-notif-title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.rmims-notif-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rmims-notif-header-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rmims-notif-header-icon-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.rmims-notif-header-icon-btn.active {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.rmims-notif-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rmims-notif-close-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* 4. Tabs Navigation Bar (Cleanly laid out, zero clipping, exact image match) */
+.rmims-notif-tabs-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 0 24px;
+  border-bottom: 1.5px solid #f1f5f9;
+  background: #ffffff;
+  min-height: 42px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  box-sizing: border-box;
+}
+
+.rmims-notif-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.rmims-notif-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 2px 12px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  line-height: 1.4;
+  box-sizing: border-box;
+  transition: color 0.15s ease;
+}
+
+.rmims-notif-tab:hover {
+  color: #111827;
+}
+
+.rmims-notif-tab.active {
+  color: #111827;
+  font-weight: 600;
+}
+
+.rmims-notif-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1.5px;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: #4f46e5;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Tab pill badge counter */
+.rmims-notif-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  background: #f1f5f9;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+
+.rmims-notif-tab.active .rmims-notif-tab-badge {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+/* 5. Clean, Sleek Search Container (Collapsible or compact, zero clunky gray boxes) */
+.rmims-notif-search-container {
+  padding: 10px 24px 6px;
+  background: #ffffff;
+  display: none;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  animation: rmimsSearchSlide 0.18s ease-out;
+}
+
+.rmims-notif-search-container.open {
+  display: flex;
+}
+
+@keyframes rmimsSearchSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rmims-notif-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.rmims-notif-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.rmims-notif-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 32px 0 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  background: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.rmims-notif-search-input:focus {
+  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.rmims-notif-search-clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  display: none;
+}
+
+.rmims-notif-search-clear.visible {
+  display: block;
+}
+
+/* 6. Notifications List Body with Thin Smooth Scrollbar */
+.rmims-notif-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 460px;
+  background: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+.rmims-notif-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rmims-notif-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rmims-notif-body::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 6px;
+}
+
+.rmims-notif-body::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+.rmims-notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  text-align: center;
+  color: #94a3b8;
+  gap: 12px;
+}
+
+.rmims-notif-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+}
+
+.rmims-notif-empty-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* 7. Notification Item Card (Matching user reference image) */
+.rmims-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.rmims-notif-item:hover {
+  background: #f8fafc;
+  border-color: #f1f5f9;
+}
+
+.rmims-notif-item.unread {
+  background: #ffffff;
+}
+
+.rmims-notif-item.unread:hover {
+  background: #f8fafc;
+}
+
+/* Circular status icon */
+.rmims-notif-item-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.rmims-notif-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rmims-notif-item-icon.success {
+  background: #ecfdf5;
+  color: #10b981;
+}
+
+.rmims-notif-item-icon.warning {
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+.rmims-notif-item-icon.info {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.rmims-notif-item-icon.purple {
+  background: #f5f3ff;
+  color: #8b5cf6;
+}
+
+.rmims-notif-item-icon.danger {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+/* Item Content */
+.rmims-notif-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rmims-notif-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rmims-notif-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.35;
+}
+
+/* Unread blue dot indicator at top-right (matching reference image) */
+.rmims-notif-unread-dot {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  border-radius: 5px;
+  background: #4f46e5;
+  margin-top: 2px;
+}
+
+.rmims-notif-item.read .rmims-notif-unread-dot {
+  display: none;
+}
+
+.rmims-notif-item-desc {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.45;
+  margin: 0 0 8px 0;
+  word-break: break-word;
+}
+
+/* Action button row (like Resend invitation, Copy link in image) */
+.rmims-notif-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.rmims-notif-action-btn-primary {
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+}
+
+.rmims-notif-action-btn-primary:hover {
+  background: #4338ca;
+}
+
+.rmims-notif-action-btn-secondary {
+  background: #f8fafc;
+  color: #374151;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.rmims-notif-action-btn-secondary:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Bottom timestamp & category row */
+.rmims-notif-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.rmims-notif-item-footer .sep {
+  color: #cbd5e1;
+}
+
+/* 8. Card Footer */
+.rmims-notif-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.rmims-notif-mark-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.rmims-notif-mark-all-btn:hover {
+  opacity: 0.85;
+  background: #eef2ff;
+}
+
+.rmims-notif-view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.rmims-notif-view-all-btn:hover {
+  background: #4338ca;
+}
+
+.rmims-notif-view-all-btn:active {
+  transform: scale(0.98);
+}
+
+/* 9. SECONDARY DETAIL INSPECTION MODAL */
+.rmims-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+  box-sizing: border-box;
+}
+
+.rmims-detail-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.rmims-detail-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(12px) scale(0.96);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.rmims-detail-backdrop.open .rmims-detail-card {
+  transform: translateY(0) scale(1);
+}
+
+.rmims-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fafafa;
+}
+
+.rmims-detail-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.rmims-detail-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rmims-detail-close-btn:hover {
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.rmims-detail-body {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 68vh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rmims-detail-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rmims-detail-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.rmims-detail-badge.success {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.rmims-detail-badge.warning {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.rmims-detail-badge.info {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.rmims-detail-badge.purple {
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.rmims-detail-badge.danger {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.rmims-detail-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.35;
+}
+
+.rmims-detail-desc {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Key Metadata Properties Box */
+.rmims-detail-meta-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rmims-detail-meta-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  gap: 12px;
+}
+
+.rmims-detail-meta-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.rmims-detail-meta-val {
+  color: #1e293b;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Masked / Blurred Device Location Styling */
+.rmims-masked-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.rmims-masked-badge {
+  font-size: 10px;
+  background: #8b5cf6;
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.rmims-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+.rmims-detail-btn-cancel {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rmims-detail-btn-cancel:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.rmims-detail-btn-action {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rmims-detail-btn-action:hover {
+  background: #4338ca;
+}
+
+/* 10. Topbar Bell Indicator Pulse */
+.topbar-icon-btn,
+.mgr-bell-btn {
+  position: relative;
+}
+
+.rmims-bell-unread-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 0 0 2px #ffffff;
+  pointer-events: none;
+  animation: rmimsBadgePulse 2s infinite;
+}
+
+@keyframes rmimsBadgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@media (max-width: 640px) {
+  .rmims-notif-backdrop {
+    padding: 12px;
+    align-items: center;
+  }
+  .rmims-notif-card {
+    max-height: 90vh;
+  }
+}
+
+/* ==========================================================================
+   UNIFIED TOPBAR NOTIFICATION BUTTON & PROFILE DROPDOWN (Strictly Unified)
+   Applies identically to Admin, Manager, and Staff portals
+   ========================================================================== */
+
+.topbar-icon-btn,
+.icon-btn#notificationBtn,
+.rmsme-header-btn#rmsmeNotificationBtn,
+.mgr-bell-btn {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  border-radius: 50% !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #374151 !important;
+  cursor: pointer !important;
+  position: relative !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+}
+
+.topbar-icon-btn:hover,
+.icon-btn#notificationBtn:hover,
+.rmsme-header-btn#rmsmeNotificationBtn:hover,
+.mgr-bell-btn:hover {
+  background: #F8FAFC !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+.topbar-icon-btn:active,
+.icon-btn#notificationBtn:active,
+.rmsme-header-btn#rmsmeNotificationBtn:active,
+.mgr-bell-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.topbar-icon-btn svg,
+.icon-btn#notificationBtn svg,
+.rmsme-header-btn#rmsmeNotificationBtn svg,
+.mgr-bell-btn svg {
+  width: 19px !important;
+  height: 19px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 1.8 !important;
+  display: block !important;
+}
+
+/* Suppress obsolete static dot badge in favor of animated counter badge */
+.bell-badge#notifBadge,
+#notifBadge.bell-badge {
+  display: none !important;
+}
+
+/* UNIFIED PROFILE DROPDOWN (Strictly ONE design across Admin, Manager, Staff) */
+.rmsme-popover.mgr-profile-dropdown,
+.rmsme-popover.admin-profile-dropdown,
+.mgr-profile-dropdown,
+.admin-profile-dropdown,
+.profile-dropdown,
+.rmsme-popover#profileDropdown,
+.rmsme-popover#adminProfileDropdown,
+.rmsme-popover#mgrProfileDropdown {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  width: 230px !important;
+  min-width: 220px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  padding: 8px !important;
+  z-index: 10001 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  box-sizing: border-box !important;
+  transform-origin: top right !important;
+  animation: popoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes popoverFadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.rmsme-popover.mgr-profile-dropdown[hidden],
+.rmsme-popover.admin-profile-dropdown[hidden],
+.mgr-profile-dropdown[hidden],
+.admin-profile-dropdown[hidden],
+.profile-dropdown[hidden],
+.rmsme-popover#profileDropdown[hidden],
+.rmsme-popover#adminProfileDropdown[hidden],
+.rmsme-popover#mgrProfileDropdown[hidden],
+.rmsme-popover[hidden] {
+  display: none !important;
+}
+
+.mgr-profile-head {
+  padding: 8px 10px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.mgr-profile-head strong {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #0F2A1B !important;
+  line-height: 1.2 !important;
+}
+
+.mgr-profile-head small {
+  display: block !important;
+  font-size: 11.5px !important;
+  color: #5C7A68 !important;
+  line-height: 1.2 !important;
+  margin-top: 2px !important;
+}
+
+.mgr-online-badge {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.mgr-status-indicator {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: #22C55E !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25) !important;
+  flex-shrink: 0 !important;
+}
+
+.mgr-popover-divider {
+  height: 1px !important;
+  background: #E2E8F0 !important;
+  margin: 4px 0 !important;
+  border: none !important;
+}
+
+.mgr-popover-item,
+.admin-popover-item,
+.mgr-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #0F2A1B !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  transition: all 0.15s ease !important;
+  font-family: inherit !important;
+}
+
+.mgr-popover-item:hover,
+.admin-popover-item:hover,
+.mgr-menu-item:hover {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #15803D !important;
+}
+
+.mgr-popover-item.text-danger,
+.admin-popover-item.text-danger,
+.mgr-menu-item.mgr-logout-item {
+  color: #DC2626 !important;
+  font-weight: 600 !important;
+}
+
+.mgr-popover-item.text-danger:hover,
+.admin-popover-item.text-danger:hover,
+.mgr-menu-item.mgr-logout-item:hover {
+  background: #FEE2E2 !important;
+  color: #B91C1C !important;
+}
+

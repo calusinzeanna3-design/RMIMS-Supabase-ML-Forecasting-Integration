@@ -1,0 +1,554 @@
+/**
+ * RMSME Staff Activity & Review Module Logic
+ * Implements Section 15, 16, 17, 20, 21, 23, 25, 26, 30:
+ * - 3 Manager Actions:
+ *   1. Approve -> Updates official inventory, status = Approved
+ *   2. Return for Correction -> Manager writes correction message, status = Correction Needed
+ *   3. Reject -> Status = Rejected, no inventory update
+ * - Manager sees 🔵 UPDATED inside the Review popup for resubmitted transactions
+ * - Displays previous correction message and diff (e.g. Quantity: 200 kg → 150 kg)
+ * - Actual status remains Pending
+ * - Official inventory is updated ONLY after Manager approval
+ */
+
+import {
+  getSystemRawMaterials,
+  saveCustomRawMaterial,
+  saveCustomReceipt,
+  saveCustomDisbursement
+} from './system-materials.js';
+
+import {
+  getStaffTransactions
+} from './rmims-transaction-engine.js';
+
+const STAFF_TX_KEY = 'rmims_staff_transactions';
+
+let transactions = [];
+let activeReviewItem = null;
+
+function loadTransactions() {
+  transactions = getStaffTransactions();
+}
+
+function saveTransactions() {
+  try {
+    localStorage.setItem(STAFF_TX_KEY, JSON.stringify(transactions));
+  } catch (e) {}
+}
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadTransactions();
+  populateStaffFilterOptions();
+  renderCounters();
+  renderTable();
+  bindFilterEvents();
+  bindReviewModalEvents();
+
+  // Refresh button
+  const btnRefresh = document.getElementById('btnRefreshStaffActivity');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', () => {
+      loadTransactions();
+      populateStaffFilterOptions();
+      renderCounters();
+      renderTable();
+    });
+  }
+
+  // Cross-tab real-time sync
+  window.addEventListener('storage', (e) => {
+    if (!e.key || e.key.includes('transactions') || e.key.includes('activity')) {
+      loadTransactions();
+      populateStaffFilterOptions();
+      renderCounters();
+      renderTable();
+    }
+  });
+
+  // URL query check: e.g. ?review=REC-2026-00125
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.has('review')) {
+      const targetRef = sp.get('review');
+      const found = transactions.find(t => t.ref && t.ref.toLowerCase() === targetRef.toLowerCase());
+      if (found) {
+        setTimeout(() => openReviewModal(found), 250);
+      }
+    }
+  } catch (e) {}
+});
+
+function populateStaffFilterOptions() {
+  const select = document.getElementById('staffMemberFilter');
+  if (!select) return;
+
+  const currentVal = select.value;
+  const staffNames = Array.from(new Set(transactions.map(t => t.staff).filter(Boolean))).sort();
+
+  select.innerHTML = '<option value="all">All Staff Members</option>';
+  staffNames.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if (name === currentVal) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
+function renderCounters() {
+  const total = transactions.length;
+  const pending = transactions.filter(t => t.status === 'Pending').length;
+  const approved = transactions.filter(t => t.status === 'Approved').length;
+  const rejected = transactions.filter(t => t.status === 'Rejected').length;
+
+  const totalEl = document.getElementById('kpiStaffTotal');
+  const pendingEl = document.getElementById('kpiStaffPending');
+  const approvedEl = document.getElementById('kpiStaffApproved');
+  const rejectedEl = document.getElementById('kpiStaffRejected');
+
+  if (totalEl) totalEl.textContent = total;
+  if (pendingEl) pendingEl.textContent = pending;
+  if (approvedEl) approvedEl.textContent = approved;
+  if (rejectedEl) rejectedEl.textContent = rejected;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('staffActivityTbody');
+  if (!tbody) return;
+
+  const searchVal = (document.getElementById('staffSearchInput')?.value || '').toLowerCase().trim();
+  const staffVal = document.getElementById('staffMemberFilter')?.value || 'all';
+  const actVal = document.getElementById('staffActivityFilter')?.value || 'all';
+  const statusVal = document.getElementById('staffStatusFilter')?.value || 'all';
+
+  const filtered = transactions.filter(t => {
+    if (searchVal) {
+      const matchStaff = (t.staff || '').toLowerCase().includes(searchVal);
+      const matchRef = (t.ref || '').toLowerCase().includes(searchVal);
+      const matchMat = (t.material || '').toLowerCase().includes(searchVal);
+      const matchNotes = (t.notes || '').toLowerCase().includes(searchVal);
+      if (!matchStaff && !matchRef && !matchMat && !matchNotes) return false;
+    }
+    if (staffVal !== 'all' && t.staff !== staffVal) return false;
+    if (actVal !== 'all' && t.activity !== actVal) return false;
+    if (statusVal !== 'all' && t.status !== statusVal) return false;
+    return true;
+  });
+
+  const countLabel = document.getElementById('staffCountLabel');
+  if (countLabel) {
+    countLabel.textContent = `Showing ${filtered.length} of ${transactions.length} records`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; padding:44px 16px; color:#5C7A68;">
+          <div style="font-weight:700; font-size:15px; color:#0F2A1B; margin-bottom:6px;">No Staff Activity Records</div>
+          <div style="font-size:13px; color:#64748B;">No staff material movements match your filter criteria.</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(t => {
+    const isPending = t.status === 'Pending';
+    const isReceive = (t.activity || '').toLowerCase().includes('rec');
+    const isCorrection = t.status === 'Correction Needed';
+
+    let statusPill = '';
+    if (t.status === 'Approved') {
+      statusPill = `<span class="badge" style="background:#DCFCE7; color:#15803D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Approved</span>`;
+    } else if (t.status === 'Rejected') {
+      statusPill = `<span class="badge" style="background:#FEE2E2; color:#DC2626; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Rejected</span>`;
+    } else if (isCorrection) {
+      statusPill = `<span class="badge" style="background:#FEF3C7; color:#D97706; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Correction Needed</span>`;
+    } else {
+      statusPill = `<span class="badge" style="background:#E0F2FE; color:#0369A1; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Pending</span>`;
+    }
+
+    // Indicator if resubmitted (for manager table hint)
+    const updatedTag = t.isUpdated ? `<span style="margin-left:6px; font-size:11px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-weight:700;">Resubmitted</span>` : '';
+
+    return `
+      <tr data-ref="${escapeHtml(t.ref)}">
+        <td style="font-weight:500; color:#334155; font-size:12.5px;">${escapeHtml(t.date || 'Recent')}</td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="width:28px; height:28px; border-radius:50%; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px;">
+              ${escapeHtml(t.staff ? t.staff.charAt(0) : 'S')}
+            </span>
+            <span style="font-weight:600; color:#0F2A1B; font-size:13px;">${escapeHtml(t.staff || 'Staff Member')}</span>
+          </div>
+        </td>
+        <td>
+          <span style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:700; background:${isReceive ? '#DCFCE7' : '#FEF3C7'}; color:${isReceive ? '#15803D' : '#D97706'};">
+            ${escapeHtml(t.activity || 'Receive')}
+          </span>
+        </td>
+        <td style="font-weight:600; color:#0F2A1B;">
+          ${escapeHtml(t.material || 'Raw Material')} <span style="font-weight:700; color:${isReceive ? '#15803D' : '#D97706'};">(${isReceive ? '+' : '-'}${escapeHtml(t.quantity || 0)}${t.unit ? ' ' + escapeHtml(t.unit) : ''})</span>
+        </td>
+        <td>
+          <span class="ref-plain-text" style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B;">${escapeHtml(t.ref || '--')}</span>
+        </td>
+        <td>
+          ${statusPill} ${updatedTag}
+        </td>
+        <td style="text-align:right;">
+          ${isPending 
+            ? `<button type="button" class="btn-review-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 12px; font-size:12px; font-weight:700; border-radius:6px; background:#15803D; color:#FFF; border:none; cursor:pointer;">Review</button>`
+            : `<button type="button" class="btn-view-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 10px; font-size:12px; font-weight:600; color:#5C7A68; background:transparent; border:none; cursor:pointer;">View</button>`
+          }
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Wire buttons in table
+  tbody.querySelectorAll('.btn-review-tx, .btn-view-tx').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ref = btn.getAttribute('data-ref');
+      const item = transactions.find(t => t.ref === ref);
+      if (item) {
+        openReviewModal(item);
+      }
+    });
+  });
+}
+
+function bindFilterEvents() {
+  const searchInput = document.getElementById('staffSearchInput');
+  const staffSelect = document.getElementById('staffMemberFilter');
+  const actSelect = document.getElementById('staffActivityFilter');
+  const statusSelect = document.getElementById('staffStatusFilter');
+  const resetBtn = document.getElementById('btnResetFilters');
+
+  if (searchInput) searchInput.addEventListener('input', renderTable);
+  if (staffSelect) staffSelect.addEventListener('change', renderTable);
+  if (actSelect) actSelect.addEventListener('change', renderTable);
+  if (statusSelect) statusSelect.addEventListener('change', renderTable);
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      if (staffSelect) staffSelect.value = 'all';
+      if (actSelect) actSelect.value = 'all';
+      if (statusSelect) statusSelect.value = 'all';
+      renderTable();
+    });
+  }
+}
+
+function bindReviewModalEvents() {
+  const modal = document.getElementById('mgrTxReviewModal');
+  const closeBtn = document.getElementById('closeTxReviewModal');
+  const btnApprove = document.getElementById('btnApproveTx');
+  const btnReturn = document.getElementById('btnReturnTx');
+  const btnReject = document.getElementById('btnRejectTx');
+
+  const btnConfirmReturn = document.getElementById('btnConfirmReturnTx');
+  const btnCancelReturn = document.getElementById('btnCancelReturnTx');
+  const btnConfirmReject = document.getElementById('btnConfirmRejectTx');
+  const btnCancelReject = document.getElementById('btnCancelRejectTx');
+
+  if (closeBtn) closeBtn.addEventListener('click', closeReviewModal);
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeReviewModal();
+    });
+  }
+
+  // 1. APPROVE ACTION (Section 16, 23)
+  if (btnApprove) {
+    btnApprove.addEventListener('click', handleApproveTransaction);
+  }
+
+  // 2. RETURN FOR CORRECTION ACTION (Section 16, 17)
+  if (btnReturn) {
+    btnReturn.addEventListener('click', () => {
+      const correctionBox = document.getElementById('correctionReasonBox');
+      const rejectBox = document.getElementById('rejectReasonBox');
+      if (rejectBox) rejectBox.style.display = 'none';
+      if (correctionBox) {
+        correctionBox.style.display = 'flex';
+        document.getElementById('correctionReasonInput')?.focus();
+      }
+    });
+  }
+
+  if (btnCancelReturn) {
+    btnCancelReturn.addEventListener('click', () => {
+      const correctionBox = document.getElementById('correctionReasonBox');
+      if (correctionBox) correctionBox.style.display = 'none';
+    });
+  }
+
+  if (btnConfirmReturn) {
+    btnConfirmReturn.addEventListener('click', handleConfirmReturnForCorrection);
+  }
+
+  // 3. REJECT ACTION (Section 16)
+  if (btnReject) {
+    btnReject.addEventListener('click', () => {
+      const correctionBox = document.getElementById('correctionReasonBox');
+      const rejectBox = document.getElementById('rejectReasonBox');
+      if (correctionBox) correctionBox.style.display = 'none';
+      if (rejectBox) {
+        rejectBox.style.display = 'flex';
+        document.getElementById('rejectReasonInput')?.focus();
+      }
+    });
+  }
+
+  if (btnCancelReject) {
+    btnCancelReject.addEventListener('click', () => {
+      const rejectBox = document.getElementById('rejectReasonBox');
+      if (rejectBox) rejectBox.style.display = 'none';
+    });
+  }
+
+  if (btnConfirmReject) {
+    btnConfirmReject.addEventListener('click', handleConfirmReject);
+  }
+}
+
+function openReviewModal(item) {
+  activeReviewItem = item;
+  const modal = document.getElementById('mgrTxReviewModal');
+  if (!modal) return;
+
+  const isReceive = (item.activity || '').toLowerCase().includes('rec');
+
+  document.getElementById('reviewRefNum').textContent = item.ref || '--';
+  document.getElementById('reviewStaff').textContent = item.staff || 'Staff Member';
+  document.getElementById('reviewActivity').textContent = item.activity || (isReceive ? 'Receive' : 'Disburse');
+  document.getElementById('reviewActivity').style.color = isReceive ? '#15803D' : '#D97706';
+  document.getElementById('reviewMaterial').textContent = item.material || '--';
+  document.getElementById('reviewQuantity').textContent = `${isReceive ? '+' : '-'}${item.quantity}${item.unit ? ' ' + item.unit : ''}`;
+  document.getElementById('reviewDate').textContent = item.date || 'Recent';
+  document.getElementById('reviewNotes').textContent = item.notes || 'No extra notes provided.';
+
+  // Section 20: 🔵 UPDATED INDICATOR inside the Review popup
+  const updatedBadge = document.getElementById('reviewUpdatedBadge');
+  const correctionDiffBox = document.getElementById('reviewCorrectionDiffBox');
+  const prevCorrectionMsg = document.getElementById('revPrevCorrectionMsg');
+  const diffDetails = document.getElementById('revDiffDetails');
+
+  if (item.isUpdated) {
+    if (updatedBadge) updatedBadge.style.display = 'inline-block';
+    if (correctionDiffBox) {
+      correctionDiffBox.style.display = 'flex';
+      if (prevCorrectionMsg) {
+        prevCorrectionMsg.textContent = `"${item.previousCorrectionMessage || 'Please verify the transaction details.'}"`;
+      }
+      if (diffDetails) {
+        const prev = item.previousValues || {};
+        const changes = [];
+        if (prev.quantity != null && prev.quantity !== item.quantity) {
+          changes.push(`Quantity: <strong>${prev.quantity} ${prev.unit || item.unit} &rarr; ${item.quantity} ${item.unit}</strong>`);
+        }
+        if (prev.material && prev.material !== item.material) {
+          changes.push(`Material: <strong>${prev.material} &rarr; ${item.material}</strong>`);
+        }
+        if (prev.date && prev.date !== item.date) {
+          changes.push(`Date: <strong>${prev.date} &rarr; ${item.date}</strong>`);
+        }
+        if (changes.length === 0) {
+          changes.push(`Details revised and resubmitted by Staff.`);
+        }
+        diffDetails.innerHTML = changes.join('<br>');
+      }
+    }
+  } else {
+    if (updatedBadge) updatedBadge.style.display = 'none';
+    if (correctionDiffBox) correctionDiffBox.style.display = 'none';
+  }
+
+  // Status badge
+  const statusBadge = document.getElementById('reviewStatusBadge');
+  if (statusBadge) {
+    statusBadge.className = 'mgr-status-pill status-' + (item.status || 'pending').toLowerCase();
+    statusBadge.textContent = item.status || 'Pending';
+  }
+
+  // Reset inputs & boxes
+  document.getElementById('rejectReasonBox').style.display = 'none';
+  document.getElementById('correctionReasonBox').style.display = 'none';
+  document.getElementById('reviewResultBanner').style.display = 'none';
+
+  const actionButtons = document.getElementById('reviewActionButtons');
+  if (item.status === 'Approved') {
+    if (actionButtons) actionButtons.style.display = 'none';
+    showReviewResult(`✓ This transaction was approved by ${item.approvedBy || 'Manager'}. Official inventory has been updated.`, true);
+  } else if (item.status === 'Rejected') {
+    if (actionButtons) actionButtons.style.display = 'none';
+    showReviewResult(`✗ This transaction was rejected: "${item.rejectionReason || 'Declined'}".`, false);
+  } else if (item.status === 'Correction Needed') {
+    if (actionButtons) actionButtons.style.display = 'none';
+    showReviewResult(`⚠ Awaiting staff revision. Sent message: "${item.correctionMessage || 'Please correct details.'}".`, false, '#FFFBEB', '#92400E');
+  } else {
+    if (actionButtons) actionButtons.style.display = 'flex';
+  }
+
+  modal.style.display = 'flex';
+}
+
+function closeReviewModal() {
+  const modal = document.getElementById('mgrTxReviewModal');
+  if (modal) modal.style.display = 'none';
+  activeReviewItem = null;
+}
+
+// 1. APPROVE TRANSACTION LOGIC
+function handleApproveTransaction() {
+  if (!activeReviewItem) return;
+
+  const isReceive = (activeReviewItem.activity || '').toLowerCase().includes('rec');
+  const qty = parseFloat(activeReviewItem.quantity || 0);
+  const materialName = activeReviewItem.material;
+
+  // Update transaction status
+  activeReviewItem.status = 'Approved';
+  activeReviewItem.approvedBy = 'Manager';
+  activeReviewItem.approvedAt = new Date().toISOString();
+
+  // =========================================================================
+  // SECTION 23: OFFICIAL INVENTORY UPDATE RULE
+  // Only approved Staff transactions update official inventory.
+  // =========================================================================
+  updateSystemInventory(materialName, qty, isReceive, activeReviewItem);
+
+  saveTransactions();
+  renderCounters();
+  renderTable();
+
+  showReviewResult('✓ Transaction approved successfully! Official inventory has been updated.', true);
+  setTimeout(closeReviewModal, 1200);
+}
+
+// 2. RETURN FOR CORRECTION LOGIC
+function handleConfirmReturnForCorrection() {
+  if (!activeReviewItem) return;
+
+  const msgInput = document.getElementById('correctionReasonInput');
+  const msg = msgInput ? msgInput.value.trim() : '';
+
+  if (!msg) {
+    alert('Please enter a correction message for the Staff member.');
+    if (msgInput) msgInput.focus();
+    return;
+  }
+
+  // Section 16 & 17: Return for Correction
+  // Staff receives message -> Status becomes Correction Needed
+  activeReviewItem.status = 'Correction Needed';
+  activeReviewItem.correctionMessage = msg;
+  activeReviewItem.returnedBy = 'Manager';
+  activeReviewItem.returnedAt = new Date().toISOString();
+
+  saveTransactions();
+  renderCounters();
+  renderTable();
+
+  showReviewResult(`⚠ Transaction returned for correction. Staff will keep reference ${activeReviewItem.ref} and revise details.`, false, '#FFFBEB', '#92400E');
+  setTimeout(closeReviewModal, 1300);
+}
+
+// 3. REJECT LOGIC
+function handleConfirmReject() {
+  if (!activeReviewItem) return;
+
+  const reasonInput = document.getElementById('rejectReasonInput');
+  const reason = reasonInput ? reasonInput.value.trim() : '';
+
+  if (!reason) {
+    alert('Please enter the reason for rejection.');
+    if (reasonInput) reasonInput.focus();
+    return;
+  }
+
+  // Section 16: Reject -> Status: Rejected. Inventory is NOT updated.
+  activeReviewItem.status = 'Rejected';
+  activeReviewItem.rejectionReason = reason;
+  activeReviewItem.rejectedBy = 'Manager';
+  activeReviewItem.rejectedAt = new Date().toISOString();
+
+  saveTransactions();
+  renderCounters();
+  renderTable();
+
+  showReviewResult('✗ Transaction has been rejected. Official inventory was not modified.', false);
+  setTimeout(closeReviewModal, 1200);
+}
+
+/**
+ * Updates official system inventory upon approval
+ */
+function updateSystemInventory(materialName, quantity, isReceive, tx) {
+  const materials = getSystemRawMaterials();
+  const found = materials.find(m => (m.name || m.materialName || '').toLowerCase() === materialName.toLowerCase());
+
+  if (found) {
+    const currentStock = Number(found.currentStock || found.current_stock || 0);
+    const newStock = isReceive ? (currentStock + quantity) : Math.max(0, currentStock - quantity);
+
+    // Save updated stock to custom materials key
+    saveCustomRawMaterial({
+      ...found,
+      name: found.name || found.materialName,
+      current_stock: newStock,
+      currentStock: newStock
+    });
+  }
+
+  // Log official receipt or disbursement
+  if (isReceive) {
+    saveCustomReceipt({
+      id: `rec-${tx.ref}`,
+      referenceNo: tx.ref,
+      materialName: tx.material,
+      quantity: quantity,
+      unit: tx.unit || (matchedMat ? (matchedMat.unit_of_measure || matchedMat.unit) : '') || '',
+      supplierName: tx.supplier || 'Staff Inward Delivery',
+      receivedBy: tx.staff || 'Staff Member',
+      date: tx.date || new Date().toISOString().slice(0, 10)
+    });
+  } else {
+    saveCustomDisbursement({
+      id: `disb-${tx.ref}`,
+      referenceNo: tx.ref,
+      materialName: tx.material,
+      quantity: quantity,
+      unit: tx.unit || (matchedMat ? (matchedMat.unit_of_measure || matchedMat.unit) : '') || '',
+      context: tx.usedFor || 'Production Batch',
+      recordedBy: tx.staff || 'Staff Member',
+      date: tx.date || new Date().toISOString().slice(0, 10)
+    });
+  }
+}
+
+function showReviewResult(msg, isSuccess, customBg, customColor) {
+  const banner = document.getElementById('reviewResultBanner');
+  const actionButtons = document.getElementById('reviewActionButtons');
+  if (actionButtons) actionButtons.style.display = 'none';
+  if (banner) {
+    banner.style.display = 'block';
+    banner.style.background = customBg || (isSuccess ? '#DCFCE7' : '#FEE2E2');
+    banner.style.color = customColor || (isSuccess ? '#15803D' : '#DC2626');
+    banner.textContent = msg;
+  }
+}

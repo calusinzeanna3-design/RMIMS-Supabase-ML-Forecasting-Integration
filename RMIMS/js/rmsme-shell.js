@@ -1,5 +1,4 @@
-// RMIMS Universal Shell & Live Shared Notification System
-// Standard header, sidebar, profile, and real-time notification engine across all Admin & User pages.
+import './rmims-notifications.js';
 
 (function () {
   /* Cleanup Appearance Mode preference & attributes */
@@ -9,90 +8,380 @@
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-theme-preference');
 
+  /* Cleanse all old imported and inputted data while keeping ML trained data intact */
+  try {
+    if (localStorage.getItem('rmims_data_cleansed_v6') !== 'true') {
+      const keysToReset = [
+        'rmims_manager_receipts',
+        'rmims_manager_disbursements',
+        'rmims_manager_activities',
+        'rmims_staff_transactions',
+        'rmims_burned_references',
+        'rmims_custom_receipts',
+        'rmims_custom_disbursements',
+        'rmims_custom_raw_materials',
+        'rmims_manager_material_overrides',
+        'rmims_manager_archived_materials',
+        'rmims_manager_material_history',
+        'rmims_deleted_material_ids',
+        'rmims_deleted_receipt_ids',
+        'rmims_deleted_disbursement_ids',
+        'RMSME_CUSTOM_FINISHED_PRODUCTS',
+        'rmims_custom_finished_products',
+        'rmims_forecast_cache',
+        'rmims_forecast_timestamp',
+        'rmims_latest_forecast',
+        'rmims_inventory_cache',
+        'rmims_recent_activities',
+        'rmims_wipe_baseline_materials'
+      ];
+      keysToReset.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('rmims_data_cleansed_v6', 'true');
+    }
+  } catch (e) {}
+
   const path = location.pathname.split('/').filter(Boolean);
-  const role = path.includes('admin') ? 'admin' : 'user';
+  const isAnyAdmin = path.includes('admin') || path.includes('main-admin');
+  const isStrictManager = path.includes('manager') && !isAnyAdmin;
+  const isManager = path.includes('manager') || isAnyAdmin;
+  const role = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'user');
   const current = (path[path.length - 1] || '').toLowerCase();
 
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatBranchLabel(bName, bLoc) {
+    if (!bName && !bLoc) return '— Branch Not Set —';
+    if (bName && bLoc) {
+      if (bName.toLowerCase().includes(bLoc.toLowerCase())) {
+        return `${bName} Hub`;
+      }
+      return `${bName} \u2022 ${bLoc} Hub`;
+    }
+    return (bName || bLoc);
+  }
+
   const icons = {
-    dashboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
-    materials: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 21 7v10l-9 5-9-5V7l9-5Z"/><path d="M12 2v20M3 7l9 5 9-5"/></svg>',
-    activity: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9"/><path d="m17 16 3 3-3 3"/></svg>',
-    forecasting: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>',
-    analytics: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
-    reports: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>',
-    users: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 8.5a3 3 0 0 1 0 5.5M17 15c2 .7 3.5 2.3 3.5 5"/></svg>',
-    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19 13.5 2 1.5-2 3-2.5-.7c-.4.4-.9.7-1.4.9L14.5 21h-5l-.6-2.8c-.5-.2-1-.5-1.4-.9L5 18l-2-3 2-1.5a7 7 0 0 1 0-3L3 9l2-3 2.5.7c.4-.4.9-.7 1.4-.9L9.5 3h5l.6 2.8c.5.2 1 .5 1.4.9L19 6l2 3-2 1.5a7 7 0 0 1 0 3Z"/></svg>'
+    dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/></svg>',
+    inventory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+    receive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+    disburse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+    activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>',
+    analytics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    forecasting: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
+    simulation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>',
+    reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
   };
 
-  const items = [
-    ['dashboard.html', 'Dashboard', 'dashboard'],
-    ['inventory.html', 'Inventory', 'materials', 'material-group'],
-    ['material-activity.html', 'Material Activity', 'activity', 'material-child'],
-    ['analytics.html', 'Consumption Analytics', 'analytics'],
-    ['forecasting.html', 'AI-Based Forecasting', 'forecasting'],
-    ['reports.html', 'Reports', 'reports'],
-    ...(role === 'admin' ? [['user-management.html', 'User Management', 'users']] : []),
-    ['settings.html', 'Settings', 'settings']
+  const managerSections = [
+    {
+      heading: 'WORKSPACE',
+      items: [
+        ['dashboard.html', 'Dashboard', 'dashboard'],
+        ['inventory.html', 'My Inventory', 'inventory'],
+        ['receive.html', 'Receive', 'receive'],
+        ['disburse.html', 'Disburse', 'disburse']
+      ]
+    },
+    {
+      heading: 'INSIGHTS',
+      items: [
+        ['analytics.html', 'Analytics', 'analytics'],
+        ['forecasting.html', 'Forecast', 'forecasting']
+      ]
+    },
+    {
+      heading: 'REPORTS',
+      items: [
+        ['reports.html', 'Current Report', 'reports']
+      ]
+    },
+    {
+      heading: 'TEAM',
+      items: [
+        ['staff-activity.html', 'Staff Activity', 'users']
+      ]
+    }
   ];
 
-  function isActive(href) { return current === href.toLowerCase(); }
+  const adminSections = [
+    {
+      heading: 'WORKSPACE',
+      items: [
+        ['overview.html', 'Overview', 'dashboard'],
+        ['branch-stores.html', 'Branch Stores', 'inventory'],
+        ['activity-logs.html', 'Activity Logs', 'activity'],
+        ['system-alerts.html', 'System Alerts', 'reports']
+      ]
+    },
+    {
+      heading: 'MANAGEMENT',
+      items: [
+        ['user-management.html', 'User Accounts', 'users'],
+        ['settings.html', 'Settings', 'settings']
+      ]
+    }
+  ];
+
+  const userSections = [
+    {
+      heading: 'WORKSPACE',
+      items: [
+        ['dashboard.html', 'Dashboard', 'dashboard'],
+        ['inventory.html', 'Inventory', 'inventory'],
+        ['receive.html', 'Receive', 'receive'],
+        ['disburse.html', 'Disburse', 'disburse']
+      ]
+    },
+    {
+      heading: 'REPORTS',
+      items: [
+        ['reports.html', 'Reports', 'reports']
+      ]
+    }
+  ];
+
+  const sections = isStrictManager ? managerSections : (isAnyAdmin ? adminSections : userSections);
+
+  function isActive(href) {
+    const baseHref = href.split('?')[0].toLowerCase();
+    if (href.includes('?')) {
+      return current === baseHref && location.search === '?' + href.split('?')[1];
+    }
+    if ((baseHref === 'usage.html' || baseHref === 'analytics.html') && (current === 'usage.html' || current === 'analytics.html')) return true;
+    if (baseHref === 'receive.html' && (current === 'receive.html' || (current === 'material-activity.html' && location.search.includes('receive')))) return true;
+    if (baseHref === 'disburse.html' && (current === 'disburse.html' || (current === 'material-activity.html' && (location.search.includes('disburse') || location.search.includes('disbursement'))))) return true;
+    return current === baseHref;
+  }
 
   const sidebar = document.querySelector('.sidebar');
   if (sidebar) {
-    sidebar.innerHTML = `
-      <div class="rmsme-brand">
-        <div class="rmsme-brand-mark"><img src="../assets/logo-icon.png" alt="RMSME"></div>
-        <div class="rmsme-brand-copy"><strong>RMSME</strong><span>Raw Materials Inventory<br>Management System</span></div>
-      </div>
-      <nav class="rmsme-nav" aria-label="Primary navigation">
-        ${items.map(([href, label, icon, type]) => type === 'material-group' ? `
-          <button type="button" class="rmsme-nav-item rmsme-material-toggle" aria-expanded="false" title="Materials" aria-controls="rmsme-material-subnav">
-            <span class="rmsme-nav-icon">${icons[icon]}</span><span class="rmsme-nav-label">Materials</span><span class="rmsme-nav-chevron">⌄</span>
+    if (isStrictManager) {
+      sidebar.className = 'sidebar admin-sidebar';
+      sidebar.innerHTML = `
+        <div>
+          <a href="dashboard.html" class="sidebar-header" title="RMSME Store Management">
+            <div class="brand-logo-wrap">
+              <img src="../assets/logo-icon.png" alt="RMSME Logo" class="brand-logo-img">
+            </div>
+            <div class="brand-titles">
+              <span class="brand-name">RMSME</span>
+              <span class="brand-sub">Store Management</span>
+            </div>
+          </a>
+          <nav class="sidebar-nav" aria-label="Primary navigation">
+            <a class="nav-link ${isActive('dashboard.html') ? 'active' : ''}" href="dashboard.html" title="Dashboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Dashboard</span>
+            </a>
+            <a class="nav-link ${isActive('inventory.html') ? 'active' : ''}" href="inventory.html" title="My Inventory">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              <span>My Inventory</span>
+            </a>
+            <a class="nav-link ${isActive('receive.html') ? 'active' : ''}" href="receive.html" title="Receive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+              <span>Receive</span>
+            </a>
+            <a class="nav-link ${isActive('disburse.html') ? 'active' : ''}" href="disburse.html" title="Disburse">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+              <span>Disburse</span>
+            </a>
+            <a class="nav-link ${isActive('analytics.html') || isActive('usage.html') ? 'active' : ''}" href="analytics.html" title="Analytics">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span>Analytics</span>
+            </a>
+            <a class="nav-link ${isActive('forecasting.html') ? 'active' : ''}" href="forecasting.html" title="Forecast">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+              <span>Forecast</span>
+            </a>
+            <a class="nav-link ${isActive('reports.html') ? 'active' : ''}" href="reports.html" title="Current Report">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Current Report</span>
+            </a>
+            <a class="nav-link ${isActive('staff-activity.html') ? 'active' : ''}" href="staff-activity.html" title="Staff Activity">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Staff Activity</span>
+            </a>
+          </nav>
+        </div>
+        <div class="sidebar-bottom-nav">
+          <button type="button" class="nav-link nav-btn-help" id="btnSidebarHelp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Help Center</span>
           </button>
-          <div class="rmsme-subnav" id="rmsme-material-subnav">
-            <a class="rmsme-subitem ${isActive('inventory.html') ? 'active' : ''}" href="inventory.html"><span>Inventory</span></a>
-            <a class="rmsme-subitem ${isActive('material-activity.html') ? 'active' : ''}" href="material-activity.html"><span>Material Activity</span></a>
-          </div>` : type === 'material-child' ? '' : `
-          <a class="rmsme-nav-item ${isActive(href) ? 'active' : ''}" href="${href}" title="${label}"><span class="rmsme-nav-icon">${icons[icon]}</span><span class="rmsme-nav-label">${label}</span></a>`).join('')}
-      </nav>
-      <div class="rmsme-side-account">
-        <div class="rmsme-side-avatar" data-shell-avatar>A</div>
-        <div class="rmsme-side-user"><strong data-shell-name>Account</strong><span>${role === 'admin' ? 'Administrator' : 'User'}</span></div>
-        <span class="rmsme-side-arrow">›</span>
-      </div>`;
+          <a href="settings.html" class="nav-link ${isActive('settings.html') ? 'active' : ''}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/></svg>
+            <span>Settings</span>
+          </a>
+          <div class="sidebar-version">v2.0.0 &bull; RMSME</div>
+        </div>`;
+    } else if (!isAnyAdmin) {
+      // STAFF ROLE SIDEBAR
+      sidebar.className = 'sidebar admin-sidebar';
+      sidebar.innerHTML = `
+        <div>
+          <a href="dashboard.html" class="sidebar-header" title="RMSME Store Staff">
+            <div class="brand-logo-wrap">
+              <img src="../assets/logo-icon.png" alt="RMSME Logo" class="brand-logo-img">
+            </div>
+            <div class="brand-titles">
+              <span class="brand-name">RMSME</span>
+              <span class="brand-sub">Store Staff</span>
+            </div>
+          </a>
+          <nav class="sidebar-nav" aria-label="Primary navigation">
+            <a class="nav-link ${isActive('dashboard.html') ? 'active' : ''}" href="dashboard.html" title="Dashboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Dashboard</span>
+            </a>
+            <a class="nav-link ${isActive('inventory.html') ? 'active' : ''}" href="inventory.html" title="My Inventory">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              <span>My Inventory</span>
+            </a>
+            <a class="nav-link ${isActive('receive.html') ? 'active' : ''}" href="receive.html" title="Receive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+              <span>Receive</span>
+            </a>
+            <a class="nav-link ${isActive('disburse.html') ? 'active' : ''}" href="disburse.html" title="Disburse">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+              <span>Disburse</span>
+            </a>
+            <a class="nav-link ${isActive('my-activity.html') ? 'active' : ''}" href="my-activity.html" title="My Activity">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              <span>My Activity</span>
+            </a>
+            <a class="nav-link ${isActive('reports.html') ? 'active' : ''}" href="reports.html" title="Reports">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Reports</span>
+            </a>
+          </nav>
+        </div>
+        <div class="sidebar-bottom-nav">
+          <button type="button" class="nav-link nav-btn-help" id="btnSidebarHelp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Help Center</span>
+          </button>
+          <a href="settings.html" class="nav-link ${isActive('settings.html') ? 'active' : ''}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/></svg>
+            <span>Settings</span>
+          </a>
+          <div class="sidebar-version">v2.0.0 &bull; RMSME</div>
+        </div>`;
+    } else {
+      sidebar.innerHTML = `
+        <div class="rmsme-brand">
+          <div class="rmsme-brand-mark"><img src="../assets/logo-icon.png" alt="RMSME"></div>
+          <div class="rmsme-brand-copy"><strong>RMSME</strong><span>Inventory Intelligence</span></div>
+        </div>
+        <nav class="rmsme-nav" aria-label="Primary navigation">
+          ${sections.map(sec => `
+            <div class="rmsme-nav-heading">${sec.heading}</div>
+            ${sec.items.map(([href, label, icon]) => `
+              <a class="rmsme-nav-item ${isActive(href) ? 'active' : ''}" href="${href}" title="${label}">
+                <span class="rmsme-nav-icon">${icons[icon] || icons.dashboard}</span>
+                <span class="rmsme-nav-label">${label}</span>
+              </a>
+            `).join('')}
+          `).join('')}
+        </nav>
+        <div class="rmsme-side-account">
+          <div class="rmsme-side-avatar" data-shell-avatar>${isAnyAdmin ? 'A' : 'U'}</div>
+          <div class="rmsme-side-user">
+            <strong data-shell-name>${isAnyAdmin ? 'Administrator' : 'User'}</strong>
+            <span data-shell-role>${isAnyAdmin ? 'System Admin' : 'Staff'}</span>
+          </div>
+          <button class="rmsme-side-logout" id="rmsmeSideLogout" aria-label="Log Out" title="Log Out">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>`;
+    }
+  }
 
-    const toggle = sidebar.querySelector('.rmsme-material-toggle');
-    const sub = sidebar.querySelector('.rmsme-subnav');
-    const hasActiveMaterial = !!sidebar.querySelector('.rmsme-subitem.active');
+  const breadcrumbMap = {
+    'overview.html': 'Workspace / Overview',
+    'dashboard.html': 'Workspace / Dashboard',
+    'inventory.html': isStrictManager ? 'Workspace / My Inventory' : 'Workspace / Inventory',
+    'receive.html': 'Workspace / Receive',
+    'disburse.html': 'Workspace / Disburse',
+    'my-activity.html': 'Workspace / My Activity',
+    'material-activity.html': 'Workspace / Material Activity',
+    'usage.html': 'Insights / Analytics',
+    'analytics.html': isStrictManager ? 'Insights / Analytics' : 'Workspace / Analytics',
+    'forecasting.html': isStrictManager ? 'Insights / Forecast' : 'Workspace / Forecasting',
+    'simulation.html': 'Workspace / Simulation',
+    'reports.html': isStrictManager ? 'Reports / Current Report' : 'Workspace / Reports',
+    'staff-activity.html': 'Team / Staff Activity',
+    'user-management.html': 'Management / Team Access',
+    'settings.html': isManager ? 'Management / Settings & Privacy' : 'Account / Settings'
+  };
 
-    const setMaterialsOpen = (open) => {
-      sidebar.classList.toggle('materials-open', open);
-      toggle?.setAttribute('aria-expanded', String(open));
-      if (sub) sub.setAttribute('aria-hidden', String(!open));
-    };
+  const titleMap = {
+    'overview.html': ['Main Administration Overview', "Here's what's happening across all branch stores."],
+    'dashboard.html': ['Dashboard', "Here's your company's raw materials inventory overview for today."],
+    'inventory.html': [isStrictManager ? 'My Inventory' : 'Inventory Management', 'Manage raw materials inventory catalog and operational activity.'],
+    'receive.html': ['Receive Raw Materials', 'Record incoming materials into inventory. Reference numbers are automatically generated.'],
+    'disburse.html': ['Disburse Raw Materials', 'Record materials taken from inventory for production.'],
+    'my-activity.html': ['My Activity', 'View your submitted transactions, track approvals, and correct returned items.'],
+    'material-activity.html': ['Material Activity', 'Record and review raw-material movement.'],
+    'usage.html': ['Analytics', 'Analyze raw-material consumption, rankings, and operational trends.'],
+    'analytics.html': [isStrictManager ? 'Analytics' : 'Consumption Analytics', 'Analyze raw-material consumption and usage trends.'],
+    'forecasting.html': ['AI Raw Material Forecast', 'Authoritative demand planning and AI raw-material forecasts.'],
+    'simulation.html': ['Product Simulation', 'Predict producible units and ingredient depletion over a chosen horizon.'],
+    'reports.html': ['Current Report', 'Generate comprehensive inventory summaries and operational reports.'],
+    'staff-activity.html': ['Staff Activity', 'Monitor Staff activities, review submissions, and manage approvals.'],
+    'user-management.html': ['User Management', 'Manage system users and their access.'],
+    'settings.html': ['Settings & Privacy', 'Manage your account, system preferences, data, and security.']
+  };
 
-    setMaterialsOpen(hasActiveMaterial);
+  // Standardize browser tab title: "[Page] | RMSME"
+  if (titleMap[current]) {
+    document.title = `${titleMap[current][0]} | RMSME`;
+  }
 
-    toggle?.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const isMobile = window.innerWidth <= 900;
-      const isCollapsed = sidebar.classList.contains('collapsed') || sidebar.offsetWidth < 120;
-      
-      if (isCollapsed && !isMobile) {
-        window.location.href = 'inventory.html';
-        return;
-      }
-
-      setMaterialsOpen(!sidebar.classList.contains('materials-open'));
-    });
-
-    sidebar.querySelectorAll('.rmsme-subitem').forEach(link => {
-      link.addEventListener('click', () => setMaterialsOpen(true));
-    });
+  // Ensure favicon is present on all pages
+  if (!document.querySelector('link[rel*="icon"]')) {
+    const fav = document.createElement('link');
+    fav.rel = 'icon';
+    fav.type = 'image/png';
+    fav.href = (location.pathname.includes('/admin/') || location.pathname.includes('/main-admin/') || location.pathname.includes('/manager/') || location.pathname.includes('/user/'))
+      ? '../assets/favicon-64.png'
+      : 'assets/favicon-64.png';
+    document.head.appendChild(fav);
   }
 
   document.addEventListener('click', (event) => {
+    const hashLink = event.target.closest('a[href^="#"]');
+    if (hashLink && hashLink.closest('.sidebar, .rmsme-nav')) {
+      const targetId = hashLink.getAttribute('href').slice(1);
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        event.preventDefault();
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        targetEl.classList.add('section-focused');
+        setTimeout(() => targetEl.classList.remove('section-focused'), 1600);
+      } else if (targetId === 'settingsModal') {
+        event.preventDefault();
+        const sm = document.getElementById('adminSettingsModal');
+        if (sm) sm.style.display = 'flex';
+      }
+      document.body.classList.remove('rmsme-mobile-drawer-open');
+      return;
+    }
+
     const link = event.target.closest('a[href]');
     if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
     const href = link.getAttribute('href');
@@ -106,6 +395,10 @@
     const shell = link.closest('.sidebar,.rmsme-nav,.rmsme-popover');
     if (!shell) return;
     event.preventDefault();
+    const targetFile = url.pathname.split('/').pop() || '';
+    if (targetFile && titleMap[targetFile]) {
+      document.title = `${titleMap[targetFile][0]} | RMSME`;
+    }
     document.body.classList.add('rmsme-navigating');
     window.setTimeout(() => { location.href = url.href; }, 140);
   }, true);
@@ -113,51 +406,307 @@
   // Standardize topbar header across all pages
   const oldTopbar = document.querySelector('.topbar');
   if (oldTopbar) {
-    const titleMap = {
-      'dashboard.html': ['Dashboard', 'Overview of your raw materials and inventory activity.'],
-      'inventory.html': ['Inventory Management', 'Manage your raw materials and current stock.'],
-      'material-activity.html': ['Material Activity', 'Record and review raw-material movement.'],
-      'analytics.html': ['Consumption Analytics', 'Understand how raw materials are being consumed.'],
-      'forecasting.html': ['AI-Based Forecasting', 'Generate predictive raw-material requirements using the trained Time-Series model.'],
-      'reports.html': ['Reports & Decision Support', 'View and generate inventory and consumption reports.'],
-      'user-management.html': ['User Management', 'Manage system users and their access.'],
-      'settings.html': ['Settings', 'Manage your account, system preferences, data, and security.']
-    };
-    const [title, subtitle] = titleMap[current] || ['RMSME', 'Raw Materials Inventory Management System'];
-    oldTopbar.innerHTML = `
-      <div style="display:flex; align-items:center; flex:1 1 auto; min-width:0; overflow:hidden;">
-        <button class="rmsme-mobile-menu-btn" id="rmsmeMobileMenuBtn" aria-label="Toggle Navigation" title="Toggle Navigation">
-          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <div class="rmsme-heading" style="flex:1 1 auto; min-width:0; overflow:hidden;"><h1>${title}</h1><p>${subtitle}</p></div>
-      </div>
-      <div class="rmsme-header-actions">
-        <button class="rmsme-header-btn" id="rmsmeNotificationBtn" aria-label="Notifications" title="Notifications" aria-expanded="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-          <span class="rmsme-notif-badge" id="rmsmeNotifBadge" style="display:none;">0</span>
-        </button>
-        <button class="rmsme-header-btn" id="rmsmeHelpBtn" aria-label="Help" title="Help" aria-expanded="false">?</button>
-        <button class="rmsme-profile-btn" id="rmsmeProfileBtn" aria-expanded="false" title="Account Menu">
-          <span class="rmsme-avatar" data-shell-avatar>A</span><span class="rmsme-profile-copy"><strong data-shell-name>Account</strong><small>${role === 'admin' ? 'Administrator' : 'User'}</small></span><span class="rmsme-chevron">⌄</span>
-        </button>
-        <div class="rmsme-popover rmsme-notifications" id="rmsmeNotifications" hidden>
-          <div class="rmsme-popover-head"><strong>Notifications</strong><button type="button" id="rmsmeMarkAll">Mark all as read</button></div>
-          <div id="rmsmeNotificationList"><div class="rmsme-empty">No new notifications.</div></div>
-          <div class="rmsme-popover-foot"><button type="button" id="rmsmeViewNotifications">View all notifications →</button></div>
-        </div>
-        <div class="rmsme-popover rmsme-help" id="rmsmeHelp" hidden>
-          <strong>Help & Information</strong>
-          <button type="button" id="rmsmeSystemGuideBtn">📖 System User Guide</button>
-        </div>
-        <div class="rmsme-popover rmsme-profile" id="rmsmeProfile" hidden>
-          <div class="rmsme-profile-head"><span class="rmsme-avatar large" data-shell-avatar>A</span><div><strong data-shell-name>Account</strong><small>${role === 'admin' ? 'Administrator' : 'User'}</small><small data-shell-email></small></div></div>
-          <a href="settings.html">My Account</a><a href="settings.html">Settings</a>
-          <button type="button" id="rmsmeLogout">Log Out</button>
-        </div>
-      </div>`;
+    if (oldTopbar.querySelector('.header-actions') || oldTopbar.querySelector('#headerDate')) {
+      oldTopbar.style.display = '';
+    } else {
+      const [title, subtitle] = titleMap[current] || ['RMSME', 'Raw Materials Inventory Management System'];
+      const crumb = breadcrumbMap[current] || 'Workspace';
 
-    // Mobile Navigation Drawer Controller
-    const mobileMenuBtn = document.getElementById('rmsmeMobileMenuBtn');
+      if (isStrictManager) {
+        oldTopbar.innerHTML = `
+          <div class="rmsme-topbar-left">
+            <button class="rmsme-mobile-menu-btn" id="rmsmeMobileMenuBtn" aria-label="Toggle Navigation" title="Toggle Navigation">
+              <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="rmsme-heading">
+              <span class="rmsme-breadcrumb">${crumb}</span>
+              <h1>${title}</h1>
+              <p>${subtitle}</p>
+            </div>
+          </div>
+          <div class="rmsme-topbar-center">
+            <div class="mgr-header-search">
+              <svg class="mgr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="rmsmeGlobalSearch" placeholder="Search here..." autocomplete="off">
+            </div>
+          </div>
+          <div class="rmsme-header-actions">
+            <!-- Notifications Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeNotifAnchor">
+              <button class="mgr-bell-btn" id="rmsmeNotificationBtn" aria-label="Notifications" title="Notifications" aria-expanded="false">
+                <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                <span class="mgr-bell-dot" id="rmsmeNotifBadge" style="display:none;"></span>
+              </button>
+              <div class="rmsme-popover rmsme-notifications" id="rmsmeNotifications" hidden>
+                <div class="rmsme-popover-head"><strong>Notifications</strong><button type="button" id="rmsmeMarkAll">Mark all as read</button></div>
+                <div id="rmsmeNotificationList"><div class="rmsme-empty">No new notifications.</div></div>
+                <div class="rmsme-popover-foot"><button type="button" id="rmsmeViewNotifications">View all notifications →</button></div>
+              </div>
+            </div>
+
+            <!-- Profile Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeProfileAnchor">
+              <button class="mgr-profile-pill" id="rmsmeProfileBtn" aria-expanded="false" title="Manager Menu">
+                <span class="mgr-avatar" data-shell-avatar>M</span>
+                <span class="mgr-user-copy">
+                  <strong class="mgr-name" data-shell-name>Manager</strong>
+                  <small class="mgr-role" data-shell-role>Manager</small>
+                </span>
+                <span class="mgr-chev">▾</span>
+              </button>
+              <div class="rmsme-popover mgr-profile-dropdown" id="rmsmeProfile" hidden>
+                <div class="mgr-profile-head">
+                  <div class="mgr-online-badge">
+                    <span class="mgr-status-indicator"></span>
+                    <div>
+                      <strong data-shell-name>Manager</strong>
+                      <small data-shell-role style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="mgr-popover-divider"></div>
+                <a href="settings.html" class="mgr-popover-item">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/></svg>
+                  Account
+                </a>
+                <div class="mgr-popover-divider"></div>
+                <button type="button" class="mgr-popover-item text-danger" id="rmsmeLogout">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>`;
+      } else if (!isAnyAdmin) {
+        // STAFF TOPBAR
+        oldTopbar.innerHTML = `
+          <div class="rmsme-topbar-left">
+            <button class="rmsme-mobile-menu-btn" id="rmsmeMobileMenuBtn" aria-label="Toggle Navigation" title="Toggle Navigation">
+              <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="rmsme-heading">
+              <span class="rmsme-breadcrumb">${crumb}</span>
+              <h1>${title}</h1>
+              <p>${subtitle}</p>
+            </div>
+          </div>
+          <div class="rmsme-topbar-center">
+            <!-- Live Philippine Standard Time Clock -->
+            <div class="topbar-clock" id="rmsmeTopbarClock" title="Live Philippine Standard Time (PST)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span class="topbar-clock-text" id="rmsmeClockText">Loading live clock...</span>
+            </div>
+          </div>
+          <div class="rmsme-header-actions">
+            <!-- Notifications Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeNotifAnchor">
+              <button class="mgr-bell-btn" id="rmsmeNotificationBtn" aria-label="Notifications" title="Notifications" aria-expanded="false">
+                <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                <span class="mgr-bell-dot" id="rmsmeNotifBadge" style="display:none;"></span>
+              </button>
+              <div class="rmsme-popover rmsme-notifications" id="rmsmeNotifications" hidden>
+                <div class="rmsme-popover-head"><strong>Notifications</strong><button type="button" id="rmsmeMarkAll">Mark all as read</button></div>
+                <div id="rmsmeNotificationList"><div class="rmsme-empty">No new notifications.</div></div>
+                <div class="rmsme-popover-foot"><button type="button" id="rmsmeViewNotifications">View all notifications →</button></div>
+              </div>
+            </div>
+
+            <!-- Profile Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeProfileAnchor">
+              <button class="mgr-profile-pill" id="rmsmeProfileBtn" aria-expanded="false" title="Staff Menu">
+                <span class="mgr-avatar" data-shell-avatar>U</span>
+                <span class="mgr-user-copy">
+                  <strong class="mgr-name" data-shell-name>User</strong>
+                  <small class="mgr-role" data-shell-role style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
+                </span>
+                <span class="mgr-chev">▾</span>
+              </button>
+              <div class="rmsme-popover mgr-profile-dropdown" id="rmsmeProfile" hidden>
+                <div class="mgr-profile-head">
+                  <div class="mgr-online-badge">
+                    <span class="mgr-status-indicator"></span>
+                    <div>
+                      <strong data-shell-name>Loading...</strong>
+                      <small data-shell-role style="display:block; color:#5C7A68; font-size:11.5px;">— &bull; —</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="mgr-popover-divider"></div>
+                <a href="settings.html" class="mgr-popover-item">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/></svg>
+                  Account
+                </a>
+                <div class="mgr-popover-divider"></div>
+                <button type="button" class="mgr-popover-item text-danger" id="rmsmeLogout">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>`;
+      } else {
+        oldTopbar.innerHTML = `
+          <div class="rmsme-topbar-left">
+            <button class="rmsme-mobile-menu-btn" id="rmsmeMobileMenuBtn" aria-label="Toggle Navigation" title="Toggle Navigation">
+              <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="rmsme-heading">
+              <span class="rmsme-breadcrumb">${crumb}</span>
+              <h1>${title}</h1>
+              <p>${subtitle}</p>
+            </div>
+          </div>
+          <div class="rmsme-topbar-center">
+            <!-- Prominent active Store / Branch badge -->
+            <div class="rmsme-branch-badge" id="rmsmeBranchBadge" title="Assigned Store / Branch Hub">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18M3 7v14M21 7v14M6 21V11M10 21V11M14 21V11M18 21V11M2 7l10-4 10 4"/>
+              </svg>
+              <span data-shell-branch>Loading branch...</span>
+            </div>
+
+            <!-- Live Clock in place of search bar: transparent and curved, live accurate PST -->
+            <div class="topbar-clock" id="rmsmeTopbarClock" title="Live Philippine Standard Time (PST)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span class="topbar-clock-text" id="rmsmeClockText">Loading live clock...</span>
+            </div>
+          </div>
+          <div class="rmsme-header-actions">
+            <!-- Notifications Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeNotifAnchor">
+              <button class="rmsme-header-btn" id="rmsmeNotificationBtn" aria-label="Notifications" title="Notifications" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                <span class="rmsme-notif-badge" id="rmsmeNotifBadge" style="display:none;">0</span>
+              </button>
+              <div class="rmsme-popover rmsme-notifications" id="rmsmeNotifications" hidden>
+                <div class="rmsme-popover-head"><strong>Notifications</strong><button type="button" id="rmsmeMarkAll">Mark all as read</button></div>
+                <div id="rmsmeNotificationList"><div class="rmsme-empty">No new notifications.</div></div>
+                <div class="rmsme-popover-foot"><button type="button" id="rmsmeViewNotifications">View all notifications →</button></div>
+              </div>
+            </div>
+
+            <!-- Help Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeHelpAnchor">
+              <button class="rmsme-header-btn" id="rmsmeHelpBtn" aria-label="Help" title="Help" aria-expanded="false">?</button>
+              <div class="rmsme-popover rmsme-help" id="rmsmeHelp" hidden>
+                <strong>Help & Information</strong>
+                <button type="button" id="rmsmeSystemGuideBtn">📖 System User Guide</button>
+              </div>
+            </div>
+
+            <!-- Profile Dropdown Anchor -->
+            <div class="rmsme-popover-anchor" id="rmsmeProfileAnchor">
+              <button class="rmsme-profile-btn" id="rmsmeProfileBtn" aria-expanded="false" title="Account Menu">
+                <span class="rmsme-avatar" data-shell-avatar>${isAnyAdmin ? 'A' : (isManager ? 'M' : 'U')}</span><span class="rmsme-profile-copy"><strong data-shell-name>Account</strong><small data-shell-role>${isAnyAdmin ? 'Administrator' : (isManager ? 'Manager' : 'Staff')}</small></span><span class="rmsme-chevron">⌄</span>
+              </button>
+              <div class="rmsme-popover rmsme-profile" id="rmsmeProfile" hidden>
+                <div class="rmsme-profile-head"><span class="rmsme-avatar large" data-shell-avatar>${isAnyAdmin ? 'A' : (isManager ? 'M' : 'U')}</span><div><strong data-shell-name>Account</strong><small data-shell-role>${isAnyAdmin ? 'Administrator' : (isManager ? 'Manager' : 'Staff')}</small><small data-shell-email></small></div></div>
+                <a href="settings.html">My Account</a><a href="settings.html">Settings</a>
+                <button type="button" id="rmsmeLogout">Log Out</button>
+              </div>
+            </div>
+          </div>`;
+      }
+    }
+  }
+
+  // Live Header Date and Clock Sync across all Manager and Shell pages
+  function updateHeaderDate() {
+    const el = document.getElementById('headerDate');
+    if (!el) return;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const span = el.querySelector('span');
+    if (span) {
+      span.textContent = dateStr;
+    } else {
+      el.textContent = dateStr;
+    }
+  }
+  updateHeaderDate();
+  setInterval(updateHeaderDate, 30000);
+
+  // Live Frontdesk Monitoring Clock Sync (matching Admin Overview exact digital format)
+  function updateFrontdeskClock() {
+    const fdTime = document.getElementById('frontdeskTime');
+    const fdPeriod = document.getElementById('frontdeskPeriod');
+    const fdDate = document.getElementById('frontdeskDate');
+    if (!fdTime && !fdPeriod && !fdDate) return;
+
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayName = days[now.getDay()];
+    const monthName = months[now.getMonth()];
+    const dateNum = now.getDate();
+    const year = now.getFullYear() < 2026 ? 2026 : now.getFullYear();
+
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const hStr = String(hours).padStart(2, '0');
+
+    if (fdTime) fdTime.textContent = `${hStr}:${minutes}:${seconds}`;
+    if (fdPeriod) fdPeriod.textContent = ampm;
+    if (fdDate) fdDate.textContent = `${dayName.toUpperCase()}, ${dateNum} ${monthName.toUpperCase()} ${year}`;
+  }
+  updateFrontdeskClock();
+  setInterval(updateFrontdeskClock, 1000);
+
+  // Mobile Navigation Drawer Controller
+  function initMobileDrawer() {
+    let mobileMenuBtn = document.getElementById('rmsmeMobileMenuBtn') || document.querySelector('.mobile-sidebar-toggle');
+    const topbarLeft = document.querySelector('.admin-topbar .topbar-left, .topbar .topbar-left, .topbar-left');
+    
+    if (topbarLeft) {
+      // Group titles/description in a vertical flex container if not already grouped
+      let textGroup = topbarLeft.querySelector('.topbar-text-group');
+      if (!textGroup) {
+        textGroup = document.createElement('div');
+        textGroup.className = 'topbar-text-group';
+        const children = Array.from(topbarLeft.childNodes).filter(node => {
+          return node !== mobileMenuBtn && !(node.classList && node.classList.contains('mobile-sidebar-toggle'));
+        });
+        children.forEach(child => textGroup.appendChild(child));
+        topbarLeft.appendChild(textGroup);
+      }
+
+      if (!mobileMenuBtn) {
+        mobileMenuBtn = document.createElement('button');
+        mobileMenuBtn.type = 'button';
+        mobileMenuBtn.id = 'rmsmeMobileMenuBtn';
+        mobileMenuBtn.className = 'mobile-sidebar-toggle';
+        mobileMenuBtn.setAttribute('aria-label', 'Toggle Navigation Menu');
+        mobileMenuBtn.setAttribute('title', 'Toggle Navigation Menu');
+        mobileMenuBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        `;
+        topbarLeft.prepend(mobileMenuBtn);
+      } else if (topbarLeft.firstChild !== mobileMenuBtn) {
+        topbarLeft.prepend(mobileMenuBtn);
+      }
+    }
+
     let drawerBackdrop = document.querySelector('.rmsme-mobile-drawer-backdrop');
     if (!drawerBackdrop) {
       drawerBackdrop = document.createElement('div');
@@ -168,6 +717,10 @@
     function toggleMobileDrawer(open) {
       const shouldOpen = open !== undefined ? open : !document.body.classList.contains('rmsme-mobile-drawer-open');
       document.body.classList.toggle('rmsme-mobile-drawer-open', shouldOpen);
+      const activeSidebar = document.querySelector('.sidebar, .admin-sidebar');
+      if (activeSidebar) {
+        activeSidebar.classList.toggle('mobile-open', shouldOpen);
+      }
     }
 
     mobileMenuBtn?.addEventListener('click', (e) => {
@@ -180,9 +733,18 @@
       toggleMobileDrawer(false);
     });
 
-    sidebar?.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => toggleMobileDrawer(false));
+    const activeSidebar = document.querySelector('.sidebar, .admin-sidebar');
+    activeSidebar?.querySelectorAll('a, button').forEach(link => {
+      if (link.id !== 'rmsmeMobileMenuBtn') {
+        link.addEventListener('click', () => toggleMobileDrawer(false));
+      }
     });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileDrawer);
+  } else {
+    initMobileDrawer();
   }
 
   function initials(name) {
@@ -191,50 +753,748 @@
   }
 
   function syncIdentity() {
-    let name = role === 'admin' ? 'Admin' : 'Staff Member', email = '';
+    let name = isManager ? 'Manager' : 'Store Staff', email = '';
+    let roleTitle = isManager ? 'Manager' : 'Staff';
+    let branchName = '', branchLocation = '';
     try {
-      const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'user'];
+      const candidates = isManager 
+        ? ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user']
+        : ['staffUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user'];
       for (const k of candidates) {
         const raw = localStorage.getItem(k); if (!raw) continue;
         const o = JSON.parse(raw);
         if (o?.fullName || o?.name || o?.email) {
-          name = o.fullName || o.name || name;
+          const rawName = o.fullName || o.name || '';
+          if (isManager) {
+            name = 'Manager';
+          } else {
+            name = rawName || name;
+          }
           email = o.email || email;
+          branchName = o.branchName || o.branch_name || branchName;
+          branchLocation = o.branchLocation || o.branch_location || branchLocation;
+          if (!isManager) {
+            roleTitle = 'Staff';
+          } else {
+            roleTitle = 'Manager';
+          }
           break;
         }
       }
     } catch (e) { }
-    const old = document.querySelector('.profile-text');
-    if (old && old.textContent && !/loading/i.test(old.textContent) && old.textContent.trim() !== 'Staff Member') {
-      name = old.textContent.replace(/\s+▼\s*$/, '').trim() || name;
+
+    if (!isManager) {
+      roleTitle = 'Staff';
+      if (!email || email.toLowerCase().includes('manager@') || email.startsWith('admin')) {
+        email = 'staff@rmims.ph';
+      }
+      if (name.includes('Maria Santos') || name.toLowerCase().includes('rafael') || name.toLowerCase().includes('cruz') || !name) {
+        name = 'Store Staff';
+      }
+    } else {
+      roleTitle = 'Manager';
+      if (!email || email.toLowerCase().includes('staff@')) {
+        email = 'manager@rmims.ph';
+      }
+      name = 'Manager';
     }
+
     document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name);
     document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = email);
     document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = initials(name));
+    document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = roleTitle);
+
+    const branchLabel = formatBranchLabel(branchName, branchLocation);
+    document.querySelectorAll('[data-shell-branch]').forEach(e => e.textContent = branchLabel);
+
+    if (current === 'dashboard.html') {
+      const hour = new Date().getHours();
+      const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+      
+      if (isManager) {
+        const greetingHeading = `${greet}, Manager!`;
+        const greetingSub = "Here is your daily manager operational summary.";
+
+        const welcomeEl = document.getElementById('overviewWelcomeGreeting') || document.getElementById('welcomeGreeting');
+        if (welcomeEl) welcomeEl.textContent = greetingHeading;
+        const subEl = document.getElementById('overviewWelcomeSub') || document.querySelector('.overview-welcome-sub');
+        if (subEl) subEl.textContent = greetingSub;
+      } else {
+        const firstName = (name && name !== 'Staff Member' && name !== 'Store Manager') ? name.split(/\s+/)[0] : '';
+        const greetingHeading = firstName ? `Welcome back, ${firstName}!` : 'Welcome back!';
+        const greetingSub = "Here's what's happening across your store operations today.";
+
+        const welcomeEl = document.getElementById('welcomeGreeting') || document.getElementById('overviewWelcomeGreeting');
+        if (welcomeEl) welcomeEl.textContent = greetingHeading;
+        const subEl = document.getElementById('welcomeSub') || document.querySelector('.overview-welcome-sub');
+        if (subEl) subEl.textContent = greetingSub;
+      }
+
+      const headingP = document.querySelector('.rmsme-heading p');
+      if (headingP) {
+        headingP.textContent = isManager
+          ? `${greet}, Manager! Here is your daily manager operational summary.`
+          : "Here's what's happening across your store operations today.";
+      }
+    }
   }
+
+  async function syncLiveSession() {
+    try {
+      const { supabase } = await import('../supabase/supabase-config.js');
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        let profile = null;
+        try {
+          const { data } = await supabase
+            .from('user_profiles')
+            .select('id, full_name, email, role, operational_role, branch_name, branch_location, status')
+            .eq('id', user.id)
+            .maybeSingle();
+          profile = data;
+        } catch (e) {
+          const { data } = await supabase
+            .from('user_profiles')
+            .select('id, full_name, email, role, status')
+            .eq('id', user.id)
+            .maybeSingle();
+          profile = data;
+        }
+
+        const cleanEmail = (user.email || "").toLowerCase();
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+
+        if (isMasterAdmin) {
+          if (!profile) {
+            profile = {
+              id: user.id || user.uid,
+              email: user.email,
+              full_name: 'Zeanna Calusin',
+              role: 'admin',
+              operational_role: 'admin',
+              status: 'active'
+            };
+          } else {
+            profile.role = 'admin';
+            profile.operational_role = 'admin';
+            profile.status = 'active';
+          }
+        }
+
+        if (!profile) {
+          try {
+            const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+            if (raw) {
+              const cached = JSON.parse(raw);
+              if (cached.email && cached.email.toLowerCase() === cleanEmail) {
+                profile = {
+                  id: user.id || user.uid,
+                  email: user.email,
+                  full_name: cached.fullName || cached.name || "User",
+                  role: cached.role || (isMasterAdmin ? "admin" : "user"),
+                  operational_role: cached.operationalRole || (isMasterAdmin ? "admin" : "staff"),
+                  status: cached.status || "active"
+                };
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (profile) {
+          // Live status guard: If pending approval or inactive, eject session (never eject master admin)
+          if (profile.status !== 'active' && !isMasterAdmin) {
+            await supabase.auth.signOut();
+            window.location.href = '../login.html';
+            return;
+          }
+          // Live role guard: If trying to access manager pages without manager/admin role, redirect
+          if (isManager && profile.role !== 'admin' && profile.role !== 'manager' && !isMasterAdmin) {
+            window.location.href = '../user/dashboard.html';
+            return;
+          }
+
+          let liveName = profile.full_name || profile.email;
+          if (isManager) {
+            liveName = 'Manager';
+          }
+          document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = liveName);
+          if (isManager) {
+            document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = (profile.email && !profile.email.toLowerCase().includes('staff@')) ? profile.email : 'manager@rmims.ph');
+          } else if (profile.email) {
+            document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = profile.email);
+          }
+          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isManager ? 'M' : initials(liveName));
+
+          const pBranchName = profile.branch_name || profile.branchName || '';
+          const pBranchLoc = profile.branch_location || profile.branchLocation || '';
+          const pBranchLabel = formatBranchLabel(pBranchName, pBranchLoc);
+          document.querySelectorAll('[data-shell-branch]').forEach(e => e.textContent = pBranchLabel);
+
+          let liveRoleTitle = isManager ? 'Manager' : 'Staff';
+          if (isAnyAdmin) liveRoleTitle = 'Administrator';
+          document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = liveRoleTitle);
+
+          if (current === 'dashboard.html') {
+            const hour = new Date().getHours();
+            const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+            
+            if (isManager) {
+              const greetingHeading = `${greet}, Manager!`;
+              const greetingSub = "Here is your daily manager operational summary.";
+
+              const welcomeEl = document.getElementById('overviewWelcomeGreeting') || document.getElementById('welcomeGreeting');
+              if (welcomeEl) welcomeEl.textContent = greetingHeading;
+              const subEl = document.getElementById('overviewWelcomeSub') || document.querySelector('.overview-welcome-sub');
+              if (subEl) subEl.textContent = greetingSub;
+            } else {
+              const firstName = (liveName && liveName !== 'Staff Member') ? liveName.split(/\s+/)[0] : '';
+              const greetingHeading = firstName ? `Welcome back, ${firstName}!` : 'Welcome back!';
+              const greetingSub = "Here's what's happening across your store operations today.";
+
+              const welcomeEl = document.getElementById('welcomeGreeting') || document.getElementById('overviewWelcomeGreeting');
+              if (welcomeEl) welcomeEl.textContent = greetingHeading;
+              const subEl = document.getElementById('welcomeSub') || document.querySelector('.overview-welcome-sub');
+              if (subEl) subEl.textContent = greetingSub;
+            }
+
+            const headingP = document.querySelector('.rmsme-heading p');
+            if (headingP) {
+              headingP.textContent = isManager
+                ? `${greet}, Manager! Here is your daily manager operational summary.`
+                : "Here's what's happening across your store operations today.";
+            }
+          }
+        }
+      }
+    } catch (e) { }
+  }
+
+  // Format and update live clock for topbar (matching Admin live clock aesthetic)
+  function updateLiveClock() {
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const dayName = days[now.getDay()];
+    const monthName = months[now.getMonth()];
+    const dateNum = now.getDate();
+    // Guarantee 2026 accurate live year
+    const year = now.getFullYear() < 2026 ? 2026 : now.getFullYear();
+
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const hStr = String(hours).padStart(2, '0');
+
+    const clockEls = document.querySelectorAll('.topbar-clock, #rmsmeTopbarClock, .header-date');
+    clockEls.forEach((clockEl) => {
+      const textEl = clockEl.querySelector('.topbar-clock-text') || clockEl.querySelector('span') || clockEl;
+      textEl.textContent = `${dayName}, ${monthName} ${dateNum}, ${year} | ${hStr}:${minutes}:${seconds} ${ampm}`;
+    });
+  }
+
+  // Shared Help Center Modal across Manager & User pages (100% Adopted Admin style)
+  function setupHelpCenter() {
+    let modalBackdrop = document.getElementById('helpCenterModal');
+    if (!modalBackdrop) {
+      modalBackdrop = document.createElement('div');
+      modalBackdrop.id = 'helpCenterModal';
+      modalBackdrop.className = 'help-modal-backdrop';
+      modalBackdrop.innerHTML = `
+        <div class="help-modal-window" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+          <div class="help-modal-header">
+            <div class="help-modal-title-group">
+              <h3 id="helpModalTitle">Help Center</h3>
+              <p>Quick answers to common questions and store operational guidelines.</p>
+            </div>
+            <button type="button" class="help-modal-close-btn" id="btnCloseHelpCenter" aria-label="Close Help Center">&times;</button>
+          </div>
+
+          <div class="help-faq-list">
+            <div class="help-faq-item">
+              <button type="button" class="help-faq-trigger">
+                <span class="help-faq-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  </svg>
+                </span>
+                <span class="help-faq-question">How do I record raw materials receiving?</span>
+                <svg class="help-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <div class="help-faq-answer">
+                Navigate to <strong>Receive</strong> in the sidebar or click <strong>Receive Materials</strong>. Select the supplier, purchase order, material batches, unit quantities, and expiration dates before confirming receipt into branch stock.
+              </div>
+            </div>
+
+            <div class="help-faq-item">
+              <button type="button" class="help-faq-trigger">
+                <span class="help-faq-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  </svg>
+                </span>
+                <span class="help-faq-question">How do I disburse materials to kitchen / production?</span>
+                <svg class="help-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <div class="help-faq-answer">
+                Click <strong>Disburse</strong> in the sidebar or quick actions. Choose the requested material, batch (FIFO order), quantity needed, and production batch reference to log the consumption decrement.
+              </div>
+            </div>
+
+            <div class="help-faq-item">
+              <button type="button" class="help-faq-trigger">
+                <span class="help-faq-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="m3 17 6-6 4 4 8-8"/>
+                    <path d="M14 7h7v7"/>
+                  </svg>
+                </span>
+                <span class="help-faq-question">How does AI Forecasting generate reorder suggestions?</span>
+                <svg class="help-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <div class="help-faq-answer">
+                The machine-learning pipeline trains on historical daily consumption patterns, lead times, and seasonal spikes to forecast demand for the next 7-30 days, alerting you before stock reaches critical thresholds.
+              </div>
+            </div>
+
+            <div class="help-faq-item">
+              <button type="button" class="help-faq-trigger">
+                <span class="help-faq-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </span>
+                <span class="help-faq-question">What reports and export formats are supported?</span>
+                <svg class="help-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <div class="help-faq-answer">
+                You can generate inventory audit ledgers, consumption trends, and low-stock alerts with direct <strong>Excel / CSV export</strong> and printable high-resolution PDF summaries for store management records.
+              </div>
+            </div>
+          </div>
+
+          <div class="help-guide-card">
+            <div class="help-guide-title-row">
+              <h4 class="help-guide-title">Store Operations Guide</h4>
+            </div>
+            <p class="help-guide-text">Follow our store operations standard to maintain real-time stock integrity, prevent ingredient expiration, and optimize daily production batches.</p>
+            <button type="button" class="btn-start-guide" id="btnStartOnboardingGuide">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+              </svg>
+              <span>Explore Guide</span>
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalBackdrop);
+    }
+
+    function openHelp() {
+      modalBackdrop.classList.add('show');
+    }
+    function closeHelp() {
+      modalBackdrop.classList.remove('show');
+    }
+
+    document.querySelectorAll('#mgrSideHelp, #btnSidebarHelp, #rmsmeHelpBtn, #rmsmeSystemGuideBtn, [href="#helpCenter"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openHelp();
+      });
+    });
+
+    const closeBtn = document.getElementById('btnCloseHelpCenter');
+    if (closeBtn) closeBtn.addEventListener('click', closeHelp);
+
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) closeHelp();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalBackdrop.classList.contains('show')) {
+        closeHelp();
+      }
+    });
+
+    const guideBtn = document.getElementById('btnStartOnboardingGuide');
+    if (guideBtn) {
+      guideBtn.addEventListener('click', async () => {
+        closeHelp();
+        if (typeof window.startRmimsTour === 'function') {
+          window.startRmimsTour({ force: true });
+        } else {
+          try {
+            const isSub = window.location.pathname.includes('/manager/') || window.location.pathname.includes('/user/') || window.location.pathname.includes('/admin/');
+            const scriptPath = isSub ? '../js/onboarding.js' : 'js/onboarding.js';
+            const mod = await import(scriptPath);
+            if (mod.startRmimsTour) {
+              mod.startRmimsTour({ force: true });
+            } else if (mod.checkAndShowOnboarding) {
+              mod.checkAndShowOnboarding({ id: role, role }, null, { force: true });
+            }
+          } catch (e) {
+            console.warn('Failed to launch onboarding tour:', e);
+          }
+        }
+      });
+    }
+
+    modalBackdrop.querySelectorAll('.help-faq-trigger').forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const item = trigger.closest('.help-faq-item');
+        const isActive = item.classList.contains('active');
+        modalBackdrop.querySelectorAll('.help-faq-item').forEach(other => other.classList.remove('active'));
+        if (!isActive) item.classList.add('active');
+      });
+    });
+  }
+
+  updateLiveClock();
+  setInterval(updateLiveClock, 1000);
+  setupHelpCenter();
+  setTimeout(setupHelpCenter, 400);
+  setupManagerAccountModals();
+  setTimeout(setupManagerAccountModals, 400);
+
   syncIdentity();
   setTimeout(syncIdentity, 600);
+  syncLiveSession();
+  setTimeout(syncLiveSession, 1200);
 
-  const profileBtn = document.getElementById('rmsmeProfileBtn'), profile = document.getElementById('rmsmeProfile');
-  const notifBtn = document.getElementById('rmsmeNotificationBtn'), notif = document.getElementById('rmsmeNotifications');
+  // Auto-check interactive spotlight tour for first-time session
+  setTimeout(async () => {
+    try {
+      const isSub = window.location.pathname.includes('/manager/') || window.location.pathname.includes('/user/') || window.location.pathname.includes('/admin/');
+      const scriptPath = isSub ? '../js/onboarding.js' : 'js/onboarding.js';
+      const mod = await import(scriptPath);
+      if (mod && typeof mod.checkAndShowOnboarding === 'function') {
+        const userId = localStorage.getItem('rmims_user_id') || role;
+        mod.checkAndShowOnboarding({ id: userId, role });
+      }
+    } catch (e) {}
+  }, 900);
+
+  function setupManagerAccountModals() {
+    if (!isStrictManager) return;
+
+    let overlay = document.getElementById('mgrModalsOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'mgrModalsOverlay';
+      overlay.innerHTML = `
+        <style>
+          .mgr-modal-backdrop {
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(15, 23, 42, 0.65) !important;
+            backdrop-filter: blur(4px) !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 16px !important;
+            z-index: 10050 !important;
+            box-sizing: border-box !important;
+            opacity: 0 !important;
+            transition: opacity 0.2s ease !important;
+          }
+          .mgr-modal-backdrop.open {
+            display: flex !important;
+            opacity: 1 !important;
+          }
+          .mgr-modal-window {
+            background: #FFFFFF !important;
+            border-radius: 18px !important;
+            border: 1px solid rgba(20, 83, 45, 0.12) !important;
+            box-shadow: 0 20px 45px -8px rgba(15, 42, 27, 0.2) !important;
+            width: 100% !important;
+            max-width: 620px !important;
+            max-height: 85vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            animation: mgrZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+          @keyframes mgrZoomIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          .mgr-modal-head {
+            padding: 18px 22px !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 12px !important;
+          }
+          .mgr-modal-title {
+            margin: 0 !important;
+            font-family: 'Sora', sans-serif !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            color: #0F2A1B !important;
+          }
+          .mgr-modal-sub {
+            margin: 2px 0 0 !important;
+            font-size: 12px !important;
+            color: #5C7A68 !important;
+          }
+          .mgr-modal-close {
+            background: #F1F5F9 !important;
+            border: none !important;
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 50% !important;
+            font-size: 20px !important;
+            color: #64748B !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.15s ease !important;
+          }
+          .mgr-modal-close:hover {
+            background: #FEE2E2 !important;
+            color: #DC2626 !important;
+          }
+          .mgr-modal-body {
+            padding: 20px 24px !important;
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+          }
+          .mgr-modal-foot {
+            padding: 14px 24px !important;
+            border-top: 1px solid #E2E8F0 !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 10px !important;
+            background: #F8FAFC !important;
+          }
+        </style>
+
+        <!-- MY ACTIVITY MODAL -->
+        <div class="mgr-modal-backdrop" id="mgrMyActivityBackdrop">
+          <div class="mgr-modal-window">
+            <div class="mgr-modal-head">
+              <div>
+                <h3 class="mgr-modal-title">My Activity</h3>
+                <p class="mgr-modal-sub">Overview of your manager operations and approvals.</p>
+              </div>
+              <button type="button" class="mgr-modal-close" id="closeMyActivityBackdrop">&times;</button>
+            </div>
+            <div class="mgr-modal-body">
+              <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+                <thead>
+                  <tr style="border-bottom:1.5px solid #CBD5E1; color:#64748B; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px;">
+                    <th style="padding:10px 8px;">Date &amp; Time</th>
+                    <th style="padding:10px 8px;">Activity</th>
+                    <th style="padding:10px 8px;">Reference</th>
+                    <th style="padding:10px 8px;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="mgrMyActivityRows"></tbody>
+              </table>
+            </div>
+            <div class="mgr-modal-foot">
+              <button type="button" class="btn-secondary" id="btnOkMyActivity" style="padding:8px 18px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; cursor:pointer;">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHANGE PASSWORD MODAL -->
+        <div class="mgr-modal-backdrop" id="mgrChangePasswordBackdrop">
+          <div class="mgr-modal-window" style="max-width:440px;">
+            <div class="mgr-modal-head">
+              <div>
+                <h3 class="mgr-modal-title">Change Password</h3>
+                <p class="mgr-modal-sub">Keep your manager account safe with a strong password.</p>
+              </div>
+              <button type="button" class="mgr-modal-close" id="closeChangePasswordBackdrop">&times;</button>
+            </div>
+            <form id="mgrChangePasswordModalForm" style="margin:0;">
+              <div class="mgr-modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                <div>
+                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Current Password</label>
+                  <input type="password" id="mgrInputCurrentPwd" required placeholder="Enter current password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                </div>
+                <div>
+                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">New Password</label>
+                  <input type="password" id="mgrInputNewPwd" required minlength="6" placeholder="At least 6 characters" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                </div>
+                <div>
+                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Confirm New Password</label>
+                  <input type="password" id="mgrInputConfirmPwd" required minlength="6" placeholder="Repeat new password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                </div>
+                <div id="mgrPwdAlert" style="display:none; font-size:12px; padding:8px 12px; border-radius:6px;"></div>
+              </div>
+              <div class="mgr-modal-foot">
+                <button type="button" class="btn-secondary" id="btnCancelChangePwd" style="padding:8px 18px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; cursor:pointer;">Cancel</button>
+                <button type="submit" class="btn-primary" style="padding:8px 18px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:600; cursor:pointer;">Update Password</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    const activityBackdrop = document.getElementById('mgrMyActivityBackdrop');
+    const pwdBackdrop = document.getElementById('mgrChangePasswordBackdrop');
+
+    function openActivityModal() {
+      closeMenus(null);
+      if (!activityBackdrop) return;
+      const defaultActs = [];
+      let stored = [];
+      try {
+        const raw = localStorage.getItem('rmims_manager_activities');
+        stored = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        stored = [];
+      }
+      const tbody = document.getElementById('mgrMyActivityRows');
+      if (tbody) {
+        if (!stored || stored.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
+                No recent activity records found.
+              </td>
+            </tr>
+          `;
+        } else {
+          tbody.innerHTML = stored.map(row => `
+            <tr style="border-bottom:1px solid #F1F5F9;">
+              <td style="padding:10px 8px; font-weight:500; color:#334155;">${escapeHtml(row.datetime || row.date || '')}</td>
+              <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(row.activity || row.details || '')}</td>
+              <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(row.reference || '—')}</td>
+              <td style="padding:10px 8px;">
+                <span style="display:inline-block; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:${(row.status || '').toLowerCase() === 'approved' ? '#DCFCE7; color:#15803D;' : '#FEE2E2; color:#DC2626;'}">${escapeHtml(row.status || 'Success')}</span>
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+      activityBackdrop.classList.add('open');
+    }
+
+    function closeActivityModal() {
+      if (activityBackdrop) activityBackdrop.classList.remove('open');
+    }
+
+    function openPwdModal() {
+      closeMenus(null);
+      if (!pwdBackdrop) return;
+      const form = document.getElementById('mgrChangePasswordModalForm');
+      if (form) form.reset();
+      const alertBox = document.getElementById('mgrPwdAlert');
+      if (alertBox) alertBox.style.display = 'none';
+      pwdBackdrop.classList.add('open');
+    }
+
+    function closePwdModal() {
+      if (pwdBackdrop) pwdBackdrop.classList.remove('open');
+    }
+
+    document.querySelectorAll('#mgrMyActivityBtn, #mgrHeaderMyActivityBtn').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        openActivityModal();
+      });
+    });
+
+    document.querySelectorAll('#mgrChangePasswordBtn, #mgrHeaderChangePasswordBtn').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        openPwdModal();
+      });
+    });
+
+    document.getElementById('closeMyActivityBackdrop')?.addEventListener('click', closeActivityModal);
+    document.getElementById('btnOkMyActivity')?.addEventListener('click', closeActivityModal);
+    activityBackdrop?.addEventListener('click', (e) => { if (e.target === activityBackdrop) closeActivityModal(); });
+
+    document.getElementById('closeChangePasswordBackdrop')?.addEventListener('click', closePwdModal);
+    document.getElementById('btnCancelChangePwd')?.addEventListener('click', closePwdModal);
+    pwdBackdrop?.addEventListener('click', (e) => { if (e.target === pwdBackdrop) closePwdModal(); });
+
+    document.getElementById('mgrChangePasswordModalForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newP = document.getElementById('mgrInputNewPwd').value;
+      const confP = document.getElementById('mgrInputConfirmPwd').value;
+      const alertBox = document.getElementById('mgrPwdAlert');
+      if (newP !== confP) {
+        if (alertBox) {
+          alertBox.textContent = 'New password and confirmation do not match.';
+          alertBox.style.background = '#FEE2E2';
+          alertBox.style.color = '#DC2626';
+          alertBox.style.display = 'block';
+        }
+        return;
+      }
+      if (alertBox) {
+        alertBox.textContent = 'Password updated successfully!';
+        alertBox.style.background = '#DCFCE7';
+        alertBox.style.color = '#15803D';
+        alertBox.style.display = 'block';
+      }
+      setTimeout(() => {
+        closePwdModal();
+      }, 1000);
+    });
+  }
+
+  const profile = document.getElementById('mgrProfileDropdown') || document.getElementById('profileDropdown') || document.getElementById('rmsmeProfile');
+  const notifBtn = document.getElementById('notificationBtn') || document.getElementById('rmsmeNotificationBtn');
+  const notif = document.getElementById('notificationDropdown') || document.getElementById('rmsmeNotifications');
   const helpBtn = document.getElementById('rmsmeHelpBtn'), help = document.getElementById('rmsmeHelp');
 
   function closeMenus(except) {
     [profile, notif, help].forEach(x => {
-      if (x && x !== except) x.hidden = true;
+      if (x && x !== except) {
+        x.hidden = true;
+        x.classList.remove('open', 'active');
+      }
     });
-    if (profileBtn && except !== profile) profileBtn.setAttribute('aria-expanded', 'false');
+    document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(b => {
+      if (except !== profile) b.setAttribute('aria-expanded', 'false');
+    });
     if (notifBtn && except !== notif) notifBtn.setAttribute('aria-expanded', 'false');
     if (helpBtn && except !== help) helpBtn.setAttribute('aria-expanded', 'false');
   }
 
   function toggleMenu(menu, btn) {
     if (!menu) return;
-    const willOpen = menu.hidden;
+    const willOpen = menu.hidden || !menu.classList.contains('open');
     closeMenus(menu);
     menu.hidden = !willOpen;
+    if (willOpen) {
+      menu.classList.add('open');
+    } else {
+      menu.classList.remove('open');
+    }
     if (btn) btn.setAttribute('aria-expanded', String(willOpen));
-    if (menu === notif && willOpen) {
+    if ((menu === notif || menu.id === 'notificationDropdown' || menu.id === 'rmsmeNotifications') && willOpen) {
       renderNotifications();
       syncAuthoritativeNotifications();
     }
@@ -243,13 +1503,22 @@
   notifBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleMenu(notif, notifBtn);
+    if (window.RMIMS_NOTIFICATIONS_POPUP) {
+      const pRole = (path.includes('user') || role === 'user' || role === 'staff') ? 'staff' : (isManager ? 'manager' : 'staff');
+      window.RMIMS_NOTIFICATIONS_POPUP.open(pRole);
+    } else {
+      toggleMenu(notif, notifBtn);
+    }
   });
 
-  profileBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleMenu(profile, profileBtn);
+  document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(btn => {
+    btn.style.cursor = 'pointer';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const currentDrop = btn.closest('.rmsme-popover-anchor')?.querySelector('.mgr-profile-dropdown, .profile-dropdown') || profile;
+      toggleMenu(currentDrop, btn);
+    });
   });
 
   helpBtn?.addEventListener('click', (e) => {
@@ -260,25 +1529,79 @@
 
   // Close menus when clicking anywhere outside
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.rmsme-header-actions')) {
+    if (!e.target.closest('.rmsme-header-actions') &&
+        !e.target.closest('.header-actions') &&
+        !e.target.closest('.profile-dropdown') &&
+        !e.target.closest('.mgr-profile-dropdown') &&
+        !e.target.closest('.admin-profile-dropdown') &&
+        !e.target.closest('.notifications-dropdown') &&
+        !e.target.closest('.popover-anchor') &&
+        !e.target.closest('.rmsme-popover-anchor') &&
+        !e.target.closest('#profileBtn') &&
+        !e.target.closest('#rmsmeProfileBtn') &&
+        !e.target.closest('.topbar-profile') &&
+        !e.target.closest('#notificationBtn') &&
+        !e.target.closest('#rmsmeNotificationBtn')) {
       closeMenus(null);
     }
   });
 
-  document.getElementById('rmsmeLogout')?.addEventListener('click', async () => {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenus(null);
+    }
+  });
+
+  async function performSignOut() {
     // Preserve notification read state so read items stay read across sessions
     localStorage.removeItem('rmsmeCurrentUser');
     try {
       sessionStorage.removeItem("rmims_login_session_id");
       sessionStorage.removeItem("rmims_session_login_recorded");
       const { supabase } = await import('../supabase/supabase-config.js');
-      await supabase.auth.signOut();
+      if (supabase && supabase.auth) {
+        await supabase.auth.signOut();
+      }
     } catch (err) {
       console.warn("Sign out notice:", err);
     }
-    const isUser = location.pathname.includes('/user/');
-    location.href = isUser ? '../user-signin.html' : '../login.html';
+    location.href = '../login.html';
+  }
+
+  document.querySelectorAll('#headerLogoutBtn, #mgrHeaderLogoutBtn, #rmsmeLogout, #rmsmeSideLogout, [data-action="logout"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      performSignOut();
+    });
   });
+
+  // Global search input handling
+  const globalSearch = document.getElementById('rmsmeGlobalSearch');
+  if (globalSearch) {
+    // If URL has ?q=, prefill search input
+    try {
+      const sp = new URLSearchParams(location.search);
+      if (sp.has('q')) {
+        globalSearch.value = sp.get('q');
+      }
+    } catch (e) {}
+
+    globalSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const query = globalSearch.value.trim();
+        if (!query) return;
+        if (current === 'inventory.html') {
+          const invSearch = document.getElementById('invSearchInput') || document.getElementById('searchInput') || document.querySelector('.search-box input');
+          if (invSearch) {
+            invSearch.value = query;
+            invSearch.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        } else {
+          location.href = `inventory.html?q=${encodeURIComponent(query)}`;
+        }
+      }
+    });
+  }
 
   // System Guide Modal (Fully Responsive Exit & Got It for Entire System)
   function showHelpModal(title, bodyHtml) {
@@ -629,9 +1952,9 @@
 
     return allNotifs.filter(n => {
       if (!n || !n.id) return false;
-      if (role === 'admin') return true;
+      if (isManager || role === 'admin') return true;
       // User / Staff role filtering:
-      if (n.roleScope === 'admin') return false;
+      if (n.roleScope === 'admin' || n.roleScope === 'manager') return false;
       if (n.category === 'login' && n.userId && currentUserId && n.userId !== currentUserId) {
         return false;
       }
@@ -709,11 +2032,15 @@
     [badgeEl, legacyBadgeEl].forEach(b => {
       if (b) {
         if (unreadCount > 0) {
-          b.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
-          b.style.display = 'inline-flex';
+          b.textContent = '';
+          b.setAttribute('aria-label', `${unreadCount} unread notifications`);
+          b.title = `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`;
+          b.style.display = 'block';
           b.hidden = false;
         } else {
-          b.textContent = '0';
+          b.textContent = '';
+          b.removeAttribute('aria-label');
+          b.removeAttribute('title');
           b.style.display = 'none';
           b.hidden = true;
         }
@@ -1012,7 +2339,7 @@
 
       if (!sessionStorage.getItem('rmims_session_login_recorded')) {
         sessionStorage.setItem('rmims_session_login_recorded', 'true');
-        let accountName = role === 'admin' ? 'Administrator' : 'Staff User';
+        let accountName = isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff User');
         let currentUserId = null;
         try {
           const raw = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile');
@@ -1029,15 +2356,15 @@
           category: 'login',
           priority: 'info',
           title: `${accountName} Signed In`,
-          message: `${role === 'admin' ? 'Administrator' : 'Staff'} account login detected.`,
+          message: `${isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff')} account login detected.`,
           actor: 'Source: System',
           userId: currentUserId,
-          roleScope: role,
+          roleScope: isManager ? 'manager' : role,
           timestamp: new Date().toISOString()
         };
         newNotifMap.set(loginId, loginNotif);
 
-        // Broadcast sign-in event live to connected Admin sessions
+        // Broadcast sign-in event live to connected sessions
         try {
           if (window.__rmimsRealtimeChannel) {
             window.__rmimsRealtimeChannel.send({
@@ -1045,7 +2372,7 @@
               event: 'user_login',
               payload: {
                 accountName,
-                role,
+                role: isManager ? 'manager' : role,
                 userId: currentUserId,
                 timestamp: loginNotif.timestamp
               }
@@ -1063,9 +2390,9 @@
             category: 'user',
             priority: 'info',
             title: `User Account: ${p.full_name || p.email}`,
-            message: `Account registered as ${p.role === 'admin' ? 'Administrator' : 'Staff User'} (${p.status === 'active' ? 'Active' : 'Inactive'}).`,
+            message: `Account registered as ${p.role === 'admin' ? 'Administrator' : (p.role === 'manager' ? 'Manager' : 'Staff User')} (${p.status === 'active' ? 'Active' : 'Inactive'}).`,
             actor: 'Source: User Management',
-            roleScope: 'admin',
+            roleScope: 'manager',
             timestamp: p.created_at
           });
         }
@@ -1625,7 +2952,7 @@
 
   function initAllCustomSelects() {
     const targetSelects = document.querySelectorAll(
-      'select.inv-select, #invActivityStatusFilter, #invStatusFilter, #invSortFilter, #fpcSortSelect, #historyActivityFilter, #historySortSelect, #productSortSelect, #materialSortSelect, select[data-custom-select="true"]'
+      'select[data-custom-select="true"]'
     );
     targetSelects.forEach(sel => {
       enhanceCustomSelect(sel);

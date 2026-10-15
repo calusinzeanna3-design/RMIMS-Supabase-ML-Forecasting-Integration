@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Activity | RMSME</title>
+<link rel="icon" href="../assets/favicon-64.png" type="image/png">
+
+<!-- Google Fonts: Inter, Sora -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Stylesheets -->
+<link rel="stylesheet" href="../css/admin-shell.css">
+<link rel="stylesheet" href="../css/rmims-unified.css">
+<link rel="stylesheet" href="../css/manager-theme.css">
+<link rel="stylesheet" href="../css/manager-transaction.css">
+<link rel="stylesheet" href="../css/staff-activity.css">
+</head>
+
+<body class="manager-page admin-page">
+
+<div class="admin-app">
+
+  <!-- SIDEBAR (Auto-populated by rmsme-shell.js with Manager exact navigation) -->
+  <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="admin-main">
+
+    <!-- TOPBAR HEADER -->
+    <header class="admin-topbar">
+      <div class="topbar-left">
+        <span class="topbar-kicker">TEAM OVERSIGHT</span>
+        <h1 class="topbar-title">Staff Activity &amp; Submissions</h1>
+        <p class="topbar-subtitle">Monitor company staff operations, review submissions, and manage transaction approvals.</p>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Live Date & Time Pill -->
+        <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+        </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                      </div>
+    </header>
+
+    <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
+      <div class="mgr-tx-container staff-activity-container" style="padding: 0;">
+
+      <!-- Section: Activity & Submissions Ledger (Enclosing 4 KPI Metric Cards & Pagination) -->
+      <section class="mgr-tx-table-card">
+
+        <!-- 4 Mini Metric KPI Cards (Inside Activity Ledger Card) -->
+        <div class="mgr-tx-kpi-grid" id="mgrTxKpiGrid">
+          <!-- 1. Total Submissions -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-blue">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label">Total Submissions</span>
+              <span class="mgr-tx-kpi-value" id="kpiStaffTotal">0</span>
+              <span class="mgr-tx-kpi-sub" id="kpiStaffTotalSub">All-time staff logs</span>
+            </div>
+          </div>
+
+          <!-- 2. Pending Review -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-amber">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label" style="color:#D97706;">Pending Review</span>
+              <span class="mgr-tx-kpi-value" style="color:#D97706;" id="kpiStaffPending">0</span>
+              <span class="mgr-tx-kpi-sub" style="color:#D97706;" id="kpiStaffPendingSub">Awaiting manager action</span>
+            </div>
+          </div>
+
+          <!-- 3. Approved Submissions -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-green">
+              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label" style="color:#15803D;">Approved</span>
+              <span class="mgr-tx-kpi-value" style="color:#15803D;" id="kpiStaffApproved">0</span>
+              <span class="mgr-tx-kpi-sub" style="color:#15803D;" id="kpiStaffApprovedSub">Inventory updated</span>
+            </div>
+          </div>
+
+          <!-- 4. Rejected Submissions -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-red">
+              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label" style="color:#DC2626;">Rejected</span>
+              <span class="mgr-tx-kpi-value" style="color:#DC2626;" id="kpiStaffRejected">0</span>
+              <span class="mgr-tx-kpi-sub" style="color:#DC2626;" id="kpiStaffRejectedSub">No stock impact</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-top:8px;">
+          <div>
+            <h3 style="margin:0; font-family:var(--rm-font-display); font-size:17px; font-weight:700; color:var(--rm-ink);">
+              Activity &amp; Submissions Ledger
+            </h3>
+            <p style="margin:2px 0 0; font-size:12.5px; color:var(--rm-ink-dim);">
+              Monitor company staff operations, review submissions, and manage transaction approvals.
+            </p>
+          </div>
+
+          <!-- Table Filters & Search matching Receive / Disburse -->
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div class="staff-search-box" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:6px 12px; display:flex; align-items:center; gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="staffSearchInput" placeholder="Search staff, reference, material..." autocomplete="off" style="border:none; background:transparent; font-size:13px; outline:none; width:210px;">
+            </div>
+
+            <select class="mgr-form-select" id="staffMemberFilter" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Staff">
+              <option value="all" selected>All Staff Members</option>
+            </select>
+
+            <select class="mgr-form-select" id="staffActivityFilter" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Activity Type">
+              <option value="all" selected>All Activities</option>
+              <option value="Receive">Receive (Incoming)</option>
+              <option value="Disburse">Disburse (Outgoing)</option>
+            </select>
+
+            <select class="mgr-form-select" id="staffStatusFilter" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Status">
+              <option value="all" selected>All Statuses</option>
+              <option value="Pending">Pending Review</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+
+            <button type="button" class="btn-secondary" id="btnResetFilters" style="padding:7px 14px; font-size:12.5px; border-radius:8px;">Reset Filters</button>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto; width:100%; margin-top:14px;">
+          <table class="mgr-tx-table">
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Staff Member</th>
+                <th>Activity</th>
+                <th>Raw Material &amp; Qty</th>
+                <th>Reference Number</th>
+                <th>Status</th>
+                <th style="text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="staffActivityTbody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Pagination Bar Matching Inventory Module -->
+        <div class="inv-pagination-bar" style="border-top:1px solid #E2E8F0; padding:12px 4px 0; background:transparent; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:14px;">
+          <div class="inv-pagination-info" style="font-size:12.5px; color:#5C7A68;">
+            <span id="staffCountLabel">Showing 0 records</span>
+          </div>
+          <div class="inv-pagination-controls" id="staffActivityPaginationBtns">
+            <button type="button" class="inv-page-btn disabled" disabled aria-label="Previous Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button type="button" class="inv-page-btn disabled" disabled>1</button>
+            <button type="button" class="inv-page-btn disabled" disabled aria-label="Next Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ================= TRANSACTION REVIEW MODAL ================= -->
+<div class="modal-overlay" id="mgrTxReviewModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="modal-card" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:520px; overflow:hidden; animation:mgrZoomIn 0.2s cubic-bezier(0.16,1,0.3,1);">
+    <div style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:#0F2A1B;">Transaction Review</h3>
+          <span id="reviewUpdatedBadge" style="display:none; background:#DBEAFE; color:#1D4ED8; border:1px solid #BFDBFE; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:9999px;">🔵 UPDATED</span>
+        </div>
+        <p style="margin:2px 0 0; font-size:12px; color:#5C7A68;" id="reviewModalSub">Review Staff-submitted material movement.</p>
+      </div>
+      <button type="button" class="mgr-modal-close" id="closeTxReviewModal">&times;</button>
+    </div>
+    
+    <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:calc(85vh - 120px); overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#F8FCF9; border:1px solid #E2E8F0; padding:10px 14px; border-radius:10px;">
+        <span style="font-size:12px; color:#64748B; font-weight:600;">Reference Number</span>
+        <span class="ref-plain-text" id="reviewRefNum" style="font-weight:800; font-family:'Sora',sans-serif; color:#0F2A1B;">--</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Staff Member</span>
+          <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="reviewStaff">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Activity</span>
+          <span style="font-size:13.5px; font-weight:700; color:#15803D;" id="reviewActivity">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Raw Material</span>
+          <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="reviewMaterial">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Quantity</span>
+          <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="reviewQuantity">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Date</span>
+          <span style="font-size:12.5px; font-weight:500; color:#334155;" id="reviewDate">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Status</span>
+          <span class="mgr-status-pill status-pending" id="reviewStatusBadge">Pending</span>
+        </div>
+      </div>
+
+      <div>
+        <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Notes</span>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:10px 14px; border-radius:8px; font-size:13px; color:#334155;" id="reviewNotes">No extra notes provided.</div>
+      </div>
+
+      <!-- SECTION 20: Previous Correction & Updated Information (Only shown when resubmitted/updated) -->
+      <div id="reviewCorrectionDiffBox" style="display:none; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:12px; padding:14px; flex-direction:column; gap:8px;">
+        <div>
+          <span style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase;">Previous Correction</span>
+          <p style="margin:2px 0 0; font-size:13px; color:#14532D; font-style:italic;" id="revPrevCorrectionMsg">"Please verify the quantity entered."</p>
+        </div>
+        <div style="border-top:1px dashed #86EFAC; padding-top:8px; margin-top:2px;">
+          <span style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase;">Updated Information</span>
+          <div style="margin-top:4px; font-size:13px; color:#0F2A1B; font-weight:600;" id="revDiffDetails">
+            Quantity: 200 kg &rarr; 150 kg
+          </div>
+        </div>
+      </div>
+
+      <!-- Rejection Reason Box (Shows when clicking Reject) -->
+      <div id="rejectReasonBox" style="display:none; flex-direction:column; gap:6px; background:#FEF2F2; border:1px solid #FECACA; padding:12px; border-radius:10px;">
+        <label style="font-size:12px; font-weight:700; color:#DC2626;">Reason for Rejection *</label>
+        <textarea id="rejectReasonInput" rows="2" placeholder="Explain why this transaction was rejected..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCA5A5; font-size:12.5px; box-sizing:border-box;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+          <button type="button" id="btnCancelRejectTx" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#FFF; border:1px solid #CBD5E1; cursor:pointer;">Cancel</button>
+          <button type="button" id="btnConfirmRejectTx" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:6px; background:#DC2626; color:#FFF; border:none; cursor:pointer;">Confirm Rejection</button>
+        </div>
+      </div>
+
+      <!-- Return for Correction Reason Box (Shows when clicking Return for Correction) -->
+      <div id="correctionReasonBox" style="display:none; flex-direction:column; gap:6px; background:#FFFBEB; border:1px solid #FDE68A; padding:12px; border-radius:10px;">
+        <label style="font-size:12px; font-weight:700; color:#D97706;">Manager's Correction Instructions for Staff *</label>
+        <textarea id="correctionReasonInput" rows="2" placeholder="e.g. Please verify the quantity entered..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCD34D; font-size:12.5px; box-sizing:border-box;"></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+          <button type="button" id="btnCancelReturnTx" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#FFF; border:1px solid #CBD5E1; cursor:pointer;">Cancel</button>
+          <button type="button" id="btnConfirmReturnTx" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:6px; background:#D97706; color:#FFF; border:none; cursor:pointer;">Send to Staff</button>
+        </div>
+      </div>
+
+      <div id="reviewResultBanner" style="display:none; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:600;"></div>
+    </div>
+
+    <!-- Section 16: Three Actions: Approve, Return for Correction, Reject -->
+    <div style="padding:14px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC;" id="reviewActionButtons">
+      <button type="button" class="btn-secondary" id="btnRejectTx" style="padding:9px 16px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; color:#DC2626; font-weight:600; cursor:pointer;">Reject</button>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn-secondary" id="btnReturnTx" style="padding:9px 16px; border-radius:8px; border:1px solid #D97706; background:#FFFBEB; color:#D97706; font-weight:700; cursor:pointer;">Return for Correction</button>
+        <button type="button" class="btn-primary" id="btnApproveTx" style="padding:9px 22px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(21,128,61,0.25);">Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="../js/staff-activity.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>

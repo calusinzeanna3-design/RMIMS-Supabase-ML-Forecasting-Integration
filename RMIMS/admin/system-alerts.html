@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - System Maintenance Alerts</title>
+  <!-- Google Fonts: Inter & Sora -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Admin Stylesheet -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+</head>
+<body>
+  <div class="admin-app">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div>
+        <a href="overview.html" class="sidebar-header" title="RMIMS Main Administration">
+          <div class="brand-logo-wrap">
+            <img src="../assets/logo-icon.png" alt="RMSME Logo" class="brand-logo-img">
+          </div>
+          <div class="brand-titles">
+            <span class="brand-name">RMSME</span>
+            <span class="brand-sub">Administration</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav">
+          <a href="overview.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Overview</span>
+          </a>
+
+          <a href="activity-logs.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+            <span>Activity Logs</span>
+          </a>
+
+          <a href="user-management.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>User Management</span>
+          </a>
+
+          <a href="branch-stores.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 21h18"/>
+              <path d="M3 7v14"/>
+              <path d="M21 7v14"/>
+              <path d="M6 21V11"/>
+              <path d="M10 21V11"/>
+              <path d="M14 21V11"/>
+              <path d="M18 21V11"/>
+              <path d="M2 7l10-4 10 4"/>
+            </svg>
+            <span>Branch Stores</span>
+          </a>
+
+          <a href="system-alerts.html" class="nav-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>System Alerts</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-bottom-nav">
+        <button type="button" class="nav-link nav-btn-help" id="btnSidebarHelp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Help Center</span>
+        </button>
+
+        <a href="settings.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+
+        <div class="sidebar-version">v2.0.0 &bull; RMSME</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <span class="topbar-kicker">SYSTEM ALERTS</span>
+          <h1 class="topbar-title">System Maintenance Alerts</h1>
+          <p class="topbar-subtitle">Automatically detected system issues affecting user experience.</p>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill (Moved in exchange of search bar) -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Admin</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Admin</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                        </div>
+      </header>
+
+      <main class="admin-scroll-body">
+        
+        <!-- 4 Stat Metric Boxes -->
+        <div class="alert-metrics-grid">
+          <div class="alert-metric-box">
+            <div class="alert-metric-icon red">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+              </svg>
+            </div>
+            <div class="alert-metric-body">
+              <span class="alert-metric-title">Login &amp; Authentication</span>
+              <div class="alert-metric-val-row">
+                <span class="alert-metric-count" id="statLoginAuthCount">0</span>
+                <span class="alert-metric-trend" style="color: #64748B;">Live</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-metric-box">
+            <div class="alert-metric-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div class="alert-metric-body">
+              <span class="alert-metric-title">System Performance</span>
+              <div class="alert-metric-val-row">
+                <span class="alert-metric-count" id="statSysPerfCount">0</span>
+                <span class="alert-metric-trend" style="color: #64748B;">Live</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-metric-box">
+            <div class="alert-metric-icon amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <div class="alert-metric-body">
+              <span class="alert-metric-title">File &amp; Data Issues</span>
+              <div class="alert-metric-val-row">
+                <span class="alert-metric-count" id="statFileDataCount">0</span>
+                <span class="alert-metric-trend" style="color: #64748B;">Live</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-metric-box">
+            <div class="alert-metric-icon purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 8 8 12 12 16"/>
+                <line x1="16" y1="12" x2="8" y2="12"/>
+              </svg>
+            </div>
+            <div class="alert-metric-body">
+              <span class="alert-metric-title">Functional Errors</span>
+              <div class="alert-metric-val-row">
+                <span class="alert-metric-count" id="statFuncErrorsCount">0</span>
+                <span class="alert-metric-trend" style="color: #64748B;">Live</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comprehensive Alerts Table Card -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge coral">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Active System Diagnostics &amp; Issues</h2>
+                <span class="card-subtitle">Real-time incident feed across branch stores</span>
+              </div>
+            </div>
+
+            <!-- Status Filter Tabs -->
+            <div class="card-actions">
+              <select class="dropdown-select" id="alertStatusFilter">
+                <option value="all">All Statuses</option>
+                <option value="ongoing">Ongoing Only</option>
+                <option value="monitoring">Monitoring Only</option>
+                <option value="resolved">Resolved Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="alertsTable">
+              <thead>
+                <tr>
+                  <th>Error Type</th>
+                  <th>Branch Location</th>
+                  <th>Branch Name</th>
+                  <th>Occurrence</th>
+                  <th>Last Detected</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="alertsTableBody">
+                <!-- Dynamically populated by admin-system-alerts.js with live data or clean empty state -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Dispatch Diagnostic Alert Modal (Send to Role: Manager, Maintenance, Staff, Security) -->
+  <div class="admin-modal-backdrop" id="alertDispatchModal" role="dialog" aria-modal="true" aria-labelledby="dispatchModalTitle">
+    <div class="admin-modal" style="max-width: 540px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="dispatchModalTitle">Dispatch Diagnostic Alert</h3>
+          <span style="font-size: 12px; color: var(--rm-ink-dim);" id="dispatchModalSubtitle">Notify the responsible team or contact</span>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="window.closeAlertDispatchModal()" aria-label="Close modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <form id="dispatchAlertForm" onsubmit="window.handleConfirmDispatch(event)">
+        <input type="hidden" id="dispatchAlertId" value="">
+
+        <!-- Diagnostic Problem Summary Card -->
+        <div style="background: #F4FAF5; border: 1px solid var(--rm-line); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="dispatchDotColor" style="color: #DC2626;">●</span>
+              <strong id="dispatchErrorType" style="font-size: 14px; color: var(--rm-ink);">—</strong>
+            </div>
+            <span id="dispatchStatusPill" class="status-pill status-ongoing">Ongoing</span>
+          </div>
+          <div style="font-size: 12px; color: var(--rm-ink-dim); line-height: 1.4;" id="dispatchBranchAndDetails">
+            — No alert selected —
+          </div>
+        </div>
+
+        <!-- Target Role & Assignee -->
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="dispatchRoleSelect">Send To (Role / Team)</label>
+          <select class="modal-input" id="dispatchRoleSelect" onchange="window.handleDispatchRoleChange(this.value)" required>
+            <option value="Store Manager">Store Manager (User Contact & Branch Operations)</option>
+            <option value="IT Maintenance">IT Maintenance (Server Performance & Infrastructure)</option>
+            <option value="System Maintenance">System Maintenance (Database & DevOps Operations)</option>
+            <option value="Inventory Staff">Inventory Staff (Material Activity & Sync Data)</option>
+            <option value="Account Security">Account Security (Access Control & Lockout Verification)</option>
+          </select>
+        </div>
+
+        <!-- Recipient Contact Email / Channel -->
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="dispatchContactInput">Recipient Contact Email</label>
+          <input type="email" class="modal-input" id="dispatchContactInput" required placeholder="e.g. contact@branchstore.ph">
+        </div>
+
+        <!-- Instructions / Notice -->
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="dispatchMessageText">Action Note / Incident Instructions</label>
+          <textarea class="modal-input" id="dispatchMessageText" rows="3" style="height: auto; padding: 10px 14px; resize: vertical;" required placeholder="Instructions for the assigned role..."></textarea>
+        </div>
+
+        <!-- Post-dispatch Status -->
+        <div class="modal-form-group" style="margin-bottom: 0;">
+          <label class="modal-form-label" for="dispatchStatusSelect">Diagnostic Status After Dispatch</label>
+          <select class="modal-input" id="dispatchStatusSelect">
+            <option value="monitoring" selected>Monitoring (In Progress / Dispatched)</option>
+            <option value="resolved">Resolved (Close & Archive)</option>
+            <option value="ongoing">Keep as Ongoing</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="window.closeAlertDispatchModal()">Cancel</button>
+          <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            <span id="dispatchSubmitBtnText">Send Dispatch</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../js/admin-shell.js"></script>
+  <script type="module" src="../js/admin-system-alerts.js"></script>
+</body>
+</html>

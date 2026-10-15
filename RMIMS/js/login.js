@@ -1,48 +1,442 @@
-import { loginUser } from "../supabase/auth-service.js";
+import { loginUser, signUpUser } from "../supabase/auth-service.js";
 import { supabase } from "../supabase/supabase-config.js";
 
+/* =========================================================
+   DOM ELEMENTS: SIGN IN
+   ========================================================= */
+
+const signInView = document.getElementById("signInView");
 const loginForm = document.getElementById("loginForm");
 const loginErrorEl = document.getElementById("loginError");
 const loginSubmitBtn = document.getElementById("loginSubmitBtn");
 const togglePw = document.getElementById("togglePw");
 const passwordInput = document.getElementById("password");
+const toCreateAccountBtn = document.getElementById("toCreateAccountBtn");
+
+/* =========================================================
+   DOM ELEMENTS: CREATE ACCOUNT (END USER - SEPARATED SECTIONS)
+   ========================================================= */
+
+const createAccountView = document.getElementById("createAccountView");
+const toSignInBtn = document.getElementById("toSignInBtn");
+const toSignInFromS1Btn = document.getElementById("toSignInFromS1Btn");
+const cancelToLoginBtn = document.getElementById("cancelToLoginBtn");
+const backToLoginBtn = document.getElementById("backToLoginBtn");
+const createAccountForm = document.getElementById("createAccountForm");
+
+// Section 1: Profile & Operational Assignment
+const regSection1 = document.getElementById("regSection1");
+const regFullName = document.getElementById("regFullName");
+const regEmail = document.getElementById("regEmail");
+const regUsername = document.getElementById("regUsername");
+const regBranchName = document.getElementById("regBranchName");
+const regBranchLocation = document.getElementById("regBranchLocation");
+const regRole = document.getElementById("regRole");
+const regSection1Error = document.getElementById("regSection1Error");
+const toSection2Btn = document.getElementById("toSection2Btn");
+
+// Section 2: Security & Password
+const regSection2 = document.getElementById("regSection2");
+const displayHandleTag = document.getElementById("displayHandleTag");
+const backToSection1Btn = document.getElementById("backToSection1Btn");
+const backToSec1Btn = document.getElementById("backToSec1Btn");
+const regPassword = document.getElementById("regPassword");
+const regConfirmPassword = document.getElementById("regConfirmPassword");
+const toggleRegPw = document.getElementById("toggleRegPw");
+const toggleRegConfirmPw = document.getElementById("toggleRegConfirmPw");
+const regSection2Error = document.getElementById("regSection2Error");
+const regSubmitBtn = document.getElementById("regSubmitBtn");
+
+/* =========================================================
+   STATUS MESSAGE HELPERS
+   ========================================================= */
+
+function escapeHtml(str) {
+    const d = document.createElement("div");
+    d.textContent = str || "";
+    return d.innerHTML;
+}
 
 function setLoginError(message) {
+    if (!loginErrorEl) return;
     loginErrorEl.style.color = "";
-    loginErrorEl.textContent = message;
-    loginErrorEl.classList.toggle("error", !!message);
+    if (!message) {
+        loginErrorEl.textContent = "";
+        loginErrorEl.className = "form-note";
+        return;
+    }
+    // Check if the message indicates pending administrator approval
+    if (message.toLowerCase().includes("pending administrator approval") || message.toLowerCase().includes("pending admin")) {
+        loginErrorEl.className = "form-note warning";
+        loginErrorEl.innerHTML = `<strong>⏳ Awaiting Admin Approval:</strong> ${escapeHtml(message)}`;
+    } else {
+        loginErrorEl.className = "form-note error";
+        loginErrorEl.textContent = message;
+    }
 }
 
 function setLoginSuccess(message) {
-    loginErrorEl.style.color = "#22C55E";
-    loginErrorEl.textContent = message;
-    loginErrorEl.classList.remove("error");
+    if (!loginErrorEl) return;
+    loginErrorEl.style.color = "";
+    if (!message) {
+        loginErrorEl.textContent = "";
+        loginErrorEl.className = "form-note";
+        return;
+    }
+    loginErrorEl.className = "form-note success";
+    loginErrorEl.innerHTML = `<strong>✓ Registration Received:</strong> ${message}`;
 }
 
-if (togglePw && passwordInput) {
-    togglePw.addEventListener("click", () => {
-        const isHidden = passwordInput.type === "password";
-        passwordInput.type = isHidden ? "text" : "password";
-        togglePw.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+function setRegSection1Error(message) {
+    if (!regSection1Error) return;
+    regSection1Error.textContent = message;
+    regSection1Error.classList.toggle("error", !!message);
+}
+
+function setRegSection2Error(message) {
+    if (!regSection2Error) return;
+    regSection2Error.textContent = message;
+    regSection2Error.classList.toggle("error", !!message);
+}
+
+/* =========================================================
+   PASSWORD VISIBILITY TOGGLE HELPER
+   ========================================================= */
+
+function bindPasswordToggle(btn, input) {
+    if (!btn || !input) return;
+    btn.addEventListener("click", () => {
+        const isHidden = input.type === "password";
+        input.type = isHidden ? "text" : "password";
+        btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
     });
 }
 
-loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    setLoginError("");
+bindPasswordToggle(togglePw, passwordInput);
+bindPasswordToggle(toggleRegPw, regPassword);
+bindPasswordToggle(toggleRegConfirmPw, regConfirmPassword);
 
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+/* =========================================================
+   VIEW SWITCHING: SIGN IN <-> CREATE ACCOUNT
+   ========================================================= */
 
-    loginSubmitBtn.disabled = true;
-
-    try {
-        await loginUser(email, password, "admin");
-    } catch (err) {
-        setLoginError(err.message || "Unable to sign in. Please check your details and try again.");
-        loginSubmitBtn.disabled = false;
+function showCreateAccountView() {
+    const authPanel = document.getElementById("authPanel") || document.querySelector(".workspace-panel.auth-panel");
+    if (authPanel) authPanel.classList.add("wide-panel");
+    if (signInView) {
+        signInView.style.display = "none";
+        signInView.classList.remove("active");
     }
-});
+    if (createAccountView) {
+        createAccountView.style.display = "block";
+        createAccountView.classList.add("active");
+    }
+    resetCreateAccountForm();
+}
+
+function showSignInView() {
+    const authPanel = document.getElementById("authPanel") || document.querySelector(".workspace-panel.auth-panel");
+    if (authPanel) authPanel.classList.remove("wide-panel");
+    if (createAccountView) {
+        createAccountView.style.display = "none";
+        createAccountView.classList.remove("active");
+    }
+    if (signInView) {
+        signInView.style.display = "block";
+        signInView.classList.add("active");
+    }
+    setLoginError("");
+}
+
+if (toCreateAccountBtn) {
+    toCreateAccountBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        showCreateAccountView();
+        window.location.hash = "create-account";
+    });
+}
+
+if (toSignInBtn) {
+    toSignInBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        showSignInView();
+        if (window.location.hash === "#create-account") {
+            if (window.history.replaceState) {
+                window.history.replaceState(null, document.title, window.location.pathname);
+            }
+        }
+    });
+}
+
+if (toSignInFromS1Btn) {
+    toSignInFromS1Btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        showSignInView();
+        if (window.location.hash === "#create-account") {
+            if (window.history.replaceState) {
+                window.history.replaceState(null, document.title, window.location.pathname);
+            }
+        }
+    });
+}
+
+// Support opening directly with #create-account in URL
+if (window.location.hash === "#create-account") {
+    showCreateAccountView();
+}
+
+/* =========================================================
+   UNIFIED SIGN IN SUBMISSION (NO ROLE HARDCODING)
+   ========================================================= */
+
+if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setLoginError("");
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        loginSubmitBtn.disabled = true;
+
+        try {
+            // Unified login: does not restrict by role; routes dynamically based on account profile
+            await loginUser(email, password);
+        } catch (err) {
+            setLoginError(err.message || "Unable to sign in. Please check your details and try again.");
+            loginSubmitBtn.disabled = false;
+        }
+    });
+}
+
+/* =========================================================
+   CREATE ACCOUNT (END USER): SEPARATED SECTIONS FLOW LOGIC
+   ========================================================= */
+
+function resetCreateAccountForm() {
+    setRegSection1Error("");
+    setRegSection2Error("");
+    if (createAccountForm) {
+        createAccountForm.reset();
+    }
+    if (regSection1) regSection1.style.display = "block";
+    if (regSection2) regSection2.style.display = "none";
+    if (displayHandleTag) displayHandleTag.textContent = "username";
+}
+
+// Cancel / Back to Login buttons
+if (cancelToLoginBtn) {
+    cancelToLoginBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        showSignInView();
+    });
+}
+
+if (backToLoginBtn) {
+    backToLoginBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        showSignInView();
+    });
+}
+
+// Username input listener: clear error on input without restricting typing
+if (regUsername) {
+    regUsername.addEventListener("input", () => {
+        setRegSection1Error("");
+    });
+}
+
+// Transition from Section 1 (Profile & Assignment) to Section 2 (Password Security)
+if (toSection2Btn) {
+    toSection2Btn.addEventListener("click", () => {
+        setRegSection1Error("");
+
+        const fullName = regFullName?.value.trim() || "";
+        const email = regEmail?.value.trim() || "";
+        const username = regUsername?.value.trim() || "";
+        const branchName = regBranchName?.value.trim() || "";
+        const branchLocation = regBranchLocation?.value || "";
+
+        if (!fullName) {
+            setRegSection1Error("Please enter your full name.");
+            regFullName?.focus();
+            return;
+        }
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setRegSection1Error("Please enter a valid email address.");
+            regEmail?.focus();
+            return;
+        }
+
+        if (!username || username.length < 3) {
+            setRegSection1Error("Username must be at least 3 characters long.");
+            regUsername?.focus();
+            return;
+        }
+
+        if (!branchName) {
+            setRegSection1Error("Please enter your company / branch store name.");
+            regBranchName?.focus();
+            return;
+        }
+
+        if (!branchLocation) {
+            setRegSection1Error("Please select your branch location.");
+            regBranchLocation?.focus();
+            return;
+        }
+
+        // Validated: Proceed to Section 2
+        if (displayHandleTag) {
+            displayHandleTag.textContent = username;
+        }
+
+        if (regSection1) regSection1.style.display = "none";
+        if (regSection2) {
+            regSection2.style.display = "block";
+            regSection2.classList.remove("fadeInSection");
+            void regSection2.offsetWidth; // trigger reflow
+            regSection2.classList.add("fadeInSection");
+        }
+
+        if (regPassword) {
+            regPassword.focus();
+        }
+    });
+}
+
+// Back to Section 1 button handlers
+function returnToSection1() {
+    setRegSection2Error("");
+    if (regSection2) regSection2.style.display = "none";
+    if (regSection1) {
+        regSection1.style.display = "block";
+        regSection1.classList.remove("fadeInSection");
+        void regSection1.offsetWidth; // trigger reflow
+        regSection1.classList.add("fadeInSection");
+    }
+    if (regUsername) {
+        regUsername.focus();
+    }
+}
+
+if (backToSection1Btn) {
+    backToSection1Btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        returnToSection1();
+    });
+}
+
+if (backToSec1Btn) {
+    backToSec1Btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        returnToSection1();
+    });
+}
+
+// Unified Account Creation Submission (Section 2 Complete)
+if (createAccountForm) {
+    createAccountForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setRegSection2Error("");
+
+        const fullName = regFullName?.value.trim() || "";
+        const email = regEmail?.value.trim() || "";
+        const username = regUsername?.value.trim() || "";
+        const branchName = regBranchName?.value.trim() || "";
+        const branchLocation = regBranchLocation?.value || "";
+        const role = regRole?.value || "staff";
+        const password = regPassword?.value || "";
+        const confirmPassword = regConfirmPassword?.value || "";
+
+        // Double-check Section 1 values
+        if (!fullName || !email || !username || !branchName || !branchLocation) {
+            returnToSection1();
+            setRegSection1Error("Please complete your profile and branch assignment details.");
+            return;
+        }
+
+        if (password.length < 6) {
+            setRegSection2Error("Password must be at least 6 characters long.");
+            regPassword?.focus();
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setRegSection2Error("Passwords do not match. Please re-enter your password.");
+            regConfirmPassword?.focus();
+            return;
+        }
+
+        regSubmitBtn.disabled = true;
+        const origSubmitHtml = regSubmitBtn.innerHTML;
+        regSubmitBtn.innerHTML = `<span class="auth-spinner"></span> Creating Account...`;
+
+        try {
+            await signUpUser({
+                fullName,
+                email,
+                username,
+                password,
+                branchName,
+                branchLocation,
+                role
+            });
+
+            // Sync to local pending users queue so admin instantly sees newly registered manual company
+            try {
+                const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+                const alreadyExists = pendingList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
+                if (!alreadyExists) {
+                    const now = new Date();
+                    const dateFormatted = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                    pendingList.unshift({
+                        id: `pending-${Date.now()}`,
+                        name: fullName,
+                        username: username,
+                        email: email,
+                        companyName: branchName.trim(),
+                        branchName: branchName.trim(),
+                        branchLoc: branchLocation.trim(),
+                        role: role === 'manager' ? 'Manager' : 'Staff',
+                        requestedOn: dateFormatted,
+                        status: 'Pending'
+                    });
+                    localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
+                    window.dispatchEvent(new Event('rmims_pending_users_updated'));
+                    window.dispatchEvent(new Event('storage'));
+                }
+            } catch (_) {}
+
+            // Account created successfully!
+            showSignInView();
+            const emailField = document.getElementById("email");
+            if (emailField) {
+                emailField.value = email;
+            }
+            if (passwordInput) {
+                passwordInput.value = "";
+                passwordInput.focus();
+            }
+
+            setLoginSuccess(`Account <strong>@${escapeHtml(username)}</strong> submitted successfully for <strong>${escapeHtml(branchName.trim())}</strong>! Your account is currently pending Admin approval. You will be able to sign in once an Administrator verifies and activates your account.`);
+            resetCreateAccountForm();
+
+        } catch (err) {
+            const msg = err.message || "Failed to create account. Please verify your details.";
+            if (msg.toLowerCase().includes("email") || msg.toLowerCase().includes("username")) {
+                returnToSection1();
+                setRegSection1Error(msg);
+            } else {
+                setRegSection2Error(msg);
+            }
+        } finally {
+            regSubmitBtn.disabled = false;
+            regSubmitBtn.innerHTML = origSubmitHtml;
+        }
+    });
+}
 
 /* =========================================================
    FORGOT PASSWORD MODAL LOGIC
@@ -151,17 +545,8 @@ function closeSetNewPasswordModal() {
     }
 }
 
-function bindToggle(btn, input) {
-    if (!btn || !input) return;
-    btn.addEventListener("click", () => {
-        const isHidden = input.type === "password";
-        input.type = isHidden ? "text" : "password";
-        btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
-    });
-}
-
-bindToggle(toggleNewPw, newPasswordInput);
-bindToggle(toggleConfirmPw, confirmNewPasswordInput);
+bindPasswordToggle(toggleNewPw, newPasswordInput);
+bindPasswordToggle(toggleConfirmPw, confirmNewPasswordInput);
 
 let recoveryTokens = null;
 

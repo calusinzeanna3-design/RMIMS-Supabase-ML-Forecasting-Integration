@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Current Report | RMSME</title>
+    <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
+    <link rel="stylesheet" href="../css/admin-shell.css"/>
+    <link href="../css/rmims-unified.css" rel="stylesheet"/>
+    <link href="../css/reports.css" rel="stylesheet"/>
+    <link href="../css/manager-theme.css" rel="stylesheet"/>
+</head>
+<body class="manager-page admin-page">
+<div class="admin-app">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="admin-main">
+        <!-- TOPBAR -->
+        <header class="admin-topbar">
+            <div class="topbar-left">
+                <div class="topbar-text-group">
+                    <span class="topbar-kicker">STORE REPORTS</span>
+                    <h1 class="topbar-title">Current Report</h1>
+                    <p class="topbar-subtitle">Real-time inventory status, material movement logs, and executive decision summary.</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <!-- Live Date & Time Pill -->
+                <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+                </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                            </div>
+        </header>
+
+        <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;">
+            <!-- REPORTS ON-SCREEN WORKSPACE -->
+            <div class="rpt-workspace-wrap" style="padding: 0; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;">
+
+            <!-- 1. FILTER ENGINE TOP CARD (MATCHING IMAGE 3 DESIGN IN RMIMS EMERALD THEME) -->
+            <section class="rpt-filter-engine-card" aria-label="Executive Report Parameters & Date Range">
+                <div class="rpt-fe-header">
+                    <div class="rpt-fe-title-wrap">
+                        <div class="rpt-fe-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="rpt-fe-title">Manager's Report</h2>
+                            <p class="rpt-fe-subtitle">Configure filter scope, timeline presets, and material targets</p>
+                        </div>
+                    </div>
+                    <div class="rpt-fe-actions">
+                        <button type="button" class="rpt-prev-btn-excel" id="btnOverallExport" title="Save or Export Overall Reports">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Export Report
+                        </button>
+                        <button type="button" class="rpt-prev-btn-print" id="btnOverallPrint" title="Print Overall Report Document">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            Print Document
+                        </button>
+                    </div>
+                </div>
+                <div class="rpt-fe-body">
+                    <div class="rpt-fe-field">
+                        <label for="reportPeriodPreset" class="rpt-fe-label">
+                            <span>⚡</span> QUICK PRESET
+                        </label>
+                        <select class="rpt-fe-select" id="reportPeriodPreset" title="Select Report Period">
+                            <option value="all" selected>All Time</option>
+                            <option value="today">Today</option>
+                            <option value="weekly">This Week (Last 7 Days)</option>
+                            <option value="monthly">This Month (Last 30 Days)</option>
+                            <option value="custom">Custom Date Range</option>
+                        </select>
+                    </div>
+                    <div class="rpt-fe-field">
+                        <label for="rptStartDate" class="rpt-fe-label">
+                            <span>📅</span> FROM DATE
+                        </label>
+                        <div class="inv-date-range-wrap" id="rptDateRangeGroup" style="width: 100%; height: 42px; border-radius: 10px; padding: 2px 10px; box-sizing: border-box;">
+                            <input type="text" class="inv-input-date" id="rptStartDate" title="Report Start Date" placeholder="dd/mm/yyyy" readonly style="width: 100%; border: none; background: transparent;"/>
+                        </div>
+                    </div>
+                    <div class="rpt-fe-field">
+                        <label for="rptEndDate" class="rpt-fe-label">
+                            <span>📅</span> TO DATE
+                        </label>
+                        <div class="inv-date-range-wrap" style="width: 100%; height: 42px; border-radius: 10px; padding: 2px 10px; box-sizing: border-box;">
+                            <input type="text" class="inv-input-date" id="rptEndDate" title="Report End Date" placeholder="dd/mm/yyyy" readonly style="width: 100%; border: none; background: transparent;"/>
+                        </div>
+                    </div>
+                    <div class="rpt-fe-field">
+                        <label for="rptMaterialFilter" class="rpt-fe-label">
+                            <span>📦</span> SPECIFIC RAW MATERIAL
+                        </label>
+                        <select class="rpt-fe-select" id="rptMaterialFilter" title="Filter Specific Material">
+                            <option value="all" selected>All Raw Materials</option>
+                        </select>
+                    </div>
+                    <div class="rpt-fe-field" id="rptClearActionWrap" style="display: none; justify-content: flex-end;">
+                        <button type="button" id="clearReportDatesBtn" class="rpt-fe-clear-btn" title="Clear date range">
+                            ✕ Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. CATEGORY CARDS GRID (IMAGES 1, 3, 5 + SEPARATE RESTOCK RECOMMENDATIONS TAB) -->
+            <div class="rpt-category-grid" id="reportCategoryGrid" aria-label="Executive Report Categories">
+                <!-- 1. Manager Summary -->
+                <div class="rpt-cat-card" data-tab="manager">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                            <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Manager Summary</h3>
+                    <p class="rpt-cat-desc">Key stock levels, period activities, and operational health.</p>
+                </div>
+
+                <!-- 2. Restock Recommendations (Separated Tab) -->
+                <div class="rpt-cat-card" data-tab="restock">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Restock Recommendations</h3>
+                    <p class="rpt-cat-desc">Priority reorder actions for low and critical inventory items.</p>
+                </div>
+
+                <!-- 3. Inventory Records -->
+                <div class="rpt-cat-card" data-tab="inventory">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Inventory Records</h3>
+                    <p class="rpt-cat-desc">Full material catalog, stock units, reorder quantities, and statuses.</p>
+                </div>
+
+                <!-- 4. Material Receiving -->
+                <div class="rpt-cat-card" data-tab="receiving">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="3" width="15" height="13"></rect>
+                            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Material Receiving</h3>
+                    <p class="rpt-cat-desc">Supplier delivery history, inbound shipments, lots, and dates.</p>
+                </div>
+
+                <!-- 5. Material Disbursement -->
+                <div class="rpt-cat-card" data-tab="disbursement">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 2v7.31"></path>
+                            <path d="M14 9.3V2"></path>
+                            <path d="M8.5 2h7"></path>
+                            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+                            <path d="M5.52 16h12.96"></path>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Material Disbursement</h3>
+                    <p class="rpt-cat-desc">Disbursed raw materials released for production batches.</p>
+                </div>
+
+                <!-- 6. Material Activity -->
+                <div class="rpt-cat-card" data-tab="activity">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 14 14"></polyline>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Material Activity</h3>
+                    <p class="rpt-cat-desc">Chronological audit ledger combining all inbound and outbound stock.</p>
+                </div>
+
+                <!-- 7. Consumption Analysis -->
+                <div class="rpt-cat-card" data-tab="consumption">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">Consumption Analysis</h3>
+                    <p class="rpt-cat-desc">Material burn rates, daily consumption velocity, and usage trends.</p>
+                </div>
+
+                <!-- 8. AI Forecasting -->
+                <div class="rpt-cat-card" data-tab="forecasting">
+                    <div class="rpt-cat-icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-cat-title">AI Forecasting</h3>
+                    <p class="rpt-cat-desc">Machine learning demand projections and safety stock targets.</p>
+                </div>
+            </div>
+
+            <!-- 3. CORPORATE REPORT PREVIEW (IMAGES 1, 4) -->
+            <section class="rpt-preview-section-card" id="rptCorporatePreviewCard" aria-label="Report Preview">
+                <!-- PREVIEW TOPBAR -->
+                <div class="rpt-preview-topbar">
+                    <div class="rpt-preview-heading">
+                        <div class="rpt-prev-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="rpt-preview-title">Report Preview</h2>
+                        </div>
+                    </div>
+                    <div class="rpt-preview-actions">
+                        <button type="button" class="rpt-prev-btn-excel" id="btnTabExport" title="Export Current Report">
+                            <svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Export</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- EMPTY STATE PLACEHOLDER (MATCHING IMAGE 1) -->
+                <div class="rpt-empty-preview-state" id="rptEmptyPreviewState">
+                    <div class="rpt-empty-icon-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h3 class="rpt-empty-title">No Report Generated Yet</h3>
+                    <p class="rpt-empty-desc">Select an executive report category above to generate a comprehensive report preview document.</p>
+                </div>
+
+                <!-- ACTIVE CORPORATE DOCUMENT SHEET (MATCHING IMAGE 4) -->
+                <div class="rpt-document-sheet" id="rptDocumentContainer" style="display: none;">
+
+
+
+                    <!-- TAB CONTENT PANELS -->
+                    <div class="rpt-tab-body" id="rptActiveTabBody">
+                        
+                        <!-- TAB 1: MANAGER SUMMARY (Concise, restock table moved to separate tab) -->
+                        <div class="rpt-tab-panel active" id="tabPanelManager" style="display: block;">
+                            <!-- Top Summary KPI Mini Cards -->
+                            <div class="rpt-manager-kpi-grid">
+                                <div class="rpt-kpi-box">
+                                    <span class="rpt-kpi-label">Total Raw Materials</span>
+                                    <h3 class="rpt-kpi-val" id="mgrTotalMaterials">0</h3>
+                                    <span class="rpt-kpi-sub">Registered Ingredients</span>
+                                </div>
+                                <div class="rpt-kpi-box">
+                                    <span class="rpt-kpi-label">Sufficient Stock</span>
+                                    <h3 class="rpt-kpi-val text-green" id="mgrGoodStock">0</h3>
+                                    <span class="rpt-kpi-sub">Ready for Production</span>
+                                </div>
+                                <div class="rpt-kpi-box">
+                                    <span class="rpt-kpi-label">Needs Reordering</span>
+                                    <h3 class="rpt-kpi-val text-red" id="mgrAttentionStock">0</h3>
+                                    <span class="rpt-kpi-sub">Low / Out of Stock</span>
+                                </div>
+                                <div class="rpt-kpi-box">
+                                    <span class="rpt-kpi-label">Total Activities</span>
+                                    <h3 class="rpt-kpi-val text-blue" id="mgrPeriodActivities">0</h3>
+                                    <span class="rpt-kpi-sub">Deliveries + Usage</span>
+                                </div>
+                            </div>
+
+                            <!-- Manager Overview Table -->
+                            <div class="rpt-section-header">
+                                <h3 class="rpt-section-title">Inventory Summary</h3>
+                                <p class="rpt-section-desc">Key stock levels and activity totals</p>
+                            </div>
+                            <div class="rpt-table-wrap">
+                                <table class="rpt-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Summary Item</th>
+                                            <th>Period Total</th>
+                                            <th>Details / Scope</th>
+                                            <th>Current Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mgrOverviewTableBody">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: RESTOCK RECOMMENDATIONS (SEPARATED TAB PER USER REQUEST) -->
+                        <div class="rpt-tab-panel" id="tabPanelRestock" style="display: none;">
+                            <div class="rpt-section-header">
+                                <h3 class="rpt-section-title">Restock Recommendations &amp; Action Guide</h3>
+                                <p class="rpt-section-desc">Suggested replenishment actions based on current inventory levels and minimum thresholds</p>
+                            </div>
+                            <div class="rpt-restock-stats-bar">
+                                <label class="rpt-restock-stat-pill pill-critical pill-checklist" for="chkRestockCrit" title="Toggle Critical Priority items">
+                                    <input type="checkbox" id="chkRestockCrit" class="rpt-restock-chk" checked>
+                                    <span class="stat-dot dot-red"></span>
+                                    <span>Critical Priority: <strong id="restockCritCount">0</strong></span>
+                                </label>
+                                <label class="rpt-restock-stat-pill pill-warning pill-checklist" for="chkRestockMed" title="Toggle Medium Priority items">
+                                    <input type="checkbox" id="chkRestockMed" class="rpt-restock-chk" checked>
+                                    <span class="stat-dot dot-amber"></span>
+                                    <span>Medium Priority: <strong id="restockMedCount">0</strong></span>
+                                </label>
+                                <label class="rpt-restock-stat-pill pill-good pill-checklist is-unchecked" for="chkRestockGood" title="Toggle Healthy Stock items">
+                                    <input type="checkbox" id="chkRestockGood" class="rpt-restock-chk">
+                                    <span class="stat-dot dot-green"></span>
+                                    <span>Healthy Stock: <strong id="restockGoodCount">0</strong></span>
+                                </label>
+                            </div>
+                            <div class="rpt-table-wrap">
+                                <table class="rpt-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Priority</th>
+                                            <th>Raw Material</th>
+                                            <th>Current Stock</th>
+                                            <th>Current Situation</th>
+                                            <th>Suggested Next Step</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mgrDecisionTableBody">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    <!-- TAB 2: INVENTORY RECORDS -->
+                    <div class="rpt-tab-panel" id="tabPanelInventory">
+                        <div class="rpt-toolbar">
+                            <div class="rpt-search-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input type="text" class="rpt-search-input" id="invSearchInput" placeholder="Search inventory materials..."/>
+                            </div>
+                            <select class="rpt-select" id="invStatusFilter">
+                                <option value="all">All Statuses</option>
+                                <option value="Good">Good / Sufficient</option>
+                                <option value="Low">Low Stock</option>
+                                <option value="Critical">Critical Stock</option>
+                            </select>
+                            <select class="rpt-select" id="invSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="high_stock">Sort: Highest Stock</option>
+                                <option value="low_stock">Sort: Lowest Stock</option>
+                            </select>
+                        </div>
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead>
+                                    <tr>
+                                        <th>Raw Material</th>
+                                        <th>Item Code</th>
+                                        <th>Unit</th>
+                                        <th>Current Stock</th>
+                                        <th>Minimum Threshold</th>
+                                        <th>Reorder Quantity</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invTableBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="inv-pagination-bar rpt-pagination-bar" id="invPaginationBar"></div>
+                    </div>
+
+                    <!-- TAB 3: MATERIAL RECEIVING -->
+                    <div class="rpt-tab-panel" id="tabPanelReceiving">
+                        <div class="rpt-toolbar">
+                            <div class="rpt-search-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input type="text" class="rpt-search-input" id="rcvSearchInput" placeholder="Search receiving records..."/>
+                            </div>
+                            <select class="rpt-select" id="rcvSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="highest">Sort: Highest Quantity</option>
+                            </select>
+                        </div>
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead>
+                                    <tr>
+                                        <th>Receipt Date</th>
+                                        <th>Raw Material</th>
+                                        <th>Received Quantity</th>
+                                        <th>Unit</th>
+                                        <th>Supplier Name</th>
+                                        <th>Received By</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rcvTableBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="inv-pagination-bar rpt-pagination-bar" id="rcvPaginationBar"></div>
+                    </div>
+
+                    <!-- TAB 4: MATERIAL DISBURSEMENT -->
+                    <div class="rpt-tab-panel" id="tabPanelDisbursement">
+                        <div class="rpt-toolbar">
+                            <div class="rpt-search-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input type="text" class="rpt-search-input" id="disbSearchInput" placeholder="Search disbursement records..."/>
+                            </div>
+                            <select class="rpt-select" id="disbSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="highest">Sort: Highest Quantity</option>
+                            </select>
+                        </div>
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usage Date</th>
+                                        <th>Raw Material</th>
+                                        <th>Finished Product / Batch</th>
+                                        <th>Disbursed Quantity</th>
+                                        <th>Unit</th>
+                                        <th>Activity Type</th>
+                                        <th>Recorded By</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="disbTableBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="inv-pagination-bar rpt-pagination-bar" id="disbPaginationBar"></div>
+                    </div>
+
+                    <!-- TAB 5: MATERIAL ACTIVITY -->
+                    <div class="rpt-tab-panel" id="tabPanelActivity">
+                        <div class="rpt-toolbar">
+                            <div class="rpt-search-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input type="text" class="rpt-search-input" id="actSearchInput" placeholder="Search chronological activity..."/>
+                            </div>
+                            <select class="rpt-select" id="actTypeFilter">
+                                <option value="all">All Movements</option>
+                                <option value="Received">Stock In (Received)</option>
+                                <option value="Disbursed">Stock Out (Disbursed)</option>
+                            </select>
+                            <select class="rpt-select" id="actSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Material: A–Z</option>
+                                <option value="za">Material: Z–A</option>
+                            </select>
+                        </div>
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Movement Type</th>
+                                        <th>Raw Material</th>
+                                        <th>Net Change</th>
+                                        <th>Unit</th>
+                                        <th>Reference / Context</th>
+                                        <th>Operator</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="actTableBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="inv-pagination-bar rpt-pagination-bar" id="actPaginationBar"></div>
+                    </div>
+
+                    <!-- TAB 6: CONSUMPTION ANALYSIS -->
+                    <div class="rpt-tab-panel" id="tabPanelConsumption">
+                        <div class="rpt-toolbar">
+                            <div class="rpt-search-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input type="text" class="rpt-search-input" id="cnsSearchInput" placeholder="Search consumption analysis..."/>
+                            </div>
+                            <select class="rpt-select" id="cnsSortFilter">
+                                <option value="latest">Sort: Latest</option>
+                                <option value="oldest">Sort: Oldest</option>
+                                <option value="az">Name: A–Z</option>
+                                <option value="za">Name: Z–A</option>
+                                <option value="high_consumed">Sort: Highest Consumption</option>
+                                <option value="low_consumed">Sort: Lowest Consumption</option>
+                            </select>
+                        </div>
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead>
+                                    <tr>
+                                        <th>Raw Material</th>
+                                        <th>Total Consumed</th>
+                                        <th>Previous Period Consumed</th>
+                                        <th>Current Stock</th>
+                                        <th>Consumption Trend</th>
+                                        <th>Stock Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cnsTableBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="inv-pagination-bar rpt-pagination-bar" id="cnsPaginationBar"></div>
+                    </div>
+
+                    <!-- TAB 7: AI FORECASTING -->
+                    <div class="rpt-tab-panel" id="tabPanelForecasting" style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;">
+                        <!-- Forecast Summary & Unit-Safe Requirement Grid -->
+                        <div class="rpt-manager-kpi-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;">
+                            <div class="rpt-kpi-box">
+                                <span class="rpt-kpi-label">Forecast Status</span>
+                                <h3 class="rpt-kpi-val" id="fcReportStatus">No Forecast Data</h3>
+                                <span class="rpt-kpi-sub" id="fcReportHorizon">Horizon: Operational Buffer</span>
+                            </div>
+                            <div class="rpt-kpi-box">
+                                <span class="rpt-kpi-label">Forecasted Materials</span>
+                                <h3 class="rpt-kpi-val" id="fcReportMatCount">0 Materials</h3>
+                                <span class="rpt-kpi-sub" id="fcReportLastTime">Status: Live AI Projections</span>
+                            </div>
+                            <div class="rpt-kpi-box" style="grid-column: span 2;">
+                                <span class="rpt-kpi-label">Total Forecasted Requirement (Unit-Safe)</span>
+                                <div class="fc-unit-req-pills" id="fcReportReqPills">
+                                    <span class="fc-unit-pill empty">0 Projected</span>
+                                </div>
+                                <span class="rpt-kpi-sub">Unit-safe projected consumption requirement</span>
+                            </div>
+                        </div>
+
+                        <!-- AI Forecast Decision Support Findings -->
+                        <div class="rpt-section-header" style="margin-top: 10px; margin-bottom: 12px;">
+                            <h4 class="rpt-section-title">AI Forecast Decision Support</h4>
+                            <p class="rpt-section-desc">Authoritative inventory projections and replenishment insights derived from latest AutoReg forecasting models.</p>
+                        </div>
+                        <div class="rpt-fc-decision-grid" id="fcReportDecisionList">
+                            <!-- Populated via JS -->
+                        </div>
+
+                        <!-- Table Toolbar: Search, Filters, and Count -->
+                        <div class="rpt-toolbar" style="margin-top: 24px;">
+                            <div class="rpt-search-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input type="text" class="rpt-search-input" id="fcSearchInput" placeholder="Search raw material, item code, or finished product..."/>
+                            </div>
+                            <div class="rpt-filters-group">
+                                <select class="rpt-select" id="fcStatusFilter" aria-label="Status Filter">
+                                    <option value="all">All Statuses</option>
+                                    <option value="Sufficient">Sufficient</option>
+                                    <option value="Monitor">Monitor</option>
+                                    <option value="Needs Attention">Needs Attention</option>
+                                    <option value="Potential Shortage">Potential Shortage</option>
+                                </select>
+                                <select class="rpt-select" id="fcUnitFilter" aria-label="Unit Filter">
+                                    <option value="all">All Units</option>
+                                </select>
+                                <select class="rpt-select" id="fcHorizonFilter" aria-label="Forecast Period">
+                                    <option value="7day" selected>Current Forecast (7 Days)</option>
+                                    <option value="1month">Latest Forecast (30 Days)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- AI Forecasting Table -->
+                        <div class="rpt-table-wrap">
+                            <table class="rpt-table">
+                                <thead>
+                                    <tr>
+                                        <th>Raw Material</th>
+                                        <th>ID</th>
+                                        <th>Finished Product</th>
+                                        <th>Current Stock</th>
+                                        <th>Unit</th>
+                                        <th>Recent Consumption</th>
+                                        <th>Forecast Requirement</th>
+                                        <th>Additional Stock Needed</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fcTableBody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination Controls -->
+                        <div class="inv-pagination-bar rpt-pagination-bar" id="fcPaginationBar"></div>
+                    </div>
+
+                    </div> <!-- end rpt-tab-body -->
+                </div> <!-- end rpt-document-sheet -->
+            </section> <!-- end rpt-preview-section-card -->
+        </div>
+        </div>
+    </main>
+    </div>
+</div>
+
+<!-- ===================================================
+     SAVE AS / EXPORT MODAL
+     =================================================== -->
+<div class="rpt-modal-overlay" id="saveModalOverlay">
+    <div class="rpt-modal-sheet">
+        <div class="rpt-modal-header">
+            <div class="rpt-modal-header-info">
+                <div class="rpt-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                </div>
+                <div>
+                    <h3 class="rpt-modal-title">Save Report Package</h3>
+                    <span class="rpt-modal-sub" id="saveModalPeriodSubtitle">Report Period: Live</span>
+                </div>
+            </div>
+            <button type="button" class="rpt-modal-close" id="saveModalCloseBtn" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="rpt-modal-body">
+            <div class="rpt-modal-field">
+                <label class="rpt-modal-label" for="saveModalReportName">Report Name</label>
+                <input type="text" class="rpt-input" id="saveModalReportName" value="RMSME_Report_Package"/>
+            </div>
+
+            <div class="rpt-modal-field">
+                <label class="rpt-modal-label">Save Location</label>
+                <div class="rpt-location-row">
+                    <input type="text" class="rpt-input" id="saveModalLocation" readonly value="Downloads (Browser Default)"/>
+                    <button type="button" class="rpt-btn-outline" id="browseLocationBtn">Browse</button>
+                </div>
+                <p class="rpt-field-hint">Your browser will automatically save to your Downloads folder or prompt based on browser settings.</p>
+            </div>
+
+            <div class="rpt-modal-field">
+                <label class="rpt-modal-label">File Format</label>
+                <div class="rpt-format-options">
+                    <label class="rpt-format-radio">
+                        <input type="radio" name="saveFileFormat" value="pdf" checked/>
+                        <span class="rpt-format-pill">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            PDF Document
+                        </span>
+                    </label>
+                    <label class="rpt-format-radio">
+                        <input type="radio" name="saveFileFormat" value="excel"/>
+                        <span class="rpt-format-pill">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8M8 17h8M8 9h2"></path></svg>
+                            Excel Workbook
+                        </span>
+                    </label>
+                    <label class="rpt-format-radio">
+                        <input type="radio" name="saveFileFormat" value="both"/>
+                        <span class="rpt-format-pill">
+                            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                            PDF + Excel Package
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="rpt-modal-field">
+                <div class="rpt-sections-header">
+                    <label class="rpt-modal-label" style="margin-bottom:0;">Reports to Include</label>
+                    <div class="rpt-section-btns">
+                        <button type="button" class="rpt-btn-link-sm" id="saveSelectAllBtn">Select All</button>
+                        <button type="button" class="rpt-btn-link-sm" id="saveClearAllBtn">Clear</button>
+                    </div>
+                </div>
+                <div class="rpt-section-checklist" id="saveSectionsChecklist">
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="manager" checked/>
+                        <span><strong>1. Manager Summary</strong> (Overview &amp; Health)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="restock" checked/>
+                        <span><strong>2. Restock Recommendations</strong> (Action Guide)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="inventory" checked/>
+                        <span><strong>3. Inventory Records</strong> (Current stock catalog)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="receiving" checked/>
+                        <span><strong>3. Material Receiving</strong> (Stock receipt records)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="disbursement" checked/>
+                        <span><strong>4. Material Disbursement</strong> (Production issues)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="activity" checked/>
+                        <span><strong>5. Material Activity</strong> (Chronological log)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="consumption" checked/>
+                        <span><strong>6. Consumption Analysis</strong> (Usage &amp; trend)</span>
+                    </label>
+                    <label class="rpt-check-item">
+                        <input type="checkbox" value="forecasting" checked/>
+                        <span><strong>7. AI Forecasting</strong> (Projected requirement &amp; decisions)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="rpt-modal-footer">
+            <button type="button" class="rpt-btn-outline" id="saveModalCancelBtn">Cancel</button>
+            <button type="button" class="rpt-btn-primary" id="saveModalConfirmBtn">
+                <svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Save Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===================================================
+     SPECIFIC REPORT CATEGORY EXPORT MODAL
+     =================================================== -->
+<div class="rpt-modal-overlay" id="tabExportModalOverlay">
+    <div class="rpt-modal-sheet" style="max-width: 520px;">
+        <div class="rpt-modal-header">
+            <div class="rpt-modal-header-info">
+                <div class="rpt-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </div>
+                <div>
+                    <h3 class="rpt-modal-title" id="tabExportModalTitle">Export Current Report</h3>
+                    <span class="rpt-modal-sub" id="tabExportModalSub">Specific single-category export</span>
+                </div>
+            </div>
+            <button type="button" class="rpt-modal-close" id="tabExportCloseBtn" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="rpt-modal-body">
+            <p style="margin: 0 0 16px; color: #475569; font-size: 13.5px; line-height: 1.5;">
+                Select format to export <strong id="tabExportTargetName" style="color: #0f172a;">Active Report</strong>.
+                Filtered by current date range and raw material scope.
+            </p>
+
+            <div class="rpt-specific-export-grid">
+                <button type="button" class="rpt-specific-export-card" id="btnExportSpecificPdf">
+                    <div class="rpt-sec-icon-badge pdf-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    </div>
+                    <div class="rpt-sec-info">
+                        <h4>PDF Document (.pdf)</h4>
+                        <p>Official formatted document of this specific category</p>
+                    </div>
+                    <span class="rpt-sec-action">Export PDF &rarr;</span>
+                </button>
+
+                <button type="button" class="rpt-specific-export-card" id="btnExportSpecificExcel">
+                    <div class="rpt-sec-icon-badge xls-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8M8 17h8M8 9h2"></path></svg>
+                    </div>
+                    <div class="rpt-sec-info">
+                        <h4>Excel Spreadsheet (.xlsx)</h4>
+                        <p>Spreadsheet dataset of this specific category</p>
+                    </div>
+                    <span class="rpt-sec-action">Export Excel &rarr;</span>
+                </button>
+            </div>
+        </div>
+        <div class="rpt-modal-footer">
+            <button type="button" class="rpt-btn-outline" id="tabExportCancelBtn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- CONTINUOUS PRINT DOCUMENT (Unified Standard Template with Watermark) -->
+<div class="rpt-continuous-print-doc" id="continuousPrintDoc" aria-hidden="true"></div>
+
+<!-- TOAST STACK -->
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- LIBRARIES -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../js/reports.js" type="module"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>

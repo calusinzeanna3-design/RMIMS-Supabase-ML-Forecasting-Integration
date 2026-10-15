@@ -1,305 +1,242 @@
 /* ============================================================
-   RMIMS V2 — ACCOUNT-BOUND ONBOARDING STYLESHEET
+   RMIMS — SPOTLIGHT INTERACTIVE ONBOARDING TOUR STYLESHEET
+   Highlights active sections, dims & blurs non-highlighted areas,
+   and provides sleek floating tour guidance cards.
    ============================================================ */
 
-.onboarding-overlay {
+/* 1. Backdrop: Dims and blurs entire screen except highlighted section */
+.rmims-tour-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
-  background: rgba(11, 19, 43, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: obFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 99990;
+  background: rgba(11, 19, 43, 0.76);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), clip-path 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes obFadeIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+.rmims-tour-backdrop.active {
+  opacity: 1;
 }
 
-.onboarding-card {
-  width: 100%;
-  max-width: 680px;
-  background: #FFFFFF;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
+/* 2. Spotlight Box: Surrounds target element with bright glowing emerald border */
+.rmims-tour-spotlight-box {
+  position: fixed;
+  z-index: 99995;
+  pointer-events: none;
+  border: 2px solid #10B981;
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.55), inset 0 0 12px rgba(16, 185, 129, 0.18);
+  transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0;
+  transform: scale(0.98);
 }
 
-.onboarding-header {
-  background: linear-gradient(135deg, #0B132B 0%, #1C2541 100%);
-  color: #FFFFFF;
-  padding: 24px 32px;
+.rmims-tour-spotlight-box.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Elevates highlighted open dropdowns above the tour mask */
+.rmims-tour-open-highlight {
+  z-index: 99996 !important;
+  position: relative !important;
+}
+
+.rmims-tour-open-highlight .mgr-profile-dropdown,
+.rmims-tour-open-highlight #profileDropdown {
+  z-index: 99997 !important;
+}
+
+/* 3. Floating Guidance Tour Card */
+.rmims-tour-card {
+  position: fixed;
+  z-index: 99998;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: #0B132B;
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  border-radius: 16px;
+  padding: 22px 24px;
+  color: #F8FAFC;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 25px rgba(16, 185, 129, 0.15);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s cubic-bezier(0.16, 1, 0.3, 1), top 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.rmims-tour-card.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Card Header */
+.rmims-tour-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.onboarding-brand {
-  display: flex;
-  align-items: center;
   gap: 12px;
-}
-
-.onboarding-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-
-.onboarding-brand-title {
-  font-family: 'Sora', 'Inter', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #FFFFFF;
-}
-
-.onboarding-role-badge {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(16, 185, 129, 0.2);
-  color: #34D399;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-}
-
-.onboarding-body {
-  padding: 32px;
-  min-height: 340px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.onboarding-step-content {
-  animation: obSlideUp 0.25s ease-out;
-}
-
-@keyframes obSlideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.onboarding-step-indicator {
-  font-size: 12px;
-  font-weight: 700;
-  color: #10B981;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
-}
-
-.onboarding-title {
-  font-family: 'Sora', 'Inter', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #0F172A;
-  margin: 0 0 12px 0;
-  line-height: 1.3;
-}
-
-.onboarding-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #475569;
-  margin: 0 0 20px 0;
-}
-
-.onboarding-feature-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.onboarding-feature-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  font-size: 13px;
-  color: #1E293B;
-}
-
-.onboarding-feature-icon {
-  font-size: 16px;
-  line-height: 1;
-}
-
-/* Quiz Test Styling */
-.onboarding-quiz-card {
-  background: #F0FDF4;
-  border: 1px solid #BBF7D0;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 16px;
-}
-
-.onboarding-quiz-q {
-  font-weight: 700;
-  font-size: 14px;
-  color: #166534;
   margin-bottom: 12px;
 }
 
-.onboarding-quiz-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.onboarding-quiz-opt {
-  padding: 10px 14px;
-  background: #FFFFFF;
-  border: 1px solid #CBD5E1;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #334155;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s ease;
-}
-
-.onboarding-quiz-opt:hover {
-  border-color: #10B981;
-  background: #ECFDF5;
-}
-
-.onboarding-quiz-opt.selected-correct {
-  background: #DCFCE7;
-  border-color: #22C55E;
-  color: #15803D;
-  font-weight: 600;
-}
-
-.onboarding-quiz-feedback {
-  margin-top: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #15803D;
-}
-
-.onboarding-footer {
-  padding: 20px 32px;
-  background: #F8FAFC;
-  border-top: 1px solid #E2E8F0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.onboarding-progress-dots {
-  display: flex;
-  gap: 6px;
-}
-
-.onboarding-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #CBD5E1;
-  transition: all 0.2s ease;
-}
-
-.onboarding-dot.active {
-  width: 24px;
-  background: #10B981;
-}
-
-.onboarding-actions {
+.rmims-tour-title-group {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
-.btn-ob-secondary {
-  padding: 8px 16px;
+.rmims-tour-icon-wrap {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  border: 1px solid #CBD5E1;
-  background: #FFFFFF;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  background: rgba(16, 185, 129, 0.16);
+  color: #34D399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.btn-ob-secondary:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+.rmims-tour-icon-wrap svg {
+  width: 17px;
+  height: 17px;
+  stroke: #34D399;
 }
 
-.btn-ob-primary {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #10B981;
+.rmims-tour-title {
+  font-size: 15px;
+  font-weight: 700;
   color: #FFFFFF;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+/* Step Counter Pill (e.g. 1 / 6) */
+.rmims-tour-step-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.18);
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  padding: 3px 11px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* Card Body */
+.rmims-tour-body {
+  margin: 0;
+  padding: 0;
+}
+
+.rmims-tour-desc {
   font-size: 13px;
+  line-height: 1.6;
+  color: #CBD5E1;
+  margin: 0 0 20px 0;
+  font-weight: 400;
+}
+
+/* Card Footer */
+.rmims-tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Skip Tour Button */
+.rmims-tour-btn-skip {
+  background: transparent;
+  color: #94A3B8;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.25);
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.btn-ob-primary:hover {
-  background: #059669;
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.35);
+.rmims-tour-btn-skip:hover {
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.btn-ob-skip {
-  background: none;
-  border: none;
-  color: #64748B;
-  font-size: 13px;
-  font-weight: 500;
+/* Action Buttons Group (Previous & Next) */
+.rmims-tour-nav-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rmims-tour-btn-prev {
+  background: rgba(255, 255, 255, 0.08);
+  color: #E2E8F0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 8px 12px;
-  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.btn-ob-skip:hover {
-  color: #0F172A;
+.rmims-tour-btn-prev:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
 }
 
-@media (max-width: 640px) {
-  .onboarding-card {
-    max-width: 100%;
-  }
-  .onboarding-feature-list {
-    grid-template-columns: 1fr;
-  }
-  .onboarding-body {
-    padding: 20px;
-  }
-  .onboarding-header {
-    padding: 16px 20px;
-  }
-  .onboarding-footer {
-    padding: 16px 20px;
-  }
+.rmims-tour-btn-next {
+  background: #059669;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.38);
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .onboarding-overlay,
-  .onboarding-step-content,
-  .onboarding-dot {
-    animation: none !important;
-    transition: none !important;
+.rmims-tour-btn-next:hover {
+  background: #10B981;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
+}
+
+.rmims-tour-btn-next:active {
+  transform: translateY(0);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .rmims-tour-card {
+    width: calc(100vw - 24px);
+    left: 12px !important;
+    right: 12px !important;
+    padding: 18px 20px;
   }
 }

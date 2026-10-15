@@ -117,16 +117,16 @@ html, body {
 
 body.rmsme-entry-lock,
 body.rmsme-entry-lock #rmStage {
-  height: 100dvh;
   min-height: 100dvh;
 }
 
 body.rmsme-entry-lock {
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 body.rmsme-entry-lock #rmStage {
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 

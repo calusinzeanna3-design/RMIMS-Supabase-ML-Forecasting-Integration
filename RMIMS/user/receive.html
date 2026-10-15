@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receive Raw Materials | RMSME Staff</title>
+<link rel="icon" href="../assets/favicon-64.png" type="image/png">
+
+<!-- Google Fonts: Inter, Sora -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Flatpickr for clean date handling -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- Stylesheets matching Manager & Admin design -->
+<link rel="stylesheet" href="../css/admin-shell.css">
+<link rel="stylesheet" href="../css/rmims-unified.css">
+<link rel="stylesheet" href="../css/manager-theme.css">
+<link rel="stylesheet" href="../css/manager-transaction.css">
+</head>
+
+<body class="manager-page admin-page">
+
+<div class="admin-app">
+
+  <!-- SIDEBAR (Auto-populated by rmsme-shell.js with Staff exact navigation) -->
+  <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="admin-main">
+
+    <!-- TOPBAR HEADER -->
+    <header class="admin-topbar">
+      <div class="topbar-left">
+        <span class="topbar-kicker">STAFF OPERATIONS</span>
+        <h1 class="topbar-title">Receive Raw Materials</h1>
+        <p class="topbar-subtitle">Record incoming materials into inventory. Submissions are sent to Manager for verification.</p>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Live Date & Time Pill -->
+        <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+        </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">SS</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Store Staff</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Store Staff</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                      </div>
+    </header>
+
+    <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
+      <div class="mgr-tx-container">
+
+      <!-- SECTION 5: STAFF RECEIVE FORM -->
+      <section class="mgr-tx-card">
+        <div class="mgr-tx-card-header">
+          <div>
+            <h2 class="mgr-tx-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--rm-mid-2, #16A34A)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Record Incoming Material
+            </h2>
+            <p class="mgr-tx-card-sub">Step 1: Enter receipt details &bull; Step 2: Review and submit for Manager verification.</p>
+          </div>
+
+          <!-- Section 5: Auto-Generated Non-Editable Non-Clickable Reference Display -->
+          <div class="mgr-ref-display-box" title="System-generated unique reference number (Non-editable)">
+            <span class="mgr-ref-tag">Reference No:</span>
+            <span class="mgr-ref-code" id="staffRecRefDisplay">REC-2026-00001</span>
+            <span class="mgr-ref-lock-icon" title="System-generated, non-editable">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <form id="staffReceiveForm" autocomplete="off" onsubmit="return false;">
+          <div class="mgr-form-grid">
+
+            <!-- 1. Raw Material [Select] -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="staffRecMaterial">
+                Raw Material <span class="required">*</span>
+              </label>
+              <select class="mgr-form-select" id="staffRecMaterial" required>
+                <option value="">-- Choose Material to Receive --</option>
+              </select>
+              <div id="staffRecStockPreview" class="mgr-stock-preview-badge" style="display:none;">
+                <span>Current Stock:</span> <strong id="previewStockVal">--</strong> &bull; <span>Min Threshold:</span> <span id="previewMinVal">--</span>
+              </div>
+            </div>
+
+            <!-- 2. Quantity [Enter] -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="staffRecQuantity">
+                Quantity <span class="required">*</span>
+              </label>
+              <div class="mgr-input-with-unit">
+                <input type="number" class="mgr-form-input" id="staffRecQuantity" placeholder="e.g. 50" min="0.01" step="any" required>
+                <span class="mgr-input-unit-badge" id="staffRecUnitBadge">--</span>
+              </div>
+              <select id="staffRecUnit" style="display:none;" aria-hidden="true">
+                <option value="" selected>--</option>
+              </select>
+            </div>
+
+            <!-- 3. Date [Select] -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="staffRecDate">
+                Date Received <span class="required">*</span>
+              </label>
+              <input type="text" class="mgr-form-input" id="staffRecDate" placeholder="YYYY-MM-DD" required>
+            </div>
+
+            <!-- 4. Supplier / Source -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="staffRecSupplier">
+                Supplier / Delivery Source <span class="required">*</span>
+              </label>
+              <input type="text" class="mgr-form-input" id="staffRecSupplier" placeholder="e.g. Agro-Industrial Supplies, Central Milling" required>
+            </div>
+
+            <!-- Bundle Receive: Linked Finished Products Section -->
+            <div id="recBundleSection" class="rec-bundle-wrap span-2" style="display:none;">
+              <div class="rec-bundle-header">
+                <div class="rec-bundle-header-left">
+                  <span class="rec-bundle-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    Bundle Receive
+                  </span>
+                  <strong id="recBundleTitle" style="color:var(--rm-ink, #0F2A1B); font-size:13.5px;">Linked Finished Products</strong>
+                  <span class="rec-bundle-count-badge" id="recBundleCountBadge">0 products recognized</span>
+                </div>
+                <div class="rec-bundle-legend">
+                  <span class="rec-legend-item legend-good"><span class="rec-legend-dot dot-good"></span> Sufficient / Exact</span>
+                  <span class="rec-legend-item legend-partial"><span class="rec-legend-dot dot-partial"></span> Partial Need</span>
+                  <span class="rec-legend-item legend-unreached"><span class="rec-legend-dot dot-unreached"></span> 0 / Won't Reach</span>
+                </div>
+              </div>
+              <div class="rec-bundle-grid" id="recBundleProductsGrid">
+                <!-- Dynamically populated product requirement cards with colored numbers -->
+              </div>
+            </div>
+
+            <!-- 5. Notes [Optional] -->
+            <div class="mgr-form-group span-2">
+              <label class="mgr-form-label" for="staffRecNotes">
+                Notes &amp; Delivery Remarks <span style="font-weight:normal; color:#64748B;">(Optional)</span>
+              </label>
+              <input type="text" class="mgr-form-input" id="staffRecNotes" placeholder="e.g. Batch #401, Quality verified, PO #89112">
+            </div>
+
+          </div>
+
+          <!-- Action Row -->
+          <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:12px;">
+            <button type="reset" class="btn-secondary" id="btnResetStaffRec">Clear Form</button>
+            <button type="button" class="btn-primary" id="btnOpenStaffRecReview">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 11 12 14 22 4"></polyline>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              </svg>
+              Review Receive Details
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- SECTION: MY RECENT SUBMISSIONS -->
+      <section class="mgr-tx-table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="margin:0; font-family:var(--rm-font-display); font-size:17px; font-weight:700; color:var(--rm-ink);">
+              My Recent Receive Submissions
+            </h3>
+            <p style="margin:2px 0 0; font-size:12.5px; color:var(--rm-ink-dim);">
+              Status of your incoming raw material transactions awaiting Manager approval
+            </p>
+          </div>
+          <span style="font-size:12px; color:#5C7A68;" id="myRecSubCount">0 submissions</span>
+        </div>
+
+        <div style="overflow-x:auto; width:100%; margin-top:14px;">
+          <table class="mgr-tx-table">
+            <thead>
+              <tr>
+                <th>Reference No.</th>
+                <th>Date &amp; Time</th>
+                <th>Raw Material</th>
+                <th>Quantity</th>
+                <th>Supplier</th>
+                <th>Status</th>
+                <th style="text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="myReceiveSubmissionsTbody">
+              <tr>
+                <td colspan="7" style="text-align:center; padding:28px 16px; color:#64748B;">
+                  No receive submissions recorded yet.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     SECTION 13: STAFF REVIEW MODAL
+     ========================================================================== -->
+<div class="mgr-review-modal-backdrop" id="staffReceiveReviewModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:480px; overflow:hidden; animation:mgrZoomIn 0.2s cubic-bezier(0.16,1,0.3,1);">
+    <div class="mgr-review-modal-header" style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#0F2A1B;">Review Receive Details</h3>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Verify details before submitting to Manager</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseStaffRecReview" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <div class="mgr-review-modal-body" style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+      
+      <!-- Info notice -->
+      <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:10px 14px; font-size:12px; color:#166534; display:flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>Submission will be sent to Manager for approval. Inventory will update only after approval.</span>
+      </div>
+
+      <!-- Detail Grid -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; background:#F8FAFC; border:1px solid #E2E8F0; padding:14px; border-radius:12px;">
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Reference Number</span>
+          <span style="font-family:'Sora',sans-serif; font-size:14px; font-weight:800; color:#0F2A1B;" id="revStaffRecRef">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Submission Status</span>
+          <span style="display:inline-block; margin-top:2px; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#FEF3C7; color:#D97706;">Pending Verification</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Raw Material</span>
+          <span style="font-size:14px; font-weight:700; color:#0F2A1B;" id="revStaffRecMaterial">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Quantity Received</span>
+          <span style="font-size:14px; font-weight:800; color:#15803D;" id="revStaffRecQty">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Date</span>
+          <span style="font-size:13px; font-weight:600; color:#334155;" id="revStaffRecDate">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Supplier</span>
+          <span style="font-size:13px; font-weight:600; color:#334155;" id="revStaffRecSupplier">--</span>
+        </div>
+      </div>
+
+      <div>
+        <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Notes</span>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:10px 12px; border-radius:8px; font-size:12.5px; color:#334155;" id="revStaffRecNotes">No extra notes provided.</div>
+      </div>
+
+    </div>
+
+    <div style="padding:14px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; gap:10px; background:#F8FAFC;">
+      <button type="button" class="btn-secondary" id="btnCancelStaffRecSubmit" style="padding:9px 18px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; font-weight:600; cursor:pointer;">Edit Details</button>
+      <button type="button" class="btn-primary" id="btnConfirmStaffRecSubmit" style="padding:9px 22px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(21,128,61,0.25);">
+        Submit to Manager
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDIT SUBMISSION (STAFF RECEIVE) -->
+<div class="mgr-review-modal-backdrop" id="staffEditRecModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:480px; overflow:hidden;">
+    <div class="mgr-review-modal-header" style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#0F2A1B;">Edit Receive Submission</h3>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Update inward delivery details</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseStaffEditRec" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <form id="staffEditRecForm">
+      <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:70vh; overflow-y:auto;">
+        <input type="hidden" id="staffEditRecRef">
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Reference Number</label>
+          <input type="text" id="staffEditRecRefDisplay" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-weight:700; font-family:monospace; font-size:13.5px;">
+        </div>
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Raw Material</label>
+          <input type="text" id="staffEditRecMaterial" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#1E293B; font-weight:600; font-size:13.5px;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Quantity Received</label>
+            <input type="number" step="any" min="0.01" id="staffEditRecQty" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
+          </div>
+          <div>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Unit</label>
+            <input type="text" id="staffEditRecUnit" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-size:13.5px;">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Supplier / Source</label>
+          <input type="text" id="staffEditRecSupplier" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
+        </div>
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Notes / Remarks</label>
+          <input type="text" id="staffEditRecNotes" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
+        </div>
+      </div>
+
+      <div style="padding:14px 24px; border-top:1px solid #E2E8F0; background:#F8FAFC; display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-secondary" id="btnCancelStaffEditRec">Cancel</button>
+        <button type="submit" class="btn-primary" style="background:#15803D; color:#FFFFFF; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Update Submission</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: DELETE SUBMISSION CONFIRMATION (STAFF RECEIVE) -->
+<div class="mgr-review-modal-backdrop" id="staffDeleteRecModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:440px; overflow:hidden;">
+    <div style="padding:18px 24px; border-bottom:1px solid #FEE2E2; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#FEE2E2; color:#DC2626; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#DC2626;">Delete Submission</h3>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Remove this submission record</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseStaffDeleteRec" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <div style="padding:20px 24px;">
+      <p style="margin:0; font-size:14px; color:#334155; line-height:1.5;">
+        Are you sure you want to delete submission <code id="staffDeleteRecRefCode" style="color:#0F766E; font-weight:700;"></code>?
+      </p>
+      <div style="margin-top:12px; background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:10px 12px; font-size:12.5px; color:#991B1B;">
+        ⚠️ Warning: This will permanently remove the submission from your activity and review queue.
+      </div>
+    </div>
+
+    <div style="padding:14px 24px; border-top:1px solid #E2E8F0; background:#F8FAFC; display:flex; justify-content:flex-end; gap:10px;">
+      <button type="button" class="btn-secondary" id="btnCancelStaffDeleteRec">Cancel</button>
+      <button type="button" id="btnConfirmStaffDeleteRec" style="background:#DC2626; color:#FFFFFF; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Delete Submission</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="../js/user-receive.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>

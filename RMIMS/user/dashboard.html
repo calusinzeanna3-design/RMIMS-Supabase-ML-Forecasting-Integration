@@ -1,857 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Dashboard | RMSME Staff Operations</title>
-    <link href="../assets/favicon-64.png" rel="icon" type="image/png"/>
-    <link href="../css/dashboard.css" rel="stylesheet"/>
-    <link href="../css/user-dashboard.css" rel="stylesheet"/>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="../js/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-    <link href="../css/rmims-unified.css" rel="stylesheet"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - Store Operations Overview</title>
+  <!-- Google Fonts: Inter, Sora, Orbitron & Share Tech Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Admin Shell Stylesheet (100% Shared Theme & Components) -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="stylesheet" href="../css/manager-theme.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
 </head>
-<body class="user-page">
+<body class="staff-page admin-page">
+  <div class="admin-app">
+    <!-- SIDEBAR (Auto-rendered by rmsme-shell.js with 100% Admin styling for Staff) -->
+    <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
 
-<!-- Subtle Engineering Background -->
-<div class="rmims-faint-bg" aria-hidden="true">
-    <div class="faint-grid-lines"></div>
-    <div class="faint-chart-nodes"></div>
-</div>
-
-<div class="container">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar" aria-label="Primary navigation"></aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="content">
-
-        <!-- HEADER -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <button class="menu-toggle" aria-label="Toggle menu">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                </button>
-                <nav class="breadcrumb">
-                    <span>Staff Operations</span>
-                    <span class="crumb-sep">›</span>
-                    <span class="crumb-active">Overview</span>
-                </nav>
-            </div>
-
-            <div class="header-actions">
-                <div class="header-date" id="headerDate">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"/><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                    <span></span>
-                </div>
-
-                <button id="notificationBtn" class="icon-btn" title="Notifications">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.73 21C13.5542 21.3031 13.3018 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                    <span class="notif-badge" id="notifBadge" hidden>0</span>
-                </button>
-
-                <button id="profileBtn" class="profile-btn" title="Account profile">
-                    <span class="avatar">U</span>
-                    <span class="profile-text">Staff Member</span>
-                    <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-            </div>
-        </header>
-
-        <!-- PAGE TITLE & LIVE HEADER -->
-        <div class="page-title fade-in">
-            <div class="page-title-text">
-                <h1>Dashboard</h1>
-                <p id="welcomeGreeting" style="font-size: 0.84rem; color: #64748b; margin-top: 4px; font-weight: 500;">Welcome back! Here is your daily operational summary.</p>
-            </div>
-            <div class="page-title-actions">
-                <div class="live-pill" id="livePill">
-                    <span class="live-dot"></span>
-                    Live Data
-                </div>
-            </div>
+    <!-- MAIN WRAPPER -->
+    <div class="admin-main">
+      <!-- TOPBAR -->
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <div class="topbar-text-group">
+            <span class="topbar-kicker">STORE OPERATIONS</span>
+            <h1 class="topbar-title">Staff Dashboard</h1>
+            <p class="topbar-subtitle">Real-time daily operations overview and live store inventory monitoring.</p>
+          </div>
         </div>
 
-        <!-- THREE PRIMARY SUMMARY CARDS + VERTICAL STOCK HEALTH DISTRIBUTION + TREND -->
-        <section class="admin-primary-cards-grid" id="userPrimaryCardsGrid">
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
 
-            <!-- CARD 1: RAW MATERIALS -->
-            <div class="admin-summary-card card-interactive fade-in" id="cardRawMaterials" tabindex="0" role="button" aria-haspopup="dialog" aria-label="View raw material status">
-                <div class="asc-header">
-                    <span class="asc-title">Raw Materials</span>
-                    <span class="asc-icon icon-emerald">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke-linejoin="round"/><path d="M12 2V22M3 7L12 12M21 7L12 12" stroke-linejoin="round"/></svg>
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">SS</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Store Staff</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Store Staff</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                        </div>
+      </header>
+
+      <!-- SCROLLABLE CONTENT BODY -->
+      <main class="admin-scroll-body">
+
+        <!-- WELCOME & FRONTDESK LIVE MONITORING CLOCK BAR -->
+        <div class="overview-welcome-banner">
+          <div class="overview-welcome-group">
+            <h1 class="overview-welcome-title" id="welcomeGreeting">Welcome back!</h1>
+            <p class="overview-welcome-sub" id="welcomeSub">Here's what's happening across your store operations today.</p>
+          </div>
+
+          <!-- Frontdesk Monitoring Clock Card (Exact Image 1 Style) -->
+          <div class="frontdesk-clock-card" id="frontdeskClockCard" title="Live Frontdesk Monitoring Clock (Philippine Standard Time)">
+            <div class="frontdesk-clock-time-group">
+              <span class="frontdesk-time" id="frontdeskTime">--:--:--</span>
+              <span class="frontdesk-period" id="frontdeskPeriod">AM</span>
+            </div>
+            <div class="frontdesk-date" id="frontdeskDate">Loading...</div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: DAILY OPERATIONS & ACTIVITY OVERVIEW (Chart + 2 Stat Cards) -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M18 20V10"/>
+                  <path d="M12 20V4"/>
+                  <path d="M6 20v-6"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Daily Operations &amp; Activity Overview</h2>
+                <span class="card-subtitle">Daily inward receipts and disbursements logged across operations</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <select class="dropdown-select" id="chartRangeSelect">
+                <option value="7">Last 7 Days</option>
+                <option value="14" selected>Last 14 Days</option>
+                <option value="30">Last 30 Days</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="usage-grid">
+            <!-- Left: Interactive Dual Line Chart (RMIMS Emerald Aesthetic) -->
+            <div class="chart-card-content">
+              <div class="chart-canvas-container" style="height: 250px;">
+                <canvas id="staffActivityChart"></canvas>
+              </div>
+              <div class="chart-legend-custom" id="staffChartLegend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #16A34A;"></span>
+                  <span>Inward Receipts</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #0284C7;"></span>
+                  <span>Production Disbursements</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: 2 KPI Stat Cards -->
+            <div class="kpi-column">
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Today's Material Submissions</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiTodayTx">0</span>
+                    <span class="kpi-trend up" id="kpiTodayTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
                     </span>
+                  </div>
+                  <span class="kpi-subtext" id="kpiTodayTxSub">Receipts &amp; disbursements today</span>
                 </div>
+              </div>
 
-                <div class="asc-body">
-                    <div class="asc-value" id="availableMaterialsCount">55</div>
-                    <div class="asc-subtitle" id="rawMaterialsSubtitle" style="color: var(--warn, #f59e0b);">4 currently out of stock</div>
-                    <div class="asc-desc">Materials currently available</div>
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
                 </div>
-
-                <div class="asc-action-hint">Click for full status table ›</div>
-            </div>
-
-            <!-- CARD 2: TOTAL CONSUMED -->
-            <div class="admin-summary-card card-interactive fade-in" id="cardTotalConsumed" tabindex="0" role="button" aria-haspopup="dialog" aria-label="View consumption analytics">
-                <div class="asc-header">
-                    <span class="asc-title">Total Consumed</span>
-                    <span class="asc-icon icon-red">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7L9 13L13 9L21 17"/><path d="M15 17H21V11"/></svg>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Pending Approval Reviews</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiPendingTx">0</span>
+                    <span class="kpi-trend up" id="kpiPendingTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
                     </span>
+                  </div>
+                  <span class="kpi-subtext">Awaiting manager validation</span>
                 </div>
-
-                <div class="asc-body">
-                    <!-- ROTATING MATERIAL TICKER (PAUSES ON HOVER) -->
-                    <div class="asc-ticker-container" id="consumedTicker">
-                        <div class="asc-ticker-text" id="consumedTickerText">Refined White Sugar — 3,840.5 kg</div>
-                    </div>
-                    
-                    <!-- FULL UNIT-SAFE SUMMARY (DISPLAYED ON HOVER) -->
-                    <div class="asc-full-summary" id="consumedFullSummary" aria-hidden="true"></div>
-
-                    <!-- PREVIOUS MONTH COMPARISON -->
-                    <div class="asc-comparison" id="consumedComparison">
-                        <span class="comp-badge comp-up">+4.2%</span>
-                        <span class="comp-label">from last month</span>
-                    </div>
-                </div>
-
-                <div class="asc-action-hint">Click for consumption chart ›</div>
+              </div>
             </div>
-
-            <!-- CARD 3: OUT OF STOCK -->
-            <div class="admin-summary-card card-interactive fade-in" id="cardOutOfStock" tabindex="0" role="button" aria-haspopup="dialog" aria-label="View out of stock materials">
-                <div class="asc-header">
-                    <span class="asc-title">Out of Stock</span>
-                    <span class="asc-icon icon-orange">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8V12"/><path d="M12 16H12.01"/></svg>
-                    </span>
-                </div>
-
-                <div class="asc-body">
-                    <div class="asc-value" id="outOfStockCount">4</div>
-                    
-                    <!-- ROTATING DEPLETED MATERIAL NAMES (PAUSES ON HOVER) -->
-                    <div class="asc-ticker-container" id="outOfStockTicker">
-                        <div class="asc-ticker-text" id="outOfStockTickerText">Fresh Chiton Mollusk (Kibit)</div>
-                    </div>
-
-                    <!-- FULL OUT-OF-STOCK BREAKDOWN (DISPLAYED ON HOVER) -->
-                    <div class="asc-full-summary" id="outOfStockFullSummary" aria-hidden="true"></div>
-                </div>
-
-                <div class="asc-action-hint">Click for restock alerts ›</div>
-            </div>
-
-            <!-- VERTICAL CARD: RECEIVE RAW MATERIALS -->
-            <div class="admin-receive-raw-card fade-in" id="cardReceiveRawMaterials" aria-label="Receive raw materials summary">
-                <div class="rrc-header">
-                    <div class="rrc-title-group">
-                        <h3 class="rrc-title">Receive Raw Materials</h3>
-                        <div class="rrc-badges">
-                            <span class="rrc-badge-materials" id="rrcMaterialCountBadge">59 materials</span>
-                            <span class="rrc-badge-sub" id="rrcUnitBadge">Top Inflow</span>
-                        </div>
-                    </div>
-                    <select id="rrcPeriodFilter" class="rrc-period-select" aria-label="Filter period">
-                        <option value="all">All Time</option>
-                        <option value="month" selected>This Month</option>
-                        <option value="30d">Last 30 Days</option>
-                        <option value="6m">Last 6 Months</option>
-                    </select>
-                </div>
-
-                <div class="rrc-chart-section">
-                    <div class="rrc-pie-wrap">
-                        <canvas id="receivePieChart"></canvas>
-                    </div>
-                    <div class="rrc-legend-list" id="receiveLegendList">
-                        <!-- Injected by JS: Material Name + Percentage -->
-                    </div>
-                </div>
-
-                <div class="rrc-divider"></div>
-
-                <div class="rrc-top-section">
-                    <span class="rrc-section-label">TOP 5 RECEIVED</span>
-                    <div class="rrc-top-list" id="topReceivedList">
-                        <!-- Injected by JS -->
-                    </div>
-                </div>
-
-                <div class="rrc-footer">
-                    <button type="button" class="rrc-view-all-btn" id="btnViewAllReceived">
-                        <span>View All</span>
-                        <span class="rrc-arrow-circle">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- RAW MATERIALS TREND CARD (BELOW THE 3 SUMMARY CARDS) -->
-            <div class="admin-trend-card fade-in" id="adminTrendCard">
-                <div class="trend-header">
-                    <div class="trend-title-area">
-                        <h2 class="trend-title">Raw Materials Trend</h2>
-                        <div class="trend-legend-pills">
-                            <span class="trend-legend-pill pill-margin" title="Safe Zone Range (&plusmn;7.51%)">
-                                <span class="legend-indicator margin-band"></span>
-                                Safe Zone Range (&plusmn;7.51%)
-                            </span>
-                            <span class="trend-legend-pill pill-consumed" title="Actual Consumption">
-                                <span class="legend-indicator solid-blue-dot"></span>
-                                Actual
-                            </span>
-                            <span class="trend-legend-pill pill-forecast" title="Forecast Model">
-                                <span class="legend-indicator dotted-forecast"></span>
-                                Forecast
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="trend-controls-area">
-                        <select id="trendMaterialSelect" class="trend-select" aria-label="Select Raw Material">
-                            <option value="all">All Materials</option>
-                        </select>
-                        <div class="trend-granularity-group" id="trendGranularityGroup">
-                            <button type="button" class="trend-gran-btn" data-gran="daily" title="Daily Forecast (Days)">Daily</button>
-                            <button type="button" class="trend-gran-btn" data-gran="weekly" title="Weekly Forecast (Weeks)">Weekly</button>
-                            <button type="button" class="trend-gran-btn active" data-gran="monthly" title="Monthly Forecast (Months)">Monthly</button>
-                        </div>
-                        <div class="trend-zoom-toolbar" id="trendZoomToolbar" role="toolbar" aria-label="Chart Zoom Controls">
-                            <button type="button" class="trend-zoom-btn" id="trendZoomInBtn" title="Zoom In (+)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                            </button>
-                            <button type="button" class="trend-zoom-btn" id="trendZoomOutBtn" title="Zoom Out (-)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                            </button>
-                            <button type="button" class="trend-zoom-btn" id="trendZoomResetBtn" title="Reset Zoom &amp; Pan View">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="12" height="12"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                                <span>Reset</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="trend-chart-box">
-                    <canvas id="rawMaterialsTrendChart"></canvas>
-                </div>
-
-                <div class="trend-chart-footer">
-                    <span class="trend-footer-note">📊 <strong>8-Month Operational Evaluation: Jan to Aug 2026</strong> (Actual vs. Learned Seasonal Forecast &bull; Margin: &plusmn;7.51%)</span>
-                    <a href="analytics.html" class="trend-nav-link" title="Open Consumption Analytics">
-                        <span>View Consumption Analytics</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </a>
-                </div>
-            </div>
-
+          </div>
         </section>
 
-        <!-- LOWER DASHBOARD SECTION: AI FORECASTED SUPPORT -->
-        <section class="admin-lower-section fade-in" id="userLowerSection">
-            <div class="admin-panel-card ai-forecast-support-card" id="cardAiForecastSupport">
-                <div class="apc-header">
-                    <div class="apc-title-group">
-                        <div class="apc-icon-badge icon-blue">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="apc-title">AI Forecasted Support</h3>
-                            <p class="apc-subtitle">Automated demand projection &amp; operational decision support</p>
-                        </div>
-                    </div>
-                    <a href="reports.html" class="apc-view-all-btn" id="btnViewAiForecast" title="Open Forecast Reports">
-                        <span>View Forecast Reports</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-
-                <div class="forecast-support-grid" id="forecastSupportContainer">
-                    <div class="apc-loading-state">Evaluating forecast decision support...</div>
-                </div>
+        <!-- SECTION 2: MY RECENT OPERATIONS & SUBMISSIONS -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">My Recent Operations &amp; Submissions</h2>
+                <span class="card-subtitle">Recent receipt and disbursement entries logged and verification status</span>
+              </div>
             </div>
+
+            <div class="card-actions">
+              <a href="my-activity.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="staffDashboardActivityTable">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Activity</th>
+                  <th>Raw Material</th>
+                  <th>Quantity</th>
+                  <th>Reference Number</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="staffDashboardActivityTbody">
+                <!-- Dynamically populated by user-dashboard.js -->
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <!-- ADDITION #1: OPERATIONAL ATTENTION -->
-        <section class="admin-lower-section fade-in" id="userOperationalAttentionSection" style="margin-top: 24px;">
-            <div class="admin-panel-card" id="cardOperationalAttention">
-                <div class="apc-header">
-                    <div class="apc-title-group">
-                        <div class="apc-icon-badge icon-orange">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="apc-title">Needs Your Attention</h3>
-                            <p class="apc-subtitle">Items running low or expected to run short — restock these soon.</p>
-                        </div>
-                    </div>
-                    <a href="inventory.html" class="apc-view-all-btn" id="btnViewOperationalAttention" title="View Inventory Overview">
-                        <span>View Inventory</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-
-                <div class="operational-attention-grid" id="operationalAttentionContainer">
-                    <div class="apc-loading-state">Checking stock levels, please wait...</div>
-                </div>
-
-                <!-- Pagination bar — shown only when items > 3 -->
-                <div class="op-attn-pagination" id="opAttnPagination" hidden>
-                    <button class="op-pg-btn" id="opAttnPrev" aria-label="Previous page">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M15 18L9 12L15 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        Prev
-                    </button>
-                    <span class="op-pg-info" id="opAttnPageInfo">Page 1 of 1</span>
-                    <button class="op-pg-btn" id="opAttnNext" aria-label="Next page">
-                        Next
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M9 18L15 12L9 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-
-        <!-- ADDITION #2: ACTIVITY RECORD USERS -->
-        <section class="admin-lower-section fade-in" id="userRecentActivitySection" style="margin-top: 24px;">
-            <div class="admin-panel-card" id="cardRecentMaterialActivity">
-                <div class="apc-header">
-                    <div class="apc-title-group">
-                        <div class="apc-icon-badge icon-emerald">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6H20M4 12H20M4 18H14" stroke-linecap="round"/><path d="M17 15L20 18L17 21" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="apc-title">Activity Record Users</h3>
-                            <p class="apc-subtitle">Complete chronological activity log recorded by users and administrators.</p>
-                        </div>
-                    </div>
-                    <a href="material-activity.html" class="apc-view-all-btn" id="btnViewRecentActivity" title="Open Material Activity">
-                        <span>View Material Activity</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
-                </div>
-
-                <!-- Activity Toolbar: Search on Left, Filters on Right -->
-                <div class="act-toolbar">
-                    <div class="act-search-box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
-                        <input type="search" id="actSearchInput" placeholder="Search any column (material, recorder, activity, locator, date, qty)..." aria-label="Search all activity columns and data">
-                    </div>
-                    <div class="act-filters">
-                        <!-- 1. RECORDER DROPDOWN -->
-                        <div class="rm-custom-select" id="actRecorderDropdown">
-                            <button type="button" class="rm-select-trigger" id="actRecorderTrigger" aria-haspopup="listbox" aria-expanded="false" title="Filter by user or admin">
-                                <span class="rm-select-value" id="actRecorderValue">
-                                    <span class="rm-opt-icon-wrap rm-icon-all">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                                    </span>
-                                    <span class="rm-opt-label">All Recorders</span>
-                                </span>
-                                <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                            </button>
-                            <div class="rm-select-menu" id="actRecorderMenu" role="listbox">
-                                <div class="rm-select-option selected" data-value="all" role="option" aria-selected="true">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-icon-all">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">All Recorders</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="user" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap" style="background:#eff6ff; color:#2563eb;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Users</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="admin" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap" style="background:#faf5ff; color:#7e22ce;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Admin</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 2. ACTIVITY DROPDOWN -->
-                        <div class="rm-custom-select" id="actTypeDropdown">
-                            <button type="button" class="rm-select-trigger" id="actTypeTrigger" aria-haspopup="listbox" aria-expanded="false" title="Filter by activity">
-                                <span class="rm-select-value" id="actTypeValue">
-                                    <span class="rm-opt-icon-wrap rm-icon-all">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                                    </span>
-                                    <span class="rm-opt-label">All Activities</span>
-                                </span>
-                                <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                            </button>
-                            <div class="rm-select-menu" id="actTypeMenu" role="listbox">
-                                <div class="rm-select-option selected" data-value="all" role="option" aria-selected="true">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-icon-all">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">All Activities</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="received" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-badge-receive">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Receive</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="disbursed" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-badge-disburse">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V8m0 0l-4 4m4-4l4 4M4 4h16"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Disburse</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="add_material" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap" style="background:#fef3c7; color:#b45309;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Add New Material (Admin only)</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="import_edit_product" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap" style="background:#ede9fe; color:#6d28d9;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Import / Edit Finished Product (Admin only)</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="import_edit_material" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap" style="background:#e0f2fe; color:#0369a1;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Import / Edit Raw Material (Admin only)</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 3. SORT DROPDOWN -->
-                        <div class="rm-custom-select" id="actSortDropdown">
-                            <button type="button" class="rm-select-trigger" id="actSortTrigger" aria-haspopup="listbox" aria-expanded="false" title="Sort activity records">
-                                <span class="rm-select-value" id="actSortValue">
-                                    <span class="rm-opt-icon-wrap rm-icon-all">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-                                    </span>
-                                    <span class="rm-opt-label">Sort: Latest</span>
-                                </span>
-                                <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                            </button>
-                            <div class="rm-select-menu align-right" id="actSortMenu" role="listbox">
-                                <div class="rm-select-option selected" data-value="latest" role="option" aria-selected="true">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-icon-all">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Sort: Latest</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="oldest" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-icon-all">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Sort: Oldest</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="az" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-icon-all">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h4l-4 8h4M7 4l4 4-4 4M14 4h7M14 9h5M14 14h3M14 19h1"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Name: A–Z</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                                <div class="rm-select-option" data-value="za" role="option" aria-selected="false">
-                                    <div class="rm-opt-content">
-                                        <span class="rm-opt-icon-wrap rm-icon-all">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16H3l4-8H3M7 20l4-4-4-4M14 4h1M14 9h3M14 14h5M14 19h7"/></svg>
-                                        </span>
-                                        <span class="rm-opt-label">Name: Z–A</span>
-                                    </div>
-                                    <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="recent-activity-table-wrap">
-                    <table class="recent-activity-table" id="recentActivityTable">
-                        <thead>
-                            <tr>
-                                <th>DATE</th>
-                                <th>RECORDER (ADMIN / USER)</th>
-                                <th>RAW MATERIAL</th>
-                                <th>ACTIVITY</th>
-                                <th>LOCATOR</th>
-                                <th>QUANTITY</th>
-                                <th>CURRENT STOCK</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentActivityTableBody">
-                            <tr>
-                                <td colspan="7" class="apc-table-empty">Loading activity records...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Activity Pagination Bar -->
-                <div class="act-pagination" id="actPagination">
-                    <span class="act-pg-count" id="actPgCount">Showing 0 of 0 activities</span>
-                    <div class="act-pg-controls">
-                        <button class="op-pg-btn" id="actPgPrev" aria-label="Previous page">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M15 18L9 12L15 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            Prev
-                        </button>
-                        <span class="op-pg-info" id="actPgInfo">Page 1 of 1</span>
-                        <button class="op-pg-btn" id="actPgNext" aria-label="Next page">
-                            Next
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M9 18L15 12L9 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-</div>
-
-<!-- ============================================================
-     USER MODAL SYSTEM (BLURRED & DIMMED DASHBOARD OVERLAY)
-     ============================================================ -->
-<div id="adminModalBackdrop" class="admin-modal-backdrop" hidden></div>
-
-<!-- MODAL 1: RAW MATERIAL STATUS -->
-<div class="admin-modal-panel" id="modalRawMaterialStatus" role="dialog" aria-modal="true" aria-labelledby="modalRawMaterialsTitle" hidden>
-    <div class="amp-header">
-        <div class="amp-title-group">
-            <h2 id="modalRawMaterialsTitle">Raw Material Status</h2>
-            <p class="amp-subtitle">Live status and recent transaction activities across the catalog</p>
-        </div>
-        <button class="amp-close-btn" id="closeModalRawMaterials" aria-label="Close dialog">✕</button>
+      </main>
     </div>
+  </div>
 
-    <div class="amp-toolbar">
-        <div class="amp-search-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
-            <input type="search" id="rawMaterialSearch" placeholder="Search by material name or item code..." aria-label="Search materials">
-        </div>
-        <div class="amp-filter-box">
-            <label for="rawMaterialFilter" class="amp-filter-label">Sort By:</label>
-            <select id="rawMaterialFilter" class="amp-select">
-                <option value="latest">Latest</option>
-                <option value="oldest">Oldest</option>
-                <option value="a-z">A - Z</option>
-                <option value="z-a">Z - A</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="amp-table-scroll">
-        <table class="amp-table">
-            <thead>
-                <tr>
-                    <th>Raw Material Name</th>
-                    <th>Last Update Date</th>
-                    <th>Latest Update Quantity</th>
-                    <th>Current Stock</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="rawMaterialsTableBody">
-                <tr>
-                    <td colspan="5" class="amp-table-empty">Loading raw materials catalog...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="amp-footer">
-        <span class="amp-footer-count" id="rawMaterialsCountNote">Showing live catalog</span>
-        <a href="inventory.html" class="amp-nav-arrow-btn" title="View Inventory Overview">
-            <span>View Inventory</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-    </div>
-</div>
-
-<!-- MODAL 2: CONSUMPTION ANALYTICS -->
-<div class="admin-modal-panel admin-modal-wide" id="modalConsumptionAnalytics" role="dialog" aria-modal="true" aria-labelledby="modalConsumptionTitle" hidden>
-    <div class="amp-header">
-        <div class="amp-title-group">
-            <h2 id="modalConsumptionTitle">Consumption Analytics</h2>
-            <p class="amp-subtitle">Live time-series trajectory and multi-material disbursement trends</p>
-        </div>
-        <button class="amp-close-btn" id="closeModalConsumption" aria-label="Close dialog">✕</button>
-    </div>
-
-    <div class="amp-toolbar amp-toolbar-split">
-        <div class="amp-filter-box">
-            <label for="modalCategoryFilter" class="amp-filter-label">Category / Material:</label>
-            <select id="modalCategoryFilter" class="amp-select">
-                <option value="all">All Materials (Top 5 Overview)</option>
-            </select>
-        </div>
-
-        <div class="amp-gran-group" id="modalGranularityGroup">
-            <button type="button" class="amp-gran-btn active" data-gran="daily">Daily (7 Days)</button>
-            <button type="button" class="amp-gran-btn" data-gran="week">Weekly</button>
-            <button type="button" class="amp-gran-btn" data-gran="month">Monthly</button>
-        </div>
-    </div>
-
-    <div class="amp-chart-wrap">
-        <canvas id="modalConsumptionChart"></canvas>
-    </div>
-
-    <div id="modalChartLegend" class="amp-chart-legend"></div>
-
-    <div class="amp-footer">
-        <span class="amp-footer-count" id="modalChartInsights">Hover over series data points for exact quantities and insights</span>
-        <a href="analytics.html" class="amp-nav-arrow-btn" title="View Consumption Analytics">
-            <span>View Consumption Analytics</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-    </div>
-</div>
-
-<!-- MODAL 3: OUT OF STOCK MATERIALS -->
-<div class="admin-modal-panel" id="modalOutOfStock" role="dialog" aria-modal="true" aria-labelledby="modalOutOfStockTitle" hidden>
-    <div class="amp-header">
-        <div class="amp-title-group">
-            <h2 id="modalOutOfStockTitle">Out of Stock Materials</h2>
-            <p class="amp-subtitle">Depleted inventory items requiring replenishment</p>
-        </div>
-        <button class="amp-close-btn" id="closeModalOutOfStock" aria-label="Close dialog">✕</button>
-    </div>
-
-    <div class="amp-tiles-container" id="outOfStockTilesList">
-        <div class="amp-empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8 12L11 15L16 9"/></svg>
-            <strong>All materials in stock</strong>
-            <span>No depleted raw materials detected in the live database.</span>
-        </div>
-    </div>
-
-    <div class="amp-footer">
-        <span class="amp-footer-count" id="outOfStockCountNote">Live stock evaluation</span>
-        <a href="inventory.html" class="amp-nav-arrow-btn" title="View Inventory Overview">
-            <span>View Inventory</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-    </div>
-</div>
-
-<!-- MODAL 4: RECEIVED RECORDS -->
-<div class="admin-modal-panel admin-modal-wide" id="modalReceivedRecords" role="dialog" aria-modal="true" aria-labelledby="modalReceivedTitle" hidden>
-    <div class="amp-header">
-        <div class="amp-title-group">
-            <h2 id="modalReceivedTitle">Received Raw Materials Records</h2>
-            <p class="amp-subtitle">Complete chronological history of material deliveries from public.stock_receipts</p>
-        </div>
-        <button class="amp-close-btn" id="closeModalReceived" aria-label="Close dialog">✕</button>
-    </div>
-
-    <div class="amp-toolbar">
-        <div class="amp-search-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
-            <input type="search" id="receivedSearchInput" placeholder="Search received material, code, or supplier..." aria-label="Search receiving records">
-        </div>
-        <div class="amp-filter-box">
-            <label for="receivedModalSort" class="amp-filter-label">Sort By:</label>
-            <select id="receivedModalSort" class="amp-select">
-                <option value="latest">Latest</option>
-                <option value="oldest">Oldest</option>
-                <option value="a-z">A - Z</option>
-                <option value="z-a">Z - A</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="amp-table-scroll">
-        <table class="amp-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Raw Material Name</th>
-                    <th>Quantity Received</th>
-                    <th>Supplier</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="receivedModalTableBody">
-                <tr>
-                    <td colspan="5" class="amp-table-empty">Loading receiving transactions...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="amp-footer">
-        <span class="amp-footer-count" id="receivedModalCountNote">Showing live receiving records</span>
-        <a href="material-activity.html" class="amp-nav-arrow-btn" title="Open Material Activity">
-            <span>View Material Activity</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-    </div>
-</div>
-
-<!-- MODAL 5: AI FORECAST DETAIL MODAL -->
-<div class="admin-modal-panel admin-modal-wide" id="modalForecastDetail" role="dialog" aria-modal="true" aria-labelledby="modalForecastDetailTitle" hidden>
-    <div class="amp-header">
-        <div class="amp-title-group">
-            <div class="amp-tag-row">
-                <span class="forecast-badge-pill" id="mfdBadgePill">Dynamic Pure Time-Series</span>
-                <span class="forecast-status-tag" id="mfdStatusTag">Evaluating</span>
-            </div>
-            <h2 id="modalForecastDetailTitle">Material Forecast Details</h2>
-            <p class="amp-subtitle" id="mfdSubtitle">Live forecast comparison &amp; decision support insight</p>
-        </div>
-        <button class="amp-close-btn" id="closeModalForecastDetail" aria-label="Close dialog">✕</button>
-    </div>
-
-    <div class="amp-body" style="padding: 16px 24px; display: flex; flex-direction: column; gap: 12px;">
-        <!-- Multi-Horizon Controls -->
-        <div class="mfd-controls-bar">
-            <div class="mfd-controls-group">
-                <label for="modalHorizonType" class="mfd-control-label">Planning Horizon:</label>
-                <div class="mfd-input-wrapper">
-                    <select id="modalHorizonType" class="mfd-select">
-                        <option value="day">Days</option>
-                        <option value="week">Weeks</option>
-                        <option value="month" selected>Months</option>
-                        <option value="year">Years</option>
-                    </select>
-                    <input type="number" id="modalHorizonValue" value="3" min="1" max="24" class="mfd-number-input" aria-label="Horizon Value">
-                </div>
-                <button type="button" class="mfd-calculate-btn" id="modalRefreshBtn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                    <span>Run Projection</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Inventory Status / Decision Card -->
-        <div class="mfd-decision-box" id="decisionBox">
-            <div class="mfd-decision-left">
-                <div class="mfd-decision-header-row">
-                    <span class="mfd-decision-icon" id="decisionStatusIcon">⚠️</span>
-                    <span class="mfd-decision-title" id="decisionStatusTitle">Analyzing inventory demand...</span>
-                </div>
-                <p class="mfd-decision-desc" id="decisionInsightText">Fetching data from Holt-Winters ETS time-series engine...</p>
-            </div>
-            <div class="mfd-decision-right">
-                <span class="mfd-total-lbl">Total Requirement</span>
-                <span class="mfd-total-val" id="modalTotalReqText">--</span>
-            </div>
-        </div>
-
-        <!-- Interactive Time Series Chart Canvas -->
-        <div class="mfd-chart-wrapper">
-            <canvas id="modalForecastChart"></canvas>
-        </div>
-
-        <!-- 4-Stat Tiles -->
-        <div class="forecast-detail-content" id="forecastDetailContent">
-            <!-- Injected via JS -->
-        </div>
-    </div>
-
-    <div class="amp-footer">
-        <span class="amp-footer-count" id="mfdModelMeta">Pure Time-Series (Holt-Winters ETS) &bull; Supabase Live Integration</span>
-        <a href="reports.html" class="amp-nav-arrow-btn" title="Open Reports">
-            <span>Open Reports</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12H19M12 5L19 12L12 19" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </a>
-    </div>
-</div>
-
-<!-- TOASTS -->
-<div class="toast-stack" id="toastStack"></div>
-
-<script type="module" src="../js/user-dashboard.js"></script>
-
-<script>
-const headerDateEl = document.querySelector("#headerDate span");
-if(headerDateEl){
-    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
-}
-
-const menuToggle = document.querySelector(".menu-toggle");
-const sidebarEl = document.querySelector(".sidebar");
-if(menuToggle && sidebarEl){
-    menuToggle.addEventListener("click", ()=>{
-        sidebarEl.classList.toggle("open");
-    });
-}
-</script>
-
-<script type="module" src="../js/rmsme-shell.js"></script>
+  <!-- SCRIPTS -->
+  <script type="module" src="../js/user-dashboard.js"></script>
+  <script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 </html>

@@ -84,8 +84,10 @@ body.rmsme-entry-lock {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 56px 24px;
+  padding: 24px 16px;
   perspective: 1000px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ---------------------------------------------------------

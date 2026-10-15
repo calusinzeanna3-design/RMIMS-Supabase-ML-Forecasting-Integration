@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Activity | RMSME Staff</title>
+<link rel="icon" href="../assets/favicon-64.png" type="image/png">
+
+<!-- Google Fonts: Inter, Sora -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- Stylesheets matching Manager & Admin design -->
+<link rel="stylesheet" href="../css/admin-shell.css">
+<link rel="stylesheet" href="../css/rmims-unified.css">
+<link rel="stylesheet" href="../css/manager-theme.css">
+<link rel="stylesheet" href="../css/manager-transaction.css">
+<style>
+  .activity-stat-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(20, 83, 45, 0.12);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(15, 42, 27, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .activity-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(15, 42, 27, 0.08);
+  }
+  .stat-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .correction-banner {
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .correction-banner-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #FEF3C7;
+    color: #D97706;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .diff-badge {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    color: #1D4ED8;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+</style>
+</head>
+
+<body class="manager-page admin-page">
+
+<div class="admin-app">
+
+  <!-- SIDEBAR (Auto-populated by rmsme-shell.js with Staff exact navigation) -->
+  <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="admin-main">
+
+    <!-- TOPBAR HEADER -->
+    <header class="admin-topbar">
+      <div class="topbar-left">
+        <span class="topbar-kicker">MY ACTIVITY</span>
+        <h1 class="topbar-title">Transaction &amp; Activity Log</h1>
+        <p class="topbar-subtitle">Track your personal Receive and Disburse submissions, review manager messages, and update records.</p>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Live Date & Time Pill -->
+        <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+        </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">SS</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Store Staff</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Store Staff</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                      </div>
+    </header>
+
+    <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
+      <div class="mgr-tx-container">
+
+      <!-- Attention Alert Banner if any items need correction -->
+      <div id="correctionAlertBanner" class="correction-banner" style="display:none;">
+        <div class="correction-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div style="flex:1;">
+          <strong style="color:#92400E; font-size:14px; display:block;" id="correctionBannerTitle">Action Required: Transaction returned for correction</strong>
+          <span style="color:#78350F; font-size:13px; margin-top:2px; display:block;">The Manager requested revisions. Click "View Message &amp; Details" below to see what was wrong and correct it directly in the popup form without leaving this page.</span>
+        </div>
+        <button type="button" class="btn-primary" id="btnFilterCorrections" style="padding:6px 14px; font-size:12px; background:#D97706; border-radius:8px; align-self:center;">View Corrections</button>
+      </div>
+
+      <!-- Metric Summary Cards -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:24px;">
+        <div class="activity-stat-card">
+          <div class="stat-icon-wrap" style="background:#DCFCE7; color:#15803D;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div>
+            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Total Submissions</span>
+            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#0F2A1B; display:block;" id="statTotalSub">0</strong>
+          </div>
+        </div>
+
+        <div class="activity-stat-card">
+          <div class="stat-icon-wrap" style="background:#E0F2FE; color:#0369A1;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Pending Verification</span>
+            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#0369A1; display:block;" id="statPendingSub">0</strong>
+          </div>
+        </div>
+
+        <div class="activity-stat-card">
+          <div class="stat-icon-wrap" style="background:#DCFCE7; color:#16A34A;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Approved</span>
+            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#16A34A; display:block;" id="statApprovedSub">0</strong>
+          </div>
+        </div>
+
+        <div class="activity-stat-card">
+          <div class="stat-icon-wrap" style="background:#FEF3C7; color:#D97706;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div>
+            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Correction Needed</span>
+            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#D97706; display:block;" id="statCorrectionSub">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Ledger Table Card -->
+      <section class="mgr-tx-table-card">
+        
+        <!-- Filter Bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; border-bottom:1px solid #E2E8F0; padding-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:1;">
+            
+            <!-- Search -->
+            <div style="position:relative; min-width:240px; flex:1; max-width:320px;">
+              <svg style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:#94A3B8;" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="activitySearchInput" placeholder="Search reference, material, notes..." class="mgr-form-input" style="padding-left:36px; height:38px; font-size:13px;">
+            </div>
+
+            <!-- Activity Filter -->
+            <select id="filterActivitySelect" class="mgr-form-select" style="width:auto; height:38px; font-size:13px; min-width:130px;">
+              <option value="ALL">All Activities</option>
+              <option value="Receive">Receive</option>
+              <option value="Disburse">Disburse</option>
+            </select>
+
+            <!-- Status Filter -->
+            <select id="filterStatusSelect" class="mgr-form-select" style="width:auto; height:38px; font-size:13px; min-width:160px;">
+              <option value="ALL">All Statuses</option>
+              <option value="Correction Needed">Correction Needed</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div style="overflow-x:auto; width:100%; margin-top:16px;">
+          <table class="mgr-tx-table">
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Activity</th>
+                <th>Reference No.</th>
+                <th>Raw Material</th>
+                <th>Quantity</th>
+                <th>Status</th>
+                <th>Note / Message</th>
+                <th style="text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="myActivityTbody">
+              <tr>
+                <td colspan="8" style="text-align:center; padding:36px 16px; color:#64748B;">
+                  Loading activity logs...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Footer / Count -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:12.5px; color:#64748B;">
+          <span id="activityTableCountDisplay">Showing 0 transactions</span>
+          <span style="color:#15803D; font-weight:600;">Reference is the only basis for duplicate detection</span>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     MODAL 1: ACTIVITY & MANAGER MESSAGE VIEWER MODAL
+     Shows the manager's feedback message and all submitted activities so staff knows what is wrong.
+     Staff can click "Correct Record" at the bottom to open the small box correction popup.
+     ========================================================================== -->
+<div class="mgr-review-modal-backdrop" id="viewTxModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:520px; overflow:hidden; animation:mgrZoomIn 0.2s cubic-bezier(0.16,1,0.3,1);">
+    
+    <!-- Modal Header -->
+    <div class="mgr-review-modal-header" style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between; background:#F8FAFC;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div id="viewTxIconWrap" style="width:38px; height:38px; border-radius:10px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#0F2A1B;" id="viewTxTitle">Activity &amp; Manager Message Viewer</h3>
+          <p style="margin:2px 0 0; font-size:12px; color:#64748B;" id="viewTxSubtitle">Review submitted record details and manager instructions</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseViewTx" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="mgr-review-modal-body" style="padding:20px 24px; max-height:calc(85vh - 140px); overflow-y:auto; display:flex; flex-direction:column; gap:14px;">
+      
+      <!-- Manager Message Banner (Shown when status is Correction Needed) -->
+      <div id="viewTxCorrectionBox" style="display:none; background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:12px; padding:14px 16px;">
+        <div style="display:flex; align-items:center; gap:6px; color:#B45309; font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:0.4px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Manager Revision Feedback &bull; Action Required
+        </div>
+        <div style="font-size:13.5px; color:#78350F; font-weight:600; margin-top:8px; line-height:1.45; padding:10px 12px; background:#FEF3C7; border-radius:8px; border:1px solid #FDE68A;" id="viewTxCorrectionMsg">
+          "Please verify the quantity entered."
+        </div>
+        <p style="margin:8px 0 0; font-size:12px; color:#92400E; line-height:1.4;">
+          Review what was recorded below to know what was wrong. When ready, click <strong>Correct Record</strong> at the bottom to open the popup form.
+        </p>
+      </div>
+
+      <!-- Status Badge Banner -->
+      <div id="viewTxStatusBanner" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:10px 14px; font-size:13px; display:flex; align-items:center; justify-content:space-between;">
+        <span style="color:#475569; font-weight:600; font-size:12.5px;">Current Submission Status:</span>
+        <span id="viewTxStatusBadge" style="font-weight:700;">Pending</span>
+      </div>
+
+      <!-- Submitted Activity Detail Grid -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; background:#F8FAFC; border:1px solid #E2E8F0; padding:14px; border-radius:12px;">
+        <div>
+          <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase;">Reference Number</span>
+          <span style="font-family:'Sora',sans-serif; font-size:13.5px; font-weight:800; color:#0F2A1B;" id="viewTxRef">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase;">Activity Type</span>
+          <span style="font-size:13px; font-weight:700; color:#0F2A1B;" id="viewTxActivity">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase;">Raw Material</span>
+          <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="viewTxMaterial">--</span>
+        </div>
+        <div>
+          <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase;">Submitted Quantity</span>
+          <span style="font-size:14px; font-weight:800; color:#15803D;" id="viewTxQty">--</span>
+        </div>
+        <div style="grid-column: span 2;">
+          <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase;" id="viewTxSourceLabel">Supplier / Delivery Source</span>
+          <span style="font-size:13px; font-weight:600; color:#334155;" id="viewTxSource">--</span>
+        </div>
+        <div style="grid-column: span 2;">
+          <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase;">Date &amp; Time Recorded</span>
+          <span style="font-size:13px; font-weight:600; color:#334155;" id="viewTxDate">--</span>
+        </div>
+      </div>
+
+      <!-- Notes Box -->
+      <div id="viewTxNotesBox">
+        <span style="display:block; font-size:11px; color:#64748B; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Original Submission Notes</span>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:10px 12px; border-radius:8px; font-size:12.5px; color:#334155;" id="viewTxNotes">--</div>
+      </div>
+
+    </div>
+
+    <!-- Modal Footer with "Correct" button -->
+    <div style="padding:14px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC;">
+      <button type="button" class="btn-secondary" id="btnCloseViewTx2" style="padding:9px 18px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; font-weight:600; cursor:pointer;">Close</button>
+      <button type="button" class="btn-primary" id="btnGoToCorrect" style="display:none; padding:9px 22px; border-radius:8px; border:none; background:#D97706; color:#FFFFFF; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(217,119,6,0.25);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Correct Record
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     MODAL 2: SMALL BOX CORRECTION POPUP FORM
+     "automatically popup only in the screen just like the receive module form but this time is just small box but same form"
+     - Compact max-width (500px)
+     - Retains exact same reference number (locked)
+     - Same form structure as Receive / Disburse (Material, Stock Preview, Qty with unit badge, Unit, Date, Supplier/Purpose, Notes)
+     - Resubmits as Pending with diff tracking
+     ========================================================================== -->
+<div class="mgr-review-modal-backdrop" id="staffCorrectionModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.7); backdrop-filter:blur(4px); z-index:10060; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(217,119,6,0.25); box-shadow:0 25px 50px -12px rgba(15,42,27,0.25); width:100%; max-width:500px; overflow:hidden; animation:mgrZoomIn 0.2s cubic-bezier(0.16,1,0.3,1);">
+    
+    <!-- Modal Header -->
+    <div class="mgr-review-modal-header" style="padding:16px 20px; border-bottom:1px solid #E2E8F0; background:#FFFBEB; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:16px; font-weight:800; color:#92400E;" id="corrFormHeaderTitle">Correct Transaction Record</h3>
+          <p style="margin:2px 0 0; font-size:11.5px; color:#B45309;">Reference number is locked &bull; Same form layout as receive module</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseCorrectionModal" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#78350F;">&times;</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="mgr-review-modal-body" style="padding:18px 20px; max-height:calc(85vh - 130px); overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
+      
+      <!-- Locked Reference Display Box (Identical to Receive module Section 5) -->
+      <div class="mgr-ref-display-box" style="margin:0;" title="System-generated unique reference number (Preserved &amp; Non-editable)">
+        <span class="mgr-ref-tag">Reference No:</span>
+        <span class="mgr-ref-code" id="corrModalRefCode">--</span>
+        <span class="mgr-ref-lock-icon" title="Preserved reference number, non-editable">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+      </div>
+      <!-- Hidden compatibility span for legacy tests -->
+      <span id="corrModalRef" style="display:none;"></span>
+
+      <!-- Compact Manager Instruction Reminder -->
+      <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:10px 12px; display:flex; align-items:flex-start; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" style="flex-shrink:0; margin-top:1px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <div>
+          <strong style="color:#92400E; display:block; font-size:11px; text-transform:uppercase;">Manager's Instruction:</strong>
+          <span id="corrModalManagerMsg" style="font-size:12.5px; color:#78350F; font-weight:600; display:block; margin-top:2px;">"Please verify the quantity entered."</span>
+        </div>
+      </div>
+
+      <!-- Small Box Form matching Receive module -->
+      <form id="staffCorrectionForm" autocomplete="off" onsubmit="return false;" style="display:flex; flex-direction:column; gap:12px;">
+        <input type="hidden" id="corrTxId">
+
+        <!-- 1. Raw Material (Select with Stock Preview Badge) -->
+        <div class="mgr-form-group">
+          <label class="mgr-form-label" for="corrMaterialSelect">
+            Raw Material <span class="required">*</span>
+          </label>
+          <select class="mgr-form-select" id="corrMaterialSelect" required></select>
+          <div id="corrStockPreview" class="mgr-stock-preview-badge" style="display:none; margin-top:6px;">
+            <span>Current Stock:</span> <strong id="corrStockVal">--</strong> &bull; <span>Min Threshold:</span> <span id="corrMinVal">--</span>
+          </div>
+        </div>
+
+        <!-- 2. Quantity & Unit of Measure -->
+        <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:10px;">
+          <!-- Quantity with unit badge inside input -->
+          <div class="mgr-form-group">
+            <label class="mgr-form-label" for="corrQuantityInput">
+              Quantity <span class="required">*</span>
+            </label>
+            <div class="mgr-input-with-unit">
+              <input type="number" class="mgr-form-input" id="corrQuantityInput" step="any" min="0.01" placeholder="e.g. 50" required>
+              <span class="mgr-input-unit-badge" id="corrUnitBadge">--</span>
+            </div>
+          </div>
+
+          <!-- Unit of Measure -->
+          <div class="mgr-form-group">
+            <label class="mgr-form-label" for="corrUnitSelect">
+              Unit <span class="required">*</span>
+            </label>
+            <select class="mgr-form-select" id="corrUnitSelect" required>
+              <option value="" selected>-- Select Unit --</option>
+              <option value="kg">Kilograms (kg)</option>
+              <option value="L">Liters (L)</option>
+              <option value="g">Grams (g)</option>
+              <option value="packs">Packs</option>
+              <option value="tubers">Tubers</option>
+              <option value="pieces">Pieces</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 3. Date -->
+        <div class="mgr-form-group">
+          <label class="mgr-form-label" for="corrDateInput">
+            Transaction Date <span class="required">*</span>
+          </label>
+          <input type="text" class="mgr-form-input" id="corrDateInput" placeholder="YYYY-MM-DD" required>
+        </div>
+
+        <!-- 4. Supplier / Source (or Purpose) -->
+        <div class="mgr-form-group">
+          <label class="mgr-form-label" for="corrSourceInput" id="corrSourceLabel">
+            Supplier / Delivery Source <span class="required">*</span>
+          </label>
+          <input type="text" class="mgr-form-input" id="corrSourceInput" placeholder="e.g. Agro-Industrial Supplies, Central Milling" required>
+        </div>
+
+        <!-- 5. Correction Notes / Clarification -->
+        <div class="mgr-form-group">
+          <label class="mgr-form-label" for="corrNotesInput">
+            Correction Notes / Clarification <span style="font-weight:normal; color:#64748B;">(Optional)</span>
+          </label>
+          <input type="text" class="mgr-form-input" id="corrNotesInput" placeholder="Explain what was updated for the Manager...">
+        </div>
+
+      </form>
+
+    </div>
+
+    <!-- Modal Footer with Back and Resubmit buttons -->
+    <div style="padding:14px 20px; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC;">
+      <button type="button" class="btn-secondary" id="btnBackToViewModal" style="padding:8px 14px; font-size:12px; font-weight:600; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        View Message
+      </button>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-secondary" id="btnCancelCorrection" style="padding:8px 14px; font-size:12px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; font-weight:600; cursor:pointer;">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitCorrection" style="padding:8px 18px; font-size:12px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(21,128,61,0.25);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Resubmit to Manager
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="../js/user-my-activity.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>

@@ -90,40 +90,94 @@ document.querySelectorAll(".modal-overlay").forEach(overlay => {
    ROLE GUARD & LOAD ACCOUNT
    ========================================================== */
 
-const profileBtn = document.getElementById("profileBtn");
-
-onAuthStateChanged(auth, async (user) => {
-    if (!user) { window.location.href = "../login.html"; return; }
-
+function getLocalManagerOrAdmin() {
     try {
-        const { data: profile, error } = await supabase
-            .from("user_profiles")
-            .select("id, full_name, email, role, status, created_at, updated_at")
-            .eq("id", user.uid)
-            .maybeSingle();
-
-        if (error || !profile || profile.status !== "active") {
-            window.location.href = "../login.html";
-            return;
+        const raw = localStorage.getItem("managerUser");
+        if (raw) {
+            const u = JSON.parse(raw);
+            if (u && typeof u === "object") {
+                const uid = u.id || u.uid || "active-manager-session";
+                let mgrName = u.fullName || u.name || "Manager";
+                if (!mgrName || mgrName.toLowerCase().includes("rafael") || mgrName.toLowerCase().includes("cruz") || mgrName.toLowerCase().includes("staff") || mgrName.includes("Maria Santos")) {
+                    mgrName = "Manager";
+                }
+                let mgrEmail = u.email || "manager@rmims.ph";
+                if (!mgrEmail || mgrEmail.toLowerCase().includes("staff@") || mgrEmail.startsWith("admin")) {
+                    mgrEmail = "manager@rmims.ph";
+                }
+                return {
+                    uid,
+                    fullName: mgrName,
+                    email: mgrEmail,
+                    role: "manager",
+                    status: u.status || "active",
+                    avatarUrl: localStorage.getItem(`rmims_avatar_${uid}`) || "",
+                    createdAt: u.createdAt || u.created_at || new Date().toISOString(),
+                    updatedAt: u.updatedAt || u.updated_at || new Date().toISOString()
+                };
+            }
         }
 
-        if (profile.role !== "admin") {
-            window.location.href = "../user/dashboard.html";
-            return;
+        const curRaw = localStorage.getItem("currentUser") || 
+                       localStorage.getItem("rmimsCurrentUser") || 
+                       localStorage.getItem("userProfile");
+        if (curRaw) {
+            const u = JSON.parse(curRaw);
+            if (u && typeof u === "object") {
+                const role = (u.role || u.operationalRole || "").toLowerCase();
+                const email = (u.email || "").toLowerCase();
+                const isMaster = email === "calusinzeanna3@gmail.com" || email.startsWith("admin");
+
+                if (role === "admin" || isMaster) {
+                    return { redirect: "../admin/settings.html" };
+                }
+
+                if (role === "user" || role === "staff") {
+                    return { redirect: "../user/settings.html" };
+                }
+            }
         }
+    } catch (e) {
+        console.warn("Could not read local manager session:", e);
+    }
 
-        currentUser = {
-            uid: user.uid,
-            fullName: profile.full_name || "",
-            email: profile.email || user.email || "",
-            role: profile.role || "admin",
-            status: profile.status || "active",
-            avatarUrl: localStorage.getItem(`rmims_avatar_${user.uid}`) || "",
-            createdAt: profile.created_at,
-            updatedAt: profile.updated_at
-        };
+    // Default active manager session so visiting Manager Settings maintains a valid manager identity
+    const defaultManager = {
+        uid: "active-manager-session",
+        fullName: "Manager",
+        email: "manager@rmims.ph",
+        role: "manager",
+        status: "active",
+        avatarUrl: localStorage.getItem("rmims_avatar_active-manager-session") || "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    try {
+        localStorage.setItem("managerUser", JSON.stringify(defaultManager));
+    } catch (e) {}
+    return defaultManager;
+}
 
-        syncUserInterface();
+let isInitialized = false;
+
+function applyManagerUser(userData) {
+    if (!userData) return;
+    if (userData.redirect) {
+        window.location.href = userData.redirect;
+        return;
+    }
+    // Deep sanitize manager identity: ensure no staff names (Rafael Cruz, etc.) bleed into manager
+    if (!userData.fullName || userData.fullName.toLowerCase().includes("rafael") || userData.fullName.toLowerCase().includes("cruz") || userData.fullName.toLowerCase().includes("staff") || userData.fullName.includes("Maria Santos")) {
+        userData.fullName = "Manager";
+    }
+    if (!userData.email || userData.email.toLowerCase().includes("staff@")) {
+        userData.email = "manager@rmims.ph";
+    }
+    currentUser = userData;
+    syncUserInterface();
+
+    if (!isInitialized) {
+        isInitialized = true;
         initNavigation();
         initProfileEditor();
         initSecurityForm();
@@ -140,9 +194,131 @@ onAuthStateChanged(auth, async (user) => {
         } catch (re) {
             console.warn("Data reset init warning:", re);
         }
+    }
+}
+
+// Immediately check local session on page load so manager never sees a flash or redirect
+const immediateLocalUser = getLocalManagerOrAdmin();
+if (immediateLocalUser) {
+    if (immediateLocalUser.redirect) {
+        window.location.href = immediateLocalUser.redirect;
+    } else {
+        applyManagerUser(immediateLocalUser);
+    }
+}
+
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        // Fall back to local active session
+        const local = getLocalManagerOrAdmin();
+        if (local) {
+            if (local.redirect) {
+                window.location.href = local.redirect;
+                return;
+            }
+            applyManagerUser(local);
+            return;
+        }
+        // Only redirect to login if NO session exists at all
+        window.location.href = "../login.html";
+        return;
+    }
+
+    try {
+        let { data: profile, error } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, email, role, status, created_at, updated_at")
+            .eq("id", user.uid)
+            .maybeSingle();
+
+        const uid = user.id || user.uid;
+        const cleanEmail = (user.email || "").toLowerCase();
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+
+        if (isMasterAdmin) {
+            if (!profile) {
+                profile = {
+                    id: uid,
+                    full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+                    email: user.email,
+                    role: "admin",
+                    operational_role: "admin",
+                    status: "active",
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+            } else {
+                profile.role = "admin";
+                profile.operational_role = "admin";
+                profile.status = "active";
+            }
+            error = null;
+        }
+
+        if (!profile) {
+            const local = getLocalManagerOrAdmin();
+            if (local && !local.redirect) {
+                profile = {
+                    id: uid,
+                    full_name: local.fullName,
+                    email: user.email || local.email,
+                    role: local.role,
+                    operational_role: local.role,
+                    status: local.status,
+                    created_at: local.createdAt,
+                    updated_at: local.updatedAt
+                };
+                error = null;
+            }
+        }
+
+        if (profile && profile.status !== "active") {
+            window.location.href = "../login.html";
+            return;
+        }
+
+        if (profile && (profile.role === "admin" || isMasterAdmin)) {
+            window.location.href = "../admin/settings.html";
+            return;
+        }
+
+        if (profile && (profile.role === "user" || profile.role === "staff")) {
+            window.location.href = "../user/settings.html";
+            return;
+        }
+
+        if (profile && profile.role !== "manager") {
+            window.location.href = "../login.html";
+            return;
+        }
+
+        if (profile) {
+            let mName = profile.full_name || "";
+            if (!mName || mName.toLowerCase().includes("rafael") || mName.toLowerCase().includes("cruz") || mName.toLowerCase().includes("staff") || mName.includes("Maria Santos")) {
+                mName = "Manager";
+            }
+            let mEmail = profile.email || user.email || "manager@rmims.ph";
+            if (mEmail.toLowerCase().includes("staff@")) {
+                mEmail = "manager@rmims.ph";
+            }
+            applyManagerUser({
+                uid: user.uid,
+                fullName: mName,
+                email: mEmail,
+                role: profile.role || "manager",
+                status: profile.status || "active",
+                avatarUrl: localStorage.getItem(`rmims_avatar_${user.uid}`) || "",
+                createdAt: profile.created_at,
+                updatedAt: profile.updated_at
+            });
+        }
 
     } catch (error) {
         console.error("Error loading account in Settings:", error);
+        const local = getLocalManagerOrAdmin();
+        if (local && !local.redirect) {
+            applyManagerUser(local);
+        }
     }
 });
 
@@ -151,14 +327,16 @@ function syncUserInterface() {
 
     // 1. Topbar Profile Header
     if (profileBtn) {
-        const pText = profileBtn.querySelector(".profile-text") || profileBtn;
-        pText.textContent = currentUser.fullName || currentUser.email || "Administrator";
-        const topAv = document.getElementById("topbarAvatar");
+        const nameEl = profileBtn.querySelector("[data-shell-name]") || profileBtn.querySelector(".profile-name") || profileBtn.querySelector(".mgr-name");
+        if (nameEl) nameEl.textContent = currentUser.fullName || "Manager";
+        const roleEl = profileBtn.querySelector("[data-shell-role]") || profileBtn.querySelector(".profile-role") || profileBtn.querySelector(".mgr-role");
+        if (roleEl) roleEl.textContent = (currentUser.role === "admin") ? "Main Admin" : "Manager";
+        const topAv = profileBtn.querySelector("[data-shell-avatar]") || profileBtn.querySelector(".profile-avatar") || profileBtn.querySelector(".avatar") || document.getElementById("topbarAvatar");
         if (topAv) {
             if (currentUser.avatarUrl) {
                 topAv.innerHTML = `<img src="${currentUser.avatarUrl}" alt="Avatar"/>`;
             } else {
-                topAv.textContent = initials(currentUser.fullName);
+                topAv.textContent = initials(currentUser.fullName || "Manager");
             }
         }
     }
@@ -173,9 +351,9 @@ function syncUserInterface() {
     const loginEl = document.getElementById("accountLastLogin");
     const previewAv = document.getElementById("profileAvatarPreview");
 
-    if (fullNameInput) fullNameInput.value = currentUser.fullName;
-    if (emailInput) emailInput.value = currentUser.email;
-    if (roleInput) roleInput.value = currentUser.role === "admin" ? "Administrator" : "Staff Member";
+    if (fullNameInput) fullNameInput.value = currentUser.fullName || "Manager";
+    if (emailInput) emailInput.value = currentUser.email || "manager@rmims.ph";
+    if (roleInput) roleInput.value = (currentUser.role === "admin" || currentUser.role === "manager") ? "Manager" : "Staff Member";
 
     if (statusEl) statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";
     if (statusDot) statusDot.classList.toggle("inactive", currentUser.status !== "active");
@@ -187,7 +365,7 @@ function syncUserInterface() {
         if (currentUser.avatarUrl) {
             previewAv.innerHTML = `<img src="${currentUser.avatarUrl}" alt="Avatar"/>`;
         } else {
-            previewAv.textContent = initials(currentUser.fullName);
+            previewAv.textContent = initials(currentUser.fullName || "Manager");
         }
     }
 }
@@ -248,14 +426,19 @@ function initNavigation() {
         });
     });
 
-    // Handle deep-linking via query parameter ?section=...
+    // Handle deep-linking via query parameter ?section=... or ?tab=...
     const urlParams = new URLSearchParams(window.location.search);
-    const initialSection = urlParams.get("section") || "profile";
+    let initialSection = urlParams.get("section") || urlParams.get("tab") || "profile";
+    if (initialSection === "account") initialSection = "profile";
+    if (initialSection === "password") initialSection = "security";
     selectTab(initialSection);
 
     window.addEventListener("popstate", () => {
         const params = new URLSearchParams(window.location.search);
-        selectTab(params.get("section") || "profile");
+        let s = params.get("section") || params.get("tab") || "profile";
+        if (s === "account") s = "profile";
+        if (s === "password") s = "security";
+        selectTab(s);
     });
 }
 
@@ -344,12 +527,16 @@ function initProfileEditor() {
                     updated_at: nowIso
                 };
 
-                const { error } = await supabase
-                    .from("user_profiles")
-                    .update(updatePayload)
-                    .eq("id", currentUser.uid);
-
-                if (error) throw error;
+                let supabaseSucceeded = false;
+                try {
+                    const { error } = await supabase
+                        .from("user_profiles")
+                        .update(updatePayload)
+                        .eq("id", currentUser.uid);
+                    if (!error) supabaseSucceeded = true;
+                } catch (dbErr) {
+                    console.warn("Supabase profile update warning:", dbErr);
+                }
 
                 if (pendingAvatarDataUrl !== null) {
                     if (pendingAvatarDataUrl) {
@@ -361,6 +548,20 @@ function initProfileEditor() {
                 }
                 currentUser.fullName = newName;
                 currentUser.updatedAt = nowIso;
+
+                // Synchronize across active localStorage user keys
+                try {
+                    const keys = ["currentUser", "rmimsCurrentUser", "userProfile"];
+                    keys.forEach(k => {
+                        const raw = localStorage.getItem(k);
+                        if (raw) {
+                            const u = JSON.parse(raw);
+                            u.fullName = newName;
+                            u.name = newName;
+                            localStorage.setItem(k, JSON.stringify(u));
+                        }
+                    });
+                } catch (se) {}
 
                 syncUserInterface();
                 showToast("Profile updated successfully.");

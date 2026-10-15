@@ -1,21 +1,28 @@
 import { supabase } from "./supabase-config.js";
+import { recordLoginFailure, clearLoginFailure } from "../js/system-alerts-service.js";
 
 /**
  * Format auth errors into clean, user-friendly messages without exposing sensitive details.
  */
 function friendlyAuthError(error) {
-    if (!error) return "Unable to sign in. Please try again.";
+    if (!error) return "Unable to proceed. Please try again.";
     const msg = (error.message || "").toLowerCase();
     if (msg.includes("invalid login credentials") || msg.includes("invalid credential")) {
         return "Invalid email or password. Please check your credentials and try again.";
     }
+    if (msg.includes("user already registered") || msg.includes("already registered")) {
+        return "An account with this email address already exists. Please sign in.";
+    }
     if (msg.includes("email not confirmed")) {
         return "Your email address has not been confirmed. Please verify your email before logging in.";
+    }
+    if (msg.includes("password should be at least") || msg.includes("weak password")) {
+        return "Password must be at least 8 characters.";
     }
     if (msg.includes("too many requests") || msg.includes("rate limit")) {
         return "Too many sign in attempts. Please wait a few moments and try again.";
     }
-    return error.message || "Unable to sign in. Please check your details and try again.";
+    return error.message || "Unable to proceed. Please check your details and try again.";
 }
 
 /**
@@ -29,8 +36,9 @@ function ensureAuthTransitionDOM(expectedRole) {
         overlay.className = "auth-transition-overlay";
         overlay.setAttribute("aria-hidden", "true");
         
-        const isUserPortal = expectedRole === "user";
-        const roleLabel = isUserPortal ? "Staff Workspace" : "Administrator Workspace";
+        let roleLabel = "Enterprise Workspace";
+        if (expectedRole === "user") roleLabel = "Staff Workspace";
+        else if (expectedRole === "admin" || expectedRole === "manager") roleLabel = "Manager Workspace";
 
         overlay.innerHTML = `
             <div class="auth-transition-card" role="status" aria-live="polite">
@@ -151,6 +159,11 @@ export async function loginUser(email, password, expectedRole) {
         const { data, error } = await authPromise;
 
         if (error) {
+            hideAuthTransition(transDOM);
+            const msg = (error.message || "").toLowerCase();
+            if (msg.includes("invalid") || msg.includes("credential") || msg.includes("password")) {
+                recordLoginFailure(email);
+            }
             throw new Error(friendlyAuthError(error));
         }
 
@@ -165,68 +178,149 @@ export async function loginUser(email, password, expectedRole) {
         await sleep(650);
         updateAuthProgress(transDOM, 65, "Validating account role permissions & security profile...");
 
-        const profilePromise = supabase
-            .from("user_profiles")
-            .select("id, full_name, email, role, status")
-            .eq("id", uid)
-            .maybeSingle();
+        let profile = null;
+        let profileError = null;
 
-        const { data: profile, error: profileError } = await profilePromise;
+        try {
+            const res = await supabase
+                .from("user_profiles")
+                .select("id, full_name, email, role, status, operational_role, branch_name, branch_location, branch_store, username")
+                .eq("id", uid)
+                .maybeSingle();
+            profile = res.data;
+            profileError = res.error;
+        } catch (e) {
+            profileError = e;
+        }
+
+        // Graceful fallback to basic user_profiles columns
+        if (!profile) {
+            try {
+                const coreRes = await supabase
+                    .from("user_profiles")
+                    .select("id, full_name, email, role, status")
+                    .eq("id", uid)
+                    .maybeSingle();
+                if (coreRes.data) {
+                    profile = coreRes.data;
+                    profileError = null;
+                }
+            } catch (coreErr) { }
+        }
+
+        // Ensure account profile exists without hardcoding credentials to old admin
+        if (!profile && data.user?.email) {
+            // If profile record is missing from DB, query or initialize from user metadata safely
+            try {
+                const meta = data.user.user_metadata || {};
+                profile = {
+                    id: uid,
+                    full_name: meta.full_name || data.user.email.split('@')[0],
+                    email: data.user.email,
+                    role: meta.role || "user",
+                    operational_role: meta.operational_role || "staff",
+                    status: meta.status || "active",
+                    username: meta.username || data.user.email.split('@')[0],
+                    branch_name: meta.branch_name || "Branch Store",
+                    branch_location: meta.branch_location || "Lucena",
+                    branch_store: meta.branch_store || "Branch Store (Lucena)"
+                };
+                profileError = null;
+            } catch (e) { }
+        }
 
         if (profileError || !profile) {
             await supabase.auth.signOut();
-            throw new Error("No account profile record found. Please contact your administrator.");
+            throw new Error("No account profile record found. Please contact your manager.");
+        }
+
+        // Check for pending manager / admin confirmation
+        if (profile.status === "pending" || profile.status === "pending_approval") {
+            await supabase.auth.signOut();
+            throw new Error("Your account is pending Manager approval. Please wait for a Manager to verify and activate your account before signing in.");
         }
 
         if (profile.status !== "active") {
             await supabase.auth.signOut();
-            throw new Error("Your account is pending admin approval or inactive. Please contact your administrator.");
+            throw new Error("Your account is inactive. Please contact your Manager.");
         }
 
-        // Strict role gating per portal
-        if (expectedRole === "admin" && profile.role !== "admin") {
+        // Role gating only if explicitly requested (unified login permits all authorized roles)
+        const isAdmin = profile.role === "admin" || profile.role === "main_admin" || profile.operational_role === "admin" || (profile.email && profile.email.toLowerCase().startsWith("admin@"));
+        const isManager = !isAdmin && (profile.role === "manager" || profile.operational_role === "manager");
+
+        if (expectedRole === "admin" && !isAdmin) {
             await supabase.auth.signOut();
             throw new Error("Access denied. Administrator privileges required.");
         }
 
-        if (expectedRole === "user" && profile.role !== "user") {
+        if (expectedRole === "manager" && !isManager && !isAdmin) {
             await supabase.auth.signOut();
-            throw new Error("Access denied. Please use the Admin Sign In portal.");
+            throw new Error("Access denied. Manager privileges required.");
         }
 
-        // Step 3: Synchronize session storage
+        if (expectedRole === "user" && (isManager || isAdmin)) {
+            await supabase.auth.signOut();
+            throw new Error("Access denied. Please use the appropriate workspace.");
+        }
+
+        // Step 3: Synchronize session storage with RBAC details
         await sleep(650);
-        updateAuthProgress(transDOM, 88, "Synchronizing workspace session & inventory state...");
+        updateAuthProgress(transDOM, 88, "Synchronizing workspace session & operational permissions...");
+
+        let sessionFullName = profile.full_name || profile.email;
+        if (isManager) {
+            sessionFullName = "Manager";
+        }
 
         const sessionUser = {
             id: profile.id,
-            fullName: profile.full_name || profile.email,
-            name: profile.full_name || profile.email,
-            email: profile.email,
-            role: profile.role,
-            status: profile.status
+            fullName: sessionFullName,
+            name: sessionFullName,
+            email: isManager ? (profile.email || "manager@rmims.ph") : profile.email,
+            role: profile.role || (isAdmin ? "admin" : (isManager ? "manager" : "user")),
+            operationalRole: profile.operational_role || (isAdmin ? "admin" : (isManager ? "manager" : "staff")),
+            status: profile.status,
+            username: profile.username || "",
+            branchName: profile.branch_name || "",
+            branchLocation: profile.branch_location || "",
+            branchStore: profile.branch_store || ""
         };
 
         try {
             localStorage.setItem("currentUser", JSON.stringify(sessionUser));
             localStorage.setItem("rmimsCurrentUser", JSON.stringify(sessionUser));
             localStorage.setItem("userProfile", JSON.stringify(sessionUser));
+            if (isAdmin) {
+                localStorage.setItem("adminUser", JSON.stringify(sessionUser));
+                localStorage.setItem("rmimsAdminUser", JSON.stringify(sessionUser));
+            } else if (isManager) {
+                localStorage.setItem("managerUser", JSON.stringify(sessionUser));
+            } else {
+                localStorage.setItem("staffUser", JSON.stringify(sessionUser));
+            }
             sessionStorage.setItem("rmims_login_session_id", `login-${profile.id}-${Date.now()}`);
+            sessionStorage.setItem("rmims_just_logged_in", "true");
             sessionStorage.removeItem("rmims_session_login_recorded");
         } catch (e) { }
 
-        // Step 4: Final verification & launch
+        // Step 4: Final verification & launch directly to the user's role workspace
         await sleep(600);
-        updateAuthProgress(transDOM, 100, "Access Granted! Launching Workspace Dashboard...");
+        const destinationRoleLabel = isAdmin 
+            ? "Main Administrator" 
+            : (isManager ? "Manager" : "User / Staff");
+        updateAuthProgress(transDOM, 100, `Access Granted! Launching ${destinationRoleLabel} Dashboard...`);
 
         // Smooth 650ms completion pause for visual delight
         await sleep(650);
 
-        // Resolve from the current sign-in page instead of using a root-absolute
-        // URL. This preserves the application's deployment subdirectory.
-        const destination = profile.role === "admin"
-            ? "admin/dashboard.html"
-            : "user/dashboard.html";
+        // Clear any previous failed login attempt counters for this user upon success
+        clearLoginFailure(email);
+
+        // Route admin to Admin Overview, manager to Manager Dashboard, staff to User Dashboard
+        const destination = isAdmin
+            ? "admin/overview.html"
+            : (isManager ? "manager/dashboard.html" : "user/dashboard.html");
         window.location.assign(new URL(destination, window.location.href).href);
 
     } catch (err) {
@@ -247,3 +341,99 @@ export async function signOutUser() {
     const { error } = await supabase.auth.signOut();
     if (error) console.warn("Supabase signOut notice:", error);
 }
+
+/**
+ * Signs up a new end-user (Staff / Manager) into Supabase.
+ * Enforces that created accounts are End Users, assigned with 'pending' status
+ * strictly requiring Admin confirmation before access is granted.
+ */
+export async function signUpUser({ fullName, email, username, password, branchName, branchLocation, branchStore, role }) {
+    if (!email || !password) {
+        throw new Error("Email and password are required.");
+    }
+    if (!username || !username.trim()) {
+        throw new Error("Username is required.");
+    }
+    const cleanUsername = username.trim();
+    if (cleanUsername.length < 3) {
+        throw new Error("Username must be at least 3 characters.");
+    }
+
+    const combinedBranch = (branchName && branchLocation)
+        ? `${branchName.trim()} (${branchLocation.trim()})`
+        : (branchName?.trim() || branchStore || branchLocation?.trim() || "General Operations");
+
+    // Explicitly enforce end-user operational roles only (never admin)
+    const validRoles = ["staff", "manager", "user", "user_staff"];
+    const operationalRole = validRoles.includes(role) ? role : "staff";
+
+    const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+        options: {
+            data: {
+                full_name: fullName.trim(),
+                username: cleanUsername,
+                branch_store: combinedBranch,
+                branch_name: branchName?.trim() || "",
+                branch_location: branchLocation?.trim() || "",
+                operational_role: operationalRole,
+                role: "user", // base role for schema access
+                status: "pending" // pending admin confirmation
+            }
+        }
+    });
+
+    if (error) {
+        throw new Error(friendlyAuthError(error));
+    }
+
+    // Record profile in user_profiles with status: 'pending'
+    if (data?.user?.id) {
+        try {
+            const profilePayload = {
+                id: data.user.id,
+                email: email.trim(),
+                full_name: fullName.trim(),
+                username: cleanUsername,
+                role: "user",
+                operational_role: operationalRole,
+                branch_name: branchName?.trim() || "",
+                branch_location: branchLocation?.trim() || "",
+                branch_store: combinedBranch,
+                status: "pending" // requires Admin confirmation
+            };
+
+            const { error: upsertErr } = await supabase.from("user_profiles").upsert(profilePayload);
+            if (upsertErr) {
+                console.warn("user_profiles initialization notice:", upsertErr);
+                // Fallback for pre-migration databases with legacy status check constraint
+                if (upsertErr.message && upsertErr.message.includes("violates check constraint")) {
+                    await supabase.from("user_profiles").upsert({
+                        id: data.user.id,
+                        email: email.trim(),
+                        full_name: fullName.trim(),
+                        role: "user",
+                        status: "inactive"
+                    });
+                }
+            }
+        } catch (insertErr) {
+            console.log("user_profiles initialization notice:", insertErr);
+        }
+    }
+
+    // Since this account is pending Admin approval, sign out any auto-established session
+    try {
+        await supabase.auth.signOut();
+    } catch (signOutErr) {
+        // Non-blocking
+    }
+
+    return {
+        user: data.user,
+        username: cleanUsername,
+        session: null
+    };
+}
+

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receive Raw Materials | RMSME</title>
+<link rel="icon" href="../assets/favicon-64.png" type="image/png">
+
+<!-- Google Fonts: Inter, Sora -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Flatpickr for clean date handling -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- Stylesheets -->
+<link rel="stylesheet" href="../css/admin-shell.css">
+<link rel="stylesheet" href="../css/rmims-unified.css">
+<link rel="stylesheet" href="../css/manager-theme.css">
+<link rel="stylesheet" href="../css/manager-transaction.css">
+</head>
+
+<body class="manager-page admin-page">
+
+<div class="admin-app">
+
+  <!-- SIDEBAR (Auto-populated by rmsme-shell.js with Manager exact navigation) -->
+  <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="admin-main">
+
+    <!-- TOPBAR HEADER -->
+    <header class="admin-topbar">
+      <div class="topbar-left">
+        <span class="topbar-kicker">STORE OPERATIONS</span>
+        <h1 class="topbar-title">Receive Raw Materials</h1>
+        <p class="topbar-subtitle">Record incoming materials into inventory. Reference numbers are automatically generated.</p>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Live Date & Time Pill -->
+        <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+        </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                      </div>
+    </header>
+
+    <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
+      <div class="mgr-tx-container">
+
+      <!-- Section: Record New Receive (2-Step Workflow) - Balanced & Compact Size -->
+      <section class="mgr-tx-card">
+        <div class="mgr-tx-card-header">
+          <div>
+            <h2 class="mgr-tx-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--rm-mid-2, #16A34A)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Record Incoming Material
+            </h2>
+            <p class="mgr-tx-card-sub">Step 1: Enter receipt details &bull; Step 2: Review and confirm to instantly update stock.</p>
+          </div>
+
+          <!-- Auto-Generated Non-Editable Non-Clickable Reference Display -->
+          <div class="mgr-ref-display-box" title="Auto-generated unique reference number">
+            <span class="mgr-ref-tag">Reference No:</span>
+            <span class="mgr-ref-code" id="mgrRecRefDisplay">--</span>
+            <span class="mgr-ref-lock-icon" title="System-generated, non-editable">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <form id="mgrReceiveForm" autocomplete="off" onsubmit="return false;">
+          <div class="mgr-form-grid">
+
+            <!-- Material Select -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="recMaterialSelect">
+                Select Raw Material <span class="required">*</span>
+              </label>
+              <select class="mgr-form-select" id="recMaterialSelect" required>
+                <option value="">-- Choose Material to Receive --</option>
+              </select>
+              <div id="recStockPreviewWrap" class="mgr-stock-preview-badge" style="display:none;">
+                <span>Current Stock:</span> <strong id="recCurrentStockNum">--</strong> &bull; <span>Min Threshold:</span> <span id="recMinStockNum">--</span>
+              </div>
+            </div>
+
+            <!-- Quantity Received -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="recQuantityInput">
+                Quantity Received <span class="required">*</span>
+              </label>
+              <div class="mgr-input-with-unit">
+                <input type="number" class="mgr-form-input" id="recQuantityInput" placeholder="e.g. 50" min="0.01" step="any" required>
+                <span class="mgr-input-unit-badge" id="recUnitBadge">--</span>
+              </div>
+            </div>
+
+            <!-- Date Received -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="recDateInput">
+                Date Received <span class="required">*</span>
+              </label>
+              <input type="text" class="mgr-form-input" id="recDateInput" placeholder="YYYY-MM-DD" required>
+            </div>
+
+            <!-- Supplier / Source -->
+            <div class="mgr-form-group">
+              <label class="mgr-form-label" for="recSupplierInput">
+                Supplier / Delivery Source <span class="required">*</span>
+              </label>
+              <input type="text" class="mgr-form-input" id="recSupplierInput" placeholder="e.g. Agro-Industrial Supplies, Central Milling" required>
+            </div>
+
+            <!-- Bundle Receive: Linked Finished Products Section -->
+            <div id="recBundleSection" class="rec-bundle-wrap span-2" style="display:none;">
+              <div class="rec-bundle-header">
+                <div class="rec-bundle-header-left">
+                  <span class="rec-bundle-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    Bundle Receive
+                  </span>
+                  <strong id="recBundleTitle" style="color:var(--rm-ink, #0F2A1B); font-size:13.5px;">Linked Finished Products</strong>
+                  <span class="rec-bundle-count-badge" id="recBundleCountBadge">0 products recognized</span>
+                </div>
+                <div class="rec-bundle-legend">
+                  <span class="rec-legend-item legend-good"><span class="rec-legend-dot dot-good"></span> Sufficient / Exact</span>
+                  <span class="rec-legend-item legend-partial"><span class="rec-legend-dot dot-partial"></span> Partial Need</span>
+                  <span class="rec-legend-item legend-unreached"><span class="rec-legend-dot dot-unreached"></span> 0 / Won't Reach</span>
+                </div>
+              </div>
+              <div class="rec-bundle-grid" id="recBundleProductsGrid">
+                <!-- Dynamically populated product requirement cards with colored numbers -->
+              </div>
+            </div>
+
+            <!-- Notes / Remarks -->
+            <div class="mgr-form-group span-2">
+              <label class="mgr-form-label" for="recNotesInput">
+                Notes &amp; Delivery Remarks <span style="font-weight:normal; color:#64748B;">(Optional)</span>
+              </label>
+              <input type="text" class="mgr-form-input" id="recNotesInput" placeholder="e.g. PO #88412, Delivery truck 04, quality inspection passed.">
+            </div>
+
+          </div>
+
+          <!-- Action Row -->
+          <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:12px;">
+            <button type="reset" class="btn-secondary" id="btnResetReceiveForm">Clear</button>
+            <button type="button" class="btn-primary" id="btnOpenReceiveReview">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 11 12 14 22 4"></polyline>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              </svg>
+              Review Receive Details
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Section: Receipts History Ledger (Enclosing 4 KPI Metric Cards & Pagination) -->
+      <section class="mgr-tx-table-card">
+
+        <!-- 4 Mini Metric KPI Cards (Inside Receive History Ledger Card) -->
+        <div class="mgr-tx-kpi-grid" id="mgrTxKpiGrid">
+          <!-- 1. Total Received Today -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-emerald">
+              <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label">Received Today</span>
+              <span class="mgr-tx-kpi-value" id="kpiRecToday">0</span>
+              <span class="mgr-tx-kpi-sub" id="kpiRecTodaySub">Across 0 shipments</span>
+            </div>
+          </div>
+
+          <!-- 2. Received This Month -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-blue">
+              <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label">This Month</span>
+              <span class="mgr-tx-kpi-value" id="kpiRecMonth">0</span>
+              <span class="mgr-tx-kpi-sub" id="kpiRecMonthSub">0 verified deliveries</span>
+            </div>
+          </div>
+
+          <!-- 3. Total Deliveries Recorded -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-purple">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label">Total Receipts</span>
+              <span class="mgr-tx-kpi-value" id="kpiRecTotalCount">0</span>
+              <span class="mgr-tx-kpi-sub">Lifetime records</span>
+            </div>
+          </div>
+
+          <!-- 4. Most Received Material -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-amber">
+              <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label">Top Inward Item</span>
+              <span class="mgr-tx-kpi-value" style="font-size:20px;" id="kpiRecTopMaterial">--</span>
+              <span class="mgr-tx-kpi-sub" id="kpiRecTopMaterialSub">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-top:8px;">
+          <div>
+            <h3 style="margin:0; font-family:var(--rm-font-display); font-size:17px; font-weight:700; color:var(--rm-ink);">
+              Receive History Ledger
+            </h3>
+            <p style="margin:2px 0 0; font-size:12.5px; color:var(--rm-ink-dim);">
+              All incoming stock deliveries recorded for your company. Reference numbers are plain text.
+            </p>
+          </div>
+
+          <!-- Table Filters & Sort -->
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div class="staff-search-box" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:6px 12px; display:flex; align-items:center; gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="recSearchInput" placeholder="Search reference, material, supplier..." style="border:none; background:transparent; font-size:13px; outline:none; width:210px;">
+            </div>
+
+            <select id="recMaterialFilter" class="mgr-form-select" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Material">
+              <option value="all">All Materials</option>
+            </select>
+
+            <select id="recSortFilter" class="mgr-form-select" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Sort Order">
+              <option value="latest" selected>Latest First</option>
+              <option value="az">Material: A to Z</option>
+              <option value="za">Material: Z to A</option>
+              <option value="oldest">Oldest First</option>
+              <option value="qty_desc">Quantity: High to Low</option>
+              <option value="qty_asc">Quantity: Low to High</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto; width:100%;">
+          <table class="mgr-tx-table">
+            <thead>
+              <tr>
+                <th>Reference No.</th>
+                <th>Date &amp; Time</th>
+                <th>Raw Material</th>
+                <th>Quantity Received</th>
+                <th>Supplier / Source</th>
+                <th>Recorded By</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th style="text-align: center; width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="mgrReceiveHistoryTbody">
+                <tr>
+                  <td colspan="9" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
+                    <div style="font-weight:700; color:#0F2A1B; margin-bottom:4px;">No receipts recorded yet</div>
+                    <div style="font-size:12px; color:#94A3B8;">Incoming raw material deliveries recorded will appear here automatically.</div>
+                  </td>
+                </tr>
+              </tbody>
+          </table>
+        </div>
+
+        <!-- Table Pagination Bar Matching Inventory Module -->
+        <div class="inv-pagination-bar" style="border-top:1px solid #E2E8F0; padding:12px 4px 0; background:transparent;">
+          <div class="inv-pagination-info">
+            <span id="recLedgerCount">Showing 0 receipts</span>
+            <div class="page-size-selector" style="margin-left: 12px;">
+              <label for="recPageSize" style="font-size: 12px; color: #64748B; font-weight: 600;">Rows:</label>
+              <select id="recPageSize" class="mgr-form-select" style="width:auto; padding:4px 8px; font-size:12px;">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="25">25</option>
+              </select>
+            </div>
+          </div>
+          <div class="inv-pagination-controls" id="recPaginationBtns">
+            <button type="button" class="page-btn disabled" disabled aria-label="Previous Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button type="button" class="page-btn disabled" disabled>1</button>
+            <button type="button" class="page-btn disabled" disabled aria-label="Next Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     STEP 2: REVIEW RECEIVE MODAL
+     ========================================================================== -->
+<div class="mgr-review-modal-backdrop" id="mgrReceiveReviewModal">
+  <div class="mgr-review-modal-window">
+    <div class="mgr-review-modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <div>
+          <h3 class="mgr-review-modal-title">Review Receive Details</h3>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Verify details before committing to inventory</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseReceiveReview" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <div class="mgr-review-modal-body">
+      <!-- Calculated Stock Projection Card -->
+      <div class="mgr-stock-calc-box">
+        <div class="mgr-stock-calc-item">
+          <span class="mgr-review-label">Current Stock</span>
+          <span class="mgr-review-val" id="revCurStockVal">--</span>
+        </div>
+        <div class="mgr-stock-calc-op">+</div>
+        <div class="mgr-stock-calc-item">
+          <span class="mgr-review-label" style="color:#059669;">Inward Quantity</span>
+          <span class="mgr-review-val" style="color:#059669;" id="revInwardQtyVal">--</span>
+        </div>
+        <div class="mgr-stock-calc-op">=</div>
+        <div class="mgr-stock-calc-item">
+          <span class="mgr-review-label">Projected Stock</span>
+          <span class="mgr-review-val" style="color:#15803D; font-size:17px;" id="revNewStockVal">--</span>
+        </div>
+      </div>
+
+      <!-- Detail Grid -->
+      <div class="mgr-review-grid">
+        <div class="mgr-review-item">
+          <span class="mgr-review-label">Reference Number</span>
+          <span class="mgr-ref-pill" style="align-self:flex-start; margin-top:4px;" id="revRefVal">--</span>
+        </div>
+        <div class="mgr-review-item">
+          <span class="mgr-review-label">Raw Material</span>
+          <span class="mgr-review-val" id="revMaterialVal">-</span>
+        </div>
+        <div class="mgr-review-item">
+          <span class="mgr-review-label">Date of Receipt</span>
+          <span class="mgr-review-val" id="revDateVal">-</span>
+        </div>
+        <div class="mgr-review-item">
+          <span class="mgr-review-label">Supplier / Source</span>
+          <span class="mgr-review-val" id="revSupplierVal">-</span>
+        </div>
+        <div class="mgr-review-item span-2">
+          <span class="mgr-review-label">Delivery Remarks / Notes</span>
+          <span class="mgr-review-val" style="font-weight:500; font-size:13.5px; color:#334155;" id="revNotesVal">None provided</span>
+        </div>
+        <div class="mgr-review-item span-2" style="background:#F1F5F9; padding:10px 12px; border-radius:8px; border:1px solid #E2E8F0;">
+          <span style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <strong>Manager Authorization:</strong> Instant stock commit. No staff review needed.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mgr-review-modal-footer">
+      <button type="button" class="btn-secondary" id="btnCancelReceiveReview">Cancel &amp; Edit</button>
+      <button type="button" class="btn-primary" id="btnConfirmReceive">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+        Confirm &amp; Record Stock
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDIT RECEIPT (MANAGER) -->
+<div class="mgr-review-modal-backdrop" id="mgrEditReceiptModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:480px; overflow:hidden;">
+    <div class="mgr-review-modal-header" style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#0F2A1B;">Edit Receipt Record</h3>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Update inward delivery details</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseEditReceipt" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <form id="mgrEditReceiptForm">
+      <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:70vh; overflow-y:auto;">
+        <input type="hidden" id="editRecRef">
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Reference Number</label>
+          <input type="text" id="editRecRefDisplay" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-weight:700; font-family:monospace; font-size:13.5px;">
+        </div>
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Raw Material</label>
+          <input type="text" id="editRecMaterial" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#1E293B; font-weight:600; font-size:13.5px;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Quantity Received</label>
+            <input type="number" step="any" min="0.01" id="editRecQty" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
+          </div>
+          <div>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Unit</label>
+            <input type="text" id="editRecUnit" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-size:13.5px;">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Supplier / Source</label>
+          <input type="text" id="editRecSupplier" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
+        </div>
+
+        <div>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Notes / Remarks</label>
+          <input type="text" id="editRecNotes" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
+        </div>
+      </div>
+
+      <div style="padding:14px 24px; border-top:1px solid #E2E8F0; background:#F8FAFC; display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-secondary" id="btnCancelEditReceipt">Cancel</button>
+        <button type="submit" class="btn-primary" style="background:#15803D; color:#FFFFFF; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Update Receipt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: DELETE RECEIPT CONFIRMATION (MANAGER) -->
+<div class="mgr-review-modal-backdrop" id="mgrDeleteReceiptModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+  <div class="mgr-review-modal-window" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:440px; overflow:hidden;">
+    <div style="padding:18px 24px; border-bottom:1px solid #FEE2E2; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:36px; height:36px; border-radius:10px; background:#FEE2E2; color:#DC2626; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#DC2626;">Delete Receipt</h3>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Revert inward delivery stock</p>
+        </div>
+      </div>
+      <button type="button" class="mgr-modal-close" id="btnCloseDeleteReceipt" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#64748B;">&times;</button>
+    </div>
+
+    <div style="padding:20px 24px;">
+      <p style="margin:0; font-size:14px; color:#334155; line-height:1.5;">
+        Are you sure you want to delete receipt <code id="deleteRecRefCode" style="color:#0F766E; font-weight:700;"></code>?
+      </p>
+      <div style="margin-top:12px; background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:10px 12px; font-size:12.5px; color:#991B1B;" id="deleteRecStockWarning">
+        ⚠️ Warning: The received quantity will be deducted from your inventory stock.
+      </div>
+    </div>
+
+    <div style="padding:14px 24px; border-top:1px solid #E2E8F0; background:#F8FAFC; display:flex; justify-content:flex-end; gap:10px;">
+      <button type="button" class="btn-secondary" id="btnCancelDeleteReceipt">Cancel</button>
+      <button type="button" id="btnConfirmDeleteReceipt" style="background:#DC2626; color:#FFFFFF; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Delete Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<script type="module" src="../js/system-materials.js"></script>
+<script type="module" src="../js/manager-receive.js"></script>
+<script type="module" src="../js/rmsme-shell.js"></script>
+
+</body>
+</html>

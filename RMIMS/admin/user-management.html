@@ -1,519 +1,505 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>User Management | RMSME</title>
-<link rel="icon" href="../assets/favicon-64.png" type="image/png">
-
-<link rel="stylesheet" href="../css/user-management.css">
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-<link rel="stylesheet" href="../css/rmims-unified.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - User Management</title>
+  <!-- Google Fonts: Inter & Sora -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Admin Stylesheet -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
 </head>
-
-<body class="admin-page">
-
-<div class="container">
-
+<body>
+  <div class="admin-app">
     <!-- SIDEBAR -->
-    <aside class="sidebar" aria-label="Primary navigation"></aside>
+    <aside class="admin-sidebar">
+      <div>
+        <a href="overview.html" class="sidebar-header" title="RMIMS Main Administration">
+          <div class="brand-logo-wrap">
+            <img src="../assets/logo-icon.png" alt="RMSME Logo" class="brand-logo-img">
+          </div>
+          <div class="brand-titles">
+            <span class="brand-name">RMSME</span>
+            <span class="brand-sub">Administration</span>
+          </div>
+        </a>
 
-    <!-- CONTENT -->
+        <nav class="sidebar-nav">
+          <a href="overview.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Overview</span>
+          </a>
 
-    <main class="content">
+          <a href="activity-logs.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+            <span>Activity Logs</span>
+          </a>
 
-        <header class="topbar">
+          <a href="user-management.html" class="nav-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>User Management</span>
+          </a>
 
-            <div class="topbar-left">
+          <a href="branch-stores.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 21h18"/>
+              <path d="M3 7v14"/>
+              <path d="M21 7v14"/>
+              <path d="M6 21V11"/>
+              <path d="M10 21V11"/>
+              <path d="M14 21V11"/>
+              <path d="M18 21V11"/>
+              <path d="M2 7l10-4 10 4"/>
+            </svg>
+            <span>Branch Stores</span>
+          </a>
 
-                <button class="menu-toggle" aria-label="Toggle menu">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M3 12H21M3 18H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                </button>
+          <a href="system-alerts.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>System Alerts</span>
+          </a>
 
-                <nav class="breadcrumb">
-                    <span>Administration</span>
-                    <span class="crumb-sep">›</span>
-                    <span class="crumb-active">User Management</span>
-                </nav>
+        </nav>
+      </div>
 
-            </div>
+      <div class="sidebar-bottom-nav">
+        <button type="button" class="nav-link nav-btn-help" id="btnSidebarHelp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Help Center</span>
+        </button>
 
-            <div class="header-actions">
+        <a href="settings.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
 
-                <div class="header-date" id="headerDate">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9H21" stroke="currentColor" stroke-width="1.6"/><path d="M8 3V6M16 3V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                    <span></span>
-                </div>
+        <div class="sidebar-version">v2.0.0 &bull; RMSME</div>
+      </div>
+    </aside>
 
-                <button id="profileBtn" class="profile-btn">
-                    <span class="avatar">AU</span>
-                    <span class="profile-text">Loading...</span>
-                    <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-
-            </div>
-
-        </header>
-
-        <!-- PAGE TITLE + PRIMARY ACTIONS -->
-
-        <div class="page-title-row">
-            <div class="page-title">
-                <h1>User Management</h1>
-                <p>Manage system accounts, roles, and access.</p>
-            </div>
-            <div class="page-title-actions">
-                <button type="button" id="refreshBtn" class="btn-refresh">
-                    <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4V9H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 20V15H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9C6.7 6 9.6 4 13 4C17.4 4 21 7.6 21 12M18.5 15C17.3 18 14.4 20 11 20C6.6 20 3 16.4 3 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                    <span id="refreshLabel">Refresh</span>
-                </button>
-                <button type="button" id="addUserBtn" class="btn-primary">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    Add User
-                </button>
-            </div>
+    <!-- MAIN CONTENT -->
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <span class="topbar-kicker">USER MANAGEMENT</span>
+          <h1 class="topbar-title">User Management &amp; Approvals</h1>
+          <p class="topbar-subtitle">Manage user accounts, roles, and access across all branch stores.</p>
         </div>
 
-        <!-- USER / ROLE TABS -->
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill (Moved in exchange of search bar) -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
 
-        <div class="management-tabs" role="tablist" aria-label="User management sections">
-            <button type="button" class="management-tab" id="rolesTab" role="tab" aria-selected="false" aria-controls="rolesPanel">Roles Management</button>
-            <button type="button" class="management-tab active" id="usersTab" role="tab" aria-selected="true" aria-controls="usersPanel">Users Management</button>
-        </div>
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
 
-        <!-- ROLES MANAGEMENT -->
-
-        <section class="roles-panel" id="rolesPanel" role="tabpanel" aria-labelledby="rolesTab" hidden>
-            <div class="section-heading">
-                <div>
-                    <h3>Roles Management</h3>
-                    <p>View the roles available in RMSME and the users assigned to each role.</p>
-                </div>
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Admin</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
+              </div>
             </div>
-
-            <div class="role-cards">
-                <article class="role-card">
-                    <div class="role-card-top">
-                        <div class="role-card-icon admin-role-icon">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L19 6V11C19 15.5 16.2 19.1 12 21C7.8 19.1 5 15.5 5 11V6L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Admin</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
                         </div>
-                        <span class="role role-admin">Admin</span>
-                    </div>
-                    <h4>Administrator</h4>
-                    <p>Full access to RMSME, including user management and system administration.</p>
-                    <div class="role-card-footer">
-                        <span><strong id="roleAdminCount">0</strong> user<span id="roleAdminPlural">s</span></span>
-                        <button type="button" class="btn-outline-sm role-view-users" data-role="admin">View Users</button>
-                    </div>
-                </article>
+      </header>
 
-                <article class="role-card">
-                    <div class="role-card-top">
-                        <div class="role-card-icon user-role-icon">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 20C4.5 16.5 7.5 14.5 12 14.5C16.5 14.5 19.5 16.5 19.5 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                        </div>
-                        <span class="role role-user">User</span>
-                    </div>
-                    <h4>User</h4>
-                    <p>Access to daily inventory and operational functions based on assigned system permissions.</p>
-                    <div class="role-card-footer">
-                        <span><strong id="roleUserCount">0</strong> user<span id="roleUserPlural">s</span></span>
-                        <button type="button" class="btn-outline-sm role-view-users" data-role="user">View Users</button>
-                    </div>
-                </article>
+      <main class="admin-scroll-body">
+        
+        <!-- TOP 4 METRIC STAT CARDS (From Reference Image) -->
+        <div class="admin-kpi-grid">
+          <!-- Card 1: Total Users -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
             </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Total Users</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statTotalUsers">0</span>
+                <span class="kpi-trend up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                  Live
+                </span>
+              </div>
+              <span class="kpi-subtext">Active &amp; pending accounts</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Active Users -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <line x1="20" y1="8" x2="20" y2="14"/>
+                <line x1="23" y1="11" x2="17" y2="11"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Active Users</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statActiveUsers">0</span>
+                <span class="kpi-trend up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                  Live
+                </span>
+              </div>
+              <span class="kpi-subtext">Verified branch personnel</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Pending Approval -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Pending Approval</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statPendingUsers">0</span>
+                <span class="kpi-trend neutral" id="statPendingTrend">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Live
+                </span>
+              </div>
+              <span class="kpi-subtext">Awaiting admin validation</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Inactive Users -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box coral">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Inactive Users</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statInactiveUsers">0</span>
+                <span class="kpi-trend neutral">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                  0%
+                </span>
+              </div>
+              <span class="kpi-subtext">Disabled or archived</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: AWAITING APPROVAL (From Reference Image) -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <line x1="20" y1="8" x2="20" y2="14"/>
+                  <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Awaiting Approval for Accounts</h2>
+                <span class="card-subtitle">New store personnel requests requiring Main Admin validation.</span>
+              </div>
+            </div>
+            <span class="status-pill status-pending" id="pendingCount">0 Requests Pending</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="pendingTable">
+              <thead>
+                <tr>
+                  <th>NAME</th>
+                  <th>BRANCH LOCATION</th>
+                  <th>BRANCH NAME</th>
+                  <th>ROLE</th>
+                  <th>REQUESTED ON</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTableBody">
+                <!-- Dynamically populated by admin-user-management.js -->
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <!-- USERS MANAGEMENT -->
-
-        <section id="usersPanel" role="tabpanel" aria-labelledby="usersTab">
-
-        <!-- USER SUMMARY -->
-
-        <section class="cards">
-
-            <div class="card card-filter" data-summary-filter="all" role="button" tabindex="0" aria-label="Show all users">
-                <div class="card-text">
-                    <span>Total Users</span>
-                    <h2 id="statTotal">0</h2>
-                </div>
-                <div class="card-icon icon-blue">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 20C2.5 16.5 5.5 14.5 9 14.5C12.5 14.5 15.5 16.5 15.5 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 14.8C18.5 15.3 20.5 17 20.5 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M14.5 8.3C15.6 8.7 16.3 9.7 16.3 11C16.3 12.3 15.6 13.3 14.5 13.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                </div>
+        <!-- SECTION 2: REGISTERED USERS DIRECTORY -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Registered Store Users</h2>
+                <span class="card-subtitle">Active accounts assigned across registered branch locations.</span>
+              </div>
             </div>
 
-            <div class="card card-filter" data-summary-filter="active" role="button" tabindex="0" aria-label="Show active users">
-                <div class="card-text">
-                    <span>Active Users</span>
-                    <h2 id="statActive">0</h2>
-                </div>
-                <div class="card-icon icon-green">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-            </div>
+            <!-- SEARCH, FILTER, AND ADD USER ACTION -->
+            <div class="card-actions directory-toolbar">
+              <div class="topbar-search" style="min-width: 250px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" class="search-input" id="dirSearchInput" placeholder="Search user, email, or branch..." style="width: 100%;">
+              </div>
 
-            <div class="card card-filter" data-summary-filter="inactive" role="button" tabindex="0" aria-label="Show inactive users">
-                <div class="card-text">
-                    <span>Inactive Users</span>
-                    <h2 id="statInactive">0</h2>
-                </div>
-                <div class="card-icon icon-gray">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 15L15 9M9 9L15 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                </div>
-            </div>
+              <select class="dropdown-select filter-select" id="branchDirectoryFilter">
+                <option value="all">All Branches</option>
+                <!-- Branch location options dynamically injected by admin-user-management.js -->
+              </select>
 
-            <div class="card card-attention card-filter" id="deletionCard" data-summary-filter="deletion" role="button" tabindex="0" aria-label="Show pending deletion requests">
-                <div class="card-text">
-                    <span>Deletion Requests</span>
-                    <h2 id="statDeletion">0</h2>
-                    <span class="card-subtext" id="statDeletionSub">No pending requests</span>
-                </div>
-                <div class="card-icon icon-orange">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
+              <button type="button" class="btn-primary-action" id="btnOpenAddUser">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Add User</span>
+              </button>
             </div>
+          </div>
 
+          <div class="table-responsive">
+            <table class="admin-table" id="usersDirectoryTable">
+              <thead>
+                <tr>
+                  <th>USER</th>
+                  <th>EMAIL</th>
+                  <th>BRANCH LOCATION</th>
+                  <th>BRANCH NAME</th>
+                  <th>ROLE</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="usersDirectoryTableBody">
+                <!-- Dynamically populated by admin-user-management.js with live data or clean empty state -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-pagination-footer">
+            <span class="pagination-counter" id="userPaginationCounter">Showing 0 users</span>
+            <div class="pagination-controls" id="userPaginationControls">
+              <button type="button" class="pagination-btn disabled" id="btnUserPrevPage" disabled aria-label="Previous Page">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button type="button" class="pagination-btn pg-num disabled" disabled>1</button>
+              <button type="button" class="pagination-btn disabled" id="btnUserNextPage" disabled aria-label="Next Page">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
         </section>
 
-        <!-- SEARCH + FILTERS -->
-
-        <section class="toolbar">
-
-            <div class="search-wrap">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                <input type="text" id="searchInput" placeholder="Search users by name or email...">
-            </div>
-
-            <select id="statusFilter">
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="deletion">Deletion Requested</option>
-            </select>
-
-            <select id="roleFilter" aria-label="Filter by role">
-                <option value="all">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-            </select>
-
-            <select id="sortFilter" aria-label="Sort users">
-                <option value="latest">Sort: Latest</option>
-                <option value="oldest">Sort: Oldest</option>
-                <option value="az">Name: A–Z</option>
-                <option value="za">Name: Z–A</option>
-            </select>
-
-            <button type="button" id="clearUserFilters" class="filter-clear" hidden>Clear filters</button>
-
-        </section>
-
-        <!-- USER TABLE -->
-
-        <section class="table-card">
-
-            <div class="card-header">
-                <h3>User Accounts</h3>
-                <span class="card-header-note" id="tableCount">0 accounts</span>
-            </div>
-
-            <div class="table-scroll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th><button type="button" class="sort-button" data-sort="fullName">Name <span></span></button></th>
-                            <th><button type="button" class="sort-button" data-sort="role">Role <span></span></button></th>
-                            <th><button type="button" class="sort-button" data-sort="status">Status <span></span></button></th>
-                            <th class="col-actions">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="userTableBody">
-                        <tr class="empty-row"><td colspan="4">Loading users...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="table-pagination" id="tablePagination"></div>
-
-        </section>
-
-        </section>
-
-    </main>
-
-</div>
-
-<!-- ===================================================
-     ADD USER MODAL
-     =================================================== -->
-
-<div class="modal-overlay" id="addUserModal">
-    <div class="modal-sheet">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </div>
-                <div>
-                    <h4>Add User</h4>
-                    <span class="modal-time">Create a new RMSME account</span>
-                </div>
-            </div>
-            <button class="modal-close" data-close-modal="addUserModal" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
-        </div>
-
-        <form class="modal-body" id="addUserForm" novalidate>
-
-            <label class="modal-field-label" for="addFullName">Full Name <span class="req">*</span></label>
-            <input type="text" id="addFullName" class="modal-input" placeholder="e.g. Juan Dela Cruz" required>
-            <p class="field-error" id="addFullNameError"></p>
-
-            <label class="modal-field-label" for="addEmail">Email <span class="req">*</span></label>
-            <input type="email" id="addEmail" class="modal-input" placeholder="name@company.com" required>
-            <p class="field-error" id="addEmailError"></p>
-
-            <label class="modal-field-label" for="addRole">Role <span class="req">*</span></label>
-            <select id="addRole" class="modal-input">
-                <option value="user" selected>User</option>
-                <option value="admin">Admin</option>
-            </select>
-
-            <label class="modal-field-label" for="addPassword">Initial Password <span class="req">*</span></label>
-            <input type="password" id="addPassword" class="modal-input" placeholder="Minimum 8 characters" required minlength="8">
-            <p class="field-hint">Share this password with the user securely. They can change it after logging in.</p>
-            <p class="field-error" id="addPasswordError"></p>
-
-            <div class="inline-notice" id="duplicateEmailNotice" hidden>
-                <span id="duplicateEmailText"></span>
-                <button type="button" class="btn-outline-sm" id="reactivateInsteadBtn" hidden>Reactivate</button>
-            </div>
-
-        </form>
-
-        <div class="modal-sticky-footer">
-            <button type="button" class="btn-outline-sm" data-close-modal="addUserModal">Cancel</button>
-            <button type="submit" form="addUserForm" class="btn-primary" id="addUserSubmit">Add User</button>
-        </div>
+      </main>
     </div>
-</div>
+  </div>
 
-<!-- ===================================================
-     EDIT USER MODAL
-     =================================================== -->
-
-<div class="modal-overlay" id="editUserModal">
-    <div class="modal-sheet">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16.5 3.5C17.3284 2.67157 18.6716 2.67157 19.5 3.5C20.3284 4.32843 20.3284 5.67157 19.5 6.5L7 19L3 20L4 16L16.5 3.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-                </div>
-                <div>
-                    <h4>Edit User</h4>
-                    <span class="modal-time" id="editUserSubtitle">—</span>
-                </div>
-            </div>
-            <button class="modal-close" data-close-modal="editUserModal" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
+  <!-- ADD USER MODAL -->
+  <div class="admin-modal-backdrop" id="addUserModal">
+    <div class="admin-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Store User</h3>
+        <button type="button" class="btn-close-modal" id="btnCloseAddUser">&times;</button>
+      </div>
+      <form id="addUserForm" onsubmit="event.preventDefault(); submitAddUser();">
+        <div class="modal-form-group">
+          <label class="modal-form-label">Full Name</label>
+          <input type="text" class="modal-input" id="newUserName" placeholder="Enter user full name" required>
         </div>
 
-        <form class="modal-body" id="editUserForm" novalidate>
-            <input type="hidden" id="editUserId">
-
-            <label class="modal-field-label" for="editFullName">Full Name <span class="req">*</span></label>
-            <input type="text" id="editFullName" class="modal-input" required>
-            <p class="field-error" id="editFullNameError"></p>
-
-            <label class="modal-field-label" for="editEmail">Email <span class="req">*</span></label>
-            <input type="email" id="editEmail" class="modal-input" required>
-            <p class="field-error" id="editEmailError"></p>
-
-            <p class="field-hint">Editing a user's information does not change their account status. Use the account's action menu to activate or deactivate it.</p>
-        </form>
-
-        <div class="modal-sticky-footer">
-            <button type="button" class="btn-outline-sm" data-close-modal="editUserModal">Cancel</button>
-            <button type="submit" form="editUserForm" class="btn-primary" id="editUserSubmit">Save Changes</button>
+        <div class="modal-form-group">
+          <label class="modal-form-label">Username</label>
+          <input type="text" class="modal-input" id="newUserUsername" placeholder="Enter username" required>
         </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Location</label>
+          <select class="modal-input" id="newUserBranchLoc" required>
+            <option value="">Select Location</option>
+            <!-- Options dynamically injected by admin-user-management.js -->
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Name</label>
+          <input type="text" class="modal-input" id="newUserBranchName" placeholder="Enter branch store name" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Assigned Role</label>
+          <select class="modal-input" id="newUserRole" required>
+            <option value="Manager">Manager</option>
+            <option value="Staff">Staff</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Email Address</label>
+          <input type="email" class="modal-input" id="newUserEmail" placeholder="user@example.com" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-view-all" id="btnCancelAddUser">Cancel</button>
+          <button type="submit" class="btn-primary-action">Create User</button>
+        </div>
+      </form>
     </div>
-</div>
+  </div>
 
-<!-- ===================================================
-     CHANGE ROLE MODAL
-     =================================================== -->
+  <!-- EDIT USER MODAL -->
+  <div class="admin-modal-backdrop" id="editUserModal">
+    <div class="admin-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Store User</h3>
+        <button type="button" class="btn-close-modal" id="btnCloseEditUser">&times;</button>
+      </div>
+      <form id="editUserForm" onsubmit="event.preventDefault(); submitEditUser();">
+        <input type="hidden" id="editUserId">
+        <div class="modal-form-group">
+          <label class="modal-form-label">Full Name</label>
+          <input type="text" class="modal-input" id="editUserName" required>
+        </div>
 
-<div class="modal-overlay" id="changeRoleModal">
-    <div class="modal-sheet modal-sheet-sm">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/>
-                        <path d="M4.5 20C4.5 16.5 7.5 14.5 12 14.5C16.5 14.5 19.5 16.5 19.5 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <div>
-                    <h4>Change Role</h4>
-                    <span class="modal-time" id="changeRoleSubtitle">—</span>
-                </div>
-            </div>
-            <button class="modal-close" data-close-modal="changeRoleModal" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
+        <div class="modal-form-group">
+          <label class="modal-form-label">Username</label>
+          <input type="text" class="modal-input" id="editUserUsername" required>
         </div>
-        <form class="modal-body" id="changeRoleForm" novalidate>
-            <input type="hidden" id="changeRoleUserId">
-            <label class="modal-field-label" for="changeRoleSelect">New Role</label>
-            <select id="changeRoleSelect" class="modal-input">
-                <option value="user">User</option>
-                <option value="admin">Administrator</option>
-            </select>
-            <p class="field-hint" id="changeRoleHint">Changing the role changes what this account can access in RMSME.</p>
-            <div class="role-change-warning" id="changeRoleWarning" hidden></div>
-        </form>
-        <div class="modal-sticky-footer">
-            <button type="button" class="btn-outline-sm" data-close-modal="changeRoleModal">Cancel</button>
-            <button type="submit" form="changeRoleForm" class="btn-primary" id="changeRoleSubmit">Change Role</button>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Location</label>
+          <select class="modal-input" id="editUserBranchLoc" required>
+            <option value="">Select Location</option>
+            <!-- Options dynamically injected by admin-user-management.js -->
+          </select>
         </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Name</label>
+          <input type="text" class="modal-input" id="editUserBranchName" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Assigned Role</label>
+          <select class="modal-input" id="editUserRole" required>
+            <option value="Manager">Manager</option>
+            <option value="Staff">Staff</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Email Address</label>
+          <input type="email" class="modal-input" id="editUserEmail" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-view-all" id="btnCancelEditUser">Cancel</button>
+          <button type="submit" class="btn-primary-action">Save Changes</button>
+        </div>
+      </form>
     </div>
-</div>
+  </div>
 
-<!-- ===================================================
-     CONFIRM MODAL (Change Role / Deactivate / Activate)
-     =================================================== -->
-
-<div class="modal-overlay" id="confirmModal">
-    <div class="modal-sheet modal-sheet-sm">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon" id="confirmIconWrap">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div>
-                    <h4 id="confirmTitle">Confirm action</h4>
-                </div>
-            </div>
-            <button class="modal-close" data-close-modal="confirmModal" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
-        </div>
-
-        <div class="modal-body">
-            <p class="confirm-message" id="confirmMessage">Are you sure?</p>
-        </div>
-
-        <div class="modal-sticky-footer">
-            <button type="button" class="btn-outline-sm" data-close-modal="confirmModal">Cancel</button>
-            <button type="button" class="btn-primary" id="confirmActionBtn">Confirm</button>
-        </div>
-    </div>
-</div>
-
-<!-- ===================================================
-     VIEW DETAILS MODAL
-     =================================================== -->
-
-<div class="modal-overlay" id="viewUserModal">
-    <div class="modal-sheet">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M4 20C4 16 7.5 14 12 14C16.5 14 20 16 20 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                </div>
-                <div>
-                    <h4 id="viewUserName">—</h4>
-                    <span class="modal-time" id="viewUserEmail">—</span>
-                </div>
-            </div>
-            <button class="modal-close" data-close-modal="viewUserModal" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
-        </div>
-
-        <div class="modal-body">
-
-            <h5 class="detail-section-title">Account Information</h5>
-            <div class="detail-grid" id="viewAccountInfo"></div>
-
-            <h5 class="detail-section-title">Account Requests</h5>
-            <div class="detail-grid" id="viewAccountRequests"></div>
-
-            <h5 class="detail-section-title">Activity Summary</h5>
-            <div class="detail-grid" id="viewActivitySummary"></div>
-
-        </div>
-
-        <div class="modal-sticky-footer">
-            <button type="button" class="btn-outline-sm" data-close-modal="viewUserModal">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- ===================================================
-     REVIEW DELETION REQUEST MODAL
-     =================================================== -->
-
-<div class="modal-overlay" id="reviewDeletionModal">
-    <div class="modal-sheet">
-        <div class="modal-sticky-header">
-            <div class="modal-header-info">
-                <div class="modal-icon icon-warn">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6L18.2 19.2C18.1 20.2 17.3 21 16.3 21H7.7C6.7 21 5.9 20.2 5.8 19.2L5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-                <div>
-                    <h4>Account Deletion Request</h4>
-                    <span class="modal-time" id="reviewDeletionSubtitle">—</span>
-                </div>
-            </div>
-            <button class="modal-close" data-close-modal="reviewDeletionModal" aria-label="Close">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
-        </div>
-
-        <div class="modal-body">
-            <div class="detail-grid" id="reviewDeletionInfo"></div>
-            <div class="inline-notice inline-notice-warn">
-                Historical material activity records will be preserved regardless of the outcome of this review.
-            </div>
-        </div>
-
-        <div class="modal-sticky-footer modal-sticky-footer-3">
-            <button type="button" class="btn-outline-sm" data-close-modal="reviewDeletionModal">Cancel</button>
-            <button type="button" class="btn-reject" id="rejectDeletionBtn">Reject Request</button>
-            <button type="button" class="btn-approve" id="approveDeletionBtn">Approve Request</button>
-        </div>
-    </div>
-</div>
-
-<!-- ACTION MENU (positioned dynamically) -->
-
-<!-- TOAST -->
-<div class="toast-stack" id="toastStack"></div>
-
-<script type="module" src="../js/user-management.js"></script>
-
-<script>
-const headerDateEl = document.querySelector("#headerDate span");
-if(headerDateEl){
-    headerDateEl.textContent = new Date().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
-}
-
-const menuToggle = document.querySelector(".menu-toggle");
-const sidebarEl = document.querySelector(".sidebar");
-if(menuToggle && sidebarEl){
-    menuToggle.addEventListener("click", ()=>{
-        sidebarEl.classList.toggle("open");
-    });
-}
-</script>
-
-<script type="module" src="../js/rmsme-shell.js"></script>
+  <script type="module" src="../js/admin-shell.js"></script>
+  <script type="module" src="../js/admin-user-management.js"></script>
 </body>
 </html>

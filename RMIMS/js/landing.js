@@ -159,9 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   const themeToggleBtn = document.getElementById("themeToggleBtn");
   const storedTheme = localStorage.getItem("rmsme_theme");
-  const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
   
-  let currentTheme = storedTheme || (prefersLight ? "light" : "dark");
+  let currentTheme = storedTheme || "dark";
   applyTheme(currentTheme);
 
   function applyTheme(theme) {
@@ -239,6 +238,40 @@ document.addEventListener("DOMContentLoaded", () => {
     logoCard.addEventListener('mouseleave', () => {
       if (animFrame) cancelAnimationFrame(animFrame);
       logoCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1) translateY(0)';
+    });
+  }
+
+  // FinFlow 3-Card Stage 3D Perspective Parallax (Desktop Only)
+  const ffCards = document.querySelectorAll(".ff-card");
+  if (ffCards.length && !isReducedMotion && !isTouchDevice) {
+    ffCards.forEach(card => {
+      let cardFrame = null;
+      const isLeft = card.classList.contains("ff-card-left");
+      const isRight = card.classList.contains("ff-card-right");
+      const isCenter = card.classList.contains("ff-card-center");
+
+      const baseRotZ = isLeft ? -7 : (isRight ? 7 : 0);
+      const baseRotY = isLeft ? 16 : (isRight ? -16 : 0);
+      const baseRotX = isCenter ? 4 : 10;
+      const baseScale = isCenter ? 1.06 : 1;
+      const baseLift = isCenter ? -14 : 24;
+
+      card.addEventListener("mousemove", (e) => {
+        if (cardFrame) cancelAnimationFrame(cardFrame);
+        cardFrame = requestAnimationFrame(() => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left - rect.width / 2;
+          const y = e.clientY - rect.top - rect.height / 2;
+          const deltaRotX = Math.min(Math.max((y / rect.height) * -8, -5), 5);
+          const deltaRotY = Math.min(Math.max((x / rect.width) * 8, -5), 5);
+          card.style.transform = `perspective(1200px) rotateX(${baseRotX + deltaRotX}deg) rotateY(${baseRotY + deltaRotY}deg) rotateZ(${baseRotZ}deg) scale(${baseScale + 0.02}) translateY(${baseLift - 8}px)`;
+        });
+      });
+
+      card.addEventListener("mouseleave", () => {
+        if (cardFrame) cancelAnimationFrame(cardFrame);
+        card.style.transform = "";
+      });
     });
   }
 
@@ -477,21 +510,146 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
+  // 7b. REDESIGNED FAQ ACCORDION ENGINE
+  // ==========================================
+  const ffFaqRows = document.querySelectorAll(".ff-faq-row");
+  ffFaqRows.forEach(row => {
+    const qBtn = row.querySelector(".ff-faq-q");
+    const toggleIcon = row.querySelector(".ff-faq-toggle");
+    if (qBtn) {
+      qBtn.addEventListener("click", () => {
+        const isOpen = row.classList.contains("is-open");
+        // Close other rows for clean single-expanded view
+        ffFaqRows.forEach(other => {
+          if (other !== row) {
+            other.classList.remove("is-open");
+            const otherBtn = other.querySelector(".ff-faq-q");
+            const otherToggle = other.querySelector(".ff-faq-toggle");
+            if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
+            if (otherToggle) otherToggle.textContent = "+";
+          }
+        });
+
+        if (isOpen) {
+          row.classList.remove("is-open");
+          qBtn.setAttribute("aria-expanded", "false");
+          if (toggleIcon) toggleIcon.textContent = "+";
+        } else {
+          row.classList.add("is-open");
+          qBtn.setAttribute("aria-expanded", "true");
+          if (toggleIcon) toggleIcon.textContent = "−";
+        }
+      });
+    }
+  });
+
+  // ==========================================
+  // 7c. NETWORK WORKFLOW MAP INTERACTION
+  // ==========================================
+  const mapNodes = document.querySelectorAll(".ff-facility-node");
+  const mapStageNum = document.getElementById("mapStageNum");
+  const mapStageTitle = document.getElementById("mapStageTitle");
+  const mapStageText = document.getElementById("mapStageText");
+
+  const facilityStages = [
+    {
+      num: "STAGE 01",
+      title: "Delivery Dock & Inbound Logging",
+      text: "Raw material shipments from certified suppliers arrive and are immediately checked against vendor delivery receipts in the digital ledger."
+    },
+    {
+      num: "STAGE 02",
+      title: "Quality Inspection & Verification",
+      text: "Inspecting received raw materials for specifications, expiration batches, moisture tolerance, and unit-of-measure conformity."
+    },
+    {
+      num: "STAGE 03",
+      title: "Central Storage & Stock Monitoring",
+      text: "Continuous real-time tracking of raw material balances, units of measure, and safety buffer thresholds across all warehouse zones."
+    },
+    {
+      num: "STAGE 04",
+      title: "Production Line Disbursement",
+      text: "Batch disbursement orders draw exact ingredient quantities according to standardized recipes, updating residual inventory live."
+    },
+    {
+      num: "STAGE 05",
+      title: "AI Demand & Reorder Forecasting",
+      text: "Auto-regressive time-series statistical engines evaluate velocity and consumption trends to predict 7-day and 4-week reorder needs."
+    }
+  ];
+
+  mapNodes.forEach(node => {
+    node.addEventListener("click", () => {
+      const stageIdx = parseInt(node.getAttribute("data-stage") || "0", 10);
+      const stage = facilityStages[stageIdx];
+      if (stage) {
+        mapNodes.forEach(n => n.classList.remove("is-active"));
+        node.classList.add("is-active");
+        if (mapStageNum) mapStageNum.textContent = stage.num;
+        if (mapStageTitle) mapStageTitle.textContent = stage.title;
+        if (mapStageText) mapStageText.textContent = stage.text;
+      }
+    });
+  });
+
+  // ==========================================
+  // 7d. PRICING BILLING TOGGLE (MONTHLY / YEARLY)
+  // ==========================================
+  const billingMonthly = document.getElementById("billingMonthly");
+  const billingYearly = document.getElementById("billingYearly");
+  const priceStarter = document.querySelector(".price-starter");
+  const pricePro = document.querySelector(".price-pro");
+  const priceEnt = document.querySelector(".price-ent");
+  const pricePeriods = document.querySelectorAll(".p-period");
+
+  if (billingMonthly && billingYearly) {
+    billingMonthly.addEventListener("click", () => {
+      billingMonthly.classList.add("is-active");
+      billingYearly.classList.remove("is-active");
+      if (priceStarter) priceStarter.textContent = "0.00";
+      if (pricePro) pricePro.textContent = "19.00";
+      if (priceEnt) priceEnt.textContent = "199.00";
+      pricePeriods.forEach(p => p.textContent = "/month");
+    });
+
+    billingYearly.addEventListener("click", () => {
+      billingYearly.classList.add("is-active");
+      billingMonthly.classList.remove("is-active");
+      if (priceStarter) priceStarter.textContent = "0.00";
+      if (pricePro) pricePro.textContent = "15.00";
+      if (priceEnt) priceEnt.textContent = "159.00";
+      pricePeriods.forEach(p => p.textContent = "/month (billed yearly)");
+    });
+  }
+
+  // ==========================================
+  // 7e. DASHBOARD MOCKUP PREVIEW TABS
+  // ==========================================
+  const dashTabs = document.querySelectorAll(".dash-tab");
+  dashTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      dashTabs.forEach(t => t.classList.remove("is-active"));
+      tab.classList.add("is-active");
+    });
+  });
+
+  // ==========================================
   // 8. SCROLL REVEAL & SMOOTH EXIT ENGINE
   // ==========================================
   if (!isReducedMotion) {
     // Auto-tag sections, columns and cards with reveal animation classes
-    const leftElements = document.querySelectorAll(".hero-text-col, .about-left-col, .workflow-rail, .connect-card, .connect-left-col");
+    const leftElements = document.querySelectorAll(".hero-text-col, .about-left-col, .workflow-rail, .connect-card, .connect-left-col, .ff-faq-left-col");
     leftElements.forEach(el => {
       el.classList.add("reveal-item", "reveal-left");
     });
 
-    const rightElements = document.querySelectorAll(".hero-visual-stage, .about-right-col, .interactive-stage-panel, .faq-card");
+    const rightElements = document.querySelectorAll(".hero-visual-stage, .about-right-col, .interactive-stage-panel, .faq-card, .ff-faq-right-col");
     rightElements.forEach(el => {
       el.classList.add("reveal-item", "reveal-right");
     });
 
-    const headingWraps = document.querySelectorAll(".view-heading-wrap, .site-footer");
+    const headingWraps = document.querySelectorAll(".view-heading-wrap, .ff-section-header, .ff-arch-heading-wrap, .site-footer");
     headingWraps.forEach(el => {
       el.classList.add("reveal-item", "reveal-up");
     });
@@ -501,7 +659,12 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".features-view-grid .feature-card"),
       document.querySelectorAll(".benefits-grid .benefit-card"),
       document.querySelectorAll(".workflow-rail .process-step-pill"),
-      document.querySelectorAll(".faq-accordion .faq-item")
+      document.querySelectorAll(".faq-accordion .faq-item"),
+      document.querySelectorAll(".ff-solutions-bento .ff-bento-card"),
+      document.querySelectorAll(".ff-advantages-grid .ff-adv-item"),
+      document.querySelectorAll(".ff-pricing-grid .ff-price-card"),
+      document.querySelectorAll(".ff-news-grid .ff-news-card"),
+      document.querySelectorAll(".ff-stats-counter-row .ff-stat-box")
     ];
 
     staggerGrids.forEach(cardList => {
@@ -510,6 +673,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const delayClass = `delay-${Math.min((idx % 6) + 1, 6)}`;
         card.classList.add(delayClass);
       });
+    });
+
+    const singleProminentElements = document.querySelectorAll(".ff-dashboard-window, .ff-quote-card, .ff-network-map-card, .ff-bridge-banner, .ff-luminous-dome-wrap");
+    singleProminentElements.forEach(el => {
+      el.classList.add("reveal-item", "reveal-up");
     });
 
     const allRevealItems = document.querySelectorAll(".reveal-item");

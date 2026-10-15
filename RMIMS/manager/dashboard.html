@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - Store Management Overview</title>
+  <!-- Google Fonts: Inter, Sora, Orbitron & Share Tech Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js 4.4.1 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Admin Shell Stylesheet (100% Shared Theme & Components) -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="stylesheet" href="../css/manager-theme.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+</head>
+<body class="manager-page admin-page">
+  <div class="admin-app">
+    <!-- SIDEBAR (Auto-rendered by rmsme-shell.js with 100% Admin styling for Manager) -->
+    <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="admin-main">
+      <!-- TOPBAR -->
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <div class="topbar-text-group">
+            <span class="topbar-kicker">STORE MANAGEMENT</span>
+            <h1 class="topbar-title">Manager Dashboard</h1>
+            <p class="topbar-subtitle">Real-time store operations telemetry, approvals, and inventory control.</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Manager</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                        </div>
+      </header>
+
+      <!-- SCROLLABLE CONTENT BODY -->
+      <main class="admin-scroll-body">
+
+        <!-- WELCOME & FRONTDESK LIVE MONITORING CLOCK BAR -->
+        <div class="overview-welcome-banner">
+          <div class="overview-welcome-group">
+            <h1 class="overview-welcome-title" id="overviewWelcomeGreeting">Welcome back!</h1>
+            <p class="overview-welcome-sub" id="overviewWelcomeSub">Here is your daily manager operational summary.</p>
+          </div>
+
+          <!-- Frontdesk Monitoring Clock Card (Exact Image 1 Style) -->
+          <div class="frontdesk-clock-card" id="frontdeskClockCard" title="Live Frontdesk Monitoring Clock (Philippine Standard Time)">
+            <div class="frontdesk-clock-time-group">
+              <span class="frontdesk-time" id="frontdeskTime">--:--:--</span>
+              <span class="frontdesk-period" id="frontdeskPeriod">AM</span>
+            </div>
+            <div class="frontdesk-date" id="frontdeskDate">Loading...</div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: STORE INVENTORY & USAGE OVERVIEW (Chart + 2 Stat Cards) -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M18 20V10"/>
+                  <path d="M12 20V4"/>
+                  <path d="M6 20v-6"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Store Inventory &amp; Usage Overview</h2>
+                <span class="card-subtitle">Daily raw material receipts and disbursements across this branch</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <select class="dropdown-select" id="chartRangeSelect">
+                <option value="7">Last 7 Days</option>
+                <option value="14" selected>Last 14 Days</option>
+                <option value="30">Last 30 Days</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="usage-grid">
+            <!-- Left: Interactive Dual Line Chart (RMIMS Emerald Aesthetic) -->
+            <div class="chart-card-content">
+              <div class="chart-canvas-container" style="height: 250px;">
+                <canvas id="managerUsageChart"></canvas>
+              </div>
+              <div class="chart-legend-custom" id="managerChartLegend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #16A34A;"></span>
+                  <span>Inward Receipts</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #0284C7;"></span>
+                  <span>Production Disbursements</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: 2 KPI Stat Cards -->
+            <div class="kpi-column">
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Total Active Materials</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiTotalMaterials">0</span>
+                    <span class="kpi-trend up" id="kpiMaterialsTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
+                    </span>
+                  </div>
+                  <span class="kpi-subtext">Registered catalog items</span>
+                </div>
+              </div>
+
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Today's Inventory Actions</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiTotalTx">0</span>
+                    <span class="kpi-trend up" id="kpiTodayTxTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
+                    </span>
+                  </div>
+                  <span class="kpi-subtext"><span id="kpiRecTx">0</span> received &nbsp;|&nbsp; <span id="kpiDisbTx">0</span> disbursed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: AWAITING APPROVAL FOR TRANSACTIONS -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge coral">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <line x1="20" y1="8" x2="20" y2="14"/>
+                  <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Awaiting Approval for Transactions</h2>
+                <span class="card-subtitle">Staff receipt and disbursement submissions requiring manager validation</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <a href="staff-activity.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="managerPendingTable">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Activity</th>
+                  <th>Raw Material</th>
+                  <th>Quantity</th>
+                  <th>Staff Member</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="managerPendingTbody">
+                <!-- Dynamically populated by manager-dashboard.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION 3: INVENTORY BREAKDOWN & FORECASTING INTELLIGENCE (1 Card Per Row) -->
+        <div class="mgr-breakdown-grid" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; width: 100%;">
+          
+          <!-- Card 1: Inventory Stock Breakdown (Donut Chart) -->
+          <section class="admin-card" style="margin: 0; width: 100%;">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-badge emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 2a10 10 0 0 1 10 10h-10z"/>
+                  </svg>
+                </div>
+                <div class="card-headings">
+                  <h2 class="card-title">Inventory Stock Breakdown</h2>
+                  <span class="card-subtitle">Current stock health across all catalog materials</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: center; gap: 48px; flex-wrap: wrap; padding: 14px 0 8px;">
+              <div style="position: relative; width: 180px; height: 180px;">
+                <canvas id="mgrDonutChart"></canvas>
+                <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
+                  <span style="font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 800; color: #0F2A1B; line-height: 1;" id="donutTotalCount">0</span>
+                  <span style="font-size: 11px; font-weight: 600; color: #5C7A68; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px;">Items</span>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 12px; min-width: 200px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+                  <span style="display: inline-flex; align-items: center; gap: 8px; color: #334155; font-weight: 500;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #22C55E;"></span>
+                    Available
+                  </span>
+                  <span style="font-weight: 700; color: #0F2A1B;"><span id="legendAvailCount">0</span> (<span id="legendAvailPct">0%</span>)</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+                  <span style="display: inline-flex; align-items: center; gap: 8px; color: #334155; font-weight: 500;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #EAB308;"></span>
+                    Low Stock
+                  </span>
+                  <span style="font-weight: 700; color: #0F2A1B;"><span id="legendLowCount">0</span> (<span id="legendLowPct">0%</span>)</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
+                  <span style="display: inline-flex; align-items: center; gap: 8px; color: #334155; font-weight: 500;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #EF4444;"></span>
+                    Out of Stock
+                  </span>
+                  <span style="font-weight: 700; color: #0F2A1B;"><span id="legendOutCount">0</span> (<span id="legendOutPct">0%</span>)</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Card 2: Smart Stock Alerts (AI Forecast Support) -->
+          <section class="admin-card" style="margin: 0; width: 100%;">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-badge coral">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                    <rect x="9" y="9" width="6" height="6"/>
+                    <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>
+                  </svg>
+                </div>
+                <div class="card-headings">
+                  <h2 class="card-title">Smart Stock Alerts</h2>
+                  <span class="card-subtitle">AI-assisted depletion warnings and safety thresholds</span>
+                </div>
+              </div>
+
+              <div class="card-actions">
+                <a href="forecasting.html" class="btn-view-all">
+                  <span>View All</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <div class="smart-alerts-list" style="margin-top: 4px;">
+              <!-- Dynamically populated by manager-dashboard.js -->
+            </div>
+          </section>
+
+          <!-- Card 3: Top 5 Most Used Materials (This Month) -->
+          <section class="admin-card" style="margin: 0; width: 100%;">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-badge emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                </div>
+                <div class="card-headings">
+                  <h2 class="card-title">Top 5 Most Used Materials (This Month)</h2>
+                  <span class="card-subtitle">Raw materials with highest consumption volume</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="height: 220px; margin-top: 6px; width: 100%;">
+              <canvas id="mgrTop5Chart"></canvas>
+            </div>
+          </section>
+
+          <!-- Card 4: 12-Month Usage & Forecast Trend -->
+          <section class="admin-card" style="margin: 0; width: 100%;">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-badge emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="m3 17 6-6 4 4 8-8"/>
+                    <path d="M14 7h7v7"/>
+                  </svg>
+                </div>
+                <div class="card-headings">
+                  <h2 class="card-title">12-Month Usage &amp; Forecast Trend</h2>
+                  <span class="card-subtitle">AI historical monthly totals vs projected usage trend</span>
+                </div>
+              </div>
+
+              <div class="card-actions">
+                <div style="display: flex; gap: 12px; font-size: 11.5px; color: #64748B; align-items: center;">
+                  <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #22C55E;"></span> Historical</span>
+                  <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 14px; height: 2px; background: #22C55E; border-top: 2px dashed #22C55E;"></span> Forecast</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="height: 220px; margin-top: 6px; width: 100%;">
+              <canvas id="mgrForecastSummaryChart"></canvas>
+            </div>
+          </section>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- TRANSACTION REVIEW MODAL (Preserved for Manager validation actions) -->
+  <div class="modal-overlay" id="mgrTxReviewModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+    <div class="modal-card" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:480px; overflow:hidden;">
+      <div style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:#0F2A1B;">Transaction Review</h3>
+          <p style="margin:2px 0 0; font-size:12px; color:#5C7A68;" id="reviewModalSub">Review Staff-submitted material movement.</p>
+        </div>
+        <button type="button" class="mgr-modal-close" id="closeTxReviewModal" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748B;">&times;</button>
+      </div>
+      
+      <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#F8FCF9; border:1px solid #E2E8F0; padding:10px 14px; border-radius:10px;">
+          <span style="font-size:12px; color:#64748B; font-weight:600;">Reference Number</span>
+          <span style="font-family:'Inter', sans-serif; font-size:13px; font-weight:600; color:#0F2A1B;" id="reviewRefNum">--</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Staff Member</span>
+            <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="reviewStaff">--</span>
+          </div>
+          <div>
+            <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Activity</span>
+            <span style="font-size:13.5px; font-weight:700; color:#15803D;" id="reviewActivity">--</span>
+          </div>
+          <div>
+            <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Raw Material</span>
+            <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="reviewMaterial">--</span>
+          </div>
+          <div>
+            <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Quantity</span>
+            <span style="font-size:13.5px; font-weight:700; color:#0F2A1B;" id="reviewQuantity">--</span>
+          </div>
+          <div>
+            <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Date</span>
+            <span style="font-size:12.5px; font-weight:500; color:#334155;" id="reviewDate">--</span>
+          </div>
+          <div>
+            <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Status</span>
+            <span class="status-pill status-pending" id="reviewStatusBadge">--</span>
+          </div>
+        </div>
+
+        <div>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Notes</span>
+          <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:10px 14px; border-radius:8px; font-size:13px; color:#334155;" id="reviewNotes">No extra notes provided.</div>
+        </div>
+
+        <!-- Rejection Reason Input -->
+        <div id="rejectReasonBox" style="display:none; flex-direction:column; gap:6px;">
+          <label style="font-size:12px; font-weight:700; color:#DC2626;">Reason for Rejection *</label>
+          <textarea id="rejectReasonInput" rows="2" placeholder="Explain why this transaction was rejected so Staff can correct it..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCA5A5; font-size:12.5px; box-sizing:border-box;"></textarea>
+        </div>
+
+        <div id="reviewResultBanner" style="display:none; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:600;"></div>
+      </div>
+
+      <div style="padding:14px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; gap:12px; background:#F8FAFC;" id="reviewActionButtons">
+        <button type="button" class="btn-clear-filters" id="btnRejectTx" style="padding:9px 18px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; color:#DC2626; font-weight:600; cursor:pointer;">Reject</button>
+        <button type="button" class="btn-primary-action" id="btnApproveTx" style="padding:9px 22px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:700; cursor:pointer;">Approve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="../js/manager-dashboard.js"></script>
+  <script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>

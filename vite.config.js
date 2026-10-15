@@ -60,23 +60,30 @@ export default defineConfig({
       input: {
         index: resolve(__dirname, 'RMIMS/index.html'),
         login: resolve(__dirname, 'RMIMS/login.html'),
-        portal: resolve(__dirname, 'RMIMS/portal.html'),
         userSignin: resolve(__dirname, 'RMIMS/user-signin.html'),
-        // Admin pages
-        adminAnalytics: resolve(__dirname, 'RMIMS/admin/analytics.html'),
-        adminDashboard: resolve(__dirname, 'RMIMS/admin/dashboard.html'),
-        adminForecasting: resolve(__dirname, 'RMIMS/admin/forecasting.html'),
-        adminInventory: resolve(__dirname, 'RMIMS/admin/inventory.html'),
-        adminMaterialActivity: resolve(__dirname, 'RMIMS/admin/material-activity.html'),
-        adminReports: resolve(__dirname, 'RMIMS/admin/reports.html'),
-        adminSettings: resolve(__dirname, 'RMIMS/admin/settings.html'),
+        // Dedicated Main Admin Portal (System Design & Multi-Module Architecture)
+        adminOverview: resolve(__dirname, 'RMIMS/admin/overview.html'),
+        adminActivityLogs: resolve(__dirname, 'RMIMS/admin/activity-logs.html'),
         adminUserManagement: resolve(__dirname, 'RMIMS/admin/user-management.html'),
-        // User pages
-        userAnalytics: resolve(__dirname, 'RMIMS/user/analytics.html'),
+        adminBranchStores: resolve(__dirname, 'RMIMS/admin/branch-stores.html'),
+        adminSystemAlerts: resolve(__dirname, 'RMIMS/admin/system-alerts.html'),
+        adminSettings: resolve(__dirname, 'RMIMS/admin/settings.html'),
+        // Dedicated Manager Workspace (Active Manager Pages)
+        managerDashboard: resolve(__dirname, 'RMIMS/manager/dashboard.html'),
+        managerDisburse: resolve(__dirname, 'RMIMS/manager/disburse.html'),
+        managerForecasting: resolve(__dirname, 'RMIMS/manager/forecasting.html'),
+        managerInventory: resolve(__dirname, 'RMIMS/manager/inventory.html'),
+        managerReceive: resolve(__dirname, 'RMIMS/manager/receive.html'),
+        managerReports: resolve(__dirname, 'RMIMS/manager/reports.html'),
+        managerSettings: resolve(__dirname, 'RMIMS/manager/settings.html'),
+        managerStaffActivity: resolve(__dirname, 'RMIMS/manager/staff-activity.html'),
+        managerUsage: resolve(__dirname, 'RMIMS/manager/usage.html'),
+        // Active Staff / User Pages
         userDashboard: resolve(__dirname, 'RMIMS/user/dashboard.html'),
-        userForecasting: resolve(__dirname, 'RMIMS/user/forecasting.html'),
         userInventory: resolve(__dirname, 'RMIMS/user/inventory.html'),
-        userMaterialActivity: resolve(__dirname, 'RMIMS/user/material-activity.html'),
+        userReceive: resolve(__dirname, 'RMIMS/user/receive.html'),
+        userDisburse: resolve(__dirname, 'RMIMS/user/disburse.html'),
+        userMyActivity: resolve(__dirname, 'RMIMS/user/my-activity.html'),
         userReports: resolve(__dirname, 'RMIMS/user/reports.html'),
         userSettings: resolve(__dirname, 'RMIMS/user/settings.html')
       }

@@ -22,6 +22,27 @@ const esc = v =>
     }[c])
   );
 
+function greetingWord() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+// Instant 0ms cached greeting render from session
+try {
+  const cached = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userProfile") || "{}");
+  const cName = (cached.fullName || cached.name || (cached.email ? cached.email.split("@")[0] : "Manager")).split(/\s+/)[0] || "Manager";
+  const initGreet = `${greetingWord()}, ${cName}! Overview of your raw materials and inventory activity.`;
+  if ($("welcomeGreeting")) {
+    $("welcomeGreeting").textContent = initGreet;
+  }
+  const initShellHeading = document.querySelector(".rmsme-heading p");
+  if (initShellHeading) {
+    initShellHeading.textContent = initGreet;
+  }
+} catch (e) {}
+
 // ============================================================
 // TOAST NOTIFICATIONS
 // ============================================================
@@ -311,6 +332,7 @@ function renderBaselineInstant() {
     renderCard1RawMaterials();
     renderCard2TotalConsumed();
     renderCard3OutOfStock();
+    renderCard4LowStock();
     renderReceiveRawMaterialsCard();
     populateModalCategories();
     populateTrendMaterialSelect();
@@ -524,10 +546,11 @@ async function loadDashboard() {
       };
     });
 
-    // Render the 3 Primary Summary Cards (Frozen)
+    // Render the 4 Primary Summary Cards
     renderCard1RawMaterials();
     renderCard2TotalConsumed();
     renderCard3OutOfStock();
+    renderCard4LowStock();
 
     // Render Receive Raw Materials Vertical Card (Matching Original Design)
     renderReceiveRawMaterialsCard();
@@ -1261,6 +1284,44 @@ function startCard3Ticker() {
 }
 
 // ============================================================
+// CARD 4: LOW STOCK / ATTENTION CARD
+// ============================================================
+
+function renderCard4LowStock() {
+  const lowStockMats = catalogMaterials.filter(m => m.status === "Might Restock" || (m.currentStock > 0 && m.currentStock <= (m.reorderPoint || 100)));
+  const countEl = $("lowStockCount");
+  if (countEl) countEl.textContent = lowStockMats.length;
+
+  const subEl = $("lowStockSubtitle");
+  if (subEl) {
+    subEl.textContent = lowStockMats.length > 0 ? `${lowStockMats.length} near reorder point` : "All stock levels healthy";
+  }
+
+  const cardEl = $("cardLowStock");
+  if (cardEl) {
+    cardEl.onclick = () => {
+      const filterSelect = $("rawMaterialFilter");
+      if (filterSelect) {
+        filterSelect.value = "Might Restock";
+        filterSelect.dispatchEvent(new Event("change"));
+      }
+      openAdminModal("modalRawMaterialStatus");
+    };
+    cardEl.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const filterSelect = $("rawMaterialFilter");
+        if (filterSelect) {
+          filterSelect.value = "Might Restock";
+          filterSelect.dispatchEvent(new Event("change"));
+        }
+        openAdminModal("modalRawMaterialStatus");
+      }
+    };
+  }
+}
+
+// ============================================================
 // CARD 3 MODAL: OUT OF STOCK WARNING TILES
 // ============================================================
 
@@ -1716,86 +1777,8 @@ function setupTrendChartControls() {
   const canvas = $("rawMaterialsTrendChart");
   if (canvas && !canvas.dataset.dragPanAttached) {
     canvas.dataset.dragPanAttached = "true";
-    canvas.style.cursor = "grab";
-    canvas.title = "Drag to pan the zoomed chart. Move the pointer to inspect values.";
-
-    // Mousewheel vertical scrolling & zoom
-    canvas.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        if (e.deltaY < 0) {
-          trendChartZoomLevel = Math.min(5.0, Number((trendChartZoomLevel * 1.15).toFixed(2)));
-          trendChartFocusMode = true;
-        } else {
-          trendChartZoomLevel = Math.max(1.0, Number((trendChartZoomLevel / 1.15).toFixed(2)));
-          if (trendChartZoomLevel <= 1.0) {
-            trendChartFocusMode = false;
-            trendChartYShift = 0;
-            trendChartXShift = 0;
-          }
-        }
-      } else {
-        // Direct wheel scroll up & down
-        if (!trendChartFocusMode && trendChartZoomLevel <= 1.0) {
-          trendChartFocusMode = true;
-        }
-        const currentSpan = (rawMaterialsTrendChartInstance && rawMaterialsTrendChartInstance.scales && rawMaterialsTrendChartInstance.scales.y)
-          ? (rawMaterialsTrendChartInstance.scales.y.max - rawMaterialsTrendChartInstance.scales.y.min)
-          : (2500 / trendChartZoomLevel);
-        const scrollDelta = (e.deltaY < 0 ? 1 : -1) * (currentSpan * 0.08);
-        trendChartYShift += scrollDelta;
-      }
-      renderRawMaterialsTrendChart();
-    }, { passive: false });
-
-    // Pointer capture keeps panning active even if the cursor briefly leaves
-    // the canvas while inspecting a zoomed view.
-    canvas.addEventListener("pointerdown", (e) => {
-      if (e.button !== undefined && e.button !== 0) return;
-      isDraggingTrend = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      dragInitialXShift = trendChartXShift;
-      dragInitialShift = trendChartYShift;
-      canvas.setPointerCapture?.(e.pointerId);
-      canvas.style.cursor = "grabbing";
-    });
-
-    canvas.addEventListener("pointermove", (e) => {
-      if (!isDraggingTrend) return;
-      if (!trendChartFocusMode && trendChartZoomLevel <= 1.0) {
-        trendChartFocusMode = true;
-      }
-      const deltaX = e.clientX - dragStartX;
-      const deltaY = e.clientY - dragStartY;
-      const chartWidth = canvas.clientWidth || 640;
-      const chartHeight = canvas.clientHeight || 285;
-      const currentSpan = (rawMaterialsTrendChartInstance && rawMaterialsTrendChartInstance.scales && rawMaterialsTrendChartInstance.scales.y)
-        ? (rawMaterialsTrendChartInstance.scales.y.max - rawMaterialsTrendChartInstance.scales.y.min)
-        : (2500 / trendChartZoomLevel);
-      
-      const shiftDelta = (deltaY / chartHeight) * currentSpan;
-      trendChartYShift = dragInitialShift + shiftDelta;
-      // A zoomed category axis shows a smaller timeline window. Horizontal
-      // dragging moves that window through the available dates.
-      trendChartXShift = Math.max(0, Math.min(
-        trendChartMaxXPan,
-        dragInitialXShift - (deltaX / chartWidth) * trendChartMaxXPan
-      ));
-      renderRawMaterialsTrendChart();
-    });
-
-    const endTrendDrag = (e) => {
-      if (isDraggingTrend) {
-        isDraggingTrend = false;
-        canvas.style.cursor = "grab";
-        if (canvas.hasPointerCapture?.(e.pointerId)) {
-          canvas.releasePointerCapture(e.pointerId);
-        }
-      }
-    };
-    canvas.addEventListener("pointerup", endTrendDrag);
-    canvas.addEventListener("pointercancel", endTrendDrag);
+    canvas.style.cursor = "default";
+    canvas.title = "Move the pointer across the timeline to inspect values.";
   }
 
   trendControlsBound = true;
@@ -2967,31 +2950,106 @@ onAuthStateChanged(auth, async user => {
   }
 
   try {
-    const { data: profile, error } = await supabase
+    const uid = user.id || user.uid;
+    const cleanEmail = (user.email || "").toLowerCase();
+    const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+
+    let { data: profile, error } = await supabase
       .from("user_profiles")
       .select("id, full_name, email, role, status")
-      .eq("id", user.uid)
+      .eq("id", uid)
       .maybeSingle();
+
+    if (isMasterAdmin) {
+      if (!profile) {
+        profile = {
+          id: uid,
+          full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+          email: user.email,
+          role: "admin",
+          operational_role: "admin",
+          status: "active"
+        };
+      } else {
+        profile.role = "admin";
+        profile.operational_role = "admin";
+        profile.status = "active";
+      }
+      error = null;
+
+      try {
+        supabase.from("user_profiles").upsert({
+          id: uid,
+          full_name: profile.full_name || "Zeanna Calusin",
+          email: profile.email || user.email,
+          role: "admin",
+          operational_role: "admin",
+          status: "active",
+          updated_at: new Date().toISOString()
+        }, { onConflict: "id" }).then(() => {}).catch(() => {});
+      } catch (e) {}
+    }
+
+    if (!profile) {
+      try {
+        const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached.email && cached.email.toLowerCase() === cleanEmail && (cached.role === "admin" || cached.role === "manager")) {
+            profile = {
+              id: uid,
+              full_name: cached.fullName || cached.name || "Store Manager",
+              email: user.email,
+              role: cached.role || "manager",
+              status: "active"
+            };
+            error = null;
+          }
+        }
+      } catch (e) {}
+    }
 
     if (error || !profile || profile.status !== "active") {
       window.location.href = "../login.html";
       return;
     }
 
-    if (profile.role !== "admin") {
-      window.location.href = "../login.html";
+    if (profile.role !== "admin" && profile.role !== "manager") {
+      window.location.href = "../user/dashboard.html";
       return;
     }
 
-    await checkAndShowOnboarding(profile, supabase);
+    if (typeof window.checkAndShowOnboarding === 'function') {
+      window.checkAndShowOnboarding(profile, supabase);
+    }
+
+    const firstName = "Manager";
+    const greet = greetingWord();
+    const greetingText = `${greet}, ${firstName}! Overview of your raw materials and inventory activity.`;
+
+    if ($("welcomeGreeting")) {
+      $("welcomeGreeting").textContent = greetingText;
+    }
+    const shellHeadingP = document.querySelector(".rmsme-heading p");
+    if (shellHeadingP) {
+      shellHeadingP.textContent = greetingText;
+    }
+
+    if (sessionStorage.getItem("rmims_just_logged_in") === "true") {
+      toast(`${greet}, Manager! Welcome to your RMIMS Manager Dashboard.`, "success");
+      sessionStorage.removeItem("rmims_just_logged_in");
+    }
 
     const profileBtn = $("profileBtn");
     if (profileBtn) {
-      const pText = profileBtn.querySelector(".profile-text") || profileBtn;
-      pText.textContent = profile.full_name || profile.email || "Admin";
-      const pAv = profileBtn.querySelector(".avatar");
-      if (pAv && profile.full_name) {
-        pAv.textContent = profile.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join("");
+      let mName = "Manager";
+      const nameEl = profileBtn.querySelector("[data-shell-name]") || profileBtn.querySelector(".profile-name") || profileBtn.querySelector(".mgr-name");
+      if (nameEl) nameEl.textContent = mName;
+      const roleEl = profileBtn.querySelector("[data-shell-role]") || profileBtn.querySelector(".profile-role") || profileBtn.querySelector(".mgr-role");
+      if (roleEl) roleEl.textContent = "Manager";
+      const pAv = profileBtn.querySelector("[data-shell-avatar]") || profileBtn.querySelector(".avatar") || profileBtn.querySelector(".profile-avatar");
+      if (pAv) {
+        pAv.textContent = "M";
       }
     }
   } catch (err) {

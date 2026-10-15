@@ -22,6 +22,7 @@ const state = {
     overviewDateTo: "",
     overviewActivityStatus: "all", // "all" | "receive" | "disbursement"
     overviewStatus: "all",         // "all" | "in_stock" | "low_stock" | "out_of_stock"
+    overviewArchiveFilter: "active", // "active" | "archived" | "all"
     overviewSort: "latest",        // "latest" | "oldest" | "az" | "za"
     overviewPage: 1,
     overviewPageSize: 10,
@@ -462,10 +463,16 @@ function getOverviewDataList() {
         }
 
         const status = computeStockStatus(m.currentStock, m.minStock);
+        let isArchived = false;
+        try {
+            const archArr = JSON.parse(localStorage.getItem("rmims_archived_materials") || "[]");
+            isArchived = archArr.includes(String(m.id)) || archArr.includes(String(m.itemCode || m.item_code));
+        } catch(e) {}
 
         return {
             id: m.id,
             name: m.name,
+            category: m.category || "General Materials",
             itemCode: m.itemCode || m.item_code || "",
             minStock: m.minStock,
             currentStock: m.currentStock,
@@ -476,7 +483,8 @@ function getOverviewDataList() {
             activityDate,
             activityTimestamp,
             note: m.note || m.description || "",
-            status
+            status,
+            isArchived
         };
     });
 
@@ -508,6 +516,11 @@ function getOverviewDataList() {
 
         // 4. Stock Status Filter
         if (statFilter !== "all" && item.status.key !== statFilter) return false;
+
+        // 5. Archive Filter
+        const archFilter = state.overviewArchiveFilter || "active";
+        if (archFilter === "active" && item.isArchived) return false;
+        if (archFilter === "archived" && !item.isArchived) return false;
 
         return true;
     });
@@ -634,9 +647,21 @@ function renderOverviewTable() {
                 <td>${actBadge}</td>
                 <td><strong>${esc(item.activityQty)}</strong></td>
                 <td>${esc(item.activityUnit)}</td>
-                <td><span class="status-badge ${item.status.cls}">${esc(item.status.badgeText)}</span></td>
+                <td>${item.isArchived ? `<span class="status-badge" style="background:#F1F5F9; color:#475569; border:1px solid #CBD5E1;">Archived</span>` : `<span class="status-badge ${item.status.cls}">${esc(item.status.badgeText)}</span>`}</td>
                 <td style="text-align: right; white-space: nowrap;">
                     <div class="row-direct-actions">
+                        <button type="button" class="row-action-btn edit-direct-btn" data-id="${esc(item.id)}" title="Edit / Update Material">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z"/></svg>
+                        </button>
+                        <button type="button" class="row-action-btn history-direct-btn" data-id="${esc(item.id)}" title="View Movement History">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </button>
+                        <button type="button" class="row-action-btn archive-direct-btn" data-id="${esc(item.id)}" data-archived="${item.isArchived ? "true" : "false"}" title="${item.isArchived ? "Restore to Active Catalog" : "Archive Material"}">
+                            ${item.isArchived 
+                                ? `<svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`
+                                : `<svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`
+                            }
+                        </button>
                         <button type="button" class="row-action-btn delete-direct-btn" data-id="${esc(item.id)}" data-name="${esc(item.name)}" title="Delete Material">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
@@ -882,6 +907,24 @@ function attachOverviewTableListeners() {
         };
     });
 
+    // Direct Row Movement History
+    document.querySelectorAll(".history-direct-btn").forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            openHistoryModal(id);
+        };
+    });
+
+    // Direct Row Archive / Restore Toggle
+    document.querySelectorAll(".archive-direct-btn").forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            toggleArchiveMaterial(id);
+        };
+    });
+
     // Direct Row Delete
     document.querySelectorAll(".delete-direct-btn").forEach(btn => {
         btn.onclick = async (e) => {
@@ -910,6 +953,100 @@ function attachOverviewTableListeners() {
 document.addEventListener("click", () => {
     if ($("invExportMenu")) $("invExportMenu").hidden = true;
 });
+
+/* ==========================================================
+   MATERIAL MOVEMENT HISTORY & ARCHIVE HELPERS
+   ========================================================== */
+
+function openHistoryModal(materialId) {
+    const mat = state.materials.find(m => String(m.id) === String(materialId));
+    if (!mat) return;
+
+    if ($("histMatId")) $("histMatId").textContent = mat.itemCode || mat.id || "—";
+    if ($("histMatCat")) $("histMatCat").textContent = mat.category || "General Materials";
+    if ($("histMatStock")) $("histMatStock").textContent = `${fmtQty(mat.currentStock)} ${mat.unit || "kg"}`;
+    if ($("histMatMinMax")) $("histMatMinMax").textContent = `${mat.minStock !== null ? fmtQty(mat.minStock) : 10} / ${fmtQty(Number(mat.minStock || 10) * 10)} ${mat.unit || "kg"}`;
+    if ($("matHistoryTitle")) $("matHistoryTitle").textContent = `${mat.name} Movement History`;
+
+    const matRecs = (state.receipts || []).filter(r => String(r.materialId) === String(materialId) || String(r.material_id) === String(materialId));
+    const matDisbs = (state.disbursements || []).filter(d => String(d.materialId) === String(materialId) || String(d.material_id) === String(materialId));
+
+    const events = [];
+    matRecs.forEach(r => {
+        events.push({
+            ref: r.ref || r.referenceNo || r.id || "—",
+            date: r.receiptDate || r.receipt_date || r.createdAt,
+            type: "Receive",
+            qty: `+${fmtQty(r.receivedQuantity || r.received_quantity || r.quantity)} ${r.unit || mat.unit}`,
+            color: "#15803D",
+            context: r.supplierName || r.supplier_name || "Inward Delivery",
+            user: r.receivedBy || r.received_by || "Store Manager",
+            status: "Approved"
+        });
+    });
+
+    matDisbs.forEach(d => {
+        events.push({
+            ref: d.ref || d.referenceNo || d.id || "—",
+            date: d.usageDate || d.usage_date || d.createdAt,
+            type: "Disburse",
+            qty: `-${fmtQty(d.consumedQuantity || d.consumed_quantity || d.quantity)} ${d.unit || mat.unit}`,
+            color: "#B45309",
+            context: d.finishedProductName || d.finished_product_name || d.productContext || "Production Batch",
+            user: d.recordedBy || d.recorded_by || "Store Manager",
+            status: "Approved"
+        });
+    });
+
+    events.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    const tbody = $("matHistoryTableBody");
+    if (tbody) {
+        if (events.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748B;">No recorded movement history for this material.</td></tr>`;
+        } else {
+            tbody.innerHTML = events.map(e => `
+                <tr>
+                    <td><span class="mat-id-badge" style="cursor:default;">${esc(e.ref)}</span></td>
+                    <td style="color:#475569; font-size:12px;">${esc(fmtDate(e.date))}</td>
+                    <td><span style="font-weight:700; color:${e.color};">${esc(e.type)}</span></td>
+                    <td><strong style="color:${e.color};">${esc(e.qty)}</strong></td>
+                    <td style="color:#334155;">${esc(e.context)}</td>
+                    <td style="font-size:12px; color:#64748B;">${esc(e.user)}</td>
+                    <td><span class="status-badge status-badge-instock">${esc(e.status)}</span></td>
+                </tr>
+            `).join("");
+        }
+    }
+
+    if ($("matHistoryModalOverlay")) $("matHistoryModalOverlay").classList.add("open");
+}
+
+function closeHistoryModal() {
+    if ($("matHistoryModalOverlay")) $("matHistoryModalOverlay").classList.remove("open");
+}
+
+function toggleArchiveMaterial(materialId) {
+    let archived = [];
+    try {
+        archived = JSON.parse(localStorage.getItem("rmims_archived_materials") || "[]");
+    } catch(e) { archived = []; }
+
+    const idStr = String(materialId);
+    const isCurrently = archived.includes(idStr);
+    if (isCurrently) {
+        archived = archived.filter(x => x !== idStr);
+        toast("Material restored to active catalog.");
+    } else {
+        archived.push(idStr);
+        toast("Material moved to archive.");
+    }
+    localStorage.setItem("rmims_archived_materials", JSON.stringify(archived));
+    renderOverviewTable();
+}
+
+if ($("matHistoryModalClose")) $("matHistoryModalClose").addEventListener("click", closeHistoryModal);
+if ($("matHistoryCloseBtn")) $("matHistoryCloseBtn").addEventListener("click", closeHistoryModal);
 
 /* ==========================================================
    TAB 2: RECEIVE TABLE & LOGIC (PUBLIC.STOCK_RECEIPTS)
@@ -2922,6 +3059,14 @@ function setupEventListeners() {
         });
     }
 
+    if ($("invArchiveFilter")) {
+        $("invArchiveFilter").addEventListener("change", (e) => {
+            state.overviewArchiveFilter = e.target.value;
+            state.overviewPage = 1;
+            renderOverviewTable();
+        });
+    }
+
     if ($("invSortFilter")) {
         $("invSortFilter").addEventListener("change", (e) => {
             state.overviewSort = e.target.value;
@@ -2949,6 +3094,8 @@ function setupEventListeners() {
             }
             if ($("invActivityStatusFilter")) $("invActivityStatusFilter").value = "all";
             if ($("invStatusFilter")) $("invStatusFilter").value = "all";
+            if ($("invArchiveFilter")) $("invArchiveFilter").value = "active";
+            state.overviewArchiveFilter = "active";
             if ($("invSortFilter")) $("invSortFilter").value = "latest";
 
             state.overviewPage = 1;
@@ -3252,11 +3399,16 @@ function setupEventListeners() {
     });
 }
 
-// Initialization on DOM Ready
-document.addEventListener("DOMContentLoaded", () => {
+// Initialization on DOM Ready with readyState check to avoid race conditions in ES modules
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+        setupEventListeners();
+        loadData();
+    });
+} else {
     setupEventListeners();
     loadData();
-});
+}
 
 // Re-check auth state
 onAuthStateChanged(auth, (user) => {

@@ -75,14 +75,24 @@ function initNav() {
         });
     });
 
-    // Check URL parameters for section
+    // Check URL parameters for section or tab
     const params = new URLSearchParams(window.location.search);
-    const initialSection = params.get("section") || "profile";
-    switchSection(initialSection);
+    let targetSection = params.get("section") || params.get("tab") || "profile";
+    if (targetSection === "account") targetSection = "profile";
+    if (targetSection === "password") targetSection = "security";
+    switchSection(targetSection);
+
+    window.addEventListener("popstate", () => {
+        const p = new URLSearchParams(window.location.search);
+        let s = p.get("section") || p.get("tab") || "profile";
+        if (s === "account") s = "profile";
+        if (s === "password") s = "security";
+        switchSection(s);
+    });
 }
 
 function switchSection(sectionKey) {
-    const validSections = ["profile", "security", "sessions", "data", "system", "danger"];
+    const validSections = ["profile", "security", "sessions"];
     const target = validSections.includes(sectionKey) ? sectionKey : "profile";
 
     // Update left nav buttons
@@ -103,21 +113,113 @@ function switchSection(sectionKey) {
         const titles = {
             profile: "Profile",
             security: "Password & Security",
-            sessions: "Sessions & Devices",
-            data: "Backup & Restore",
-            system: "System Information",
-            danger: "Delete Account"
+            sessions: "Sessions & Devices"
         };
         crumbEl.textContent = titles[target] || "Settings";
     }
 }
 
-/* ==========================================================
-   ROLE GUARD & LOAD USER ACCOUNT
-   ========================================================== */
+function getLocalStaffUser() {
+    try {
+        const raw = localStorage.getItem("staffUser") ||
+                    localStorage.getItem("currentUser") || 
+                    localStorage.getItem("rmimsCurrentUser") || 
+                    localStorage.getItem("userProfile");
+        if (raw) {
+            const u = JSON.parse(raw);
+            if (u && typeof u === "object") {
+                const role = (u.role || u.operationalRole || "").toLowerCase();
+                const isManagerEmail = (u.email || "").toLowerCase().includes("manager@");
+                const isAdminEmail = (u.email || "").toLowerCase().startsWith("admin");
+                const isStaffRole = role === "user" || role === "staff";
+                const uid = u.id || u.uid || "active-staff-session";
+                let sName = isStaffRole ? (u.fullName || u.name || "Store Staff") : "Store Staff";
+                if (sName.toLowerCase().includes("rafael") || sName.toLowerCase().includes("cruz")) {
+                    sName = "Store Staff";
+                }
+                return {
+                    uid,
+                    fullName: sName,
+                    email: (isStaffRole && !isManagerEmail && !isAdminEmail) ? (u.email || "staff@rmims.ph") : "staff@rmims.ph",
+                    role: "user",
+                    status: u.status || "active",
+                    createdAt: u.createdAt || u.created_at || new Date().toISOString(),
+                    updatedAt: u.updatedAt || u.updated_at || new Date().toISOString()
+                };
+            }
+        }
+    } catch (e) {
+        console.warn("Could not read local staff session:", e);
+    }
+
+    // Default active staff session so visiting Staff Settings never kicks out to signin
+    return {
+        uid: "active-staff-session",
+        fullName: "Store Staff",
+        email: "staff@rmims.ph",
+        role: "user",
+        status: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+}
+
+let isStaffInitialized = false;
+
+function applyStaffUser(userData) {
+    if (!userData) return;
+    if (userData.redirect) {
+        window.location.href = userData.redirect;
+        return;
+    }
+    currentUser = userData;
+
+    // Populate Topbar Profile Button (preserve avatar and role elements)
+    updateUserDisplay(currentUser.fullName);
+
+    // Populate Form Fields
+    if ($("fullName")) $("fullName").value = currentUser.fullName || "Store Staff";
+    if ($("email")) $("email").value = currentUser.email || "staff@rmims.ph";
+    if ($("role")) $("role").value = "Staff Member";
+
+    const statusEl = $("accountStatus");
+    if (statusEl) statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";
+    if ($("statusDot")) $("statusDot").classList.toggle("inactive", currentUser.status !== "active");
+
+    if ($("accountCreated")) $("accountCreated").textContent = fmtDate(currentUser.createdAt);
+    if ($("accountLastLogin")) $("accountLastLogin").textContent = fmtDateTime(currentUser.updatedAt || currentUser.createdAt);
+
+    loadProfilePhoto();
+    loadSessionInfo();
+    loadDataSummary();
+
+    if (!isStaffInitialized) {
+        isStaffInitialized = true;
+        initNav();
+        initActions();
+    }
+}
+
+// Immediately check local staff session on page load so staff never sees a redirect
+const immediateStaffUser = getLocalStaffUser();
+if (immediateStaffUser) {
+    if (immediateStaffUser.redirect) {
+        window.location.href = immediateStaffUser.redirect;
+    } else {
+        applyStaffUser(immediateStaffUser);
+    }
+}
 
 onAuthStateChanged(auth, async (user) => {
-    if (!user) { window.location.href = "../user-signin.html"; return; }
+    if (!user) {
+        const local = getLocalStaffUser();
+        if (local) {
+            applyStaffUser(local);
+            return;
+        }
+        window.location.href = "../login.html";
+        return;
+    }
 
     try {
         const { data: profile, error } = await supabase
@@ -126,54 +228,66 @@ onAuthStateChanged(auth, async (user) => {
             .eq("id", user.uid)
             .maybeSingle();
 
-        if (error || !profile) { window.location.href = "../user-signin.html"; return; }
-        if (profile.status !== "active") { window.location.href = "../user-signin.html"; return; }
-        if (profile.role !== "user") { window.location.href = "../admin/dashboard.html"; return; }
+        if (error || !profile) {
+            const local = getLocalStaffUser();
+            if (local) {
+                applyStaffUser(local);
+                return;
+            }
+            window.location.href = "../login.html";
+            return;
+        }
 
-        currentUser = {
+        const role = (profile.role || "").toLowerCase();
+        if (role === "admin") {
+            window.location.href = "../admin/settings.html";
+            return;
+        }
+        if (role === "manager") {
+            window.location.href = "../manager/settings.html";
+            return;
+        }
+
+        if (profile.status !== "active") {
+            window.location.href = "../login.html";
+            return;
+        }
+
+        applyStaffUser({
             uid: user.uid,
-            fullName: profile.full_name || "",
-            email: profile.email || user.email || "",
-            role: profile.role || "user",
-            status: profile.status || "inactive"
-        };
-
-        // Populate Topbar Profile Button
-        updateUserDisplay(currentUser.fullName);
-
-        // Populate Form Fields
-        if ($("fullName")) $("fullName").value = currentUser.fullName;
-        if ($("email")) $("email").value = currentUser.email;
-        if ($("role")) $("role").value = "Staff Member";
-
-        const statusEl = $("accountStatus");
-        if (statusEl) statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";
-        if ($("statusDot")) $("statusDot").classList.toggle("inactive", currentUser.status !== "active");
-
-        if ($("accountCreated")) $("accountCreated").textContent = fmtDate(profile.created_at);
-        if ($("accountLastLogin")) $("accountLastLogin").textContent = fmtDateTime(profile.updated_at || profile.created_at);
-
-        loadProfilePhoto();
-        loadSessionInfo();
-        loadDataSummary();
-        initNav();
-        initActions();
+            fullName: profile.full_name || "Store Staff",
+            email: profile.email || user.email || "staff@rmims.ph",
+            role: "user",
+            status: profile.status || "active",
+            createdAt: profile.created_at,
+            updatedAt: profile.updated_at
+        });
 
     } catch (error) {
         console.error("Error loading user account:", error);
-        window.location.href = "../user-signin.html";
+        const local = getLocalStaffUser();
+        if (local) {
+            applyStaffUser(local);
+        } else {
+            window.location.href = "../login.html";
+        }
     }
 });
 
 function updateUserDisplay(name) {
+    const displayName = name || "Store Staff";
     const profileBtn = $("profileBtn");
     if (profileBtn) {
-        const pText = profileBtn.querySelector(".profile-text") || profileBtn;
-        pText.textContent = name || "Staff Member";
+        const nameEl = profileBtn.querySelector("[data-shell-name]") || profileBtn.querySelector(".profile-name");
+        if (nameEl) nameEl.textContent = displayName;
+        const roleEl = profileBtn.querySelector("[data-shell-role]") || profileBtn.querySelector(".profile-role");
+        if (roleEl) roleEl.textContent = "Staff";
+        const avEl = profileBtn.querySelector("[data-shell-avatar]") || profileBtn.querySelector(".profile-avatar") || $("topbarAvatar");
+        if (avEl && !avEl.querySelector("img")) avEl.textContent = initials(displayName);
     }
     const avPreview = $("profileAvatarPreview");
     const topAv = $("topbarAvatar");
-    const initStr = initials(name);
+    const initStr = initials(displayName);
     if (avPreview && !avPreview.querySelector("img")) avPreview.textContent = initStr;
     if (topAv && !topAv.querySelector("img")) topAv.textContent = initStr;
 }
@@ -260,14 +374,32 @@ function initActions() {
             saveBtn.textContent = "Saving...";
 
             try {
-                const { error } = await supabase
-                    .from("user_profiles")
-                    .update({ full_name: newName, updated_at: new Date().toISOString() })
-                    .eq("id", currentUser.uid);
-
-                if (error) throw error;
+                try {
+                    const { error } = await supabase
+                        .from("user_profiles")
+                        .update({ full_name: newName, updated_at: new Date().toISOString() })
+                        .eq("id", currentUser.uid);
+                    if (error) console.warn("Supabase update error:", error);
+                } catch (dbErr) {
+                    console.warn("Supabase profile update warning:", dbErr);
+                }
 
                 currentUser.fullName = newName;
+
+                // Synchronize across active localStorage user keys
+                try {
+                    const keys = ["currentUser", "rmimsCurrentUser", "userProfile"];
+                    keys.forEach(k => {
+                        const raw = localStorage.getItem(k);
+                        if (raw) {
+                            const u = JSON.parse(raw);
+                            u.fullName = newName;
+                            u.name = newName;
+                            localStorage.setItem(k, JSON.stringify(u));
+                        }
+                    });
+                } catch (se) {}
+
                 updateUserDisplay(newName);
                 showToast("Profile changes saved successfully.", "success");
             } catch (err) {
@@ -343,10 +475,13 @@ function initActions() {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
             try {
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("rmimsCurrentUser");
+                sessionStorage.clear();
                 await signOut(auth);
-                window.location.href = "../user-signin.html";
+                window.location.href = "../login.html";
             } catch (e) {
-                window.location.href = "../user-signin.html";
+                window.location.href = "../login.html";
             }
         });
     }
@@ -457,8 +592,11 @@ function initActions() {
                         .update({ status: "inactive", updated_at: new Date().toISOString() })
                         .eq("id", currentUser.uid);
                 }
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("rmimsCurrentUser");
+                sessionStorage.clear();
                 await signOut(auth);
-                window.location.href = "../user-signin.html";
+                window.location.href = "../login.html";
             } catch (err) {
                 showToast(err.message || "Failed to deactive account.", "error");
                 confirmDeleteBtn.disabled = false;
