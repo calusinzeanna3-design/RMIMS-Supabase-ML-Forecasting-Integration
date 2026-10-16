@@ -186,9 +186,24 @@ export async function loginUser(email, password, expectedRole) {
     const transDOM = showAuthTransition(expectedRole, "Connecting to Supabase Authentication...", 18);
 
     try {
+        let cleanEmailInput = email.trim();
+        if (!cleanEmailInput.includes('@')) {
+            if (cleanEmailInput.toLowerCase() === 'zeanna' || cleanEmailInput.toLowerCase() === 'admin') {
+                cleanEmailInput = 'calusinzeanna3@gmail.com';
+            } else {
+                try {
+                    const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+                    const found = regList.find(u => u.username && u.username.toLowerCase() === cleanEmailInput.toLowerCase());
+                    if (found && found.email) {
+                        cleanEmailInput = found.email;
+                    }
+                } catch (_) {}
+            }
+        }
+
         // Step 1: Sign in with Supabase Auth
         const authPromise = supabase.auth.signInWithPassword({
-            email: email.trim(),
+            email: cleanEmailInput,
             password: password
         });
 

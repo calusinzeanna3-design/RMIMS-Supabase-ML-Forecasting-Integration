@@ -88,6 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  const MASTER_ADMIN_RECORD = {
+    id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
+    name: 'Zeanna',
+    username: 'zeanna',
+    email: 'calusinzeanna3@gmail.com',
+    branchLoc: 'Headquarters',
+    branchName: 'Main Administration',
+    role: 'Administrator',
+    status: 'Active',
+    created_at: new Date().toISOString()
+  };
+
   function getStoredRegisteredUsers() {
     try {
       let list = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
@@ -97,43 +109,33 @@ document.addEventListener('DOMContentLoaded', () => {
       // Always guarantee the first real Admin (Zeanna) is present in the directory
       const hasRealAdmin = list.some(u => 
         (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
+        (u.username && u.username.toLowerCase() === 'zeanna') ||
         (u.name && u.name.toLowerCase() === 'zeanna')
       );
 
       if (!hasRealAdmin) {
-        list.unshift({
-          id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-          name: 'Zeanna',
-          username: 'zeanna',
-          email: 'calusinzeanna3@gmail.com',
-          branchLoc: 'Headquarters',
-          branchName: 'Main Administration',
-          role: 'Administrator',
-          status: 'Active',
-          created_at: new Date().toISOString()
-        });
+        list.unshift({ ...MASTER_ADMIN_RECORD });
         localStorage.setItem('rmims_registered_users', JSON.stringify(list));
       }
 
       return list;
     } catch (_) {
-      return [{
-        id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-        name: 'Zeanna',
-        username: 'zeanna',
-        email: 'calusinzeanna3@gmail.com',
-        branchLoc: 'Headquarters',
-        branchName: 'Main Administration',
-        role: 'Administrator',
-        status: 'Active',
-        created_at: new Date().toISOString()
-      }];
+      return [{ ...MASTER_ADMIN_RECORD }];
     }
   }
 
   function saveStoredRegisteredUsers(users) {
     try {
-      localStorage.setItem('rmims_registered_users', JSON.stringify(users));
+      let list = Array.isArray(users) ? [...users] : [];
+      const hasRealAdmin = list.some(u => 
+        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
+        (u.username && u.username.toLowerCase() === 'zeanna') ||
+        (u.name && u.name.toLowerCase() === 'zeanna')
+      );
+      if (!hasRealAdmin) {
+        list.unshift({ ...MASTER_ADMIN_RECORD });
+      }
+      localStorage.setItem('rmims_registered_users', JSON.stringify(list));
       window.dispatchEvent(new Event('rmims_registered_users_updated'));
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
@@ -314,7 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </svg>
                 <span>Edit</span>
               </button>
-              <button type="button" class="btn-delete" onclick="deleteUser('${escapeJs(u.id)}', '${escapeJs(u.name)}')">Delete</button>
+              ${(u.role === 'Administrator' || u.role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.username && u.username.toLowerCase() === 'zeanna')) ? `
+                <button type="button" class="btn-delete" style="opacity:0.45; cursor:not-allowed;" title="Main Admin account is permanently protected" disabled>Protected</button>
+              ` : `
+                <button type="button" class="btn-delete" onclick="deleteUser('${escapeJs(u.id)}', '${escapeJs(u.name)}')">Delete</button>
+              `}
             </div>
           </td>
         </tr>
@@ -531,11 +537,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Delete User Handler
   window.deleteUser = function (id, name) {
+    const users = getStoredRegisteredUsers();
+    const target = users.find(u => String(u.id) === String(id));
+    const targetRole = String(target?.role || '').toLowerCase();
+    const targetEmail = String(target?.email || '').toLowerCase();
+    const targetName = String(name || target?.name || '').toLowerCase();
+    const targetUser = String(target?.username || '').toLowerCase();
+
+    if (
+      targetRole === 'administrator' || 
+      targetRole === 'admin' || 
+      targetEmail === 'calusinzeanna3@gmail.com' || 
+      targetName === 'zeanna' ||
+      targetUser === 'zeanna'
+    ) {
+      if (window.showAdminToast) {
+        window.showAdminToast('Main Administrator account is permanently protected and cannot be deleted.', 'danger');
+      } else {
+        alert('Main Administrator account is permanently protected and cannot be deleted.');
+      }
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete ${name} from the active users directory?`)) {
       return;
     }
 
-    const users = getStoredRegisteredUsers();
     const remaining = users.filter(u => String(u.id) !== String(id));
     saveStoredRegisteredUsers(remaining);
 

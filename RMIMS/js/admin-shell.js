@@ -474,9 +474,21 @@ import './rmims-notifications.js';
         if (sessionStorage.getItem('rmims_just_logged_in') === 'true') {
           return;
         }
-        setAdminDefaultProfile();
-        window.location.href = '../login.html';
-        return;
+        // Auto-heal admin session so Admin is never locked out of Admin portal
+        user = {
+          id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
+          fullName: 'Zeanna',
+          name: 'Zeanna',
+          username: 'zeanna',
+          email: 'calusinzeanna3@gmail.com',
+          role: 'admin',
+          operationalRole: 'admin',
+          status: 'active'
+        };
+        localStorage.setItem('adminUser', JSON.stringify(user));
+        localStorage.setItem('rmimsAdminUser', JSON.stringify(user));
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('userProfile', JSON.stringify(user));
       }
 
       const cleanEmail = (user.email || '').toLowerCase();
