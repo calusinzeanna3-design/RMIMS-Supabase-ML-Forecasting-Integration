@@ -20,17 +20,59 @@ export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials"
  * - KXC Enterprise: 59 Materials (Folder: a72a7971-6ec7-4edc-ae72-89d702199ed9)
  * Seamlessly merges any custom user-added materials.
  */
+/**
+ * Authoritatively determines the measurement unit for raw materials:
+ * - Fresh Whole Eggs (NB-006): 'pcs'
+ * - Plastic Pillow Packaging (NB-019): 'kl'
+ * - All other 17 Scones & Muffins baking materials (flour, sugar, yeast, etc.): 'g' (Grams)
+ * - Non-Scones materials (KXC Enterprise): preserves original unit_of_measure or unit ('kg', 'L', etc.)
+ */
+export function getAuthoritativeMaterialUnit(material, isScones = false) {
+    if (!material) return "kg";
+    const code = String(material.item_code || material.itemCode || material.id || material.code || "").toUpperCase().trim();
+    const name = String(material.name || material.raw_material_name || "").toLowerCase().trim();
+
+    let checkScones = isScones;
+    if (!checkScones) {
+        try {
+            const tCtx = getActiveTenantContext();
+            checkScones = Boolean(tCtx && tCtx.isScones);
+        } catch (_) {}
+    }
+    const isSconesItem = checkScones || code.startsWith("NB-") || name.includes("nutribun") || name.includes("scones");
+
+    if (isSconesItem) {
+        if (code === "NB-006" || name.includes("fresh whole eggs") || name.includes("egg")) {
+            return "pcs";
+        }
+        if (code === "NB-019" || name.includes("plastic pillow") || name.includes("pillow packaging")) {
+            return "kl";
+        }
+        return "g";
+    }
+
+    return material.unit_of_measure || material.unit || "kg";
+}
+
+/**
+ * Returns all active raw materials for the entire system:
+ * Automatically selects the appropriate branch store / company dataset:
+ * - Scones & Muffins Bakery: 19 Nutribun Materials (Folder: 1872cf44-e821-4370-b227-d1b7e4fc6f56)
+ * - KXC Enterprise: 59 Materials (Folder: a72a7971-6ec7-4edc-ae72-89d702199ed9)
+ * Seamlessly merges any custom user-added materials and enforces authentic units.
+ */
 export function getSystemRawMaterials() {
     let tCtx = null;
     try {
         tCtx = getActiveTenantContext();
     } catch (_) {}
-    const isScones = tCtx && tCtx.isScones;
+    const isScones = Boolean(tCtx && tCtx.isScones);
     const baseSource = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
 
     let list = baseSource.map(m => {
         const stockVal = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
         const minVal = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+        const correctUnit = getAuthoritativeMaterialUnit(m, isScones);
         return {
             ...m,
             id: String(m.id || m.item_code),
@@ -42,8 +84,8 @@ export function getSystemRawMaterials() {
             minimum_stock: minVal,
             minimumStock: minVal,
             minStock: minVal,
-            unit_of_measure: m.unit_of_measure || m.unit || "kg",
-            unit: m.unit_of_measure || m.unit || "kg"
+            unit_of_measure: correctUnit,
+            unit: correctUnit
         };
     });
 
@@ -51,8 +93,9 @@ export function getSystemRawMaterials() {
     try {
         const stored = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
         if (stored) {
-            const customMats = JSON.parse(stored);
+            let customMats = JSON.parse(stored);
             if (Array.isArray(customMats)) {
+                let customModified = false;
                 customMats.forEach(cm => {
                     const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
                     const code = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
@@ -60,13 +103,19 @@ export function getSystemRawMaterials() {
                         (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
                         String(m.item_code || m.id || "").toUpperCase().trim() === code
                     );
+                    const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
+                    if (isScones && (cm.unit !== authUnit || cm.unit_of_measure !== authUnit)) {
+                        cm.unit = authUnit;
+                        cm.unit_of_measure = authUnit;
+                        customModified = true;
+                    }
                     const record = {
                         id: cm.id || code || `RM-${String(list.length + 1).padStart(3, "0")}`,
                         item_code: cm.item_code || cm.itemCode || code,
                         name: cm.name,
                         category: cm.category || "General Materials",
-                        unit_of_measure: cm.unit_of_measure || cm.unit || "kg",
-                        unit: cm.unit_of_measure || cm.unit || "kg",
+                        unit_of_measure: authUnit,
+                        unit: authUnit,
                         current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
                         currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
                         minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
@@ -82,6 +131,11 @@ export function getSystemRawMaterials() {
                         list.push(record);
                     }
                 });
+                if (customModified) {
+                    try {
+                        localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(customMats));
+                    } catch (_) {}
+                }
             }
         }
     } catch (e) {
@@ -113,9 +167,12 @@ export function getSystemRawMaterials() {
 
                 if (foundIndex !== -1) {
                     const existing = list[foundIndex];
+                    const authUnit = getAuthoritativeMaterialUnit(existing, isScones);
                     list[foundIndex] = {
                         ...existing,
                         ...ov,
+                        unit: authUnit,
+                        unit_of_measure: authUnit,
                         current_stock: curStock !== undefined ? curStock : existing.current_stock,
                         currentStock: curStock !== undefined ? curStock : existing.current_stock,
                         stock: curStock !== undefined ? curStock : existing.current_stock,
@@ -125,14 +182,15 @@ export function getSystemRawMaterials() {
                         minStock: minStock !== undefined ? minStock : existing.minimum_threshold
                     };
                 } else if (ov.name || ov.raw_material_name) {
+                    const authUnit = getAuthoritativeMaterialUnit(ov, isScones);
                     const record = {
                         id: code || ov.id || `RM-${String(list.length + 1).padStart(3, "0")}`,
                         item_code: code || ov.item_code || ov.id,
                         name: ov.name || ov.raw_material_name,
                         raw_material_name: ov.name || ov.raw_material_name,
                         category: ov.category || "General Materials",
-                        unit_of_measure: ov.unit || ov.unit_of_measure || "kg",
-                        unit: ov.unit || ov.unit_of_measure || "kg",
+                        unit_of_measure: authUnit,
+                        unit: authUnit,
                         current_stock: curStock !== undefined ? curStock : 0,
                         currentStock: curStock !== undefined ? curStock : 0,
                         stock: curStock !== undefined ? curStock : 0,
@@ -168,7 +226,7 @@ export function getSystemRawMaterials() {
     return list.map(m => {
         const s = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
         const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-        const u = m.unit_of_measure || m.unit || "kg";
+        const u = getAuthoritativeMaterialUnit(m, isScones);
         return {
             ...m,
             current_stock: s,
@@ -419,7 +477,7 @@ export function saveCustomReceipt(receipt) {
         received_quantity: Number(receipt.received_quantity ?? receipt.receivedQuantity ?? receipt.quantity ?? 0),
         receivedQuantity: Number(receipt.received_quantity ?? receipt.receivedQuantity ?? receipt.quantity ?? 0),
         quantity: Number(receipt.received_quantity ?? receipt.receivedQuantity ?? receipt.quantity ?? 0),
-        unit: receipt.unit || "kg",
+        unit: receipt.unit || getAuthoritativeMaterialUnit({ id: receipt.material_id || receipt.materialId, name: receipt.material_name || receipt.materialName }),
         receipt_date: receipt.receipt_date || receipt.receiptDate || receipt.date || new Date().toISOString().slice(0, 10),
         receiptDate: receipt.receipt_date || receipt.receiptDate || receipt.date || new Date().toISOString().slice(0, 10),
         supplier_name: receipt.supplier_name || receipt.supplierName || receipt.supplier || "Inward Delivery",
@@ -466,7 +524,7 @@ export function saveCustomDisbursement(disbursement) {
         consumed_quantity: Number(disbursement.consumed_quantity ?? disbursement.consumedQuantity ?? disbursement.quantity ?? 0),
         consumedQuantity: Number(disbursement.consumed_quantity ?? disbursement.consumedQuantity ?? disbursement.quantity ?? 0),
         quantity: Number(disbursement.consumed_quantity ?? disbursement.consumedQuantity ?? disbursement.quantity ?? 0),
-        unit: disbursement.unit || "kg",
+        unit: disbursement.unit || getAuthoritativeMaterialUnit({ id: disbursement.material_id || disbursement.materialId, name: disbursement.material_name || disbursement.materialName }),
         usage_date: disbursement.usage_date || disbursement.usageDate || disbursement.date || new Date().toISOString().slice(0, 10),
         usageDate: disbursement.usage_date || disbursement.usageDate || disbursement.date || new Date().toISOString().slice(0, 10),
         activity_type: disbursement.activity_type || disbursement.activityType || disbursement.context || "Production Usage",

@@ -23,28 +23,39 @@ import {
   deleteStaffTransaction
 } from './rmims-transaction-engine.js';
 
-// Authentic Bill of Materials (BOM) standard ratios (kg/L per finished food unit)
+// Authentic Bill of Materials (BOM) standard ratios (g/pcs/kl for Scones; kg/L for KXC)
 const BASELINE_BOM_RATIOS = {
   // Authoritative Scones & Muffins Bakery (19 Nutribun Raw Materials) Ratios
-  "All-Purpose / Bread Flour": 0.25,
-  "Refined White Sugar": 0.10,
-  "Fresh Yellow Squash (Kalabasa)": 0.35,
-  "Skimmed Milk Powder": 0.08,
-  "Condensed Milk": 0.10,
-  "Fresh Whole Eggs": 0.12,
-  "Baking Shortening": 0.08,
-  "Margarine": 0.08,
-  "Instant Dry Yeast": 0.015,
-  "Baking Soda": 0.01,
-  "Iodized Salt": 0.015,
-  "Calcium Propionate": 0.005,
-  "Potassium Sorbate": 0.005,
-  "Crushed Peanuts / Nuts": 0.05,
-  "Desiccated Coconut": 0.05,
-  "Black Sesame Seeds": 0.02,
-  "Malunggay (Moringa) Flakes": 0.02,
-  "Vanilla Extract": 0.005,
-  "Plastic Pillow Packaging": 1.0,
+  "All-Purpose / Bread Flour": 250,
+  "Refined White Sugar": 100,
+  "Fresh Yellow Squash (Kalabasa)": 350,
+  "Full Cream Evaporated Milk": 80,
+  "Skimmed Milk Powder": 80,
+  "Condensed Milk": 100,
+  "Fresh Whole Eggs": 1, // 1 pc
+  "Baking Shortening": 80,
+  "Pure Vegetable Shortening": 80,
+  "Margarine": 80,
+  "Bakery Margarine": 80,
+  "Instant Dry Yeast": 15,
+  "Baking Soda": 10,
+  "Pure Food-Grade Baking Soda": 10,
+  "Iodized Salt": 15,
+  "Fine Iodized Table Salt": 15,
+  "Bread Improver & Anti-Mold": 5,
+  "Calcium Propionate": 5,
+  "Potassium Sorbate": 5,
+  "Crushed Peanuts / Nuts": 50,
+  "Crushed Roasted Peanuts": 50,
+  "Desiccated Coconut": 50,
+  "Toasted Desiccated Coconut": 50,
+  "Black Sesame Seeds": 20,
+  "Natural Hulled White Sesame": 20,
+  "Malunggay (Moringa) Flakes": 20,
+  "Pure Moringa Powder": 20,
+  "Vanilla Extract": 5,
+  "Pure Liquid Vanilla Flavor": 5,
+  "Plastic Pillow Packaging": 0.02, // 0.02 kl film roll per batch
 
   "Fresh Mature Coconut Meat": 0.40,
   "Panutsa Cane Sugar": 0.15,
@@ -214,13 +225,15 @@ function getFinishedProductsForMaterial(materialName) {
   catalog.forEach(product => {
     const matchedIng = (product.materialNames || []).find(ing => matchProductIngredient(ing, materialName));
     if (matchedIng) {
+      const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matchedIng) && BASELINE_BOM_RATIOS[matchedIng] > 1;
       const ratio = BASELINE_BOM_RATIOS[matchedIng] || (
+        isSconesRatio ? 100 :
         materialName.toLowerCase().includes('sugar') || materialName.toLowerCase().includes('flour') ? 0.25 :
         materialName.toLowerCase().includes('oil') ? 0.08 :
         materialName.toLowerCase().includes('salt') ? 0.015 : 0.15
       );
       const standardBatchUnits = 50;
-      const neededStock = Math.max(0.5, Math.round(ratio * standardBatchUnits * 10) / 10);
+      const neededStock = Math.max(0.1, Math.round(ratio * standardBatchUnits * 10) / 10);
       results.push({
         productName: product.name,
         ingredientName: matchedIng,
@@ -441,6 +454,22 @@ function populateMaterialSelect() {
     opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10;
     select.appendChild(opt);
   });
+
+  // Pre-select via URL parameters if present
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const targetMat = sp.get('material') || sp.get('id') || sp.get('item_code') || sp.get('code');
+    if (targetMat) {
+      const match = Array.from(select.options).find(o => 
+        String(o.value).toUpperCase() === targetMat.toUpperCase() ||
+        String(o.dataset.name || '').toLowerCase() === targetMat.toLowerCase()
+      );
+      if (match) select.value = match.value;
+    }
+  } catch (_) {}
+
+  // Trigger change to sync unit badge and preview
+  select.dispatchEvent(new Event('change'));
 }
 
 function bindFormEvents() {
@@ -458,7 +487,16 @@ function bindFormEvents() {
       if (selected && selected.value) {
         const u = selected.dataset.unit || '';
         if (unitBadge) unitBadge.textContent = u || '--';
-        if (unitSelect) unitSelect.value = u;
+        if (unitSelect) {
+          if (u && !Array.from(unitSelect.options).some(o => o.value === u)) {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            unitSelect.appendChild(opt);
+          }
+          unitSelect.value = u;
+        }
+        if (qtyInput) qtyInput.placeholder = u ? `e.g. 50 ${u}` : 'e.g. 50';
         if (stockPreview) stockPreview.style.display = 'block';
         if (stockVal) stockVal.textContent = u ? `${selected.dataset.stock} ${u}` : `${selected.dataset.stock}`;
         if (minVal) minVal.textContent = u ? `${selected.dataset.min} ${u}` : `${selected.dataset.min}`;
@@ -467,6 +505,7 @@ function bindFormEvents() {
         if (stockPreview) stockPreview.style.display = 'none';
         if (unitBadge) unitBadge.textContent = '--';
         if (unitSelect) unitSelect.value = '';
+        if (qtyInput) qtyInput.placeholder = 'e.g. 50';
         hideBundleReceiveSection();
       }
     });
@@ -834,11 +873,14 @@ function openStaffEditRecModal(ref) {
   const modal = document.getElementById('staffEditRecModal');
   if (!modal) return;
 
+  const mat = rawMaterials.find(m => (m.name || '').toLowerCase() === (tx.material || '').toLowerCase() || String(m.id) === String(tx.materialId));
+  const fallbackUnit = mat ? (mat.unit_of_measure || mat.unit) : '';
+
   document.getElementById('staffEditRecRef').value = tx.ref;
   document.getElementById('staffEditRecRefDisplay').value = tx.ref;
   document.getElementById('staffEditRecMaterial').value = tx.material || '';
   document.getElementById('staffEditRecQty').value = tx.quantity || 0;
-  document.getElementById('staffEditRecUnit').value = tx.unit || 'kg';
+  document.getElementById('staffEditRecUnit').value = tx.unit || fallbackUnit || '--';
   document.getElementById('staffEditRecSupplier').value = tx.supplier || '';
   document.getElementById('staffEditRecNotes').value = tx.notes || '';
 
