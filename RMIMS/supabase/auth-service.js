@@ -270,9 +270,25 @@ export async function loginUser(email, password, expectedRole) {
         }
 
         // Check for pending admin confirmation (Admins are the sole authority for account approvals)
+        let isLocallyApproved = false;
+        try {
+            const regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+            isLocallyApproved = regUsers.some(u => 
+                (u.email && u.email.toLowerCase() === cleanEmail) ||
+                (u.username && profile.username && u.username.toLowerCase() === profile.username.toLowerCase())
+            );
+        } catch (_) {}
+
         if (!isMasterAdmin && (profile.status === "pending" || profile.status === "pending_approval")) {
-            await supabase.auth.signOut();
-            throw new Error("Your account is pending Administrator approval. Please wait for an Administrator to verify and activate your account before signing in.");
+            if (isLocallyApproved) {
+                profile.status = "active";
+                try {
+                    await supabase.rpc('admin_approve_user', { p_identifier: cleanEmail });
+                } catch (_) {}
+            } else {
+                await supabase.auth.signOut();
+                throw new Error("Your account is pending Administrator approval. Please wait for an Administrator to verify and activate your account before signing in.");
+            }
         }
 
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";

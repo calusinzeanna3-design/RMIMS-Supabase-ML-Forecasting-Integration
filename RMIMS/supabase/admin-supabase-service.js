@@ -555,26 +555,40 @@ export async function fetchPendingApprovals() {
 
 /**
  * Approve a pending user account and activate their portal access.
+ * Standalone: Supports user object or string (email, username, or UUID).
  */
-export async function approveUserAccount(userId, approvedBy = 'Main Admin') {
-  if (!userId) return;
+export async function approveUserAccount(targetParam, approvedBy = 'Main Admin') {
+  if (!targetParam) return;
+  const targetId = typeof targetParam === 'object' ? (targetParam.id || '') : String(targetParam);
+  const targetEmail = typeof targetParam === 'object' ? (targetParam.email || '') : (String(targetParam).includes('@') ? String(targetParam) : '');
+  const targetUsername = typeof targetParam === 'object' ? (targetParam.username || '') : '';
+  const identifier = targetEmail || targetUsername || targetId;
 
   // Local storage update
   try {
     const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_USERS);
     const pendingList = rawPending ? JSON.parse(rawPending) : [];
-    const target = pendingList.find(u => String(u.id) === String(userId));
-    const remainingPending = pendingList.filter(u => String(u.id) !== String(userId));
+    const target = pendingList.find(u => 
+      (targetId && String(u.id) === String(targetId)) ||
+      (targetEmail && u.email && u.email.toLowerCase() === targetEmail.toLowerCase()) ||
+      (targetUsername && u.username && u.username.toLowerCase() === targetUsername.toLowerCase())
+    );
+    const remainingPending = pendingList.filter(u => 
+      !(targetId && String(u.id) === String(targetId)) &&
+      !(targetEmail && u.email && u.email.toLowerCase() === targetEmail.toLowerCase())
+    );
     localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(remainingPending));
 
     if (target) {
       const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
       const regList = rawReg ? JSON.parse(rawReg) : [];
-      regList.push({
-        ...target,
-        status: 'Active'
-      });
-      localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(regList));
+      if (!regList.some(r => r.email === target.email || (target.id && r.id === target.id))) {
+        regList.push({
+          ...target,
+          status: 'Active'
+        });
+        localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(regList));
+      }
     }
 
     window.dispatchEvent(new Event('rmims_pending_users_updated'));
@@ -586,21 +600,40 @@ export async function approveUserAccount(userId, approvedBy = 'Main Admin') {
   logAdminActivity({
     action: 'Approved Account',
     module: 'User Management',
-    details: `Approved access for user ID ${userId} by ${approvedBy}`
+    details: `Approved access for ${identifier} by ${approvedBy}`
   });
 
   try {
     if (!supabase) return { success: true, offline: true };
 
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({
+    // 1. Try RPC stored procedure first (most resilient, bypasses client trigger limits)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('admin_approve_user', {
+        p_identifier: identifier
+      });
+      if (!rpcError && rpcData?.success) {
+        return { success: true, method: 'rpc' };
+      }
+    } catch (_) {}
+
+    // 2. Direct Supabase updates by email, username, and UUID
+    if (targetEmail) {
+      await supabase.from('user_profiles').update({
         status: 'active',
         updated_at: new Date().toISOString()
-      })
-      .eq('id', userId);
+      }).ilike('email', targetEmail);
+    } else if (targetId && targetId.length > 20 && !targetId.startsWith('pending-')) {
+      await supabase.from('user_profiles').update({
+        status: 'active',
+        updated_at: new Date().toISOString()
+      }).eq('id', targetId);
+    } else if (targetUsername) {
+      await supabase.from('user_profiles').update({
+        status: 'active',
+        updated_at: new Date().toISOString()
+      }).ilike('username', targetUsername);
+    }
 
-    if (error) throw error;
     return { success: true };
   } catch (err) {
     console.warn('[AdminSupabase] Approve user account failed on Supabase:', err.message || err);

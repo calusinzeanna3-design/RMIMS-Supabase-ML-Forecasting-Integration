@@ -152,6 +152,19 @@ window.approveOverviewAccount = function (userId, statusId, actionsId, userName)
     } catch (_) {}
   }
 
+  // Standalone Supabase synchronization
+  try {
+    import('../supabase/admin-supabase-service.js')
+      .then(srv => {
+        srv.approveUserAccount({
+          id: approvedItem?.id || userId,
+          email: approvedItem?.email,
+          username: approvedItem?.username
+        });
+      })
+      .catch(() => {});
+  } catch (_) {}
+
   logSystemActivity('Approved Account', `Approved access for ${userName} (${approvedItem ? approvedItem.role : 'Staff'})`);
 
   if (typeof window.showAdminToast === 'function') {

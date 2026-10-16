@@ -665,7 +665,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sync approval to Supabase
     import('../supabase/admin-supabase-service.js')
-      .then(srv => srv.approveUserAccount(newUserId))
+      .then(srv => srv.approveUserAccount({
+        id: newUserId,
+        email: email,
+        username: username
+      }))
       .catch(() => {});
 
     if (window.showAdminToast) {
