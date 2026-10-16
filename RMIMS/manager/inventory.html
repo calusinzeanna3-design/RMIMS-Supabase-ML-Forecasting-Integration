@@ -1132,8 +1132,8 @@
                                 Add Finished Product Formulation
                             </h4>
                         </div>
-                        <span style="font-size:11.5px; color:#B45309; font-weight:600; background:rgba(217,119,6,0.12); padding:3px 8px; border-radius:6px;">
-                            Available Inventory Only
+                        <span style="font-size:11.5px; color:#B45309; font-weight:600; background:rgba(217,119,6,0.12); padding:3px 8px; border-radius:6px;" id="addFpCatalogBadge">
+                            Authoritative Dataset Catalog
                         </span>
                     </div>
 
@@ -1146,26 +1146,31 @@
                                     Finished Product Name <span class="req">*</span>
                                 </label>
                                 <input type="text" id="newFpName" required
-                                    placeholder="e.g. Pineapple Pastry Tart"
+                                    placeholder="e.g. Scones Formulation"
                                     style="border-color:#FCD34D; font-size:13px;">
                                 <small style="color:#92400E; font-size:11px; margin-top:2px;">Enter a unique name for the finished product formulation folder.</small>
                             </div>
 
-                            <!-- Raw Materials Selection Dropdown (Only Available in Inventory) -->
+                            <!-- Raw Materials Selection Dropdown (All Dataset Materials Available) -->
                             <div class="mgr-field-group">
                                 <label for="newFpRawMaterialSelect" style="color:#78350F; font-size:12px; font-weight:600;">
-                                    Available Raw Materials in Inventory <span class="req">*</span>
+                                    Dataset Raw Materials Choices <span class="req">*</span>
                                 </label>
-                                <div style="display:flex; gap:8px;">
-                                    <select id="newFpRawMaterialSelect" class="mgr-select-filter" style="flex:1; border-color:#FCD34D; font-size:12.5px; height:38px;">
-                                        <!-- Dynamically populated with ONLY available raw materials in inventory -->
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    <select id="newFpRawMaterialSelect" class="mgr-select-filter" style="flex:1; min-width:200px; border-color:#FCD34D; font-size:12.5px; height:38px;">
+                                        <!-- Dynamically populated with all raw materials from dataset -->
                                     </select>
                                     <button type="button" class="btn-primary-sm" id="btnAddNewFpMaterial"
                                         style="white-space:nowrap; background:#15803D !important; border:1px solid #166534 !important; color:#FFFFFF !important; font-weight:600; padding:6px 14px; border-radius:6px;">
                                         + Add Material
                                     </button>
+                                    <button type="button" class="btn-secondary-sm" id="btnAddAllFpMaterials"
+                                        style="white-space:nowrap; background:#FEF3C7 !important; border:1px solid #F59E0B !important; color:#92400E !important; font-weight:600; padding:6px 14px; border-radius:6px;"
+                                        title="Add all raw materials from dataset into recipe formulation">
+                                        + Add All Materials
+                                    </button>
                                 </div>
-                                <small style="color:#92400E; font-size:11px; margin-top:2px;">Only raw materials currently in inventory appear in this selection.</small>
+                                <small style="color:#92400E; font-size:11px; margin-top:2px;">All raw materials from your active dataset are available in these choices.</small>
                             </div>
                         </div>
 

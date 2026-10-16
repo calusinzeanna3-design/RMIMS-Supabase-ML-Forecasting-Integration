@@ -10,7 +10,9 @@
  */
 
 import { getSystemRawMaterials, saveCustomRawMaterial, getSystemNextItemCode, deleteSystemRawMaterial } from './system-materials.js';
-import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
+import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG, AUTHENTIC_SCONES_FINISHED_PRODUCTS } from './authentic-finished-products.js';
+import { AUTHENTIC_19_SCONES_MATERIALS } from './authentic-scones-dataset.js';
+import { getActiveTenantContext } from './tenant-manager.js';
 
 // Local storage keys for Manager specific overrides & history
 const MGR_STORAGE_OVERRIDES_KEY = 'rmims_manager_material_overrides';
@@ -43,6 +45,27 @@ const DEFAULT_LOCATIONS = {
 
 // Authoritative Baseline Formulation Ratios (kg or L per finished product unit)
 const BASELINE_BOM_RATIOS = {
+  // Authoritative Scones & Muffins Bakery (19 Nutribun Raw Materials) Ratios
+  "All-Purpose / Bread Flour": 0.25,
+  "Refined White Sugar": 0.10,
+  "Fresh Yellow Squash (Kalabasa)": 0.35,
+  "Skimmed Milk Powder": 0.08,
+  "Condensed Milk": 0.10,
+  "Fresh Whole Eggs": 0.12,
+  "Baking Shortening": 0.08,
+  "Margarine": 0.08,
+  "Instant Dry Yeast": 0.015,
+  "Baking Soda": 0.01,
+  "Iodized Salt": 0.015,
+  "Calcium Propionate": 0.005,
+  "Potassium Sorbate": 0.005,
+  "Crushed Peanuts / Nuts": 0.05,
+  "Desiccated Coconut": 0.05,
+  "Black Sesame Seeds": 0.02,
+  "Malunggay (Moringa) Flakes": 0.02,
+  "Vanilla Extract": 0.005,
+  "Plastic Pillow Packaging": 1.0,
+
   "Fresh Mature Coconut Meat": 0.40,
   "Panutsa Cane Sugar": 0.15,
   "Muscovado Brown Sugar": 0.12,
@@ -1088,16 +1111,108 @@ function isLegacyKxcProduct(name) {
   return LEGACY_KXC_PRODUCT_NAMES.has(n);
 }
 
+export const SCONES_ALL_19_MATERIALS = [
+  "All-Purpose / Bread Flour",
+  "Refined White Sugar",
+  "Fresh Yellow Squash (Kalabasa)",
+  "Skimmed Milk Powder",
+  "Condensed Milk",
+  "Fresh Whole Eggs",
+  "Baking Shortening",
+  "Margarine",
+  "Instant Dry Yeast",
+  "Baking Soda",
+  "Iodized Salt",
+  "Calcium Propionate",
+  "Potassium Sorbate",
+  "Crushed Peanuts / Nuts",
+  "Desiccated Coconut",
+  "Black Sesame Seeds",
+  "Malunggay (Moringa) Flakes",
+  "Vanilla Extract",
+  "Plastic Pillow Packaging"
+];
+
+export const SCONES_5_KEY_MATERIALS = [
+  "Baking Shortening",
+  "Margarine",
+  "Baking Soda",
+  "Potassium Sorbate",
+  "Crushed Peanuts / Nuts"
+];
+
 function getCustomFinishedProducts() {
   try {
     const raw = localStorage.getItem('rmims_custom_finished_products') || 
                 localStorage.getItem('RMSME_CUSTOM_FINISHED_PRODUCTS') ||
                 localStorage.getItem('rmims_finished_product_context');
-    if (!raw) return [];
-    const list = JSON.parse(raw);
-    if (!Array.isArray(list)) return [];
-    const cleaned = list.filter(p => p && p.name && !isLegacyKxcProduct(p.name));
-    if (cleaned.length !== list.length) {
+    let list = [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    }
+
+    let cleaned = list.filter(p => p && p.name && !isLegacyKxcProduct(p.name));
+    let modified = false;
+
+    // Detect if active tenant context is Scones
+    let isSconesTenant = false;
+    try {
+      const tCtx = getActiveTenantContext && getActiveTenantContext();
+      if (tCtx && tCtx.isScones) isSconesTenant = true;
+    } catch (_) {}
+
+    // Auto-heal / Ensure all 19 Scones materials are in Scones finished products
+    cleaned.forEach(p => {
+      const pName = String(p.name || '').toLowerCase();
+      const isSconeProduct = isSconesTenant || 
+                             pName.includes('scone') || 
+                             pName.includes('muffin') || 
+                             pName.includes('nutribun') || 
+                             (Array.isArray(p.materialNames) && p.materialNames.some(m => {
+                               const ml = String(m || '').toLowerCase();
+                               return ml.includes('yellow squash') || ml.includes('malunggay') || ml.includes('pillow packaging') || ml.includes('bread flour');
+                             }));
+
+      if (isSconeProduct) {
+        if (!Array.isArray(p.materialNames)) p.materialNames = [];
+        
+        // Ensure all 19 Scones materials are included in the recipe formulation
+        SCONES_ALL_19_MATERIALS.forEach(sconeMat => {
+          const sconeMatLower = sconeMat.toLowerCase().trim();
+          const hasMat = p.materialNames.some(m => {
+            const ml = String(m || '').toLowerCase().trim();
+            return ml === sconeMatLower || 
+                   (sconeMatLower.includes('flour') && ml.includes('flour')) ||
+                   (sconeMatLower.includes('shortening') && ml.includes('shortening')) ||
+                   (sconeMatLower.includes('margarine') && ml.includes('margarine')) ||
+                   (sconeMatLower.includes('baking soda') && ml.includes('baking soda')) ||
+                   (sconeMatLower.includes('sorbate') && ml.includes('sorbate')) ||
+                   (sconeMatLower.includes('peanut') && ml.includes('peanut'));
+          });
+
+          if (!hasMat) {
+            p.materialNames.push(sconeMat);
+            modified = true;
+          }
+        });
+      }
+    });
+
+    // If on Scones tenant and no finished products exist yet, seed the default Scones formulation
+    if (isSconesTenant && cleaned.length === 0) {
+      cleaned.push({
+        id: 'fp-scones-01',
+        name: 'Scones Formulation',
+        materialNames: [...SCONES_ALL_19_MATERIALS],
+        category: 'Bakery & Breads',
+        batchUnits: 50,
+        created_at: new Date().toISOString()
+      });
+      modified = true;
+    }
+
+    if (modified || cleaned.length !== list.length) {
       saveCustomFinishedProducts(cleaned);
     }
     return cleaned;
@@ -1233,15 +1348,59 @@ function populateAvailableRawMaterialsDropdown() {
   const select = document.getElementById('newFpRawMaterialSelect');
   if (!select) return;
 
-  const available = (rawMaterials || []).filter(m => {
-    const notArchived = !m.isArchived;
-    const hasStock = Number(m.current_stock) > 0;
-    const isAvail = (m.status === 'Available' || m.status === 'In Stock' || m.status === 'Good');
-    return notArchived && hasStock && isAvail;
+  // Include all non-archived materials from inventory catalog
+  let available = (rawMaterials || []).filter(m => !m.isArchived);
+
+  // Check if active tenant or context is Scones
+  let isSconesTenant = false;
+  try {
+    const tCtx = getActiveTenantContext && getActiveTenantContext();
+    if (tCtx && tCtx.isScones) isSconesTenant = true;
+  } catch (_) {}
+
+  if (!isSconesTenant) {
+    isSconesTenant = (rawMaterials || []).some(m => {
+      const nm = (m.raw_material_name || m.name || '').toLowerCase();
+      return nm.includes('yellow squash') || nm.includes('malunggay') || nm.includes('pillow packaging') || nm.includes('bread flour');
+    });
+  }
+
+  // Ensure ALL 19 Scones materials from the dataset are always available as selectable choices
+  if (isSconesTenant || available.length < 19) {
+    AUTHENTIC_19_SCONES_MATERIALS.forEach(sconeMat => {
+      const exists = available.some(m => {
+        const mName = (m.raw_material_name || m.name || '').toLowerCase().trim();
+        const sName = (sconeMat.raw_material_name || sconeMat.name || '').toLowerCase().trim();
+        const mCode = String(m.item_code || m.id || '').toUpperCase().trim();
+        const sCode = String(sconeMat.item_code || sconeMat.id || '').toUpperCase().trim();
+        return mName === sName || mCode === sCode;
+      });
+
+      if (!exists) {
+        available.push({
+          id: sconeMat.id,
+          item_code: sconeMat.item_code,
+          name: sconeMat.name,
+          raw_material_name: sconeMat.raw_material_name,
+          category: sconeMat.category,
+          unit: sconeMat.unit || sconeMat.unit_of_measure || 'kg',
+          current_stock: Number(sconeMat.current_stock || 0),
+          minimum_stock: Number(sconeMat.minimum_threshold || 10),
+          status: sconeMat.current_stock < sconeMat.minimum_threshold ? 'Out of Stock' : 'Good'
+        });
+      }
+    });
+  }
+
+  // Sort sequentially by Item Code (NB-001 ... NB-019) or name
+  available.sort((a, b) => {
+    const codeA = String(a.item_code || a.id || '');
+    const codeB = String(b.item_code || b.id || '');
+    return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
   });
 
   if (available.length === 0) {
-    select.innerHTML = '<option value="">No available raw materials currently in inventory</option>';
+    select.innerHTML = '<option value="">No raw materials found in dataset</option>';
     select.disabled = true;
     return;
   }
@@ -1249,7 +1408,11 @@ function populateAvailableRawMaterialsDropdown() {
   select.disabled = false;
   select.innerHTML = available.map(m => {
     const matName = m.raw_material_name || m.name;
-    return `<option value="${escapeHtml(matName)}">${escapeHtml(matName)} (Stock: ${Number(m.current_stock).toLocaleString()} ${escapeHtml(m.unit)})</option>`;
+    const codeStr = m.item_code ? `${m.item_code} - ` : '';
+    const stockStr = Number(m.current_stock).toLocaleString();
+    const unitStr = m.unit || 'kg';
+    const statusNote = m.status && m.status !== 'Good' ? ` • ${m.status}` : '';
+    return `<option value="${escapeHtml(matName)}">${escapeHtml(codeStr)}${escapeHtml(matName)} (Stock: ${stockStr} ${escapeHtml(unitStr)}${statusNote})</option>`;
   }).join('');
 }
 
@@ -1266,6 +1429,26 @@ function handleAddNewFpMaterial() {
   selectedNewFpMaterials.add(matName);
   renderNewFpSelectedMaterials();
 }
+
+function handleAddAllFpMaterials() {
+  const select = document.getElementById('newFpRawMaterialSelect');
+  if (!select) return;
+  const options = Array.from(select.options);
+  let addedCount = 0;
+  options.forEach(opt => {
+    if (opt.value && !selectedNewFpMaterials.has(opt.value)) {
+      selectedNewFpMaterials.add(opt.value);
+      addedCount++;
+    }
+  });
+  renderNewFpSelectedMaterials();
+  if (addedCount > 0) {
+    showToast(`Added ${addedCount} raw materials from dataset to formulation.`, 'success');
+  } else {
+    showToast('All raw materials are already added to this formulation.', 'info');
+  }
+}
+window.handleAddAllFpMaterials = handleAddAllFpMaterials;
 
 function removeNewFpMaterial(matName) {
   selectedNewFpMaterials.delete(matName);
@@ -2107,6 +2290,9 @@ function initEventListeners() {
   const btnAddNewFpMat = document.getElementById('btnAddNewFpMaterial');
   if (btnAddNewFpMat) btnAddNewFpMat.addEventListener('click', handleAddNewFpMaterial);
 
+  const btnAddAllFpMat = document.getElementById('btnAddAllFpMaterials');
+  if (btnAddAllFpMat) btnAddAllFpMat.addEventListener('click', handleAddAllFpMaterials);
+
   const addFpForm = document.getElementById('addFinishedProductForm');
   if (addFpForm) addFpForm.addEventListener('submit', handleAddFinishedProductSubmit);
 
@@ -2800,19 +2986,38 @@ function openFinishedProductModal(productName) {
 
   if (tbody) {
     tbody.innerHTML = (product.materialNames || []).map(matName => {
-      const matched = rawMaterials.find(m => {
+      let matched = rawMaterials.find(m => {
         const rName = (m.raw_material_name || m.name || '').toLowerCase();
         const sName = (m.specification_name || '').toLowerCase();
         const query = matName.toLowerCase();
         return rName.includes(query) || query.includes(rName) || sName.includes(query);
-      }) || {
-        raw_material_name: matName,
-        specification_name: `${matName} Standard Formulation Grade`,
-        current_stock: 0,
-        unit: 'kg',
-        status: 'Available',
-        storage_location: 'Warehouse A - Shelf 1'
-      };
+      });
+
+      if (!matched) {
+        const sconeMatch = AUTHENTIC_19_SCONES_MATERIALS.find(m => 
+          (m.name || '').toLowerCase() === matName.toLowerCase() ||
+          (m.raw_material_name || '').toLowerCase() === matName.toLowerCase()
+        );
+        if (sconeMatch) {
+          matched = {
+            ...sconeMatch,
+            specification_name: `${sconeMatch.name} Standard Formulation Grade`,
+            storage_location: 'Bakery Store - Tier 1'
+          };
+        }
+      }
+
+      if (!matched) {
+        matched = {
+          raw_material_name: matName,
+          name: matName,
+          specification_name: `${matName} Standard Formulation Grade`,
+          current_stock: 0,
+          unit: 'kg',
+          status: 'Available',
+          storage_location: 'Warehouse A - Shelf 1'
+        };
+      }
 
       let statusBadge = '<span class="mgr-status-badge status-instock"><span class="mgr-status-dot"></span>Available</span>';
       let stockColor = '#15803D';
@@ -3828,10 +4033,22 @@ function exportFinishedProducts(format) {
     const rows = [];
     catalog.forEach(p => {
       (p.materialNames || []).forEach(matName => {
-        const matched = rawMaterials.find(m => {
+        let matched = rawMaterials.find(m => {
           const rName = (m.raw_material_name || m.name || '').toLowerCase();
           return rName.includes(matName.toLowerCase()) || matName.toLowerCase().includes(rName);
-        }) || { specification_name: 'Standard Food Grade', current_stock: 0, unit: '', status: 'Available', storage_location: 'Warehouse A' };
+        });
+
+        if (!matched) {
+          const sconeMatch = AUTHENTIC_19_SCONES_MATERIALS.find(m => 
+            (m.name || '').toLowerCase() === matName.toLowerCase() ||
+            (m.raw_material_name || '').toLowerCase() === matName.toLowerCase()
+          );
+          if (sconeMatch) matched = sconeMatch;
+        }
+
+        if (!matched) {
+          matched = { specification_name: 'Standard Food Grade', current_stock: 0, unit: 'kg', status: 'Available', storage_location: 'Warehouse A' };
+        }
 
         const qtyPerUnit = BASELINE_BOM_RATIOS[matName] || (
           matName.toLowerCase().includes('sugar') || matName.toLowerCase().includes('flour') ? 0.25 :

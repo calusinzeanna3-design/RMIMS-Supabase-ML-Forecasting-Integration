@@ -29,6 +29,27 @@ const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 
 // Authentic Bill of Materials (BOM) standard ratios (kg/L per finished food unit)
 const BASELINE_BOM_RATIOS = {
+  // Authoritative Scones & Muffins Bakery (19 Nutribun Raw Materials) Ratios
+  "All-Purpose / Bread Flour": 0.25,
+  "Refined White Sugar": 0.10,
+  "Fresh Yellow Squash (Kalabasa)": 0.35,
+  "Skimmed Milk Powder": 0.08,
+  "Condensed Milk": 0.10,
+  "Fresh Whole Eggs": 0.12,
+  "Baking Shortening": 0.08,
+  "Margarine": 0.08,
+  "Instant Dry Yeast": 0.015,
+  "Baking Soda": 0.01,
+  "Iodized Salt": 0.015,
+  "Calcium Propionate": 0.005,
+  "Potassium Sorbate": 0.005,
+  "Crushed Peanuts / Nuts": 0.05,
+  "Desiccated Coconut": 0.05,
+  "Black Sesame Seeds": 0.02,
+  "Malunggay (Moringa) Flakes": 0.02,
+  "Vanilla Extract": 0.005,
+  "Plastic Pillow Packaging": 1.0,
+
   "Fresh Mature Coconut Meat": 0.40,
   "Panutsa Cane Sugar": 0.15,
   "Muscovado Brown Sugar": 0.12,
