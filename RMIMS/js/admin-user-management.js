@@ -455,7 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
           message: `Administrator created and activated a ${role} account for ${name} at ${branchName}.`,
           category: 'Activity',
           badge: 'User Management',
-          role: 'all',
+          role: 'admin',
+          targetRole: 'admin',
+          roleScope: 'admin',
           priority: 'normal',
           targetUrl: 'admin/user-management.html',
           actor: 'Administrator'
@@ -585,7 +587,9 @@ document.addEventListener('DOMContentLoaded', () => {
           message: `Administrator approved registration for ${name} (${role}) assigned to ${branchName}.`,
           category: 'Activity',
           badge: 'User Management',
-          role: 'all',
+          role: 'admin',
+          targetRole: 'admin',
+          roleScope: 'admin',
           priority: 'normal',
           targetUrl: 'admin/user-management.html',
           actor: 'Administrator'
@@ -717,7 +721,9 @@ document.addEventListener('DOMContentLoaded', () => {
           message: `Registration request for ${name} was rejected by Administrator.`,
           category: 'Activity',
           badge: 'User Management',
-          role: 'all',
+          role: 'admin',
+          targetRole: 'admin',
+          roleScope: 'admin',
           priority: 'normal',
           targetUrl: 'admin/user-management.html',
           actor: 'Administrator'

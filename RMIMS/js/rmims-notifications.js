@@ -41,7 +41,166 @@
     if (path.includes('/admin/')) return 'admin';
     if (path.includes('/manager/')) return 'manager';
     if (path.includes('/user/')) return 'staff';
-    return 'manager';
+    try {
+      const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+      const r = (u.operationalRole || u.role || '').toLowerCase();
+      if (r === 'admin') return 'admin';
+      if (r === 'manager') return 'manager';
+      if (r === 'staff' || r === 'user') return 'staff';
+    } catch (_) {}
+    return 'staff';
+  }
+
+  function getCurrentUserId() {
+    try {
+      const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile') || '{}');
+      return u.id || u.email || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Strict role isolation: each role only receives notifications within their operational scope
+  function isNotificationInScope(n, portalRole, currentUserId) {
+    if (!n || !n.id) return false;
+
+    const targetRole = String(n.targetRole || n.role || n.roleScope || '').toLowerCase();
+    const title = String(n.title || '').toLowerCase();
+    const message = String(n.message || '').toLowerCase();
+    const category = String(n.category || '').toLowerCase();
+    const badge = String(n.badge || '').toLowerCase();
+    const targetUrl = String(n.targetUrl || '').toLowerCase();
+
+    // 1. ADMIN SCOPE
+    if (portalRole === 'admin') {
+      if (targetRole === 'manager' || targetRole === 'staff' || targetRole === 'user') {
+        return false;
+      }
+      if (
+        badge.includes('pending review') ||
+        badge.includes('action required') ||
+        badge.includes('received') ||
+        badge.includes('disbursed') ||
+        title.includes('raw material received') ||
+        title.includes('raw material disbursed') ||
+        title.includes('new staff receive') ||
+        title.includes('new staff disburse') ||
+        title.includes('correction requested') ||
+        title.includes('transaction approved') ||
+        title.includes('transaction rejected') ||
+        targetUrl.includes('manager/') ||
+        targetUrl.includes('user/')
+      ) {
+        return false;
+      }
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
+        return targetRole === 'admin' || title.includes('admin') || message.includes('admin');
+      }
+      return (
+        targetRole === 'admin' ||
+        targetUrl.includes('admin/') ||
+        badge.includes('registration') ||
+        badge.includes('user management') ||
+        badge.includes('backup') ||
+        badge.includes('restore') ||
+        category === 'system' ||
+        category === 'security & access' ||
+        category === 'user' ||
+        title.includes('registration') ||
+        title.includes('admin') ||
+        title.includes('backup') ||
+        title.includes('restore') ||
+        title.includes('user account')
+      );
+    }
+
+    // 2. MANAGER SCOPE
+    if (portalRole === 'manager') {
+      if (targetRole === 'admin') return false;
+      if (
+        targetUrl.includes('admin/') ||
+        badge.includes('registration') ||
+        badge.includes('backup') ||
+        badge.includes('restore') ||
+        title.includes('registration request') ||
+        title.includes('new user created') ||
+        title.includes('account approved') ||
+        title.includes('registration rejected') ||
+        title.includes('system backup') ||
+        title.includes('system restored')
+      ) {
+        return false;
+      }
+      if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested'))) {
+        return false;
+      }
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
+        return targetRole === 'manager' || title.includes('manager') || message.includes('manager');
+      }
+      return (
+        targetRole === 'manager' ||
+        targetRole === 'all' ||
+        targetUrl.includes('manager/') ||
+        category === 'alert' ||
+        category === 'inventory' ||
+        category === 'receiving' ||
+        category === 'disbursement' ||
+        category === 'forecasting' ||
+        category === 'employees' ||
+        category === 'store operations' ||
+        badge.includes('pending review') ||
+        badge.includes('received') ||
+        badge.includes('disbursed') ||
+        badge.includes('updated') ||
+        badge.includes('approved') ||
+        badge.includes('rejected') ||
+        title.includes('stock') ||
+        title.includes('material') ||
+        title.includes('transaction')
+      );
+    }
+
+    // 3. STAFF / USER SCOPE
+    if (portalRole === 'staff' || portalRole === 'user') {
+      if (targetRole === 'admin' || targetRole === 'manager') return false;
+      if (
+        targetUrl.includes('admin/') ||
+        badge.includes('registration') ||
+        badge.includes('user management') ||
+        badge.includes('backup') ||
+        badge.includes('restore') ||
+        badge.includes('pending review') ||
+        title.includes('registration') ||
+        title.includes('system backup') ||
+        title.includes('system restored')
+      ) {
+        return false;
+      }
+      if (title.includes('raw material received') || title.includes('raw material disbursed')) {
+        return false;
+      }
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
+        if (n.userId && currentUserId && n.userId !== currentUserId) return false;
+        return targetRole === 'staff' || targetRole === 'user' || title.includes('staff');
+      }
+      return (
+        targetRole === 'staff' ||
+        targetRole === 'user' ||
+        targetUrl.includes('user/') ||
+        badge.includes('action required') ||
+        badge.includes('approved') ||
+        badge.includes('rejected') ||
+        title.includes('correction requested') ||
+        title.includes('transaction approved') ||
+        title.includes('transaction rejected') ||
+        category === 'alert' ||
+        title.includes('out of stock') ||
+        title.includes('low stock') ||
+        title.includes('stock restored')
+      );
+    }
+
+    return false;
   }
 
   const STORAGE_STORE_KEY = 'rmims_notifications_live_v2';
@@ -264,9 +423,10 @@
   // Filter notifications for active view
   function getFilteredNotifications(role) {
     const all = getNotifications();
+    const uid = getCurrentUserId();
 
-    // Notification appears to all roles if role is 'all', undefined, or matches the active role
-    const roleItems = all.filter(n => !n.role || n.role === 'all' || n.role === role);
+    // Notification appears only if it is in scope for this active portal role
+    const roleItems = all.filter(n => isNotificationInScope(n, role, uid));
 
     return roleItems.filter(n => {
       // Tab filter
@@ -290,7 +450,8 @@
   function updateTopbarBadges(role) {
     const all = getNotifications();
     const readSet = getReadSet();
-    const roleItems = all.filter(n => !n.role || n.role === 'all' || n.role === role);
+    const uid = getCurrentUserId();
+    const roleItems = all.filter(n => isNotificationInScope(n, role, uid));
     const unreadCount = roleItems.filter(n => !readSet.has(String(n.id))).length;
 
     // Find all bell buttons in DOM
@@ -404,14 +565,15 @@
       }
     });
 
-    // Mark all as read button - STRICTLY SCOPED TO ACTIVE TAB!
+    // Mark all as read button - STRICTLY SCOPED TO ACTIVE TAB AND ROLE SCOPE!
     backdrop.querySelector('#rmimsNotifMarkAllBtn').addEventListener('click', () => {
       const all = getNotifications();
       const readSet = getReadSet();
+      const uid = getCurrentUserId();
       
-      // Only mark notifications that belong to the current active tab
+      // Only mark notifications that belong to the current active tab and are in scope
       const tabItems = all.filter(n => {
-        if (n.role !== role) return false;
+        if (!isNotificationInScope(n, role, uid)) return false;
         if (currentActiveTab === 'all') return true;
         return isCategoryMatch(n.category, currentActiveTab);
       });
@@ -480,7 +642,8 @@
     const tabs = getTabsForRole(role);
     const all = getNotifications();
     const readSet = getReadSet();
-    const roleItems = all.filter(n => !n.role || n.role === 'all' || n.role === role);
+    const uid = getCurrentUserId();
+    const roleItems = all.filter(n => isNotificationInScope(n, role, uid));
 
     tabsBar.innerHTML = '';
 
@@ -822,8 +985,12 @@
     const id = notif.id || `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     if (all.some(n => String(n.id) === String(id))) return;
 
+    const callerRole = getPortalRole();
+    const effectiveRole = notif.role || notif.targetRole || notif.roleScope || callerRole;
     const newNotif = {
-      role: 'all',
+      role: effectiveRole,
+      targetRole: notif.targetRole || effectiveRole,
+      roleScope: notif.roleScope || effectiveRole,
       category: 'activity',
       priority: 'info',
       ...notif,

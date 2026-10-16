@@ -2070,6 +2070,148 @@ import './rmims-notifications.js';
     } catch (e) { }
   }
 
+  function isNotificationInScope(n, portalRole, currentUserId) {
+    if (!n || !n.id) return false;
+
+    const targetRole = String(n.targetRole || n.role || n.roleScope || '').toLowerCase();
+    const title = String(n.title || '').toLowerCase();
+    const message = String(n.message || '').toLowerCase();
+    const category = String(n.category || '').toLowerCase();
+    const badge = String(n.badge || '').toLowerCase();
+    const targetUrl = String(n.targetUrl || '').toLowerCase();
+
+    // 1. ADMIN SCOPE
+    if (portalRole === 'admin') {
+      if (targetRole === 'manager' || targetRole === 'staff' || targetRole === 'user') {
+        return false;
+      }
+      if (
+        badge.includes('pending review') ||
+        badge.includes('action required') ||
+        badge.includes('received') ||
+        badge.includes('disbursed') ||
+        title.includes('raw material received') ||
+        title.includes('raw material disbursed') ||
+        title.includes('new staff receive') ||
+        title.includes('new staff disburse') ||
+        title.includes('correction requested') ||
+        title.includes('transaction approved') ||
+        title.includes('transaction rejected') ||
+        targetUrl.includes('manager/') ||
+        targetUrl.includes('user/')
+      ) {
+        return false;
+      }
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
+        return targetRole === 'admin' || title.includes('admin') || message.includes('admin');
+      }
+      return (
+        targetRole === 'admin' ||
+        targetUrl.includes('admin/') ||
+        badge.includes('registration') ||
+        badge.includes('user management') ||
+        badge.includes('backup') ||
+        badge.includes('restore') ||
+        category === 'system' ||
+        category === 'security & access' ||
+        category === 'user' ||
+        title.includes('registration') ||
+        title.includes('admin') ||
+        title.includes('backup') ||
+        title.includes('restore') ||
+        title.includes('user account')
+      );
+    }
+
+    // 2. MANAGER SCOPE
+    if (portalRole === 'manager') {
+      if (targetRole === 'admin') return false;
+      if (
+        targetUrl.includes('admin/') ||
+        badge.includes('registration') ||
+        badge.includes('backup') ||
+        badge.includes('restore') ||
+        title.includes('registration request') ||
+        title.includes('new user created') ||
+        title.includes('account approved') ||
+        title.includes('registration rejected') ||
+        title.includes('system backup') ||
+        title.includes('system restored')
+      ) {
+        return false;
+      }
+      if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested'))) {
+        return false;
+      }
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
+        return targetRole === 'manager' || title.includes('manager') || message.includes('manager');
+      }
+      return (
+        targetRole === 'manager' ||
+        targetRole === 'all' ||
+        targetUrl.includes('manager/') ||
+        category === 'alert' ||
+        category === 'inventory' ||
+        category === 'receiving' ||
+        category === 'disbursement' ||
+        category === 'forecasting' ||
+        category === 'employees' ||
+        category === 'store operations' ||
+        badge.includes('pending review') ||
+        badge.includes('received') ||
+        badge.includes('disbursed') ||
+        badge.includes('updated') ||
+        badge.includes('approved') ||
+        badge.includes('rejected') ||
+        title.includes('stock') ||
+        title.includes('material') ||
+        title.includes('transaction')
+      );
+    }
+
+    // 3. STAFF / USER SCOPE
+    if (portalRole === 'staff' || portalRole === 'user') {
+      if (targetRole === 'admin' || targetRole === 'manager') return false;
+      if (
+        targetUrl.includes('admin/') ||
+        badge.includes('registration') ||
+        badge.includes('user management') ||
+        badge.includes('backup') ||
+        badge.includes('restore') ||
+        badge.includes('pending review') ||
+        title.includes('registration') ||
+        title.includes('system backup') ||
+        title.includes('system restored')
+      ) {
+        return false;
+      }
+      if (title.includes('raw material received') || title.includes('raw material disbursed')) {
+        return false;
+      }
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
+        if (n.userId && currentUserId && n.userId !== currentUserId) return false;
+        return targetRole === 'staff' || targetRole === 'user' || title.includes('staff');
+      }
+      return (
+        targetRole === 'staff' ||
+        targetRole === 'user' ||
+        targetUrl.includes('user/') ||
+        badge.includes('action required') ||
+        badge.includes('approved') ||
+        badge.includes('rejected') ||
+        title.includes('correction requested') ||
+        title.includes('transaction approved') ||
+        title.includes('transaction rejected') ||
+        category === 'alert' ||
+        title.includes('out of stock') ||
+        title.includes('low stock') ||
+        title.includes('stock restored')
+      );
+    }
+
+    return false;
+  }
+
   function getVisibleNotifications() {
     const allNotifs = getStoredNotifications();
     let currentUserId = null;
@@ -2078,16 +2220,8 @@ import './rmims-notifications.js';
       currentUserId = u.id || null;
     } catch (e) {}
 
-    return allNotifs.filter(n => {
-      if (!n || !n.id) return false;
-      if (isManager || role === 'admin') return true;
-      // User / Staff role filtering:
-      if (n.roleScope === 'admin' || n.roleScope === 'manager') return false;
-      if (n.category === 'login' && n.userId && currentUserId && n.userId !== currentUserId) {
-        return false;
-      }
-      return true;
-    });
+    const portalRole = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'staff');
+    return allNotifs.filter(n => isNotificationInScope(n, portalRole, currentUserId));
   }
 
   function formatTimeAgo(isoString) {
@@ -2312,6 +2446,10 @@ import './rmims-notifications.js';
           message: `${matName} received: ${r.received_quantity} ${r.unit || 'units'}.`,
           actor: actorLabel,
           material: matName,
+          role: 'manager',
+          targetRole: 'manager',
+          roleScope: 'manager',
+          targetUrl: 'manager/receive.html',
           timestamp: r.created_at || (r.receipt_date ? `${r.receipt_date}T12:00:00Z` : new Date().toISOString())
         });
       });
@@ -2333,6 +2471,10 @@ import './rmims-notifications.js';
           message: `${matName} disbursed: ${d.consumed_quantity} ${d.unit || 'units'}${prodContext}.`,
           actor: actorLabel,
           material: matName,
+          role: 'manager',
+          targetRole: 'manager',
+          roleScope: 'manager',
+          targetUrl: 'manager/disburse.html',
           timestamp: d.created_at || (d.usage_date ? `${d.usage_date}T12:00:00Z` : new Date().toISOString())
         });
       });
@@ -2469,7 +2611,11 @@ import './rmims-notifications.js';
             title: `User Account: ${p.full_name || p.email}`,
             message: `Account registered as ${pRoleTitle} (${p.status === 'active' ? 'Active' : 'Inactive'}).`,
             actor: 'Source: User Management',
-            roleScope: 'manager',
+            badge: 'User Management',
+            role: 'admin',
+            targetRole: 'admin',
+            roleScope: 'admin',
+            targetUrl: 'admin/user-management.html',
             timestamp: p.created_at
           });
         }
