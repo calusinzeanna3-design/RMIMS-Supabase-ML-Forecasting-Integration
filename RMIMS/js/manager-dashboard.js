@@ -284,6 +284,28 @@ function renderManagerUsageChartData() {
   });
 }
 
+// Helper to evaluate unified status strictly matching user criteria
+function getMaterialMetrics(m) {
+  const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+  const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
+  const daysRemaining = (dailyBurn > 0 && stock > 0) ? Math.max(0, Math.round(stock / dailyBurn)) : 0;
+
+  let statusKey = 'good';
+  let statusText = 'Good';
+  if (stock <= 0 || stock < min) {
+    statusKey = 'out';
+    statusText = 'Out of Stock';
+  } else if (daysRemaining <= 3) {
+    statusKey = 'low';
+    statusText = 'Low';
+  } else {
+    statusKey = 'good';
+    statusText = 'Good';
+  }
+  return { stock, min, dailyBurn, daysRemaining, statusKey, statusText };
+}
+
 // 1. KPI Cards (100% Real Live Counts)
 function renderKpis(materials, receipts, disbursements, staffTx) {
   const kpiTotalMaterials = document.getElementById('kpiTotalMaterials');
@@ -295,11 +317,7 @@ function renderKpis(materials, receipts, disbursements, staffTx) {
 
   const totalCount = materials.length;
   const totalStock = materials.reduce((sum, m) => sum + (Number(m.current_stock) || 0), 0);
-  const lowCount = materials.filter(m => {
-    const cs = Number(m.current_stock) || 0;
-    const min = Number(m.minimum_threshold) || 10;
-    return cs < min;
-  }).length;
+  const lowCount = materials.filter(m => getMaterialMetrics(m).statusKey === 'low').length;
 
   if (kpiTotalMaterials) kpiTotalMaterials.textContent = totalCount;
   if (kpiAvailableStock) {
@@ -339,11 +357,10 @@ function renderDonutChart(materials) {
   let outCount = 0;
 
   materials.forEach(m => {
-    const stock = Number(m.current_stock) || 0;
-    const min = Number(m.minimum_threshold) || 10;
-    if (stock <= 0) {
+    const met = getMaterialMetrics(m);
+    if (met.statusKey === 'out') {
       outCount++;
-    } else if (stock < min) {
+    } else if (met.statusKey === 'low') {
       lowCount++;
     } else {
       availCount++;
@@ -647,20 +664,17 @@ function renderSmartAlerts(materials) {
 
   // Filter materials that are low or out of stock
   const criticalMaterials = materials.filter(m => {
-    const stock = Number(m.current_stock) || 0;
-    const min = Number(m.minimum_threshold) || 10;
-    return stock < min;
+    const met = getMaterialMetrics(m);
+    return met.statusKey === 'out' || met.statusKey === 'low';
   });
 
-  // Sort by urgency: Out of stock first, then lowest stock ratio
+  // Sort by urgency: Out of stock first, then lowest days remaining
   criticalMaterials.sort((a, b) => {
-    const stockA = Number(a.current_stock) || 0;
-    const stockB = Number(b.current_stock) || 0;
-    const minA = Number(a.minimum_threshold) || 10;
-    const minB = Number(b.minimum_threshold) || 10;
-    const ratioA = stockA <= 0 ? -1 : stockA / minA;
-    const ratioB = stockB <= 0 ? -1 : stockB / minB;
-    return ratioA - ratioB;
+    const metA = getMaterialMetrics(a);
+    const metB = getMaterialMetrics(b);
+    if (metA.statusKey === 'out' && metB.statusKey !== 'out') return -1;
+    if (metB.statusKey === 'out' && metA.statusKey !== 'out') return 1;
+    return metA.daysRemaining - metB.daysRemaining;
   });
 
   if (materials.length === 0) {

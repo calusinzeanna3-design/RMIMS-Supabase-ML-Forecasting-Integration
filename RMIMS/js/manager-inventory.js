@@ -318,13 +318,18 @@ function loadMaterials() {
     }
 
     const isArchived = archivedIds.has(id);
+    const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((minStock / 7).toFixed(1))));
+    const daysRemaining = (dailyBurn > 0 && currentStock > 0) ? Math.max(0, Math.round(currentStock / dailyBurn)) : 0;
+
     let status = 'Good';
     if (isArchived) {
       status = 'Archived';
-    } else if (currentStock <= 0) {
+    } else if (currentStock <= 0 || currentStock < minStock) {
       status = 'Out of Stock';
-    } else if (currentStock < minStock) {
+    } else if (daysRemaining <= 3) {
       status = 'Low';
+    } else {
+      status = 'Good';
     }
 
     return {
@@ -347,7 +352,9 @@ function loadMaterials() {
       last_updated: lastUpdated,
       added_by: addedBy,
       status,
-      isArchived
+      isArchived,
+      dailyBurn,
+      daysRemaining
     };
   });
 }
@@ -444,8 +451,8 @@ function renderUI() {
 function renderSummaryCards() {
   const activeList = rawMaterials.filter(m => !m.isArchived);
   const totalCount = activeList.length;
-  const inStockCount = activeList.filter(m => m.status === 'Available' || m.status === 'In Stock').length;
-  const lowStockCount = activeList.filter(m => m.status === 'Low Stock').length;
+  const inStockCount = activeList.filter(m => m.status === 'Good' || m.status === 'Available' || m.status === 'In Stock').length;
+  const lowStockCount = activeList.filter(m => m.status === 'Low' || m.status === 'Low Stock').length;
   const outOfStockCount = activeList.filter(m => m.status === 'Out of Stock').length;
   const archivedCount = rawMaterials.filter(m => m.isArchived).length;
 
@@ -467,14 +474,10 @@ function renderSummaryCards() {
   const kpiLow = document.getElementById('kpiMgrLowStock');
   const kpiCrit = document.getElementById('kpiMgrCriticalStock');
 
-  const goodCount = activeList.filter(m => m.current_stock >= m.minimum_stock && m.current_stock > 0).length;
-  const lowCount = activeList.filter(m => m.current_stock < m.minimum_stock && m.current_stock > 0).length;
-  const outCount = activeList.filter(m => m.current_stock <= 0).length;
-
   if (kpiTotal) kpiTotal.textContent = totalCount;
-  if (kpiGood) kpiGood.textContent = goodCount;
-  if (kpiLow) kpiLow.textContent = lowCount;
-  if (kpiCrit) kpiCrit.textContent = outCount;
+  if (kpiGood) kpiGood.textContent = inStockCount;
+  if (kpiLow) kpiLow.textContent = lowStockCount;
+  if (kpiCrit) kpiCrit.textContent = outOfStockCount;
 
   // Segmented Progress Bar
   const segInStock = document.getElementById('segInStock');
@@ -562,11 +565,11 @@ function renderInventoryTable() {
   // 1. Status Filter Dropdown
   if (statusFilter !== 'all') {
     if (statusFilter === 'Good' || statusFilter === 'Available' || statusFilter === 'In Stock') {
-      filtered = filtered.filter(m => m.current_stock >= m.minimum_stock && m.current_stock > 0);
+      filtered = filtered.filter(m => m.status === 'Good' || m.status === 'Available' || m.status === 'In Stock');
     } else if (statusFilter === 'Low' || statusFilter === 'Low Stock') {
-      filtered = filtered.filter(m => m.current_stock < m.minimum_stock && m.current_stock > 0);
+      filtered = filtered.filter(m => m.status === 'Low' || m.status === 'Low Stock');
     } else if (statusFilter === 'Out of Stock') {
-      filtered = filtered.filter(m => m.current_stock <= 0);
+      filtered = filtered.filter(m => m.status === 'Out of Stock');
     } else {
       filtered = filtered.filter(m => m.status === statusFilter);
     }
@@ -675,18 +678,18 @@ function renderInventoryTable() {
     let rowBorder = '#BBF7D0';
     let leftBorderColor = '#16A34A';
 
-    if (m.current_stock <= 0) {
+    if (m.status === 'Out of Stock' || m.current_stock <= 0 || m.current_stock < m.minimum_stock) {
       statusText = 'Out of Stock';
       statusPillClass = 'status-pill-out';
       rowStatusClass = 'row-status-out';
       rowBg = '#FEE2E2';        // Red for Out of Stock
       rowBorder = '#FECACA';
       leftBorderColor = '#DC2626';
-    } else if (m.current_stock < m.minimum_stock) {
+    } else if (m.status === 'Low' || (m.daysRemaining !== undefined && m.daysRemaining <= 3)) {
       statusText = 'Low';
       statusPillClass = 'status-pill-low';
       rowStatusClass = 'row-status-low';
-      rowBg = '#FEF3C7';        // Orange for Low Stock
+      rowBg = '#FEF3C7';        // Amber for Low Stock
       rowBorder = '#FDE68A';
       leftBorderColor = '#D97706';
     } else {
@@ -711,7 +714,7 @@ function renderInventoryTable() {
           <strong class="mgr-item-name" style="color: #0F2A1B;">${m.raw_material_name || m.name}</strong>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: right;">
-          <span class="mgr-stock-bold ${m.current_stock <= 0 ? 'stock-out' : (m.current_stock < m.minimum_stock ? 'stock-low' : 'stock-healthy')}">${formattedStock}</span>
+          <span class="mgr-stock-bold ${statusText === 'Out of Stock' ? 'stock-out' : (statusText === 'Low' ? 'stock-low' : 'stock-healthy')}">${formattedStock}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: right;">
           <span class="mgr-stock-num" style="color: #1E293B;">${m.minimum_stock}</span>

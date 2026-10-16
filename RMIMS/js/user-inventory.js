@@ -151,23 +151,23 @@ function populateCategoryFilter() {
 function computeMetrics(m) {
   const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
   const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-  const dailyBurn = Number(m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
+  const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
 
-  const daysRemaining = dailyBurn > 0 && stock > 0 ? Math.max(1, Math.round(stock / dailyBurn)) : (stock <= 0 ? 0 : 99);
+  const daysRemaining = (dailyBurn > 0 && stock > 0) ? Math.max(0, Math.round(stock / dailyBurn)) : 0;
 
   let statusKey = 'good';
   let statusText = 'Good';
   let tagClass = 'tag-good';
   let rowClass = 'row-good';
 
-  if (stock <= 0) {
+  if (stock <= 0 || stock < min) {
     statusKey = 'out';
     statusText = 'Out of Stock';
     tagClass = 'tag-out';
     rowClass = 'row-out';
-  } else if (stock < min) {
+  } else if (daysRemaining <= 3) {
     statusKey = 'low';
-    statusText = 'Low Stock';
+    statusText = 'Low';
     tagClass = 'tag-low';
     rowClass = 'row-low';
   } else {
@@ -179,8 +179,8 @@ function computeMetrics(m) {
 
   // Calculate expected run-out date
   let runOutText = 'Sufficient';
-  if (stock <= 0) {
-    runOutText = 'Depleted';
+  if (stock <= 0 || stock < min) {
+    runOutText = stock <= 0 ? 'Depleted' : 'Below Minimum';
   } else if (daysRemaining < 90) {
     const target = new Date();
     target.setDate(target.getDate() + daysRemaining);
@@ -222,12 +222,13 @@ function renderTable() {
 
     if (statusVal !== 'all') {
       const sKey = statusVal.toLowerCase();
+      const met = computeMetrics(m);
       if (sKey === 'good' || sKey === 'available' || sKey === 'in stock') {
-        if (!(met.stock >= met.min && met.stock > 0)) return false;
+        if (met.statusKey !== 'good') return false;
       } else if (sKey === 'low' || sKey === 'low stock') {
-        if (!(met.stock < met.min && met.stock > 0)) return false;
+        if (met.statusKey !== 'low') return false;
       } else if (sKey === 'out of stock' || sKey === 'out' || sKey === 'critical') {
-        if (!(met.stock <= 0)) return false;
+        if (met.statusKey !== 'out') return false;
       }
     }
 
@@ -313,18 +314,18 @@ function renderTable() {
     let rowBorder = '#BBF7D0';
     let leftBorderColor = '#16A34A';
 
-    if (met.stock <= 0) {
+    if (met.statusKey === 'out' || met.stock <= 0 || met.stock < met.min) {
       statusText = 'Out of Stock';
       statusPillClass = 'status-pill-out';
       rowStatusClass = 'row-status-out';
       rowBg = '#FEE2E2';        // Red for Out of Stock
       rowBorder = '#FECACA';
       leftBorderColor = '#DC2626';
-    } else if (met.stock < met.min) {
+    } else if (met.statusKey === 'low' || met.daysRemaining <= 3) {
       statusText = 'Low';
       statusPillClass = 'status-pill-low';
       rowStatusClass = 'row-status-low';
-      rowBg = '#FEF3C7';        // Orange for Low Stock
+      rowBg = '#FEF3C7';        // Amber for Low Stock
       rowBorder = '#FDE68A';
       leftBorderColor = '#D97706';
     } else {
@@ -351,7 +352,7 @@ function renderTable() {
           <span style="background:rgba(255,255,255,0.7); color:#475569; padding:2px 7px; border-radius:6px; font-size:12px; font-weight:600;">${escapeHtml(unit || '--')}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: right;">
-          <strong style="font-size:14px;" class="${met.stock <= 0 ? 'stock-out' : (met.stock < met.min ? 'stock-low' : 'stock-healthy')}">
+          <strong style="font-size:14px;" class="${statusText === 'Out of Stock' ? 'stock-out' : (statusText === 'Low' ? 'stock-low' : 'stock-healthy')}">
             ${formattedStock}${unit ? ' ' + unit : ''}
           </strong>
         </td>

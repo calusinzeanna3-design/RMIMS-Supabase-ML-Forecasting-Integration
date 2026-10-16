@@ -81,10 +81,10 @@ const fmtDate = (d) => {
 function computeStockStatus(currentStock, minStock) {
     const q = num(currentStock);
     const min = minStock !== null && minStock !== undefined && minStock !== "" ? num(minStock) : null;
-    if (q <= 0) {
+    if (q <= 0 || (min !== null && q < min)) {
         return { key: "out_of_stock", label: "Out of Stock", cls: "status-badge-outofstock", dotCls: "dot-red", badgeText: "🔴 Out of Stock" };
     }
-    if (min !== null && q <= min) {
+    if (min !== null && q <= min * 1.25) {
         return { key: "low_stock", label: "Low Stock", cls: "status-badge-lowstock", dotCls: "dot-orange", badgeText: "🟠 Low Stock" };
     }
     return { key: "in_stock", label: "In Stock", cls: "status-badge-instock", dotCls: "dot-green", badgeText: "🟢 In Stock" };

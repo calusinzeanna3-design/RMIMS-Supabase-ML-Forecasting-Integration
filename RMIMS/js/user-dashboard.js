@@ -194,21 +194,38 @@ function renderStaffChart() {
   });
 }
 
+function getMaterialMetrics(m) {
+  const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+  const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
+  const daysRemaining = (dailyBurn > 0 && stock > 0) ? Math.max(0, Math.round(stock / dailyBurn)) : 0;
+
+  let statusKey = 'good';
+  let statusText = 'Good';
+  if (stock <= 0 || stock < min) {
+    statusKey = 'out';
+    statusText = 'Out of Stock';
+  } else if (daysRemaining <= 3) {
+    statusKey = 'low';
+    statusText = 'Low';
+  } else {
+    statusKey = 'good';
+    statusText = 'Good';
+  }
+  return { stock, min, dailyBurn, daysRemaining, statusKey, statusText };
+}
+
 function renderSummaryCards(materials, staffTx) {
   const totalMaterials = materials.length;
-
   let availableCount = 0;
   let lowCount = 0;
 
   materials.forEach(m => {
-    const cur = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-    if (cur <= 0) {
-      // out of stock
-    } else if (cur < min) {
-      lowCount++;
-    } else {
+    const met = getMaterialMetrics(m);
+    if (met.statusKey === 'good') {
       availableCount++;
+    } else if (met.statusKey === 'low') {
+      lowCount++;
     }
   });
 
@@ -247,14 +264,11 @@ function renderInventoryStatus(materials) {
   let out = 0;
 
   materials.forEach(m => {
-    const cur = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-
-    if (cur <= 0) {
+    const met = getMaterialMetrics(m);
+    if (met.statusKey === 'out') {
       out++;
-    } else if (cur <= min * 0.25) {
       critical++;
-    } else if (cur < min) {
+    } else if (met.statusKey === 'low') {
       low++;
     } else {
       available++;
@@ -287,43 +301,38 @@ function renderInventoryStatus(materials) {
 }
 
 function calculateDaysRemaining(m) {
-  const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-  const dailyBurn = Number(m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
-  if (dailyBurn <= 0 || stock <= 0) return 0;
-  return Math.max(1, Math.round(stock / dailyBurn));
+  const met = getMaterialMetrics(m);
+  return met.daysRemaining;
 }
 
 function renderSmartAlerts(materials) {
   const container = document.getElementById('smartAlertsContainer');
   if (!container) return;
 
-  // Filter materials that are low, critical, or watch (only when stock is actually below threshold)
+  // Filter materials that are low, critical, or out
   const alertItems = [];
 
   materials.forEach(m => {
-    const cur = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-    const days = calculateDaysRemaining(m);
+    const met = getMaterialMetrics(m);
     const unit = m.unit_of_measure || m.unit || '';
 
-    if (cur <= 0) {
+    if (met.statusKey === 'out') {
       alertItems.push({
         name: m.name || m.materialName || m.raw_material_name,
-        stock: cur,
+        stock: met.stock,
         unit: unit,
         days: 0,
-        badge: 'Critical',
+        badge: 'Out of Stock',
         badgeClass: 'badge-critical'
       });
-    } else if (cur < min) {
+    } else if (met.statusKey === 'low') {
       alertItems.push({
         name: m.name || m.materialName || m.raw_material_name,
-        stock: cur,
+        stock: met.stock,
         unit: unit,
-        days: days,
-        badge: cur <= min * 0.3 ? 'Critical' : 'Watch Stock',
-        badgeClass: cur <= min * 0.3 ? 'badge-critical' : 'badge-watch'
+        days: met.daysRemaining,
+        badge: 'Low Stock',
+        badgeClass: 'badge-watch'
       });
     }
   });
