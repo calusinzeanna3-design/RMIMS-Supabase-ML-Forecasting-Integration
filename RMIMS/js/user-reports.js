@@ -29,7 +29,7 @@ onAuthStateChanged(auth, async (user) => {
                     user = {
                         uid: parsed.id || parsed.uid || "local-staff-user",
                         id: parsed.id || parsed.uid || "local-staff-user",
-                        email: parsed.email || "staff@rmims.ph",
+                        email: parsed.email || "",
                         displayName: parsed.fullName || parsed.name || "Staff Member",
                         user_metadata: { full_name: parsed.fullName || parsed.name || "Staff Member" }
                     };

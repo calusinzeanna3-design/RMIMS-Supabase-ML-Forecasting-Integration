@@ -8,35 +8,103 @@ import './rmims-notifications.js';
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-theme-preference');
 
-  /* Cleanse all old imported and inputted data while keeping ML trained data intact */
+  /* Cleanse all mock accounts and dummy personnel across manager & staff */
   try {
-    if (localStorage.getItem('rmims_data_cleansed_v6') !== 'true') {
-      const keysToReset = [
-        'rmims_manager_receipts',
-        'rmims_manager_disbursements',
-        'rmims_manager_activities',
-        'rmims_staff_transactions',
-        'rmims_burned_references',
-        'rmims_custom_receipts',
-        'rmims_custom_disbursements',
-        'rmims_custom_raw_materials',
-        'rmims_manager_material_overrides',
-        'rmims_manager_archived_materials',
-        'rmims_manager_material_history',
-        'rmims_deleted_material_ids',
-        'rmims_deleted_receipt_ids',
-        'rmims_deleted_disbursement_ids',
-        'RMSME_CUSTOM_FINISHED_PRODUCTS',
-        'rmims_custom_finished_products',
-        'rmims_forecast_cache',
-        'rmims_forecast_timestamp',
-        'rmims_latest_forecast',
-        'rmims_inventory_cache',
-        'rmims_recent_activities',
-        'rmims_wipe_baseline_materials'
-      ];
-      keysToReset.forEach(k => localStorage.removeItem(k));
-      localStorage.setItem('rmims_data_cleansed_v6', 'true');
+    const BANNED_MOCK_NAMES = [
+      'maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza',
+      'carlos mendoza', 'victor morales', 'ethan cruz', 'sarah gomez', 'mark villanueva',
+      'john reyes', 'kenneth lim'
+    ];
+    const DUMP_EMAILS = [
+      'admin@rmims.ph', 'manager@rmims.ph', 'staff@rmims.ph', 'asst.manager@rmims.ph'
+    ];
+
+    ['currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser', 'adminUser', 'rmimsAdminUser'].forEach(key => {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const p = JSON.parse(raw);
+          const n = (p.fullName || p.name || '').toLowerCase();
+          const e = (p.email || '').toLowerCase();
+          if (BANNED_MOCK_NAMES.some(b => n.includes(b)) || DUMP_EMAILS.some(d => e.includes(d))) {
+            localStorage.removeItem(key);
+          }
+        } catch (_) {}
+      }
+    });
+
+    // Wipe branch stores personnel if any mock user is found
+    const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+    if (rawStores) {
+      try {
+        const stores = JSON.parse(rawStores);
+        let modified = false;
+        Object.values(stores).forEach(st => {
+          if (Array.isArray(st.managers)) {
+            const origLen = st.managers.length;
+            st.managers = st.managers.filter(m => {
+              const mn = (m.name || m.username || '').toLowerCase();
+              const me = (m.email || '').toLowerCase();
+              return !BANNED_MOCK_NAMES.some(b => mn.includes(b)) && !DUMP_EMAILS.some(d => me.includes(d));
+            });
+            if (st.managers.length !== origLen) modified = true;
+          }
+          if (Array.isArray(st.staff)) {
+            const origLen = st.staff.length;
+            st.staff = st.staff.filter(s => {
+              const sn = (s.name || s.username || '').toLowerCase();
+              const se = (s.email || '').toLowerCase();
+              return !BANNED_MOCK_NAMES.some(b => sn.includes(b)) && !DUMP_EMAILS.some(d => se.includes(d));
+            });
+            if (st.staff.length !== origLen) modified = true;
+          }
+        });
+        if (modified) {
+          localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
+        }
+      } catch (_) {}
+    }
+
+    // Cleanse registered and pending users
+    ['rmims_registered_users', 'rmims_pending_users'].forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        try {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const clean = arr.filter(u => {
+              const un = (u.name || u.username || '').toLowerCase();
+              const ue = (u.email || '').toLowerCase();
+              return !BANNED_MOCK_NAMES.some(b => un.includes(b)) && !DUMP_EMAILS.some(d => ue.includes(d));
+            });
+            if (clean.length !== arr.length) {
+              localStorage.setItem(k, JSON.stringify(clean));
+            }
+          }
+        } catch (_) {}
+      }
+    });
+
+    // Cleanse fake staff login notifications
+    const rawNotif = localStorage.getItem('rmims_notifications_live_v2');
+    if (rawNotif) {
+      try {
+        const arr = JSON.parse(rawNotif);
+        if (Array.isArray(arr)) {
+          const clean = arr.filter(n => {
+            if (!n || !n.id) return false;
+            const t = (n.title || '').toLowerCase();
+            const m = (n.message || '').toLowerCase();
+            if (t.includes('staff user') || m.includes('staff account login detected')) return false;
+            if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
+            if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth')) return false;
+            return true;
+          });
+          if (clean.length !== arr.length) {
+            localStorage.setItem('rmims_notifications_live_v2', JSON.stringify(clean));
+          }
+        }
+      } catch (_) {}
     }
   } catch (e) {}
 
@@ -753,9 +821,10 @@ import './rmims-notifications.js';
   }
 
   function syncIdentity() {
-    let name = isManager ? 'Manager' : 'Store Staff', email = '';
+    let name = '', email = '';
     let roleTitle = isManager ? 'Manager' : 'Staff';
     let branchName = '', branchLocation = '';
+    let hasSession = false;
     try {
       const candidates = isManager 
         ? ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user']
@@ -765,38 +834,25 @@ import './rmims-notifications.js';
         const o = JSON.parse(raw);
         if (o?.fullName || o?.name || o?.email) {
           const rawName = o.fullName || o.name || '';
-          if (isManager) {
-            name = 'Manager';
-          } else {
-            name = rawName || name;
+          const candidateEmail = (o.email || '').toLowerCase();
+          const lowerName = rawName.toLowerCase();
+          if (candidateEmail.includes('@rmims.ph') || lowerName.includes('maria santos') || lowerName.includes('rafael cruz')) {
+            continue;
           }
-          email = o.email || email;
-          branchName = o.branchName || o.branch_name || branchName;
-          branchLocation = o.branchLocation || o.branch_location || branchLocation;
-          if (!isManager) {
-            roleTitle = 'Staff';
-          } else {
-            roleTitle = 'Manager';
-          }
+          name = rawName;
+          email = o.email || '';
+          branchName = o.branchName || o.branch_name || '';
+          branchLocation = o.branchLocation || o.branch_location || '';
+          roleTitle = isManager ? 'Manager' : 'Staff';
+          hasSession = true;
           break;
         }
       }
     } catch (e) { }
 
-    if (!isManager) {
-      roleTitle = 'Staff';
-      if (!email || email.toLowerCase().includes('manager@') || email.startsWith('admin')) {
-        email = 'staff@rmims.ph';
-      }
-      if (name.includes('Maria Santos') || name.toLowerCase().includes('rafael') || name.toLowerCase().includes('cruz') || !name) {
-        name = 'Store Staff';
-      }
-    } else {
-      roleTitle = 'Manager';
-      if (!email || email.toLowerCase().includes('staff@')) {
-        email = 'manager@rmims.ph';
-      }
-      name = 'Manager';
+    if (!hasSession) {
+      window.location.href = '../login.html';
+      return;
     }
 
     document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name);
@@ -863,7 +919,17 @@ import './rmims-notifications.js';
         }
 
         const cleanEmail = (user.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+        const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
+        if (isDumpAccount) {
+          await supabase.auth.signOut();
+          localStorage.removeItem('currentUser');
+          localStorage.removeItem('rmimsCurrentUser');
+          localStorage.removeItem('userProfile');
+          window.location.href = '../login.html';
+          return;
+        }
+
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
         if (isMasterAdmin) {
           if (!profile) {
@@ -915,13 +981,8 @@ import './rmims-notifications.js';
           }
 
           let liveName = profile.full_name || profile.email;
-          if (isManager) {
-            liveName = 'Manager';
-          }
           document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = liveName);
-          if (isManager) {
-            document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = (profile.email && !profile.email.toLowerCase().includes('staff@')) ? profile.email : 'manager@rmims.ph');
-          } else if (profile.email) {
+          if (profile.email) {
             document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = profile.email);
           }
           document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isManager ? 'M' : initials(liveName));
@@ -965,6 +1026,12 @@ import './rmims-notifications.js';
                 : "Here's what's happening across your store operations today.";
             }
           }
+        }
+      } else {
+        const hasLocal = localStorage.getItem('currentUser') || localStorage.getItem('userProfile');
+        if (!hasLocal) {
+          window.location.href = '../login.html';
+          return;
         }
       }
     } catch (e) { }
@@ -1876,8 +1943,8 @@ import './rmims-notifications.js';
      RMIMS LIVE SHARED NOTIFICATION SYSTEM (AUTHORITATIVE ENGINE)
      ========================================================== */
 
-  const NOTIF_STORE_KEY = 'rmims_live_notifications';
-  const NOTIF_READ_KEY = 'rmims_notifications_read';
+  const NOTIF_STORE_KEY = 'rmims_notifications_live_v2';
+  const NOTIF_READ_KEY = 'rmims_notifications_read_v2';
   const NOTIF_STOCK_STATES_KEY = 'rmims_stock_states';
   const NOTIF_DAILY_REMINDER_KEY = 'rmims_last_daily_reminder';
 
@@ -1897,8 +1964,17 @@ import './rmims-notifications.js';
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          // Exclude any legacy mock items
-          return parsed.filter(n => n && n.id && !n.id.startsWith('notif-sys-online-') && !n.id.startsWith('notif-stock-low-sugar-'));
+          // Exclude any legacy mock items, fake staff sign-ins, and generic dump notifications
+          return parsed.filter(n => {
+            if (!n || !n.id) return false;
+            if (n.id.startsWith('notif-sys-online-') || n.id.startsWith('notif-stock-low-sugar-')) return false;
+            const t = (n.title || '').toLowerCase();
+            const m = (n.message || '').toLowerCase();
+            if (t.includes('staff user signed in') || m.includes('staff account login detected')) return false;
+            if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
+            if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;
+            return true;
+          });
         }
       }
     } catch (e) { }
@@ -2274,111 +2350,57 @@ import './rmims-notifications.js';
 
       localStorage.setItem(NOTIF_STOCK_STATES_KEY, JSON.stringify(currStates));
 
-      // D. Controlled Daily Forecast Reminder (Strictly 1 per calendar day)
-      const lastDaily = localStorage.getItem(NOTIF_DAILY_REMINDER_KEY);
-      const reminderId = `notif-daily-forecast-${todayISO}`;
-      if (lastDaily !== todayISO || !newNotifMap.has(reminderId)) {
-        newNotifMap.set(reminderId, {
-          id: reminderId,
-          category: 'forecast',
-          priority: 'info',
-          title: 'Daily Forecast Review',
-          message: 'Review the latest AI-based raw-material forecast for current operational requirements.',
-          actor: 'Source: AI Forecasting',
-          timestamp: `${todayISO}T08:00:00.000Z`
-        });
-        localStorage.setItem(NOTIF_DAILY_REMINDER_KEY, todayISO);
-      }
+      // D. Controlled User/Staff Realtime Actions (No automatic synthetic reminders)
 
-      // E. Live AI Forecast Ready State
-      try {
-        const cachedFcRaw = localStorage.getItem('rmims_latest_forecast') || localStorage.getItem('rmims_forecast_timestamp');
-        if (cachedFcRaw) {
-          let fcDate = todayISO;
-          let fcTimestamp = new Date().toISOString();
-          let attnMsg = 'The latest predictive raw-material forecast is available for review.';
-          if (cachedFcRaw.startsWith('{')) {
-            const fcObj = JSON.parse(cachedFcRaw);
-            fcDate = fcObj.generatedDate || todayISO;
-            fcTimestamp = fcObj.generatedAt || fcTimestamp;
-            if (fcObj.attentionCount > 0) {
-              attnMsg = `The latest forecast identified ${fcObj.attentionCount} raw materials requiring replenishment attention.`;
-            }
-          } else {
-            fcDate = cachedFcRaw.slice(0, 10);
-            fcTimestamp = cachedFcRaw;
-          }
-
-          const fcId = `notif-forecast-ready-${fcDate}`;
-          newNotifMap.set(fcId, {
-            id: fcId,
-            category: 'forecast',
-            priority: 'success',
-            title: 'AI Forecast & Error Margin Ready',
-            message: attnMsg || 'AI Forecast models and ±7.51% acceptance margin limits have been synchronized across all 59 raw materials.',
-            actor: 'Source: AI Machine Learning',
-            timestamp: fcTimestamp
-          });
-
-          const calibId = `notif-dataset-calibrated-${todayISO}`;
-          newNotifMap.set(calibId, {
-            id: calibId,
-            category: 'inventory',
-            priority: 'info',
-            title: '2026 Disbursements Dataset Regulated',
-            message: 'All 14k disbursement records calibrated to ensure sustainable stock replenishment and ±7.51% forecast accuracy.',
-            actor: 'Source: System Optimization',
-            timestamp: new Date().toISOString()
-          });
-        }
-      } catch (e) { }
-
-      // F. Login Session Notification (Once per authenticated login session)
-      const sessionId = sessionStorage.getItem('rmims_login_session_id') || `session-${todayISO}`;
-      sessionStorage.setItem('rmims_login_session_id', sessionId);
-
-      if (!sessionStorage.getItem('rmims_session_login_recorded')) {
-        sessionStorage.setItem('rmims_session_login_recorded', 'true');
-        let accountName = isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff User');
+      // F. Login Session Notification (Only for genuine authenticated users upon login)
+      const justLoggedIn = sessionStorage.getItem('rmims_just_logged_in') === 'true';
+      if (justLoggedIn) {
+        sessionStorage.removeItem('rmims_just_logged_in');
+        let accountName = null;
         let currentUserId = null;
         try {
           const raw = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile');
           if (raw) {
             const parsed = JSON.parse(raw);
-            accountName = parsed.fullName || parsed.name || accountName;
-            currentUserId = parsed.id || null;
+            if (parsed.fullName && parsed.fullName !== 'Staff User' && parsed.fullName !== 'Manager' && parsed.fullName !== 'Administrator') {
+              accountName = parsed.fullName;
+              currentUserId = parsed.id || null;
+            }
           }
         } catch (e) { }
 
-        const loginId = `notif-login-${sessionId}`;
-        const loginNotif = {
-          id: loginId,
-          category: 'login',
-          priority: 'info',
-          title: `${accountName} Signed In`,
-          message: `${isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff')} account login detected.`,
-          actor: 'Source: System',
-          userId: currentUserId,
-          roleScope: isManager ? 'manager' : role,
-          timestamp: new Date().toISOString()
-        };
-        newNotifMap.set(loginId, loginNotif);
+        if (accountName && currentUserId) {
+          const sessionId = sessionStorage.getItem('rmims_login_session_id') || `session-${Date.now()}`;
+          const loginId = `notif-login-${sessionId}`;
+          const loginNotif = {
+            id: loginId,
+            category: 'login',
+            priority: 'info',
+            title: `${accountName} Signed In`,
+            message: `${isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff')} account login detected.`,
+            actor: 'Source: System',
+            userId: currentUserId,
+            roleScope: isManager ? 'manager' : role,
+            timestamp: new Date().toISOString()
+          };
+          newNotifMap.set(loginId, loginNotif);
 
-        // Broadcast sign-in event live to connected sessions
-        try {
-          if (window.__rmimsRealtimeChannel) {
-            window.__rmimsRealtimeChannel.send({
-              type: 'broadcast',
-              event: 'user_login',
-              payload: {
-                accountName,
-                role: isManager ? 'manager' : role,
-                userId: currentUserId,
-                timestamp: loginNotif.timestamp
-              }
-            });
-          }
-        } catch (_) { }
+          // Broadcast sign-in event live to connected sessions
+          try {
+            if (window.__rmimsRealtimeChannel) {
+              window.__rmimsRealtimeChannel.send({
+                type: 'broadcast',
+                event: 'user_login',
+                payload: {
+                  accountName,
+                  role: isManager ? 'manager' : role,
+                  userId: currentUserId,
+                  timestamp: loginNotif.timestamp
+                }
+              });
+            }
+          } catch (_) { }
+        }
       }
 
       // G. User Account Creation Notifications
@@ -2422,7 +2444,10 @@ import './rmims-notifications.js';
           .on('broadcast', { event: 'user_login' }, payload => {
             if (payload?.payload) {
               const p = payload.payload;
-              const loginId = `notif-login-live-${p.userId || 'usr'}-${new Date(p.timestamp || Date.now()).getTime()}`;
+              if (!p.accountName || p.accountName === 'Staff User' || p.accountName === 'Manager' || !p.userId) {
+                return;
+              }
+              const loginId = `notif-login-live-${p.userId}-${new Date(p.timestamp || Date.now()).getTime()}`;
               const stored = getStoredNotifications();
               if (!stored.some(n => n.id === loginId)) {
                 stored.unshift({

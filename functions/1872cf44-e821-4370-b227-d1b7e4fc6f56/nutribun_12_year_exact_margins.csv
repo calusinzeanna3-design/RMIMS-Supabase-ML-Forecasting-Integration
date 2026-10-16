@@ -1,0 +1,21 @@
+SKU,Material Name,Unit,Daily MAPE (%),Daily within ±10%,Weekly MAPE (%),Weekly within ±5% (Min),Weekly within ±10% (Max),Exact P90 Margin,Exact P95 Margin
+NB-001,All-Purpose / Bread Flour,kg,6.93,78.3%,2.38,89.1%,96.6%,±5.15%,±8.44%
+NB-002,Refined White Sugar,kg,6.98,78.2%,2.47,88.0%,96.6%,±5.63%,±7.99%
+NB-003,Fresh Yellow Squash (Kalabasa),kg,7.59,74.7%,2.32,89.6%,97.3%,±5.26%,±7.89%
+NB-004,Skimmed Milk Powder,kg,7.99,72.2%,2.3,90.1%,97.3%,±4.98%,±7.90%
+NB-005,Condensed Milk,kg,8.09,72.3%,2.36,89.3%,97.1%,±5.12%,±7.47%
+NB-006,Fresh Whole Eggs,kg,8.01,73.0%,2.45,88.5%,97.0%,±5.62%,±8.20%
+NB-007,Baking Shortening,kg,6.95,78.6%,2.32,89.0%,96.6%,±5.31%,±8.15%
+NB-008,Margarine,kg,8.64,70.0%,2.45,87.8%,97.6%,±5.56%,±7.65%
+NB-009,Instant Dry Yeast,kg,7.39,76.0%,2.53,89.0%,95.8%,±5.31%,±8.95%
+NB-010,Baking Soda,kg,12.6,62.9%,4.48,69.4%,89.0%,±10.65%,±13.62%
+NB-011,Iodized Salt,kg,8.99,71.2%,2.59,87.4%,96.0%,±5.42%,±8.46%
+NB-012,Calcium Propionate,kg,13.18,64.7%,3.38,78.4%,93.9%,±8.40%,±10.47%
+NB-013,Potassium Sorbate,kg,11.16,59.9%,3.57,76.5%,93.1%,±8.39%,±11.11%
+NB-014,Crushed Peanuts / Nuts,kg,7.68,74.0%,2.34,89.4%,96.8%,±5.23%,±7.76%
+NB-015,Desiccated Coconut,kg,7.42,75.0%,2.48,87.8%,96.0%,±5.68%,±8.71%
+NB-016,Black Sesame Seeds,kg,7.34,75.4%,2.47,88.3%,96.3%,±5.42%,±8.09%
+NB-017,Malunggay (Moringa) Flakes,kg,8.08,72.2%,2.69,86.1%,96.0%,±6.46%,±8.90%
+NB-018,Vanilla Extract,L,12.07,57.8%,3.57,77.8%,93.9%,±8.15%,±11.10%
+NB-019,Plastic Pillow Packaging,pcs,6.94,77.9%,2.46,87.4%,96.5%,±5.55%,±8.35%
+OVERALL_TOTAL,ALL 19 MATERIALS COMBINED,Total Vol,6.65,80.2%,2.36,88.2%,96.5%,±5.43%,±8.21%

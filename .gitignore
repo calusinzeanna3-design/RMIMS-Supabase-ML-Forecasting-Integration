@@ -8,3 +8,8 @@ notebooks/
 scratch/
 ml_backend/__pycache__/
 *.zip
+.firebase/
+.ipynb_checkpoints/
+venv/
+functions/venv/
+.venv/

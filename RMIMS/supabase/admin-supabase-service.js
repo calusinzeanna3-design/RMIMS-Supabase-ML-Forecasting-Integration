@@ -458,20 +458,43 @@ export async function fetchRegisteredUsers() {
 
     if (error) throw error;
 
-    const users = (data || []).map(u => ({
+    let users = (data || []).map(u => ({
       id: u.id,
       name: u.full_name || u.username || 'User',
       username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
       email: u.email || '',
-      branchLoc: u.branch_location || 'Unassigned',
-      branchName: u.branch_name || '',
-      role: u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff',
-      status: u.status === 'active' ? 'Active' : 'Inactive'
+      branchLoc: u.branch_location || (u.role === 'admin' ? 'Headquarters' : 'Unassigned'),
+      branchName: u.branch_name || (u.role === 'admin' ? 'Main Administration' : 'Branch Store'),
+      role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
+        ? 'Administrator' 
+        : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),
+      status: u.status === 'active' ? 'Active' : 'Inactive',
+      created_at: u.created_at || new Date().toISOString()
     }));
+
+    // Ensure Zeanna real admin is present
+    const hasAdmin = users.some(u => 
+      (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
+      (u.name && u.name.toLowerCase() === 'zeanna')
+    );
+    if (!hasAdmin) {
+      users.unshift({
+        id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
+        name: 'Zeanna',
+        username: 'zeanna',
+        email: 'calusinzeanna3@gmail.com',
+        branchLoc: 'Headquarters',
+        branchName: 'Main Administration',
+        role: 'Administrator',
+        status: 'Active',
+        created_at: new Date().toISOString()
+      });
+    }
 
     try {
       localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
       window.dispatchEvent(new Event('rmims_registered_users_updated'));
+      window.dispatchEvent(new Event('storage'));
     } catch (_) {}
 
     return users;
@@ -657,6 +680,60 @@ export async function saveSystemSetting(key, value, updatedBy = 'Admin') {
   }
 }
 
+/**
+ * Permanently purge all accounts across local storage and Supabase backend.
+ */
+export async function permanentlyPurgeAllAccounts() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify([]));
+
+    // Clear personnel from stores
+    const rawStores = localStorage.getItem(STORAGE_KEYS.BRANCH_STORES);
+    if (rawStores) {
+      try {
+        const stores = JSON.parse(rawStores);
+        Object.values(stores).forEach(st => {
+          st.managers = [];
+          st.staff = [];
+        });
+        localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(stores));
+      } catch (_) {}
+    }
+
+    // Clear active sessions
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('rmimsCurrentUser');
+    localStorage.removeItem('adminUser');
+    localStorage.removeItem('managerUser');
+    localStorage.removeItem('staffUser');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('rmimsAdminUser');
+    localStorage.removeItem('rmims_logged_in_user');
+
+    window.dispatchEvent(new Event('rmims_registered_users_updated'));
+    window.dispatchEvent(new Event('rmims_pending_users_updated'));
+    window.dispatchEvent(new Event('rmims_stores_updated'));
+    window.dispatchEvent(new Event('storage'));
+
+    if (supabase) {
+      try {
+        await supabase.rpc('permanently_purge_all_accounts');
+      } catch (_) {}
+      try {
+        await supabase.from('user_profiles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (_) {}
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.permanentlyPurgeAllAccounts = permanentlyPurgeAllAccounts;
+}
+
 export default {
   STORAGE_KEYS,
   fetchBranchStores,
@@ -670,5 +747,6 @@ export default {
   fetchPendingApprovals,
   approveUserAccount,
   fetchSystemSettings,
-  saveSystemSetting
+  saveSystemSetting,
+  permanentlyPurgeAllAccounts
 };

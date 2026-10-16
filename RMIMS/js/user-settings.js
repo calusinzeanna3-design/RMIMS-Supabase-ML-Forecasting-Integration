@@ -140,7 +140,7 @@ function getLocalStaffUser() {
                 return {
                     uid,
                     fullName: sName,
-                    email: (isStaffRole && !isManagerEmail && !isAdminEmail) ? (u.email || "staff@rmims.ph") : "staff@rmims.ph",
+                    email: u.email || "",
                     role: "user",
                     status: u.status || "active",
                     createdAt: u.createdAt || u.created_at || new Date().toISOString(),
@@ -152,16 +152,7 @@ function getLocalStaffUser() {
         console.warn("Could not read local staff session:", e);
     }
 
-    // Default active staff session so visiting Staff Settings never kicks out to signin
-    return {
-        uid: "active-staff-session",
-        fullName: "Store Staff",
-        email: "staff@rmims.ph",
-        role: "user",
-        status: "active",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
+    return { redirect: "../login.html" };
 }
 
 let isStaffInitialized = false;
@@ -179,7 +170,7 @@ function applyStaffUser(userData) {
 
     // Populate Form Fields
     if ($("fullName")) $("fullName").value = currentUser.fullName || "Store Staff";
-    if ($("email")) $("email").value = currentUser.email || "staff@rmims.ph";
+    if ($("email")) $("email").value = currentUser.email || "";
     if ($("role")) $("role").value = "Staff Member";
 
     const statusEl = $("accountStatus");
@@ -256,7 +247,7 @@ onAuthStateChanged(auth, async (user) => {
         applyStaffUser({
             uid: user.uid,
             fullName: profile.full_name || "Store Staff",
-            email: profile.email || user.email || "staff@rmims.ph",
+            email: profile.email || user.email || "",
             role: "user",
             status: profile.status || "active",
             createdAt: profile.created_at,

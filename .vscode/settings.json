@@ -1,4 +1,12 @@
 {
     "liveServer.settings.port": 5500,
-    "liveServer.settings.root": "/"
+    "liveServer.settings.root": "/",
+    "python.defaultInterpreterPath": "C:\\Users\\Zeanna\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+    "python.analysis.extraPaths": [
+        "C:\\Users\\Zeanna\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages"
+    ],
+    "python.autoComplete.extraPaths": [
+        "C:\\Users\\Zeanna\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages"
+    ],
+    "python.pyrefly.configPath": "${workspaceFolder}/pyrefly.toml"
 }

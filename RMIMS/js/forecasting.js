@@ -8,6 +8,16 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
+import { 
+    getActiveTenantContext, 
+    setAdminActiveTenant, 
+    assertRbacFolderAccess, 
+    getTenantMaterials, 
+    KXC_TENANT_ID, 
+    SCONES_TENANT_ID,
+    TENANT_CONFIGS 
+} from "./tenant-manager.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache } from "./system-materials.js";
 
 /* ==========================================================
@@ -88,6 +98,82 @@ async function getApiBase() {
     return resolvedApiBase || "";
 }
 
+function getActiveCompanyContext() {
+    const tCtx = getActiveTenantContext();
+    return {
+        companyId: tCtx.id,
+        userRole: tCtx.userRole,
+        datasetFolder: tCtx.datasetFolder,
+        companyName: tCtx.name,
+        isScones: tCtx.isScones
+    };
+}
+
+function renderTenantBanner() {
+    const banner = document.getElementById("fcTenantBanner");
+    if (!banner) return;
+    const tCtx = getActiveTenantContext();
+
+    const titleEl = document.getElementById("tenantStoreTitle");
+    const folderEl = document.getElementById("tenantFolderPath");
+    const modelEl = document.getElementById("tenantModelDesc");
+    const marginEl = document.getElementById("tenantMarginDesc");
+    const tagEl = document.getElementById("tenantStoreTag");
+    const iconEl = document.getElementById("tenantIconBadge");
+    const actionsArea = document.getElementById("tenantActionArea");
+
+    if (titleEl) titleEl.textContent = tCtx.name;
+    if (folderEl) folderEl.textContent = tCtx.datasetFolder;
+    if (modelEl) modelEl.textContent = `Model: ${tCtx.modelFile} (${tCtx.materialsCount} Materials)`;
+    if (marginEl) {
+        marginEl.textContent = `Tolerance Corridor: ${tCtx.corridor} (${tCtx.lockedMape})`;
+        marginEl.style.color = tCtx.isScones ? "#b45309" : "#059669";
+    }
+    if (tagEl) {
+        tagEl.textContent = tCtx.isScones ? "SCONES & MUFFINS STORE" : "KXC ENTERPRISE STORE";
+        tagEl.style.color = tCtx.isScones ? "#d97706" : "#059669";
+        tagEl.style.background = tCtx.isScones ? "rgba(245, 158, 11, 0.12)" : "rgba(16, 185, 129, 0.1)";
+    }
+    if (iconEl) {
+        iconEl.style.color = tCtx.isScones ? "#d97706" : "#059669";
+        iconEl.style.background = tCtx.isScones ? "rgba(245, 158, 11, 0.14)" : "rgba(16, 185, 129, 0.12)";
+    }
+
+    if (actionsArea) {
+        if (tCtx.canSwitchStore) {
+            const nextTenantId = tCtx.isScones ? KXC_TENANT_ID : SCONES_TENANT_ID;
+            const nextTenantName = tCtx.isScones ? "KXC 5-Year Enterprise" : "Scones & Muffins Bakery";
+            actionsArea.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:0.75rem; font-weight:700; color:#475569; background:#f1f5f9; padding:4px 8px; border-radius:6px;">Administrator Multi-Store</span>
+                    <button type="button" id="btnAdminSwitchStore" class="fc-btn" style="padding:6px 14px; font-size:0.8rem; font-weight:700; background:#0f172a; color:#fff; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
+                        Switch to ${nextTenantName}
+                    </button>
+                </div>
+            `;
+            const switchBtn = document.getElementById("btnAdminSwitchStore");
+            if (switchBtn) {
+                switchBtn.onclick = () => {
+                    setAdminActiveTenant(nextTenantId);
+                    localStorage.removeItem("rmims_forecast_cache");
+                    localStorage.removeItem("rmims_forecast_timestamp");
+                    state.forecasts.clear();
+                    renderTenantBanner();
+                    loadAuthoritativeData().then(() => generateForecast());
+                };
+            }
+        } else {
+            actionsArea.innerHTML = `
+                <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #e2e8f0; padding:6px 12px; border-radius:8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span style="font-size:0.8rem; font-weight:700; color:#334155;">Assigned Branch Store (Air-Gapped)</span>
+                </div>
+            `;
+        }
+    }
+}
+
 /* ==========================================================
    ROLE & AUTH GUARD
    ========================================================== */
@@ -133,7 +219,7 @@ async function bootstrapForecastApp(user) {
 
         const uid = activeUser.id || activeUser.uid || "mgr-session";
         const cleanEmail = (activeUser.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
         if (isMasterAdmin) {
             profile = {
@@ -150,7 +236,7 @@ async function bootstrapForecastApp(user) {
             profile = {
                 id: uid,
                 full_name: activeUser.fullName || activeUser.name || "Manager",
-                email: activeUser.email || "manager@rmims.ph",
+                email: activeUser.email || "",
                 role: activeUser.role || "manager",
                 operational_role: activeUser.operationalRole || activeUser.operational_role || "manager",
                 status: "active"
@@ -192,6 +278,7 @@ setTimeout(() => {
 async function init() {
     initDateControls();
     initEventListeners();
+    renderTenantBanner();
     await loadAuthoritativeData();
 }
 
@@ -234,6 +321,11 @@ function setServiceStatus(text, type = "ready") {
 async function loadAuthoritativeData() {
     try {
         setServiceStatus("Evaluating Live Catalog...", "updating");
+
+        // Strict RBAC Tenant Verification
+        const tCtx = getActiveTenantContext();
+        assertRbacFolderAccess(tCtx.datasetFolder);
+        renderTenantBanner();
 
         // 1. Fetch Supabase Data
         let rawMats = [];
@@ -278,10 +370,10 @@ async function loadAuthoritativeData() {
             deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
         } catch (e) {}
 
-        // 1. Merge Materials (Baseline + Custom Local + Supabase)
-        const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
+        // 1. Authoritative Materials per Active Tenant
         const matMap = new Map();
-        getSystemRawMaterials().forEach(m => {
+        const tenantBaseMats = getTenantMaterials();
+        tenantBaseMats.forEach(m => {
             const k = String(m.name || m.id || "").toLowerCase().trim();
             matMap.set(k, {
                 id: String(m.id || m.item_code),
@@ -291,50 +383,63 @@ async function loadAuthoritativeData() {
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
                 minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
                 description: m.description || "",
-                created_at: m.created_at || new Date().toISOString()
+                created_at: m.created_at || new Date().toISOString(),
+                forecast_daily: m.forecast_daily,
+                forecast_weekly: m.forecast_weekly,
+                forecast_monthly: m.forecast_monthly,
+                forecast_90d: m.forecast_90d,
+                daily_mape: m.daily_mape,
+                weekly_mape: m.weekly_mape,
+                p90_margin: m.p90_margin,
+                p95_margin: m.p95_margin
             });
         });
-        if (!isBaselineWiped) {
-            rawMats.forEach(m => {
-                const k = String(m.name || m.id || "").toLowerCase().trim();
-                const ex = matMap.get(k) || {};
-                matMap.set(k, { ...ex, ...m });
-            });
-        }
+
+        // Merge custom materials saved in system-materials if matching active tenant
+        getSystemRawMaterials().forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            if (!matMap.has(k)) {
+                matMap.set(k, {
+                    id: String(m.id || m.item_code),
+                    item_code: m.item_code || m.itemCode || m.id,
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "kg",
+                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                    description: m.description || "",
+                    created_at: m.created_at || new Date().toISOString()
+                });
+            }
+        });
+
         let masterMats = Array.from(matMap.values());
         if (deletedMatIds.size > 0) {
             masterMats = masterMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
         }
 
-        // 2. Merge Disbursements (Baseline + Custom Local + Supabase)
+        // 2. Authoritative Disbursements (Partitioned by Tenant)
         const disbMap = new Map();
-        if (!isBaselineWiped && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
+        if (!tCtx.isScones && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
             AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbMap.set(String(d.id), { ...d }));
         }
         getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
-        if (!isBaselineWiped && !BACKEND_STANDBY) {
-            rawUsage.forEach(d => disbMap.set(String(d.id), { ...(disbMap.get(String(d.id)) || {}), ...d }));
-        }
         let masterDisbursements = Array.from(disbMap.values());
         if (deletedDisbIds.size > 0) {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
         }
 
-        // 3. Merge Receipts (Baseline + Custom Local + Supabase)
+        // 3. Authoritative Receipts (Partitioned by Tenant)
         const recMap = new Map();
-        if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
+        if (!tCtx.isScones && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
             AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recMap.set(String(r.id), { ...r }));
         }
         getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
-        if (!isBaselineWiped && !BACKEND_STANDBY) {
-            rawReceipts.forEach(r => recMap.set(String(r.id), { ...(recMap.get(String(r.id)) || {}), ...r }));
-        }
         let masterReceipts = Array.from(recMap.values());
         if (deletedRecIds.size > 0) {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
         }
 
-        // Compute dynamic live stock for each raw material based on full transaction ledger
+        // Compute dynamic live stock for each raw material based on transactions
         masterMats.forEach(m => {
             const mId = String(m.id).toLowerCase().trim();
             const mCode = String(m.item_code || "").toLowerCase().trim();
@@ -361,13 +466,19 @@ async function loadAuthoritativeData() {
         });
         state.latestConsumptionTimestamp = latestUsageTime > 0 ? new Date(latestUsageTime) : new Date();
 
-        // 2. Fetch 30 materials from Flask ML backend (only if backend active)
+        // 2. Fetch materials from Flask ML backend (if backend active)
         let trainedList = [];
-        if (!BACKEND_STANDBY && !isBaselineWiped) {
+        if (!BACKEND_STANDBY) {
             const apiBase = await getApiBase();
-            let mlRes = await fetch(`${apiBase}/api/ml/materials`).catch(() => null);
+            const { companyId, userRole, datasetFolder } = getActiveCompanyContext();
+            const reqHeaders = { 
+                "X-Company-Id": companyId, 
+                "X-User-Role": userRole,
+                "X-Tenant-Folder": datasetFolder 
+            };
+            let mlRes = await fetch(`${apiBase}/api/ml/materials`, { headers: reqHeaders }).catch(() => null);
             if (!mlRes || !mlRes.ok) {
-                mlRes = await fetch(`${apiBase}/api/materials`).catch(() => null);
+                mlRes = await fetch(`${apiBase}/api/materials`, { headers: reqHeaders }).catch(() => null);
             }
             if (mlRes && mlRes.ok) {
                 const mlData = await mlRes.json().catch(() => ({}));
@@ -387,30 +498,46 @@ async function loadAuthoritativeData() {
         });
 
         // Normalize Materials Catalog
-        if (!isBaselineWiped && trainedList.length > 0) {
+        if (trainedList.length > 0) {
             state.materials = trainedList.map(t => {
                 const sMatch = supaMap.get(t.raw_material_name?.toLowerCase().trim()) || supaMap.get(t.material_id?.toLowerCase().trim());
                 return {
                     id: sMatch ? sMatch.id : t.material_id,
-                    itemCode: t.material_id || (sMatch ? sMatch.item_code : "RM—"),
+                    itemCode: t.material_id || (sMatch ? sMatch.item_code : (tCtx.isScones ? "NB—" : "RM—")),
                     name: t.raw_material_name,
                     unit: sMatch ? (sMatch.unit_of_measure || t.unit) : t.unit,
                     currentStock: sMatch ? Number(sMatch.current_stock) || 0 : 0,
                     minStock: sMatch ? Number(sMatch.minimum_threshold) || 0 : 0,
                     lags: t.lags || 7,
-                    isTrained: true
+                    isTrained: true,
+                    forecast_daily: sMatch?.forecast_daily,
+                    forecast_weekly: sMatch?.forecast_weekly,
+                    forecast_monthly: sMatch?.forecast_monthly,
+                    forecast_90d: sMatch?.forecast_90d,
+                    daily_mape: sMatch?.daily_mape,
+                    weekly_mape: sMatch?.weekly_mape,
+                    p90_margin: sMatch?.p90_margin,
+                    p95_margin: sMatch?.p95_margin
                 };
             });
         } else {
             state.materials = masterMats.map(m => ({
                 id: m.id,
-                itemCode: m.item_code || "RM—",
+                itemCode: m.item_code || (tCtx.isScones ? "NB—" : "RM—"),
                 name: m.name,
                 unit: (m.unit_of_measure || "kg").trim(),
                 currentStock: Number(m.current_stock) || 0,
                 minStock: Number(m.minimum_threshold) || 0,
                 lags: 7,
-                isTrained: true
+                isTrained: true,
+                forecast_daily: m.forecast_daily,
+                forecast_weekly: m.forecast_weekly,
+                forecast_monthly: m.forecast_monthly,
+                forecast_90d: m.forecast_90d,
+                daily_mape: m.daily_mape,
+                weekly_mape: m.weekly_mape,
+                p90_margin: m.p90_margin,
+                p95_margin: m.p95_margin
             }));
         }
 
@@ -516,9 +643,16 @@ function computeAuthoritativeForecastBaseline() {
             momentumVelocity = 1.0 + Math.max(-0.06, Math.min(0.075, growthRate * 0.4));
         }
 
-        const f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
-        const f1mQty = Number((f7Qty * 4.15).toFixed(1));
+        let f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
+        let f1mQty = Number((f7Qty * 4.15).toFixed(1));
 
+        // Use authoritative pre-calculated forecast figures from Nutribun schedule (Scones & Muffins)
+        if (m.forecast_weekly != null && Number(m.forecast_weekly) > 0) {
+            f7Qty = Number(Number(m.forecast_weekly).toFixed(2));
+            f1mQty = Number((m.forecast_monthly != null ? Number(m.forecast_monthly) : (f7Qty * 4.15)).toFixed(2));
+        }
+
+        const tCtx = getActiveTenantContext();
         const curStock = m.currentStock;
         const diff = curStock - f7Qty;
         let decisionStatus = "Sufficient";
@@ -536,6 +670,12 @@ function computeAuthoritativeForecastBaseline() {
                 current_stock: curStock,
                 minimum_threshold: m.minStock
             },
+            daily_mape: m.daily_mape,
+            weekly_mape: m.weekly_mape,
+            p90_margin: m.p90_margin,
+            p95_margin: m.p95_margin,
+            company_id: tCtx.id,
+            dataset_folder: tCtx.datasetFolder,
             decision_support: {
                 difference: diff,
                 decision_status: decisionStatus,
@@ -634,7 +774,14 @@ async function generateAllForecasts() {
 
         const apiBase = await getApiBase();
         const session = await getSession();
-        const headers = { "Accept": "application/json" };
+        const { companyId, userRole, datasetFolder } = getActiveCompanyContext();
+        assertRbacFolderAccess(datasetFolder);
+        const headers = { 
+            "Accept": "application/json",
+            "X-Company-Id": companyId,
+            "X-User-Role": userRole,
+            "X-Tenant-Folder": datasetFolder
+        };
         if (session && session.access_token) {
             headers["Authorization"] = `Bearer ${session.access_token}`;
         }
@@ -809,23 +956,31 @@ function updateMarginComplianceBanner() {
             }
         });
 
+        const tCtx = getActiveTenantContext();
+        const thresholdPct = tCtx.isScones ? 0.05 : 0.0751;
+        const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
+
         if (mat7DayUsage > 0) {
             totalChecks++;
             const diffPct = (mat7DayUsage - req7) / req7;
-            if (Math.abs(diffPct) <= 0.0751) {
+            if (Math.abs(diffPct) <= thresholdPct) {
                 inMarginCount++;
-            } else if (diffPct > 0.0751) {
+            } else if (diffPct > thresholdPct) {
                 exceedingMaterials.push({ name: m.name, excessPct: (diffPct * 100).toFixed(1) });
             }
         }
     });
 
+    const tCtx = getActiveTenantContext();
+    const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
     const complianceRate = totalChecks > 0 ? ((inMarginCount / totalChecks) * 100).toFixed(0) : 100;
 
     if (exceedingMaterials.length === 0) {
         banner.className = "fc-margin-warning-banner success";
-        if (titleEl) titleEl.textContent = "Disbursement Accuracy & ±7.51% Margin of Error System";
-        if (subTextEl) subTextEl.textContent = "All raw material disbursements strictly conform to the ±7.51% requirement envelope. Forecast accuracy and stock balance are preserved.";
+        if (titleEl) titleEl.textContent = `Disbursement Accuracy & ${thresholdLabel}`;
+        if (subTextEl) subTextEl.textContent = tCtx.isScones 
+            ? "All 19 Nutribun raw material disbursements strictly conform to the 12-Year Holt-Winters forecast envelope (Weekly MAPE 2.70%)."
+            : "All raw material disbursements strictly conform to the ±7.51% requirement envelope. Forecast accuracy and stock balance are preserved.";
         if (badge) {
             badge.style.background = "rgba(16, 185, 129, 0.14)";
             badge.style.color = "#047857";
@@ -839,7 +994,7 @@ function updateMarginComplianceBanner() {
         banner.className = "fc-margin-warning-banner";
         const topExceed = exceedingMaterials[0];
         if (titleEl) titleEl.textContent = `⚠️ Margin Warning: ${exceedingMaterials.length} Material(s) Exceeding Rate`;
-        if (subTextEl) subTextEl.textContent = `${topExceed.name} recorded consumption is +${topExceed.excessPct}% over forecast. Regulate next batches to maintain ±7.51% operational stability.`;
+        if (subTextEl) subTextEl.textContent = `${topExceed.name} recorded consumption is +${topExceed.excessPct}% over forecast. Regulate next batches to maintain ${thresholdLabel} operational stability.`;
         if (badge) {
             badge.style.background = "rgba(245, 158, 11, 0.14)";
             badge.style.color = "#b45309";

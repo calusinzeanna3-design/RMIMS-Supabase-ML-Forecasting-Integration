@@ -24,7 +24,7 @@ onAuthStateChanged(auth, async (user) => {
                     user = {
                         uid: parsed.id || parsed.uid || "local-manager-user",
                         id: parsed.id || parsed.uid || "local-manager-user",
-                        email: parsed.email || "manager@rmims.ph",
+                        email: parsed.email || "",
                         displayName: parsed.fullName || parsed.name || "Manager",
                         user_metadata: { full_name: parsed.fullName || parsed.name || "Manager" }
                     };
@@ -43,7 +43,7 @@ onAuthStateChanged(auth, async (user) => {
 
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
         if (isMasterAdmin) {
             if (!profile) {
@@ -481,9 +481,7 @@ async function loadAuthoritativeData() {
         }
 
         const matBaseMap = new Map();
-        const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
-        const baseMats = getSystemRawMaterials();
-        const initialMats = (!isBaselineWiped && (!baseMats || baseMats.length === 0)) ? AUTHENTIC_59_RAW_MATERIALS : (baseMats || []);
+        const initialMats = getSystemRawMaterials() || [];
         initialMats.forEach(m => {
             const k = String(m.name || m.id || "").toLowerCase().trim();
             matBaseMap.set(k, {

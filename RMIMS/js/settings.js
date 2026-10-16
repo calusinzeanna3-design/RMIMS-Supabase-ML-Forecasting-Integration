@@ -101,10 +101,7 @@ function getLocalManagerOrAdmin() {
                 if (!mgrName || mgrName.toLowerCase().includes("rafael") || mgrName.toLowerCase().includes("cruz") || mgrName.toLowerCase().includes("staff") || mgrName.includes("Maria Santos")) {
                     mgrName = "Manager";
                 }
-                let mgrEmail = u.email || "manager@rmims.ph";
-                if (!mgrEmail || mgrEmail.toLowerCase().includes("staff@") || mgrEmail.startsWith("admin")) {
-                    mgrEmail = "manager@rmims.ph";
-                }
+                let mgrEmail = u.email || "";
                 return {
                     uid,
                     fullName: mgrName,
@@ -126,7 +123,7 @@ function getLocalManagerOrAdmin() {
             if (u && typeof u === "object") {
                 const role = (u.role || u.operationalRole || "").toLowerCase();
                 const email = (u.email || "").toLowerCase();
-                const isMaster = email === "calusinzeanna3@gmail.com" || email.startsWith("admin");
+                const isMaster = email === "calusinzeanna3@gmail.com";
 
                 if (role === "admin" || isMaster) {
                     return { redirect: "../admin/settings.html" };
@@ -141,21 +138,7 @@ function getLocalManagerOrAdmin() {
         console.warn("Could not read local manager session:", e);
     }
 
-    // Default active manager session so visiting Manager Settings maintains a valid manager identity
-    const defaultManager = {
-        uid: "active-manager-session",
-        fullName: "Manager",
-        email: "manager@rmims.ph",
-        role: "manager",
-        status: "active",
-        avatarUrl: localStorage.getItem("rmims_avatar_active-manager-session") || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    try {
-        localStorage.setItem("managerUser", JSON.stringify(defaultManager));
-    } catch (e) {}
-    return defaultManager;
+    return { redirect: "../login.html" };
 }
 
 let isInitialized = false;
@@ -171,7 +154,7 @@ function applyManagerUser(userData) {
         userData.fullName = "Manager";
     }
     if (!userData.email || userData.email.toLowerCase().includes("staff@")) {
-        userData.email = "manager@rmims.ph";
+        userData.email = userData.email || "";
     }
     currentUser = userData;
     syncUserInterface();
@@ -233,7 +216,7 @@ onAuthStateChanged(auth, async (user) => {
 
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
         if (isMasterAdmin) {
             if (!profile) {
@@ -297,10 +280,7 @@ onAuthStateChanged(auth, async (user) => {
             if (!mName || mName.toLowerCase().includes("rafael") || mName.toLowerCase().includes("cruz") || mName.toLowerCase().includes("staff") || mName.includes("Maria Santos")) {
                 mName = "Manager";
             }
-            let mEmail = profile.email || user.email || "manager@rmims.ph";
-            if (mEmail.toLowerCase().includes("staff@")) {
-                mEmail = "manager@rmims.ph";
-            }
+            let mEmail = profile.email || user.email || "";
             applyManagerUser({
                 uid: user.uid,
                 fullName: mName,
@@ -352,7 +332,7 @@ function syncUserInterface() {
     const previewAv = document.getElementById("profileAvatarPreview");
 
     if (fullNameInput) fullNameInput.value = currentUser.fullName || "Manager";
-    if (emailInput) emailInput.value = currentUser.email || "manager@rmims.ph";
+    if (emailInput) emailInput.value = currentUser.email || "";
     if (roleInput) roleInput.value = (currentUser.role === "admin" || currentUser.role === "manager") ? "Manager" : "Staff Member";
 
     if (statusEl) statusEl.textContent = currentUser.status === "active" ? "Active" : "Inactive";

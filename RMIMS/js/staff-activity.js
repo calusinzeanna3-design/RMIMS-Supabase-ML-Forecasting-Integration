@@ -436,6 +436,25 @@ function handleApproveTransaction() {
   renderCounters();
   renderTable();
 
+  // Broadcast live notification across all roles (Admin, Manager, Staff)
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification({
+        title: `Staff ${activeReviewItem.activity || 'Transaction'} Approved: ${activeReviewItem.ref}`,
+        message: `Store Manager approved ${activeReviewItem.ref} (${qty} of ${materialName}). Official stock synchronized.`,
+        category: 'Inventory',
+        badge: 'Approved',
+        role: 'all',
+        priority: 'normal',
+        targetUrl: 'manager/staff-activity.html',
+        ref: activeReviewItem.ref,
+        material: materialName,
+        quantity: qty,
+        actor: 'Store Manager'
+      });
+    }
+  } catch (e) {}
+
   showReviewResult('✓ Transaction approved successfully! Official inventory has been updated.', true);
   setTimeout(closeReviewModal, 1200);
 }
@@ -464,6 +483,25 @@ function handleConfirmReturnForCorrection() {
   renderCounters();
   renderTable();
 
+  // Broadcast live notification across all roles (Admin, Manager, Staff)
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification({
+        title: `Correction Requested: ${activeReviewItem.ref}`,
+        message: `Transaction ${activeReviewItem.ref} returned by Store Manager: "${msg}". Action required from staff.`,
+        category: 'Inventory',
+        badge: 'Action Required',
+        role: 'all',
+        priority: 'high',
+        targetUrl: 'user/transaction-history.html',
+        ref: activeReviewItem.ref,
+        material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
+        quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
+        actor: 'Store Manager'
+      });
+    }
+  } catch (e) {}
+
   showReviewResult(`⚠ Transaction returned for correction. Staff will keep reference ${activeReviewItem.ref} and revise details.`, false, '#FFFBEB', '#92400E');
   setTimeout(closeReviewModal, 1300);
 }
@@ -490,6 +528,25 @@ function handleConfirmReject() {
   saveTransactions();
   renderCounters();
   renderTable();
+
+  // Broadcast live notification across all roles (Admin, Manager, Staff)
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification({
+        title: `Transaction Rejected: ${activeReviewItem.ref}`,
+        message: `Transaction ${activeReviewItem.ref} was rejected by Store Manager: "${reason}".`,
+        category: 'Inventory',
+        badge: 'Rejected',
+        role: 'all',
+        priority: 'normal',
+        targetUrl: 'manager/staff-activity.html',
+        ref: activeReviewItem.ref,
+        material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
+        quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
+        actor: 'Store Manager'
+      });
+    }
+  } catch (e) {}
 
   showReviewResult('✗ Transaction has been rejected. Official inventory was not modified.', false);
   setTimeout(closeReviewModal, 1200);

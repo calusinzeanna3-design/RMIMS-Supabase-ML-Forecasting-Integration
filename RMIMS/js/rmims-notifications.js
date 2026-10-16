@@ -44,537 +44,72 @@
     return 'manager';
   }
 
-  const STORAGE_STORE_KEY = 'rmims_notifications_master_v6';
-  const STORAGE_READ_KEY = 'rmims_notifications_read_v6';
+  const STORAGE_STORE_KEY = 'rmims_notifications_live_v2';
+  const STORAGE_READ_KEY = 'rmims_notifications_read_v2';
 
-  // Realistic seed data strictly matching user specifications
-  function getSeedNotifications() {
-    const now = new Date();
-    const t = (offsetMins) => new Date(now.getTime() - offsetMins * 60 * 1000).toISOString();
-
-    return [
-      // -------------------------------------------------------------
-      // ADMIN NOTIFICATIONS
-      // -------------------------------------------------------------
-      // Branch Tab
-      {
-        id: 'notif-adm-br-1',
-        role: 'admin',
-        category: 'branch',
-        type: 'branch_added',
-        priority: 'success',
-        title: 'New Branch Store Added',
-        message: 'Tayabas Highway Outlet (#BR-TYB-04) has been registered and synced to the RMSME central inventory route.',
-        actor: 'Admin Console',
-        storeLocation: 'Tayabas Highway, Quezon',
-        actionLabel: 'View Branch',
-        timestamp: t(15)
-      },
-      {
-        id: 'notif-adm-br-2',
-        role: 'admin',
-        category: 'branch',
-        type: 'branch_sync',
-        priority: 'info',
-        title: 'Lucena Central Branch Online',
-        message: 'Store location Lucena City connected. Real-time telemetry, terminal heartbeat, and safe buffer limits verified.',
-        actor: 'Network Daemon',
-        storeLocation: 'Lucena City Central Mall',
-        actionLabel: 'Check Telemetry',
-        timestamp: t(120)
-      },
-      {
-        id: 'notif-adm-br-3',
-        role: 'admin',
-        category: 'branch',
-        type: 'user_branch_assigned',
-        priority: 'info',
-        title: 'User Branch Store Assigned',
-        message: 'Store Manager Maria Santos assigned as Primary Overseer for Lucena Central Branch store.',
-        actor: 'Administration',
-        storeLocation: 'Lucena City Central Mall',
-        actionLabel: 'View Assignment',
-        timestamp: t(280)
-      },
-
-      // User Tab (Masked/blurred device locations with asterisks!)
-      {
-        id: 'notif-adm-usr-1',
-        role: 'admin',
-        category: 'user',
-        type: 'daily_login',
-        priority: 'info',
-        title: 'Store Staff Daily Login',
-        message: 'Juan Dela Cruz (Store Staff) timely morning sign-in recorded.',
-        actor: 'Juan Dela Cruz',
-        deviceLocation: 'Lucena City (120.98.***.***)',
-        deviceType: 'Staff POS Terminal #02',
-        actionLabel: 'Inspect Session',
-        timestamp: t(25)
-      },
-      {
-        id: 'notif-adm-usr-2',
-        role: 'admin',
-        category: 'user',
-        type: 'daily_login',
-        priority: 'info',
-        title: 'Manager Daily Login',
-        message: 'Maria Santos (Store Manager) authenticated into Management Suite.',
-        actor: 'Maria Santos',
-        deviceLocation: 'Tayabas Station (112.198.***.***)',
-        deviceType: 'Manager Desktop Workstation',
-        actionLabel: 'Inspect Session',
-        timestamp: t(45)
-      },
-      {
-        id: 'notif-adm-usr-3',
-        role: 'admin',
-        category: 'user',
-        type: 'daily_login',
-        priority: 'purple',
-        title: 'Administrator Timely Login',
-        message: 'System Administrator secure session authenticated.',
-        actor: 'Super Admin',
-        deviceLocation: 'Lucena HQ (192.168.***.***)',
-        deviceType: 'Secure Admin Console',
-        actionLabel: 'Verify Session',
-        timestamp: t(70)
-      },
-      {
-        id: 'notif-adm-usr-4',
-        role: 'admin',
-        category: 'user',
-        type: 'user_created',
-        priority: 'success',
-        title: 'User Created',
-        message: 'New store staff account created for Elena Reyes with active receiving privileges.',
-        actor: 'Administration',
-        deviceLocation: 'Lucena HQ (192.168.***.***)',
-        actionLabel: 'View User',
-        timestamp: t(340)
-      },
-      {
-        id: 'notif-adm-usr-5',
-        role: 'admin',
-        category: 'user',
-        type: 'user_reactivated',
-        priority: 'success',
-        title: 'User Reactivated',
-        message: 'Staff account for Carlos Gomez reactivated after seasonal leave.',
-        actor: 'Administration',
-        deviceLocation: 'Lucena HQ (192.168.***.***)',
-        actionLabel: 'View User',
-        timestamp: t(520)
-      },
-      {
-        id: 'notif-adm-usr-6',
-        role: 'admin',
-        category: 'user',
-        type: 'user_deactivated',
-        priority: 'warning',
-        title: 'User Deactivated',
-        message: 'Temporary auditor account deactivated upon completion of Q3 stock verification.',
-        actor: 'Administration',
-        deviceLocation: 'Lucena HQ (192.168.***.***)',
-        actionLabel: 'Audit Logs',
-        timestamp: t(1440)
-      },
-
-      // System Tab (Admin: backups, restore, password change, system alerts)
-      {
-        id: 'notif-adm-sys-1',
-        role: 'admin',
-        category: 'system',
-        type: 'backup',
-        priority: 'success',
-        title: 'Database Backup Completed',
-        message: 'Scheduled full database snapshot saved to encrypted cold storage (rmims_backup_20261010_0800.dump).',
-        actor: 'Automated Backup Daemon',
-        actionLabel: 'Inspect Backup',
-        timestamp: t(35)
-      },
-      {
-        id: 'notif-adm-sys-2',
-        role: 'admin',
-        category: 'system',
-        type: 'restore',
-        priority: 'info',
-        title: 'System Restored Verification',
-        message: 'Configuration tables verified against disaster recovery archive with 100% integrity parity.',
-        actor: 'System Integrity Engine',
-        actionLabel: 'Verify Integrity',
-        timestamp: t(220)
-      },
-      {
-        id: 'notif-adm-sys-3',
-        role: 'admin',
-        category: 'system',
-        type: 'password_change',
-        priority: 'warning',
-        title: 'Admin Password Changed',
-        message: 'Security credentials updated for Administrator profile. Two-factor session refreshed.',
-        actor: 'Super Admin',
-        deviceLocation: 'Lucena HQ (192.168.***.***)',
-        actionLabel: 'Audit Security',
-        timestamp: t(600)
-      },
-      {
-        id: 'notif-adm-sys-4',
-        role: 'admin',
-        category: 'system',
-        type: 'alert',
-        priority: 'purple',
-        title: 'System Alert: Telemetry Normal',
-        message: 'Database storage consumption at 18.4%. All 59 raw materials and ML forecast models operational.',
-        actor: 'Monitoring Daemon',
-        actionLabel: 'System Telemetry',
-        timestamp: t(720)
-      },
-
-      // -------------------------------------------------------------
-      // MANAGER NOTIFICATIONS
-      // -------------------------------------------------------------
-      // Employees Tab (Progress notif of staff: please check, receive/disburse updated)
-      {
-        id: 'notif-mgr-emp-1',
-        role: 'manager',
-        category: 'employees',
-        type: 'receive_check',
-        priority: 'warning',
-        title: 'Staff Added Receive Material — Please Check',
-        message: 'Staff Juan Dela Cruz added 50 bags of Refined Sugar (Lot #RS-2026-088). Verification required before lot release.',
-        actor: 'Staff: Juan Dela Cruz',
-        actionLabel: 'Review Receipt',
-        material: 'Refined Sugar (50kg)',
-        quantity: '50 bags',
-        timestamp: t(10)
-      },
-      {
-        id: 'notif-mgr-emp-2',
-        role: 'manager',
-        category: 'employees',
-        type: 'disburse_check',
-        priority: 'warning',
-        title: 'Disburse Material Added — Please Check',
-        message: 'Staff Elena Reyes recorded disbursement of 120 kg Raw Sugar for Production Batch #PB-440. Please check approval.',
-        actor: 'Staff: Elena Reyes',
-        actionLabel: 'Check Disbursement',
-        material: 'Raw Sugar (120kg)',
-        quantity: '120 kg',
-        timestamp: t(30)
-      },
-      {
-        id: 'notif-mgr-emp-3',
-        role: 'manager',
-        category: 'employees',
-        type: 'receive_updated',
-        priority: 'info',
-        title: 'Receive Material Updated',
-        message: 'Staff updated delivery receipt #DR-9921 from 45 to 50 bags following physical pallet recount.',
-        actor: 'Staff: Juan Dela Cruz',
-        material: 'Washed Sugar',
-        timestamp: t(65)
-      },
-      {
-        id: 'notif-mgr-emp-4',
-        role: 'manager',
-        category: 'employees',
-        type: 'disburse_updated',
-        priority: 'info',
-        title: 'Disburse Material Updated',
-        message: 'Allocation notes modified on Disbursement #DS-1082 for Packaging Line 2 by Store Staff.',
-        actor: 'Staff: Carlos Gomez',
-        material: 'Polypropylene Sacks',
-        timestamp: t(140)
-      },
-      {
-        id: 'notif-mgr-emp-5',
-        role: 'manager',
-        category: 'employees',
-        type: 'employee_added',
-        priority: 'success',
-        title: 'Employee Added',
-        message: 'The employee has been added successfully and now has access to the selected stores.',
-        actor: 'Store Management',
-        timestamp: t(240)
-      },
-
-      // System Tab (Manager: add, import, export, upload, receive save, disburse save, finished product, AI forecast, alerts, deleted)
-      {
-        id: 'notif-mgr-sys-1',
-        role: 'manager',
-        category: 'system',
-        type: 'file_imported',
-        priority: 'success',
-        title: 'File Imported Successfully',
-        message: 'Import completed for raw_materials_q4_batch.xlsx. 59 raw materials and stock thresholds updated.',
-        actor: 'Manager Suite',
-        fileName: 'raw_materials_q4_batch.xlsx',
-        fileRows: '59 records updated',
-        timestamp: t(18)
-      },
-      {
-        id: 'notif-mgr-sys-2',
-        role: 'manager',
-        category: 'system',
-        type: 'file_exported',
-        priority: 'info',
-        title: 'File Exported',
-        message: 'Export file generated: RMIMS_Disbursements_Oct2026.csv (Disbursements and Stock Audit log).',
-        actor: 'Manager Suite',
-        fileName: 'RMIMS_Disbursements_Oct2026.csv',
-        timestamp: t(50)
-      },
-      {
-        id: 'notif-mgr-sys-3',
-        role: 'manager',
-        category: 'system',
-        type: 'file_uploaded',
-        priority: 'info',
-        title: 'Supplier Certificate Uploaded',
-        message: 'Supplier Certificate of Analysis (COA) PDF uploaded for Refined Sugar delivery verification.',
-        actor: 'Store Manager',
-        fileName: 'COA_RefinedSugar_Lot088.pdf',
-        timestamp: t(80)
-      },
-      {
-        id: 'notif-mgr-sys-4',
-        role: 'manager',
-        category: 'system',
-        type: 'receive_saved',
-        priority: 'success',
-        title: 'Receive Saved',
-        message: 'Stock receipt #RC-2026-1049 saved to authoritative database with supplier reference DR-8812.',
-        actor: 'Store Staff',
-        material: 'Refined Sugar',
-        quantity: '50 bags',
-        timestamp: t(95)
-      },
-      {
-        id: 'notif-mgr-sys-5',
-        role: 'manager',
-        category: 'system',
-        type: 'disburse_saved',
-        priority: 'info',
-        title: 'Disburse Saved',
-        message: 'Disbursement #DB-2026-0512 saved and deducted from current live store inventory.',
-        actor: 'Store Staff',
-        material: 'Brown Sugar',
-        quantity: '15 sacks',
-        timestamp: t(110)
-      },
-      {
-        id: 'notif-mgr-sys-6',
-        role: 'manager',
-        category: 'system',
-        type: 'finished_product_created',
-        priority: 'purple',
-        title: 'Finished Product Created',
-        message: 'New recipe cataloged: "Refined White Sugar 1kg Retail Pack" (SKU #FP-RWS-01).',
-        actor: 'Store Management',
-        productName: 'Refined White Sugar 1kg Retail Pack',
-        timestamp: t(160)
-      },
-      {
-        id: 'notif-mgr-sys-7',
-        role: 'manager',
-        category: 'system',
-        type: 'finished_product_bom_added',
-        priority: 'purple',
-        title: 'Finished Product Raw Materials Added',
-        message: 'Bill of Materials linked: 1,000 kg Bulk Refined Sugar + 1,000 Polypropylene Units for Packaging.',
-        actor: 'Store Management',
-        timestamp: t(180)
-      },
-      {
-        id: 'notif-mgr-sys-8',
-        role: 'manager',
-        category: 'system',
-        type: 'raw_material_updated',
-        priority: 'info',
-        title: 'Raw Materials Updated',
-        message: 'Safety buffer threshold for Washed Sugar adjusted from 150 to 200 bags to protect against supply lags.',
-        actor: 'Store Management',
-        material: 'Washed Sugar',
-        timestamp: t(210)
-      },
-      {
-        id: 'notif-mgr-sys-9',
-        role: 'manager',
-        category: 'system',
-        type: 'ai_forecast_generated',
-        priority: 'purple',
-        title: 'AI Forecasting Generated',
-        message: 'Random Forest & Prophet AI engine generated 30-day forecast across all 59 materials with ±7.51% tolerance.',
-        actor: 'AI ML Engine',
-        actionLabel: 'View Forecast',
-        timestamp: t(250)
-      },
-      {
-        id: 'notif-mgr-sys-10',
-        role: 'manager',
-        category: 'system',
-        type: 'stock_alert',
-        priority: 'warning',
-        title: 'Alert: Low Stock Buffer',
-        message: 'Brown Sugar inventory level (85 sacks) has breached the minimum safe reorder point of 100 sacks.',
-        actor: 'System Watchdog',
-        actionLabel: 'Check Stock',
-        material: 'Brown Sugar',
-        timestamp: t(310)
-      },
-      {
-        id: 'notif-mgr-sys-11',
-        role: 'manager',
-        category: 'system',
-        type: 'ai_support_alert',
-        priority: 'purple',
-        title: 'AI Support Alert: Demand Surge',
-        message: 'Predictive seasonal spike: Sugar consumption forecasted to increase 18.4% next week due to holiday bakery orders.',
-        actor: 'AI Support Assistant',
-        timestamp: t(400)
-      },
-      {
-        id: 'notif-mgr-sys-12',
-        role: 'manager',
-        category: 'system',
-        type: 'item_deleted',
-        priority: 'danger',
-        title: 'Item Deleted',
-        message: 'Deprecated packaging draft record #TMP-PKG-02 removed from database by manager.',
-        actor: 'Store Management',
-        timestamp: t(580)
-      },
-
-      // -------------------------------------------------------------
-      // STAFF NOTIFICATIONS
-      // -------------------------------------------------------------
-      // System Tab (Staff: receive saved/updated, disburse saved/updated, incoming messages, AI reminders)
-      {
-        id: 'notif-stf-act-1',
-        role: 'staff',
-        category: 'activity',
-        type: 'msg_incoming_receive',
-        priority: 'warning',
-        title: 'Message: Incoming Delivery Arriving Today',
-        message: '100 sacks Raw Sugar arriving from Central Milling Corp at approximately 1:30 PM. Prepare bay 2 for staging.',
-        actor: 'Logistics Dispatch',
-        actionLabel: 'View ETA',
-        material: 'Raw Sugar (100 sacks)',
-        timestamp: t(8)
-      },
-      {
-        id: 'notif-stf-act-2',
-        role: 'staff',
-        category: 'activity',
-        type: 'msg_incoming_disburse',
-        priority: 'info',
-        title: 'Message: Incoming Disburse Request',
-        message: 'Requisition order #REQ-882 pending staging for Bakery Line 3 (Requires 20 bags Washed Sugar).',
-        actor: 'Production Line 3',
-        actionLabel: 'Stage Material',
-        material: 'Washed Sugar (20 bags)',
-        timestamp: t(22)
-      },
-      {
-        id: 'notif-stf-act-3',
-        role: 'staff',
-        category: 'activity',
-        type: 'receive_saved',
-        priority: 'success',
-        title: 'Receive Saved',
-        message: 'Stock receipt #RC-1049 (50 sacks Refined Sugar) successfully committed to authoritative store ledger.',
-        actor: 'Juan Dela Cruz',
-        actionLabel: 'View Ledger',
-        material: 'Refined Sugar',
-        quantity: '50 sacks',
-        timestamp: t(40)
-      },
-      {
-        id: 'notif-stf-act-4',
-        role: 'staff',
-        category: 'activity',
-        type: 'receive_updated',
-        priority: 'info',
-        title: 'Receive Updated',
-        message: 'Stock receipt #RC-1048 verified and delivery receipt DR-9921 attached.',
-        actor: 'Juan Dela Cruz',
-        actionLabel: 'View Receipt',
-        material: 'Washed Sugar',
-        timestamp: t(75)
-      },
-      {
-        id: 'notif-stf-act-5',
-        role: 'staff',
-        category: 'activity',
-        type: 'disburse_saved',
-        priority: 'info',
-        title: 'Disburse Saved',
-        message: 'Disbursement #DB-0512 (12 sacks Brown Sugar) logged and deducted from current balance.',
-        actor: 'Elena Reyes',
-        actionLabel: 'View Entry',
-        material: 'Brown Sugar',
-        quantity: '12 sacks',
-        timestamp: t(115)
-      },
-      {
-        id: 'notif-stf-act-6',
-        role: 'staff',
-        category: 'activity',
-        type: 'disburse_updated',
-        priority: 'info',
-        title: 'Disburse Updated',
-        message: 'Requisition #DB-0510 allocation notes and line dispatch time updated.',
-        actor: 'Carlos Gomez',
-        actionLabel: 'Check Notes',
-        timestamp: t(160)
-      },
-      {
-        id: 'notif-stf-sys-1',
-        role: 'staff',
-        category: 'system',
-        type: 'ai_reminder',
-        priority: 'purple',
-        title: 'Reminder: AI Forecast Recommendation',
-        message: 'AI safety reorder suggestion: Replenish Molasses raw materials within 48 hours to avert line bottlenecks.',
-        actor: 'AI Forecasting Advisor',
-        actionLabel: 'Check Advice',
-        material: 'Molasses (Buffer Warning)',
-        timestamp: t(210)
-      },
-      {
-        id: 'notif-stf-sys-2',
-        role: 'staff',
-        category: 'system',
-        type: 'safe_buffer',
-        priority: 'warning',
-        title: 'Store Safe Buffer Limit Warning',
-        message: 'Refined sugar safety margin reached. Restock prompt sent to Store Manager.',
-        actor: 'Buffer Alert Daemon',
-        actionLabel: 'View Warning',
-        material: 'Refined Sugar',
-        timestamp: t(290)
-      }
+  // Purge legacy hardcoded/seed notifications from browser storage
+  try {
+    const legacyKeys = [
+      'rmims_notifications_master_v6',
+      'rmims_notifications_master_v5',
+      'rmims_notifications_master',
+      'rmims_live_notifications',
+      'rmims_notifications_read_v6',
+      'rmims_notifications_read'
     ];
+    legacyKeys.forEach(k => {
+      try { localStorage.removeItem(k); } catch (_) {}
+    });
+  } catch (_) {}
+
+  // Pure dynamic notification storage - strictly 0 default/mock data
+  function getSeedNotifications() {
+    return [];
   }
 
-  // Retrieve stored notifications or seed if empty
+  // Filter helper to reject any fake/dump staff notifications while permitting real dynamic user logins
+  function isCleanNotification(n) {
+    if (!n || !n.id) return false;
+    const t = (n.title || '').toLowerCase();
+    const m = (n.message || '').toLowerCase();
+    const a = (n.actor || '').toLowerCase();
+    const BANNED_TOKENS = [
+      'maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza',
+      'carlos mendoza', 'victor morales', 'ethan cruz', 'sarah gomez', 'mark villanueva',
+      '@rmims.ph'
+    ];
+    if (BANNED_TOKENS.some(tok => t.includes(tok) || m.includes(tok) || a.includes(tok))) return false;
+    return true;
+  }
+
+  // Immediately cleanse any dump notifications from localStorage
+  try {
+    const raw = localStorage.getItem(STORAGE_STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const clean = parsed.filter(isCleanNotification);
+        localStorage.setItem(STORAGE_STORE_KEY, JSON.stringify(clean));
+      }
+    }
+  } catch (_) {}
+
+  // Retrieve stored notifications (clean empty array if nothing added yet)
   function getNotifications() {
     try {
       const raw = localStorage.getItem(STORAGE_STORE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          const clean = parsed.filter(isCleanNotification);
+          if (clean.length !== parsed.length) {
+            localStorage.setItem(STORAGE_STORE_KEY, JSON.stringify(clean));
+          }
+          return clean;
         }
       }
     } catch (_) {}
-
-    const seed = getSeedNotifications();
-    try {
-      localStorage.setItem(STORAGE_STORE_KEY, JSON.stringify(seed));
-    } catch (_) {}
-    return seed;
+    return [];
   }
 
   function saveNotifications(list) {
@@ -730,8 +265,8 @@
   function getFilteredNotifications(role) {
     const all = getNotifications();
 
-    // Filter strictly by portal role
-    const roleItems = all.filter(n => n.role === role);
+    // Notification appears to all roles if role is 'all', undefined, or matches the active role
+    const roleItems = all.filter(n => !n.role || n.role === 'all' || n.role === role);
 
     return roleItems.filter(n => {
       // Tab filter
@@ -755,7 +290,7 @@
   function updateTopbarBadges(role) {
     const all = getNotifications();
     const readSet = getReadSet();
-    const roleItems = all.filter(n => n.role === role);
+    const roleItems = all.filter(n => !n.role || n.role === 'all' || n.role === role);
     const unreadCount = roleItems.filter(n => !readSet.has(String(n.id))).length;
 
     // Find all bell buttons in DOM
@@ -764,6 +299,13 @@
     );
 
     bellButtons.forEach(btn => {
+      // Remove any legacy stray badge elements
+      btn.querySelectorAll('.badge, .notification-count, .topbar-badge').forEach(b => {
+        if (!b.classList.contains('rmims-bell-unread-badge')) {
+          b.remove();
+        }
+      });
+
       let badge = btn.querySelector('.rmims-bell-unread-badge');
       if (!badge) {
         badge = document.createElement('span');
@@ -778,6 +320,7 @@
         btn.title = `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`;
       } else {
         badge.style.display = 'none';
+        badge.textContent = '';
         btn.setAttribute('aria-label', 'Notifications');
         btn.title = 'Notifications';
       }
@@ -937,7 +480,7 @@
     const tabs = getTabsForRole(role);
     const all = getNotifications();
     const readSet = getReadSet();
-    const roleItems = all.filter(n => n.role === role);
+    const roleItems = all.filter(n => !n.role || n.role === 'all' || n.role === role);
 
     tabsBar.innerHTML = '';
 
@@ -1094,6 +637,14 @@
     }
 
     let metaDetailsHtml = '';
+    if (notif.ref) {
+      metaDetailsHtml += `
+        <div class="rmims-detail-meta-item">
+          <span class="rmims-detail-meta-label">Reference No:</span>
+          <span class="rmims-detail-meta-val">🔖 <strong>${escapeHtml(notif.ref)}</strong></span>
+        </div>
+      `;
+    }
     if (notif.fileName) {
       metaDetailsHtml += `
         <div class="rmims-detail-meta-item">
@@ -1269,7 +820,12 @@
     if (!notif) return;
     const all = getNotifications();
     const id = notif.id || `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    if (all.some(n => String(n.id) === String(id))) return;
+
     const newNotif = {
+      role: 'all',
+      category: 'activity',
+      priority: 'info',
       ...notif,
       id,
       timestamp: notif.timestamp || new Date().toISOString()
@@ -1279,6 +835,11 @@
 
     const role = getPortalRole();
     updateTopbarBadges(role);
+    const backdrop = document.getElementById('rmimsNotifBackdrop');
+    if (backdrop && backdrop.classList.contains('open')) {
+      renderTabs(role);
+      renderList(role);
+    }
   };
 
   window.RMIMS_NOTIFICATIONS_POPUP = {

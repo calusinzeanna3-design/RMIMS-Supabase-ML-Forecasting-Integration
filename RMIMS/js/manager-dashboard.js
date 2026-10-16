@@ -64,9 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function cleanseMockTransactions() {
   try {
-    if (localStorage.getItem('rmims_wipe_baseline_materials') === null) {
-      localStorage.setItem('rmims_wipe_baseline_materials', 'true');
-    }
+    localStorage.setItem('rmims_wipe_baseline_materials', 'false');
     const raw = localStorage.getItem(STAFF_TX_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);

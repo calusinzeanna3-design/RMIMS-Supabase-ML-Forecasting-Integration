@@ -676,6 +676,25 @@ function bindReviewModalEvents() {
         localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
       } catch (e) {}
 
+      // Broadcast live notification across all roles (Admin, Manager, Staff)
+      try {
+        if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+          window.pushRMIMSNotification({
+            title: `Raw Material Received: ${p.materialName}`,
+            message: `Delivery of ${p.quantity} ${p.unit} for ${p.materialName} recorded by Store Manager (${p.ref}).`,
+            category: 'Inventory',
+            badge: 'Received',
+            role: 'all',
+            priority: 'normal',
+            targetUrl: 'manager/receive.html',
+            ref: p.ref,
+            material: p.materialName,
+            quantity: `${p.quantity} ${p.unit}`,
+            actor: 'Store Manager'
+          });
+        }
+      } catch (e) {}
+
       // 5. Broadcast inventory update event across all tabs
       localStorage.setItem('rmims_inventory_updated', String(Date.now()));
       window.dispatchEvent(new Event('storage'));

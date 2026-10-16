@@ -431,21 +431,32 @@ import './rmims-notifications.js';
       const userStr = localStorage.getItem('adminUser') || localStorage.getItem('rmimsAdminUser') || localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('rmimsCurrentUser');
       if (!userStr) {
         setAdminDefaultProfile();
+        window.location.href = '../login.html';
         return;
       }
       const user = JSON.parse(userStr);
       if (!user) {
         setAdminDefaultProfile();
+        window.location.href = '../login.html';
+        return;
+      }
+
+      const cleanEmail = (user.email || '').toLowerCase();
+      if (cleanEmail === 'admin@rmims.ph' || cleanEmail === 'manager@rmims.ph' || cleanEmail === 'staff@rmims.ph') {
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('rmimsAdminUser');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('rmimsCurrentUser');
+        window.location.href = '../login.html';
         return;
       }
 
       // Check if user is genuinely an Admin
-      const isAdmin = user.role === 'admin' || user.role === 'main_admin' || user.operationalRole === 'admin' || (user.email && user.email.toLowerCase().startsWith('admin@'));
+      const isAdmin = user.role === 'admin' || user.role === 'main_admin' || user.operationalRole === 'admin' || cleanEmail === 'calusinzeanna3@gmail.com';
       const isKnownNonAdmin = (user.name || user.fullName || '').toLowerCase().includes('maria santos') || user.role === 'user' || user.role === 'staff' || user.role === 'manager';
 
       if (!isAdmin || isKnownNonAdmin) {
-        // If the stored session belongs to a store manager / staff user (like "Maria Santos"),
-        // NEVER display them as the Main Admin in the Admin Portal!
         setAdminDefaultProfile();
         return;
       }
@@ -500,6 +511,56 @@ import './rmims-notifications.js';
           window.dispatchEvent(new Event('rmims_stores_updated'));
         }
       }
+
+      // 1. Permanent removal of all existing user accounts across the system
+      if (!localStorage.getItem('rmims_all_accounts_permanently_purged_v2')) {
+        localStorage.setItem('rmims_registered_users', JSON.stringify([]));
+        localStorage.setItem('rmims_pending_users', JSON.stringify([]));
+        
+        // Remove personnel from branch stores
+        const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+        if (rawStores) {
+          try {
+            const stores = JSON.parse(rawStores);
+            Object.values(stores).forEach(st => {
+              st.managers = [];
+              st.staff = [];
+            });
+            localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
+            window.dispatchEvent(new Event('rmims_stores_updated'));
+          } catch (_) {}
+        }
+        
+        // Clear active session accounts
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('rmimsCurrentUser');
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('managerUser');
+        localStorage.removeItem('staffUser');
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('rmimsAdminUser');
+        localStorage.removeItem('rmims_logged_in_user');
+        
+        localStorage.setItem('rmims_all_accounts_permanently_purged_v2', 'true');
+        window.dispatchEvent(new Event('rmims_registered_users_updated'));
+        window.dispatchEvent(new Event('rmims_pending_users_updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
+
+      // Check and wipe stale demo or Main Administrator session from localStorage
+      ['currentUser', 'adminUser', 'rmimsAdminUser', 'userProfile', 'rmimsCurrentUser', 'managerUser', 'staffUser'].forEach(key => {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const p = JSON.parse(raw);
+            const name = (p.fullName || p.name || '').toLowerCase();
+            const email = (p.email || '').toLowerCase();
+            if (name === 'main administrator' || email.includes('@rmims.ph')) {
+              localStorage.removeItem(key);
+            }
+          } catch (_) {}
+        }
+      });
 
       // 2. Cleanse legacy mock registered users
       const rawUsers = localStorage.getItem('rmims_registered_users');
@@ -599,14 +660,24 @@ import './rmims-notifications.js';
         }
       }
 
-      // 4. If current user is Maria Santos or non-admin stored as currentUser, remove so admin starts clean
-      const curUserStr = localStorage.getItem('currentUser');
-      if (curUserStr) {
-        const curUser = JSON.parse(curUserStr);
-        if (curUser && (curUser.name === 'Maria Santos' || curUser.fullName === 'Maria Santos' || curUser.username === 'maria_santos')) {
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('rmimsCurrentUser');
-          localStorage.removeItem('userProfile');
+      // 6. Cleanse fake staff login notifications from shared storage
+      const rawNotif = localStorage.getItem('rmims_notifications_live_v2');
+      if (rawNotif) {
+        const parsed = JSON.parse(rawNotif);
+        if (Array.isArray(parsed)) {
+          const clean = parsed.filter(n => {
+            if (!n || !n.id) return false;
+            const t = (n.title || '').toLowerCase();
+            const m = (n.message || '').toLowerCase();
+            if (t.includes('staff user') || m.includes('staff account login detected')) return false;
+            if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
+            if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;
+            return true;
+          });
+          if (clean.length !== parsed.length) {
+            localStorage.setItem('rmims_notifications_live_v2', JSON.stringify(clean));
+            window.dispatchEvent(new CustomEvent('rmims:notification_change'));
+          }
         }
       }
     } catch (_) {}

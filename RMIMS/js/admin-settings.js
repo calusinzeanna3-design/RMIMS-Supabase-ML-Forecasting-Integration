@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       fullName: 'Zeanna Calusin',
       name: 'Zeanna Calusin',
-      email: 'admin@rmims.ph',
+      email: 'calusinzeanna3@gmail.com',
       role: 'admin',
       status: 'active',
       created_at: '2026-10-03T04:00:00.000Z',
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const topbarName = document.getElementById('topbarProfileName');
 
     const fullName = userData.fullName || userData.name || 'Zeanna Calusin';
-    const email = userData.email || 'admin@rmims.ph';
+    const email = userData.email || 'calusinzeanna3@gmail.com';
     const role = 'Main Administrator';
 
     if (nameInput) nameInput.value = fullName;
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (authUser) => {
       if (!authUser) {
         const local = getStoredAdminUser();
-        if (local && (local.role === 'admin' || local.email === 'admin@rmims.ph' || local.email === 'calusinzeanna3@gmail.com')) {
+        if (local && (local.role === 'admin' || local.email === 'calusinzeanna3@gmail.com')) {
           applyAdminProfile(local);
           return;
         }
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
           uid: authUser.uid,
           fullName: profile?.full_name || authUser.displayName || (isMasterAdmin ? 'Zeanna Calusin' : 'Admin'),
           name: profile?.full_name || authUser.displayName || (isMasterAdmin ? 'Zeanna Calusin' : 'Admin'),
-          email: authUser.email || 'admin@rmims.ph',
+          email: authUser.email || 'calusinzeanna3@gmail.com',
           role: 'admin',
           status: profile?.status || 'active',
           created_at: profile?.created_at || authUser.created_at || '2026-10-03T04:00:00.000Z',
@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
               app: 'RMSME Raw Materials Inventory Management System',
               version: '2.0.0',
               timestamp: new Date().toISOString(),
-              exportedBy: getStoredAdminUser().email || 'admin@rmims.ph',
+              exportedBy: getStoredAdminUser().email || 'calusinzeanna3@gmail.com',
               data: {
                 materials: JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]'),
                 receipts: JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]'),

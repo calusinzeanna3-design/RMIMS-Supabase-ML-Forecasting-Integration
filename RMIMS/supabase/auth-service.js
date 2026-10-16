@@ -184,7 +184,7 @@ export async function loginUser(email, password, expectedRole) {
         try {
             const res = await supabase
                 .from("user_profiles")
-                .select("id, full_name, email, role, status, operational_role, branch_name, branch_location, branch_store, username")
+                .select("id, full_name, email, role, status, operational_role, branch_name, branch_location, branch_store, username, company_id, company_name")
                 .eq("id", uid)
                 .maybeSingle();
             profile = res.data;
@@ -213,6 +213,24 @@ export async function loginUser(email, password, expectedRole) {
             // If profile record is missing from DB, query or initialize from user metadata safely
             try {
                 const meta = data.user.user_metadata || {};
+                const strToCheck = [
+                    meta.company_id,
+                    meta.company_name,
+                    meta.branch_name,
+                    meta.branch_store,
+                    meta.branch_location
+                ].map(s => String(s || '').toLowerCase()).join(' ');
+
+                const isScones = strToCheck.includes("1872cf44-e821-4370-b227-d1b7e4fc6f56") ||
+                    strToCheck.includes("scones") ||
+                    strToCheck.includes("muffin") ||
+                    strToCheck.includes("nutribun") ||
+                    strToCheck.includes("bakery");
+
+                const assignedCompanyId = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+                const assignedCompanyName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
+                const assignedDatasetFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+
                 profile = {
                     id: uid,
                     full_name: meta.full_name || data.user.email.split('@')[0],
@@ -221,9 +239,12 @@ export async function loginUser(email, password, expectedRole) {
                     operational_role: meta.operational_role || "staff",
                     status: meta.status || "active",
                     username: meta.username || data.user.email.split('@')[0],
-                    branch_name: meta.branch_name || "Branch Store",
+                    branch_name: meta.branch_name || (isScones ? "Scones & Muffins Store" : "Branch Store"),
                     branch_location: meta.branch_location || "Lucena",
-                    branch_store: meta.branch_store || "Branch Store (Lucena)"
+                    branch_store: meta.branch_store || (isScones ? "Scones & Muffins Bakery (Lucena)" : "Branch Store (Lucena)"),
+                    company_id: assignedCompanyId,
+                    company_name: assignedCompanyName,
+                    dataset_folder: assignedDatasetFolder
                 };
                 profileError = null;
             } catch (e) { }
@@ -234,19 +255,39 @@ export async function loginUser(email, password, expectedRole) {
             throw new Error("No account profile record found. Please contact your manager.");
         }
 
+        const cleanEmail = (data.user?.email || "").toLowerCase();
+        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+
+        if (isMasterAdmin) {
+            profile.role = "admin";
+            profile.operational_role = "admin";
+            profile.status = "active";
+            profile.full_name = profile.full_name || "Zeanna";
+            // Ensure Supabase user_profiles table also updates to active if possible
+            try {
+                await supabase.from("user_profiles").update({ status: "active", role: "admin", full_name: "Zeanna" }).eq("id", uid);
+            } catch (_) {}
+        }
+
         // Check for pending manager / admin confirmation
-        if (profile.status === "pending" || profile.status === "pending_approval") {
+        if (!isMasterAdmin && (profile.status === "pending" || profile.status === "pending_approval")) {
             await supabase.auth.signOut();
             throw new Error("Your account is pending Manager approval. Please wait for a Manager to verify and activate your account before signing in.");
         }
 
-        if (profile.status !== "active") {
+        const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
+        if (isDumpAccount) {
+            await supabase.auth.signOut();
+            throw new Error("This demo account has been permanently disconnected from the system.");
+        }
+
+        if (!isMasterAdmin && profile.status !== "active") {
             await supabase.auth.signOut();
             throw new Error("Your account is inactive. Please contact your Manager.");
         }
 
         // Role gating only if explicitly requested (unified login permits all authorized roles)
-        const isAdmin = profile.role === "admin" || profile.role === "main_admin" || profile.operational_role === "admin" || (profile.email && profile.email.toLowerCase().startsWith("admin@"));
+        const isAdmin = profile.role === "admin" || profile.role === "main_admin" || profile.operational_role === "admin" || isMasterAdmin;
         const isManager = !isAdmin && (profile.role === "manager" || profile.operational_role === "manager");
 
         if (expectedRole === "admin" && !isAdmin) {
@@ -269,28 +310,53 @@ export async function loginUser(email, password, expectedRole) {
         updateAuthProgress(transDOM, 88, "Synchronizing workspace session & operational permissions...");
 
         let sessionFullName = profile.full_name || profile.email;
-        if (isManager) {
-            sessionFullName = "Manager";
-        }
+
+        const strToCheck = [
+            profile.company_id,
+            profile.company_name,
+            profile.branch_name,
+            profile.branch_store,
+            profile.branch_location
+        ].map(s => String(s || '').toLowerCase()).join(' ');
+
+        const isScones = strToCheck.includes("1872cf44-e821-4370-b227-d1b7e4fc6f56") ||
+            strToCheck.includes("scones") ||
+            strToCheck.includes("muffin") ||
+            strToCheck.includes("nutribun") ||
+            strToCheck.includes("bakery");
+
+        const assignedCompanyId = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+        const assignedCompanyName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
+        const assignedDatasetFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
 
         const sessionUser = {
             id: profile.id,
             fullName: sessionFullName,
             name: sessionFullName,
-            email: isManager ? (profile.email || "manager@rmims.ph") : profile.email,
+            email: profile.email,
             role: profile.role || (isAdmin ? "admin" : (isManager ? "manager" : "user")),
             operationalRole: profile.operational_role || (isAdmin ? "admin" : (isManager ? "manager" : "staff")),
             status: profile.status,
             username: profile.username || "",
-            branchName: profile.branch_name || "",
-            branchLocation: profile.branch_location || "",
-            branchStore: profile.branch_store || ""
+            branchName: profile.branch_name || (isScones ? "Scones & Muffins Store" : "Branch Store"),
+            branchLocation: profile.branch_location || "Lucena",
+            branchStore: profile.branch_store || (isScones ? "Scones & Muffins Bakery (Lucena)" : "Branch Store (Lucena)"),
+            companyId: assignedCompanyId,
+            company_id: assignedCompanyId,
+            companyName: assignedCompanyName,
+            company_name: assignedCompanyName,
+            datasetFolder: assignedDatasetFolder,
+            dataset_folder: assignedDatasetFolder
         };
 
         try {
             localStorage.setItem("currentUser", JSON.stringify(sessionUser));
             localStorage.setItem("rmimsCurrentUser", JSON.stringify(sessionUser));
             localStorage.setItem("userProfile", JSON.stringify(sessionUser));
+            localStorage.setItem("rmims_active_company_id", assignedCompanyId);
+            localStorage.setItem("rmims_active_company_name", assignedCompanyName);
+            localStorage.setItem("rmims_active_dataset_folder", assignedDatasetFolder);
+
             if (isAdmin) {
                 localStorage.setItem("adminUser", JSON.stringify(sessionUser));
                 localStorage.setItem("rmimsAdminUser", JSON.stringify(sessionUser));
@@ -302,6 +368,48 @@ export async function loginUser(email, password, expectedRole) {
             sessionStorage.setItem("rmims_login_session_id", `login-${profile.id}-${Date.now()}`);
             sessionStorage.setItem("rmims_just_logged_in", "true");
             sessionStorage.removeItem("rmims_session_login_recorded");
+
+            // Dispatch dynamic role-tailored login notification across the system
+            const notifCategory = isAdmin ? "Security & Access" : (isManager ? "Store Operations" : "Staff Activity");
+            const notifTitle = isAdmin 
+                ? "Administrator Authenticated" 
+                : (isManager ? "Store Manager Signed In" : "Staff Personnel Session Active");
+            const notifMessage = isAdmin
+                ? `Admin ${sessionFullName} signed in to the Main Administration control center.`
+                : (isManager 
+                    ? `Manager ${sessionFullName} signed in to Store Management (${assignedCompanyName}).`
+                    : `Staff member ${sessionFullName} signed in for inventory operations at ${profile.branch_name || 'Store Branch'}.`);
+            
+            const loginNotification = {
+                id: `notif-login-${profile.id}-${Date.now()}`,
+                title: notifTitle,
+                message: notifMessage,
+                category: notifCategory,
+                priority: "success",
+                actor: `${sessionFullName} (${destinationRoleLabel || 'User'})`,
+                role: "all",
+                userId: profile.id,
+                email: profile.email,
+                type: "user_login",
+                timestamp: new Date().toISOString(),
+                details: {
+                    user_role: profile.role || (isAdmin ? "admin" : (isManager ? "manager" : "user")),
+                    operational_role: profile.operational_role || (isAdmin ? "admin" : (isManager ? "manager" : "staff")),
+                    company_id: assignedCompanyId,
+                    company_name: assignedCompanyName,
+                    branch_name: profile.branch_name || "Headquarters",
+                    branch_location: profile.branch_location || "Lucena",
+                    session_time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                }
+            };
+
+            const notifStoreKey = 'rmims_notifications_live_v2';
+            const existingRaw = localStorage.getItem(notifStoreKey);
+            const existingList = existingRaw ? JSON.parse(existingRaw) : [];
+            existingList.unshift(loginNotification);
+            localStorage.setItem(notifStoreKey, JSON.stringify(existingList.slice(0, 100)));
+            window.dispatchEvent(new CustomEvent('rmims:notification_change'));
+            window.dispatchEvent(new Event('storage'));
         } catch (e) { }
 
         // Step 4: Final verification & launch directly to the user's role workspace
@@ -347,7 +455,7 @@ export async function signOutUser() {
  * Enforces that created accounts are End Users, assigned with 'pending' status
  * strictly requiring Admin confirmation before access is granted.
  */
-export async function signUpUser({ fullName, email, username, password, branchName, branchLocation, branchStore, role }) {
+export async function signUpUser({ fullName, email, username, password, branchName, branchLocation, branchStore, role, companyId, companyName }) {
     if (!email || !password) {
         throw new Error("Email and password are required.");
     }
@@ -363,6 +471,24 @@ export async function signUpUser({ fullName, email, username, password, branchNa
         ? `${branchName.trim()} (${branchLocation.trim()})`
         : (branchName?.trim() || branchStore || branchLocation?.trim() || "General Operations");
 
+    const strToCheck = [
+        companyId,
+        companyName,
+        branchName,
+        branchLocation,
+        branchStore
+    ].map(s => String(s || '').toLowerCase()).join(' ');
+
+    const isScones = strToCheck.includes("1872cf44-e821-4370-b227-d1b7e4fc6f56") ||
+        strToCheck.includes("scones") ||
+        strToCheck.includes("muffin") ||
+        strToCheck.includes("nutribun") ||
+        strToCheck.includes("bakery");
+
+    const assignedCompanyId = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+    const assignedCompanyName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
+    const assignedDatasetFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+
     // Explicitly enforce end-user operational roles only (never admin)
     const validRoles = ["staff", "manager", "user", "user_staff"];
     const operationalRole = validRoles.includes(role) ? role : "staff";
@@ -375,11 +501,14 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                 full_name: fullName.trim(),
                 username: cleanUsername,
                 branch_store: combinedBranch,
-                branch_name: branchName?.trim() || "",
-                branch_location: branchLocation?.trim() || "",
+                branch_name: branchName?.trim() || (isScones ? "Scones & Muffins Store" : "Branch Store"),
+                branch_location: branchLocation?.trim() || "Lucena",
                 operational_role: operationalRole,
                 role: "user", // base role for schema access
-                status: "pending" // pending admin confirmation
+                status: "pending", // pending admin confirmation
+                company_id: assignedCompanyId,
+                company_name: assignedCompanyName,
+                dataset_folder: assignedDatasetFolder
             }
         }
     });
@@ -398,10 +527,13 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                 username: cleanUsername,
                 role: "user",
                 operational_role: operationalRole,
-                branch_name: branchName?.trim() || "",
-                branch_location: branchLocation?.trim() || "",
+                branch_name: branchName?.trim() || (isScones ? "Scones & Muffins Store" : "Branch Store"),
+                branch_location: branchLocation?.trim() || "Lucena",
                 branch_store: combinedBranch,
-                status: "pending" // requires Admin confirmation
+                status: "pending", // requires Admin confirmation
+                company_id: assignedCompanyId,
+                company_name: assignedCompanyName,
+                dataset_folder: assignedDatasetFolder
             };
 
             const { error: upsertErr } = await supabase.from("user_profiles").upsert(profilePayload);

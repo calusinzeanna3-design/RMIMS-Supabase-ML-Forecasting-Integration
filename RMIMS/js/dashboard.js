@@ -1397,6 +1397,24 @@ async function getFlaskApiBase() {
   return "";
 }
 
+function getDashboardCompanyContext() {
+  try {
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("rmimsCurrentUser") || "{}";
+    const user = JSON.parse(raw);
+    let comp = user.company_id || user.companyId;
+    if (!comp) {
+      comp = (user.branchName && user.branchName.toLowerCase().includes("scones")) 
+        ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" 
+        : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+    }
+    if (comp === "KXC_COMPANY") comp = "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+    const role = user.role || user.operationalRole || user.operational_role || "manager";
+    return { companyId: comp, userRole: role };
+  } catch (e) {
+    return { companyId: "a72a7971-6ec7-4edc-ae72-89d702199ed9", userRole: "manager" };
+  }
+}
+
 function computeClientSideForecastBreakdown(matName, horizonType = "month", horizonVal = 3) {
   const normMatName = (matName || "").toLowerCase().trim();
   const mat = catalogMaterials.find(m => 
@@ -1471,7 +1489,12 @@ async function fetchForecastDataForMaterial(matNameOrId) {
   try {
     const apiBase = await getFlaskApiBase();
     if (apiBase !== null && apiBase !== undefined) {
-      const headers = { "Accept": "application/json" };
+      const { companyId, userRole } = getDashboardCompanyContext();
+      const headers = { 
+        "Accept": "application/json",
+        "X-Company-Id": companyId,
+        "X-User-Role": userRole
+      };
       try {
         if (supabase && supabase.auth && typeof supabase.auth.getSession === "function") {
           const { data: sessData } = await supabase.auth.getSession();
@@ -1555,16 +1578,23 @@ async function fetchForecastBreakdown(matName, horizonType, horizonVal) {
   try {
     const apiBase = await getFlaskApiBase();
     if (apiBase !== null && apiBase !== undefined) {
+      const { companyId, userRole } = getDashboardCompanyContext();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(`${apiBase}/api/forecast`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Company-Id": companyId,
+          "X-User-Role": userRole
+        },
         signal: controller.signal,
         body: JSON.stringify({
           raw_material_name: matName || "OVERALL_TOTAL",
           horizon_type: horizonType,
-          horizon_value: horizonVal
+          horizon_value: horizonVal,
+          company_id: companyId,
+          user_role: userRole
         })
       }).catch(() => null);
       clearTimeout(timeoutId);
@@ -2952,7 +2982,7 @@ onAuthStateChanged(auth, async user => {
   try {
     const uid = user.id || user.uid;
     const cleanEmail = (user.email || "").toLowerCase();
-    const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com" || cleanEmail.startsWith("admin");
+    const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
     let { data: profile, error } = await supabase
       .from("user_profiles")

@@ -3,6 +3,8 @@
 // Preserves all 59 baseline raw materials and seamlessly integrates newly created materials across the system.
 
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-59-dataset.js";
+import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
+import { getActiveTenantContext } from "./tenant-manager.js";
 
 export const RMIMS_CUSTOM_RAW_MATERIALS_KEY = "rmims_custom_raw_materials";
 export const RMIMS_CUSTOM_RECEIPTS_KEY = "rmims_custom_receipts";
@@ -13,27 +15,29 @@ export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials"
 
 /**
  * Returns all active raw materials for the entire system:
- * Baseline materials (if not wiped) + any custom created materials - locally deleted materials.
+ * Automatically selects the appropriate branch store / company dataset:
+ * - Scones & Muffins Bakery: 19 Nutribun Materials (Folder: 1872cf44-e821-4370-b227-d1b7e4fc6f56)
+ * - KXC Enterprise: 59 Materials (Folder: a72a7971-6ec7-4edc-ae72-89d702199ed9)
+ * Seamlessly merges any custom user-added materials.
  */
 export function getSystemRawMaterials() {
-    const isWiped = typeof localStorage !== 'undefined' 
-        ? (localStorage.getItem(RMIMS_WIPE_BASELINE_MATERIALS_KEY) !== 'false') 
-        : true;
+    let tCtx = null;
+    try {
+        tCtx = getActiveTenantContext();
+    } catch (_) {}
+    const isScones = tCtx && tCtx.isScones;
+    const baseSource = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
 
-    // If baseline materials are wiped / standby, start with clean empty list until user inputs data.
-    // If not wiped, start with the baseline 59 materials.
-    let list = isWiped 
-        ? [] 
-        : AUTHENTIC_59_RAW_MATERIALS.map(m => ({
-            ...m,
-            id: String(m.id || m.item_code),
-            item_code: m.item_code || m.id,
-            current_stock: Number(m.current_stock ?? 0),
-            minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-            minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-            unit_of_measure: m.unit_of_measure || m.unit || "kg",
-            unit: m.unit_of_measure || m.unit || "kg"
-        }));
+    let list = baseSource.map(m => ({
+        ...m,
+        id: String(m.id || m.item_code),
+        item_code: m.item_code || m.id,
+        current_stock: Number(m.current_stock ?? 0),
+        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+        minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+        unit_of_measure: m.unit_of_measure || m.unit || "kg",
+        unit: m.unit_of_measure || m.unit || "kg"
+    }));
 
     // Merge custom materials saved in localStorage (user's real inputted data)
     try {
@@ -308,26 +312,33 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
  * Calculates the next sequential item code (e.g. RM-060, RM-061) accurately.
  */
 export function getSystemNextItemCode(existingMaterials) {
+    let tCtx = null;
+    try { tCtx = getActiveTenantContext(); } catch (_) {}
+    const isScones = tCtx && tCtx.isScones;
+    const prefix = isScones ? "NB-" : "RM-";
+    const baseCount = isScones ? 19 : 59;
+
     const list = existingMaterials && existingMaterials.length > 0 ? existingMaterials : getSystemRawMaterials();
+    const regex = isScones ? /^NB-?0*(\d+)$/i : /^RM-?0*(\d+)$/i;
+
     const existingNums = list
         .map(m => {
             const codeStr = String(m.item_code || m.itemCode || m.id || "");
-            const match = codeStr.match(/^RM-?0*(\d+)$/i);
+            const match = codeStr.match(regex);
             return match ? parseInt(match[1], 10) : 0;
         })
         .filter(n => n > 0);
 
-    const isWiped = localStorage.getItem(RMIMS_WIPE_BASELINE_MATERIALS_KEY) !== 'false';
-    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : (isWiped ? 0 : 59);
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : baseCount;
     let nextNum = maxNum + 1;
-    let nextCode = `RM-${String(nextNum).padStart(3, "0")}`;
+    let nextCode = `${prefix}${String(nextNum).padStart(3, "0")}`;
 
     while (list.some(m => {
         const c = String(m.item_code || m.itemCode || m.id || "").toUpperCase();
-        return c === nextCode.toUpperCase() || c === `RM${String(nextNum).padStart(3, "0")}`.toUpperCase();
+        return c === nextCode.toUpperCase();
     })) {
         nextNum++;
-        nextCode = `RM-${String(nextNum).padStart(3, "0")}`;
+        nextCode = `${prefix}${String(nextNum).padStart(3, "0")}`;
     }
 
     return nextCode;

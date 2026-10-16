@@ -428,6 +428,26 @@ export function submitStaffTransaction(data) {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
   } catch (e) {}
 
+  // Broadcast live notification across all portals (Admin, Manager, Staff)
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      const act = tx.activity || (tx.ref.startsWith('REC') ? 'Receive' : 'Disburse');
+      window.pushRMIMSNotification({
+        title: `New Staff ${act}: ${tx.ref}`,
+        message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material} (${tx.ref}).`,
+        category: 'Inventory',
+        badge: 'Pending Review',
+        role: 'all',
+        priority: 'normal',
+        targetUrl: 'manager/staff-activity.html',
+        ref: tx.ref,
+        material: tx.material,
+        quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
+        actor: tx.staff || 'Staff Member'
+      });
+    }
+  } catch (e) {}
+
   // Trigger cross-tab storage event
   window.dispatchEvent(new Event('storage'));
   return tx;
@@ -488,6 +508,25 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
 
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
+  } catch (e) {}
+
+  // Broadcast live notification across all portals (Admin, Manager, Staff)
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification({
+        title: `Transaction Resubmitted: ${targetRef}`,
+        message: `Staff corrected and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}). Pending review.`,
+        category: 'Inventory',
+        badge: 'Updated',
+        role: 'all',
+        priority: 'normal',
+        targetUrl: 'manager/staff-activity.html',
+        ref: targetRef,
+        material: updatedTx.material,
+        quantity: updatedTx.qty,
+        actor: updatedTx.staff || 'Staff Member'
+      });
+    }
   } catch (e) {}
 
   window.dispatchEvent(new Event('storage'));

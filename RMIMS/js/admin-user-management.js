@@ -90,18 +90,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getStoredRegisteredUsers() {
     try {
-      const list = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-      if (Array.isArray(list)) {
-        const clean = list.filter(u => !isMockUser(u));
-        if (clean.length !== list.length) {
-          localStorage.setItem('rmims_registered_users', JSON.stringify(clean));
-        }
-        return clean;
+      let list = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+      if (!Array.isArray(list)) list = [];
+      list = list.filter(u => !isMockUser(u));
+
+      // Always guarantee the first real Admin (Zeanna) is present in the directory
+      const hasRealAdmin = list.some(u => 
+        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
+        (u.name && u.name.toLowerCase() === 'zeanna')
+      );
+
+      if (!hasRealAdmin) {
+        list.unshift({
+          id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
+          name: 'Zeanna',
+          username: 'zeanna',
+          email: 'calusinzeanna3@gmail.com',
+          branchLoc: 'Headquarters',
+          branchName: 'Main Administration',
+          role: 'Administrator',
+          status: 'Active',
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('rmims_registered_users', JSON.stringify(list));
       }
+
+      return list;
     } catch (_) {
-      return [];
+      return [{
+        id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
+        name: 'Zeanna',
+        username: 'zeanna',
+        email: 'calusinzeanna3@gmail.com',
+        branchLoc: 'Headquarters',
+        branchName: 'Main Administration',
+        role: 'Administrator',
+        status: 'Active',
+        created_at: new Date().toISOString()
+      }];
     }
-    return [];
   }
 
   function saveStoredRegisteredUsers(users) {
@@ -420,6 +447,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     saveStoredRegisteredUsers(users);
 
+    // Broadcast live notification across all portals (Admin, Manager, Staff)
+    try {
+      if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+        window.pushRMIMSNotification({
+          title: `New User Created: ${name}`,
+          message: `Administrator created and activated a ${role} account for ${name} at ${branchName}.`,
+          category: 'Activity',
+          badge: 'User Management',
+          role: 'all',
+          priority: 'normal',
+          targetUrl: 'admin/user-management.html',
+          actor: 'Administrator'
+        });
+      }
+    } catch (e) {}
+
     closeAddModal();
     renderRegisteredUsers();
     refreshCounters();
@@ -534,6 +577,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     saveStoredRegisteredUsers(regList);
 
+    // Broadcast live notification across all portals (Admin, Manager, Staff)
+    try {
+      if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+        window.pushRMIMSNotification({
+          title: `Account Approved: ${name}`,
+          message: `Administrator approved registration for ${name} (${role}) assigned to ${branchName}.`,
+          category: 'Activity',
+          badge: 'User Management',
+          role: 'all',
+          priority: 'normal',
+          targetUrl: 'admin/user-management.html',
+          actor: 'Administrator'
+        });
+      }
+    } catch (e) {}
+
     // Log Activity
     try {
       const act = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
@@ -645,6 +704,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderPendingUsers();
     refreshCounters();
+
+    // Broadcast live notification across all portals (Admin, Manager, Staff)
+    try {
+      if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+        window.pushRMIMSNotification({
+          title: `Registration Rejected: ${name}`,
+          message: `Registration request for ${name} was rejected by Administrator.`,
+          category: 'Activity',
+          badge: 'User Management',
+          role: 'all',
+          priority: 'normal',
+          targetUrl: 'admin/user-management.html',
+          actor: 'Administrator'
+        });
+      }
+    } catch (e) {}
+
     if (window.showAdminToast) {
       window.showAdminToast(`Rejected registration for ${name}.`, 'danger');
     }

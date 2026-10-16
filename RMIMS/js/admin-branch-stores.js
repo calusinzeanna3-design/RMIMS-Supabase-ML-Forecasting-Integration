@@ -32,7 +32,7 @@ function getInitials(name) {
 function isMockStore(st) {
   if (!st) return false;
   const mockTokens = [
-    'kxc', 'scones', 'lucena bakers hub', 'sweet treats',
+    'lucena bakers hub', 'sweet treats',
     'rafael cruz', 'kenneth lim', 'victor morales', 'alyssa lim', 'ethan cruz',
     'mark villanueva', 'carla mendoza', 'sarah gomez'
   ];
