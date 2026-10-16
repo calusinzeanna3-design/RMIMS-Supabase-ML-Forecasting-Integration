@@ -1613,8 +1613,10 @@ import './rmims-notifications.js';
 
     document.getElementById('mgrChangePasswordModalForm')?.addEventListener('submit', (e) => {
       e.preventDefault();
-      const newP = document.getElementById('mgrInputNewPwd').value;
-      const confP = document.getElementById('mgrInputConfirmPwd').value;
+      const newPEl = document.getElementById('mgrInputNewPwd');
+      const confPEl = document.getElementById('mgrInputConfirmPwd');
+      const newP = newPEl ? newPEl.value : '';
+      const confP = confPEl ? confPEl.value : '';
       const alertBox = document.getElementById('mgrPwdAlert');
       if (newP !== confP) {
         if (alertBox) {

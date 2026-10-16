@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statTotal = document.getElementById('statTotalUsers');
   const statActive = document.getElementById('statActiveUsers');
   const statPending = document.getElementById('statPendingUsers');
+  const statInactive = document.getElementById('statInactiveUsers') || document.getElementById('statInactive');
   const pendingBadge = document.getElementById('pendingCount');
   const paginationCounter = document.getElementById('userPaginationCounter');
 

@@ -644,9 +644,9 @@ function initSecurityForm() {
             e.preventDefault();
             if (!currentUser) return;
 
-            const currentPassword = document.getElementById("currentPassword").value;
-            const newPassword = document.getElementById("newPassword").value;
-            const confirmNewPassword = document.getElementById("confirmNewPassword").value;
+            const currentPassword = document.getElementById("currentPassword")?.value || "";
+            const newPassword = document.getElementById("newPassword")?.value || "";
+            const confirmNewPassword = document.getElementById("confirmNewPassword")?.value || "";
 
             const currentErr = document.getElementById("currentPasswordError");
             const newErr = document.getElementById("newPasswordError");
@@ -657,18 +657,20 @@ function initSecurityForm() {
             if (confirmErr) confirmErr.textContent = "";
 
             let hasError = false;
-            if (!currentPassword) { currentErr.textContent = "Current password is required."; hasError = true; }
-            if (!newPassword || newPassword.length < 8) { newErr.textContent = "New password must be at least 8 characters."; hasError = true; }
-            if (newPassword && currentPassword && newPassword === currentPassword) { newErr.textContent = "New password must be different from the current password."; hasError = true; }
-            if (!confirmNewPassword) { confirmErr.textContent = "Please confirm your new password."; hasError = true; }
-            else if (newPassword !== confirmNewPassword) { confirmErr.textContent = "Passwords do not match."; hasError = true; }
+            if (!currentPassword) { if (currentErr) currentErr.textContent = "Current password is required."; hasError = true; }
+            if (!newPassword || newPassword.length < 8) { if (newErr) newErr.textContent = "New password must be at least 8 characters."; hasError = true; }
+            if (newPassword && currentPassword && newPassword === currentPassword) { if (newErr) newErr.textContent = "New password must be different from the current password."; hasError = true; }
+            if (!confirmNewPassword) { if (confirmErr) confirmErr.textContent = "Please confirm your new password."; hasError = true; }
+            else if (newPassword !== confirmNewPassword) { if (confirmErr) confirmErr.textContent = "Passwords do not match."; hasError = true; }
 
             if (hasError) return;
 
             const btn = document.getElementById("savePasswordBtn");
-            const original = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = "Saving…";
+            const original = btn ? btn.textContent : "Save";
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = "Saving…";
+            }
 
             try {
                 const { error: verifyError } = await auth.signInWithPassword({

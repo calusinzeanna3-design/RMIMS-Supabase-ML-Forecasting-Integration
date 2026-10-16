@@ -482,12 +482,19 @@ function openStaffEditModal(id) {
   const modal = document.getElementById('modalStaffEditMaterial');
   if (!modal) return;
 
-  document.getElementById('staffEditMatId').value = m.id || m.item_code;
-  document.getElementById('staffEditMatName').value = m.name || m.materialName || '';
-  document.getElementById('staffEditMatCategory').value = m.category || 'General';
-  document.getElementById('staffEditMatUnit').value = m.unit_of_measure || m.unit || 'kg';
-  document.getElementById('staffEditMatCurrentStock').value = m.current_stock ?? m.currentStock ?? 0;
-  document.getElementById('staffEditMatMinStock').value = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10;
+  const idEl = document.getElementById('staffEditMatId');
+  const nameEl = document.getElementById('staffEditMatName');
+  const catEl = document.getElementById('staffEditMatCategory');
+  const unitEl = document.getElementById('staffEditMatUnit');
+  const stockEl = document.getElementById('staffEditMatCurrentStock');
+  const minEl = document.getElementById('staffEditMatMinStock');
+
+  if (idEl) idEl.value = m.id || m.item_code;
+  if (nameEl) nameEl.value = m.name || m.materialName || '';
+  if (catEl) catEl.value = m.category || 'General';
+  if (unitEl) unitEl.value = m.unit_of_measure || m.unit || 'kg';
+  if (stockEl) stockEl.value = m.current_stock ?? m.currentStock ?? 0;
+  if (minEl) minEl.value = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10;
   
   const sub = document.getElementById('staffEditModalSubtitle');
   if (sub) sub.textContent = `Editing specifications for ${m.name || m.materialName} (${m.id || m.item_code})`;
@@ -502,15 +509,23 @@ function closeStaffEditModal() {
 
 function handleStaffEditSubmit(e) {
   e.preventDefault();
-  const id = document.getElementById('staffEditMatId').value;
+  const idEl = document.getElementById('staffEditMatId');
+  if (!idEl) return;
+  const id = idEl.value;
   const m = rawMaterials.find(x => String(x.id) === String(id) || String(x.item_code) === String(id));
   if (!m) return;
 
-  const name = document.getElementById('staffEditMatName').value.trim();
-  const category = document.getElementById('staffEditMatCategory').value.trim() || 'General';
-  const unit = document.getElementById('staffEditMatUnit').value.trim() || 'kg';
-  const currentStock = parseFloat(document.getElementById('staffEditMatCurrentStock').value) || 0;
-  const minStock = parseFloat(document.getElementById('staffEditMatMinStock').value) || 0;
+  const nameEl = document.getElementById('staffEditMatName');
+  const catEl = document.getElementById('staffEditMatCategory');
+  const unitEl = document.getElementById('staffEditMatUnit');
+  const stockEl = document.getElementById('staffEditMatCurrentStock');
+  const minEl = document.getElementById('staffEditMatMinStock');
+
+  const name = nameEl ? nameEl.value.trim() : (m.name || m.materialName);
+  const category = (catEl && catEl.value.trim()) || 'General';
+  const unit = (unitEl && unitEl.value.trim()) || 'kg';
+  const currentStock = stockEl ? (parseFloat(stockEl.value) || 0) : 0;
+  const minStock = minEl ? (parseFloat(minEl.value) || 0) : 0;
 
   const updatedMat = {
     ...m,

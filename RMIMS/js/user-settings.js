@@ -436,9 +436,11 @@ function initActions() {
             if (hasError) return;
 
             const saveBtn = $("directSavePasswordBtn");
-            const orig = saveBtn.textContent;
-            saveBtn.disabled = true;
-            saveBtn.textContent = "Updating...";
+            const orig = saveBtn ? saveBtn.textContent : "Update Password";
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = "Updating...";
+            }
 
             try {
                 const { error: verifyError } = await auth.signInWithPassword({
@@ -459,8 +461,10 @@ function initActions() {
             } catch (err) {
                 showToast(err.message || "Unable to update password.", "error");
             } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = orig;
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = orig;
+                }
             }
         });
     }
