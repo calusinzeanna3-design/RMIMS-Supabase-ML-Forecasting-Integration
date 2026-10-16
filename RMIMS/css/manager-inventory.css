@@ -890,21 +890,21 @@ body.manager-page .content {
 }
 
 .mgr-folder-spec-pill {
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.3;
   color: #334155;
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
   border-radius: 9999px;
-  padding: 3px 10px;
+  padding: 5px 12px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   box-sizing: border-box;
-  min-height: 24px;
+  min-height: 28px;
+  height: auto;
 }
 
 .mgr-folder-footer {

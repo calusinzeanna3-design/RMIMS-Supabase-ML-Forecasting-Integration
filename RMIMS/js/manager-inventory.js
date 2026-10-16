@@ -1436,9 +1436,9 @@ window.handleConfirmDeleteFinishedProduct = handleConfirmDeleteFinishedProduct;
 function buildFinishedProductCardHtml(p) {
   const matCount = p.materialNames ? p.materialNames.length : 0;
   const materialsPreviewHtml = (p.materialNames || []).slice(0, 3).map(m => `
-    <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; display:inline-flex; align-items:center; gap:6px; line-height:1.45; padding:3px 10px; border-radius:9999px; min-height:24px; box-sizing:border-box;">
-      <span style="font-size:12px; line-height:1; display:inline-block; flex-shrink:0;">🌾</span>
-      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; line-height:1.45; font-size:11.5px; font-weight:500;">${escapeHtml(m)}</span>
+    <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:9999px; min-height:28px; height:auto; box-sizing:border-box;">
+      <span style="font-size:13px; line-height:1; display:inline-flex; align-items:center; flex-shrink:0;">🌾</span>
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; line-height:1.2; font-size:12px; font-weight:600; padding-bottom:1px;">${escapeHtml(m)}</span>
     </span>
   `).join('');
   const moreCount = (p.materialNames || []).length > 3 ? `<span style="font-size:11px; color:#B45309; padding-left:4px; font-weight:600;">+${(p.materialNames.length - 3)} more ingredients</span>` : '';

@@ -201,8 +201,8 @@ function renderSummaryCards(materials, staffTx) {
   let lowCount = 0;
 
   materials.forEach(m => {
-    const cur = parseFloat(m.currentStock || m.stock || 0);
-    const min = parseFloat(m.minimumStock || m.minStock || 10);
+    const cur = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
     if (cur <= 0) {
       // out of stock
     } else if (cur < min) {
@@ -247,15 +247,14 @@ function renderInventoryStatus(materials) {
   let out = 0;
 
   materials.forEach(m => {
-    const cur = parseFloat(m.currentStock || m.stock || 0);
-    const min = parseFloat(m.minimumStock || m.minStock || 10);
-    const days = calculateDaysRemaining(m);
+    const cur = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
 
     if (cur <= 0) {
       out++;
-    } else if (days <= 2 || cur <= (min * 0.25)) {
+    } else if (cur <= min * 0.25) {
       critical++;
-    } else if (cur < min || days <= 5) {
+    } else if (cur < min) {
       low++;
     } else {
       available++;
@@ -288,57 +287,48 @@ function renderInventoryStatus(materials) {
 }
 
 function calculateDaysRemaining(m) {
-  const stock = parseFloat(m.currentStock || m.stock || 0);
-  const dailyBurn = parseFloat(m.avgDailyConsumption || m.dailyUsage || 5);
-  if (dailyBurn <= 0) return 99;
-  return Math.max(0, Math.round(stock / dailyBurn));
+  const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+  const dailyBurn = Number(m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
+  if (dailyBurn <= 0 || stock <= 0) return 0;
+  return Math.max(1, Math.round(stock / dailyBurn));
 }
 
 function renderSmartAlerts(materials) {
   const container = document.getElementById('smartAlertsContainer');
   if (!container) return;
 
-  // Filter materials that are low, critical, or watch
+  // Filter materials that are low, critical, or watch (only when stock is actually below threshold)
   const alertItems = [];
 
   materials.forEach(m => {
-    const cur = parseFloat(m.currentStock || m.stock || 0);
-    const min = parseFloat(m.minimumStock || m.minStock || 10);
+    const cur = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
     const days = calculateDaysRemaining(m);
-
     const unit = m.unit_of_measure || m.unit || '';
 
     if (cur <= 0) {
       alertItems.push({
-        name: m.name || m.materialName,
+        name: m.name || m.materialName || m.raw_material_name,
         stock: cur,
         unit: unit,
         days: 0,
         badge: 'Critical',
         badgeClass: 'badge-critical'
       });
-    } else if (days <= 2 || cur <= min * 0.4) {
+    } else if (cur < min) {
       alertItems.push({
-        name: m.name || m.materialName,
+        name: m.name || m.materialName || m.raw_material_name,
         stock: cur,
         unit: unit,
         days: days,
-        badge: 'Critical',
-        badgeClass: 'badge-critical'
-      });
-    } else if (cur <= min || days <= 4) {
-      alertItems.push({
-        name: m.name || m.materialName,
-        stock: cur,
-        unit: unit,
-        days: days,
-        badge: 'Watch Stock',
-        badgeClass: 'badge-watch'
+        badge: cur <= min * 0.3 ? 'Critical' : 'Watch Stock',
+        badgeClass: cur <= min * 0.3 ? 'badge-critical' : 'badge-watch'
       });
     }
   });
 
-  // Sort: Critical first, then Watch Stock
+  // Sort: Critical first, then lowest days
   alertItems.sort((a, b) => a.days - b.days);
 
   const badgeEl = document.getElementById('alertCountBadge');

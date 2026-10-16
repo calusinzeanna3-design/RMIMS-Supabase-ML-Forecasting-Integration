@@ -28,16 +28,24 @@ export function getSystemRawMaterials() {
     const isScones = tCtx && tCtx.isScones;
     const baseSource = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
 
-    let list = baseSource.map(m => ({
-        ...m,
-        id: String(m.id || m.item_code),
-        item_code: m.item_code || m.id,
-        current_stock: Number(m.current_stock ?? 0),
-        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-        minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-        unit_of_measure: m.unit_of_measure || m.unit || "kg",
-        unit: m.unit_of_measure || m.unit || "kg"
-    }));
+    let list = baseSource.map(m => {
+        const stockVal = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+        const minVal = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+        return {
+            ...m,
+            id: String(m.id || m.item_code),
+            item_code: m.item_code || m.id,
+            current_stock: stockVal,
+            currentStock: stockVal,
+            stock: stockVal,
+            minimum_threshold: minVal,
+            minimum_stock: minVal,
+            minimumStock: minVal,
+            minStock: minVal,
+            unit_of_measure: m.unit_of_measure || m.unit || "kg",
+            unit: m.unit_of_measure || m.unit || "kg"
+        };
+    });
 
     // Merge custom materials saved in localStorage (user's real inputted data)
     try {
@@ -80,21 +88,43 @@ export function getSystemRawMaterials() {
         console.warn("[SystemMaterials] Could not load custom raw materials:", e);
     }
 
-    // Also check manager inventory overrides for any user-inputted materials
+    // Also check manager inventory overrides for any user-inputted materials or live stock edits
     try {
-        const ovStored = localStorage.getItem("rmims_manager_inventory_overrides");
-        if (ovStored) {
+        const ovKeys = ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"];
+        ovKeys.forEach(ovKey => {
+            const ovStored = localStorage.getItem(ovKey);
+            if (!ovStored) return;
             const ovs = JSON.parse(ovStored);
-            if (ovs && typeof ovs === 'object') {
-                Object.keys(ovs).forEach(key => {
-                    const ov = ovs[key];
-                    if (!ov || (!ov.name && !ov.raw_material_name)) return;
-                    const normName = (ov.name || ov.raw_material_name || "").trim().toLowerCase();
-                    const code = String(key || ov.id || ov.item_code || "").toUpperCase().trim();
-                    const foundIndex = list.findIndex(m =>
-                        (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
-                        String(m.item_code || m.id || "").toUpperCase().trim() === code
-                    );
+            if (!ovs || typeof ovs !== 'object') return;
+
+            Object.keys(ovs).forEach(key => {
+                const ov = ovs[key];
+                if (!ov) return;
+                const code = String(key || ov.id || ov.item_code || "").toUpperCase().trim();
+                const normName = (ov.name || ov.raw_material_name || "").trim().toLowerCase();
+                const foundIndex = list.findIndex(m =>
+                    (code && String(m.item_code || m.id || "").toUpperCase().trim() === code) ||
+                    (normName && (m.name || m.raw_material_name || "").trim().toLowerCase() === normName)
+                );
+                const curStock = ov.current_stock !== undefined ? Number(ov.current_stock) : undefined;
+                const minStock = (ov.minimum_stock !== undefined || ov.minimum_threshold !== undefined)
+                    ? Number(ov.minimum_stock ?? ov.minimum_threshold)
+                    : undefined;
+
+                if (foundIndex !== -1) {
+                    const existing = list[foundIndex];
+                    list[foundIndex] = {
+                        ...existing,
+                        ...ov,
+                        current_stock: curStock !== undefined ? curStock : existing.current_stock,
+                        currentStock: curStock !== undefined ? curStock : existing.current_stock,
+                        stock: curStock !== undefined ? curStock : existing.current_stock,
+                        minimum_threshold: minStock !== undefined ? minStock : existing.minimum_threshold,
+                        minimum_stock: minStock !== undefined ? minStock : existing.minimum_threshold,
+                        minimumStock: minStock !== undefined ? minStock : existing.minimum_threshold,
+                        minStock: minStock !== undefined ? minStock : existing.minimum_threshold
+                    };
+                } else if (ov.name || ov.raw_material_name) {
                     const record = {
                         id: code || ov.id || `RM-${String(list.length + 1).padStart(3, "0")}`,
                         item_code: code || ov.item_code || ov.id,
@@ -103,24 +133,25 @@ export function getSystemRawMaterials() {
                         category: ov.category || "General Materials",
                         unit_of_measure: ov.unit || ov.unit_of_measure || "kg",
                         unit: ov.unit || ov.unit_of_measure || "kg",
-                        current_stock: Number(ov.current_stock ?? 0),
-                        currentStock: Number(ov.current_stock ?? 0),
-                        minimum_threshold: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
-                        minimum_stock: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
+                        current_stock: curStock !== undefined ? curStock : 0,
+                        currentStock: curStock !== undefined ? curStock : 0,
+                        stock: curStock !== undefined ? curStock : 0,
+                        minimum_threshold: minStock !== undefined ? minStock : 10,
+                        minimum_stock: minStock !== undefined ? minStock : 10,
+                        minimumStock: minStock !== undefined ? minStock : 10,
+                        minStock: minStock !== undefined ? minStock : 10,
                         reorder_quantity: Number(ov.reorder_quantity ?? 25),
                         lead_time_days: Number(ov.lead_time_days ?? 3),
                         description: ov.description || `Raw material ${ov.name || ov.raw_material_name}`,
                         created_at: ov.date_added || new Date().toISOString()
                     };
-                    if (foundIndex !== -1) {
-                        list[foundIndex] = { ...list[foundIndex], ...record };
-                    } else {
-                        list.push(record);
-                    }
-                });
-            }
-        }
-    } catch (e) {}
+                    list.push(record);
+                }
+            });
+        });
+    } catch (e) {
+        console.warn("[SystemMaterials] Could not apply manager overrides:", e);
+    }
 
     // Filter out deleted materials
     try {
@@ -133,7 +164,24 @@ export function getSystemRawMaterials() {
         }
     } catch (e) {}
 
-    return list;
+    // Final property normalization: ensure every material has both snake_case and camelCase stock & threshold aliases
+    return list.map(m => {
+        const s = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+        const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+        const u = m.unit_of_measure || m.unit || "kg";
+        return {
+            ...m,
+            current_stock: s,
+            currentStock: s,
+            stock: s,
+            minimum_threshold: min,
+            minimum_stock: min,
+            minimumStock: min,
+            minStock: min,
+            unit_of_measure: u,
+            unit: u
+        };
+    });
 }
 
 /**

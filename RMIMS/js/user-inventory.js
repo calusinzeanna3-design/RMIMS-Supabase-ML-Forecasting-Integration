@@ -149,11 +149,11 @@ function populateCategoryFilter() {
 }
 
 function computeMetrics(m) {
-  const stock = parseFloat(m.currentStock || m.stock || 0);
-  const min = parseFloat(m.minimumStock || m.minStock || 10);
-  const dailyBurn = parseFloat(m.avgDailyConsumption || m.dailyUsage || 5);
+  const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+  const dailyBurn = Number(m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
 
-  const daysRemaining = dailyBurn > 0 ? Math.max(0, Math.round(stock / dailyBurn)) : 99;
+  const daysRemaining = dailyBurn > 0 && stock > 0 ? Math.max(1, Math.round(stock / dailyBurn)) : (stock <= 0 ? 0 : 99);
 
   let statusKey = 'good';
   let statusText = 'Good';
@@ -165,16 +165,16 @@ function computeMetrics(m) {
     statusText = 'Out of Stock';
     tagClass = 'tag-out';
     rowClass = 'row-out';
-  } else if (daysRemaining <= 2 || stock <= (min * 0.25)) {
-    statusKey = 'critical';
-    statusText = 'Critical';
-    tagClass = 'tag-critical';
-    rowClass = 'row-critical';
-  } else if (stock < min || daysRemaining <= 4) {
+  } else if (stock < min) {
     statusKey = 'low';
     statusText = 'Low Stock';
     tagClass = 'tag-low';
     rowClass = 'row-low';
+  } else {
+    statusKey = 'good';
+    statusText = 'Good';
+    tagClass = 'tag-good';
+    rowClass = 'row-good';
   }
 
   // Calculate expected run-out date
