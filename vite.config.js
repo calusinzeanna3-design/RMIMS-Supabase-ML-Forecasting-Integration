@@ -25,18 +25,36 @@ const copyRmimsAssetsPlugin = () => ({
     copyDirSync(src, dest1);
     copyDirSync(src, dest2);
 
+    const cssSrc = resolve(__dirname, 'RMIMS/css');
+    const cssDest1 = resolve(__dirname, 'dist/RMIMS/css');
+    const cssDest2 = resolve(__dirname, 'dist/css');
+    copyDirSync(cssSrc, cssDest1);
+    copyDirSync(cssSrc, cssDest2);
+
     const jsSrc = resolve(__dirname, 'RMIMS/js');
     const jsDest1 = resolve(__dirname, 'dist/RMIMS/js');
     const jsDest2 = resolve(__dirname, 'dist/js');
     copyDirSync(jsSrc, jsDest1);
     copyDirSync(jsSrc, jsDest2);
 
+    const sbSrc = resolve(__dirname, 'RMIMS/supabase');
+    const sbDest1 = resolve(__dirname, 'dist/RMIMS/supabase');
+    const sbDest2 = resolve(__dirname, 'dist/supabase');
+    copyDirSync(sbSrc, sbDest1);
+    copyDirSync(sbSrc, sbDest2);
+
+    const dataSrc = resolve(__dirname, 'DATASETS');
+    const dataDest1 = resolve(__dirname, 'dist/DATASETS');
+    const dataDest2 = resolve(__dirname, 'dist/RMIMS/DATASETS');
+    copyDirSync(dataSrc, dataDest1);
+    copyDirSync(dataSrc, dataDest2);
+
     // Mirror all dist/RMIMS generated pages (HTML, admin, user) to dist root
     const rmimsDist = resolve(__dirname, 'dist/RMIMS');
     const rootDist = resolve(__dirname, 'dist');
     copyDirSync(rmimsDist, rootDist);
 
-    console.log('[Vite Plugin] Successfully mirrored all RMIMS pages, assets, and JS directly to dist root.');
+    console.log('[Vite Plugin] Successfully mirrored all RMIMS pages, assets, CSS, Supabase, and JS directly to dist root.');
   }
 });
 
@@ -78,6 +96,7 @@ export default defineConfig({
         managerSettings: resolve(__dirname, 'RMIMS/manager/settings.html'),
         managerStaffActivity: resolve(__dirname, 'RMIMS/manager/staff-activity.html'),
         managerUsage: resolve(__dirname, 'RMIMS/manager/usage.html'),
+        managerAnalytics: resolve(__dirname, 'RMIMS/manager/analytics.html'),
         // Active Staff / User Pages
         userDashboard: resolve(__dirname, 'RMIMS/user/dashboard.html'),
         userInventory: resolve(__dirname, 'RMIMS/user/inventory.html'),

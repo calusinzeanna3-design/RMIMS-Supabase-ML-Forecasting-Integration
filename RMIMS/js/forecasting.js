@@ -70,6 +70,7 @@ async function checkMlServiceAvailable() {
     const candidates = [];
     if (window.ENV_FLASK_API_BASE) candidates.push(window.ENV_FLASK_API_BASE);
     candidates.push("");
+    candidates.push("https://rmims-ml-model.web.app");
     if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
         candidates.push("http://127.0.0.1:5000");
     }
@@ -77,7 +78,7 @@ async function checkMlServiceAvailable() {
     for (const base of candidates) {
         try {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 350);
+            const timer = setTimeout(() => controller.abort(), 950);
             const res = await fetch(`${base}/api/ml/status`, { method: "GET", signal: controller.signal }).catch(() => null);
             clearTimeout(timer);
             if (res && res.ok) {
