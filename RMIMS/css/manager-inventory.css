@@ -884,22 +884,27 @@ body.manager-page .content {
 .mgr-folder-specs-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 70px;
-  overflow: hidden;
+  gap: 5px;
+  max-height: none;
+  overflow: visible;
 }
 
 .mgr-folder-spec-pill {
   font-size: 11.5px;
+  line-height: 1.45;
   color: #334155;
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
-  border-radius: 6px;
-  padding: 3px 7px;
+  border-radius: 9999px;
+  padding: 3px 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 24px;
 }
 
 .mgr-folder-footer {

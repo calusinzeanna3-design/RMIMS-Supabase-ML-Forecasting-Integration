@@ -142,11 +142,15 @@ document.addEventListener('DOMContentLoaded', () => {
   renderKpis();
   renderHistoryTable();
 
-  // Listen for storage events to refresh if stock changed elsewhere
+  // Listen for storage events to refresh if stock or finished products changed elsewhere
   window.addEventListener('storage', () => {
     rawMaterials = getSystemRawMaterials();
     renderKpis();
     renderHistoryTable();
+    updateBundleReceivePreview();
+  });
+  window.addEventListener('rmims_finished_products_updated', () => {
+    updateBundleReceivePreview();
   });
 });
 
@@ -312,11 +316,24 @@ function bindFormEvents() {
 // ============================================================================
 
 function matchProductIngredient(ingredientName, selectedMaterialName) {
-  const ing = (ingredientName || '').toLowerCase().trim();
-  const sel = (selectedMaterialName || '').toLowerCase().trim();
+  const ing = String(ingredientName || '').toLowerCase().trim();
+  const sel = String(selectedMaterialName || '').toLowerCase().trim();
   if (!ing || !sel) return false;
   if (ing === sel) return true;
   if (ing.includes(sel) || sel.includes(ing)) return true;
+
+  // Normalize slashes, hyphens, and punctuation: e.g. "all-purpose / bread flour"
+  const cleanStr = (s) => s.replace(/[\/\(\)\-_,&]/g, ' ').replace(/\s+/g, ' ').trim();
+  const ingClean = cleanStr(ing);
+  const selClean = cleanStr(sel);
+  if (ingClean === selClean) return true;
+  if (ingClean.includes(selClean) || selClean.includes(ingClean)) return true;
+
+  // Token matching: check word overlap
+  const stopWords = new Set(['and', 'with', 'the', 'for', 'in', 'of', 'powder', 'refined', 'fresh', 'pure', 'special', 'classic']);
+  const ingTokens = ingClean.split(' ').filter(t => t.length > 2 && !stopWords.has(t));
+  const selTokens = selClean.split(' ').filter(t => t.length > 2 && !stopWords.has(t));
+  if (ingTokens.some(t => selTokens.includes(t))) return true;
 
   // Specific primary ingredient matching (prevents 'Salted Creamery Butter' from matching 'Iodized Salt')
   const isButter = sel.includes('butter');
@@ -366,45 +383,42 @@ const LEGACY_KXC_PRODUCT_NAMES = new Set([
 function isLegacyKxcProduct(name) {
   if (!name) return false;
   const n = String(name).toLowerCase().trim();
-  return LEGACY_KXC_PRODUCT_NAMES.has(n) || Array.from(LEGACY_KXC_PRODUCT_NAMES).some(k => n === k || n.includes(k));
+  return LEGACY_KXC_PRODUCT_NAMES.has(n);
 }
 
 function getFinishedProductsForMaterial(materialName) {
   if (!materialName) return [];
 
-  // Exclude all KXC products. Only user-created finished products are used.
+  // Exclude legacy KXC products; recognize all user-created formulations across storage keys
   let catalog = [];
-  try {
-    const custom = JSON.parse(localStorage.getItem('rmims_custom_finished_products') || '[]');
-    if (Array.isArray(custom)) {
-      custom.forEach(cp => {
-        if (cp.name && !isLegacyKxcProduct(cp.name) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
-          catalog.push({
-            name: cp.name,
-            materialNames: Array.isArray(cp.raw_materials)
-              ? cp.raw_materials.map(r => r.name || r)
-              : (Array.isArray(cp.materialNames) ? cp.materialNames : [])
+  const storageKeys = ['rmims_custom_finished_products', 'RMSME_CUSTOM_FINISHED_PRODUCTS', 'rmims_finished_product_context'];
+  storageKeys.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(cp => {
+            if (cp && cp.name && !isLegacyKxcProduct(cp.name) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
+              const materialNames = Array.isArray(cp.materialNames)
+                ? cp.materialNames
+                : (Array.isArray(cp.raw_materials)
+                    ? cp.raw_materials.map(r => (typeof r === 'object' && r ? (r.name || r.raw_material_name || r.materialName || '') : r))
+                    : (Array.isArray(cp.materials)
+                        ? cp.materials.map(m => (typeof m === 'object' && m ? (m.name || m.raw_material_name || m.materialName || '') : m))
+                        : (Array.isArray(cp.ingredients)
+                            ? cp.ingredients.map(i => (typeof i === 'object' && i ? (i.name || i.raw_material_name || i.materialName || '') : i))
+                            : [])));
+              catalog.push({
+                name: cp.name,
+                materialNames: materialNames.filter(Boolean)
+              });
+            }
           });
         }
-      });
-    }
-  } catch (e) {}
-
-  try {
-    const ctx = JSON.parse(localStorage.getItem('rmims_finished_product_context') || '[]');
-    if (Array.isArray(ctx)) {
-      ctx.forEach(cp => {
-        if (cp.name && !isLegacyKxcProduct(cp.name) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
-          catalog.push({
-            name: cp.name,
-            materialNames: Array.isArray(cp.materialNames)
-              ? cp.materialNames
-              : (Array.isArray(cp.materials) ? cp.materials.map(m => m.name || m) : [])
-          });
-        }
-      });
-    }
-  } catch (e) {}
+      }
+    } catch (e) {}
+  });
 
   const results = [];
   catalog.forEach(product => {
@@ -447,7 +461,8 @@ function updateBundleReceivePreview() {
     return;
   }
 
-  const matName = selOpt.dataset.name || selOpt.textContent;
+  const rawMatName = selOpt.dataset.name || selOpt.text || selOpt.textContent || '';
+  const matName = rawMatName.replace(/\s*\([A-Z0-9\-_]+\)\s*-\s*Current:.*$/i, '').trim();
   const unit = selOpt.dataset.unit || '';
   const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
 

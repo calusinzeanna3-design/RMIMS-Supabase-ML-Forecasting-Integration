@@ -176,7 +176,7 @@ let pendingActionMaterialId = null;
 let pendingActionType = null; // 'archive' | 'restore'
 
 // Finished Products Catalog Storage Keys
-const CUSTOM_FP_STORAGE_KEY = 'RMSME_CUSTOM_FINISHED_PRODUCTS';
+const CUSTOM_FP_STORAGE_KEY = 'rmims_custom_finished_products';
 const DELETED_FP_STORAGE_KEY = 'RMSME_DELETED_FINISHED_PRODUCTS';
 
 /**
@@ -1082,12 +1082,14 @@ const LEGACY_KXC_PRODUCT_NAMES = new Set([
 function isLegacyKxcProduct(name) {
   if (!name) return false;
   const n = String(name).toLowerCase().trim();
-  return LEGACY_KXC_PRODUCT_NAMES.has(n) || Array.from(LEGACY_KXC_PRODUCT_NAMES).some(k => n === k || n.includes(k));
+  return LEGACY_KXC_PRODUCT_NAMES.has(n);
 }
 
 function getCustomFinishedProducts() {
   try {
-    const raw = localStorage.getItem(CUSTOM_FP_STORAGE_KEY);
+    const raw = localStorage.getItem('rmims_custom_finished_products') || 
+                localStorage.getItem('RMSME_CUSTOM_FINISHED_PRODUCTS') ||
+                localStorage.getItem('rmims_finished_product_context');
     if (!raw) return [];
     const list = JSON.parse(raw);
     if (!Array.isArray(list)) return [];
@@ -1104,7 +1106,15 @@ function getCustomFinishedProducts() {
 
 function saveCustomFinishedProducts(list) {
   try {
-    localStorage.setItem(CUSTOM_FP_STORAGE_KEY, JSON.stringify(list));
+    const json = JSON.stringify(list);
+    localStorage.setItem('rmims_custom_finished_products', json);
+    localStorage.setItem('RMSME_CUSTOM_FINISHED_PRODUCTS', json);
+    localStorage.setItem('rmims_finished_product_context', json);
+    // Broadcast storage event so open tabs/pages update immediately
+    try {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('rmims_finished_products_updated', { detail: list }));
+    } catch (_) {}
   } catch (e) {
     console.warn('Failed to save custom finished products', e);
   }
@@ -1426,8 +1436,9 @@ window.handleConfirmDeleteFinishedProduct = handleConfirmDeleteFinishedProduct;
 function buildFinishedProductCardHtml(p) {
   const matCount = p.materialNames ? p.materialNames.length : 0;
   const materialsPreviewHtml = (p.materialNames || []).slice(0, 3).map(m => `
-    <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A;">
-      🌾 ${escapeHtml(m)}
+    <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; display:inline-flex; align-items:center; gap:6px; line-height:1.45; padding:3px 10px; border-radius:9999px; min-height:24px; box-sizing:border-box;">
+      <span style="font-size:12px; line-height:1; display:inline-block; flex-shrink:0;">🌾</span>
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; line-height:1.45; font-size:11.5px; font-weight:500;">${escapeHtml(m)}</span>
     </span>
   `).join('');
   const moreCount = (p.materialNames || []).length > 3 ? `<span style="font-size:11px; color:#B45309; padding-left:4px; font-weight:600;">+${(p.materialNames.length - 3)} more ingredients</span>` : '';
