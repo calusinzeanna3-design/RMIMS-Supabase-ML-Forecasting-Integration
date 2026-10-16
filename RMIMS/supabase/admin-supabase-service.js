@@ -453,7 +453,6 @@ export async function fetchRegisteredUsers() {
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .in('status', ['active', 'inactive'])
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -468,7 +467,7 @@ export async function fetchRegisteredUsers() {
       role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
         ? 'Administrator' 
         : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),
-      status: u.status === 'active' ? 'Active' : 'Inactive',
+      status: (u.status === 'pending' || u.status === 'pending_approval') ? 'Pending' : (u.status === 'inactive' ? 'Inactive' : 'Active'),
       created_at: u.created_at || new Date().toISOString()
     }));
 
@@ -490,6 +489,25 @@ export async function fetchRegisteredUsers() {
         created_at: new Date().toISOString()
       });
     }
+
+    // Merge with existing local registered users so new accounts are never lost
+    try {
+      const rawLocal = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+      const localUsers = rawLocal ? JSON.parse(rawLocal) : [];
+      if (Array.isArray(localUsers)) {
+        localUsers.forEach(lu => {
+          if (!lu) return;
+          const exists = users.some(u => 
+            (u.id && lu.id && String(u.id) === String(lu.id)) ||
+            (u.email && lu.email && u.email.toLowerCase() === lu.email.toLowerCase()) ||
+            (u.username && lu.username && u.username.toLowerCase() === lu.username.toLowerCase())
+          );
+          if (!exists) {
+            users.push(lu);
+          }
+        });
+      }
+    } catch (_) {}
 
     try {
       localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
@@ -524,7 +542,7 @@ export async function fetchPendingApprovals() {
 
     if (error) throw error;
 
-    const pending = (data || []).map(u => ({
+    let pending = (data || []).map(u => ({
       id: u.id,
       name: u.full_name || u.username || 'New Account',
       username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
@@ -536,9 +554,29 @@ export async function fetchPendingApprovals() {
       createdAt: u.created_at
     }));
 
+    // Merge with existing local pending users so newly registered local users awaiting approval are preserved
+    try {
+      const rawLocal = localStorage.getItem(STORAGE_KEYS.PENDING_USERS);
+      const localPending = rawLocal ? JSON.parse(rawLocal) : [];
+      if (Array.isArray(localPending)) {
+        localPending.forEach(lp => {
+          if (!lp) return;
+          const exists = pending.some(p => 
+            (p.id && lp.id && String(p.id) === String(lp.id)) ||
+            (p.email && lp.email && p.email.toLowerCase() === lp.email.toLowerCase()) ||
+            (p.username && lp.username && p.username.toLowerCase() === lp.username.toLowerCase())
+          );
+          if (!exists) {
+            pending.push(lp);
+          }
+        });
+      }
+    } catch (_) {}
+
     try {
       localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(pending));
       window.dispatchEvent(new Event('rmims_pending_users_updated'));
+      window.dispatchEvent(new Event('storage'));
     } catch (_) {}
 
     return pending;

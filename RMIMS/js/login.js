@@ -452,6 +452,28 @@ if (createAccountForm) {
                       }
                     } catch (_) {}
 
+                    // Also mirror to pending queue so Admin immediately sees them in "Awaiting Approval for Accounts"
+                    try {
+                        const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+                        const pendingExists = pendingList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
+                        if (!pendingExists) {
+                            pendingList.unshift({
+                                id: regResult?.user?.id || `user-${Date.now()}`,
+                                name: fullName,
+                                username: username,
+                                email: email,
+                                companyId: compId,
+                                branchLoc: branchLocation.trim(),
+                                branchName: branchName.trim(),
+                                role: role === 'manager' ? 'Manager' : 'Staff',
+                                status: 'Pending',
+                                requestedOn: new Date().toISOString()
+                            });
+                            localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
+                            window.dispatchEvent(new Event('rmims_pending_users_updated'));
+                        }
+                    } catch (_) {}
+
                     window.dispatchEvent(new Event('rmims_registered_users_updated'));
                     window.dispatchEvent(new Event('storage'));
                 }

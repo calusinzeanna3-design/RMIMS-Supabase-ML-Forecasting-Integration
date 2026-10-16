@@ -564,19 +564,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const remaining = pendingList.filter(u => String(u.id) !== String(param) && `req_${u.id}` !== String(param));
     saveStoredPendingUsers(remaining);
 
-    // Add to registered users directory in storage
+    // Add or update in registered users directory in storage
     const regList = getStoredRegisteredUsers();
     const newUserId = target && target.id ? target.id : `user-${Date.now()}`;
-    regList.push({
-      id: newUserId,
-      name: name,
-      username: username,
-      email: email,
-      branchLoc: branchLoc,
-      branchName: branchName,
-      role: role,
-      status: 'Active'
-    });
+    const existingIndex = regList.findIndex(u => 
+      (u.id && newUserId && String(u.id) === String(newUserId)) ||
+      (u.email && email && u.email.toLowerCase() === email.toLowerCase()) ||
+      (u.username && username && u.username.toLowerCase() === username.toLowerCase())
+    );
+    if (existingIndex >= 0) {
+      regList[existingIndex].status = 'Active';
+      if (branchLoc) regList[existingIndex].branchLoc = branchLoc;
+      if (branchName) regList[existingIndex].branchName = branchName;
+      if (role) regList[existingIndex].role = role;
+    } else {
+      regList.push({
+        id: newUserId,
+        name: name,
+        username: username,
+        email: email,
+        branchLoc: branchLoc,
+        branchName: branchName,
+        role: role,
+        status: 'Active'
+      });
+    }
     saveStoredRegisteredUsers(regList);
 
     // Broadcast live notification across all portals (Admin, Manager, Staff)

@@ -2059,25 +2059,25 @@ import './rmims-notifications.js';
   }
 
   function getReadStorageKey() {
+    const portalRole = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'staff');
     let uid = '';
     try {
       const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile') || '{}');
       uid = u.id || u.email || '';
     } catch (e) {}
-    return uid ? `rmims_notifications_read_${uid}` : NOTIF_READ_KEY;
+    return uid ? `rmims_read_${portalRole}_${uid}` : `rmims_read_${portalRole}`;
   }
 
   function getReadSet() {
     try {
       const key = getReadStorageKey();
-      const specific = JSON.parse(localStorage.getItem(key) || 'null');
-      if (Array.isArray(specific) && specific.length > 0) {
-        return new Set(specific);
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        return new Set(Array.isArray(arr) ? arr : []);
       }
-      return new Set(JSON.parse(localStorage.getItem(NOTIF_READ_KEY) || '[]'));
-    } catch (e) {
-      return new Set();
-    }
+    } catch (e) {}
+    return new Set();
   }
 
   function saveReadSet(set) {
@@ -2085,7 +2085,7 @@ import './rmims-notifications.js';
       const arr = [...set];
       const key = getReadStorageKey();
       localStorage.setItem(key, JSON.stringify(arr));
-      localStorage.setItem(NOTIF_READ_KEY, JSON.stringify(arr));
+      window.dispatchEvent(new CustomEvent('rmims:notification_change'));
     } catch (e) { }
   }
 
@@ -2394,11 +2394,18 @@ import './rmims-notifications.js';
 
   // Cross-tab synchronization
   window.addEventListener('storage', (e) => {
-    if (e.key === NOTIF_STORE_KEY || e.key === NOTIF_READ_KEY) {
+    if (e.key === NOTIF_STORE_KEY || e.key === getReadStorageKey()) {
       renderNotifications();
       if (document.getElementById("rmsmeAllNotificationsOverlay")?.classList.contains("open")) {
         renderModalList();
       }
+    }
+  });
+
+  window.addEventListener('rmims:notification_change', () => {
+    renderNotifications();
+    if (document.getElementById("rmsmeAllNotificationsOverlay")?.classList.contains("open")) {
+      renderModalList();
     }
   });
 

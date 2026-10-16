@@ -204,7 +204,14 @@
   }
 
   const STORAGE_STORE_KEY = 'rmims_notifications_live_v2';
-  const STORAGE_READ_KEY = 'rmims_notifications_read_v2';
+
+  // Strict role and account-isolated read keys: Admin, Manager, and Staff read states are 100% separate
+  function getScopedReadStorageKey(portalRole) {
+    const r = (portalRole || getPortalRole() || 'staff').toLowerCase();
+    const cleanRole = (r === 'admin' || r === 'superadmin') ? 'admin' : (r === 'manager' ? 'manager' : 'staff');
+    const uid = getCurrentUserId();
+    return uid ? `rmims_read_${cleanRole}_${uid}` : `rmims_read_${cleanRole}`;
+  }
 
   // Purge legacy hardcoded/seed notifications from browser storage
   try {
@@ -214,7 +221,8 @@
       'rmims_notifications_master',
       'rmims_live_notifications',
       'rmims_notifications_read_v6',
-      'rmims_notifications_read'
+      'rmims_notifications_read',
+      'rmims_notifications_read_v2'
     ];
     legacyKeys.forEach(k => {
       try { localStorage.removeItem(k); } catch (_) {}
@@ -278,10 +286,11 @@
     } catch (_) {}
   }
 
-  // Read status set
-  function getReadSet() {
+  // Read status set strictly isolated per portal role and user account
+  function getReadSet(portalRole) {
     try {
-      const raw = localStorage.getItem(STORAGE_READ_KEY);
+      const key = getScopedReadStorageKey(portalRole);
+      const raw = localStorage.getItem(key);
       if (raw) {
         const arr = JSON.parse(raw);
         return new Set(Array.isArray(arr) ? arr : []);
@@ -290,10 +299,11 @@
     return new Set();
   }
 
-  function saveReadSet(set) {
+  function saveReadSet(set, portalRole) {
     try {
+      const key = getScopedReadStorageKey(portalRole);
       const arr = Array.from(set);
-      localStorage.setItem(STORAGE_READ_KEY, JSON.stringify(arr));
+      localStorage.setItem(key, JSON.stringify(arr));
       window.dispatchEvent(new CustomEvent('rmims:notification_change'));
     } catch (_) {}
   }
@@ -449,7 +459,7 @@
   // Update topbar bell badge count
   function updateTopbarBadges(role) {
     const all = getNotifications();
-    const readSet = getReadSet();
+    const readSet = getReadSet(role);
     const uid = getCurrentUserId();
     const roleItems = all.filter(n => isNotificationInScope(n, role, uid));
     const unreadCount = roleItems.filter(n => !readSet.has(String(n.id))).length;
@@ -568,10 +578,10 @@
     // Mark all as read button - STRICTLY SCOPED TO ACTIVE TAB AND ROLE SCOPE!
     backdrop.querySelector('#rmimsNotifMarkAllBtn').addEventListener('click', () => {
       const all = getNotifications();
-      const readSet = getReadSet();
+      const readSet = getReadSet(role);
       const uid = getCurrentUserId();
       
-      // Only mark notifications that belong to the current active tab and are in scope
+      // Only mark notifications that belong to the current active tab and are in scope for THIS role
       const tabItems = all.filter(n => {
         if (!isNotificationInScope(n, role, uid)) return false;
         if (currentActiveTab === 'all') return true;
@@ -579,7 +589,7 @@
       });
 
       tabItems.forEach(n => readSet.add(String(n.id)));
-      saveReadSet(readSet);
+      saveReadSet(readSet, role);
       renderTabs(role);
       renderList(role);
       updateTopbarBadges(role);
@@ -641,7 +651,7 @@
 
     const tabs = getTabsForRole(role);
     const all = getNotifications();
-    const readSet = getReadSet();
+    const readSet = getReadSet(role);
     const uid = getCurrentUserId();
     const roleItems = all.filter(n => isNotificationInScope(n, role, uid));
 
@@ -685,7 +695,7 @@
     if (!listEl) return;
 
     const items = getFilteredNotifications(role);
-    const readSet = getReadSet();
+    const readSet = getReadSet(role);
 
     if (items.length === 0) {
       listEl.innerHTML = `
@@ -750,9 +760,9 @@
 
       // Tap event: Marks as read AND opens inspection detail popup!
       card.addEventListener('click', (e) => {
-        // Mark as read
+        // Mark as read specifically for this role/account
         readSet.add(String(n.id));
-        saveReadSet(readSet);
+        saveReadSet(readSet, role);
         card.classList.remove('unread');
         card.classList.add('read');
         renderTabs(role);
@@ -957,8 +967,8 @@
 
   // Cross-tab and live event synchronization
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_STORE_KEY || e.key === STORAGE_READ_KEY) {
-      const role = getPortalRole();
+    const role = getPortalRole();
+    if (e.key === STORAGE_STORE_KEY || e.key === getScopedReadStorageKey(role)) {
       updateTopbarBadges(role);
       const backdrop = document.getElementById('rmimsNotifBackdrop');
       if (backdrop && backdrop.classList.contains('open')) {
