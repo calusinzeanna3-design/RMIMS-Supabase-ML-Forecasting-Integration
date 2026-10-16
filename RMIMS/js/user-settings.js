@@ -215,7 +215,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
         const { data: profile, error } = await supabase
             .from("user_profiles")
-            .select("id, full_name, email, role, status, created_at, updated_at")
+            .select("id, full_name, email, role, operational_role, status, created_at, updated_at")
             .eq("id", user.uid)
             .maybeSingle();
 
@@ -229,12 +229,16 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        const role = (profile.role || "").toLowerCase();
-        if (role === "admin") {
+        const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
+        const rawRole = String(profile.role || '').toLowerCase();
+        const isAdm = rawOp === 'admin' || rawRole === 'admin';
+        const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
+
+        if (isAdm) {
             window.location.href = "../admin/settings.html";
             return;
         }
-        if (role === "manager") {
+        if (isMgr) {
             window.location.href = "../manager/settings.html";
             return;
         }

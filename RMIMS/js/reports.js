@@ -37,7 +37,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
         let { data: profile, error } = await supabase
             .from("user_profiles")
-            .select("id, full_name, email, role, status")
+            .select("id, full_name, email, role, operational_role, status")
             .eq("id", user.uid)
             .maybeSingle();
 
@@ -52,10 +52,12 @@ onAuthStateChanged(auth, async (user) => {
                     full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
                     email: user.email,
                     role: "admin",
+                    operational_role: "admin",
                     status: "active"
                 };
             } else {
                 profile.role = "admin";
+                profile.operational_role = "admin";
                 profile.status = "active";
             }
             error = null;
@@ -66,12 +68,15 @@ onAuthStateChanged(auth, async (user) => {
                 const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
                 if (raw) {
                     const cached = JSON.parse(raw);
-                    if (cached.email && cached.email.toLowerCase() === cleanEmail && (cached.role === "admin" || cached.role === "manager")) {
+                    const cachedOp = String(cached.operationalRole || cached.operational_role || '').toLowerCase();
+                    const cachedBase = String(cached.role || '').toLowerCase();
+                    if (cached.email && cached.email.toLowerCase() === cleanEmail && (cachedBase === "admin" || cachedBase === "manager" || cachedOp === "manager" || cachedOp === "admin")) {
                         profile = {
                             id: uid,
                             full_name: cached.fullName || cached.name || "Manager",
                             email: user.email,
                             role: cached.role || "manager",
+                            operational_role: cached.operationalRole || cached.operational_role || "manager",
                             status: "active"
                         };
                         error = null;
@@ -85,7 +90,12 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        if (profile.role !== "admin" && profile.role !== "manager") {
+        const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
+        const rawRole = String(profile.role || '').toLowerCase();
+        const isMgr = rawOp === 'manager' || rawRole === 'manager';
+        const isAdm = rawOp === 'admin' || rawRole === 'admin' || isMasterAdmin;
+
+        if (!isAdm && !isMgr) {
             window.location.href = "../user/dashboard.html";
             return;
         }

@@ -25,7 +25,7 @@ ALTER TABLE public.user_profiles
     ADD COLUMN IF NOT EXISTS dataset_folder TEXT DEFAULT 'a72a7971-6ec7-4edc-ae72-89d702199ed9',
     ADD COLUMN IF NOT EXISTS onboarding_status TEXT DEFAULT 'pending';
 
--- STEP 2: RELAX STATUS CHECK CONSTRAINT
+-- STEP 2: RELAX STATUS AND ROLE CHECK CONSTRAINTS
 DO $$
 BEGIN
     ALTER TABLE public.user_profiles 
@@ -34,6 +34,18 @@ BEGIN
     ALTER TABLE public.user_profiles 
         ADD CONSTRAINT user_profiles_status_check 
         CHECK (status IN ('active', 'inactive', 'pending', 'pending_approval'));
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE public.user_profiles 
+        DROP CONSTRAINT IF EXISTS user_profiles_role_check;
+
+    ALTER TABLE public.user_profiles 
+        ADD CONSTRAINT user_profiles_role_check 
+        CHECK (role IN ('admin', 'manager', 'staff', 'user', 'user_staff', 'main_admin'));
 EXCEPTION
     WHEN OTHERS THEN NULL;
 END $$;

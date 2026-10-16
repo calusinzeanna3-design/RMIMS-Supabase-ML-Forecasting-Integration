@@ -212,7 +212,7 @@ async function bootstrapForecastApp(user) {
         if (user && user.uid) {
             let { data } = await supabase
                 .from("user_profiles")
-                .select("id, full_name, email, role, status")
+                .select("id, full_name, email, role, operational_role, status")
                 .eq("id", user.uid)
                 .maybeSingle();
             profile = data;

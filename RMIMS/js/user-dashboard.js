@@ -52,6 +52,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initDashboard() {
+  try {
+    const rawLocal = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser');
+    if (rawLocal) {
+      const u = JSON.parse(rawLocal);
+      const uOp = String(u.operationalRole || u.operational_role || '').toLowerCase();
+      const uBase = String(u.role || '').toLowerCase();
+      if (uOp === 'manager' || uBase === 'manager') {
+        window.location.replace('../manager/dashboard.html');
+        return;
+      }
+    }
+  } catch (_) {}
+
   const materials = getSystemRawMaterials();
   const staffTx = getStaffTransactions();
   const allCompanyTx = getAllCompanyTransactions();

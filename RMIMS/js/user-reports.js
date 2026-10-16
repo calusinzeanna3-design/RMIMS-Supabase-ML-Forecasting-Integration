@@ -42,9 +42,20 @@ onAuthStateChanged(auth, async (user) => {
     try {
         let { data: profile } = await supabase
             .from("user_profiles")
-            .select("id, full_name, email, role, status")
+            .select("id, full_name, email, role, operational_role, status")
             .eq("id", user.uid)
             .maybeSingle();
+
+        const rawOp = String(profile?.operational_role || '').toLowerCase();
+        const rawRole = String(profile?.role || '').toLowerCase();
+        if (rawOp === 'manager' || rawRole === 'manager') {
+            window.location.href = "../manager/reports.html";
+            return;
+        }
+        if (rawOp === 'admin' || rawRole === 'admin') {
+            window.location.href = "../admin/overview.html";
+            return;
+        }
 
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();

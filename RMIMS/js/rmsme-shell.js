@@ -115,6 +115,26 @@ import './rmims-notifications.js';
   const role = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'user');
   const current = (path[path.length - 1] || '').toLowerCase();
 
+  // Instant pre-render role routing guard to prevent UI flicker
+  try {
+    const rawLocal = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser');
+    if (rawLocal) {
+      const u = JSON.parse(rawLocal);
+      const uOp = String(u.operationalRole || u.operational_role || '').toLowerCase();
+      const uBase = String(u.role || '').toLowerCase();
+      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com');
+      const uIsMgr = !uIsAdm && (uOp === 'manager' || uBase === 'manager');
+      if (path.includes('user') && uIsMgr) {
+        window.location.replace('../manager/dashboard.html');
+        return;
+      }
+      if (path.includes('manager') && !uIsMgr && !uIsAdm) {
+        window.location.replace('../user/dashboard.html');
+        return;
+      }
+    }
+  } catch (_) {}
+
   function escapeHtml(str) {
     if (str == null) return '';
     return String(str)
@@ -988,15 +1008,28 @@ import './rmims-notifications.js';
         }
 
         if (profile) {
+          const rawOp = String(profile.operational_role || profile.operationalRole || '').trim().toLowerCase();
+          const rawBase = String(profile.role || '').trim().toLowerCase();
+          const isUserAdmin = rawBase === 'admin' || rawBase === 'main_admin' || rawOp === 'admin' || isMasterAdmin;
+          const isUserManager = !isUserAdmin && (rawOp === 'manager' || rawBase === 'manager');
+          const isUserStaff = !isUserAdmin && !isUserManager;
+
           // Live status guard: If pending approval or inactive, eject session (never eject master admin)
           if (profile.status && profile.status !== 'active' && !isMasterAdmin) {
             await supabase.auth.signOut();
             window.location.href = '../login.html';
             return;
           }
-          // Live role guard: If trying to access manager pages without manager/admin role, redirect
-          if (isManager && profile.role !== 'admin' && profile.role !== 'manager' && !isMasterAdmin) {
+
+          // Live role guard:
+          // 1. If accessing manager pages without manager or admin privileges -> redirect to staff workspace
+          if (path.includes('manager') && !isUserManager && !isUserAdmin) {
             window.location.href = '../user/dashboard.html';
+            return;
+          }
+          // 2. If a Manager accesses staff workspace pages -> redirect to manager workspace
+          if (path.includes('user') && isUserManager) {
+            window.location.href = '../manager/dashboard.html';
             return;
           }
 
@@ -1005,15 +1038,14 @@ import './rmims-notifications.js';
           if (profile.email) {
             document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = profile.email);
           }
-          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isMasterAdmin ? 'A' : (isManager ? 'M' : initials(liveName)));
+          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isUserAdmin ? 'A' : (isUserManager ? 'M' : initials(liveName)));
 
           const pBranchName = profile.branch_name || profile.branchName || '';
           const pBranchLoc = profile.branch_location || profile.branchLocation || '';
           const pBranchLabel = formatBranchLabel(pBranchName, pBranchLoc);
           document.querySelectorAll('[data-shell-branch]').forEach(e => e.textContent = pBranchLabel);
 
-          let liveRoleTitle = isManager ? 'Manager' : 'Staff';
-          if (profile.role === 'admin' || isAnyAdmin || isMasterAdmin) liveRoleTitle = 'Administrator';
+          let liveRoleTitle = isUserAdmin ? 'Administrator' : (isUserManager ? 'Manager' : 'Staff');
           document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = liveRoleTitle);
 
           if (current === 'dashboard.html') {
@@ -2236,7 +2268,7 @@ import './rmims-notifications.js';
         supabase.from('raw_materials').select('id, name, item_code, current_stock, minimum_threshold, unit_of_measure, updated_at'),
         supabase.from('stock_receipts').select('id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at').order('created_at', { ascending: false }).limit(30),
         supabase.from('material_disbursements').select('id, usage_date, material_id, consumed_quantity, unit, finished_product_name, recorded_by, created_at').order('created_at', { ascending: false }).limit(30),
-        supabase.from('user_profiles').select('id, full_name, email, role, status, created_at').order('created_at', { ascending: false }).limit(20)
+        supabase.from('user_profiles').select('id, full_name, email, role, operational_role, status, created_at').order('created_at', { ascending: false }).limit(20)
       ]);
 
       const materials = matRes.data || [];
@@ -2427,12 +2459,15 @@ import './rmims-notifications.js';
       profiles.forEach(p => {
         if (p && p.created_at) {
           const userNotifId = `notif-user-reg-${p.id}`;
+          const pOp = String(p.operational_role || '').toLowerCase();
+          const pBase = String(p.role || '').toLowerCase();
+          const pRoleTitle = (pBase === 'admin' || pOp === 'admin') ? 'Administrator' : ((pBase === 'manager' || pOp === 'manager') ? 'Manager' : 'Staff User');
           newNotifMap.set(userNotifId, {
             id: userNotifId,
             category: 'user',
             priority: 'info',
             title: `User Account: ${p.full_name || p.email}`,
-            message: `Account registered as ${p.role === 'admin' ? 'Administrator' : (p.role === 'manager' ? 'Manager' : 'Staff User')} (${p.status === 'active' ? 'Active' : 'Inactive'}).`,
+            message: `Account registered as ${pRoleTitle} (${p.status === 'active' ? 'Active' : 'Inactive'}).`,
             actor: 'Source: User Management',
             roleScope: 'manager',
             timestamp: p.created_at

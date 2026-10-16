@@ -303,8 +303,12 @@ export async function loginUser(email, password, expectedRole) {
         }
 
         // Role gating only if explicitly requested (unified login permits all authorized roles)
-        const isAdmin = profile.role === "admin" || profile.role === "main_admin" || profile.operational_role === "admin" || isMasterAdmin;
-        const isManager = !isAdmin && (profile.role === "manager" || profile.operational_role === "manager");
+        const opRole = String(profile.operational_role || profile.operationalRole || "").trim().toLowerCase();
+        const baseRole = String(profile.role || "").trim().toLowerCase();
+        const isAdmin = baseRole === "admin" || baseRole === "main_admin" || opRole === "admin" || isMasterAdmin;
+        const isManager = !isAdmin && (opRole === "manager" || baseRole === "manager");
+        const isStaff = !isAdmin && !isManager;
+        const effectiveRole = isAdmin ? "admin" : (isManager ? "manager" : "staff");
 
         if (expectedRole === "admin" && !isAdmin) {
             await supabase.auth.signOut();
@@ -345,13 +349,18 @@ export async function loginUser(email, password, expectedRole) {
         const assignedCompanyName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
         const assignedDatasetFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
 
+        const destinationRoleLabel = isAdmin 
+            ? "Main Administrator" 
+            : (isManager ? "Manager" : "Staff");
+
         const sessionUser = {
             id: profile.id,
             fullName: sessionFullName,
             name: sessionFullName,
             email: profile.email,
-            role: profile.role || (isAdmin ? "admin" : (isManager ? "manager" : "user")),
-            operationalRole: profile.operational_role || (isAdmin ? "admin" : (isManager ? "manager" : "staff")),
+            role: effectiveRole,
+            operationalRole: effectiveRole,
+            operational_role: effectiveRole,
             status: profile.status,
             username: profile.username || "",
             branchName: profile.branch_name || (isScones ? "Scones & Muffins Store" : "Branch Store"),
@@ -378,10 +387,18 @@ export async function loginUser(email, password, expectedRole) {
             if (isAdmin) {
                 localStorage.setItem("adminUser", JSON.stringify(sessionUser));
                 localStorage.setItem("rmimsAdminUser", JSON.stringify(sessionUser));
+                localStorage.removeItem("managerUser");
+                localStorage.removeItem("staffUser");
             } else if (isManager) {
                 localStorage.setItem("managerUser", JSON.stringify(sessionUser));
+                localStorage.removeItem("staffUser");
+                localStorage.removeItem("adminUser");
+                localStorage.removeItem("rmimsAdminUser");
             } else {
                 localStorage.setItem("staffUser", JSON.stringify(sessionUser));
+                localStorage.removeItem("managerUser");
+                localStorage.removeItem("adminUser");
+                localStorage.removeItem("rmimsAdminUser");
             }
             sessionStorage.setItem("rmims_login_session_id", `login-${profile.id}-${Date.now()}`);
             sessionStorage.setItem("rmims_just_logged_in", "true");
@@ -411,8 +428,8 @@ export async function loginUser(email, password, expectedRole) {
                 type: "user_login",
                 timestamp: new Date().toISOString(),
                 details: {
-                    user_role: profile.role || (isAdmin ? "admin" : (isManager ? "manager" : "user")),
-                    operational_role: profile.operational_role || (isAdmin ? "admin" : (isManager ? "manager" : "staff")),
+                    user_role: effectiveRole,
+                    operational_role: effectiveRole,
                     company_id: assignedCompanyId,
                     company_name: assignedCompanyName,
                     branch_name: profile.branch_name || "Headquarters",
@@ -432,9 +449,6 @@ export async function loginUser(email, password, expectedRole) {
 
         // Step 4: Final verification & launch directly to the user's role workspace
         await sleep(600);
-        const destinationRoleLabel = isAdmin 
-            ? "Main Administrator" 
-            : (isManager ? "Manager" : "User / Staff");
         updateAuthProgress(transDOM, 100, `Access Granted! Launching ${destinationRoleLabel} Dashboard...`);
 
         // Smooth 650ms completion pause for visual delight

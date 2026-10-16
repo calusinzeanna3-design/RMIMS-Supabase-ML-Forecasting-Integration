@@ -210,7 +210,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
         let { data: profile, error } = await supabase
             .from("user_profiles")
-            .select("id, full_name, email, role, status, created_at, updated_at")
+            .select("id, full_name, email, role, operational_role, status, created_at, updated_at")
             .eq("id", user.uid)
             .maybeSingle();
 
@@ -246,7 +246,7 @@ onAuthStateChanged(auth, async (user) => {
                     full_name: local.fullName,
                     email: user.email || local.email,
                     role: local.role,
-                    operational_role: local.role,
+                    operational_role: local.operationalRole || local.role,
                     status: local.status,
                     created_at: local.createdAt,
                     updated_at: local.updatedAt
@@ -260,18 +260,18 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        if (profile && (profile.role === "admin" || isMasterAdmin)) {
+        const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
+        const rawRole = String(profile.role || '').toLowerCase();
+        const isAdm = rawOp === 'admin' || rawRole === 'admin' || isMasterAdmin;
+        const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
+
+        if (profile && isAdm) {
             window.location.href = "../admin/settings.html";
             return;
         }
 
-        if (profile && (profile.role === "user" || profile.role === "staff")) {
+        if (profile && !isAdm && !isMgr) {
             window.location.href = "../user/settings.html";
-            return;
-        }
-
-        if (profile && profile.role !== "manager") {
-            window.location.href = "../login.html";
             return;
         }
 
