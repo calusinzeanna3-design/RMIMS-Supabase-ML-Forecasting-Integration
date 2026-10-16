@@ -827,8 +827,8 @@ import './rmims-notifications.js';
     let hasSession = false;
     try {
       const candidates = isManager 
-        ? ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user']
-        : ['staffUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user'];
+        ? ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'adminUser', 'rmimsAdminUser']
+        : ['staffUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'adminUser', 'rmimsAdminUser'];
       for (const k of candidates) {
         const raw = localStorage.getItem(k); if (!raw) continue;
         const o = JSON.parse(raw);
@@ -843,7 +843,7 @@ import './rmims-notifications.js';
           email = o.email || '';
           branchName = o.branchName || o.branch_name || '';
           branchLocation = o.branchLocation || o.branch_location || '';
-          roleTitle = isManager ? 'Manager' : 'Staff';
+          roleTitle = (o.role === 'admin' || isAnyAdmin) ? 'Administrator' : (isManager ? 'Manager' : 'Staff');
           hasSession = true;
           break;
         }
@@ -851,7 +851,7 @@ import './rmims-notifications.js';
     } catch (e) { }
 
     if (!hasSession) {
-      window.location.href = '../login.html';
+      // Do not prematurely bounce; allow async syncLiveSession to verify with Supabase Auth
       return;
     }
 
@@ -899,26 +899,44 @@ import './rmims-notifications.js';
     try {
       const { supabase } = await import('../supabase/supabase-config.js');
       if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+
+      // 1. Check getSession first (fast local token check) before getUser
+      let authUser = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          authUser = session.user;
+        }
+      } catch (_) {}
+
+      if (!authUser) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          authUser = user;
+        } catch (_) {}
+      }
+
+      if (authUser) {
         let profile = null;
         try {
           const { data } = await supabase
             .from('user_profiles')
             .select('id, full_name, email, role, operational_role, branch_name, branch_location, status')
-            .eq('id', user.id)
+            .eq('id', authUser.id)
             .maybeSingle();
           profile = data;
         } catch (e) {
-          const { data } = await supabase
-            .from('user_profiles')
-            .select('id, full_name, email, role, status')
-            .eq('id', user.id)
-            .maybeSingle();
-          profile = data;
+          try {
+            const { data } = await supabase
+              .from('user_profiles')
+              .select('id, full_name, email, role, status')
+              .eq('id', authUser.id)
+              .maybeSingle();
+            profile = data;
+          } catch (_) {}
         }
 
-        const cleanEmail = (user.email || "").toLowerCase();
+        const cleanEmail = (authUser.email || "").toLowerCase();
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
         if (isDumpAccount) {
           await supabase.auth.signOut();
@@ -934,9 +952,9 @@ import './rmims-notifications.js';
         if (isMasterAdmin) {
           if (!profile) {
             profile = {
-              id: user.id || user.uid,
-              email: user.email,
-              full_name: 'Zeanna Calusin',
+              id: authUser.id || authUser.uid,
+              email: authUser.email,
+              full_name: 'Zeanna',
               role: 'admin',
               operational_role: 'admin',
               status: 'active'
@@ -955,12 +973,14 @@ import './rmims-notifications.js';
               const cached = JSON.parse(raw);
               if (cached.email && cached.email.toLowerCase() === cleanEmail) {
                 profile = {
-                  id: user.id || user.uid,
-                  email: user.email,
+                  id: authUser.id || authUser.uid,
+                  email: authUser.email,
                   full_name: cached.fullName || cached.name || "User",
                   role: cached.role || (isMasterAdmin ? "admin" : "user"),
                   operational_role: cached.operationalRole || (isMasterAdmin ? "admin" : "staff"),
-                  status: cached.status || "active"
+                  status: cached.status || "active",
+                  branch_name: cached.branchName || cached.branch_name || "",
+                  branch_location: cached.branchLocation || cached.branch_location || ""
                 };
               }
             }
@@ -969,7 +989,7 @@ import './rmims-notifications.js';
 
         if (profile) {
           // Live status guard: If pending approval or inactive, eject session (never eject master admin)
-          if (profile.status !== 'active' && !isMasterAdmin) {
+          if (profile.status && profile.status !== 'active' && !isMasterAdmin) {
             await supabase.auth.signOut();
             window.location.href = '../login.html';
             return;
@@ -985,7 +1005,7 @@ import './rmims-notifications.js';
           if (profile.email) {
             document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = profile.email);
           }
-          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isManager ? 'M' : initials(liveName));
+          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isMasterAdmin ? 'A' : (isManager ? 'M' : initials(liveName)));
 
           const pBranchName = profile.branch_name || profile.branchName || '';
           const pBranchLoc = profile.branch_location || profile.branchLocation || '';
@@ -993,7 +1013,7 @@ import './rmims-notifications.js';
           document.querySelectorAll('[data-shell-branch]').forEach(e => e.textContent = pBranchLabel);
 
           let liveRoleTitle = isManager ? 'Manager' : 'Staff';
-          if (isAnyAdmin) liveRoleTitle = 'Administrator';
+          if (profile.role === 'admin' || isAnyAdmin || isMasterAdmin) liveRoleTitle = 'Administrator';
           document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = liveRoleTitle);
 
           if (current === 'dashboard.html') {
@@ -1028,8 +1048,8 @@ import './rmims-notifications.js';
           }
         }
       } else {
-        const hasLocal = localStorage.getItem('currentUser') || localStorage.getItem('userProfile');
-        if (!hasLocal) {
+        const hasLocal = localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('managerUser') || localStorage.getItem('staffUser') || localStorage.getItem('adminUser');
+        if (!hasLocal && sessionStorage.getItem('rmims_just_logged_in') !== 'true') {
           window.location.href = '../login.html';
           return;
         }

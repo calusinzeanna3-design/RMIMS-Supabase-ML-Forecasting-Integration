@@ -356,6 +356,8 @@ export async function loginUser(email, password, expectedRole) {
             localStorage.setItem("rmims_active_company_id", assignedCompanyId);
             localStorage.setItem("rmims_active_company_name", assignedCompanyName);
             localStorage.setItem("rmims_active_dataset_folder", assignedDatasetFolder);
+            localStorage.setItem("rmims_all_accounts_permanently_purged_v2", "true");
+            localStorage.setItem("rmims_session_active", "true");
 
             if (isAdmin) {
                 localStorage.setItem("adminUser", JSON.stringify(sessionUser));

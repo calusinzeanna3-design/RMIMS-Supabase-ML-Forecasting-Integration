@@ -13,3 +13,4 @@ ml_backend/__pycache__/
 venv/
 functions/venv/
 .venv/
+.vercel

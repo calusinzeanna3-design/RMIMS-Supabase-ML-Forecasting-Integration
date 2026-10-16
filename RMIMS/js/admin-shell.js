@@ -425,23 +425,64 @@ import './rmims-notifications.js';
     }
   }
 
-  // Dynamic session sync for admin topbar profile
-  function syncAdminProfile() {
+  // Dynamic session sync for admin topbar profile with Supabase session resilience
+  async function syncAdminProfile() {
     try {
-      const userStr = localStorage.getItem('adminUser') || localStorage.getItem('rmimsAdminUser') || localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('rmimsCurrentUser');
-      if (!userStr) {
-        setAdminDefaultProfile();
-        window.location.href = '../login.html';
-        return;
+      let userStr = localStorage.getItem('adminUser') || localStorage.getItem('rmimsAdminUser') || localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('rmimsCurrentUser');
+      let user = null;
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch (_) {}
       }
-      const user = JSON.parse(userStr);
+
+      // If localStorage is empty or missing, asynchronously restore from Supabase session
       if (!user) {
+        try {
+          const { supabase } = await import('../supabase/supabase-config.js');
+          if (supabase && supabase.auth) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user) {
+              const email = (session.user.email || '').toLowerCase();
+              const isMasterAdmin = email === 'calusinzeanna3@gmail.com';
+              const meta = session.user.user_metadata || {};
+              const resolvedName = meta.full_name || (isMasterAdmin ? 'Zeanna' : email.split('@')[0]);
+
+              user = {
+                id: session.user.id,
+                fullName: resolvedName,
+                name: resolvedName,
+                email: session.user.email,
+                role: isMasterAdmin ? 'admin' : (meta.role || 'admin'),
+                operationalRole: isMasterAdmin ? 'admin' : (meta.operational_role || 'admin'),
+                status: 'active'
+              };
+
+              localStorage.setItem('adminUser', JSON.stringify(user));
+              localStorage.setItem('rmimsAdminUser', JSON.stringify(user));
+              localStorage.setItem('currentUser', JSON.stringify(user));
+              localStorage.setItem('userProfile', JSON.stringify(user));
+            }
+          }
+        } catch (e) {
+          console.warn('Admin session restore from Supabase error:', e);
+        }
+      }
+
+      if (!user) {
+        // If login transition is actively happening, give it a moment without ejecting
+        if (sessionStorage.getItem('rmims_just_logged_in') === 'true') {
+          return;
+        }
         setAdminDefaultProfile();
         window.location.href = '../login.html';
         return;
       }
 
       const cleanEmail = (user.email || '').toLowerCase();
+      const isMasterAdmin = cleanEmail === 'calusinzeanna3@gmail.com';
+
+      // Blocked legacy dummy demo accounts
       if (cleanEmail === 'admin@rmims.ph' || cleanEmail === 'manager@rmims.ph' || cleanEmail === 'staff@rmims.ph') {
         localStorage.removeItem('adminUser');
         localStorage.removeItem('rmimsAdminUser');
@@ -452,16 +493,21 @@ import './rmims-notifications.js';
         return;
       }
 
-      // Check if user is genuinely an Admin
-      const isAdmin = user.role === 'admin' || user.role === 'main_admin' || user.operationalRole === 'admin' || cleanEmail === 'calusinzeanna3@gmail.com';
-      const isKnownNonAdmin = (user.name || user.fullName || '').toLowerCase().includes('maria santos') || user.role === 'user' || user.role === 'staff' || user.role === 'manager';
+      // Role check: If a Manager or Staff member lands on an Admin page, route gracefully to their workspace!
+      const isAdmin = user.role === 'admin' || user.role === 'main_admin' || user.operationalRole === 'admin' || isMasterAdmin;
+      const isManager = !isAdmin && (user.role === 'manager' || user.operationalRole === 'manager');
+      const isStaff = !isAdmin && !isManager;
 
-      if (!isAdmin || isKnownNonAdmin) {
-        setAdminDefaultProfile();
+      if (isManager) {
+        window.location.href = '../manager/dashboard.html';
+        return;
+      }
+      if (isStaff) {
+        window.location.href = '../user/dashboard.html';
         return;
       }
 
-      const name = user.fullName || user.name || user.username || 'Admin';
+      const name = user.fullName || user.name || user.username || (isMasterAdmin ? 'Zeanna' : 'Admin');
       const role = 'Main Admin';
       const initial = (name.trim()[0] || 'A').toUpperCase();
 
@@ -494,10 +540,10 @@ import './rmims-notifications.js';
   // One-time self-healing cleanser for legacy mock/sample data across browser storage
   function cleanseLegacyMockData() {
     try {
-      // 1. Cleanse legacy mock branch stores
+      // 1. Cleanse legacy mock branch stores (do not touch real active stores: KXC Enterprise and Scones & Muffins Bakery)
       const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
       if (rawStores) {
-        const mockTokens = ['kxc', 'scones', 'lucena bakers hub', 'sweet treats', 'rafael cruz', 'kenneth lim', 'victor morales'];
+        const mockTokens = ['lucena bakers hub', 'sweet treats', 'rafael cruz', 'kenneth lim', 'victor morales'];
         if (mockTokens.some(tok => rawStores.toLowerCase().includes(tok))) {
           const parsed = JSON.parse(rawStores);
           const clean = {};
@@ -512,50 +558,19 @@ import './rmims-notifications.js';
         }
       }
 
-      // 1. Permanent removal of all existing user accounts across the system
+      // Mark purged flag safely without wiping active user session accounts
       if (!localStorage.getItem('rmims_all_accounts_permanently_purged_v2')) {
-        localStorage.setItem('rmims_registered_users', JSON.stringify([]));
-        localStorage.setItem('rmims_pending_users', JSON.stringify([]));
-        
-        // Remove personnel from branch stores
-        const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
-        if (rawStores) {
-          try {
-            const stores = JSON.parse(rawStores);
-            Object.values(stores).forEach(st => {
-              st.managers = [];
-              st.staff = [];
-            });
-            localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
-            window.dispatchEvent(new Event('rmims_stores_updated'));
-          } catch (_) {}
-        }
-        
-        // Clear active session accounts
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('rmimsCurrentUser');
-        localStorage.removeItem('adminUser');
-        localStorage.removeItem('managerUser');
-        localStorage.removeItem('staffUser');
-        localStorage.removeItem('userProfile');
-        localStorage.removeItem('rmimsAdminUser');
-        localStorage.removeItem('rmims_logged_in_user');
-        
         localStorage.setItem('rmims_all_accounts_permanently_purged_v2', 'true');
-        window.dispatchEvent(new Event('rmims_registered_users_updated'));
-        window.dispatchEvent(new Event('rmims_pending_users_updated'));
-        window.dispatchEvent(new Event('storage'));
       }
 
-      // Check and wipe stale demo or Main Administrator session from localStorage
+      // Check and wipe stale demo test sessions from localStorage (never wipe real accounts)
       ['currentUser', 'adminUser', 'rmimsAdminUser', 'userProfile', 'rmimsCurrentUser', 'managerUser', 'staffUser'].forEach(key => {
         const raw = localStorage.getItem(key);
         if (raw) {
           try {
             const p = JSON.parse(raw);
-            const name = (p.fullName || p.name || '').toLowerCase();
             const email = (p.email || '').toLowerCase();
-            if (name === 'main administrator' || email.includes('@rmims.ph')) {
+            if (email.includes('@rmims.ph')) {
               localStorage.removeItem(key);
             }
           } catch (_) {}
@@ -594,7 +609,7 @@ import './rmims-notifications.js';
             const isPlaceholderUser = !user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff';
             const isMockAction = ['receive', 'approve transaction', 'disburse'].includes(details.toLowerCase());
             const txt = `${user} ${details} ${bLoc} ${bName}`.toLowerCase();
-            const hasMock = txt.includes('kxc') || txt.includes('scones') || txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes');
+            const hasMock = txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes');
             
             // If it has no branch, is a placeholder user, or has mock tokens, purge it
             if (!hasBranch || isPlaceholderUser || isMockAction || hasMock) {
