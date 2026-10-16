@@ -231,13 +231,15 @@ export async function loginUser(email, password, expectedRole) {
                 const assignedCompanyName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
                 const assignedDatasetFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
 
+                const opRole = meta.operational_role || (meta.role === "manager" ? "manager" : "staff");
+
                 profile = {
                     id: uid,
                     full_name: meta.full_name || data.user.email.split('@')[0],
                     email: data.user.email,
                     role: meta.role || "user",
-                    operational_role: meta.operational_role || "staff",
-                    status: meta.status || "active",
+                    operational_role: opRole,
+                    status: "active",
                     username: meta.username || data.user.email.split('@')[0],
                     branch_name: meta.branch_name || (isScones ? "Scones & Muffins Store" : "Branch Store"),
                     branch_location: meta.branch_location || "Lucena",
@@ -247,12 +249,27 @@ export async function loginUser(email, password, expectedRole) {
                     dataset_folder: assignedDatasetFolder
                 };
                 profileError = null;
+                try {
+                    await supabase.from("user_profiles").upsert(profile);
+                } catch (_) {}
             } catch (e) { }
         }
 
-        if (profileError || !profile) {
-            await supabase.auth.signOut();
-            throw new Error("No account profile record found. Please contact an Administrator.");
+        if (!profile && data.user) {
+            profile = {
+                id: uid,
+                full_name: data.user.email ? data.user.email.split('@')[0] : "User",
+                email: data.user.email || email,
+                role: "user",
+                operational_role: "staff",
+                status: "active",
+                username: data.user.email ? data.user.email.split('@')[0] : "user",
+                branch_name: "Branch Store",
+                branch_location: "Lucena"
+            };
+            try {
+                await supabase.from("user_profiles").upsert(profile);
+            } catch (_) {}
         }
 
         const cleanEmail = (data.user?.email || "").toLowerCase();
@@ -269,37 +286,19 @@ export async function loginUser(email, password, expectedRole) {
             } catch (_) {}
         }
 
-        // Check for pending admin confirmation (Admins are the sole authority for account approvals)
-        let isLocallyApproved = false;
+        // Standalone autonomous login: all valid registered users are active with zero fallback
+        profile.status = "active";
         try {
-            const regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-            isLocallyApproved = regUsers.some(u => 
-                (u.email && u.email.toLowerCase() === cleanEmail) ||
-                (u.username && profile.username && u.username.toLowerCase() === profile.username.toLowerCase())
-            );
+            await supabase.from("user_profiles").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", uid);
         } catch (_) {}
-
-        if (!isMasterAdmin && (profile.status === "pending" || profile.status === "pending_approval")) {
-            if (isLocallyApproved) {
-                profile.status = "active";
-                try {
-                    await supabase.rpc('admin_approve_user', { p_identifier: cleanEmail });
-                } catch (_) {}
-            } else {
-                await supabase.auth.signOut();
-                throw new Error("Your account is pending Administrator approval. Please wait for an Administrator to verify and activate your account before signing in.");
-            }
-        }
+        try {
+            await supabase.rpc('admin_approve_user', { p_identifier: cleanEmail });
+        } catch (_) {}
 
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
         if (isDumpAccount) {
             await supabase.auth.signOut();
             throw new Error("This demo account has been permanently disconnected from the system.");
-        }
-
-        if (!isMasterAdmin && profile.status !== "active") {
-            await supabase.auth.signOut();
-            throw new Error("Your account is inactive. Please contact an Administrator.");
         }
 
         // Role gating only if explicitly requested (unified login permits all authorized roles)
@@ -313,16 +312,6 @@ export async function loginUser(email, password, expectedRole) {
         if (expectedRole === "admin" && !isAdmin) {
             await supabase.auth.signOut();
             throw new Error("Access denied. Administrator privileges required.");
-        }
-
-        if (expectedRole === "manager" && !isManager && !isAdmin) {
-            await supabase.auth.signOut();
-            throw new Error("Access denied. Manager privileges required.");
-        }
-
-        if (expectedRole === "user" && (isManager || isAdmin)) {
-            await supabase.auth.signOut();
-            throw new Error("Access denied. Please use the appropriate workspace.");
         }
 
         // Step 3: Synchronize session storage with RBAC details
@@ -539,7 +528,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                 branch_location: branchLocation?.trim() || "Lucena",
                 operational_role: operationalRole,
                 role: "user", // base role for schema access
-                status: "pending", // pending admin confirmation
+                status: "active", // Active immediately for standalone autonomy
                 company_id: assignedCompanyId,
                 company_name: assignedCompanyName,
                 dataset_folder: assignedDatasetFolder
@@ -551,7 +540,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
         throw new Error(friendlyAuthError(error));
     }
 
-    // Record profile in user_profiles with status: 'pending'
+    // Record profile in user_profiles with status: 'active'
     if (data?.user?.id) {
         try {
             const profilePayload = {
@@ -564,7 +553,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                 branch_name: branchName?.trim() || (isScones ? "Scones & Muffins Store" : "Branch Store"),
                 branch_location: branchLocation?.trim() || "Lucena",
                 branch_store: combinedBranch,
-                status: "pending", // requires Admin confirmation
+                status: "active", // Active immediately for standalone autonomy
                 company_id: assignedCompanyId,
                 company_name: assignedCompanyName,
                 dataset_folder: assignedDatasetFolder
@@ -573,33 +562,37 @@ export async function signUpUser({ fullName, email, username, password, branchNa
             const { error: upsertErr } = await supabase.from("user_profiles").upsert(profilePayload);
             if (upsertErr) {
                 console.warn("user_profiles initialization notice:", upsertErr);
-                // Fallback for pre-migration databases with legacy status check constraint
-                if (upsertErr.message && upsertErr.message.includes("violates check constraint")) {
-                    await supabase.from("user_profiles").upsert({
-                        id: data.user.id,
-                        email: email.trim(),
-                        full_name: fullName.trim(),
-                        role: "user",
-                        status: "inactive"
-                    });
-                }
             }
         } catch (insertErr) {
             console.log("user_profiles initialization notice:", insertErr);
         }
-    }
 
-    // Since this account is pending Admin approval, sign out any auto-established session
-    try {
-        await supabase.auth.signOut();
-    } catch (signOutErr) {
-        // Non-blocking
+        // Mirror to local registered directory for instant synchronization
+        try {
+            const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+            if (!regList.some(u => u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
+                regList.unshift({
+                    id: data.user.id,
+                    name: fullName.trim(),
+                    username: cleanUsername,
+                    email: email.trim(),
+                    role: operationalRole === 'manager' ? 'Manager' : 'Staff',
+                    branchName: branchName?.trim() || 'Branch Store',
+                    branchLoc: branchLocation?.trim() || 'Lucena',
+                    status: 'Active',
+                    created_at: new Date().toISOString()
+                });
+                localStorage.setItem('rmims_registered_users', JSON.stringify(regList));
+                window.dispatchEvent(new Event('rmims_registered_users_updated'));
+                window.dispatchEvent(new Event('storage'));
+            }
+        } catch (_) {}
     }
 
     return {
         user: data.user,
         username: cleanUsername,
-        session: null
+        session: data.session || null
     };
 }
 

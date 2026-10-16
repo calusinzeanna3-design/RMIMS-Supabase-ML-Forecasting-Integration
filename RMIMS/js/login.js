@@ -84,7 +84,7 @@ function setLoginSuccess(message) {
         return;
     }
     loginErrorEl.className = "form-note success";
-    loginErrorEl.innerHTML = `<strong>✓ Registration Received:</strong> ${message}`;
+    loginErrorEl.innerHTML = `<strong>✓ Account Ready:</strong> ${message}`;
 }
 
 function setRegSection1Error(message) {
@@ -384,10 +384,10 @@ if (createAccountForm) {
                 role
             });
 
-            // Sync to local pending users queue so admin instantly sees newly registered manual company
+            // Mirror to registered users directory as active immediately
             try {
-                const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-                const alreadyExists = pendingList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
+                const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+                const alreadyExists = regList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
                 if (!alreadyExists) {
                     const now = new Date();
                     const dateFormatted = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -397,8 +397,8 @@ if (createAccountForm) {
                     const compName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
                     const compFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
 
-                    pendingList.unshift({
-                        id: `pending-${Date.now()}`,
+                    regList.unshift({
+                        id: regResult?.user?.id || `user-${Date.now()}`,
                         name: fullName,
                         username: username,
                         email: email,
@@ -411,23 +411,23 @@ if (createAccountForm) {
                         branchName: branchName.trim(),
                         branchLoc: branchLocation.trim(),
                         role: role === 'manager' ? 'Manager' : 'Staff',
-                        requestedOn: dateFormatted,
-                        status: 'Pending'
+                        status: 'Active',
+                        created_at: new Date().toISOString()
                     });
-                    localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
+                    localStorage.setItem('rmims_registered_users', JSON.stringify(regList));
 
-                    // Broadcast live notification across all portals (Admin, Manager, Staff)
+                    // Broadcast active registration notification scoped to admin
                     try {
                       if (typeof window.pushRMIMSNotification === 'function') {
                         window.pushRMIMSNotification({
-                          title: `New Registration Request: ${fullName}`,
-                          message: `${fullName} requested a ${role === 'manager' ? 'Manager' : 'Staff'} account for ${branchName.trim()}. Pending Admin approval.`,
+                          title: `New User Registered: ${fullName}`,
+                          message: `${fullName} has registered as an active ${role === 'manager' ? 'Manager' : 'Staff'} for ${branchName.trim()}.`,
                           category: 'Activity',
                           badge: 'Registration',
                           role: 'admin',
                           targetRole: 'admin',
                           roleScope: 'admin',
-                          priority: 'normal',
+                          priority: 'info',
                           targetUrl: 'admin/user-management.html',
                           actor: fullName
                         });
@@ -436,8 +436,8 @@ if (createAccountForm) {
                         const existing = JSON.parse(localStorage.getItem(notifKey) || '[]');
                         existing.unshift({
                           id: `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-                          title: `New Registration Request: ${fullName}`,
-                          message: `${fullName} requested a ${role === 'manager' ? 'Manager' : 'Staff'} account for ${branchName.trim()}. Pending Admin approval.`,
+                          title: `New User Registered: ${fullName}`,
+                          message: `${fullName} has registered as an active ${role === 'manager' ? 'Manager' : 'Staff'} for ${branchName.trim()}.`,
                           category: 'activity',
                           badge: 'Registration',
                           role: 'admin',
@@ -452,24 +452,31 @@ if (createAccountForm) {
                       }
                     } catch (_) {}
 
-                    window.dispatchEvent(new Event('rmims_pending_users_updated'));
+                    window.dispatchEvent(new Event('rmims_registered_users_updated'));
                     window.dispatchEvent(new Event('storage'));
                 }
             } catch (_) {}
 
-            // Account created successfully!
-            showSignInView();
-            const emailField = document.getElementById("email");
-            if (emailField) {
-                emailField.value = email;
+            // Autonomous launch: seamlessly log in directly into the user's workspace
+            try {
+                showSignInView();
+                resetCreateAccountForm();
+                await loginUser(email, password);
+                return;
+            } catch (autoLoginErr) {
+                console.warn("Auto-login fallback caught:", autoLoginErr);
+                showSignInView();
+                const emailField = document.getElementById("email");
+                if (emailField) {
+                    emailField.value = email;
+                }
+                if (passwordInput) {
+                    passwordInput.value = password;
+                    passwordInput.focus();
+                }
+                setLoginSuccess(`Account <strong>@${escapeHtml(username)}</strong> is active! Click Sign In to launch your workspace.`);
+                resetCreateAccountForm();
             }
-            if (passwordInput) {
-                passwordInput.value = "";
-                passwordInput.focus();
-            }
-
-            setLoginSuccess(`Account <strong>@${escapeHtml(username)}</strong> submitted successfully for <strong>${escapeHtml(branchName.trim())}</strong>! Your account is currently pending Admin approval. You will be able to sign in once an Administrator verifies and activates your account.`);
-            resetCreateAccountForm();
 
         } catch (err) {
             const msg = err.message || "Failed to create account. Please verify your details.";

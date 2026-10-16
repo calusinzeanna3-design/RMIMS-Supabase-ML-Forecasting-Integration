@@ -998,13 +998,31 @@ import './rmims-notifications.js';
                   full_name: cached.fullName || cached.name || "User",
                   role: cached.role || (isMasterAdmin ? "admin" : "user"),
                   operational_role: cached.operationalRole || (isMasterAdmin ? "admin" : "staff"),
-                  status: cached.status || "active",
+                  status: "active",
                   branch_name: cached.branchName || cached.branch_name || "",
                   branch_location: cached.branchLocation || cached.branch_location || ""
                 };
               }
             }
           } catch (e) {}
+        }
+
+        if (!profile && authUser) {
+          const meta = authUser.user_metadata || {};
+          const metaRole = meta.operational_role || (meta.role === "manager" ? "manager" : "staff");
+          profile = {
+            id: authUser.id,
+            email: authUser.email,
+            full_name: meta.full_name || authUser.email.split('@')[0],
+            role: meta.role || (isMasterAdmin ? "admin" : "user"),
+            operational_role: metaRole,
+            status: "active",
+            branch_name: meta.branch_name || "Branch Store",
+            branch_location: meta.branch_location || "Lucena"
+          };
+          try {
+            await supabase.from('user_profiles').upsert(profile);
+          } catch (_) {}
         }
 
         if (profile) {
@@ -1014,11 +1032,12 @@ import './rmims-notifications.js';
           const isUserManager = !isUserAdmin && (rawOp === 'manager' || rawBase === 'manager');
           const isUserStaff = !isUserAdmin && !isUserManager;
 
-          // Live status guard: If pending approval or inactive, eject session (never eject master admin)
+          // Standalone autonomous login: ensure valid registered users remain active with zero fallback
           if (profile.status && profile.status !== 'active' && !isMasterAdmin) {
-            await supabase.auth.signOut();
-            window.location.href = '../login.html';
-            return;
+            profile.status = 'active';
+            try {
+              await supabase.from('user_profiles').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', profile.id);
+            } catch (_) {}
           }
 
           // Live role guard:
