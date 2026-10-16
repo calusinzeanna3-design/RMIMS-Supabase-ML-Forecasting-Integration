@@ -211,14 +211,33 @@ function loadAuthoritativeData() {
   });
   state.disbursements = Array.from(disbMap.values());
 
-  // 4. Finished Products Catalog
+  // 4. Finished Products Catalog (User Custom Inputs Only)
   let customProds = [];
   try {
     const raw = localStorage.getItem('rmims_custom_finished_products');
-    if (raw) customProds = JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const LEGACY_KXC = new Set([
+          'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
+          'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
+          'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
+          'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
+          'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
+          'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
+          'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
+          'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
+          'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+          'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
+          'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
+          'butter toast crackers'
+        ]);
+        customProds = parsed.filter(p => p && p.name && !LEGACY_KXC.has(String(p.name).toLowerCase().trim()));
+      }
+    }
   } catch (e) {}
 
-  state.finishedProducts = isBaselineWiped ? [...customProds] : [...(AUTHENTIC_FINISHED_PRODUCTS_CATALOG || []), ...customProds];
+  state.finishedProducts = [...customProds];
 }
 
 // ============================================================================

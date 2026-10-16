@@ -1064,10 +1064,38 @@ function addDeletedFinishedProduct(name) {
   }
 }
 
+const LEGACY_KXC_PRODUCT_NAMES = new Set([
+  'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
+  'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
+  'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
+  'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
+  'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
+  'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
+  'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
+  'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
+  'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+  'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
+  'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
+  'butter toast crackers'
+]);
+
+function isLegacyKxcProduct(name) {
+  if (!name) return false;
+  const n = String(name).toLowerCase().trim();
+  return LEGACY_KXC_PRODUCT_NAMES.has(n) || Array.from(LEGACY_KXC_PRODUCT_NAMES).some(k => n === k || n.includes(k));
+}
+
 function getCustomFinishedProducts() {
   try {
     const raw = localStorage.getItem(CUSTOM_FP_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    const cleaned = list.filter(p => p && p.name && !isLegacyKxcProduct(p.name));
+    if (cleaned.length !== list.length) {
+      saveCustomFinishedProducts(cleaned);
+    }
+    return cleaned;
   } catch (e) {
     console.warn('Failed to parse custom finished products', e);
     return [];
@@ -1085,38 +1113,13 @@ function saveCustomFinishedProducts(list) {
 function getAllFinishedProducts() {
   const custom = getCustomFinishedProducts();
   const deleted = getDeletedFinishedProducts();
-  const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') === 'true';
 
-  if (isBaselineWiped && custom.length > 0) {
-    return custom.filter(p => !deleted.has(p.name.toLowerCase()));
-  }
-
-  const base = AUTHENTIC_FINISHED_PRODUCTS_CATALOG || [];
-  const merged = [...custom.filter(p => !deleted.has(p.name.toLowerCase()))];
-  const customNames = new Set(merged.map(c => c.name.toLowerCase()));
-
-  base.forEach(p => {
-    if (!customNames.has(p.name.toLowerCase()) && !deleted.has(p.name.toLowerCase())) {
-      merged.push(p);
-    }
-  });
-  return merged;
+  return custom.filter(p => p && p.name && !deleted.has(p.name.toLowerCase()) && !isLegacyKxcProduct(p.name));
 }
 
 function loadAuthenticFinishedFormulations() {
-  const base = AUTHENTIC_FINISHED_PRODUCTS_CATALOG || [];
-  const custom = getCustomFinishedProducts();
-  const existingNames = new Set(custom.map(c => c.name.toLowerCase()));
-  base.forEach(p => {
-    if (!existingNames.has(p.name.toLowerCase())) {
-      custom.push({ ...p, category: 'Authentic Finished Product' });
-    }
-  });
-  saveCustomFinishedProducts(custom);
-  localStorage.removeItem(DELETED_FP_STORAGE_KEY);
-  renderFinishedFoodModalContent('');
-  renderFinishedProductsFolders();
-  showToast('Loaded 15 authentic finished food formulations!', 'success');
+  openAddFinishedProductPanel();
+  showToast('Please use the formulation form to input your enterprise finished products.', 'info');
 }
 window.loadAuthenticFinishedFormulations = loadAuthenticFinishedFormulations;
 
@@ -1558,16 +1561,12 @@ function renderFinishedFoodModalContent(query = '') {
           ${query.trim() ? 'No finished food products match your search' : 'No finished food formulations yet'}
         </strong>
         <p style="font-size: 13px; margin: 0 0 16px 0; color: #5C7A68;">
-          ${query.trim() ? 'Try adjusting your search query or clear the filter.' : 'Click "+ Add Finished Product" above to create your first finished food formulation, or load authentic catalog.'}
+          ${query.trim() ? 'Try adjusting your search query or clear the filter.' : 'Click "+ Add Finished Product" above to create your enterprise product formulations.'}
         </p>
         <div style="display:inline-flex; gap:10px; flex-wrap:wrap; justify-content:center;">
           <button type="button" class="btn-primary-sm" onclick="window.openAddFinishedProductPanel && window.openAddFinishedProductPanel()"
             style="background:#D97706; border-color:#D97706; color:#FFFFFF; font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px;">
             + Add Finished Product
-          </button>
-          <button type="button" class="btn-secondary-sm" onclick="window.loadAuthenticFinishedFormulations && window.loadAuthenticFinishedFormulations()"
-            style="background:#FFFBEB; border:1px solid #FCD34D; color:#92400E; font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px;">
-            📦 Load Authentic Formulations (15)
           </button>
         </div>
       </div>
@@ -2753,11 +2752,8 @@ function renderFinishedProductsFolders() {
         <div class="mgr-fp-empty-box" style="grid-column: 1 / -1;">
           <div class="mgr-fp-empty-box-icon">📦</div>
           <h4>No finished food formulations yet</h4>
-          <p>Click "+ Add Finished Product" to create custom formulation recipes, or load the authentic bakery catalogue.</p>
+          <p>Click "+ Add Finished Product" to create your enterprise formulation recipes.</p>
           <div style="display:inline-flex; gap:10px; margin-top:6px; flex-wrap:wrap; justify-content:center;">
-            <button type="button" class="btn btn-secondary" onclick="window.loadAuthenticFinishedFormulations()" style="font-size:12px; font-weight:700; color:#D97706; border-color:#FDE68A; background:#FFFBEB;">
-              📦 Load Authentic Formulations (15)
-            </button>
             <button type="button" class="btn btn-primary" onclick="openAddFinishedProductPanel()" style="font-size:12px; font-weight:700; background:#D97706; border-color:#B45309;">
               + Add Finished Product
             </button>

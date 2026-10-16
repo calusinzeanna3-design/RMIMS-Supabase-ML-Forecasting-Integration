@@ -683,21 +683,51 @@ function loadAuthoritativeForecasts() {
         }
     });
 
-    if (Array.isArray(AUTHENTIC_FINISHED_PRODUCTS_CATALOG)) {
-        AUTHENTIC_FINISHED_PRODUCTS_CATALOG.forEach(fp => {
-            if (Array.isArray(fp.materialNames)) {
-                fp.materialNames.forEach(mName => {
-                    const normM = (mName || "").trim().toLowerCase();
-                    const matched = state.materials.find(m => (m.name || "").trim().toLowerCase() === normM);
-                    if (matched) {
-                        const arr = productMap.get(matched.id) || [];
-                        if (!arr.includes(fp.name)) arr.push(fp.name);
-                        productMap.set(matched.id, arr);
-                    }
-                });
-            }
-        });
-    }
+    const LEGACY_KXC_PRODUCT_NAMES = new Set([
+      'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
+      'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
+      'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
+      'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
+      'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
+      'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
+      'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
+      'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
+      'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+      'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
+      'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
+      'butter toast crackers'
+    ]);
+
+    let activeFinishedProducts = [];
+    try {
+        const custom = JSON.parse(localStorage.getItem('rmims_custom_finished_products') || '[]');
+        if (Array.isArray(custom)) {
+            custom.forEach(cp => {
+                if (cp && cp.name && !LEGACY_KXC_PRODUCT_NAMES.has(String(cp.name).toLowerCase().trim())) {
+                    activeFinishedProducts.push({
+                        name: cp.name,
+                        materialNames: Array.isArray(cp.raw_materials)
+                            ? cp.raw_materials.map(r => r.name || r)
+                            : (Array.isArray(cp.materialNames) ? cp.materialNames : [])
+                    });
+                }
+            });
+        }
+    } catch (_) {}
+
+    activeFinishedProducts.forEach(fp => {
+        if (Array.isArray(fp.materialNames)) {
+            fp.materialNames.forEach(mName => {
+                const normM = (mName || "").trim().toLowerCase();
+                const matched = state.materials.find(m => (m.name || "").trim().toLowerCase() === normM);
+                if (matched) {
+                    const arr = productMap.get(matched.id) || [];
+                    if (!arr.includes(fp.name)) arr.push(fp.name);
+                    productMap.set(matched.id, arr);
+                }
+            });
+        }
+    });
 
     // Compute recent consumption per material
     const recentUsageMap = new Map();

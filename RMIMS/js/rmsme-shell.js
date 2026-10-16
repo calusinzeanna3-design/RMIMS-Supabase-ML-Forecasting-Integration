@@ -85,6 +85,41 @@ import './rmims-notifications.js';
       }
     });
 
+    // Permanently purge legacy KXC finished products across localStorage
+    const LEGACY_KXC_PRODUCT_NAMES = [
+      'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
+      'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
+      'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
+      'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
+      'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
+      'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
+      'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
+      'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
+      'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+      'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
+      'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
+      'butter toast crackers'
+    ];
+
+    ['rmims_custom_finished_products', 'rmims_finished_product_context'].forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        try {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const clean = arr.filter(p => {
+              if (!p || !p.name) return false;
+              const pn = String(p.name).toLowerCase().trim();
+              return !LEGACY_KXC_PRODUCT_NAMES.some(kxc => pn === kxc || pn.includes(kxc));
+            });
+            if (clean.length !== arr.length) {
+              localStorage.setItem(k, JSON.stringify(clean));
+            }
+          }
+        } catch (_) {}
+      }
+    });
+
     // Cleanse fake staff login notifications
     const rawNotif = localStorage.getItem('rmims_notifications_live_v2');
     if (rawNotif) {
@@ -1992,7 +2027,7 @@ import './rmims-notifications.js';
         </div>
         <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
           <li style="margin-bottom:6px;"><strong>Add & Import Ingredients:</strong> Register new ingredients, import supplier spreadsheets (Excel/CSV), and set low-stock warning limits.</li>
-          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update production recipes for finished items and snacks (e.g., Shing-a-ling, Banana Chips).</li>
+          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update production recipes for finished items and products (e.g., Artisan Bread, Signature Cookies).</li>
           <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> Estimate how many kilograms of materials will be needed over the next 7 days and 30 days to purchase supplies ahead of time.</li>
           <li style="margin-bottom:6px;"><strong>System Audits & Exports:</strong> Download official PDF and Excel reports for inventory audits and monitor all activity records.</li>
         </ul>

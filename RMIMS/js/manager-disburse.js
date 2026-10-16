@@ -375,21 +375,58 @@ function matchProductIngredient(ingredientName, selectedMaterialName) {
   return false;
 }
 
+const LEGACY_KXC_PRODUCT_NAMES = new Set([
+  'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
+  'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
+  'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
+  'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
+  'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
+  'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
+  'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
+  'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
+  'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+  'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
+  'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
+  'butter toast crackers'
+]);
+
+function isLegacyKxcProduct(name) {
+  if (!name) return false;
+  const n = String(name).toLowerCase().trim();
+  return LEGACY_KXC_PRODUCT_NAMES.has(n) || Array.from(LEGACY_KXC_PRODUCT_NAMES).some(k => n === k || n.includes(k));
+}
+
 function getFinishedProductsForMaterial(materialName) {
   if (!materialName) return [];
 
-  const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
-  let catalog = !isBaselineWiped ? [...AUTHENTIC_FINISHED_PRODUCTS_CATALOG] : [];
+  // Exclude all KXC products. Only user-created finished products are used.
+  let catalog = [];
   try {
     const custom = JSON.parse(localStorage.getItem('rmims_custom_finished_products') || '[]');
     if (Array.isArray(custom)) {
       custom.forEach(cp => {
-        if (cp.name && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
+        if (cp.name && !isLegacyKxcProduct(cp.name) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
           catalog.push({
             name: cp.name,
             materialNames: Array.isArray(cp.raw_materials)
               ? cp.raw_materials.map(r => r.name || r)
               : (Array.isArray(cp.materialNames) ? cp.materialNames : [])
+          });
+        }
+      });
+    }
+  } catch (e) {}
+
+  try {
+    const ctx = JSON.parse(localStorage.getItem('rmims_finished_product_context') || '[]');
+    if (Array.isArray(ctx)) {
+      ctx.forEach(cp => {
+        if (cp.name && !isLegacyKxcProduct(cp.name) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
+          catalog.push({
+            name: cp.name,
+            materialNames: Array.isArray(cp.materialNames)
+              ? cp.materialNames
+              : (Array.isArray(cp.materials) ? cp.materials.map(m => m.name || m) : [])
           });
         }
       });
@@ -443,15 +480,27 @@ function updateBundleDisbursePreview() {
 
   const matchedProducts = getFinishedProductsForMaterial(matName);
 
-  if (matchedProducts.length === 0) {
-    bundleSection.style.display = 'none';
-    return;
-  }
-
   bundleSection.style.display = 'block';
   if (bundleTitle) {
     bundleTitle.textContent = `Linked Finished Products (${matName})`;
   }
+
+  if (matchedProducts.length === 0) {
+    if (bundleBadge) {
+      bundleBadge.textContent = '0 products linked';
+    }
+    productsGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 14px 16px; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 8px; text-align: center; color: #64748B; font-size: 12.5px;">
+        <span style="font-size: 15px; margin-right: 5px;">📦</span>
+        No custom finished product formulations are linked to <strong>${escapeHtml(matName)}</strong> yet.
+        <div style="font-size: 11px; color: #94A3B8; margin-top: 3px;">
+          Formulations created in Finished Products setup will automatically calculate batch consumption and impact here.
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (bundleBadge) {
     bundleBadge.textContent = `${matchedProducts.length} recognized product${matchedProducts.length > 1 ? 's' : ''}`;
   }
@@ -516,6 +565,17 @@ function updateBundleDisbursePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+
+  // Add click to fill notes / purpose
+  productsGrid.querySelectorAll('.rec-product-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const prodName = card.dataset.product;
+      const notesEl = document.getElementById('disbNotesInput');
+      if (notesEl && prodName) {
+        notesEl.value = `${prodName} Batch`;
+      }
+    });
+  });
 }
 
 function hideBundleDisburseSection() {

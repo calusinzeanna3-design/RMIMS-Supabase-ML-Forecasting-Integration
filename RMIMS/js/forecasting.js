@@ -1250,18 +1250,53 @@ function renderProductDemandConnection() {
         const STORAGE_KEY = "rmims_finished_product_context";
         const DELETED_STORAGE_KEY = "rmims_deleted_finished_products";
 
-        // Load deleted products set
+        // Load deleted products set & exclude legacy KXC products
         let deletedSet = new Set();
         try {
             const delRaw = localStorage.getItem(DELETED_STORAGE_KEY);
             if (delRaw) deletedSet = new Set(JSON.parse(delRaw).map(x => String(x).toLowerCase().trim()));
         } catch {}
 
+        const LEGACY_KXC = [
+          'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
+          'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
+          'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
+          'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
+          'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
+          'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
+          'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
+          'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
+          'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+          'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
+          'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
+          'butter toast crackers'
+        ];
+        LEGACY_KXC.forEach(x => deletedSet.add(x));
+
         // 1. Load Finished Products defined in Finished Product Setup & Material Activity
         let savedProducts = [];
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) savedProducts = JSON.parse(raw);
+        } catch {}
+
+        try {
+            const customRaw = localStorage.getItem('rmims_custom_finished_products');
+            if (customRaw) {
+                const cList = JSON.parse(customRaw);
+                if (Array.isArray(cList)) {
+                    cList.forEach(cp => {
+                        if (cp && cp.name && !savedProducts.some(p => p.name && p.name.toLowerCase() === cp.name.toLowerCase())) {
+                            savedProducts.push({
+                                name: cp.name,
+                                materialIds: Array.isArray(cp.raw_materials)
+                                    ? cp.raw_materials.map(r => r.name || r)
+                                    : (Array.isArray(cp.materialNames) ? cp.materialNames : [])
+                            });
+                        }
+                    });
+                }
+            }
         } catch {}
 
         const productMap = new Map();
