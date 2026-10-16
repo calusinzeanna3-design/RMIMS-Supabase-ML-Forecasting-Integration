@@ -450,26 +450,30 @@ export async function fetchRegisteredUsers() {
   try {
     if (!supabase) throw new Error('Supabase client not initialized');
 
+    // Strictly fetch ONLY approved active or inactive users (NEVER pending)
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
+      .not('status', 'in', '("pending","pending_approval")')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    let users = (data || []).map(u => ({
-      id: u.id,
-      name: u.full_name || u.username || 'User',
-      username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
-      email: u.email || '',
-      branchLoc: u.branch_location || (u.role === 'admin' ? 'Headquarters' : 'Unassigned'),
-      branchName: u.branch_name || (u.role === 'admin' ? 'Main Administration' : 'Branch Store'),
-      role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
-        ? 'Administrator' 
-        : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),
-      status: (u.status === 'pending' || u.status === 'pending_approval') ? 'Pending' : (u.status === 'inactive' ? 'Inactive' : 'Active'),
-      created_at: u.created_at || new Date().toISOString()
-    }));
+    let users = (data || [])
+      .filter(u => u && u.status !== 'pending' && u.status !== 'pending_approval')
+      .map(u => ({
+        id: u.id,
+        name: u.full_name || u.username || 'User',
+        username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
+        email: u.email || '',
+        branchLoc: u.branch_location || (u.role === 'admin' ? 'Headquarters' : 'Unassigned'),
+        branchName: u.branch_name || (u.role === 'admin' ? 'Main Administration' : 'Branch Store'),
+        role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
+          ? 'Administrator' 
+          : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),
+        status: u.status === 'inactive' ? 'Inactive' : 'Active',
+        created_at: u.created_at || new Date().toISOString()
+      }));
 
     // Ensure Zeanna real admin is present
     const hasAdmin = users.some(u => 
@@ -490,13 +494,15 @@ export async function fetchRegisteredUsers() {
       });
     }
 
-    // Merge with existing local registered users so new accounts are never lost
+    // Merge with existing local registered users, STRICTLY filtering out any pending users
     try {
       const rawLocal = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
       const localUsers = rawLocal ? JSON.parse(rawLocal) : [];
       if (Array.isArray(localUsers)) {
         localUsers.forEach(lu => {
           if (!lu) return;
+          const s = String(lu.status || '').toLowerCase().trim();
+          if (s === 'pending' || s === 'pending_approval') return; // NEVER include unapproved users
           const exists = users.some(u => 
             (u.id && lu.id && String(u.id) === String(lu.id)) ||
             (u.email && lu.email && u.email.toLowerCase() === lu.email.toLowerCase()) ||
@@ -517,10 +523,14 @@ export async function fetchRegisteredUsers() {
 
     return users;
   } catch (err) {
-    console.warn('[AdminSupabase] Fetch registered users failed, using local storage:', err.message || err);
+    console.warn('[AdminSupabase] Fetch registered users notice, using filtered local storage:', err.message || err);
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-      return raw ? JSON.parse(raw) : [];
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.filter(u => {
+        const s = String(u?.status || '').toLowerCase().trim();
+        return s !== 'pending' && s !== 'pending_approval';
+      }) : [];
     } catch (_) {
       return [];
     }
@@ -593,16 +603,17 @@ export async function fetchPendingApprovals() {
 
 /**
  * Approve a pending user account and activate their portal access.
+ * Synchronously updates both local storage and Supabase user_profiles status to 'active'.
  * Standalone: Supports user object or string (email, username, or UUID).
  */
 export async function approveUserAccount(targetParam, approvedBy = 'Main Admin') {
-  if (!targetParam) return;
+  if (!targetParam) return { success: false, error: 'No target specified' };
   const targetId = typeof targetParam === 'object' ? (targetParam.id || '') : String(targetParam);
   const targetEmail = typeof targetParam === 'object' ? (targetParam.email || '') : (String(targetParam).includes('@') ? String(targetParam) : '');
   const targetUsername = typeof targetParam === 'object' ? (targetParam.username || '') : '';
   const identifier = targetEmail || targetUsername || targetId;
 
-  // Local storage update
+  // 1. Local storage synchronization: Move user from pending queue into registered directory as Active
   try {
     const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_USERS);
     const pendingList = rawPending ? JSON.parse(rawPending) : [];
@@ -613,7 +624,8 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
     );
     const remainingPending = pendingList.filter(u => 
       !(targetId && String(u.id) === String(targetId)) &&
-      !(targetEmail && u.email && u.email.toLowerCase() === targetEmail.toLowerCase())
+      !(targetEmail && u.email && u.email.toLowerCase() === targetEmail.toLowerCase()) &&
+      !(targetUsername && u.username && u.username.toLowerCase() === targetUsername.toLowerCase())
     );
     localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(remainingPending));
 
@@ -636,6 +648,14 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
         ...target,
         status: 'Active'
       });
+    } else {
+      regList.push({
+        id: targetId || `user-${Date.now()}`,
+        name: targetParam?.name || targetUsername || (targetEmail ? targetEmail.split('@')[0] : 'User'),
+        username: targetUsername || (targetEmail ? targetEmail.split('@')[0] : 'user'),
+        email: targetEmail,
+        status: 'Active'
+      });
     }
     localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(regList));
 
@@ -644,49 +664,107 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
     window.dispatchEvent(new Event('storage'));
   } catch (_) {}
 
-  // Log activity
+  // 2. Log activity
   logAdminActivity({
     action: 'Approved Account',
     module: 'User Management',
     details: `Approved access for ${identifier} by ${approvedBy}`
   });
 
+  // 3. Supabase Cooperation Sync
+  if (!supabase) return { success: true, offline: true };
+
+  let lastError = null;
+
+  // Method A: Call RPC 'admin_approve_user' (SECURITY DEFINER stored procedure)
   try {
-    if (!supabase) return { success: true, offline: true };
-
-    // 1. Try RPC stored procedure first (most resilient, bypasses client trigger limits)
-    try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('admin_approve_user', {
-        p_identifier: identifier
-      });
-      if (!rpcError && rpcData?.success) {
-        return { success: true, method: 'rpc' };
-      }
-    } catch (_) {}
-
-    // 2. Direct Supabase updates by email, username, and UUID
-    if (targetEmail) {
-      await supabase.from('user_profiles').update({
-        status: 'active',
-        updated_at: new Date().toISOString()
-      }).ilike('email', targetEmail);
-    } else if (targetId && targetId.length > 20 && !targetId.startsWith('pending-')) {
-      await supabase.from('user_profiles').update({
-        status: 'active',
-        updated_at: new Date().toISOString()
-      }).eq('id', targetId);
-    } else if (targetUsername) {
-      await supabase.from('user_profiles').update({
-        status: 'active',
-        updated_at: new Date().toISOString()
-      }).ilike('username', targetUsername);
+    const { data: rpcData, error: rpcError } = await supabase.rpc('admin_approve_user', {
+      p_identifier: identifier
+    });
+    if (!rpcError && (rpcData?.success || rpcData?.updated_count > 0)) {
+      console.log('[AdminSupabase] Approved via admin_approve_user RPC:', rpcData);
+      return { success: true, method: 'rpc', data: rpcData };
     }
-
-    return { success: true };
-  } catch (err) {
-    console.warn('[AdminSupabase] Approve user account failed on Supabase:', err.message || err);
-    return { success: true, offline: true, error: err.message };
+    if (rpcError) {
+      lastError = rpcError;
+    }
+  } catch (rpcErr) {
+    lastError = rpcErr;
   }
+
+  // Method B: Direct Supabase updates on user_profiles
+  // Try by UUID
+  if (targetId && targetId.length > 20 && !targetId.startsWith('pending-') && !targetId.startsWith('user-')) {
+    try {
+      const { data: idRows, error: idErr } = await supabase
+        .from('user_profiles')
+        .update({
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', targetId)
+        .select();
+
+      if (!idErr && idRows && idRows.length > 0) {
+        console.log('[AdminSupabase] Approved in Supabase by UUID:', idRows);
+        return { success: true, method: 'direct_uuid', rows: idRows };
+      }
+      if (idErr) lastError = idErr;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  // Try by Email
+  if (targetEmail) {
+    try {
+      const { data: emailRows, error: emailErr } = await supabase
+        .from('user_profiles')
+        .update({
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .ilike('email', targetEmail.trim())
+        .select();
+
+      if (!emailErr && emailRows && emailRows.length > 0) {
+        console.log('[AdminSupabase] Approved in Supabase by Email:', emailRows);
+        return { success: true, method: 'direct_email', rows: emailRows };
+      }
+      if (emailErr) lastError = emailErr;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  // Try by Username
+  if (targetUsername) {
+    try {
+      const { data: userRows, error: userErr } = await supabase
+        .from('user_profiles')
+        .update({
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .ilike('username', targetUsername.trim())
+        .select();
+
+      if (!userErr && userRows && userRows.length > 0) {
+        console.log('[AdminSupabase] Approved in Supabase by Username:', userRows);
+        return { success: true, method: 'direct_username', rows: userRows };
+      }
+      if (userErr) lastError = userErr;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  if (lastError) {
+    console.warn('[AdminSupabase] Supabase approval update notice:', lastError.message || lastError);
+    return { success: false, error: lastError.message || String(lastError), identifier };
+  }
+
+  return { success: true, method: 'completed' };
 }
 
 // ============================================================================

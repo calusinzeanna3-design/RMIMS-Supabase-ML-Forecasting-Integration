@@ -577,7 +577,21 @@ export async function signUpUser({ fullName, email, username, password, branchNa
     const validRoles = ["staff", "manager", "user", "user_staff"];
     const operationalRole = validRoles.includes(role) ? role : "staff";
 
-    const { data, error } = await supabase.auth.signUp({
+    // Use non-persisting ephemeral client for signup so browser session is preserved
+    let signUpClient = supabase;
+    try {
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import("./supabase-config.js");
+        signUpClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
+            }
+        });
+    } catch (_) {}
+
+    const { data, error } = await signUpClient.auth.signUp({
         email: email.trim(),
         password: password,
         options: {
@@ -628,27 +642,8 @@ export async function signUpUser({ fullName, email, username, password, branchNa
             console.log("user_profiles initialization notice:", insertErr);
         }
 
-        // Mirror to local registered directory as Pending
-        try {
-            const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-            if (!regList.some(u => u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
-                regList.unshift({
-                    id: data.user.id,
-                    name: fullName.trim(),
-                    username: cleanUsername,
-                    email: email.trim(),
-                    role: operationalRole === 'manager' ? 'Manager' : 'Staff',
-                    branchName: branchName?.trim() || 'Branch Store',
-                    branchLoc: branchLocation?.trim() || 'Lucena',
-                    status: 'Pending',
-                    created_at: new Date().toISOString()
-                });
-                localStorage.setItem('rmims_registered_users', JSON.stringify(regList));
-                window.dispatchEvent(new Event('rmims_registered_users_updated'));
-            }
-        } catch (_) {}
-
-        // Mirror to pending queue for Admin approval
+        // Strictly place in pending queue for Admin approval.
+        // DO NOT put in rmims_registered_users until approved by Admin!
         try {
             const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
             if (!pendingList.some(u => u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
@@ -669,11 +664,6 @@ export async function signUpUser({ fullName, email, username, password, branchNa
             window.dispatchEvent(new Event('storage'));
         } catch (_) {}
     }
-
-    // Ensure session is cleared so new user must wait for admin approval
-    try {
-        await supabase.auth.signOut();
-    } catch (_) {}
 
     return {
         user: data.user,

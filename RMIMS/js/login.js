@@ -386,39 +386,37 @@ if (createAccountForm) {
 
             // Mirror to registered users directory as active immediately
             try {
-                const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-                const alreadyExists = regList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
-                if (!alreadyExists) {
-                    const now = new Date();
-                    const dateFormatted = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-                    const strToCheck = [branchName, branchLocation].map(s => String(s || '').toLowerCase()).join(' ');
-                    const isScones = strToCheck.includes("scones") || strToCheck.includes("muffin") || strToCheck.includes("bakery") || strToCheck.includes("nutribun");
-                    const compId = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
-                    const compName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
-                    const compFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
+                const now = new Date();
+                const strToCheck = [branchName, branchLocation].map(s => String(s || '').toLowerCase()).join(' ');
+                const isScones = strToCheck.includes("scones") || strToCheck.includes("muffin") || strToCheck.includes("bakery") || strToCheck.includes("nutribun");
+                const compId = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
 
-                    regList.unshift({
-                        id: regResult?.user?.id || `user-${Date.now()}`,
-                        name: fullName,
-                        username: username,
-                        email: email,
-                        companyId: compId,
-                        company_id: compId,
-                        companyName: compName,
-                        company_name: compName,
-                        datasetFolder: compFolder,
-                        dataset_folder: compFolder,
-                        branchName: branchName.trim(),
-                        branchLoc: branchLocation.trim(),
-                        role: role === 'manager' ? 'Manager' : 'Staff',
-                        status: 'Pending',
-                        created_at: new Date().toISOString()
-                    });
-                    localStorage.setItem('rmims_registered_users', JSON.stringify(regList));
+                // Strictly place new user ONLY in the pending queue awaiting Admin approval.
+                // NEVER place an unapproved user into rmims_registered_users.
+                try {
+                    const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+                    const pendingExists = pendingList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
+                    if (!pendingExists) {
+                        pendingList.unshift({
+                            id: regResult?.user?.id || `user-${Date.now()}`,
+                            name: fullName,
+                            username: username,
+                            email: email,
+                            companyId: compId,
+                            branchLoc: branchLocation.trim(),
+                            branchName: branchName.trim(),
+                            role: role === 'manager' ? 'Manager' : 'Staff',
+                            status: 'Pending',
+                            requestedOn: new Date().toISOString()
+                        });
+                        localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
+                        window.dispatchEvent(new Event('rmims_pending_users_updated'));
+                    }
+                } catch (_) {}
 
-                    // Broadcast registration awaiting approval notification scoped to admin
-                    try {
-                      const notifItem = {
+                // Broadcast registration awaiting approval notification scoped to admin
+                try {
+                    const notifItem = {
                         id: `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                         title: `New Registration Request: ${fullName}`,
                         message: `${fullName} has registered as a ${role === 'manager' ? 'Manager' : 'Staff'} for ${branchName.trim()} and is awaiting Admin approval.`,
@@ -431,47 +429,18 @@ if (createAccountForm) {
                         timestamp: new Date().toISOString(),
                         targetUrl: 'admin/user-management.html',
                         actor: fullName
-                      };
-                      if (typeof window.pushRMIMSNotification === 'function') {
+                    };
+                    if (typeof window.pushRMIMSNotification === 'function') {
                         window.pushRMIMSNotification(notifItem);
-                      } else {
+                    } else {
                         const notifKey = 'rmims_notifications_live_v2';
                         const existing = JSON.parse(localStorage.getItem(notifKey) || '[]');
                         existing.unshift(notifItem);
                         localStorage.setItem(notifKey, JSON.stringify(existing));
-                      }
-                    } catch (_) {}
+                    }
+                } catch (_) {}
 
-                    // Also mirror to pending queue so Admin immediately sees them in "Awaiting Approval for Accounts"
-                    try {
-                        const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-                        const pendingExists = pendingList.some(p => (p.email && p.email.toLowerCase() === email.toLowerCase()) || (p.username && p.username.toLowerCase() === username.toLowerCase()));
-                        if (!pendingExists) {
-                            pendingList.unshift({
-                                id: regResult?.user?.id || `user-${Date.now()}`,
-                                name: fullName,
-                                username: username,
-                                email: email,
-                                companyId: compId,
-                                branchLoc: branchLocation.trim(),
-                                branchName: branchName.trim(),
-                                role: role === 'manager' ? 'Manager' : 'Staff',
-                                status: 'Pending',
-                                requestedOn: new Date().toISOString()
-                            });
-                            localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
-                            window.dispatchEvent(new Event('rmims_pending_users_updated'));
-                        }
-                    } catch (_) {}
-
-                    window.dispatchEvent(new Event('rmims_registered_users_updated'));
-                    window.dispatchEvent(new Event('storage'));
-                }
-            } catch (_) {}
-
-            // Strictly require Admin approval: clear signup session and prompt to await approval
-            try {
-                await supabase.auth.signOut();
+                window.dispatchEvent(new Event('storage'));
             } catch (_) {}
 
             showSignInView();

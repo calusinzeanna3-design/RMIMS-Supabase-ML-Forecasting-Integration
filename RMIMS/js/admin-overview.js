@@ -64,7 +64,7 @@ function logSystemActivity(action, details) {
   } catch (_) {}
 }
 
-window.approveOverviewAccount = function (userId, statusId, actionsId, userName) {
+window.approveOverviewAccount = async function (userId, statusId, actionsId, userName) {
   const statusEl = document.getElementById(statusId);
   const actionsEl = document.getElementById(actionsId);
 
@@ -154,22 +154,30 @@ window.approveOverviewAccount = function (userId, statusId, actionsId, userName)
 
   // Standalone Supabase synchronization
   try {
-    import('../supabase/admin-supabase-service.js')
-      .then(srv => {
-        srv.approveUserAccount({
-          id: approvedItem?.id || userId,
-          email: approvedItem?.email,
-          username: approvedItem?.username
-        });
-      })
-      .catch(() => {});
-  } catch (_) {}
+    const srv = await import('../supabase/admin-supabase-service.js');
+    const syncRes = await srv.approveUserAccount({
+      id: approvedItem?.id || userId,
+      email: approvedItem?.email,
+      username: approvedItem?.username,
+      name: userName
+    });
+
+    if (syncRes && syncRes.success) {
+      if (typeof window.showAdminToast === 'function') {
+        window.showAdminToast(`Account for ${userName} approved and synchronized with Supabase (Active).`, 'success');
+      }
+    } else {
+      if (typeof window.showAdminToast === 'function') {
+        window.showAdminToast(`Account for ${userName} approved locally. Supabase notice: ${syncRes?.error || 'Awaiting sync'}.`, 'warning');
+      }
+    }
+  } catch (_) {
+    if (typeof window.showAdminToast === 'function') {
+      window.showAdminToast(`Account for ${userName} approved successfully.`);
+    }
+  }
 
   logSystemActivity('Approved Account', `Approved access for ${userName} (${approvedItem ? approvedItem.role : 'Staff'})`);
-
-  if (typeof window.showAdminToast === 'function') {
-    window.showAdminToast(`Account for ${userName} approved successfully.`);
-  }
 
   setTimeout(() => {
     renderOverviewPendingApprovals();

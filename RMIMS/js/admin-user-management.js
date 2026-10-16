@@ -62,6 +62,55 @@ document.addEventListener('DOMContentLoaded', () => {
     return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
   }
 
+  function cleanPendingFromRegisteredDirectory() {
+    try {
+      const rawReg = localStorage.getItem('rmims_registered_users');
+      if (!rawReg) return;
+      const regList = JSON.parse(rawReg);
+      if (!Array.isArray(regList)) return;
+
+      const pendingFromReg = [];
+      const cleanReg = [];
+
+      regList.forEach(u => {
+        if (!u) return;
+        const s = String(u.status || '').toLowerCase().trim();
+        if (s === 'pending' || s === 'pending_approval') {
+          pendingFromReg.push(u);
+        } else {
+          cleanReg.push(u);
+        }
+      });
+
+      if (pendingFromReg.length > 0) {
+        // Move unapproved users to pending queue
+        const rawPending = localStorage.getItem('rmims_pending_users');
+        const pendingList = rawPending ? JSON.parse(rawPending) : [];
+        pendingFromReg.forEach(pu => {
+          const exists = pendingList.some(p => 
+            (p.id && pu.id && String(p.id) === String(pu.id)) ||
+            (p.email && pu.email && p.email.toLowerCase() === pu.email.toLowerCase()) ||
+            (p.username && pu.username && p.username.toLowerCase() === pu.username.toLowerCase())
+          );
+          if (!exists) {
+            pendingList.push({
+              ...pu,
+              status: 'Pending',
+              requestedOn: pu.created_at || pu.requestedOn || new Date().toISOString()
+            });
+          }
+        });
+        localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
+        localStorage.setItem('rmims_registered_users', JSON.stringify(cleanReg));
+        window.dispatchEvent(new Event('rmims_pending_users_updated'));
+        window.dispatchEvent(new Event('rmims_registered_users_updated'));
+      }
+    } catch (_) {}
+  }
+
+  // Self-heal on module load
+  cleanPendingFromRegisteredDirectory();
+
   function getStoredPendingUsers() {
     try {
       const list = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
@@ -106,6 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!Array.isArray(list)) list = [];
       list = list.filter(u => !isMockUser(u));
 
+      // Strictly exclude any pending or unapproved accounts: they belong ONLY in Awaiting Approval
+      list = list.filter(u => {
+        if (!u) return false;
+        const s = String(u.status || '').toLowerCase().trim();
+        return s !== 'pending' && s !== 'pending_approval';
+      });
+
       // Always guarantee the first real Admin (Zeanna) is present in the directory
       const hasRealAdmin = list.some(u => 
         (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
@@ -127,6 +183,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveStoredRegisteredUsers(users) {
     try {
       let list = Array.isArray(users) ? [...users] : [];
+      // Never store pending accounts in registered users
+      list = list.filter(u => {
+        if (!u) return false;
+        const s = String(u.status || '').toLowerCase().trim();
+        return s !== 'pending' && s !== 'pending_approval';
+      });
+
       const hasRealAdmin = list.some(u => 
         (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
         (u.username && u.username.toLowerCase() === 'zeanna') ||
@@ -572,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Pending Approval Actions
-  window.approveUser = function (param) {
+  window.approveUser = async function (param) {
     const pendingList = getStoredPendingUsers();
     let target = pendingList.find(u => String(u.id) === String(param));
     let row = document.getElementById(param) || document.getElementById(`req_${param}`);
@@ -591,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const remaining = pendingList.filter(u => String(u.id) !== String(param) && `req_${u.id}` !== String(param));
     saveStoredPendingUsers(remaining);
 
-    // Add or update in registered users directory in storage
+    // Add or update in registered users directory in storage ONLY after approval
     const regList = getStoredRegisteredUsers();
     const newUserId = target && target.id ? target.id : `user-${Date.now()}`;
     const existingIndex = regList.findIndex(u => 
@@ -706,17 +769,29 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRegisteredUsers();
     refreshCounters();
 
-    // Sync approval to Supabase
-    import('../supabase/admin-supabase-service.js')
-      .then(srv => srv.approveUserAccount({
-        id: newUserId,
+    // Synchronize approval to Supabase and await confirmation
+    try {
+      const srv = await import('../supabase/admin-supabase-service.js');
+      const syncResult = await srv.approveUserAccount({
+        id: target && target.id ? target.id : newUserId,
         email: email,
-        username: username
-      }))
-      .catch(() => {});
+        username: username,
+        name: name
+      });
 
-    if (window.showAdminToast) {
-      window.showAdminToast(`Account for ${name} approved and activated.`);
+      if (syncResult && syncResult.success) {
+        if (window.showAdminToast) {
+          window.showAdminToast(`Account for ${name} approved and synchronized with Supabase (Active).`, 'success');
+        }
+      } else {
+        if (window.showAdminToast) {
+          window.showAdminToast(`Account approved locally. Supabase sync notice: ${syncResult?.error || 'Awaiting sync'}.`, 'warning');
+        }
+      }
+    } catch (err) {
+      if (window.showAdminToast) {
+        window.showAdminToast(`Account for ${name} approved and activated.`);
+      }
     }
   };
 
