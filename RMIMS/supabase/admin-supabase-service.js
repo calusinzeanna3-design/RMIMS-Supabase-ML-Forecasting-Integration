@@ -617,17 +617,27 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
     );
     localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(remainingPending));
 
-    if (target) {
-      const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-      const regList = rawReg ? JSON.parse(rawReg) : [];
-      if (!regList.some(r => r.email === target.email || (target.id && r.id === target.id))) {
-        regList.push({
-          ...target,
-          status: 'Active'
-        });
-        localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(regList));
-      }
+    const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const regList = rawReg ? JSON.parse(rawReg) : [];
+    const searchEmail = targetEmail || (target?.email || '');
+    const searchId = targetId || (target?.id || '');
+    const searchUser = targetUsername || (target?.username || '');
+
+    const existingIdx = regList.findIndex(r => 
+      (searchEmail && r.email && r.email.toLowerCase() === searchEmail.toLowerCase()) || 
+      (searchId && r.id && String(r.id) === String(searchId)) ||
+      (searchUser && r.username && r.username.toLowerCase() === searchUser.toLowerCase())
+    );
+
+    if (existingIdx >= 0) {
+      regList[existingIdx].status = 'Active';
+    } else if (target) {
+      regList.push({
+        ...target,
+        status: 'Active'
+      });
     }
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(regList));
 
     window.dispatchEvent(new Event('rmims_pending_users_updated'));
     window.dispatchEvent(new Event('rmims_registered_users_updated'));

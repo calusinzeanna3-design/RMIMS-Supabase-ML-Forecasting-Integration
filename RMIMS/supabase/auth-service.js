@@ -133,6 +133,46 @@ function hideAuthTransition(dom) {
     }
 }
 
+export function isUserPendingApproval(email, uid, profileStatus) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanUid = (uid || '').trim();
+
+    // 1. Check local pending queue
+    try {
+        const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+        if (Array.isArray(pending) && pending.some(p => 
+            (p.email && p.email.toLowerCase().trim() === cleanEmail) ||
+            (cleanUid && p.id && String(p.id) === cleanUid)
+        )) {
+            return true;
+        }
+    } catch (_) {}
+
+    // 2. Check local registered directory
+    try {
+        const registered = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+        if (Array.isArray(registered)) {
+            const found = registered.find(u => 
+                (u.email && u.email.toLowerCase().trim() === cleanEmail) ||
+                (cleanUid && u.id && String(u.id) === cleanUid)
+            );
+            if (found) {
+                const s = (found.status || '').toLowerCase();
+                if (s === 'pending' || s === 'pending_approval') return true;
+                if (s === 'active') return false;
+            }
+        }
+    } catch (_) {}
+
+    // 3. Check profile status from Supabase
+    const pStatus = (profileStatus || '').toLowerCase();
+    if (pStatus === 'pending' || pStatus === 'pending_approval') {
+        return true;
+    }
+
+    return false;
+}
+
 /**
  * Authenticates a user against Supabase Auth and validates application role/status from public.user_profiles.
  * Integrated with the video progress transition lifecycle and smooth pacing.
@@ -239,7 +279,7 @@ export async function loginUser(email, password, expectedRole) {
                     email: data.user.email,
                     role: meta.role || "user",
                     operational_role: opRole,
-                    status: "active",
+                    status: meta.status || "pending",
                     username: meta.username || data.user.email.split('@')[0],
                     branch_name: meta.branch_name || (isScones ? "Scones & Muffins Store" : "Branch Store"),
                     branch_location: meta.branch_location || "Lucena",
@@ -262,7 +302,7 @@ export async function loginUser(email, password, expectedRole) {
                 email: data.user.email || email,
                 role: "user",
                 operational_role: "staff",
-                status: "active",
+                status: "pending",
                 username: data.user.email ? data.user.email.split('@')[0] : "user",
                 branch_name: "Branch Store",
                 branch_location: "Lucena"
@@ -284,16 +324,22 @@ export async function loginUser(email, password, expectedRole) {
             try {
                 await supabase.from("user_profiles").update({ status: "active", role: "admin", full_name: "Zeanna" }).eq("id", uid);
             } catch (_) {}
+        } else {
+            // Strictly enforce Admin approval: non-admin users must be approved by Main Admin before entering
+            const isPending = isUserPendingApproval(cleanEmail, uid, profile.status);
+            if (isPending) {
+                hideAuthTransition(transDOM);
+                await supabase.auth.signOut();
+                try {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('rmimsCurrentUser');
+                    localStorage.removeItem('userProfile');
+                    sessionStorage.clear();
+                } catch (_) {}
+                throw new Error("Your account is currently awaiting Administrator approval. Please wait for the Main Admin to activate your access.");
+            }
+            profile.status = "active";
         }
-
-        // Standalone autonomous login: all valid registered users are active with zero fallback
-        profile.status = "active";
-        try {
-            await supabase.from("user_profiles").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", uid);
-        } catch (_) {}
-        try {
-            await supabase.rpc('admin_approve_user', { p_identifier: cleanEmail });
-        } catch (_) {}
 
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
         if (isDumpAccount) {
@@ -528,7 +574,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                 branch_location: branchLocation?.trim() || "Lucena",
                 operational_role: operationalRole,
                 role: "user", // base role for schema access
-                status: "active", // Active immediately for standalone autonomy
+                status: "pending", // Strictly requires Admin approval
                 company_id: assignedCompanyId,
                 company_name: assignedCompanyName,
                 dataset_folder: assignedDatasetFolder
@@ -540,7 +586,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
         throw new Error(friendlyAuthError(error));
     }
 
-    // Record profile in user_profiles with status: 'active'
+    // Record profile in user_profiles with status: 'pending'
     if (data?.user?.id) {
         try {
             const profilePayload = {
@@ -553,7 +599,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                 branch_name: branchName?.trim() || (isScones ? "Scones & Muffins Store" : "Branch Store"),
                 branch_location: branchLocation?.trim() || "Lucena",
                 branch_store: combinedBranch,
-                status: "active", // Active immediately for standalone autonomy
+                status: "pending", // Strictly requires Admin approval
                 company_id: assignedCompanyId,
                 company_name: assignedCompanyName,
                 dataset_folder: assignedDatasetFolder
@@ -567,7 +613,7 @@ export async function signUpUser({ fullName, email, username, password, branchNa
             console.log("user_profiles initialization notice:", insertErr);
         }
 
-        // Mirror to local registered directory for instant synchronization
+        // Mirror to local registered directory as Pending
         try {
             const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
             if (!regList.some(u => u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
@@ -579,20 +625,45 @@ export async function signUpUser({ fullName, email, username, password, branchNa
                     role: operationalRole === 'manager' ? 'Manager' : 'Staff',
                     branchName: branchName?.trim() || 'Branch Store',
                     branchLoc: branchLocation?.trim() || 'Lucena',
-                    status: 'Active',
+                    status: 'Pending',
                     created_at: new Date().toISOString()
                 });
                 localStorage.setItem('rmims_registered_users', JSON.stringify(regList));
                 window.dispatchEvent(new Event('rmims_registered_users_updated'));
-                window.dispatchEvent(new Event('storage'));
             }
         } catch (_) {}
+
+        // Mirror to pending queue for Admin approval
+        try {
+            const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+            if (!pendingList.some(u => u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
+                pendingList.unshift({
+                    id: data.user.id,
+                    name: fullName.trim(),
+                    username: cleanUsername,
+                    email: email.trim(),
+                    role: operationalRole === 'manager' ? 'Manager' : 'Staff',
+                    branchName: branchName?.trim() || 'Branch Store',
+                    branchLoc: branchLocation?.trim() || 'Lucena',
+                    status: 'Pending',
+                    requestedOn: new Date().toISOString()
+                });
+                localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
+                window.dispatchEvent(new Event('rmims_pending_users_updated'));
+            }
+            window.dispatchEvent(new Event('storage'));
+        } catch (_) {}
     }
+
+    // Ensure session is cleared so new user must wait for admin approval
+    try {
+        await supabase.auth.signOut();
+    } catch (_) {}
 
     return {
         user: data.user,
         username: cleanUsername,
-        session: data.session || null
+        session: null
     };
 }
 

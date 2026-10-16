@@ -411,43 +411,33 @@ if (createAccountForm) {
                         branchName: branchName.trim(),
                         branchLoc: branchLocation.trim(),
                         role: role === 'manager' ? 'Manager' : 'Staff',
-                        status: 'Active',
+                        status: 'Pending',
                         created_at: new Date().toISOString()
                     });
                     localStorage.setItem('rmims_registered_users', JSON.stringify(regList));
 
-                    // Broadcast active registration notification scoped to admin
+                    // Broadcast registration awaiting approval notification scoped to admin
                     try {
+                      const notifItem = {
+                        id: `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                        title: `New Registration Request: ${fullName}`,
+                        message: `${fullName} has registered as a ${role === 'manager' ? 'Manager' : 'Staff'} for ${branchName.trim()} and is awaiting Admin approval.`,
+                        category: 'activity',
+                        badge: 'Pending Approval',
+                        role: 'admin',
+                        targetRole: 'admin',
+                        roleScope: 'admin',
+                        priority: 'high',
+                        timestamp: new Date().toISOString(),
+                        targetUrl: 'admin/user-management.html',
+                        actor: fullName
+                      };
                       if (typeof window.pushRMIMSNotification === 'function') {
-                        window.pushRMIMSNotification({
-                          title: `New User Registered: ${fullName}`,
-                          message: `${fullName} has registered as an active ${role === 'manager' ? 'Manager' : 'Staff'} for ${branchName.trim()}.`,
-                          category: 'Activity',
-                          badge: 'Registration',
-                          role: 'admin',
-                          targetRole: 'admin',
-                          roleScope: 'admin',
-                          priority: 'info',
-                          targetUrl: 'admin/user-management.html',
-                          actor: fullName
-                        });
+                        window.pushRMIMSNotification(notifItem);
                       } else {
                         const notifKey = 'rmims_notifications_live_v2';
                         const existing = JSON.parse(localStorage.getItem(notifKey) || '[]');
-                        existing.unshift({
-                          id: `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-                          title: `New User Registered: ${fullName}`,
-                          message: `${fullName} has registered as an active ${role === 'manager' ? 'Manager' : 'Staff'} for ${branchName.trim()}.`,
-                          category: 'activity',
-                          badge: 'Registration',
-                          role: 'admin',
-                          targetRole: 'admin',
-                          roleScope: 'admin',
-                          priority: 'info',
-                          timestamp: new Date().toISOString(),
-                          targetUrl: 'admin/user-management.html',
-                          actor: fullName
-                        });
+                        existing.unshift(notifItem);
                         localStorage.setItem(notifKey, JSON.stringify(existing));
                       }
                     } catch (_) {}
@@ -479,26 +469,21 @@ if (createAccountForm) {
                 }
             } catch (_) {}
 
-            // Autonomous launch: seamlessly log in directly into the user's workspace
+            // Strictly require Admin approval: clear signup session and prompt to await approval
             try {
-                showSignInView();
-                resetCreateAccountForm();
-                await loginUser(email, password);
-                return;
-            } catch (autoLoginErr) {
-                console.warn("Auto-login fallback caught:", autoLoginErr);
-                showSignInView();
-                const emailField = document.getElementById("email");
-                if (emailField) {
-                    emailField.value = email;
-                }
-                if (passwordInput) {
-                    passwordInput.value = password;
-                    passwordInput.focus();
-                }
-                setLoginSuccess(`Account <strong>@${escapeHtml(username)}</strong> is active! Click Sign In to launch your workspace.`);
-                resetCreateAccountForm();
+                await supabase.auth.signOut();
+            } catch (_) {}
+
+            showSignInView();
+            resetCreateAccountForm();
+            const emailField = document.getElementById("email");
+            if (emailField) {
+                emailField.value = email;
             }
+            if (passwordInput) {
+                passwordInput.value = "";
+            }
+            setLoginSuccess(`Registration submitted! Account <strong>@${escapeHtml(username)}</strong> is awaiting Main Administrator approval. Once approved, you can sign in.`);
 
         } catch (err) {
             const msg = err.message || "Failed to create account. Please verify your details.";

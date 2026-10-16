@@ -702,6 +702,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const remaining = pendingList.filter(u => String(u.id) !== String(param) && `req_${u.id}` !== String(param));
     saveStoredPendingUsers(remaining);
 
+    // Also remove from registered directory if present
+    try {
+      const regList = getStoredRegisteredUsers();
+      const updatedReg = regList.filter(u => String(u.id) !== String(param) && (target?.email ? u.email?.toLowerCase() !== target.email.toLowerCase() : true));
+      saveStoredRegisteredUsers(updatedReg);
+    } catch (_) {}
+
     // Log Activity
     try {
       const act = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
