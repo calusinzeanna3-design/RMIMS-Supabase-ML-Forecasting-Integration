@@ -14,3 +14,4 @@ venv/
 functions/venv/
 .venv/
 .vercel
+.env*
