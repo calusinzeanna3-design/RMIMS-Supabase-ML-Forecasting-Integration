@@ -69,11 +69,35 @@ document.addEventListener('DOMContentLoaded', () => {
       const regList = JSON.parse(rawReg);
       if (!Array.isArray(regList)) return;
 
+      let approvedKeys = [];
+      try {
+        approvedKeys = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+        if (!Array.isArray(approvedKeys)) approvedKeys = [];
+      } catch (_) {}
+
       const pendingFromReg = [];
       const cleanReg = [];
 
       regList.forEach(u => {
         if (!u) return;
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uUser = (u.username || '').toLowerCase().trim();
+        const uId = String(u.id || '').trim();
+        const uName = (u.name || '').toLowerCase().trim();
+
+        const isApproved = approvedKeys.some(a => 
+          (uEmail && a.email && a.email.toLowerCase().trim() === uEmail) ||
+          (uUser && a.username && a.username.toLowerCase().trim() === uUser) ||
+          (uId && a.id && String(a.id).trim() === uId) ||
+          (uName && a.name && a.name.toLowerCase().trim() === uName)
+        );
+
+        if (isApproved) {
+          u.status = 'Active';
+          cleanReg.push(u);
+          return;
+        }
+
         const s = String(u.status || '').toLowerCase().trim();
         if (s === 'pending' || s === 'pending_approval') {
           pendingFromReg.push(u);
@@ -637,7 +661,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Pending Approval Actions
   window.approveUser = async function (param) {
     const pendingList = getStoredPendingUsers();
-    let target = pendingList.find(u => String(u.id) === String(param));
+    const cleanParam = String(param || '').trim();
+    let target = pendingList.find(u => 
+      String(u.id).trim() === cleanParam ||
+      `req_${u.id}` === cleanParam ||
+      (u.username && u.username.toLowerCase() === cleanParam.toLowerCase()) ||
+      (u.email && u.email.toLowerCase() === cleanParam.toLowerCase()) ||
+      (u.name && u.name.toLowerCase() === cleanParam.toLowerCase())
+    );
     let row = document.getElementById(param) || document.getElementById(`req_${param}`);
 
     let name = target ? target.name : (row ? row.getAttribute('data-name') : 'User');
@@ -650,13 +681,53 @@ document.addEventListener('DOMContentLoaded', () => {
     let role = target ? target.role : (row ? row.getAttribute('data-role') : 'Staff');
     let email = target ? target.email : (row ? row.getAttribute('data-email') : `${username}@store.ph`);
 
-    // Remove from pending users
-    const remaining = pendingList.filter(u => String(u.id) !== String(param) && `req_${u.id}` !== String(param));
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanUsername = (username || '').toLowerCase().trim();
+    const cleanId = String(target?.id || param || '').trim();
+
+    // Remove from pending users matching ID, req_ID, email, or username
+    const remaining = pendingList.filter(u => {
+      const uId = String(u.id || '').trim();
+      const uEmail = (u.email || '').toLowerCase().trim();
+      const uUser = (u.username || '').toLowerCase().trim();
+      return uId !== cleanId &&
+             `req_${uId}` !== cleanParam &&
+             !(cleanEmail && uEmail && uEmail === cleanEmail) &&
+             !(cleanUsername && uUser && uUser === cleanUsername);
+    });
     saveStoredPendingUsers(remaining);
+
+    // Add or update in authoritative approved users cache
+    try {
+      const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+      const newUserId = target && target.id ? target.id : (cleanId && !cleanId.startsWith('req_') ? cleanId : `user-${Date.now()}`);
+      const appIdx = approvedCache.findIndex(a => 
+        (newUserId && a.id && String(a.id).trim() === String(newUserId).trim()) ||
+        (cleanEmail && a.email && a.email.toLowerCase().trim() === cleanEmail) ||
+        (cleanUsername && a.username && a.username.toLowerCase().trim() === cleanUsername)
+      );
+      const appRecord = {
+        id: newUserId,
+        name: name,
+        username: username,
+        email: email,
+        role: role,
+        branchLoc: branchLoc,
+        branchName: branchName,
+        status: 'Active',
+        approvedAt: new Date().toISOString()
+      };
+      if (appIdx >= 0) {
+        approvedCache[appIdx] = { ...approvedCache[appIdx], ...appRecord };
+      } else {
+        approvedCache.push(appRecord);
+      }
+      localStorage.setItem('rmims_approved_users', JSON.stringify(approvedCache));
+    } catch (_) {}
 
     // Add or update in registered users directory in storage ONLY after approval
     const regList = getStoredRegisteredUsers();
-    const newUserId = target && target.id ? target.id : `user-${Date.now()}`;
+    const newUserId = target && target.id ? target.id : (cleanId && !cleanId.startsWith('req_') ? cleanId : `user-${Date.now()}`);
     const existingIndex = regList.findIndex(u => 
       (u.id && newUserId && String(u.id) === String(newUserId)) ||
       (u.email && email && u.email.toLowerCase() === email.toLowerCase()) ||

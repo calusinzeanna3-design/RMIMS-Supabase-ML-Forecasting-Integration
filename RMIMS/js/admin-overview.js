@@ -86,80 +86,145 @@ window.approveOverviewAccount = async function (userId, statusId, actionsId, use
 
   // Remove from pending storage
   const currentPending = getStoredPendingUsers();
-  const approvedItem = currentPending.find(u => String(u.id) === String(userId));
-  const remaining = currentPending.filter(u => String(u.id) !== String(userId));
+  const cleanId = String(userId || '').trim();
+  const cleanName = String(userName || '').toLowerCase().trim();
+  const approvedItem = currentPending.find(u => 
+    String(u.id).trim() === cleanId ||
+    `ovRow_${u.id}` === cleanId ||
+    (cleanName && u.name && u.name.toLowerCase().trim() === cleanName) ||
+    (cleanName && u.username && u.username.toLowerCase().trim() === cleanName)
+  );
+
+  const targetEmail = (approvedItem?.email || '').toLowerCase().trim();
+  const targetUsername = (approvedItem?.username || '').toLowerCase().trim();
+
+  const remaining = currentPending.filter(u => {
+    const uId = String(u.id || '').trim();
+    const uEmail = (u.email || '').toLowerCase().trim();
+    const uUser = (u.username || '').toLowerCase().trim();
+    return uId !== cleanId &&
+           `ovRow_${uId}` !== cleanId &&
+           !(targetEmail && uEmail && uEmail === targetEmail) &&
+           !(targetUsername && uUser && uUser === targetUsername);
+  });
   saveStoredPendingUsers(remaining);
 
-  // If approved, add to registered directory
-  if (approvedItem) {
-    try {
-      const dir = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+  // Save into authoritative approved users cache
+  try {
+    const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+    const appUserId = approvedItem?.id || (cleanId && !cleanId.startsWith('ovRow_') ? cleanId : `user-${Date.now()}`);
+    const resolvedName = approvedItem?.name || userName || 'User';
+    const resolvedUser = approvedItem?.username || (targetEmail ? targetEmail.split('@')[0] : 'user');
+    const appIdx = approvedCache.findIndex(a => 
+      (appUserId && a.id && String(a.id).trim() === String(appUserId).trim()) ||
+      (targetEmail && a.email && a.email.toLowerCase().trim() === targetEmail) ||
+      (resolvedUser && a.username && a.username.toLowerCase().trim() === resolvedUser)
+    );
+    const appRecord = {
+      id: appUserId,
+      name: resolvedName,
+      username: resolvedUser,
+      email: approvedItem?.email || '',
+      role: approvedItem?.role || 'Staff',
+      branchLoc: approvedItem?.branchLoc || 'Lucena',
+      branchName: approvedItem?.branchName || 'Branch Store',
+      status: 'Active',
+      approvedAt: new Date().toISOString()
+    };
+    if (appIdx >= 0) {
+      approvedCache[appIdx] = { ...approvedCache[appIdx], ...appRecord };
+    } else {
+      approvedCache.push(appRecord);
+    }
+    localStorage.setItem('rmims_approved_users', JSON.stringify(approvedCache));
+  } catch (_) {}
+
+  // If approved, add or update in registered directory
+  try {
+    const dir = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+    const resId = approvedItem?.id || (cleanId && !cleanId.startsWith('ovRow_') ? cleanId : `user-${Date.now()}`);
+    const resEmail = approvedItem?.email || '';
+    const resUser = approvedItem?.username || (resEmail ? resEmail.split('@')[0] : 'user');
+    const resName = approvedItem?.name || userName || 'User';
+
+    const existingIdx = dir.findIndex(u => 
+      (resId && u.id && String(u.id).trim() === String(resId).trim()) ||
+      (resEmail && u.email && u.email.toLowerCase().trim() === resEmail.toLowerCase().trim()) ||
+      (resUser && u.username && u.username.toLowerCase().trim() === resUser.toLowerCase().trim())
+    );
+
+    if (existingIdx >= 0) {
+      dir[existingIdx].status = 'Active';
+      if (approvedItem?.branchLoc) dir[existingIdx].branchLoc = approvedItem.branchLoc;
+      if (approvedItem?.branchName) dir[existingIdx].branchName = approvedItem.branchName;
+      if (approvedItem?.role) dir[existingIdx].role = approvedItem.role;
+    } else {
       dir.push({
-        id: approvedItem.id || `user-${Date.now()}`,
-        name: approvedItem.name,
-        username: approvedItem.username || approvedItem.email.split('@')[0],
-        email: approvedItem.email,
-        branchLoc: approvedItem.branchLoc,
-        branchName: approvedItem.branchName,
-        role: approvedItem.role,
+        id: resId,
+        name: resName,
+        username: resUser,
+        email: resEmail,
+        branchLoc: approvedItem?.branchLoc || 'Lucena',
+        branchName: approvedItem?.branchName || 'Branch Store',
+        role: approvedItem?.role || 'Staff',
         status: 'Active'
       });
-      localStorage.setItem('rmims_registered_users', JSON.stringify(dir));
-      window.dispatchEvent(new Event('rmims_registered_users_updated'));
+    }
+    localStorage.setItem('rmims_registered_users', JSON.stringify(dir));
+    window.dispatchEvent(new Event('rmims_registered_users_updated'));
 
-      // Also register into RMIMS_BRANCH_STORES_V3
-      try {
-        const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
-        const locRaw = (approvedItem.branchLoc || '').trim();
-        const locKey = locRaw.toLowerCase().replace(/[^a-z0-9]/g, '') || 'branch';
-        const locationName = locRaw ? (locRaw.toUpperCase().includes('BRANCH') ? locRaw.toUpperCase() : `${locRaw.toUpperCase()} BRANCH`) : 'BRANCH STORE';
-        const address = locRaw || 'Branch Location';
-        const storeKey = (approvedItem.branchName || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '_');
-        if (!stores[storeKey]) {
-          stores[storeKey] = {
-            id: storeKey,
-            name: approvedItem.branchName || 'Branch Store',
-            locKey: locKey,
-            locationKey: locKey,
-            locationName: locationName,
-            address: address,
-            managers: [],
-            staff: []
-          };
-        }
-        const isMgr = (approvedItem.role || '').toLowerCase().includes('manager');
-        const memberObj = {
-          id: approvedItem.id || `user-${Date.now()}`,
-          name: approvedItem.name,
-          username: approvedItem.username || approvedItem.email.split('@')[0],
-          email: approvedItem.email,
-          initials: getInitials(approvedItem.name),
-          status: 'APPROVED',
-          accessCode: String(Math.floor(100000 + Math.random() * 900000))
+    // Also register into RMIMS_BRANCH_STORES_V3
+    try {
+      const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
+      const locRaw = (approvedItem?.branchLoc || '').trim();
+      const locKey = locRaw.toLowerCase().replace(/[^a-z0-9]/g, '') || 'branch';
+      const locationName = locRaw ? (locRaw.toUpperCase().includes('BRANCH') ? locRaw.toUpperCase() : `${locRaw.toUpperCase()} BRANCH`) : 'BRANCH STORE';
+      const address = locRaw || 'Branch Location';
+      const storeKey = (approvedItem?.branchName || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '_');
+      if (!stores[storeKey]) {
+        stores[storeKey] = {
+          id: storeKey,
+          name: approvedItem?.branchName || 'Branch Store',
+          locKey: locKey,
+          locationKey: locKey,
+          locationName: locationName,
+          address: address,
+          managers: [],
+          staff: []
         };
-        if (isMgr) {
-          if (!stores[storeKey].managers.some(m => m.email === approvedItem.email)) {
-            stores[storeKey].managers.push(memberObj);
-          }
-        } else {
-          if (!stores[storeKey].staff.some(s => s.email === approvedItem.email)) {
-            stores[storeKey].staff.push(memberObj);
-          }
+      }
+      const isMgr = ((approvedItem?.role || '')).toLowerCase().includes('manager');
+      const memberObj = {
+        id: resId,
+        name: resName,
+        username: resUser,
+        email: resEmail,
+        initials: getInitials(resName),
+        status: 'APPROVED',
+        accessCode: String(Math.floor(100000 + Math.random() * 900000))
+      };
+      if (isMgr) {
+        if (!stores[storeKey].managers.some(m => m.email === resEmail || m.username === resUser)) {
+          stores[storeKey].managers.push(memberObj);
         }
-        localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
-        window.dispatchEvent(new Event('rmims_stores_updated'));
-      } catch (_) {}
+      } else {
+        if (!stores[storeKey].staff.some(s => s.email === resEmail || s.username === resUser)) {
+          stores[storeKey].staff.push(memberObj);
+        }
+      }
+      localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
+      window.dispatchEvent(new Event('rmims_stores_updated'));
     } catch (_) {}
-  }
+  } catch (_) {}
 
   // Standalone Supabase synchronization
   try {
     const srv = await import('../supabase/admin-supabase-service.js');
     const syncRes = await srv.approveUserAccount({
-      id: approvedItem?.id || userId,
+      id: approvedItem?.id || cleanId,
       email: approvedItem?.email,
       username: approvedItem?.username,
-      name: userName
+      name: userName || approvedItem?.name
     });
 
     if (syncRes && syncRes.success) {

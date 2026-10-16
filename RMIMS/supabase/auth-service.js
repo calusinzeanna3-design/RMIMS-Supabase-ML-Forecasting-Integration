@@ -133,39 +133,227 @@ function hideAuthTransition(dom) {
     }
 }
 
-export function isUserPendingApproval(email, uid, profileStatus) {
-    const cleanEmail = (email || '').toLowerCase().trim();
-    const cleanUid = (uid || '').trim();
-
-    // 1. Check local pending queue
+// Automatically synchronize and heal approved users cache on load
+export function autoSyncApprovedUsersCache() {
     try {
-        const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-        if (Array.isArray(pending) && pending.some(p => 
-            (p.email && p.email.toLowerCase().trim() === cleanEmail) ||
-            (cleanUid && p.id && String(p.id) === cleanUid)
-        )) {
-            return true;
+        const rawApproved = localStorage.getItem('rmims_approved_users');
+        let approvedCache = rawApproved ? JSON.parse(rawApproved) : [];
+        if (!Array.isArray(approvedCache)) approvedCache = [];
+
+        // 1. Pull any active user from registered directory
+        const rawReg = localStorage.getItem('rmims_registered_users');
+        const regList = rawReg ? JSON.parse(rawReg) : [];
+        if (Array.isArray(regList)) {
+            regList.forEach(u => {
+                if (!u) return;
+                const s = String(u.status || '').toLowerCase().trim();
+                if (s === 'active') {
+                    const uEmail = (u.email || '').toLowerCase().trim();
+                    const uUser = (u.username || '').toLowerCase().trim();
+                    const uId = String(u.id || '').trim();
+                    const exists = approvedCache.some(a => 
+                        (uEmail && a.email && a.email.toLowerCase().trim() === uEmail) ||
+                        (uUser && a.username && a.username.toLowerCase().trim() === uUser) ||
+                        (uId && a.id && String(a.id).trim() === uId)
+                    );
+                    if (!exists) {
+                        approvedCache.push({
+                            id: u.id,
+                            name: u.name,
+                            username: u.username,
+                            email: u.email,
+                            role: u.role || 'Staff',
+                            branchLoc: u.branchLoc || 'Lucena',
+                            branchName: u.branchName || 'Branch Store',
+                            status: 'Active',
+                            approvedAt: new Date().toISOString()
+                        });
+                    }
+                }
+            });
+        }
+
+        // 2. Pull personnel from branch stores
+        try {
+            const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+            const stores = rawStores ? JSON.parse(rawStores) : {};
+            const storeList = Array.isArray(stores) ? stores : Object.values(stores);
+            storeList.forEach(st => {
+                const list = [...(st.managers || []), ...(st.staff || [])];
+                list.forEach(p => {
+                    if (!p) return;
+                    const pEmail = (p.email || '').toLowerCase().trim();
+                    const pUser = (p.username || '').toLowerCase().trim();
+                    const pId = String(p.id || '').trim();
+                    const exists = approvedCache.some(a => 
+                        (pEmail && a.email && a.email.toLowerCase().trim() === pEmail) ||
+                        (pUser && a.username && a.username.toLowerCase().trim() === pUser) ||
+                        (pId && a.id && String(a.id).trim() === pId)
+                    );
+                    if (!exists) {
+                        approvedCache.push({
+                            id: p.id,
+                            name: p.name,
+                            username: p.username,
+                            email: p.email,
+                            role: p.role || 'Staff',
+                            branchName: st.name,
+                            status: 'Active',
+                            approvedAt: new Date().toISOString()
+                        });
+                    }
+                });
+            });
+        } catch (_) {}
+
+        localStorage.setItem('rmims_approved_users', JSON.stringify(approvedCache));
+
+        // 3. Purge any approved users from pending queue
+        const rawPending = localStorage.getItem('rmims_pending_users');
+        const pendingList = rawPending ? JSON.parse(rawPending) : [];
+        if (Array.isArray(pendingList) && pendingList.length > 0) {
+            const cleanPending = pendingList.filter(p => {
+                if (!p) return false;
+                const pEmail = (p.email || '').toLowerCase().trim();
+                const pUser = (p.username || '').toLowerCase().trim();
+                const pId = String(p.id || '').trim();
+                const pName = (p.name || '').toLowerCase().trim();
+                const isApproved = approvedCache.some(a => 
+                    (pEmail && a.email && a.email.toLowerCase().trim() === pEmail) ||
+                    (pUser && a.username && a.username.toLowerCase().trim() === pUser) ||
+                    (pId && a.id && String(a.id).trim() === pId) ||
+                    (pName && a.name && a.name.toLowerCase().trim() === pName)
+                );
+                return !isApproved;
+            });
+            if (cleanPending.length !== pendingList.length) {
+                localStorage.setItem('rmims_pending_users', JSON.stringify(cleanPending));
+                window.dispatchEvent(new Event('rmims_pending_users_updated'));
+            }
         }
     } catch (_) {}
+}
 
-    // 2. Check local registered directory
+// Run immediately on script evaluation
+autoSyncApprovedUsersCache();
+
+export function isUserPendingApproval(email, uid, profileStatus, username = '', fullName = '') {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanUid = (uid || '').trim();
+    const cleanUser = (username || (cleanEmail ? cleanEmail.split('@')[0] : '')).toLowerCase().trim();
+    const cleanName = (fullName || '').toLowerCase().trim();
+
+    // 0. Check explicitly approved users cache (authoritative source of admin approvals)
     try {
-        const registered = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-        if (Array.isArray(registered)) {
-            const found = registered.find(u => 
-                (u.email && u.email.toLowerCase().trim() === cleanEmail) ||
-                (cleanUid && u.id && String(u.id) === cleanUid)
-            );
-            if (found) {
-                const s = (found.status || '').toLowerCase();
-                if (s === 'pending' || s === 'pending_approval') return true;
-                if (s === 'active') return false;
+        const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+        if (Array.isArray(approvedCache) && approvedCache.length > 0) {
+            const isApproved = approvedCache.some(a => {
+                if (!a) return false;
+                const aEmail = (a.email || '').toLowerCase().trim();
+                const aId = String(a.id || '').trim();
+                const aUser = (a.username || '').toLowerCase().trim();
+                const aName = (a.name || '').toLowerCase().trim();
+                return (cleanEmail && aEmail && aEmail === cleanEmail) ||
+                       (cleanUid && aId && aId === cleanUid) ||
+                       (cleanUser && aUser && (aUser === cleanUser || aUser.replace(/\s+/g, '') === cleanUser.replace(/\s+/g, ''))) ||
+                       (cleanName && aName && (aName === cleanName || aName.replace(/\s+/g, '') === cleanName.replace(/\s+/g, '')));
+            });
+            if (isApproved) {
+                // Ensure removed from pending queue
+                try {
+                    const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+                    const filtered = pending.filter(p => {
+                        const pEmail = (p.email || '').toLowerCase().trim();
+                        const pId = String(p.id || '').trim();
+                        const pUser = (p.username || '').toLowerCase().trim();
+                        return !(cleanEmail && pEmail && pEmail === cleanEmail) &&
+                               !(cleanUid && pId && pId === cleanUid) &&
+                               !(cleanUser && pUser && pUser === cleanUser);
+                    });
+                    localStorage.setItem('rmims_pending_users', JSON.stringify(filtered));
+                } catch (_) {}
+                return false; // APPROVED: Access granted!
             }
         }
     } catch (_) {}
 
-    // 3. Check profile status from Supabase
-    const pStatus = (profileStatus || '').toLowerCase();
+    // 1. Check local registered directory (active accounts take precedence over stale pending records)
+    try {
+        const registered = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+        if (Array.isArray(registered)) {
+            const found = registered.find(u => {
+                if (!u) return false;
+                const uEmail = (u.email || '').toLowerCase().trim();
+                const uId = String(u.id || '').trim();
+                const uUser = (u.username || '').toLowerCase().trim();
+                const uName = (u.name || '').toLowerCase().trim();
+                return (cleanEmail && uEmail && uEmail === cleanEmail) ||
+                       (cleanUid && uId && uId === cleanUid) ||
+                       (cleanUser && uUser && (uUser === cleanUser || uUser.replace(/\s+/g, '') === cleanUser.replace(/\s+/g, ''))) ||
+                       (cleanName && uName && (uName === cleanName || uName.replace(/\s+/g, '') === cleanName.replace(/\s+/g, '')));
+            });
+            if (found) {
+                const s = (found.status || '').toLowerCase().trim();
+                if (s === 'active') {
+                    // Cache in approved users for persistent access
+                    try {
+                        const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+                        if (!approvedCache.some(a => (cleanEmail && a.email === cleanEmail) || (cleanUid && a.id === cleanUid))) {
+                            approvedCache.push({ id: cleanUid, email: cleanEmail, username: cleanUser, name: cleanName });
+                            localStorage.setItem('rmims_approved_users', JSON.stringify(approvedCache));
+                        }
+                    } catch (_) {}
+                    return false; // APPROVED: Access granted!
+                }
+                if (s === 'pending' || s === 'pending_approval') return true;
+            }
+        }
+    } catch (_) {}
+
+    // 2. Check profile status from Supabase (if Supabase returned active, account is confirmed active)
+    const pStatus = (profileStatus || '').toLowerCase().trim();
+    if (pStatus === 'active') {
+        return false;
+    }
+
+    // 3. Check if user is registered in RMIMS_BRANCH_STORES_V3 by admin
+    try {
+        const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
+        const storeList = Array.isArray(stores) ? stores : Object.values(stores);
+        for (const store of storeList) {
+            const personnel = [...(store.managers || []), ...(store.staff || [])];
+            const inStore = personnel.some(p => {
+                if (!p) return false;
+                const pEmail = (p.email || '').toLowerCase().trim();
+                const pUser = (p.username || '').toLowerCase().trim();
+                const pId = String(p.id || '').trim();
+                return (cleanEmail && pEmail && pEmail === cleanEmail) ||
+                       (cleanUser && pUser && pUser === cleanUser) ||
+                       (cleanUid && pId && pId === cleanUid);
+            });
+            if (inStore) {
+                return false; // Assigned by Admin to a branch store!
+            }
+        }
+    } catch (_) {}
+
+    // 4. Check local pending queue (only after verifying not approved)
+    try {
+        const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+        if (Array.isArray(pending) && pending.some(p => {
+            if (!p) return false;
+            const pEmail = (p.email || '').toLowerCase().trim();
+            const pId = String(p.id || '').trim();
+            const pUser = (p.username || '').toLowerCase().trim();
+            return (cleanEmail && pEmail && pEmail === cleanEmail) ||
+                   (cleanUid && pId && pId === cleanUid) ||
+                   (cleanUser && pUser && pUser === cleanUser);
+        })) {
+            return true;
+        }
+    } catch (_) {}
+
+    // 5. Check if profile explicitly marked as pending in DB
     if (pStatus === 'pending' || pStatus === 'pending_approval') {
         return true;
     }
@@ -191,13 +379,64 @@ export async function loginUser(email, password, expectedRole) {
             if (cleanEmailInput.toLowerCase() === 'zeanna' || cleanEmailInput.toLowerCase() === 'admin') {
                 cleanEmailInput = 'calusinzeanna3@gmail.com';
             } else {
+                const targetClean = cleanEmailInput.toLowerCase().replace(/\s+/g, '');
+                
+                // 1. Check approved users cache
                 try {
-                    const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-                    const found = regList.find(u => u.username && u.username.toLowerCase() === cleanEmailInput.toLowerCase());
-                    if (found && found.email) {
-                        cleanEmailInput = found.email;
-                    }
+                    const approved = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+                    const found = approved.find(u => {
+                        const uUser = (u.username || '').toLowerCase().replace(/\s+/g, '');
+                        const uName = (u.name || '').toLowerCase().replace(/\s+/g, '');
+                        return (uUser && uUser === targetClean) || (uName && uName === targetClean);
+                    });
+                    if (found && found.email) cleanEmailInput = found.email;
                 } catch (_) {}
+
+                // 2. Check registered users directory
+                if (!cleanEmailInput.includes('@')) {
+                    try {
+                        const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+                        const found = regList.find(u => {
+                            const uUser = (u.username || '').toLowerCase().replace(/\s+/g, '');
+                            const uName = (u.name || '').toLowerCase().replace(/\s+/g, '');
+                            return (uUser && uUser === targetClean) || (uName && uName === targetClean);
+                        });
+                        if (found && found.email) cleanEmailInput = found.email;
+                    } catch (_) {}
+                }
+
+                // 3. Check pending users
+                if (!cleanEmailInput.includes('@')) {
+                    try {
+                        const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+                        const found = pending.find(u => {
+                            const uUser = (u.username || '').toLowerCase().replace(/\s+/g, '');
+                            const uName = (u.name || '').toLowerCase().replace(/\s+/g, '');
+                            return (uUser && uUser === targetClean) || (uName && uName === targetClean);
+                        });
+                        if (found && found.email) cleanEmailInput = found.email;
+                    } catch (_) {}
+                }
+
+                // 4. Query Supabase user_profiles if still not resolved
+                if (!cleanEmailInput.includes('@')) {
+                    try {
+                        const { data: upData } = await supabase
+                            .from('user_profiles')
+                            .select('email')
+                            .or(`username.ilike.${cleanEmailInput},username.ilike.${targetClean},full_name.ilike.${cleanEmailInput}`)
+                            .limit(1)
+                            .maybeSingle();
+                        if (upData && upData.email) {
+                            cleanEmailInput = upData.email;
+                        }
+                    } catch (_) {}
+                }
+
+                // Fallback store.ph domain if still no @
+                if (!cleanEmailInput.includes('@')) {
+                    cleanEmailInput = `${targetClean}@store.ph`;
+                }
             }
         }
 
@@ -329,6 +568,8 @@ export async function loginUser(email, password, expectedRole) {
 
         const cleanEmail = (data.user?.email || "").toLowerCase();
         const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const accountUsername = profile.username || (data.user?.email ? data.user.email.split('@')[0] : '');
+        const accountFullName = profile.full_name || '';
 
         if (isMasterAdmin) {
             profile.role = "admin";
@@ -337,11 +578,18 @@ export async function loginUser(email, password, expectedRole) {
             profile.full_name = profile.full_name || "Zeanna";
             // Ensure Supabase user_profiles table also updates to active if possible
             try {
-                await supabase.from("user_profiles").update({ status: "active", role: "admin", full_name: "Zeanna" }).eq("id", uid);
+                await supabase.from("user_profiles").upsert({
+                    id: uid,
+                    email: cleanEmail,
+                    role: "admin",
+                    operational_role: "admin",
+                    status: "active",
+                    full_name: profile.full_name
+                });
             } catch (_) {}
         } else {
             // Strictly enforce Admin approval: non-admin users must be approved by Main Admin before entering
-            const isPending = isUserPendingApproval(cleanEmail, uid, profile.status);
+            const isPending = isUserPendingApproval(cleanEmail, uid, profile.status, accountUsername, accountFullName);
             if (isPending) {
                 hideAuthTransition(transDOM);
                 await supabase.auth.signOut();
@@ -354,6 +602,14 @@ export async function loginUser(email, password, expectedRole) {
                 throw new Error("Your account is currently awaiting Administrator approval. Please wait for the Main Admin to activate your access.");
             }
             profile.status = "active";
+
+            // Ensure Supabase database user_profiles table is kept in sync with active status
+            try {
+                await supabase.from("user_profiles").update({
+                    status: "active",
+                    updated_at: new Date().toISOString()
+                }).eq("id", uid);
+            } catch (_) {}
         }
 
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";

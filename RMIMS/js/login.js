@@ -374,7 +374,7 @@ if (createAccountForm) {
         regSubmitBtn.innerHTML = `<span class="auth-spinner"></span> Creating Account...`;
 
         try {
-            await signUpUser({
+            const regResult = await signUpUser({
                 fullName,
                 email,
                 username,
