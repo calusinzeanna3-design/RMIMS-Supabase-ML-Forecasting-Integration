@@ -66,7 +66,7 @@ function setLoginError(message) {
         return;
     }
     // Check if the message indicates pending administrator approval
-    if (message.toLowerCase().includes("pending administrator approval") || message.toLowerCase().includes("pending admin")) {
+    if (message.toLowerCase().includes("pending administrator approval") || message.toLowerCase().includes("pending admin") || message.toLowerCase().includes("pending approval") || message.toLowerCase().includes("pending manager")) {
         loginErrorEl.className = "form-note warning";
         loginErrorEl.innerHTML = `<strong>⏳ Awaiting Admin Approval:</strong> ${escapeHtml(message)}`;
     } else {

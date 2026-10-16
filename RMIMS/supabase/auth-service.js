@@ -252,7 +252,7 @@ export async function loginUser(email, password, expectedRole) {
 
         if (profileError || !profile) {
             await supabase.auth.signOut();
-            throw new Error("No account profile record found. Please contact your manager.");
+            throw new Error("No account profile record found. Please contact an Administrator.");
         }
 
         const cleanEmail = (data.user?.email || "").toLowerCase();
@@ -269,10 +269,10 @@ export async function loginUser(email, password, expectedRole) {
             } catch (_) {}
         }
 
-        // Check for pending manager / admin confirmation
+        // Check for pending admin confirmation (Admins are the sole authority for account approvals)
         if (!isMasterAdmin && (profile.status === "pending" || profile.status === "pending_approval")) {
             await supabase.auth.signOut();
-            throw new Error("Your account is pending Manager approval. Please wait for a Manager to verify and activate your account before signing in.");
+            throw new Error("Your account is pending Administrator approval. Please wait for an Administrator to verify and activate your account before signing in.");
         }
 
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
@@ -283,7 +283,7 @@ export async function loginUser(email, password, expectedRole) {
 
         if (!isMasterAdmin && profile.status !== "active") {
             await supabase.auth.signOut();
-            throw new Error("Your account is inactive. Please contact your Manager.");
+            throw new Error("Your account is inactive. Please contact an Administrator.");
         }
 
         // Role gating only if explicitly requested (unified login permits all authorized roles)
