@@ -59,7 +59,7 @@ const copyRmimsAssetsPlugin = () => ({
 });
 
 export default defineConfig({
-  base: './',
+  base: '/',
   root: '.',
   plugins: [copyRmimsAssetsPlugin()],
   server: {

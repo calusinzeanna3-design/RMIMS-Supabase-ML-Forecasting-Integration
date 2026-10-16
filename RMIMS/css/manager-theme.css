@@ -1960,6 +1960,69 @@ body.manager-page .smart-alert-item .row-arrow {
   flex-shrink: 0 !important;
 }
 
+/* ==========================================================================
+   UNIFIED STATUS PILLS & ROW STYLES (Manager & Staff Inventory)
+   ========================================================================== */
+.mgr-status-pill, .status-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 14px !important;
+  border-radius: 9999px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.02em !important;
+  min-width: 64px !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+
+.mgr-status-pill.status-pill-good, .status-pill.status-good, .status-pill-good {
+  background: #DCFCE7 !important;
+  color: #15803D !important;
+  border: 1px solid rgba(22, 163, 74, 0.25) !important;
+}
+
+.mgr-status-pill.status-pill-low, .status-pill.status-low, .status-pill-low {
+  background: #FEF3C7 !important;
+  color: #D97706 !important;
+  border: 1px solid rgba(217, 119, 6, 0.25) !important;
+}
+
+.mgr-status-pill.status-pill-out, .status-pill.status-out, .status-pill-out {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border: 1px solid rgba(220, 38, 38, 0.25) !important;
+}
+
+.stock-healthy {
+  color: #0F2A1B !important;
+  font-weight: 700 !important;
+}
+
+.stock-low {
+  color: #D97706 !important;
+  font-weight: 700 !important;
+}
+
+.stock-out {
+  color: #DC2626 !important;
+  font-weight: 700 !important;
+}
+
+/* Row highlighting across Inventory Tables */
+tr.row-status-good, tr.row-good {
+  background-color: #DCFCE7 !important;
+}
+tr.row-status-low, tr.row-low {
+  background-color: #FEF3C7 !important;
+}
+tr.row-status-out, tr.row-out {
+  background-color: #FEE2E2 !important;
+}
+
+
 
 
 

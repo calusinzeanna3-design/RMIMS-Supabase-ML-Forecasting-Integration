@@ -220,9 +220,15 @@ function renderTable() {
       return false;
     }
 
-    const { statusKey } = computeMetrics(m);
-    if (statusVal !== 'all' && statusKey !== statusVal) {
-      return false;
+    if (statusVal !== 'all') {
+      const sKey = statusVal.toLowerCase();
+      if (sKey === 'good' || sKey === 'available' || sKey === 'in stock') {
+        if (!(met.stock >= met.min && met.stock > 0)) return false;
+      } else if (sKey === 'low' || sKey === 'low stock') {
+        if (!(met.stock < met.min && met.stock > 0)) return false;
+      } else if (sKey === 'out of stock' || sKey === 'out' || sKey === 'critical') {
+        if (!(met.stock <= 0)) return false;
+      }
     }
 
     return true;
@@ -295,46 +301,79 @@ function renderTable() {
     return;
   }
 
-  // Render Table Rows (Section 4 fields: Material | Category | Unit | Current | Minimum | Status | Days | Run-Out | Action)
+  // Render Table Rows (Unified Manager & Staff Stock Status Table Rows)
   tbody.innerHTML = pageItems.map(m => {
     const met = computeMetrics(m);
     const unit = m.unit_of_measure || m.unit || '';
 
+    let statusText = 'Good';
+    let statusPillClass = 'status-pill-good';
+    let rowStatusClass = 'row-status-good';
+    let rowBg = '#DCFCE7';      // Green for Good
+    let rowBorder = '#BBF7D0';
+    let leftBorderColor = '#16A34A';
+
+    if (met.stock <= 0) {
+      statusText = 'Out of Stock';
+      statusPillClass = 'status-pill-out';
+      rowStatusClass = 'row-status-out';
+      rowBg = '#FEE2E2';        // Red for Out of Stock
+      rowBorder = '#FECACA';
+      leftBorderColor = '#DC2626';
+    } else if (met.stock < met.min) {
+      statusText = 'Low';
+      statusPillClass = 'status-pill-low';
+      rowStatusClass = 'row-status-low';
+      rowBg = '#FEF3C7';        // Orange for Low Stock
+      rowBorder = '#FDE68A';
+      leftBorderColor = '#D97706';
+    } else {
+      statusText = 'Good';
+      statusPillClass = 'status-pill-good';
+      rowStatusClass = 'row-status-good';
+      rowBg = '#DCFCE7';        // Green for Good
+      rowBorder = '#BBF7D0';
+      leftBorderColor = '#16A34A';
+    }
+
+    const formattedStock = met.stock.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const formattedMin = met.min.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
     return `
-      <tr class="${met.rowClass}">
-        <td>
-          <strong style="color:#0F172A; font-size:13.5px;">${escapeHtml(m.name || m.materialName)}</strong>
+      <tr class="${rowStatusClass}" style="background-color: ${rowBg} !important;">
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; border-left: 5px solid ${leftBorderColor} !important;">
+          <strong style="color:#0F2A1B; font-size:13.5px;">${escapeHtml(m.name || m.materialName)}</strong>
         </td>
-        <td>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
           <span style="color:#475569; font-weight:500;">${escapeHtml(m.category || 'General')}</span>
         </td>
-        <td>
-          <span style="background:#F1F5F9; color:#475569; padding:2px 7px; border-radius:6px; font-size:12px; font-weight:600;">${escapeHtml(unit || '--')}</span>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
+          <span style="background:rgba(255,255,255,0.7); color:#475569; padding:2px 7px; border-radius:6px; font-size:12px; font-weight:600;">${escapeHtml(unit || '--')}</span>
         </td>
-        <td>
-          <strong style="font-size:14px; color:${met.stock <= met.min ? '#D97706' : '#0F2A1B'};">
-            ${met.stock.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${unit ? ' ' + unit : ''}
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: right;">
+          <strong style="font-size:14px;" class="${met.stock <= 0 ? 'stock-out' : (met.stock < met.min ? 'stock-low' : 'stock-healthy')}">
+            ${formattedStock}${unit ? ' ' + unit : ''}
           </strong>
         </td>
-        <td>
-          <span style="color:#64748B; font-weight:600;">
-            ${met.min.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${unit ? ' ' + unit : ''}
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: right;">
+          <span style="color:#1E293B; font-weight:600;">
+            ${formattedMin}${unit ? ' ' + unit : ''}
           </span>
         </td>
-        <td>
-          <span class="status-tag ${met.tagClass}">
-            ${escapeHtml(met.statusText)}
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
+          <span class="mgr-status-pill ${statusPillClass}">
+            ${statusText}
           </span>
         </td>
-        <td>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span style="font-weight:700; color:${met.daysRemaining <= 3 ? '#DC2626' : '#334155'};">
             ${met.daysRemaining === 0 ? '0 days' : `${met.daysRemaining} ${met.daysRemaining === 1 ? 'day' : 'days'}`}
           </span>
         </td>
-        <td>
-          <span class="runout-date">${escapeHtml(met.runOutText)}</span>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
+          <span class="runout-date" style="color:#334155; font-size:12px; font-weight:500;">${escapeHtml(met.runOutText)}</span>
         </td>
-        <td style="text-align: center;">
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <div style="display:inline-flex; align-items:center; gap:6px; justify-content:center;">
             <button type="button" class="btn-staff-edit" data-id="${m.id || m.item_code}" data-name="${escapeHtml(m.name || m.materialName)}" title="Edit Material" style="padding:4px 8px; border-radius:6px; border:1px solid #0F766E; background:#FFFFFF; color:#0F766E; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
