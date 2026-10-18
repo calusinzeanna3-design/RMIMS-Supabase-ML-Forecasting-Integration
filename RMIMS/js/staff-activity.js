@@ -445,23 +445,44 @@ function handleApproveTransaction() {
   renderCounters();
   renderTable();
 
-  // Broadcast live notification across all roles (Admin, Manager, Staff)
+  // Broadcast sync events across all open windows & tabs
+  try {
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+    localStorage.setItem('rmims_inventory_updated', String(Date.now()));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: activeReviewItem }));
+  } catch (e) {}
+
+  // Broadcast live notification to Staff
+  const appNotif = {
+    title: `Transaction Approved: ${activeReviewItem.ref}`,
+    message: `Store Manager approved ${activeReviewItem.ref} (${qty}${activeReviewItem.unit ? ' ' + activeReviewItem.unit : ''} of ${materialName}). Official stock synchronized.`,
+    category: 'Inventory',
+    badge: 'Approved',
+    role: 'staff',
+    targetRole: 'staff',
+    roleScope: 'staff',
+    priority: 'success',
+    targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeReviewItem.ref)}`,
+    ref: activeReviewItem.ref,
+    material: materialName,
+    quantity: qty,
+    actor: 'Store Manager'
+  };
+
   try {
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-      window.pushRMIMSNotification({
-        title: `Staff ${activeReviewItem.activity || 'Transaction'} Approved: ${activeReviewItem.ref}`,
-        message: `Store Manager approved ${activeReviewItem.ref} (${qty} of ${materialName}). Official stock synchronized.`,
-        category: 'Inventory',
-        badge: 'Approved',
-        role: 'staff',
-        targetRole: 'staff',
-        roleScope: 'staff',
-        priority: 'normal',
-        targetUrl: `user/my-activity.html?ref=${encodeURIComponent(activeReviewItem.ref)}`,
-        ref: activeReviewItem.ref,
-        material: materialName,
-        quantity: qty,
-        actor: 'Store Manager'
+      window.pushRMIMSNotification(appNotif);
+    }
+  } catch (e) {}
+
+  // Broadcast cross-tab, cross-browser & cross-device to Staff
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: activeReviewItem,
+        notification: appNotif,
+        allTransactions: transactions
       });
     }
   } catch (e) {}
@@ -578,7 +599,7 @@ function handleConfirmReject() {
     role: 'staff',
     targetRole: 'staff',
     roleScope: 'staff',
-    priority: 'normal',
+    priority: 'danger',
     targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeReviewItem.ref)}`,
     ref: activeReviewItem.ref,
     material: activeReviewItem.material || activeReviewItem.rawMaterial || '',

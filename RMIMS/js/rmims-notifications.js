@@ -131,7 +131,7 @@
       ) {
         return false;
       }
-      if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested'))) {
+      if (targetRole === 'staff') {
         return false;
       }
       if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
@@ -418,7 +418,7 @@
     if (!tabId || tabId === 'all') return true;
     const cat = String(itemCategory || '').toLowerCase();
     if (tabId === 'activity') {
-      return cat === 'activity' || cat === 'branch' || cat === 'user' || cat === 'employees' || cat === 'operations';
+      return cat === 'activity' || cat === 'inventory' || cat === 'alert' || cat === 'branch' || cat === 'user' || cat === 'employees' || cat === 'operations';
     }
     if (tabId === 'system') {
       return cat === 'system';

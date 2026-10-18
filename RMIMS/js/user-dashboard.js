@@ -43,12 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initStaffChart();
 
   // Cross-tab real-time sync
+  const refreshStaffDashboard = () => {
+    initDashboard();
+    renderStaffChart();
+  };
+
   window.addEventListener('storage', (e) => {
-    if (!e.key || e.key.includes('transactions') || e.key.includes('materials') || e.key.includes('receipts')) {
-      initDashboard();
-      renderStaffChart();
+    if (!e.key || e.key.includes('transactions') || e.key.includes('materials') || e.key.includes('receipts') || e.key.includes('activity')) {
+      refreshStaffDashboard();
     }
   });
+  window.addEventListener('rmims_staff_transactions_updated', refreshStaffDashboard);
+  window.addEventListener('rmims_staff_activity_updated', refreshStaffDashboard);
+  window.addEventListener('rmims_inventory_updated', refreshStaffDashboard);
 });
 
 async function initDashboard() {

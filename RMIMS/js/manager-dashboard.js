@@ -1117,6 +1117,8 @@ function initReviewModal() {
     btnApprove.addEventListener('click', () => {
       if (!activeTxRef) return;
 
+      let approvedTx = null;
+
       // Update in rmims_staff_transactions
       try {
         const raw = localStorage.getItem(STAFF_TX_KEY);
@@ -1125,16 +1127,92 @@ function initReviewModal() {
           const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef));
           if (tx) {
             tx.status = 'Approved';
+            tx.approvedBy = 'Manager';
+            tx.approvedAt = new Date().toISOString();
+            approvedTx = tx;
             localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffTx));
 
             // Adjust inventory stock accordingly
             const materials = getSystemRawMaterials();
             const mat = materials.find(m => (m.name || '').toLowerCase() === (tx.material || tx.materialName || '').toLowerCase());
+            const qty = Number(tx.quantity || tx.qtyNum || 0) || 0;
+            const isRec = (tx.type || tx.activity || '').toLowerCase().includes('rec');
+
             if (mat) {
-              const qty = Number(tx.quantity) || 0;
-              const isRec = (tx.type || tx.activity || '').toLowerCase().includes('rec');
               mat.current_stock = isRec ? (Number(mat.current_stock) + qty) : Math.max(0, Number(mat.current_stock) - qty);
               saveCustomRawMaterial(mat);
+            }
+
+            // Also persist to Manager Ledger and system records
+            if (isRec) {
+              saveCustomReceipt({
+                id: `rec-${tx.ref}`,
+                referenceNo: tx.ref,
+                material_id: mat ? (mat.id || mat.item_code) : (tx.materialId || tx.item_code || ''),
+                material_name: tx.material || tx.materialName,
+                received_quantity: qty,
+                unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
+                receipt_date: tx.date || new Date().toISOString().slice(0, 10),
+                supplier_name: tx.supplier || 'Staff Inward Delivery',
+                received_by: tx.staff || 'Staff Member'
+              });
+
+              try {
+                const mgrRecRaw = localStorage.getItem(MGR_RECEIPTS_KEY);
+                let mgrRecs = mgrRecRaw ? JSON.parse(mgrRecRaw) : [];
+                if (!Array.isArray(mgrRecs)) mgrRecs = [];
+                mgrRecs = mgrRecs.filter(r => r.ref !== tx.ref);
+                mgrRecs.unshift({
+                  ref: tx.ref,
+                  date: tx.date || new Date().toISOString().slice(0, 10),
+                  time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  materialId: mat ? (mat.id || mat.item_code) : '',
+                  materialName: tx.material || tx.materialName,
+                  quantity: qty,
+                  unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
+                  supplier: tx.supplier || 'Staff Inward Delivery',
+                  recordedBy: tx.staff || 'Staff Member',
+                  approvedBy: 'Store Manager',
+                  status: 'Approved',
+                  notes: tx.notes || `Submitted by ${tx.staff || 'Staff'}, approved by Manager`
+                });
+                localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(mgrRecs));
+              } catch (e) {}
+            } else {
+              saveCustomDisbursement({
+                id: `disb-${tx.ref}`,
+                referenceNo: tx.ref,
+                material_id: mat ? (mat.id || mat.item_code) : (tx.materialId || tx.item_code || ''),
+                material_name: tx.material || tx.materialName,
+                consumed_quantity: qty,
+                unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
+                usage_date: tx.date || new Date().toISOString().slice(0, 10),
+                activity_type: 'Production Usage',
+                finished_product_name: tx.usedFor || 'Production Batch',
+                disbursed_by: tx.staff || 'Staff Member'
+              });
+
+              try {
+                const mgrDisbRaw = localStorage.getItem(MGR_DISBURSEMENTS_KEY);
+                let mgrDisbs = mgrDisbRaw ? JSON.parse(mgrDisbRaw) : [];
+                if (!Array.isArray(mgrDisbs)) mgrDisbs = [];
+                mgrDisbs = mgrDisbs.filter(d => d.ref !== tx.ref);
+                mgrDisbs.unshift({
+                  ref: tx.ref,
+                  date: tx.date || new Date().toISOString().slice(0, 10),
+                  time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  materialId: mat ? (mat.id || mat.item_code) : '',
+                  materialName: tx.material || tx.materialName,
+                  quantity: qty,
+                  unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
+                  recipient: tx.usedFor || 'Production Department',
+                  recordedBy: tx.staff || 'Staff Member',
+                  approvedBy: 'Store Manager',
+                  status: 'Approved',
+                  notes: tx.notes || `Submitted by ${tx.staff || 'Staff'}, approved by Manager`
+                });
+                localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(mgrDisbs));
+              } catch (e) {}
             }
           }
         }
@@ -1161,10 +1239,48 @@ function initReviewModal() {
         localStorage.setItem(MGR_ACTIVITIES_KEY, JSON.stringify(acts));
       } catch (e) {}
 
+      // Notify Staff that transaction was approved
+      if (approvedTx) {
+        const staffApproveNotif = {
+          title: `Transaction Approved: ${activeTxRef}`,
+          message: `Store Manager approved ${activeTxRef} (${approvedTx.quantity || approvedTx.qty} of ${approvedTx.material || approvedTx.materialName}). Official stock synchronized.`,
+          category: 'Inventory',
+          badge: 'Approved',
+          role: 'staff',
+          targetRole: 'staff',
+          roleScope: 'staff',
+          priority: 'success',
+          targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeTxRef)}`,
+          ref: activeTxRef,
+          material: approvedTx.material || approvedTx.materialName,
+          quantity: approvedTx.quantity || approvedTx.qty,
+          actor: 'Store Manager'
+        };
+
+        try {
+          if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+            window.pushRMIMSNotification(staffApproveNotif);
+          }
+        } catch (e) {}
+
+        try {
+          if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+            window.broadcastRMIMSSync({
+              transaction: approvedTx,
+              notification: staffApproveNotif
+            });
+          }
+        } catch (e) {}
+      }
+
       // Invalidate forecast cache and broadcast
       invalidateForecastCache();
       localStorage.setItem('rmims_inventory_updated', String(Date.now()));
+      localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
       window.dispatchEvent(new Event('storage'));
+      if (approvedTx) {
+        window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: approvedTx }));
+      }
 
       resultBanner.style.display = 'block';
       resultBanner.style.background = '#DCFCE7';
@@ -1192,6 +1308,7 @@ function initReviewModal() {
       }
 
       const reason = (rejectReasonInput && rejectReasonInput.value.trim()) || 'Details require correction.';
+      let rejectedTx = null;
 
       // Update in rmims_staff_transactions
       try {
@@ -1202,6 +1319,9 @@ function initReviewModal() {
           if (tx) {
             tx.status = 'Rejected';
             tx.rejectionReason = reason;
+            tx.rejectedBy = 'Manager';
+            tx.rejectedAt = new Date().toISOString();
+            rejectedTx = tx;
             localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffTx));
           }
         }
@@ -1220,8 +1340,46 @@ function initReviewModal() {
         localStorage.setItem(MGR_ACTIVITIES_KEY, JSON.stringify(acts));
       } catch (e) {}
 
+      // Notify Staff that transaction was rejected
+      if (rejectedTx || activeTxRef) {
+        const staffRejectNotif = {
+          title: `Transaction Rejected: ${activeTxRef}`,
+          message: `Transaction ${activeTxRef} was rejected by Store Manager: "${reason}".`,
+          category: 'Inventory',
+          badge: 'Rejected',
+          role: 'staff',
+          targetRole: 'staff',
+          roleScope: 'staff',
+          priority: 'danger',
+          targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeTxRef)}`,
+          ref: activeTxRef,
+          material: rejectedTx?.material || rejectedTx?.materialName || '',
+          quantity: rejectedTx?.quantity || rejectedTx?.qty || '',
+          actor: 'Store Manager'
+        };
+
+        try {
+          if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+            window.pushRMIMSNotification(staffRejectNotif);
+          }
+        } catch (e) {}
+
+        try {
+          if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+            window.broadcastRMIMSSync({
+              transaction: rejectedTx,
+              notification: staffRejectNotif
+            });
+          }
+        } catch (e) {}
+      }
+
       localStorage.setItem('rmims_inventory_updated', String(Date.now()));
+      localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
       window.dispatchEvent(new Event('storage'));
+      if (rejectedTx) {
+        window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: rejectedTx }));
+      }
 
       resultBanner.style.display = 'block';
       resultBanner.style.background = '#FEE2E2';

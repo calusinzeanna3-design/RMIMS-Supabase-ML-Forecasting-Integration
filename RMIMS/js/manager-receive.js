@@ -153,6 +153,43 @@ function loadReceipts() {
   } catch (e) {
     managerReceipts = [];
   }
+
+  // Seamlessly merge all approved Staff Receive transactions (initial submissions and resubmitted)
+  try {
+    const staffTxRaw = localStorage.getItem('rmims_staff_transactions');
+    if (staffTxRaw) {
+      const staffTxList = JSON.parse(staffTxRaw);
+      if (Array.isArray(staffTxList)) {
+        let added = false;
+        staffTxList.forEach(t => {
+          const isRec = (t.activity || t.type || '').toLowerCase().includes('rec');
+          if (isRec && t.status === 'Approved' && t.ref) {
+            const exists = managerReceipts.some(r => r.ref === t.ref);
+            if (!exists) {
+              managerReceipts.unshift({
+                ref: t.ref,
+                date: t.date || (t.approvedAt ? new Date(t.approvedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
+                time: t.time || (t.approvedAt ? new Date(t.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'),
+                materialId: t.materialId || t.item_code || '',
+                materialName: t.material || t.materialName || '',
+                quantity: Number(t.quantity || t.qtyNum || t.qty || 0),
+                unit: t.unit || '',
+                supplier: t.supplier || 'Staff Inward Delivery',
+                recordedBy: t.staff || t.user || 'Staff Member',
+                approvedBy: t.approvedBy || 'Store Manager',
+                status: 'Approved',
+                notes: t.notes || (t.isUpdated ? 'Resubmitted & Approved' : 'Staff Submission Approved')
+              });
+              added = true;
+            }
+          }
+        });
+        if (added) {
+          localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(managerReceipts));
+        }
+      }
+    }
+  } catch (e) {}
 }
 
 function saveReceipts() {
@@ -174,13 +211,19 @@ document.addEventListener('DOMContentLoaded', () => {
   renderKpis();
   renderHistoryTable();
 
-  // Listen for storage events to refresh if stock or finished products changed elsewhere
-  window.addEventListener('storage', () => {
+  // Listen for storage events to refresh if stock, receipts, or transactions changed elsewhere
+  const handleLiveRefresh = () => {
     rawMaterials = getSystemRawMaterials();
+    loadReceipts();
     renderKpis();
     renderHistoryTable();
     updateBundleReceivePreview();
-  });
+  };
+
+  window.addEventListener('storage', handleLiveRefresh);
+  window.addEventListener('rmims_staff_transactions_updated', handleLiveRefresh);
+  window.addEventListener('rmims_staff_activity_updated', handleLiveRefresh);
+  window.addEventListener('rmims_inventory_updated', handleLiveRefresh);
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleReceivePreview();
   });
