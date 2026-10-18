@@ -476,9 +476,12 @@ function applyFiltersAndRender() {
           </button>
         </div>
       `;
+    } else if (statusVal === 'Approved') {
+      // Approved transactions: remove all actions, show blank/clean dash
+      actionHtml = '<span style="color:#94A3B8; font-size:13px; font-weight:600;">—</span>';
     } else {
       actionHtml = `
-        <button type="button" class="btn-view-tx" data-id="${rowId}" style="padding:4px 10px; font-size:11.5px; font-weight:600; color:#15803D; background:transparent; border:none; cursor:pointer;">
+        <button type="button" class="btn-view-tx" data-id="${rowId}" style="padding:4px 10px; font-size:11.5px; font-weight:600; color:#64748B; background:transparent; border:none; cursor:pointer;">
           View Details
         </button>
       `;

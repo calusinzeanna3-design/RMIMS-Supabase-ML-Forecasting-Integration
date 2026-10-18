@@ -160,31 +160,42 @@ function loadReceipts() {
     if (staffTxRaw) {
       const staffTxList = JSON.parse(staffTxRaw);
       if (Array.isArray(staffTxList)) {
-        let added = false;
+        let modified = false;
         staffTxList.forEach(t => {
-          const isRec = (t.activity || t.type || '').toLowerCase().includes('rec');
+          const isRec = (t.activity || t.type || '').toLowerCase().includes('rec') ||
+                        String(t.ref || '').toUpperCase().startsWith('REC');
           if (isRec && t.status === 'Approved' && t.ref) {
-            const exists = managerReceipts.some(r => r.ref === t.ref);
-            if (!exists) {
+            const rawQty = t.quantity != null ? t.quantity : (t.qtyNum != null ? t.qtyNum : t.qty);
+            const numQty = parseFloat(rawQty) || 0;
+            const unitVal = t.unit || (t.qty ? String(t.qty).replace(/^[0-9.\s]+/, '') : '') || 'kg';
+            const existingIdx = managerReceipts.findIndex(r => r.ref === t.ref);
+            if (existingIdx === -1) {
               managerReceipts.unshift({
                 ref: t.ref,
                 date: t.date || (t.approvedAt ? new Date(t.approvedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
                 time: t.time || (t.approvedAt ? new Date(t.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'),
                 materialId: t.materialId || t.item_code || '',
                 materialName: t.material || t.materialName || '',
-                quantity: Number(t.quantity || t.qtyNum || t.qty || 0),
-                unit: t.unit || '',
+                quantity: numQty,
+                unit: unitVal,
                 supplier: t.supplier || 'Staff Inward Delivery',
                 recordedBy: t.staff || t.user || 'Staff Member',
                 approvedBy: t.approvedBy || 'Store Manager',
                 status: 'Approved',
                 notes: t.notes || (t.isUpdated ? 'Resubmitted & Approved' : 'Staff Submission Approved')
               });
-              added = true;
+              modified = true;
+            } else {
+              // Ensure existing record has correct numeric quantity and status
+              if (managerReceipts[existingIdx].quantity !== numQty || managerReceipts[existingIdx].status !== 'Approved') {
+                managerReceipts[existingIdx].quantity = numQty;
+                managerReceipts[existingIdx].status = 'Approved';
+                modified = true;
+              }
             }
           }
         });
-        if (added) {
+        if (modified) {
           localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(managerReceipts));
         }
       }
@@ -221,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.addEventListener('storage', handleLiveRefresh);
+  window.addEventListener('rmims_manager_receipts_updated', handleLiveRefresh);
   window.addEventListener('rmims_staff_transactions_updated', handleLiveRefresh);
   window.addEventListener('rmims_staff_activity_updated', handleLiveRefresh);
   window.addEventListener('rmims_inventory_updated', handleLiveRefresh);
@@ -991,9 +1003,21 @@ function renderHistoryTable() {
     } else if (sortOrder === 'qty_asc') {
       return Number(a.quantity || 0) - Number(b.quantity || 0);
     } else if (sortOrder === 'oldest') {
+      const dateA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
+      const dateB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
+      if (dateA !== dateB) return dateA - dateB;
+      const numA = parseInt(String(a.ref || '').replace(/\D+/g, ''), 10) || 0;
+      const numB = parseInt(String(b.ref || '').replace(/\D+/g, ''), 10) || 0;
+      if (numA !== numB) return numA - numB;
       return (a.ref || '').localeCompare(b.ref || '');
     } else {
-      // Default: latest first
+      // Default: latest first (newest timestamp / date first)
+      const dateA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
+      const dateB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
+      if (dateB !== dateA) return dateB - dateA;
+      const numA = parseInt(String(a.ref || '').replace(/\D+/g, ''), 10) || 0;
+      const numB = parseInt(String(b.ref || '').replace(/\D+/g, ''), 10) || 0;
+      if (numB !== numA) return numB - numA;
       return (b.ref || '').localeCompare(a.ref || '');
     }
   });

@@ -789,15 +789,20 @@ function renderMySubmissions() {
         <td>${escapeHtml(t.supplier || '--')}</td>
         <td>${statusPill}</td>
         <td style="text-align:right; white-space:nowrap;">
-          <button type="button" class="btn-staff-rec-edit" data-ref="${escapeHtml(t.ref)}" title="Edit submission" style="background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
-            ✏️ Edit
-          </button>
-          <button type="button" class="btn-staff-rec-delete" data-ref="${escapeHtml(t.ref)}" title="Delete submission" style="background:#FEF2F2; border:1px solid #FECACA; color:#DC2626; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
-            🗑️ Delete
-          </button>
-          ${isCorrection
-            ? `<a href="my-activity.html?correct=${encodeURIComponent(t.ref)}" class="btn-primary" style="text-decoration:none; padding:4px 10px; font-size:11.5px; border-radius:6px; display:inline-block;">Correct</a>`
-            : `<a href="my-activity.html?view=${encodeURIComponent(t.ref)}" class="btn-secondary" style="text-decoration:none; padding:4px 10px; font-size:11.5px; border-radius:6px; display:inline-block;">View</a>`
+          ${t.status === 'Approved'
+            ? `<span style="color:#94A3B8; font-size:13px; font-weight:600;">—</span>`
+            : `
+              <button type="button" class="btn-staff-rec-edit" data-ref="${escapeHtml(t.ref)}" title="Edit submission" style="background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
+                ✏️ Edit
+              </button>
+              <button type="button" class="btn-staff-rec-delete" data-ref="${escapeHtml(t.ref)}" title="Delete submission" style="background:#FEF2F2; border:1px solid #FECACA; color:#DC2626; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
+                🗑️ Delete
+              </button>
+              ${isCorrection
+                ? `<a href="my-activity.html?correct=${encodeURIComponent(t.ref)}" class="btn-primary" style="text-decoration:none; padding:4px 10px; font-size:11.5px; border-radius:6px; display:inline-block;">Correct</a>`
+                : `<a href="my-activity.html?view=${encodeURIComponent(t.ref)}" class="btn-secondary" style="text-decoration:none; padding:4px 10px; font-size:11.5px; border-radius:6px; display:inline-block;">View</a>`
+              }
+            `
           }
         </td>
       </tr>

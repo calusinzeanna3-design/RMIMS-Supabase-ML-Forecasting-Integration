@@ -426,22 +426,35 @@ function closeReviewModal() {
 function handleApproveTransaction() {
   if (!activeReviewItem) return;
 
-  const isReceive = (activeReviewItem.activity || '').toLowerCase().includes('rec');
-  const qty = parseFloat(activeReviewItem.quantity || 0);
+  const isReceive = (activeReviewItem.activity || activeReviewItem.type || '').toLowerCase().includes('rec') ||
+                    String(activeReviewItem.ref || '').toUpperCase().startsWith('REC');
+  const rawQty = activeReviewItem.quantity != null ? activeReviewItem.quantity :
+                 (activeReviewItem.qtyNum != null ? activeReviewItem.qtyNum : activeReviewItem.qty);
+  const qty = parseFloat(rawQty) || 0;
   const materialName = activeReviewItem.material;
 
   // Update transaction status
   activeReviewItem.status = 'Approved';
   activeReviewItem.approvedBy = 'Manager';
   activeReviewItem.approvedAt = new Date().toISOString();
+  activeReviewItem.quantity = qty;
+  if (!activeReviewItem.unit) {
+    activeReviewItem.unit = (activeReviewItem.qty ? String(activeReviewItem.qty).replace(/^[0-9.\s]+/, '') : '') || 'kg';
+  }
+
+  // Ensure transactions array has the updated transaction and persist immediately
+  const txIdx = transactions.findIndex(t => t.ref === activeReviewItem.ref || t.id === activeReviewItem.id);
+  if (txIdx !== -1) {
+    transactions[txIdx] = activeReviewItem;
+  }
+  saveTransactions();
 
   // =========================================================================
   // SECTION 23: OFFICIAL INVENTORY UPDATE RULE
-  // Only approved Staff transactions update official inventory.
+  // Only approved Staff transactions update official inventory and Manager Ledgers
   // =========================================================================
   updateSystemInventory(materialName, qty, isReceive, activeReviewItem);
 
-  saveTransactions();
   renderCounters();
   renderTable();
 
@@ -449,8 +462,19 @@ function handleApproveTransaction() {
   try {
     localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
     localStorage.setItem('rmims_inventory_updated', String(Date.now()));
+    if (isReceive) {
+      localStorage.setItem('rmims_manager_receipts_updated', String(Date.now()));
+    } else {
+      localStorage.setItem('rmims_manager_disbursements_updated', String(Date.now()));
+    }
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: activeReviewItem }));
+    window.dispatchEvent(new CustomEvent('rmims_staff_activity_updated', { detail: activeReviewItem }));
+    if (isReceive) {
+      window.dispatchEvent(new CustomEvent('rmims_manager_receipts_updated', { detail: activeReviewItem }));
+    } else {
+      window.dispatchEvent(new CustomEvent('rmims_manager_disbursements_updated', { detail: activeReviewItem }));
+    }
   } catch (e) {}
 
   // Broadcast live notification to Staff
@@ -785,9 +809,20 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
   invalidateForecastCache();
   localStorage.setItem('rmims_inventory_updated', String(Date.now()));
   localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+  if (isReceive) {
+    localStorage.setItem('rmims_manager_receipts_updated', String(Date.now()));
+  } else {
+    localStorage.setItem('rmims_manager_disbursements_updated', String(Date.now()));
+  }
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_inventory_updated', { detail: { materialName: resolvedMatName, delta } }));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: tx }));
+  window.dispatchEvent(new CustomEvent('rmims_staff_activity_updated', { detail: tx }));
+  if (isReceive) {
+    window.dispatchEvent(new CustomEvent('rmims_manager_receipts_updated', { detail: tx }));
+  } else {
+    window.dispatchEvent(new CustomEvent('rmims_manager_disbursements_updated', { detail: tx }));
+  }
 
   // Broadcast live notification across all roles (Admin, Manager, Staff)
   const appNotif = {

@@ -831,13 +831,18 @@ function renderMySubmissions() {
         <td style="color:#334155; font-size:12px;">${escapeHtml(t.usedFor || 'General Batch')}</td>
         <td>${statusBadge}</td>
         <td style="text-align:right; white-space:nowrap;">
-          <button type="button" class="btn-staff-disb-edit" data-ref="${escapeHtml(t.ref)}" title="Edit submission" style="background:#FFFBEB; border:1px solid #FDE68A; color:#B45309; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
-            ✏️ Edit
-          </button>
-          <button type="button" class="btn-staff-disb-delete" data-ref="${escapeHtml(t.ref)}" title="Delete submission" style="background:#FEF2F2; border:1px solid #FECACA; color:#DC2626; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
-            🗑️ Delete
-          </button>
-          ${actionBtn}
+          ${t.status === 'Approved'
+            ? `<span style="color:#94A3B8; font-size:13px; font-weight:600;">—</span>`
+            : `
+              <button type="button" class="btn-staff-disb-edit" data-ref="${escapeHtml(t.ref)}" title="Edit submission" style="background:#FFFBEB; border:1px solid #FDE68A; color:#B45309; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
+                ✏️ Edit
+              </button>
+              <button type="button" class="btn-staff-disb-delete" data-ref="${escapeHtml(t.ref)}" title="Delete submission" style="background:#FEF2F2; border:1px solid #FECACA; color:#DC2626; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">
+                🗑️ Delete
+              </button>
+              ${actionBtn}
+            `
+          }
         </td>
       </tr>
     `;
