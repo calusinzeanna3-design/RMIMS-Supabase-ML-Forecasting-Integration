@@ -470,10 +470,14 @@ function renderRecentActivity(staffTx) {
         <td>
           <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
         </td>
-        <td style="text-align:right;">
+        <td style="text-align:right; white-space:nowrap;">
           ${isCorrection
-            ? `<a href="my-activity.html?correct=${encodeURIComponent(t.ref)}" class="btn-primary" style="text-decoration:none; padding:4px 10px; font-size:11.5px; border-radius:6px; display:inline-block;">Correct</a>`
-            : `<a href="my-activity.html?view=${encodeURIComponent(t.ref)}" class="btn-secondary" style="text-decoration:none; padding:4px 10px; font-size:11.5px; border-radius:6px; display:inline-block;">View</a>`
+            ? `<a href="my-activity.html?correct=${encodeURIComponent(t.ref)}" class="btn-dash-action btn-dash-correct" style="background:#D97706; color:#FFFFFF; font-weight:700; padding:5px 12px; font-size:11.5px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(217,119,6,0.25); border:none;" title="Correct this transaction record">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Correct
+              </a>`
+            : `<a href="my-activity.html?view=${encodeURIComponent(t.ref)}" class="btn-dash-action btn-dash-view" style="background:#FFFFFF; color:#334155; font-weight:600; padding:4px 10px; font-size:11.5px; border-radius:6px; border:1px solid #CBD5E1; text-decoration:none; display:inline-flex; align-items:center; gap:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05);" title="View record details">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> View
+              </a>`
           }
         </td>
       </tr>

@@ -76,6 +76,21 @@
     font-size: 12px;
     font-family: monospace;
   }
+  /* Ensure modal backdrop and window are fully visible when opened */
+  #viewTxModal.open,
+  #staffCorrectionModal.open,
+  .mgr-review-modal-backdrop.open {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    z-index: 100000 !important;
+  }
+  #viewTxModal.open .mgr-review-modal-window,
+  #staffCorrectionModal.open .mgr-review-modal-window,
+  .mgr-review-modal-backdrop.open .mgr-review-modal-window {
+    transform: translateY(0) scale(1) !important;
+  }
 </style>
 </head>
 
@@ -252,13 +267,12 @@
                 <th>Raw Material</th>
                 <th>Quantity</th>
                 <th>Status</th>
-                <th>Note / Message</th>
                 <th style="text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody id="myActivityTbody">
               <tr>
-                <td colspan="8" style="text-align:center; padding:36px 16px; color:#64748B;">
+                <td colspan="7" style="text-align:center; padding:36px 16px; color:#64748B;">
                   Loading activity logs...
                 </td>
               </tr>

@@ -33,6 +33,39 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+function findTx(refOrId) {
+  if (!refOrId) return null;
+  const target = String(refOrId).trim().toLowerCase();
+  let match = allTransactions.find(t => 
+    (t.ref && String(t.ref).trim().toLowerCase() === target) || 
+    (t.id && String(t.id).trim().toLowerCase() === target)
+  );
+  if (!match) {
+    const fresh = getStaffTransactions();
+    match = fresh.find(t => 
+      (t.ref && String(t.ref).trim().toLowerCase() === target) || 
+      (t.id && String(t.id).trim().toLowerCase() === target)
+    );
+  }
+  return match;
+}
+
+function closeViewModal() {
+  const modal = document.getElementById('viewTxModal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+  }
+}
+
+function closeCorrectionModal() {
+  const modal = document.getElementById('staffCorrectionModal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   rawMaterials = getSystemRawMaterials();
   populateMaterialSelects();
@@ -42,18 +75,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // URL query check: e.g. ?correct=REC-2026-00125 or ?ref=REC-2026-00125 or ?view=REC-2026-00125
   const params = new URLSearchParams(window.location.search);
-  const targetRef = params.get('ref') || params.get('correct') || params.get('view');
-  if (targetRef) {
+  const correctTarget = params.get('correct');
+  const viewTarget = params.get('view') || params.get('ref');
+  const filterVal = params.get('filter');
+
+  if (filterVal) {
+    const statusSelect = document.getElementById('filterStatusSelect');
+    if (statusSelect) {
+      statusSelect.value = filterVal;
+      applyFiltersAndRender();
+    }
+  }
+
+  if (correctTarget) {
     setTimeout(() => {
-      const tx = allTransactions.find(t => 
-        (t.ref && t.ref.toLowerCase() === targetRef.toLowerCase()) || 
-        (t.id && String(t.id).toLowerCase() === targetRef.toLowerCase())
-      );
+      const tx = findTx(correctTarget);
       if (tx) {
-        // Always open the Activity & Message Viewer first so staff knows what is wrong
+        openCorrectionModal(tx);
+      }
+    }, 200);
+  } else if (viewTarget) {
+    setTimeout(() => {
+      const tx = findTx(viewTarget);
+      if (tx) {
         openViewModal(tx);
       }
-    }, 150);
+    }, 200);
   }
 
   // Cross-tab and real-time sync
@@ -198,14 +245,19 @@ function bindEvents() {
   const btnCloseView2 = document.getElementById('btnCloseViewTx2');
   const btnGoToCorrect = document.getElementById('btnGoToCorrect');
 
-  if (btnCloseView1) btnCloseView1.addEventListener('click', () => viewModal.style.display = 'none');
-  if (btnCloseView2) btnCloseView2.addEventListener('click', () => viewModal.style.display = 'none');
+  if (btnCloseView1) btnCloseView1.addEventListener('click', closeViewModal);
+  if (btnCloseView2) btnCloseView2.addEventListener('click', closeViewModal);
+  if (viewModal) {
+    viewModal.addEventListener('click', (e) => {
+      if (e.target === viewModal) closeViewModal();
+    });
+  }
 
   // When staff is viewing the message, clicking "Correct Record" at the bottom
   // automatically pops up the small box form right on screen!
   if (btnGoToCorrect) {
     btnGoToCorrect.addEventListener('click', () => {
-      viewModal.style.display = 'none';
+      closeViewModal();
       if (activeTxForCorrection) {
         openCorrectionModal(activeTxForCorrection);
       }
@@ -219,13 +271,18 @@ function bindEvents() {
   const btnSubmitCorr = document.getElementById('btnSubmitCorrection');
   const btnBackToView = document.getElementById('btnBackToViewModal');
 
-  if (btnCloseCorr) btnCloseCorr.addEventListener('click', () => corrModal.style.display = 'none');
-  if (btnCancelCorr) btnCancelCorr.addEventListener('click', () => corrModal.style.display = 'none');
+  if (btnCloseCorr) btnCloseCorr.addEventListener('click', closeCorrectionModal);
+  if (btnCancelCorr) btnCancelCorr.addEventListener('click', closeCorrectionModal);
+  if (corrModal) {
+    corrModal.addEventListener('click', (e) => {
+      if (e.target === corrModal) closeCorrectionModal();
+    });
+  }
 
   // Staff can switch back to view the message anytime
   if (btnBackToView) {
     btnBackToView.addEventListener('click', () => {
-      corrModal.style.display = 'none';
+      closeCorrectionModal();
       if (activeTxForCorrection) {
         openViewModal(activeTxForCorrection);
       }
@@ -245,10 +302,7 @@ function bindEvents() {
         e.preventDefault();
         e.stopPropagation();
         const id = viewBtn.getAttribute('data-id');
-        const tx = allTransactions.find(t => 
-          (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
-          (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
-        );
+        const tx = findTx(id);
         if (tx) openViewModal(tx);
         return;
       }
@@ -258,10 +312,7 @@ function bindEvents() {
         e.preventDefault();
         e.stopPropagation();
         const id = correctBtn.getAttribute('data-id');
-        const tx = allTransactions.find(t => 
-          (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
-          (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
-        );
+        const tx = findTx(id);
         if (tx) openCorrectionModal(tx);
         return;
       }
@@ -352,7 +403,7 @@ function applyFiltersAndRender() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align:center; padding:36px 16px; color:#64748B;">
+        <td colspan="7" style="text-align:center; padding:36px 16px; color:#64748B;">
           No transactions found matching the selected filters.
         </td>
       </tr>
@@ -433,10 +484,6 @@ function applyFiltersAndRender() {
       `;
     }
 
-    // Note snippet: display transaction notes; manager revision feedback is kept in View Message modal
-    const displayNote = (t.notes && String(t.notes).trim()) ? escapeHtml(t.notes.trim()) : '—';
-    const noteSnippet = `<span style="color:#64748B; font-size:12px;">${displayNote}</span>`;
-
     return `
       <tr style="${statusVal === 'Correction Needed' ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td style="color:#64748B; font-size:12px; white-space:nowrap;">${escapeHtml(createdFormatted)}</td>
@@ -445,7 +492,6 @@ function applyFiltersAndRender() {
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
         <td style="font-weight:800; color:${qtyColor};">${qtySign}${escapeHtml(t.quantity)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</td>
         <td>${statusPill}</td>
-        <td>${noteSnippet}</td>
         <td style="text-align:right; white-space:nowrap;">${actionHtml}</td>
       </tr>
     `;
@@ -457,10 +503,7 @@ function applyFiltersAndRender() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = btn.getAttribute('data-id');
-      const tx = allTransactions.find(t => 
-        (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
-        (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
-      );
+      const tx = findTx(id);
       if (tx) openViewModal(tx);
     });
   });
@@ -470,10 +513,7 @@ function applyFiltersAndRender() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = btn.getAttribute('data-id');
-      const tx = allTransactions.find(t => 
-        (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
-        (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
-      );
+      const tx = findTx(id);
       if (tx) {
         openCorrectionModal(tx);
       }
@@ -590,7 +630,10 @@ function openViewModal(tx) {
   }
 
   const modal = document.getElementById('viewTxModal');
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+  }
 }
 
 /**
@@ -602,6 +645,7 @@ function openViewModal(tx) {
  * - Resubmits on screen with zero redirect
  */
 function openCorrectionModal(tx) {
+  if (!tx) return;
   activeTxForCorrection = tx;
   const isReceive = (tx.activity === 'Receive' || tx.type === 'Receive');
 
@@ -663,7 +707,10 @@ function openCorrectionModal(tx) {
   if (notesInput) notesInput.value = tx.notes || '';
 
   const modal = document.getElementById('staffCorrectionModal');
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+  }
 }
 
 function handleResubmitCorrection() {
@@ -702,8 +749,8 @@ function handleResubmitCorrection() {
     unit,
     date,
     notes,
-    supplier: isReceive ? sourceVal : (activeTxForCorrection.supplier || ''),
-    usedFor: !isReceive ? sourceVal : (activeTxForCorrection.usedFor || '')
+    supplier: isReceive ? finalSource : (activeTxForCorrection.supplier || ''),
+    usedFor: !isReceive ? finalSource : (activeTxForCorrection.usedFor || '')
   };
 
   // Section 18 & 19: Keep same reference, resubmit to Manager
@@ -716,12 +763,18 @@ function handleResubmitCorrection() {
   }
 
   // Close modal
-  const modal = document.getElementById('staffCorrectionModal');
-  if (modal) modal.style.display = 'none';
+  closeCorrectionModal();
 
   // Reload data in-place
   loadAndRenderActivity();
 
   // In-place confirmation alert (No redirect to receive.html!)
   alert(`Transaction Updated Successfully!\n\nReference: ${targetRef}\nStatus: Pending\n\nYour record was returned to the Manager for verification.`);
+}
+
+if (typeof window !== 'undefined') {
+  window.openViewModal = openViewModal;
+  window.openCorrectionModal = openCorrectionModal;
+  window.closeViewModal = closeViewModal;
+  window.closeCorrectionModal = closeCorrectionModal;
 }
