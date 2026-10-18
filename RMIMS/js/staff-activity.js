@@ -15,7 +15,9 @@ import {
   getSystemRawMaterials,
   saveCustomRawMaterial,
   saveCustomReceipt,
-  saveCustomDisbursement
+  saveCustomDisbursement,
+  adjustSystemMaterialStock,
+  invalidateForecastCache
 } from './system-materials.js';
 
 import {
@@ -66,15 +68,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Cross-tab real-time sync
+  // Cross-tab and real-time sync
+  const refreshAllState = () => {
+    loadTransactions();
+    populateStaffFilterOptions();
+    renderCounters();
+    renderTable();
+  };
+
   window.addEventListener('storage', (e) => {
-    if (!e.key || e.key.includes('transactions') || e.key.includes('activity')) {
-      loadTransactions();
-      populateStaffFilterOptions();
-      renderCounters();
-      renderTable();
+    if (!e.key || e.key.includes('transactions') || e.key.includes('activity') || e.key.includes('materials') || e.key.includes('receipts') || e.key.includes('disbursements')) {
+      refreshAllState();
     }
   });
+
+  window.addEventListener('rmims_staff_transactions_updated', refreshAllState);
+  window.addEventListener('rmims_inventory_updated', refreshAllState);
 
   // URL query check: e.g. ?review=REC-2026-00125
   try {
@@ -448,7 +457,7 @@ function handleApproveTransaction() {
         targetRole: 'staff',
         roleScope: 'staff',
         priority: 'normal',
-        targetUrl: 'user/transaction-history.html',
+        targetUrl: `user/my-activity.html?ref=${encodeURIComponent(activeReviewItem.ref)}`,
         ref: activeReviewItem.ref,
         material: materialName,
         quantity: qty,
@@ -485,6 +494,13 @@ function handleConfirmReturnForCorrection() {
   renderCounters();
   renderTable();
 
+  // Broadcast sync events across all open windows & tabs
+  try {
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: activeReviewItem }));
+  } catch (e) {}
+
   // Broadcast live notification across all roles (Admin, Manager, Staff)
   try {
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
@@ -497,7 +513,7 @@ function handleConfirmReturnForCorrection() {
         targetRole: 'staff',
         roleScope: 'staff',
         priority: 'high',
-        targetUrl: 'user/transaction-history.html',
+        targetUrl: `user/my-activity.html?correct=${encodeURIComponent(activeReviewItem.ref)}`,
         ref: activeReviewItem.ref,
         material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
         quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
@@ -533,6 +549,13 @@ function handleConfirmReject() {
   renderCounters();
   renderTable();
 
+  // Broadcast sync events across all open windows & tabs
+  try {
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: activeReviewItem }));
+  } catch (e) {}
+
   // Broadcast live notification across all roles (Admin, Manager, Staff)
   try {
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
@@ -545,7 +568,7 @@ function handleConfirmReject() {
         targetRole: 'staff',
         roleScope: 'staff',
         priority: 'normal',
-        targetUrl: 'user/transaction-history.html',
+        targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeReviewItem.ref)}`,
         ref: activeReviewItem.ref,
         material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
         quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
@@ -560,48 +583,164 @@ function handleConfirmReject() {
 
 /**
  * Updates official system inventory upon approval
+ * Reliably synchronizes official raw materials stock, custom ledgers, and manager ledgers
  */
 function updateSystemInventory(materialName, quantity, isReceive, tx) {
   const materials = getSystemRawMaterials();
-  const found = materials.find(m => (m.name || m.materialName || '').toLowerCase() === materialName.toLowerCase());
+  const searchName = String(materialName || tx.material || '').trim().toLowerCase();
+  const found = materials.find(m => 
+    (m.name || m.materialName || m.raw_material_name || '').trim().toLowerCase() === searchName ||
+    String(m.id || '').toLowerCase() === searchName ||
+    String(m.item_code || '').toLowerCase() === searchName
+  );
 
-  if (found) {
-    const currentStock = Number(found.currentStock || found.current_stock || 0);
-    const newStock = isReceive ? (currentStock + quantity) : Math.max(0, currentStock - quantity);
+  const matId = found ? (found.id || found.item_code) : (tx.materialId || tx.item_code || tx.material);
+  const resolvedMatName = found ? (found.name || found.materialName || found.raw_material_name) : materialName;
+  const unit = tx.unit || (found ? (found.unit_of_measure || found.unit) : '') || 'kg';
+  const delta = isReceive ? quantity : -quantity;
 
-    // Save updated stock to custom materials key
-    saveCustomRawMaterial({
-      ...found,
-      name: found.name || found.materialName,
-      current_stock: newStock,
-      currentStock: newStock
-    });
+  // 1. Authoritative stock adjustment via system-materials (handles base + overrides)
+  if (found || materialName) {
+    adjustSystemMaterialStock(matId || resolvedMatName, delta);
   }
 
-  // Log official receipt or disbursement
+  // 2. Also ensure custom raw materials list explicitly persists the updated stock
+  try {
+    const customMatsRaw = localStorage.getItem('rmims_custom_raw_materials');
+    if (customMatsRaw) {
+      const customMats = JSON.parse(customMatsRaw);
+      if (Array.isArray(customMats)) {
+        const cIdx = customMats.findIndex(m => 
+          (m.name || '').trim().toLowerCase() === searchName ||
+          String(m.id || '').toLowerCase() === String(matId).toLowerCase() ||
+          String(m.item_code || '').toLowerCase() === String(matId).toLowerCase()
+        );
+        if (cIdx !== -1) {
+          const oldStock = Number(customMats[cIdx].current_stock ?? customMats[cIdx].currentStock ?? 0);
+          const newStock = Math.max(0, oldStock + delta);
+          customMats[cIdx].current_stock = newStock;
+          customMats[cIdx].currentStock = newStock;
+          customMats[cIdx].last_updated = new Date().toISOString();
+          localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(customMats));
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 3. Log official receipt or disbursement
   if (isReceive) {
     saveCustomReceipt({
       id: `rec-${tx.ref}`,
       referenceNo: tx.ref,
-      materialName: tx.material,
+      material_id: matId,
+      materialId: matId,
+      material_name: resolvedMatName,
+      materialName: resolvedMatName,
+      received_quantity: quantity,
       quantity: quantity,
-      unit: tx.unit || (matchedMat ? (matchedMat.unit_of_measure || matchedMat.unit) : '') || '',
+      unit: unit,
+      receipt_date: tx.date || new Date().toISOString().slice(0, 10),
+      supplier_name: tx.supplier || 'Staff Inward Delivery',
       supplierName: tx.supplier || 'Staff Inward Delivery',
-      receivedBy: tx.staff || 'Staff Member',
-      date: tx.date || new Date().toISOString().slice(0, 10)
+      received_by: tx.staff || 'Staff Member',
+      created_at: new Date().toISOString()
     });
+
+    // Also persist to rmims_manager_receipts ledger
+    try {
+      const mgrRecRaw = localStorage.getItem('rmims_manager_receipts');
+      let mgrRecs = mgrRecRaw ? JSON.parse(mgrRecRaw) : [];
+      if (!Array.isArray(mgrRecs)) mgrRecs = [];
+      mgrRecs = mgrRecs.filter(r => r.ref !== tx.ref);
+      mgrRecs.unshift({
+        ref: tx.ref,
+        date: tx.date || new Date().toISOString().slice(0, 10),
+        time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        materialId: matId,
+        materialName: resolvedMatName,
+        quantity: quantity,
+        unit: unit,
+        supplier: tx.supplier || 'Staff Inward Delivery',
+        recordedBy: tx.staff || 'Staff Member',
+        approvedBy: 'Store Manager',
+        status: 'Approved',
+        notes: tx.notes || `Submitted by ${tx.staff || 'Staff'}, approved by Manager`
+      });
+      localStorage.setItem('rmims_manager_receipts', JSON.stringify(mgrRecs));
+    } catch (e) {}
   } else {
     saveCustomDisbursement({
       id: `disb-${tx.ref}`,
       referenceNo: tx.ref,
-      materialName: tx.material,
+      material_id: matId,
+      materialId: matId,
+      material_name: resolvedMatName,
+      materialName: resolvedMatName,
+      consumed_quantity: quantity,
       quantity: quantity,
-      unit: tx.unit || (matchedMat ? (matchedMat.unit_of_measure || matchedMat.unit) : '') || '',
+      unit: unit,
+      usage_date: tx.date || new Date().toISOString().slice(0, 10),
+      activity_type: 'Production Usage',
+      finished_product_name: tx.usedFor || 'Production Batch',
       context: tx.usedFor || 'Production Batch',
-      recordedBy: tx.staff || 'Staff Member',
-      date: tx.date || new Date().toISOString().slice(0, 10)
+      recorded_by: tx.staff || 'Staff Member',
+      created_at: new Date().toISOString()
     });
+
+    // Also persist to rmims_manager_disbursements ledger
+    try {
+      const mgrDisbRaw = localStorage.getItem('rmims_manager_disbursements');
+      let mgrDisbs = mgrDisbRaw ? JSON.parse(mgrDisbRaw) : [];
+      if (!Array.isArray(mgrDisbs)) mgrDisbs = [];
+      mgrDisbs = mgrDisbs.filter(d => d.ref !== tx.ref);
+      mgrDisbs.unshift({
+        ref: tx.ref,
+        date: tx.date || new Date().toISOString().slice(0, 10),
+        time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        materialId: matId,
+        materialName: resolvedMatName,
+        quantity: quantity,
+        unit: unit,
+        usedFor: tx.usedFor || 'Production Batch',
+        recordedBy: tx.staff || 'Staff Member',
+        approvedBy: 'Store Manager',
+        status: 'Approved',
+        notes: tx.notes || `Submitted by ${tx.staff || 'Staff'}, approved by Manager`
+      });
+      localStorage.setItem('rmims_manager_disbursements', JSON.stringify(mgrDisbs));
+    } catch (e) {}
   }
+
+  // 4. Record into manager activities
+  try {
+    const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+    const actRaw = localStorage.getItem('rmims_manager_activities');
+    const acts = actRaw ? JSON.parse(actRaw) : [];
+    acts.unshift({
+      datetime: tx.date || new Date().toISOString().slice(0, 10),
+      timestamp: new Date().toISOString(),
+      activity: isReceive
+        ? `Approved Staff Receive: +${quantity} ${unit} ${resolvedMatName} (${tx.ref})`
+        : `Approved Staff Disburse: -${quantity} ${unit} ${resolvedMatName} (${tx.ref})`,
+      reference: tx.ref,
+      status: 'Approved',
+      user: curUser.name || curUser.fullName || curUser.username || 'Store Manager',
+      role: 'Manager',
+      branchLoc: curUser.branchLoc || curUser.location || '',
+      branchName: curUser.branchName || curUser.branch || '',
+      action: isReceive ? 'Approved Receive' : 'Approved Disburse',
+      module: 'Staff Activity'
+    });
+    localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
+  } catch (e) {}
+
+  // 5. Invalidate forecast cache and broadcast live sync events
+  invalidateForecastCache();
+  localStorage.setItem('rmims_inventory_updated', String(Date.now()));
+  localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+  window.dispatchEvent(new Event('storage'));
+  window.dispatchEvent(new CustomEvent('rmims_inventory_updated', { detail: { materialName: resolvedMatName, delta } }));
+  window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: tx }));
 }
 
 function showReviewResult(msg, isSuccess, customBg, customColor) {

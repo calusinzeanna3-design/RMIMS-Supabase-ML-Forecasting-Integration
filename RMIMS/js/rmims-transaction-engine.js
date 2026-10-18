@@ -426,6 +426,7 @@ export function submitStaffTransaction(data) {
   allStaff.unshift(tx);
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
@@ -450,8 +451,9 @@ export function submitStaffTransaction(data) {
     }
   } catch (e) {}
 
-  // Trigger cross-tab storage event
+  // Trigger cross-tab storage and real-time custom events
   window.dispatchEvent(new Event('storage'));
+  window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: tx }));
   return tx;
 }
 
@@ -510,6 +512,7 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
 
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
@@ -534,6 +537,7 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
   } catch (e) {}
 
   window.dispatchEvent(new Event('storage'));
+  window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: updatedTx }));
   return updatedTx;
 }
 
@@ -587,9 +591,11 @@ export function updateStaffTransaction(refOrId, updatedFields) {
   allStaff[idx] = updatedTx;
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
 
   window.dispatchEvent(new Event('storage'));
+  window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: updatedTx }));
   return { success: true, transaction: updatedTx };
 }
 
@@ -619,9 +625,11 @@ export function deleteStaffTransaction(refOrId) {
   const removed = allStaff.splice(idx, 1)[0];
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
+    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
 
   window.dispatchEvent(new Event('storage'));
+  window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: removed }));
   return { success: true, transaction: removed };
 }
 

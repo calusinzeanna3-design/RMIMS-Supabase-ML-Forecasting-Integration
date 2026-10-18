@@ -56,12 +56,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 150);
   }
 
-  // Cross-tab real-time sync
+  // Cross-tab and real-time sync
+  const refreshActivityState = () => {
+    loadAndRenderActivity();
+  };
+
   window.addEventListener('storage', (e) => {
-    if (!e.key || e.key.includes('transactions') || e.key.includes('materials')) {
-      loadAndRenderActivity();
+    if (!e.key || e.key.includes('transactions') || e.key.includes('materials') || e.key.includes('activity')) {
+      refreshActivityState();
     }
   });
+  window.addEventListener('rmims_staff_transactions_updated', refreshActivityState);
+  window.addEventListener('rmims_inventory_updated', refreshActivityState);
 });
 
 function initDatePickers() {

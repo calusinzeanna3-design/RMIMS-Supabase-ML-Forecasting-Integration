@@ -410,14 +410,20 @@ document.addEventListener('DOMContentLoaded', () => {
   renderMySubmissions();
 
   // Cross-tab real-time sync
+  const refreshReceiveState = () => {
+    rawMaterials = getSystemRawMaterials();
+    populateMaterialSelect();
+    renderMySubmissions();
+    updateBundleReceivePreview();
+  };
+
   window.addEventListener('storage', (e) => {
-    if (!e.key || e.key.includes('transactions') || e.key.includes('materials') || e.key.includes('finished')) {
-      rawMaterials = getSystemRawMaterials();
-      populateMaterialSelect();
-      renderMySubmissions();
-      updateBundleReceivePreview();
+    if (!e.key || e.key.includes('transactions') || e.key.includes('materials') || e.key.includes('finished') || e.key.includes('activity')) {
+      refreshReceiveState();
     }
   });
+  window.addEventListener('rmims_staff_transactions_updated', refreshReceiveState);
+  window.addEventListener('rmims_inventory_updated', refreshReceiveState);
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleReceivePreview();
   });
