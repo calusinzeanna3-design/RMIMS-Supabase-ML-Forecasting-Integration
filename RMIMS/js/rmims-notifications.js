@@ -169,7 +169,6 @@
         badge.includes('user management') ||
         badge.includes('backup') ||
         badge.includes('restore') ||
-        badge.includes('pending review') ||
         title.includes('registration') ||
         title.includes('system backup') ||
         title.includes('system restored')
@@ -190,10 +189,16 @@
         badge.includes('action required') ||
         badge.includes('approved') ||
         badge.includes('rejected') ||
-        title.includes('correction requested') ||
+        badge.includes('pending') ||
+        badge.includes('resubmitted') ||
+        badge.includes('updated') ||
+        title.includes('correction') ||
+        title.includes('resubmitted') ||
+        title.includes('sent to manager') ||
         title.includes('transaction approved') ||
         title.includes('transaction rejected') ||
         category === 'alert' ||
+        category === 'inventory' ||
         title.includes('out of stock') ||
         title.includes('low stock') ||
         title.includes('stock restored')
@@ -968,7 +973,8 @@
   // Cross-tab and live event synchronization
   window.addEventListener('storage', (e) => {
     const role = getPortalRole();
-    if (e.key === STORAGE_STORE_KEY || e.key === getScopedReadStorageKey(role)) {
+    if (!e.key || e.key === STORAGE_STORE_KEY || e.key === getScopedReadStorageKey(role) || 
+        e.key.includes('notif') || e.key.includes('staff') || e.key.includes('activity') || e.key.includes('transaction')) {
       updateTopbarBadges(role);
       const backdrop = document.getElementById('rmimsNotifBackdrop');
       if (backdrop && backdrop.classList.contains('open')) {

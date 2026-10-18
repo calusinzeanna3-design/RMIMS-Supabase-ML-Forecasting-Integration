@@ -747,6 +747,24 @@ function renderMySubmissions() {
     return;
   }
 
+  const corrections = myReceives.filter(t => t.status === 'Correction Needed');
+  const actionBanner = document.getElementById('staffRecActionRequiredBanner');
+  const bannerTitle = document.getElementById('staffRecActionBannerTitle');
+  const bannerDesc = document.getElementById('staffRecActionBannerDesc');
+  if (actionBanner) {
+    if (corrections.length > 0) {
+      actionBanner.style.display = 'block';
+      if (bannerTitle) bannerTitle.textContent = `Action Required: ${corrections.length} submission${corrections.length === 1 ? '' : 's'} returned for correction`;
+      if (bannerDesc) {
+        const latest = corrections[0];
+        const msg = latest.correctionMessage ? ` "${latest.correctionMessage}"` : '';
+        bannerDesc.textContent = `Submission ${latest.ref} returned by Store Manager with note:${msg}. Click Edit to revise.`;
+      }
+    } else {
+      actionBanner.style.display = 'none';
+    }
+  }
+
   tbody.innerHTML = myReceives.slice(0, 10).map(t => {
     let statusPill = '<span class="status-pill pill-pending">Pending Review</span>';
     if (t.status === 'Approved') statusPill = '<span class="status-pill pill-approved">Approved</span>';
@@ -756,7 +774,7 @@ function renderMySubmissions() {
     const isCorrection = t.status === 'Correction Needed';
 
     return `
-      <tr>
+      <tr style="${isCorrection ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td><code style="background:#F1F5F9; padding:2px 6px; border-radius:5px; font-weight:700; color:#334155;">${escapeHtml(t.ref)}</code></td>
         <td><strong>${escapeHtml(t.date)}</strong> <small style="color:#64748B;">${escapeHtml(t.time || '')}</small></td>
         <td><strong>${escapeHtml(t.material)}</strong></td>
@@ -832,6 +850,10 @@ function bindStaffSubmissionActionEvents() {
         return;
       }
 
+      const allStaff = getStaffTransactions();
+      const currentTx = allStaff.find(t => t.ref === ref);
+      const isCorrection = currentTx && currentTx.status === 'Correction Needed';
+
       const res = updateStaffTransaction(ref, {
         quantity,
         supplier,
@@ -841,7 +863,10 @@ function bindStaffSubmissionActionEvents() {
       if (res && res.success) {
         closeEditModal();
         renderMySubmissions();
-        alert(`✓ Submission ${ref} updated successfully.`);
+        alert(isCorrection
+          ? `✓ Submission ${ref} corrected and resubmitted to Manager for review.`
+          : `✓ Submission ${ref} updated successfully.`
+        );
       } else {
         alert('Error updating submission: ' + (res?.message || 'Unknown error'));
       }
@@ -896,6 +921,17 @@ function openStaffEditRecModal(ref) {
   document.getElementById('staffEditRecUnit').value = tx.unit || fallbackUnit || '--';
   document.getElementById('staffEditRecSupplier').value = tx.supplier || '';
   document.getElementById('staffEditRecNotes').value = tx.notes || '';
+
+  const corrBanner = document.getElementById('staffEditRecCorrectionBanner');
+  const corrMsg = document.getElementById('staffEditRecCorrectionMsg');
+  if (corrBanner) {
+    if (tx.status === 'Correction Needed' || tx.correctionMessage) {
+      corrBanner.style.display = 'block';
+      if (corrMsg) corrMsg.textContent = `"${tx.correctionMessage || 'Please verify and correct the transaction details.'}"`;
+    } else {
+      corrBanner.style.display = 'none';
+    }
+  }
 
   modal.style.display = 'flex';
 }

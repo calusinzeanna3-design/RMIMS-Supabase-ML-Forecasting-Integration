@@ -2234,14 +2234,10 @@ import './rmims-notifications.js';
         badge.includes('user management') ||
         badge.includes('backup') ||
         badge.includes('restore') ||
-        badge.includes('pending review') ||
         title.includes('registration') ||
         title.includes('system backup') ||
         title.includes('system restored')
       ) {
-        return false;
-      }
-      if (title.includes('raw material received') || title.includes('raw material disbursed')) {
         return false;
       }
       if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
@@ -2253,9 +2249,16 @@ import './rmims-notifications.js';
         targetRole === 'user' ||
         targetUrl.includes('user/') ||
         badge.includes('action required') ||
+        badge.includes('correction') ||
+        badge.includes('resubmitted') ||
+        badge.includes('pending') ||
         badge.includes('approved') ||
         badge.includes('rejected') ||
         title.includes('correction requested') ||
+        title.includes('correction needed') ||
+        title.includes('resubmitted') ||
+        title.includes('submitted to manager') ||
+        title.includes('pending review') ||
         title.includes('transaction approved') ||
         title.includes('transaction rejected') ||
         category === 'alert' ||
@@ -2431,7 +2434,8 @@ import './rmims-notifications.js';
 
   // Cross-tab synchronization
   window.addEventListener('storage', (e) => {
-    if (e.key === NOTIF_STORE_KEY || e.key === getReadStorageKey()) {
+    if (!e.key || e.key === NOTIF_STORE_KEY || e.key === getReadStorageKey() ||
+        e.key.includes('notif') || e.key.includes('staff') || e.key.includes('activity') || e.key.includes('transaction')) {
       renderNotifications();
       if (document.getElementById("rmsmeAllNotificationsOverlay")?.classList.contains("open")) {
         renderModalList();

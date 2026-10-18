@@ -225,6 +225,20 @@
           <span style="font-size:12px; color:#5C7A68;" id="myDisbSubCount">0 submissions</span>
         </div>
 
+        <!-- Action Required banner for returned submissions -->
+        <div id="staffDisbActionRequiredBanner" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; border-radius:12px; padding:14px 18px; margin-top:14px; animation:mgrZoomIn 0.25s ease;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:20px;">⚠️</span>
+              <div>
+                <h4 style="margin:0; font-size:14px; font-weight:700; color:#92400E;" id="staffDisbActionBannerTitle">Action Required: Correction Needed</h4>
+                <p style="margin:2px 0 0; font-size:12.5px; color:#B45309;" id="staffDisbActionBannerDesc">The Store Manager returned a disbursement submission with notes. Click Edit to revise and resubmit.</p>
+              </div>
+            </div>
+            <a href="my-activity.html?filter=Correction%20Needed" class="btn-primary" style="background:#D97706; color:#FFFFFF; border:none; padding:6px 14px; font-size:12px; font-weight:700; border-radius:6px; text-decoration:none;">View Corrections</a>
+          </div>
+        </div>
+
         <div style="overflow-x:auto; width:100%; margin-top:14px;">
           <table class="mgr-tx-table">
             <thead>
@@ -345,6 +359,15 @@
     <form id="staffEditDisbForm">
       <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:70vh; overflow-y:auto;">
         <input type="hidden" id="staffEditDisbRef">
+
+        <!-- Manager Correction Message Banner (shown when status is Correction Needed) -->
+        <div id="staffEditDisbCorrectionBanner" style="display:none; background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; padding:12px 14px;">
+          <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#92400E; font-size:12px; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Manager Correction Requested</span>
+          </div>
+          <p id="staffEditDisbCorrectionMsg" style="margin:0; font-size:13px; color:#78350F; line-height:1.45; font-style:italic; font-weight:500;">--</p>
+        </div>
 
         <div>
           <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Reference Number</label>

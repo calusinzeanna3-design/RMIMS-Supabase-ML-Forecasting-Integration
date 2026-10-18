@@ -518,6 +518,7 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
   // Broadcast live notification across all portals (Admin, Manager, Staff)
   try {
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      // 1. Notify Manager of resubmission
       window.pushRMIMSNotification({
         title: `Transaction Resubmitted: ${targetRef}`,
         message: `Staff corrected and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}). Pending review.`,
@@ -528,6 +529,23 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
         roleScope: 'manager',
         priority: 'normal',
         targetUrl: 'manager/staff-activity.html',
+        ref: targetRef,
+        material: updatedTx.material,
+        quantity: updatedTx.qty,
+        actor: updatedTx.staff || 'Staff Member'
+      });
+
+      // 2. Notify Staff member that their resubmission is now pending manager review
+      window.pushRMIMSNotification({
+        title: `Resubmitted to Manager: ${targetRef}`,
+        message: `You revised and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}) to Store Manager for approval.`,
+        category: 'Inventory',
+        badge: 'Pending',
+        role: 'staff',
+        targetRole: 'staff',
+        roleScope: 'staff',
+        priority: 'normal',
+        targetUrl: `user/my-activity.html?view=${encodeURIComponent(targetRef)}`,
         ref: targetRef,
         material: updatedTx.material,
         quantity: updatedTx.qty,
@@ -555,6 +573,8 @@ export function getStaffTransactions() {
 
 /**
  * Updates a Staff transaction record and synchronizes stock if it was already Approved.
+ * If transaction was returned for 'Correction Needed', it resets to 'Pending', marks 'isUpdated: true',
+ * records previous values, and alerts both Manager and Staff.
  */
 export function updateStaffTransaction(refOrId, updatedFields) {
   const allStaff = getStaffTransactions();
@@ -570,6 +590,8 @@ export function updateStaffTransaction(refOrId, updatedFields) {
   const newQty = updatedFields.quantity != null ? parseFloat(updatedFields.quantity) : oldQty;
   const newUnit = updatedFields.unit || current.unit || '';
   const isApproved = (current.status || '').toLowerCase() === 'approved';
+  const isCorrection = (current.status || '') === 'Correction Needed';
+  const targetRef = current.ref || refOrId;
 
   // If approved, adjust inventory delta
   if (isApproved && newQty !== oldQty) {
@@ -578,6 +600,17 @@ export function updateStaffTransaction(refOrId, updatedFields) {
     adjustSystemMaterialStock(current.material, delta);
   }
 
+  const previousValues = {
+    material: current.material,
+    quantity: current.quantity,
+    qty: current.qty || `${current.quantity}${current.unit ? ' ' + current.unit : ''}`,
+    unit: current.unit,
+    date: current.date,
+    notes: current.notes,
+    usedFor: current.usedFor,
+    supplier: current.supplier
+  };
+
   const updatedTx = {
     ...current,
     ...updatedFields,
@@ -585,6 +618,10 @@ export function updateStaffTransaction(refOrId, updatedFields) {
     qty: `${newQty}${newUnit ? ' ' + newUnit : ''}`,
     qtyNum: newQty,
     unit: newUnit,
+    status: isCorrection ? 'Pending' : (updatedFields.status || current.status || 'Pending'),
+    isUpdated: isCorrection ? true : (current.isUpdated || false),
+    previousCorrectionMessage: isCorrection ? (current.correctionMessage || current.rejectionReason || 'Please verify details.') : (current.previousCorrectionMessage || null),
+    previousValues: isCorrection ? previousValues : (current.previousValues || null),
     updatedAt: new Date().toISOString()
   };
 
@@ -592,6 +629,52 @@ export function updateStaffTransaction(refOrId, updatedFields) {
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
     localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+  } catch (e) {}
+
+  // Broadcast live notifications to Manager and Staff
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      const actTitle = isCorrection ? `Transaction Resubmitted: ${targetRef}` : `Submission Updated: ${targetRef}`;
+      const mgrMsg = isCorrection
+        ? `Staff corrected and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}). Pending review.`
+        : `Staff updated submission ${targetRef} (${updatedTx.qty} of ${updatedTx.material}). Pending review.`;
+
+      // 1. Notify Manager
+      window.pushRMIMSNotification({
+        title: actTitle,
+        message: mgrMsg,
+        category: 'Inventory',
+        badge: isCorrection ? 'Updated' : 'Pending Review',
+        role: 'manager',
+        targetRole: 'manager',
+        roleScope: 'manager',
+        priority: 'normal',
+        targetUrl: 'manager/staff-activity.html',
+        ref: targetRef,
+        material: updatedTx.material,
+        quantity: updatedTx.qty,
+        actor: updatedTx.staff || 'Staff Member'
+      });
+
+      // 2. Notify Staff member
+      window.pushRMIMSNotification({
+        title: isCorrection ? `Resubmitted to Manager: ${targetRef}` : `Update Sent to Manager: ${targetRef}`,
+        message: isCorrection
+          ? `You revised and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}) to Store Manager for approval.`
+          : `Updated details for ${targetRef} (${updatedTx.qty} of ${updatedTx.material}) sent to Store Manager for review.`,
+        category: 'Inventory',
+        badge: 'Pending',
+        role: 'staff',
+        targetRole: 'staff',
+        roleScope: 'staff',
+        priority: 'normal',
+        targetUrl: `user/my-activity.html?view=${encodeURIComponent(targetRef)}`,
+        ref: targetRef,
+        material: updatedTx.material,
+        quantity: updatedTx.qty,
+        actor: updatedTx.staff || 'Staff Member'
+      });
+    }
   } catch (e) {}
 
   window.dispatchEvent(new Event('storage'));

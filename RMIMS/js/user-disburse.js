@@ -773,9 +773,28 @@ function renderMySubmissions() {
     return;
   }
 
+  const corrections = staffTx.filter(t => t.status === 'Correction Needed');
+  const actionBanner = document.getElementById('staffDisbActionRequiredBanner');
+  const bannerTitle = document.getElementById('staffDisbActionBannerTitle');
+  const bannerDesc = document.getElementById('staffDisbActionBannerDesc');
+  if (actionBanner) {
+    if (corrections.length > 0) {
+      actionBanner.style.display = 'block';
+      if (bannerTitle) bannerTitle.textContent = `Action Required: ${corrections.length} submission${corrections.length === 1 ? '' : 's'} returned for correction`;
+      if (bannerDesc) {
+        const latest = corrections[0];
+        const msg = latest.correctionMessage ? ` "${latest.correctionMessage}"` : '';
+        bannerDesc.textContent = `Disbursement ${latest.ref} returned by Store Manager with note:${msg}. Click Edit to revise.`;
+      }
+    } else {
+      actionBanner.style.display = 'none';
+    }
+  }
+
   tbody.innerHTML = staffTx.slice(0, 10).map(t => {
     let statusBadge = '';
     const st = t.status || 'Pending';
+    const isCorrection = st === 'Correction Needed';
     if (st === 'Approved') {
       statusBadge = `<span class="badge" style="background:#DCFCE7; color:#15803D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Approved</span>`;
     } else if (st === 'Rejected') {
@@ -796,7 +815,7 @@ function renderMySubmissions() {
     const createdFormatted = t.createdAt ? new Date(t.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : (t.date || '--');
 
     return `
-      <tr>
+      <tr style="${isCorrection ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B;">${escapeHtml(t.ref)}</td>
         <td style="color:#64748B; font-size:12px;">${escapeHtml(createdFormatted)}</td>
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
@@ -869,6 +888,10 @@ function bindStaffDisbActionEvents() {
         return;
       }
 
+      const allStaff = getStaffTransactions();
+      const currentTx = allStaff.find(t => t.ref === ref);
+      const isCorrection = currentTx && currentTx.status === 'Correction Needed';
+
       const res = updateStaffTransaction(ref, {
         quantity,
         usedFor,
@@ -878,7 +901,10 @@ function bindStaffDisbActionEvents() {
       if (res && res.success) {
         closeEditModal();
         renderMySubmissions();
-        alert(`✓ Submission ${ref} updated successfully.`);
+        alert(isCorrection
+          ? `✓ Submission ${ref} corrected and resubmitted to Manager for review.`
+          : `✓ Submission ${ref} updated successfully.`
+        );
       } else {
         alert('Error updating submission: ' + (res?.message || 'Unknown error'));
       }
@@ -933,6 +959,17 @@ function openStaffEditDisbModal(ref) {
   document.getElementById('staffEditDisbUnit').value = tx.unit || fallbackUnit || '--';
   document.getElementById('staffEditDisbUsedFor').value = tx.usedFor || '';
   document.getElementById('staffEditDisbNotes').value = tx.notes || '';
+
+  const corrBanner = document.getElementById('staffEditDisbCorrectionBanner');
+  const corrMsg = document.getElementById('staffEditDisbCorrectionMsg');
+  if (corrBanner) {
+    if (tx.status === 'Correction Needed' || tx.correctionMessage) {
+      corrBanner.style.display = 'block';
+      if (corrMsg) corrMsg.textContent = `"${tx.correctionMessage || 'Please verify and correct the transaction details.'}"`;
+    } else {
+      corrBanner.style.display = 'none';
+    }
+  }
 
   modal.style.display = 'flex';
 }
