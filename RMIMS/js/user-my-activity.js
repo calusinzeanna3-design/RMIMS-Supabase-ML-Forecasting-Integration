@@ -235,6 +235,38 @@ function bindEvents() {
   if (btnSubmitCorr) {
     btnSubmitCorr.addEventListener('click', handleResubmitCorrection);
   }
+
+  // Delegated click handler on table body for View Message and Correct buttons
+  const tbody = document.getElementById('myActivityTbody');
+  if (tbody) {
+    tbody.addEventListener('click', (e) => {
+      const viewBtn = e.target.closest('.btn-view-tx');
+      if (viewBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = viewBtn.getAttribute('data-id');
+        const tx = allTransactions.find(t => 
+          (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
+          (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
+        );
+        if (tx) openViewModal(tx);
+        return;
+      }
+
+      const correctBtn = e.target.closest('.btn-correct-tx');
+      if (correctBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = correctBtn.getAttribute('data-id');
+        const tx = allTransactions.find(t => 
+          (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
+          (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
+        );
+        if (tx) openCorrectionModal(tx);
+        return;
+      }
+    });
+  }
 }
 
 function loadAndRenderActivity() {
@@ -401,30 +433,9 @@ function applyFiltersAndRender() {
       `;
     }
 
-    // Note snippet or prominent manager revision message
-    let noteSnippet = '';
-    if (statusVal === 'Correction Needed' && t.correctionMessage) {
-      noteSnippet = `
-        <div style="display:flex; flex-direction:column; gap:2px;">
-          <span style="color:#B45309; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:3px;">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Manager Revision Note:
-          </span>
-          <span style="color:#78350F; font-size:12px; font-weight:600; background:#FFFBEB; border:1px solid #FDE68A; padding:2px 7px; border-radius:5px; display:inline-block;" title="${escapeHtml(t.correctionMessage)}">
-            "${escapeHtml(t.correctionMessage.substring(0, 36))}${t.correctionMessage.length > 36 ? '...' : ''}"
-          </span>
-        </div>
-      `;
-    } else if (t.isUpdated) {
-      noteSnippet = `
-        <div style="display:flex; flex-direction:column; gap:2px;">
-          <span style="color:#0369A1; font-weight:700; font-size:11px;">🔵 Revised Record</span>
-          <span style="color:#64748B; font-size:11.5px;">${escapeHtml((t.notes || t.supplier || t.usedFor || '--').substring(0, 30))}</span>
-        </div>
-      `;
-    } else {
-      noteSnippet = `<span style="color:#64748B; font-size:12px;">${escapeHtml((t.notes || t.supplier || t.usedFor || '--').substring(0, 32))}</span>`;
-    }
+    // Note snippet: display transaction notes; manager revision feedback is kept in View Message modal
+    const displayNote = (t.notes && String(t.notes).trim()) ? escapeHtml(t.notes.trim()) : '—';
+    const noteSnippet = `<span style="color:#64748B; font-size:12px;">${displayNote}</span>`;
 
     return `
       <tr style="${statusVal === 'Correction Needed' ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
@@ -440,10 +451,11 @@ function applyFiltersAndRender() {
     `;
   }).join('');
 
-  // Attach button listeners:
+  // Explicit button listeners fallback:
   // 1) View Details / View Message button: Opens Activity & Message Viewer Modal
   tbody.querySelectorAll('.btn-view-tx').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const id = btn.getAttribute('data-id');
       const tx = allTransactions.find(t => 
         (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
@@ -453,18 +465,17 @@ function applyFiltersAndRender() {
     });
   });
 
-  // 2) Correct / Edit button: Opens Activity & Message Viewer or opens form directly
+  // 2) Correct / Edit button: Opens the on-screen compact Correction Form Modal directly
   tbody.querySelectorAll('.btn-correct-tx').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const id = btn.getAttribute('data-id');
       const tx = allTransactions.find(t => 
         (t.ref && t.ref.toLowerCase() === String(id).toLowerCase()) || 
         (t.id && String(t.id).toLowerCase() === String(id).toLowerCase())
       );
       if (tx) {
-        // If it needs correction, open viewer so staff sees the message first
-        // If it's pending, open viewer so staff sees current details with Update button
-        openViewModal(tx);
+        openCorrectionModal(tx);
       }
     });
   });
@@ -675,16 +686,13 @@ function handleResubmitCorrection() {
     alert('Please enter a valid positive quantity.');
     return;
   }
-  if (!sourceVal) {
-    alert('Please provide the supplier source or purpose.');
-    return;
-  }
   if (!date) {
     alert('Please specify the transaction date.');
     return;
   }
 
   const isReceive = (activeTxForCorrection.activity === 'Receive' || activeTxForCorrection.type === 'Receive');
+  const finalSource = sourceVal || (isReceive ? (activeTxForCorrection.supplier || 'Standard Delivery') : (activeTxForCorrection.usedFor || 'General Batch'));
 
   const updatedFields = {
     material,
