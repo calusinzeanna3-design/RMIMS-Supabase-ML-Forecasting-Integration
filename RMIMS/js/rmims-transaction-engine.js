@@ -454,6 +454,14 @@ export function submitStaffTransaction(data) {
   // Trigger cross-tab storage and real-time custom events
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: tx }));
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: tx,
+        allTransactions: allStaff
+      });
+    }
+  } catch (e) {}
   return tx;
 }
 
@@ -556,6 +564,14 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
 
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: updatedTx }));
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: updatedTx,
+        allTransactions: allStaff
+      });
+    }
+  } catch (e) {}
   return updatedTx;
 }
 
@@ -679,6 +695,14 @@ export function updateStaffTransaction(refOrId, updatedFields) {
 
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: updatedTx }));
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: updatedTx,
+        allTransactions: allStaff
+      });
+    }
+  } catch (e) {}
   return { success: true, transaction: updatedTx };
 }
 
@@ -713,6 +737,14 @@ export function deleteStaffTransaction(refOrId) {
 
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: removed }));
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        deletedRef: current.ref || refOrId,
+        allTransactions: allStaff
+      });
+    }
+  } catch (e) {}
   return { success: true, transaction: removed };
 }
 

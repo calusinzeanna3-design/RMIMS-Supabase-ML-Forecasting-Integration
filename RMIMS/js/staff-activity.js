@@ -502,22 +502,35 @@ function handleConfirmReturnForCorrection() {
   } catch (e) {}
 
   // Broadcast live notification across all roles (Admin, Manager, Staff)
+  const corrNotif = {
+    title: `Correction Requested: ${activeReviewItem.ref}`,
+    message: `Transaction ${activeReviewItem.ref} returned by Store Manager: "${msg}". Action required from staff.`,
+    category: 'Inventory',
+    badge: 'Action Required',
+    role: 'staff',
+    targetRole: 'staff',
+    roleScope: 'staff',
+    priority: 'high',
+    targetUrl: `user/my-activity.html?correct=${encodeURIComponent(activeReviewItem.ref)}`,
+    ref: activeReviewItem.ref,
+    material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
+    quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
+    actor: 'Store Manager'
+  };
+
   try {
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-      window.pushRMIMSNotification({
-        title: `Correction Requested: ${activeReviewItem.ref}`,
-        message: `Transaction ${activeReviewItem.ref} returned by Store Manager: "${msg}". Action required from staff.`,
-        category: 'Inventory',
-        badge: 'Action Required',
-        role: 'staff',
-        targetRole: 'staff',
-        roleScope: 'staff',
-        priority: 'high',
-        targetUrl: `user/my-activity.html?correct=${encodeURIComponent(activeReviewItem.ref)}`,
-        ref: activeReviewItem.ref,
-        material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
-        quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
-        actor: 'Store Manager'
+      window.pushRMIMSNotification(corrNotif);
+    }
+  } catch (e) {}
+
+  // Broadcast cross-tab, cross-browser & cross-device to Staff and Admin
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: activeReviewItem,
+        notification: corrNotif,
+        allTransactions: transactions
       });
     }
   } catch (e) {}
@@ -557,22 +570,35 @@ function handleConfirmReject() {
   } catch (e) {}
 
   // Broadcast live notification across all roles (Admin, Manager, Staff)
+  const rejNotif = {
+    title: `Transaction Rejected: ${activeReviewItem.ref}`,
+    message: `Transaction ${activeReviewItem.ref} was rejected by Store Manager: "${reason}".`,
+    category: 'Inventory',
+    badge: 'Rejected',
+    role: 'staff',
+    targetRole: 'staff',
+    roleScope: 'staff',
+    priority: 'normal',
+    targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeReviewItem.ref)}`,
+    ref: activeReviewItem.ref,
+    material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
+    quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
+    actor: 'Store Manager'
+  };
+
   try {
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-      window.pushRMIMSNotification({
-        title: `Transaction Rejected: ${activeReviewItem.ref}`,
-        message: `Transaction ${activeReviewItem.ref} was rejected by Store Manager: "${reason}".`,
-        category: 'Inventory',
-        badge: 'Rejected',
-        role: 'staff',
-        targetRole: 'staff',
-        roleScope: 'staff',
-        priority: 'normal',
-        targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeReviewItem.ref)}`,
-        ref: activeReviewItem.ref,
-        material: activeReviewItem.material || activeReviewItem.rawMaterial || '',
-        quantity: activeReviewItem.qty || `${activeReviewItem.quantity || ''}`,
-        actor: 'Store Manager'
+      window.pushRMIMSNotification(rejNotif);
+    }
+  } catch (e) {}
+
+  // Broadcast cross-tab, cross-browser & cross-device to Staff and Admin
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: activeReviewItem,
+        notification: rejNotif,
+        allTransactions: transactions
       });
     }
   } catch (e) {}
@@ -741,6 +767,40 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_inventory_updated', { detail: { materialName: resolvedMatName, delta } }));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: tx }));
+
+  // Broadcast live notification across all roles (Admin, Manager, Staff)
+  const appNotif = {
+    title: `Transaction Approved: ${tx.ref}`,
+    message: `Your submission ${tx.ref} (+${quantity} ${unit} of ${resolvedMatName}) was approved by Store Manager. Inventory updated.`,
+    category: 'Inventory',
+    badge: 'Approved',
+    role: 'staff',
+    targetRole: 'staff',
+    roleScope: 'staff',
+    priority: 'normal',
+    targetUrl: `user/my-activity.html?view=${encodeURIComponent(tx.ref)}`,
+    ref: tx.ref,
+    material: resolvedMatName,
+    quantity: `${quantity} ${unit}`,
+    actor: 'Store Manager'
+  };
+
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification(appNotif);
+    }
+  } catch (e) {}
+
+  // Broadcast cross-tab, cross-browser & cross-device to Staff and Admin
+  try {
+    if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+      window.broadcastRMIMSSync({
+        transaction: tx,
+        notification: appNotif,
+        allTransactions: transactions
+      });
+    }
+  } catch (e) {}
 }
 
 function showReviewResult(msg, isSuccess, customBg, customColor) {

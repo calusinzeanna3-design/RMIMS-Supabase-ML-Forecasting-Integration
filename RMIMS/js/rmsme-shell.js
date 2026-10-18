@@ -1,4 +1,5 @@
 import './rmims-notifications.js';
+import { supabase } from '../supabase/supabase-config.js';
 
 (function () {
   /* Cleanup Appearance Mode preference & attributes */
@@ -2461,7 +2462,6 @@ import './rmims-notifications.js';
     isSyncing = true;
 
     try {
-      const { supabase } = await import('../supabase/supabase-config.js');
       if (!supabase) return;
 
       // 1. Fetch live operational data from Supabase
@@ -2701,54 +2701,259 @@ import './rmims-notifications.js';
         renderModalList();
       }
 
-      // Managed Supabase Realtime Subscription (Single instance per page with clean unload)
-      if (!window.__rmimsRealtimeChannel) {
-        window.__rmimsRealtimeChannel = supabase
-          .channel('rmims_shared_notifications')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, () => syncAuthoritativeNotifications())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, () => syncAuthoritativeNotifications())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => syncAuthoritativeNotifications())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => syncAuthoritativeNotifications())
-          .on('broadcast', { event: 'user_login' }, payload => {
-            if (payload?.payload) {
-              const p = payload.payload;
-              if (!p.accountName || p.accountName === 'Staff User' || p.accountName === 'Manager' || !p.userId) {
-                return;
-              }
-              const loginId = `notif-login-live-${p.userId}-${new Date(p.timestamp || Date.now()).getTime()}`;
-              const stored = getStoredNotifications();
-              if (!stored.some(n => n.id === loginId)) {
-                stored.unshift({
-                  id: loginId,
-                  category: 'login',
-                  priority: 'info',
-                  title: `${p.accountName} Signed In`,
-                  message: `${p.role === 'admin' ? 'Administrator' : 'Staff'} account login detected.`,
-                  actor: 'Source: System',
-                  userId: p.userId,
-                  roleScope: p.role,
-                  timestamp: p.timestamp || new Date().toISOString()
-                });
-                saveStoredNotifications(stored);
-                renderNotifications();
-              }
-            }
-          })
-          .subscribe();
-
-        window.addEventListener('beforeunload', () => {
-          if (window.__rmimsRealtimeChannel) {
-            supabase.removeChannel(window.__rmimsRealtimeChannel);
-            window.__rmimsRealtimeChannel = null;
-          }
-        });
-      }
+      // Supabase database table sync completed
     } catch (err) {
       console.warn("Authoritative notification sync notice:", err);
     } finally {
       isSyncing = false;
     }
   }
+
+  /* ==========================================================
+     CROSS-TAB & CROSS-BROWSER REALTIME SYNCHRONIZATION BRIDGE
+     (Connects Manager & Staff across Normal, Incognito & Devices)
+     ========================================================== */
+  const CROSS_BUS_NAME = 'rmims_cross_sync_bus';
+  let crossBroadcastChannel = null;
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      crossBroadcastChannel = new BroadcastChannel(CROSS_BUS_NAME);
+    }
+  } catch (_) {}
+
+  let isRealtimeSubscribed = false;
+  const pendingRealtimeMessages = [];
+
+  function handleIncomingStaffTxSync(payload) {
+    if (!payload) return;
+    const { transaction, allTransactions, notification, notifications, deletedRef } = payload;
+    let modified = false;
+
+    // 1. Merge transactions into local rmims_staff_transactions
+    try {
+      const raw = localStorage.getItem('rmims_staff_transactions');
+      let localList = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(localList)) localList = [];
+
+      if (deletedRef) {
+        const dKey = String(deletedRef).trim().toLowerCase();
+        localList = localList.filter(t => String(t.ref || '').trim().toLowerCase() !== dKey && String(t.id || '').trim().toLowerCase() !== dKey);
+        modified = true;
+      }
+
+      if (transaction && transaction.ref) {
+        const searchRef = String(transaction.ref).trim().toLowerCase();
+        const idx = localList.findIndex(t => String(t.ref || '').trim().toLowerCase() === searchRef);
+        if (idx !== -1) {
+          localList[idx] = { ...localList[idx], ...transaction };
+        } else {
+          localList.unshift(transaction);
+        }
+        modified = true;
+      }
+
+      if (Array.isArray(allTransactions) && allTransactions.length > 0) {
+        allTransactions.forEach(remoteTx => {
+          if (!remoteTx || !remoteTx.ref) return;
+          const searchRef = String(remoteTx.ref).trim().toLowerCase();
+          const idx = localList.findIndex(t => String(t.ref || '').trim().toLowerCase() === searchRef);
+          if (idx !== -1) {
+            localList[idx] = { ...localList[idx], ...remoteTx };
+          } else {
+            localList.push(remoteTx);
+            modified = true;
+          }
+        });
+      }
+
+      if (modified) {
+        localStorage.setItem('rmims_staff_transactions', JSON.stringify(localList));
+        localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+      }
+    } catch (_) {}
+
+    // 2. Ingest notifications (single or batch)
+    const notifsToIngest = [];
+    if (notification && notification.title) notifsToIngest.push(notification);
+    if (Array.isArray(notifications)) {
+      notifications.forEach(n => {
+        if (n && n.title) notifsToIngest.push(n);
+      });
+    }
+
+    if (notifsToIngest.length > 0) {
+      try {
+        const stored = getStoredNotifications();
+        let notifModified = false;
+        notifsToIngest.forEach(notifItem => {
+          const notifId = notifItem.id || `notif-sync-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+          if (!stored.some(n => n.id === notifId || (n.ref && notifItem.ref && n.ref === notifItem.ref && n.badge === notifItem.badge))) {
+            stored.unshift({
+              ...notifItem,
+              id: notifId,
+              timestamp: notifItem.timestamp || new Date().toISOString()
+            });
+            notifModified = true;
+          }
+        });
+        if (notifModified) {
+          saveStoredNotifications(stored);
+        }
+      } catch (_) {}
+    }
+
+    // 3. Dispatch internal events so all UI tables, badges, and counters update instantly
+    try {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: payload }));
+      window.dispatchEvent(new CustomEvent('rmims:notification_change'));
+      renderNotifications();
+      if (window.RMIMS_NOTIFICATIONS_POPUP && typeof window.RMIMS_NOTIFICATIONS_POPUP.updateBadges === 'function') {
+        window.RMIMS_NOTIFICATIONS_POPUP.updateBadges();
+      }
+    } catch (_) {}
+  }
+
+  function handleIncomingStateRequest() {
+    try {
+      const raw = localStorage.getItem('rmims_staff_transactions');
+      const list = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(list) && list.length > 0) {
+        const storedNotifs = getStoredNotifications();
+        window.broadcastRMIMSSync({
+          allTransactions: list,
+          notifications: storedNotifs,
+          isStateResponse: true
+        });
+      }
+    } catch (_) {}
+  }
+
+  // Global sync dispatcher
+  window.broadcastRMIMSSync = function(data) {
+    if (!data) return;
+    // A. Local BroadcastChannel (tabs in same browser)
+    try {
+      if (crossBroadcastChannel) {
+        crossBroadcastChannel.postMessage(data);
+      }
+    } catch (_) {}
+
+    // B. Supabase Realtime Channel (cross-browser, incognito, and separate devices)
+    try {
+      if (window.__rmimsRealtimeChannel) {
+        const evtName = data.isStateRequest ? 'rmims_state_request' : (data.isStateResponse ? 'rmims_state_response' : 'rmims_sync_event');
+        const msg = {
+          type: 'broadcast',
+          event: evtName,
+          payload: data
+        };
+        if (isRealtimeSubscribed) {
+          window.__rmimsRealtimeChannel.send(msg);
+        } else {
+          pendingRealtimeMessages.push(msg);
+        }
+      }
+    } catch (_) {}
+  };
+
+  if (crossBroadcastChannel) {
+    crossBroadcastChannel.onmessage = (e) => {
+      const data = e.data;
+      if (!data) return;
+      if (data.isStateRequest) {
+        handleIncomingStateRequest();
+      } else {
+        handleIncomingStaffTxSync(data);
+      }
+    };
+  }
+
+  // Initialize Realtime subscription immediately
+  function initRealtimeSyncBridge() {
+    if (window.__rmimsRealtimeChannel || !supabase) return;
+    try {
+      window.__rmimsRealtimeChannel = supabase
+        .channel('rmims_shared_notifications')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, () => syncAuthoritativeNotifications())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, () => syncAuthoritativeNotifications())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => syncAuthoritativeNotifications())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => syncAuthoritativeNotifications())
+        .on('broadcast', { event: 'user_login' }, payload => {
+          if (payload?.payload) {
+            const p = payload.payload;
+            if (!p.accountName || p.accountName === 'Staff User' || p.accountName === 'Manager' || !p.userId) {
+              return;
+            }
+            const loginId = `notif-login-live-${p.userId}-${new Date(p.timestamp || Date.now()).getTime()}`;
+            const stored = getStoredNotifications();
+            if (!stored.some(n => n.id === loginId)) {
+              stored.unshift({
+                id: loginId,
+                category: 'login',
+                priority: 'info',
+                title: `${p.accountName} Signed In`,
+                message: `${p.role === 'admin' ? 'Administrator' : 'Staff'} account login detected.`,
+                actor: 'Source: System',
+                userId: p.userId,
+                roleScope: p.role,
+                timestamp: p.timestamp || new Date().toISOString()
+              });
+              saveStoredNotifications(stored);
+              renderNotifications();
+            }
+          }
+        })
+        .on('broadcast', { event: 'rmims_sync_event' }, payload => {
+          if (payload?.payload) handleIncomingStaffTxSync(payload.payload);
+        })
+        .on('broadcast', { event: 'rmims_state_request' }, () => {
+          handleIncomingStateRequest();
+        })
+        .on('broadcast', { event: 'rmims_state_response' }, payload => {
+          if (payload?.payload) handleIncomingStaffTxSync(payload.payload);
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            isRealtimeSubscribed = true;
+            while (pendingRealtimeMessages.length > 0) {
+              const m = pendingRealtimeMessages.shift();
+              try { window.__rmimsRealtimeChannel.send(m); } catch (_) {}
+            }
+            // Request state handshake from other windows/browsers if local has 0 transactions
+            try {
+              const rawTx = localStorage.getItem('rmims_staff_transactions');
+              const list = rawTx ? JSON.parse(rawTx) : [];
+              if (!Array.isArray(list) || list.length === 0) {
+                window.broadcastRMIMSSync({ isStateRequest: true });
+              }
+            } catch (_) {}
+          }
+        });
+
+      window.addEventListener('beforeunload', () => {
+        if (window.__rmimsRealtimeChannel) {
+          supabase.removeChannel(window.__rmimsRealtimeChannel);
+          window.__rmimsRealtimeChannel = null;
+        }
+      });
+    } catch (e) {
+      console.warn("Realtime sync init warning:", e);
+    }
+  }
+
+  initRealtimeSyncBridge();
+
+  // If local transactions are empty at boot, send immediate state requests
+  try {
+    const rawTx = localStorage.getItem('rmims_staff_transactions');
+    const list = rawTx ? JSON.parse(rawTx) : [];
+    if (!Array.isArray(list) || list.length === 0) {
+      window.broadcastRMIMSSync({ isStateRequest: true });
+      setTimeout(() => window.broadcastRMIMSSync({ isStateRequest: true }), 400);
+      setTimeout(() => window.broadcastRMIMSSync({ isStateRequest: true }), 1200);
+    }
+  } catch (_) {}
 
   // Global Notification helper for direct system actions
   window.RMIMS_NOTIFICATIONS = {

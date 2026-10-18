@@ -732,6 +732,13 @@ function renderMySubmissions() {
   if (!tbody) return;
 
   const allStaff = getStaffTransactions();
+  if (allStaff.length === 0) {
+    try {
+      if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+        window.broadcastRMIMSSync({ isStateRequest: true });
+      }
+    } catch (_) {}
+  }
   const myReceives = allStaff.filter(t => t.activity === 'Receive');
 
   if (countEl) countEl.textContent = `${myReceives.length} submissions`;

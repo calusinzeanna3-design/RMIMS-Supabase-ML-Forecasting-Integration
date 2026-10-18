@@ -759,7 +759,15 @@ function renderMySubmissions() {
   const countEl = document.getElementById('myDisbSubCount');
   if (!tbody) return;
 
-  const staffTx = getStaffTransactions().filter(t => t.activity === 'Disburse' || t.type === 'Disburse');
+  const allTx = getStaffTransactions();
+  if (allTx.length === 0) {
+    try {
+      if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+        window.broadcastRMIMSSync({ isStateRequest: true });
+      }
+    } catch (_) {}
+  }
+  const staffTx = allTx.filter(t => t.activity === 'Disburse' || t.type === 'Disburse');
   if (countEl) countEl.textContent = `${staffTx.length} submission${staffTx.length === 1 ? '' : 's'}`;
 
   if (staffTx.length === 0) {

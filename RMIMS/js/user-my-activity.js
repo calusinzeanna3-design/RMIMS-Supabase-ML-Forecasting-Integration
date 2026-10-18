@@ -68,6 +68,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('rmims_staff_transactions_updated', refreshActivityState);
   window.addEventListener('rmims_inventory_updated', refreshActivityState);
+
+  // If no transactions currently loaded, ping for state synchronization
+  if (allTransactions.length === 0) {
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+        window.broadcastRMIMSSync({ isStateRequest: true });
+      }
+    }, 400);
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+        window.broadcastRMIMSSync({ isStateRequest: true });
+      }
+    }, 1200);
+  }
 });
 
 function initDatePickers() {
@@ -225,6 +239,13 @@ function bindEvents() {
 
 function loadAndRenderActivity() {
   allTransactions = getStaffTransactions();
+  if (allTransactions.length === 0) {
+    try {
+      if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
+        window.broadcastRMIMSSync({ isStateRequest: true });
+      }
+    } catch (_) {}
+  }
   updateStatCards();
   applyFiltersAndRender();
 }
