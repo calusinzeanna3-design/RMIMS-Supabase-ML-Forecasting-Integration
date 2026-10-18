@@ -155,36 +155,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const isTouchDevice = window.matchMedia('(hover: none)').matches;
 
   // ==========================================
-  // 1. THEME ENGINE (LIGHT / DARK MODE TOGGLE)
+  // 1. PERMANENT CLEAN LIGHT THEME LOCK
   // ==========================================
-  const themeToggleBtn = document.getElementById("themeToggleBtn");
-  const storedTheme = localStorage.getItem("rmsme_theme");
-  
-  let currentTheme = storedTheme || "dark";
-  applyTheme(currentTheme);
-
-  function applyTheme(theme) {
-    currentTheme = theme;
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("rmsme_theme", theme);
-    if (themeToggleBtn) {
-      themeToggleBtn.setAttribute(
-        "title",
-        theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
-      );
-      themeToggleBtn.setAttribute(
-        "aria-label",
-        theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
-      );
-    }
-  }
-
-  if (themeToggleBtn) {
-    themeToggleBtn.addEventListener("click", () => {
-      const newTheme = currentTheme === "dark" ? "light" : "dark";
-      applyTheme(newTheme);
-    });
-  }
+  document.documentElement.setAttribute("data-theme", "light");
+  try {
+    localStorage.setItem("rmsme_theme", "light");
+  } catch (e) {}
 
   // ==========================================
   // 2. SMOOTH SCROLLING & MOBILE NAV HANDLERS

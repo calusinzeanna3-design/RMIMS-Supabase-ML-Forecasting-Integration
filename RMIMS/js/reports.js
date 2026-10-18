@@ -703,7 +703,8 @@ function loadAuthoritativeForecasts() {
         const custom = JSON.parse(localStorage.getItem('rmims_custom_finished_products') || '[]');
         if (Array.isArray(custom)) {
             custom.forEach(cp => {
-                if (cp && cp.name && !LEGACY_KXC_PRODUCT_NAMES.has(String(cp.name).toLowerCase().trim())) {
+                const isCustom = Boolean(cp.recipeDetails || cp.id || cp.date_added || cp.date_modified);
+                if (cp && cp.name && (isCustom || !LEGACY_KXC_PRODUCT_NAMES.has(String(cp.name).toLowerCase().trim()))) {
                     activeFinishedProducts.push({
                         name: cp.name,
                         materialNames: Array.isArray(cp.raw_materials)

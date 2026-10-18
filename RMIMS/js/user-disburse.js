@@ -200,7 +200,8 @@ function getFinishedProductsForMaterial(materialName) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           parsed.forEach(cp => {
-            if (cp && cp.name && !isLegacyKxcProduct(cp.name) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
+            const isCustom = Boolean(cp.recipeDetails || cp.id || cp.date_added || cp.date_modified);
+            if (cp && cp.name && (isCustom || !isLegacyKxcProduct(cp.name)) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
               const materialNames = Array.isArray(cp.materialNames)
                 ? cp.materialNames
                 : (Array.isArray(cp.raw_materials)
@@ -212,7 +213,8 @@ function getFinishedProductsForMaterial(materialName) {
                             : [])));
               catalog.push({
                 name: cp.name,
-                materialNames: materialNames.filter(Boolean)
+                materialNames: materialNames.filter(Boolean),
+                recipeDetails: cp.recipeDetails || {}
               });
             }
           });
@@ -225,13 +227,18 @@ function getFinishedProductsForMaterial(materialName) {
   catalog.forEach(product => {
     const matchedIng = (product.materialNames || []).find(ing => matchProductIngredient(ing, materialName));
     if (matchedIng) {
+      // Find ratio for this ingredient: check customized recipe input first
+      const customNeed = product.recipeDetails && product.recipeDetails[matchedIng]?.needPerUnit !== undefined
+        ? Number(product.recipeDetails[matchedIng].needPerUnit)
+        : null;
+
       const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matchedIng) && BASELINE_BOM_RATIOS[matchedIng] > 1;
-      const ratio = BASELINE_BOM_RATIOS[matchedIng] || (
+      const ratio = (customNeed && customNeed > 0) ? customNeed : (BASELINE_BOM_RATIOS[matchedIng] || (
         isSconesRatio ? 100 :
         materialName.toLowerCase().includes('sugar') || materialName.toLowerCase().includes('flour') ? 0.25 :
         materialName.toLowerCase().includes('oil') ? 0.08 :
         materialName.toLowerCase().includes('salt') ? 0.015 : 0.15
-      );
+      ));
       const standardBatchUnits = 50;
       const neededStock = Math.max(0.1, Math.round(ratio * standardBatchUnits * 10) / 10);
       results.push({

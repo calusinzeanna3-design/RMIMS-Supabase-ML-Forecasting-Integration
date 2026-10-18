@@ -1154,68 +1154,105 @@ export const SCONES_5_KEY_MATERIALS = [
 
 function getCustomFinishedProducts() {
   try {
-    const raw = localStorage.getItem('rmims_custom_finished_products') || 
-                localStorage.getItem('RMSME_CUSTOM_FINISHED_PRODUCTS') ||
-                localStorage.getItem('rmims_finished_product_context');
+    const storageKeys = [
+      'rmims_custom_finished_products',
+      'RMSME_CUSTOM_FINISHED_PRODUCTS',
+      'rmims_finished_products',
+      'rmims_finished_product_context'
+    ];
     let list = [];
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) list = parsed;
-    }
+    const seenNames = new Map();
 
-    let cleaned = list.filter(p => p && p.name && !isLegacyKxcProduct(p.name));
+    storageKeys.forEach(k => {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(p => {
+              if (p && p.name) {
+                const normName = String(p.name).toLowerCase().trim();
+                const existing = seenNames.get(normName);
+                if (!existing) {
+                  seenNames.set(normName, p);
+                } else {
+                  // Prefer object that has rich recipeDetails or more materialNames
+                  const existingDetailsCount = Object.keys(existing.recipeDetails || {}).length;
+                  const newDetailsCount = Object.keys(p.recipeDetails || {}).length;
+                  if (newDetailsCount > existingDetailsCount || (!existing.recipeDetails && p.recipeDetails)) {
+                    seenNames.set(normName, p);
+                  }
+                }
+              }
+            });
+          }
+        }
+      } catch (_) {}
+    });
+
+    list = Array.from(seenNames.values());
+
+    // Keep user's custom products intact - never purge user products!
+    let cleaned = list.filter(p => p && p.name);
     let modified = false;
 
-    // Detect if active tenant context is Scones
-    let isSconesTenant = false;
-    try {
-      const tCtx = getActiveTenantContext && getActiveTenantContext();
-      if (tCtx && tCtx.isScones) isSconesTenant = true;
-    } catch (_) {}
-
-    // Auto-heal / Ensure all 19 Scones materials are in Scones finished products
     cleaned.forEach(p => {
-      const pName = String(p.name || '').toLowerCase();
-      const isSconeProduct = isSconesTenant || 
-                             pName.includes('scone') || 
-                             pName.includes('muffin') || 
-                             pName.includes('nutribun') || 
-                             (Array.isArray(p.materialNames) && p.materialNames.some(m => {
-                               const ml = String(m || '').toLowerCase();
-                               return ml.includes('yellow squash') || ml.includes('malunggay') || ml.includes('pillow packaging') || ml.includes('bread flour');
-                             }));
+      const pName = String(p.name || '').toLowerCase().trim();
+      const isAuthenticSconesTemplate = p.id === 'fp-scones-01' || pName === 'scones formulation';
 
-      if (isSconeProduct) {
-        if (!Array.isArray(p.materialNames)) p.materialNames = [];
-        
-        // Ensure all 19 Scones materials are included in the recipe formulation
-        SCONES_ALL_19_MATERIALS.forEach(sconeMat => {
-          const sconeMatLower = sconeMat.toLowerCase().trim();
-          const hasMat = p.materialNames.some(m => {
-            const ml = String(m || '').toLowerCase().trim();
-            return ml === sconeMatLower || 
-                   (sconeMatLower.includes('flour') && ml.includes('flour')) ||
-                   (sconeMatLower.includes('shortening') && ml.includes('shortening')) ||
-                   (sconeMatLower.includes('margarine') && ml.includes('margarine')) ||
-                   (sconeMatLower.includes('baking soda') && ml.includes('baking soda')) ||
-                   (sconeMatLower.includes('sorbate') && ml.includes('sorbate')) ||
-                   (sconeMatLower.includes('peanut') && ml.includes('peanut'));
-          });
+      if (isAuthenticSconesTemplate) {
+        if (!Array.isArray(p.materialNames) || p.materialNames.length === 0) {
+          p.materialNames = [...SCONES_ALL_19_MATERIALS];
+          modified = true;
+        }
+      } else {
+        // User created or customized finished product:
+        // Respect and restore user inputs! If recipeDetails exists, preserve exact configured materials
+        if (p.recipeDetails && typeof p.recipeDetails === 'object') {
+          const detailKeys = Object.keys(p.recipeDetails);
+          if (detailKeys.length > 0 && Array.isArray(p.materialNames) && p.materialNames.length > detailKeys.length) {
+            // Restore user inputs that were previously polluted by blanket auto-heal
+            p.materialNames = detailKeys;
+            modified = true;
+          }
+        }
+      }
 
-          if (!hasMat) {
-            p.materialNames.push(sconeMat);
+      if (!p.recipeDetails || typeof p.recipeDetails !== 'object') {
+        p.recipeDetails = {};
+      }
+
+      // Ensure every material configured in materialNames has a valid recipeDetail record
+      if (Array.isArray(p.materialNames)) {
+        p.materialNames.forEach(mat => {
+          if (!p.recipeDetails[mat]) {
+            p.recipeDetails[mat] = {
+              needPerUnit: getDefaultRecipeQtyForMaterial(mat),
+              minStock: getDefaultMinStockForMaterial(mat),
+              unit: getAuthoritativeMaterialUnit({ name: mat })
+            };
             modified = true;
           }
         });
       }
     });
 
-    // If on Scones tenant and no finished products exist yet, seed the default Scones formulation
-    if (isSconesTenant && cleaned.length === 0) {
+    // If no finished products exist yet, seed the default Scones formulation with full baseline recipe limits
+    if (cleaned.length === 0) {
+      const defaultRecipeDetails = {};
+      SCONES_ALL_19_MATERIALS.forEach(mat => {
+        defaultRecipeDetails[mat] = {
+          needPerUnit: getDefaultRecipeQtyForMaterial(mat),
+          minStock: getDefaultMinStockForMaterial(mat),
+          unit: getAuthoritativeMaterialUnit({ name: mat })
+        };
+      });
+
       cleaned.push({
         id: 'fp-scones-01',
         name: 'Scones Formulation',
         materialNames: [...SCONES_ALL_19_MATERIALS],
+        recipeDetails: defaultRecipeDetails,
         category: 'Bakery & Breads',
         batchUnits: 50,
         created_at: new Date().toISOString()
@@ -1223,7 +1260,7 @@ function getCustomFinishedProducts() {
       modified = true;
     }
 
-    if (modified || cleaned.length !== list.length) {
+    if (modified) {
       saveCustomFinishedProducts(cleaned);
     }
     return cleaned;
@@ -1238,6 +1275,7 @@ function saveCustomFinishedProducts(list) {
     const json = JSON.stringify(list);
     localStorage.setItem('rmims_custom_finished_products', json);
     localStorage.setItem('RMSME_CUSTOM_FINISHED_PRODUCTS', json);
+    localStorage.setItem('rmims_finished_products', json);
     localStorage.setItem('rmims_finished_product_context', json);
     // Broadcast storage event so open tabs/pages update immediately
     try {
@@ -1253,7 +1291,13 @@ function getAllFinishedProducts() {
   const custom = getCustomFinishedProducts();
   const deleted = getDeletedFinishedProducts();
 
-  return custom.filter(p => p && p.name && !deleted.has(p.name.toLowerCase()) && !isLegacyKxcProduct(p.name));
+  return custom.filter(p => {
+    if (!p || !p.name) return false;
+    const pName = p.name.toLowerCase().trim();
+    if (deleted.has(pName)) return false;
+    const isCustom = Boolean(p.recipeDetails || p.id || p.date_added || p.date_modified || p.created_at);
+    return isCustom || !isLegacyKxcProduct(p.name);
+  });
 }
 
 function loadAuthenticFinishedFormulations() {
@@ -1264,6 +1308,74 @@ window.loadAuthenticFinishedFormulations = loadAuthenticFinishedFormulations;
 
 // State for ingredients currently selected for the new finished product
 const selectedNewFpMaterials = new Set();
+const newFpRecipeConfig = new Map(); // matName => { qtyPerUnit, minStock, unit }
+
+function findMaterialRecord(matName) {
+  if (!matName) {
+    return {
+      raw_material_name: '',
+      name: '',
+      specification_name: '',
+      current_stock: 0,
+      minimum_stock: 10,
+      unit: 'kg',
+      status: 'Available',
+      storage_location: 'Warehouse A'
+    };
+  }
+
+  let matched = (rawMaterials || []).find(m => {
+    const rName = (m.raw_material_name || m.name || '').toLowerCase();
+    const sName = (m.specification_name || '').toLowerCase();
+    const query = matName.toLowerCase();
+    return rName.includes(query) || query.includes(rName) || sName.includes(query);
+  });
+
+  if (!matched) {
+    const sconeMatch = AUTHENTIC_19_SCONES_MATERIALS.find(m => 
+      (m.name || '').toLowerCase() === matName.toLowerCase() ||
+      (m.raw_material_name || '').toLowerCase() === matName.toLowerCase()
+    );
+    if (sconeMatch) {
+      matched = {
+        ...sconeMatch,
+        specification_name: `${sconeMatch.name} Standard Formulation Grade`,
+        storage_location: 'Bakery Store - Tier 1',
+        minimum_stock: Number(sconeMatch.minimum_threshold || 10)
+      };
+    }
+  }
+
+  if (!matched) {
+    matched = {
+      raw_material_name: matName,
+      name: matName,
+      specification_name: `${matName} Standard Formulation Grade`,
+      current_stock: 0,
+      minimum_stock: 10,
+      unit: getAuthoritativeMaterialUnit({ name: matName }),
+      status: 'Available',
+      storage_location: 'Warehouse A - Shelf 1'
+    };
+  }
+  return matched;
+}
+
+function getDefaultRecipeQtyForMaterial(matName) {
+  if (!matName) return 1;
+  const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matName) && BASELINE_BOM_RATIOS[matName] > 1;
+  return BASELINE_BOM_RATIOS[matName] || (
+    isSconesRatio ? 100 :
+    matName.toLowerCase().includes('sugar') || matName.toLowerCase().includes('flour') ? 0.25 :
+    matName.toLowerCase().includes('oil') ? 0.08 :
+    matName.toLowerCase().includes('salt') ? 0.015 : 0.15
+  );
+}
+
+function getDefaultMinStockForMaterial(matName) {
+  const matched = findMaterialRecord(matName);
+  return Number(matched?.minimum_stock ?? matched?.minimum_threshold ?? 10) || 10;
+}
 
 function openAddFinishedProductPanel() {
   const panel = document.getElementById('addFinishedProductPanel');
@@ -1292,6 +1404,7 @@ function openAddFinishedProductPanel() {
   if (submitText) submitText.textContent = 'Add Finished Product';
 
   selectedNewFpMaterials.clear();
+  newFpRecipeConfig.clear();
   renderNewFpSelectedMaterials();
   populateAvailableRawMaterialsDropdown();
 
@@ -1329,7 +1442,17 @@ function openEditFinishedProductPanel(productName) {
   if (submitText) submitText.textContent = 'Save Changes';
 
   selectedNewFpMaterials.clear();
-  (product.materialNames || []).forEach(m => selectedNewFpMaterials.add(m));
+  newFpRecipeConfig.clear();
+  (product.materialNames || []).forEach(m => {
+    selectedNewFpMaterials.add(m);
+    const existing = product.recipeDetails && product.recipeDetails[m];
+    const matched = findMaterialRecord(m);
+    newFpRecipeConfig.set(m, {
+      qtyPerUnit: existing?.needPerUnit !== undefined ? Number(existing.needPerUnit) : getDefaultRecipeQtyForMaterial(m),
+      minStock: existing?.minStock !== undefined ? Number(existing.minStock) : getDefaultMinStockForMaterial(m),
+      unit: existing?.unit || matched.unit || 'kg'
+    });
+  });
   renderNewFpSelectedMaterials();
   populateAvailableRawMaterialsDropdown();
 
@@ -1343,6 +1466,7 @@ function closeAddFinishedProductPanel() {
   const panel = document.getElementById('addFinishedProductPanel');
   if (panel) panel.style.display = 'none';
   selectedNewFpMaterials.clear();
+  newFpRecipeConfig.clear();
   const nameInput = document.getElementById('newFpName');
   if (nameInput) nameInput.value = '';
   const origNameInput = document.getElementById('editingFpOriginalName');
@@ -1437,7 +1561,13 @@ function handleAddNewFpMaterial() {
     return;
   }
 
+  const matched = findMaterialRecord(matName);
   selectedNewFpMaterials.add(matName);
+  newFpRecipeConfig.set(matName, {
+    qtyPerUnit: getDefaultRecipeQtyForMaterial(matName),
+    minStock: getDefaultMinStockForMaterial(matName),
+    unit: matched.unit || 'kg'
+  });
   renderNewFpSelectedMaterials();
 }
 
@@ -1448,13 +1578,20 @@ function handleAddAllFpMaterials() {
   let addedCount = 0;
   options.forEach(opt => {
     if (opt.value && !selectedNewFpMaterials.has(opt.value)) {
-      selectedNewFpMaterials.add(opt.value);
+      const matName = opt.value;
+      const matched = findMaterialRecord(matName);
+      selectedNewFpMaterials.add(matName);
+      newFpRecipeConfig.set(matName, {
+        qtyPerUnit: getDefaultRecipeQtyForMaterial(matName),
+        minStock: getDefaultMinStockForMaterial(matName),
+        unit: matched.unit || 'kg'
+      });
       addedCount++;
     }
   });
   renderNewFpSelectedMaterials();
   if (addedCount > 0) {
-    showToast(`Added ${addedCount} raw materials from dataset to formulation.`, 'success');
+    showToast(`Added ${addedCount} raw materials with baseline requirements & minimum stock limits.`, 'success');
   } else {
     showToast('All raw materials are already added to this formulation.', 'info');
   }
@@ -1463,6 +1600,7 @@ window.handleAddAllFpMaterials = handleAddAllFpMaterials;
 
 function removeNewFpMaterial(matName) {
   selectedNewFpMaterials.delete(matName);
+  newFpRecipeConfig.delete(matName);
   renderNewFpSelectedMaterials();
 }
 
@@ -1475,19 +1613,122 @@ function renderNewFpSelectedMaterials() {
 
   if (selectedNewFpMaterials.size === 0) {
     container.innerHTML = `
-      <span id="newFpEmptyHint" style="font-size:12px; color:#94A3B8; font-style:italic;">
+      <span id="newFpEmptyHint" style="font-size:12px; color:#94A3B8; font-style:italic; display:block; padding:12px;">
         No raw materials added yet. Choose an available raw material from the dropdown above and click "+ Add Material".
       </span>
     `;
     return;
   }
 
-  container.innerHTML = Array.from(selectedNewFpMaterials).map(matName => `
-    <span class="mgr-recipe-tag">
-      <span>${escapeHtml(matName)}</span>
-      <button type="button" data-remove="${escapeHtml(matName)}" title="Remove ${escapeHtml(matName)}">&times;</button>
+  // Visual pills row at the top (familiar quick-remove badges)
+  const pillsHtml = Array.from(selectedNewFpMaterials).map(matName => `
+    <span class="mgr-recipe-tag" style="background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; padding:4px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;">
+      <span>🌾 ${escapeHtml(matName)}</span>
+      <button type="button" data-remove="${escapeHtml(matName)}" title="Remove ${escapeHtml(matName)}" style="background:none; border:none; color:#B45309; font-weight:700; cursor:pointer; font-size:14px; line-height:1; padding:0 2px;">&times;</button>
     </span>
   `).join('');
+
+  // Detailed recipe & limit inputs table below
+  const tableRows = Array.from(selectedNewFpMaterials).map(matName => {
+    const matched = findMaterialRecord(matName);
+    let cfg = newFpRecipeConfig.get(matName);
+    if (!cfg) {
+      cfg = {
+        qtyPerUnit: getDefaultRecipeQtyForMaterial(matName),
+        minStock: getDefaultMinStockForMaterial(matName),
+        unit: matched.unit || 'kg'
+      };
+      newFpRecipeConfig.set(matName, cfg);
+    }
+
+    return `
+      <tr data-mat="${escapeHtml(matName)}">
+        <td style="padding:8px 10px;">
+          <strong style="color:#0F2A1B; font-size:13px; display:block;">${escapeHtml(matName)}</strong>
+          <small style="color:#64748B; font-size:11px;">Stock: ${Number(matched.current_stock).toLocaleString()} ${escapeHtml(matched.unit)} • ${escapeHtml(matched.category || 'Recipe Material')}</small>
+        </td>
+        <td style="text-align:right; padding:8px 10px;">
+          <div style="display:inline-flex; align-items:center; gap:5px; justify-content:flex-end;">
+            <input type="number" step="any" min="0.001" class="fp-recipe-input fp-recipe-qty-input"
+              data-mat-input="${escapeHtml(matName)}" value="${cfg.qtyPerUnit}"
+              title="Quantity needed from this raw material per 1 finished product unit">
+            <span style="font-size:11.5px; color:#475569; font-weight:600; min-width:32px; text-align:left;">${escapeHtml(cfg.unit || matched.unit)}</span>
+          </div>
+        </td>
+        <td style="text-align:right; padding:8px 10px;">
+          <div style="display:inline-flex; align-items:center; gap:5px; justify-content:flex-end;">
+            <input type="number" step="any" min="0" class="fp-recipe-input fp-recipe-min-input"
+              data-mat-min="${escapeHtml(matName)}" value="${cfg.minStock}"
+              title="Minimum safety stock threshold limit for this raw material">
+            <span style="font-size:11.5px; color:#92400E; font-weight:700; min-width:32px; text-align:left;">${escapeHtml(cfg.unit || matched.unit)}</span>
+          </div>
+        </td>
+        <td style="text-align:center; padding:8px 10px;">
+          <button type="button" class="btn-fp-card-action" data-remove="${escapeHtml(matName)}" 
+            title="Remove ${escapeHtml(matName)}" style="color:#DC2626; border-color:#FECACA; background:#FEF2F2; padding:3px 8px; font-weight:700; border-radius:6px; cursor:pointer;">
+            &times;
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="padding:8px 10px 10px; background:#FFFBEB; border-radius:8px 8px 0 0; border-bottom:1px solid #FDE68A;">
+      <div style="font-size:11px; font-weight:700; color:#B45309; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
+        Recipe Materials In Formulation (${selectedNewFpMaterials.size}):
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        ${pillsHtml}
+      </div>
+    </div>
+    <div style="width:100%; max-height:280px; overflow-y:auto; border-radius:0 0 8px 8px; border:1px solid #FDE68A; border-top:none;">
+      <table class="fp-recipe-builder-table">
+        <thead>
+          <tr>
+            <th>Raw Material</th>
+            <th style="width:170px; text-align:right;">Need per Unit</th>
+            <th style="width:170px; text-align:right;">Minimum Stock Limit</th>
+            <th style="width:50px; text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Attach input listeners for input, change, and blur
+  const handleQtyChange = (e) => {
+    const mat = e.target.dataset.matInput;
+    const val = parseFloat(e.target.value);
+    const cfg = newFpRecipeConfig.get(mat);
+    if (cfg && !isNaN(val) && val > 0) {
+      cfg.qtyPerUnit = val;
+    }
+  };
+
+  const handleMinChange = (e) => {
+    const mat = e.target.dataset.matMin;
+    const val = parseFloat(e.target.value);
+    const cfg = newFpRecipeConfig.get(mat);
+    if (cfg && !isNaN(val) && val >= 0) {
+      cfg.minStock = val;
+    }
+  };
+
+  container.querySelectorAll('.fp-recipe-qty-input').forEach(input => {
+    input.addEventListener('input', handleQtyChange);
+    input.addEventListener('change', handleQtyChange);
+    input.addEventListener('blur', handleQtyChange);
+  });
+
+  container.querySelectorAll('.fp-recipe-min-input').forEach(input => {
+    input.addEventListener('input', handleMinChange);
+    input.addEventListener('change', handleMinChange);
+    input.addEventListener('blur', handleMinChange);
+  });
 
   container.querySelectorAll('button[data-remove]').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1536,15 +1777,51 @@ function handleAddFinishedProductSubmit(e) {
     }
   }
 
+  // Pull current typed values directly from DOM inputs to ensure no input is missed
+  const recipeContainer = document.getElementById('newFpSelectedMaterialsTags');
+  if (recipeContainer) {
+    recipeContainer.querySelectorAll('.fp-recipe-qty-input').forEach(input => {
+      const mat = input.dataset.matInput;
+      const val = parseFloat(input.value);
+      if (mat && !isNaN(val) && val > 0) {
+        const cfg = newFpRecipeConfig.get(mat) || {};
+        cfg.qtyPerUnit = val;
+        newFpRecipeConfig.set(mat, cfg);
+      }
+    });
+    recipeContainer.querySelectorAll('.fp-recipe-min-input').forEach(input => {
+      const mat = input.dataset.matMin;
+      const val = parseFloat(input.value);
+      if (mat && !isNaN(val) && val >= 0) {
+        const cfg = newFpRecipeConfig.get(mat) || {};
+        cfg.minStock = val;
+        newFpRecipeConfig.set(mat, cfg);
+      }
+    });
+  }
+
   const materialNames = Array.from(selectedNewFpMaterials);
   const custom = getCustomFinishedProducts();
 
+  const recipeDetails = {};
+  materialNames.forEach(matName => {
+    const cfg = newFpRecipeConfig.get(matName) || {};
+    recipeDetails[matName] = {
+      needPerUnit: Number(cfg.qtyPerUnit) > 0 ? Number(cfg.qtyPerUnit) : getDefaultRecipeQtyForMaterial(matName),
+      minStock: Number(cfg.minStock) >= 0 ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName),
+      unit: cfg.unit || getAuthoritativeMaterialUnit({ name: matName })
+    };
+  });
+
   if (originalName) {
     const existingIndex = custom.findIndex(p => p.name.toLowerCase() === originalName.toLowerCase());
+    const existingProduct = existingIndex >= 0 ? custom[existingIndex] : null;
     const updatedProduct = {
+      id: existingProduct?.id || ('fp-' + Date.now()),
       name,
       materialNames,
-      category: 'Custom Finished Product',
+      recipeDetails,
+      category: existingProduct?.category || 'Custom Finished Product',
       date_modified: new Date().toISOString()
     };
     if (existingIndex >= 0) {
@@ -1559,14 +1836,16 @@ function handleAddFinishedProductSubmit(e) {
     showToast(`Formulation "${name}" updated successfully!`, 'success');
   } else {
     const newProduct = {
+      id: 'fp-' + Date.now(),
       name,
       materialNames,
+      recipeDetails,
       category: 'Custom Finished Product',
       date_added: new Date().toISOString()
     };
     custom.unshift(newProduct);
     saveCustomFinishedProducts(custom);
-    showToast(`Finished product "${name}" created with ${materialNames.length} raw materials!`, 'success');
+    showToast(`Finished product "${name}" created with ${materialNames.length} raw materials and minimum stock limits!`, 'success');
   }
 
   closeAddFinishedProductPanel();
@@ -1632,6 +1911,34 @@ window.handleConfirmDeleteFinishedProduct = handleConfirmDeleteFinishedProduct;
  */
 function buildFinishedProductCardHtml(p) {
   const matCount = p.materialNames ? p.materialNames.length : 0;
+  
+  let belowMinCount = 0;
+  let minProducible = Infinity;
+  let bottleneckMaterial = '';
+
+  (p.materialNames || []).forEach(m => {
+    const matched = findMaterialRecord(m);
+    const cfg = (p.recipeDetails && p.recipeDetails[m]) || {};
+    const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(m);
+    const qtyPerUnit = cfg.needPerUnit !== undefined ? Number(cfg.needPerUnit) : getDefaultRecipeQtyForMaterial(m);
+
+    if (Number(matched.current_stock || 0) < minStock) {
+      belowMinCount++;
+    }
+
+    const producible = qtyPerUnit > 0 ? Math.floor(Number(matched.current_stock || 0) / qtyPerUnit) : 0;
+    if (producible < minProducible) {
+      minProducible = producible;
+      bottleneckMaterial = m;
+    }
+  });
+
+  if (minProducible === Infinity) minProducible = 0;
+
+  const minLimitBadge = belowMinCount > 0
+    ? `<span class="mgr-folder-badge" style="background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; font-weight:700;">⚠️ ${belowMinCount} Below Min Limit</span>`
+    : `<span class="mgr-folder-badge" style="background:#ECFDF5; color:#15803D; border:1px solid #A7F3D0; font-weight:700;">✅ Min Limits OK</span>`;
+
   const materialsPreviewHtml = (p.materialNames || []).slice(0, 3).map(m => `
     <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:9999px; min-height:28px; height:auto; box-sizing:border-box;">
       <span style="font-size:13px; line-height:1; display:inline-flex; align-items:center; flex-shrink:0;">🌾</span>
@@ -1641,7 +1948,7 @@ function buildFinishedProductCardHtml(p) {
   const moreCount = (p.materialNames || []).length > 3 ? `<span style="font-size:11px; color:#B45309; padding-left:4px; font-weight:600;">+${(p.materialNames.length - 3)} more ingredients</span>` : '';
 
   return `
-    <div class="mgr-folder-card mgr-fp-folder-card" data-fp-name="${encodeURIComponent(p.name)}" role="button" tabindex="0" title="Click to view recipe raw materials for ${escapeHtml(p.name)}">
+    <div class="mgr-folder-card mgr-fp-folder-card" data-fp-name="${encodeURIComponent(p.name)}" role="button" tabindex="0" title="Click to view recipe raw materials & minimum stock limits for ${escapeHtml(p.name)}">
       <div class="mgr-folder-top">
         <div class="mgr-folder-icon-wrap" style="background:#FEF3C7; color:#D97706;">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
@@ -1653,6 +1960,7 @@ function buildFinishedProductCardHtml(p) {
 
         <div class="mgr-fp-actions-group">
           <span class="mgr-folder-badge" style="background:rgba(217, 119, 6, 0.12); color:#B45309; font-weight:700;">${matCount} Materials</span>
+          ${minLimitBadge}
           <button type="button" class="btn-fp-card-action btn-fp-card-edit" data-fp-edit="${encodeURIComponent(p.name)}" title="Edit ${escapeHtml(p.name)} formulation">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
@@ -1677,8 +1985,13 @@ function buildFinishedProductCardHtml(p) {
         ${moreCount}
       </div>
 
-      <div class="mgr-folder-footer" style="color: #D97706; margin-top: 14px; border-top: 1px dashed #FDE68A;">
-        <span>Open Formulation Guide</span>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding:6px 10px; background:#F8FAFC; border-radius:8px; font-size:11.5px; border:1px solid #E2E8F0;">
+        <span style="color:#64748B;">Max Batch Limit:</span>
+        <strong style="color:${minProducible > 0 ? '#15803D' : '#DC2626'};">${minProducible.toLocaleString()} units ${bottleneckMaterial ? `(${escapeHtml(bottleneckMaterial)})` : ''}</strong>
+      </div>
+
+      <div class="mgr-folder-footer" style="color: #D97706; margin-top: 12px; border-top: 1px dashed #FDE68A;">
+        <span>Open Formulation & Limits Guide</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
@@ -2935,6 +3248,9 @@ function handleConfirmActionSubmit() {
  * ==========================================================
  */
 function renderFinishedProductsFolders() {
+  // Always synchronize modal content so Finished Food modal stays updated
+  renderFinishedFoodModalContent('');
+
   const container = document.getElementById('finishedProductsFolderGrid');
   if (!container) return;
 
@@ -2977,101 +3293,338 @@ function renderFinishedProductsFolders() {
 
   container.innerHTML = list.map(p => buildFinishedProductCardHtml(p)).join('');
   attachFinishedProductCardListeners(container);
+  // Also ensure modal catalog is always in sync
+  renderFinishedFoodModalContent('');
 }
 
 function openFinishedProductModal(productName) {
   const modal = document.getElementById('modalFinishedProductFolder');
   if (!modal) return;
 
-  const product = getAllFinishedProducts().find(p => p.name.toLowerCase() === productName.toLowerCase());
+  const allProducts = getAllFinishedProducts();
+  const product = allProducts.find(p => p.name.toLowerCase() === productName.toLowerCase());
   if (!product) return;
 
   const titleEl = document.getElementById('fpPopupTitle');
   const subEl = document.getElementById('fpPopupSubtitle');
   const countEl = document.getElementById('fpPopupCount');
   const tbody = document.getElementById('fpPopupMaterialsBody');
+  const metaExtra = document.getElementById('fpPopupMetaExtra');
 
   if (titleEl) titleEl.textContent = product.name;
-  if (subEl) subEl.textContent = `Raw Materials Formulation & Production Capacity Guide`;
+  if (subEl) subEl.textContent = `Raw Materials Recipe Need & Minimum Stock Limits Guide`;
   if (countEl) countEl.textContent = `${(product.materialNames || []).length} Raw Materials`;
 
-  if (tbody) {
-    tbody.innerHTML = (product.materialNames || []).map(matName => {
-      let matched = rawMaterials.find(m => {
-        const rName = (m.raw_material_name || m.name || '').toLowerCase();
-        const sName = (m.specification_name || '').toLowerCase();
-        const query = matName.toLowerCase();
-        return rName.includes(query) || query.includes(rName) || sName.includes(query);
-      });
+  // Local working copy of recipeDetails for live calculations
+  if (!product.recipeDetails) product.recipeDetails = {};
+  const currentLimits = {};
+  (product.materialNames || []).forEach(matName => {
+    const existing = product.recipeDetails[matName] || {};
+    currentLimits[matName] = {
+      qtyPerUnit: existing.needPerUnit !== undefined ? Number(existing.needPerUnit) : getDefaultRecipeQtyForMaterial(matName),
+      minStock: existing.minStock !== undefined ? Number(existing.minStock) : getDefaultMinStockForMaterial(matName),
+      unit: existing.unit || findMaterialRecord(matName).unit || 'kg'
+    };
+  });
 
-      if (!matched) {
-        const sconeMatch = AUTHENTIC_19_SCONES_MATERIALS.find(m => 
-          (m.name || '').toLowerCase() === matName.toLowerCase() ||
-          (m.raw_material_name || '').toLowerCase() === matName.toLowerCase()
-        );
-        if (sconeMatch) {
-          matched = {
-            ...sconeMatch,
-            specification_name: `${sconeMatch.name} Standard Formulation Grade`,
-            storage_location: 'Bakery Store - Tier 1'
-          };
-        }
-      }
+  function recalculateAndRenderLimits() {
+    let belowMinCount = 0;
+    let lowestMaxProducible = Infinity;
+    let lowestSafeProducible = Infinity;
+    let bottleneckMatName = '';
+    const materialsList = product.materialNames || [];
 
-      if (!matched) {
-        matched = {
-          raw_material_name: matName,
-          name: matName,
-          specification_name: `${matName} Standard Formulation Grade`,
-          current_stock: 0,
-          unit: getAuthoritativeMaterialUnit({ name: matName }),
-          status: 'Available',
-          storage_location: 'Warehouse A - Shelf 1'
-        };
-      }
+    if (!tbody) return;
 
-      let statusBadge = '<span class="mgr-status-badge status-instock"><span class="mgr-status-dot"></span>Available</span>';
-      let stockColor = '#15803D';
-      if (matched.current_stock <= 0) {
-        statusBadge = '<span class="mgr-status-badge status-outofstock"><span class="mgr-status-dot"></span>Out of Stock</span>';
-        stockColor = '#DC2626';
-      } else if (matched.current_stock < (matched.minimum_stock || 10)) {
-        statusBadge = '<span class="mgr-status-badge status-lowstock"><span class="mgr-status-dot"></span>Low Stock</span>';
-        stockColor = '#D97706';
-      }
-
-      // Calculate how many finished products it can produce in that stock
-      const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matName) && BASELINE_BOM_RATIOS[matName] > 1;
-      const qtyPerUnit = BASELINE_BOM_RATIOS[matName] || (
-        isSconesRatio ? 100 :
-        matName.toLowerCase().includes('sugar') || matName.toLowerCase().includes('flour') ? 0.25 :
-        matName.toLowerCase().includes('oil') ? 0.08 :
-        matName.toLowerCase().includes('salt') ? 0.015 : 0.15
-      );
-      const producible = qtyPerUnit > 0 ? Math.floor(matched.current_stock / qtyPerUnit) : 0;
-      const producibleColor = producible > 0 ? '#15803D' : '#DC2626';
-      const producibleBg = producible > 0 ? '#ECFDF5' : '#FEF2F2';
-
-      return `
+    if (materialsList.length === 0) {
+      tbody.innerHTML = `
         <tr>
-          <td>
-            <strong style="color: #0F2A1B; font-size: 13.5px;">${matName}</strong>
-            <small style="display:block; color: #64748B; font-size: 11px;">Recipe Raw Material</small>
-          </td>
-          <td style="text-align: right;">
-            <strong style="color: ${stockColor}; font-size: 13px;">${Number(matched.current_stock).toLocaleString()} ${matched.unit}</strong>
-          </td>
-          <td><span style="font-weight:600; color:#334155; font-size:12.5px;">${matched.unit}</span></td>
-          <td>${statusBadge}</td>
-          <td>
-            <div style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:8px; background:${producibleBg};">
-              <strong style="color: ${producibleColor}; font-size: 13px;">${producible.toLocaleString()} units</strong>
-              <small style="color: #64748B; font-size: 11px;">(${qtyPerUnit} ${matched.unit}/unit)</small>
-            </div>
+          <td colspan="7" style="text-align:center; padding:32px 16px; color:#64748B;">
+            No raw materials added to this formulation yet. Click "Edit Formulation" above to add materials.
           </td>
         </tr>
       `;
-    }).join('');
+    } else {
+      tbody.innerHTML = materialsList.map(matName => {
+        const matched = findMaterialRecord(matName);
+        const cfg = currentLimits[matName] || {};
+
+        const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName);
+        const qtyPerUnit = cfg.qtyPerUnit !== undefined ? Number(cfg.qtyPerUnit) : getDefaultRecipeQtyForMaterial(matName);
+        const curStock = Number(matched.current_stock || 0);
+
+        const maxProducible = qtyPerUnit > 0 ? Math.floor(curStock / qtyPerUnit) : 0;
+        const safeStock = Math.max(0, curStock - minStock);
+        const safeProducible = qtyPerUnit > 0 ? Math.floor(safeStock / qtyPerUnit) : 0;
+
+        if (curStock < minStock) {
+          belowMinCount++;
+        }
+
+        if (maxProducible < lowestMaxProducible) {
+          lowestMaxProducible = maxProducible;
+          bottleneckMatName = matName;
+        }
+
+        if (safeProducible < lowestSafeProducible) {
+          lowestSafeProducible = safeProducible;
+        }
+
+        let statusBadge = '';
+        let stockColor = '#15803D';
+
+        if (curStock <= 0) {
+          statusBadge = '<span class="mgr-status-badge status-outofstock" title="Inventory stock is zero"><span class="mgr-status-dot"></span>Depleted (0)</span>';
+          stockColor = '#DC2626';
+        } else if (curStock < minStock) {
+          const deficit = (minStock - curStock).toFixed(1);
+          statusBadge = `<span class="mgr-status-badge status-lowstock" style="background:#FEF2F2; color:#DC2626; border-color:#FECACA;" title="Deficit: ${deficit} ${matched.unit} below minimum stock limit"><span class="mgr-status-dot" style="background:#DC2626;"></span>Below Limit (-${deficit})</span>`;
+          stockColor = '#DC2626';
+        } else if (curStock <= minStock * 1.25) {
+          const buffer = (curStock - minStock).toFixed(1);
+          statusBadge = `<span class="mgr-status-badge status-lowstock" title="Buffer: only ${buffer} ${matched.unit} above minimum stock limit"><span class="mgr-status-dot"></span>Near Limit (+${buffer})</span>`;
+          stockColor = '#D97706';
+        } else {
+          statusBadge = '<span class="mgr-status-badge status-instock" title="Current stock is safely above minimum limit"><span class="mgr-status-dot"></span>Above Limit</span>';
+          stockColor = '#15803D';
+        }
+
+        const safeBadgeBg = safeProducible > 0 ? '#ECFDF5' : '#FEF2F2';
+        const safeBadgeColor = safeProducible > 0 ? '#15803D' : '#DC2626';
+
+        return `
+          <tr data-fp-mat="${escapeHtml(matName)}">
+            <td>
+              <strong style="color: #0F2A1B; font-size: 13.5px; display:block;">${escapeHtml(matName)}</strong>
+              <small style="color: #64748B; font-size: 11px;">${escapeHtml(matched.item_code ? `${matched.item_code} • ` : '')}${escapeHtml(matched.category || 'Recipe Raw Material')}</small>
+            </td>
+            <td style="text-align: right;">
+              <div style="display:inline-flex; align-items:center; gap:5px; justify-content:flex-end;">
+                <input type="number" step="any" min="0.001" class="fp-modal-qty-input fp-recipe-input"
+                  data-mat-qty="${escapeHtml(matName)}" value="${qtyPerUnit}" style="width:85px;"
+                  title="Recipe need from this material per 1 finished unit">
+                <span style="font-size:12px; color:#475569; font-weight:600; min-width:32px; text-align:left;">${escapeHtml(matched.unit)}</span>
+              </div>
+            </td>
+            <td style="text-align: right;">
+              <strong style="color: ${stockColor}; font-size: 13.5px;">${curStock.toLocaleString()}</strong>
+            </td>
+            <td style="text-align: right;">
+              <div style="display:inline-flex; align-items:center; gap:5px; justify-content:flex-end;">
+                <input type="number" step="any" min="0" class="fp-modal-min-input fp-recipe-input"
+                  data-mat-min="${escapeHtml(matName)}" value="${minStock}" style="width:85px; color:#92400E; font-weight:700;"
+                  title="Minimum safety stock threshold limit for this material">
+                <span style="font-size:12px; color:#92400E; font-weight:700; min-width:32px; text-align:left;">${escapeHtml(matched.unit)}</span>
+              </div>
+            </td>
+            <td>
+              <span style="font-weight:600; color:#334155; font-size:12.5px;">${escapeHtml(matched.unit)}</span>
+            </td>
+            <td>
+              ${statusBadge}
+            </td>
+            <td style="text-align: right;">
+              <div class="fp-safe-capacity-box">
+                <div style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; background:${safeBadgeBg};">
+                  <span style="font-size:11px; color:#64748B;">Safe:</span>
+                  <strong style="color:${safeBadgeColor}; font-size:12px;">${safeProducible.toLocaleString()} units</strong>
+                </div>
+                <small style="color:#64748B; font-size:11px;">Max Output: ${maxProducible.toLocaleString()} units</small>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Helper to update summary KPI chips without destroying table focus
+      const updateSummaryKpis = () => {
+        let belowMinCount = 0;
+        let lowestMaxProducible = Infinity;
+        let lowestSafeProducible = Infinity;
+        let bottleneckMatName = '';
+
+        materialsList.forEach(matName => {
+          const matched = findMaterialRecord(matName);
+          const cfg = currentLimits[matName] || {};
+          const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName);
+          const qtyPerUnit = cfg.qtyPerUnit !== undefined ? Number(cfg.qtyPerUnit) : getDefaultRecipeQtyForMaterial(matName);
+          const curStock = Number(matched.current_stock || 0);
+
+          const maxProducible = qtyPerUnit > 0 ? Math.floor(curStock / qtyPerUnit) : 0;
+          const safeStock = Math.max(0, curStock - minStock);
+          const safeProducible = qtyPerUnit > 0 ? Math.floor(safeStock / qtyPerUnit) : 0;
+
+          if (curStock < minStock) belowMinCount++;
+          if (maxProducible < lowestMaxProducible) {
+            lowestMaxProducible = maxProducible;
+            bottleneckMatName = matName;
+          }
+          if (safeProducible < lowestSafeProducible) {
+            lowestSafeProducible = safeProducible;
+          }
+        });
+
+        if (lowestMaxProducible === Infinity) lowestMaxProducible = 0;
+        if (lowestSafeProducible === Infinity) lowestSafeProducible = 0;
+
+        if (metaExtra) {
+          metaExtra.innerHTML = `
+            <div class="fp-meta-kpi-chip" style="background:${belowMinCount === 0 ? '#DCFCE7' : '#FEE2E2'}; color:${belowMinCount === 0 ? '#15803D' : '#B91C1C'}; border:1px solid ${belowMinCount === 0 ? '#86EFAC' : '#FCA5A5'};">
+              <span>${belowMinCount === 0 ? '✅ All Materials Above Minimum Limit' : `⚠️ ${belowMinCount} Material${belowMinCount > 1 ? 's' : ''} Below Minimum Stock`}</span>
+            </div>
+            <div class="fp-meta-kpi-chip" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE;" title="Total units producible before raw material runs out">
+              <span>Max Capacity: <strong>${lowestMaxProducible.toLocaleString()} units</strong></span>
+              ${bottleneckMatName ? `<small style="color:#64748B; margin-left:4px;">(Bottleneck: ${escapeHtml(bottleneckMatName)})</small>` : ''}
+            </div>
+            <div class="fp-meta-kpi-chip" style="background:#FFFBEB; color:#B45309; border:1px solid #FDE68A;" title="Units producible before dipping into minimum safety stock">
+              <span>Safe Limit: <strong>${lowestSafeProducible.toLocaleString()} units</strong></span>
+            </div>
+          `;
+        }
+      };
+
+      // Helper to update single row outputs without losing user input focus
+      const updateSingleRowOutput = (matName) => {
+        const row = tbody.querySelector(`tr[data-fp-mat="${CSS.escape(matName)}"]`);
+        if (!row) return;
+
+        const matched = findMaterialRecord(matName);
+        const cfg = currentLimits[matName] || {};
+        const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName);
+        const qtyPerUnit = cfg.qtyPerUnit !== undefined ? Number(cfg.qtyPerUnit) : getDefaultRecipeQtyForMaterial(matName);
+        const curStock = Number(matched.current_stock || 0);
+
+        const maxProducible = qtyPerUnit > 0 ? Math.floor(curStock / qtyPerUnit) : 0;
+        const safeStock = Math.max(0, curStock - minStock);
+        const safeProducible = qtyPerUnit > 0 ? Math.floor(safeStock / qtyPerUnit) : 0;
+
+        const safeBadgeBg = safeProducible > 0 ? '#ECFDF5' : '#FEF2F2';
+        const safeBadgeColor = safeProducible > 0 ? '#15803D' : '#DC2626';
+
+        const capBox = row.querySelector('.fp-safe-capacity-box');
+        if (capBox) {
+          capBox.innerHTML = `
+            <div style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:6px; background:${safeBadgeBg};">
+              <span style="font-size:11px; color:#64748B;">Safe:</span>
+              <strong style="color:${safeBadgeColor}; font-size:12px;">${safeProducible.toLocaleString()} units</strong>
+            </div>
+            <small style="color:#64748B; font-size:11px;">Max Output: ${maxProducible.toLocaleString()} units</small>
+          `;
+        }
+        updateSummaryKpis();
+      };
+
+      // Wire live typing handlers in modal table (handles input, change, and blur)
+      tbody.querySelectorAll('.fp-modal-qty-input').forEach(input => {
+        const onQty = (e) => {
+          const mat = e.target.dataset.matQty;
+          const val = parseFloat(e.target.value);
+          if (currentLimits[mat] && !isNaN(val) && val > 0) {
+            currentLimits[mat].qtyPerUnit = val;
+            updateSingleRowOutput(mat);
+          }
+        };
+        input.addEventListener('input', onQty);
+        input.addEventListener('change', onQty);
+      });
+
+      tbody.querySelectorAll('.fp-modal-min-input').forEach(input => {
+        const onMin = (e) => {
+          const mat = e.target.dataset.matMin;
+          const val = parseFloat(e.target.value);
+          if (currentLimits[mat] && !isNaN(val) && val >= 0) {
+            currentLimits[mat].minStock = val;
+            updateSingleRowOutput(mat);
+          }
+        };
+        input.addEventListener('input', onMin);
+        input.addEventListener('change', onMin);
+      });
+    }
+
+    if (lowestMaxProducible === Infinity) lowestMaxProducible = 0;
+    if (lowestSafeProducible === Infinity) lowestSafeProducible = 0;
+
+    if (metaExtra) {
+      metaExtra.innerHTML = `
+        <div class="fp-meta-kpi-chip" style="background:${belowMinCount === 0 ? '#DCFCE7' : '#FEE2E2'}; color:${belowMinCount === 0 ? '#15803D' : '#B91C1C'}; border:1px solid ${belowMinCount === 0 ? '#86EFAC' : '#FCA5A5'};">
+          <span>${belowMinCount === 0 ? '✅ All Materials Above Minimum Limit' : `⚠️ ${belowMinCount} Material${belowMinCount > 1 ? 's' : ''} Below Minimum Stock`}</span>
+        </div>
+        <div class="fp-meta-kpi-chip" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE;" title="Total units producible before raw material runs out">
+          <span>Max Capacity: <strong>${lowestMaxProducible.toLocaleString()} units</strong></span>
+          ${bottleneckMatName ? `<small style="color:#64748B; margin-left:4px;">(Bottleneck: ${escapeHtml(bottleneckMatName)})</small>` : ''}
+        </div>
+        <div class="fp-meta-kpi-chip" style="background:#FFFBEB; color:#B45309; border:1px solid #FDE68A;" title="Units producible before dipping into minimum safety stock">
+          <span>Safe Limit: <strong>${lowestSafeProducible.toLocaleString()} units</strong></span>
+        </div>
+      `;
+    }
+  }
+
+  // Initial calculation and rendering of inputs
+  recalculateAndRenderLimits();
+
+  // Save Limits Handler
+  const handleSaveLimitsAction = () => {
+    // Read directly from DOM input fields so no typed values are missed!
+    if (tbody) {
+      tbody.querySelectorAll('.fp-modal-qty-input').forEach(input => {
+        const mat = input.dataset.matQty;
+        const val = parseFloat(input.value);
+        if (currentLimits[mat] && !isNaN(val) && val > 0) {
+          currentLimits[mat].qtyPerUnit = val;
+        }
+      });
+      tbody.querySelectorAll('.fp-modal-min-input').forEach(input => {
+        const mat = input.dataset.matMin;
+        const val = parseFloat(input.value);
+        if (currentLimits[mat] && !isNaN(val) && val >= 0) {
+          currentLimits[mat].minStock = val;
+        }
+      });
+    }
+
+    const custom = getCustomFinishedProducts();
+    const idx = custom.findIndex(p => p.name.toLowerCase() === product.name.toLowerCase());
+    if (idx >= 0) {
+      if (!custom[idx].recipeDetails) custom[idx].recipeDetails = {};
+      Object.keys(currentLimits).forEach(mat => {
+        custom[idx].recipeDetails[mat] = {
+          needPerUnit: currentLimits[mat].qtyPerUnit,
+          minStock: currentLimits[mat].minStock,
+          unit: currentLimits[mat].unit
+        };
+      });
+      custom[idx].date_modified = new Date().toISOString();
+      saveCustomFinishedProducts(custom);
+      renderFinishedFoodModalContent('');
+      renderFinishedProductsFolders();
+      showToast(`Formulation limits for "${product.name}" saved successfully!`, 'success');
+    }
+  };
+
+  const btnSaveLimits = document.getElementById('btnFpSaveLimits');
+  if (btnSaveLimits) btnSaveLimits.onclick = handleSaveLimitsAction;
+
+  const btnSaveLimitsHeader = document.getElementById('btnFpSaveLimitsHeader');
+  if (btnSaveLimitsHeader) btnSaveLimitsHeader.onclick = handleSaveLimitsAction;
+
+  // Edit Formulation button in modal: Closes modal and opens edit panel
+  const btnEdit = document.getElementById('btnFpDetailEdit');
+  if (btnEdit) {
+    btnEdit.onclick = () => {
+      closeFinishedProductModal();
+      openEditFinishedProductPanel(product.name);
+    };
+  }
+
+  // Delete button in modal: Closes modal and prompts deletion confirmation
+  const btnDelete = document.getElementById('btnFpDetailDelete');
+  if (btnDelete) {
+    btnDelete.onclick = () => {
+      closeFinishedProductModal();
+      promptDeleteFinishedProduct(product.name);
+    };
   }
 
   showModalBackdrop(modal);
@@ -4042,43 +4595,50 @@ function exportFinishedProducts(format) {
   const catalog = getAllFinishedProducts();
 
   if (format === 'csv') {
-    const headers = ['Finished Product', 'Raw Material', 'Current Stock', 'Unit', 'Stock Status', 'Products Can Produce'];
+    const headers = [
+      'Finished Product',
+      'Raw Material',
+      'Need Per Unit',
+      'Current Stock',
+      'Minimum Stock (Limit)',
+      'Unit',
+      'Limit Status',
+      'Safe Capacity (Before Min Stock)',
+      'Max Capacity (Total)'
+    ];
     const rows = [];
     catalog.forEach(p => {
       (p.materialNames || []).forEach(matName => {
-        let matched = rawMaterials.find(m => {
-          const rName = (m.raw_material_name || m.name || '').toLowerCase();
-          return rName.includes(matName.toLowerCase()) || matName.toLowerCase().includes(rName);
-        });
+        const matched = findMaterialRecord(matName);
+        const cfg = (p.recipeDetails && p.recipeDetails[matName]) || {};
 
-        if (!matched) {
-          const sconeMatch = AUTHENTIC_19_SCONES_MATERIALS.find(m => 
-            (m.name || '').toLowerCase() === matName.toLowerCase() ||
-            (m.raw_material_name || '').toLowerCase() === matName.toLowerCase()
-          );
-          if (sconeMatch) matched = sconeMatch;
+        const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName);
+        const qtyPerUnit = cfg.needPerUnit !== undefined ? Number(cfg.needPerUnit) : getDefaultRecipeQtyForMaterial(matName);
+        const curStock = Number(matched.current_stock || 0);
+
+        const maxProducible = qtyPerUnit > 0 ? Math.floor(curStock / qtyPerUnit) : 0;
+        const safeStock = Math.max(0, curStock - minStock);
+        const safeProducible = qtyPerUnit > 0 ? Math.floor(safeStock / qtyPerUnit) : 0;
+
+        let limitStatusText = 'Above Limit';
+        if (curStock <= 0) {
+          limitStatusText = 'Depleted (0)';
+        } else if (curStock < minStock) {
+          limitStatusText = `Below Limit (-${(minStock - curStock).toFixed(1)})`;
+        } else if (curStock <= minStock * 1.25) {
+          limitStatusText = `Near Limit (+${(curStock - minStock).toFixed(1)})`;
         }
-
-        if (!matched) {
-          matched = { specification_name: 'Standard Food Grade', current_stock: 0, unit: getAuthoritativeMaterialUnit({ name: matName }), status: 'Available', storage_location: 'Warehouse A' };
-        }
-
-        const isSconesExportRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matName) && BASELINE_BOM_RATIOS[matName] > 1;
-        const qtyPerUnit = BASELINE_BOM_RATIOS[matName] || (
-          isSconesExportRatio ? 100 :
-          matName.toLowerCase().includes('sugar') || matName.toLowerCase().includes('flour') ? 0.25 :
-          matName.toLowerCase().includes('oil') ? 0.08 :
-          matName.toLowerCase().includes('salt') ? 0.015 : 0.15
-        );
-        const producibleUnits = qtyPerUnit > 0 ? Math.floor(matched.current_stock / qtyPerUnit) : 0;
 
         rows.push([
           `"${p.name.replace(/"/g, '""')}"`,
           `"${matName.replace(/"/g, '""')}"`,
-          matched.current_stock,
+          `"${qtyPerUnit} ${matched.unit}/unit"`,
+          curStock,
+          minStock,
           `"${matched.unit}"`,
-          `"${matched.status}"`,
-          `"${producibleUnits} units"`
+          `"${limitStatusText}"`,
+          `"${safeProducible} units"`,
+          `"${maxProducible} units"`
         ]);
       });
     });
@@ -4111,29 +4671,48 @@ function exportFinishedProducts(format) {
             <tr>
               <th>Finished Product</th>
               <th>Raw Material</th>
+              <th>Need Per Unit</th>
               <th>Current Stock</th>
+              <th>Minimum Stock (Limit)</th>
               <th>Unit</th>
-              <th>Status</th>
-              <th>Products Can Produce</th>
+              <th>Limit Status</th>
+              <th>Safe Capacity</th>
+              <th>Max Capacity</th>
             </tr>
           </thead>
           <tbody>
             ${catalog.flatMap(p => (p.materialNames || []).map(matName => {
-              const matched = rawMaterials.find(m => (m.raw_material_name || m.name || '').toLowerCase().includes(matName.toLowerCase())) || { current_stock: 0, unit: '', status: 'Available', storage_location: 'Warehouse A' };
-              const qtyPerUnit = BASELINE_BOM_RATIOS[matName] || (
-                matName.toLowerCase().includes('sugar') || matName.toLowerCase().includes('flour') ? 0.25 :
-                matName.toLowerCase().includes('oil') ? 0.08 :
-                matName.toLowerCase().includes('salt') ? 0.015 : 0.15
-              );
-              const producibleUnits = qtyPerUnit > 0 ? Math.floor(matched.current_stock / qtyPerUnit) : 0;
+              const matched = findMaterialRecord(matName);
+              const cfg = (p.recipeDetails && p.recipeDetails[matName]) || {};
+
+              const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName);
+              const qtyPerUnit = cfg.needPerUnit !== undefined ? Number(cfg.needPerUnit) : getDefaultRecipeQtyForMaterial(matName);
+              const curStock = Number(matched.current_stock || 0);
+
+              const maxProducible = qtyPerUnit > 0 ? Math.floor(curStock / qtyPerUnit) : 0;
+              const safeStock = Math.max(0, curStock - minStock);
+              const safeProducible = qtyPerUnit > 0 ? Math.floor(safeStock / qtyPerUnit) : 0;
+
+              let limitStatusText = 'Above Limit';
+              if (curStock <= 0) {
+                limitStatusText = 'Depleted (0)';
+              } else if (curStock < minStock) {
+                limitStatusText = `Below Limit (-${(minStock - curStock).toFixed(1)})`;
+              } else if (curStock <= minStock * 1.25) {
+                limitStatusText = `Near Limit (+${(curStock - minStock).toFixed(1)})`;
+              }
+
               return `
                 <tr>
                   <td><b>${p.name}</b></td>
                   <td>${matName}</td>
-                  <td style="text-align:right;">${matched.current_stock}</td>
+                  <td style="text-align:right;">${qtyPerUnit} ${matched.unit}</td>
+                  <td style="text-align:right;">${curStock}</td>
+                  <td style="text-align:right; color:#B45309;"><b>${minStock}</b></td>
                   <td>${matched.unit}</td>
-                  <td>${matched.status}</td>
-                  <td style="text-align:right;"><b>${producibleUnits} units</b></td>
+                  <td>${limitStatusText}</td>
+                  <td style="text-align:right;"><b>${safeProducible} units</b></td>
+                  <td style="text-align:right;"><b>${maxProducible} units</b></td>
                 </tr>
               `;
             })).join('')}

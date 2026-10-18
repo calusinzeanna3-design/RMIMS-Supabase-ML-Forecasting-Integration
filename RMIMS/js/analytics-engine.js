@@ -232,7 +232,11 @@ function loadAuthoritativeData() {
           'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
           'butter toast crackers'
         ]);
-        customProds = parsed.filter(p => p && p.name && !LEGACY_KXC.has(String(p.name).toLowerCase().trim()));
+        customProds = parsed.filter(p => {
+          if (!p || !p.name) return false;
+          const isCustom = Boolean(p.recipeDetails || p.id || p.date_added || p.date_modified);
+          return isCustom || !LEGACY_KXC.has(String(p.name).toLowerCase().trim());
+        });
       }
     }
   } catch (e) {}

@@ -1978,5 +1978,148 @@ body.manager-page #overviewTable thead th {
   background: #F8FAFC;
 }
 
+/* ==========================================================
+   FINISHED PRODUCT MINIMUM STOCK & MATERIAL LIMITS STYLES
+   ========================================================== */
+.fp-limit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+}
 
+.fp-limit-chip.depleted {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border-color: #FCA5A5;
+}
 
+.fp-safe-capacity-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.fp-safe-capacity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fp-meta-kpi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.fp-recipe-builder-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: #FFFFFF;
+}
+
+.fp-recipe-builder-table th {
+  background: #FEF3C7;
+  color: #92400E;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #FDE68A;
+}
+
+.fp-recipe-builder-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #F1F5F9;
+  vertical-align: middle;
+}
+
+.fp-recipe-builder-table tr:hover td {
+  background: #FFFBEB;
+}
+
+.fp-recipe-input {
+  width: 90px;
+  padding: 4px 8px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0F2A1B;
+  text-align: right;
+  background: #FFFFFF;
+}
+
+.fp-recipe-input:focus {
+  border-color: #D97706;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+.fp-modal-qty-input,
+.fp-modal-min-input {
+  width: 82px;
+  padding: 4px 6px;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  background: #FFFFFF;
+  color: #0F2A1B;
+  transition: all 0.15s ease;
+}
+
+.fp-modal-qty-input:focus,
+.fp-modal-min-input:focus {
+  border-color: #15803D;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.2);
+}
+
+.fp-min-input {
+  color: #92400E;
+  font-weight: 700;
+}
+
+/* Explicit Modal Layer Hierarchy to prevent UI overlap / clipping */
+#modalFinishedFoodCatalogPopup {
+  z-index: 1000000 !important;
+}
+
+#modalFinishedProductFolder {
+  z-index: 1000020 !important;
+}
+
+#modalDeleteFinishedProductConfirm {
+  z-index: 1000050 !important;
+}
+
+#modalRawMaterialSpecsPopup {
+  z-index: 1000010 !important;
+}
+
+#modalExportChoices {
+  z-index: 1000030 !important;
+}
+
+#modalImportCatalog {
+  z-index: 1000030 !important;
+}

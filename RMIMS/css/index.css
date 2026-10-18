@@ -4,44 +4,17 @@
    Full Dark & Light Mode Theme Support
    ========================================================== */
 
-:root {
-  --rm-navy-dark: #11161B;
-  --rm-navy-mid: #181F26;
-  --rm-navy-light: #232B34;
-  --rm-navy-deep: #0B0F13;
-  --rm-emerald-primary: #22C55E;
-  --rm-emerald-light: #4ADE80;
-  --rm-emerald-dark: #16A34A;
-  --rm-emerald-glow: rgba(34, 197, 94, 0.35);
-  
-  --rm-text-white: #FFFFFF;
-  --rm-text-sub: #CBD5E1;
-  --rm-text-muted: #94A3B8;
-  --rm-border-light: rgba(255, 255, 255, 0.1);
-  --rm-border-emerald: rgba(34, 197, 94, 0.32);
-
-  --rm-stage-bg: radial-gradient(circle at 80% 15%, rgba(34, 197, 94, 0.14) 0%, transparent 50%),
-                 radial-gradient(circle at 15% 85%, rgba(35, 43, 52, 0.5) 0%, transparent 60%),
-                 linear-gradient(135deg, #11161B 0%, #0B0F13 100%);
-  
-  --rm-panel-bg: rgba(24, 31, 38, 0.82);
-  --rm-panel-border: rgba(34, 197, 94, 0.32);
-  --rm-panel-shadow: 0 30px 60px rgba(0, 0, 0, 0.65), 0 0 45px rgba(34, 197, 94, 0.20);
-  
-  --rm-card-bg: rgba(17, 22, 27, 0.78);
-  --rm-card-border: rgba(255, 255, 255, 0.10);
-  --rm-card-shadow: 0 16px 32px rgba(0, 0, 0, 0.50);
-  
-  --rm-btn-sec-bg: rgba(255, 255, 255, 0.08);
-  --rm-btn-sec-border: rgba(255, 255, 255, 0.16);
-  --rm-btn-sec-text: #FFFFFF;
-}
-
-[data-theme="light"] {
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
   --rm-navy-dark: #D8EEDC;
   --rm-navy-mid: #FFFFFF;
   --rm-navy-light: #CCE7D1;
   --rm-navy-deep: #C7E5CD;
+  --rm-emerald-primary: #22C55E;
+  --rm-emerald-light: #4ADE80;
+  --rm-emerald-dark: #16A34A;
+  --rm-emerald-glow: rgba(34, 197, 94, 0.35);
 
   --rm-text-white: #0F2A1B;
   --rm-text-sub: #2C4A38;
@@ -290,54 +263,9 @@ body.rmsme-entry-lock {
   gap: 12px;
 }
 
-/* THEME TOGGLE ICON-ONLY BUTTON */
+/* THEME TOGGLE ICON-ONLY BUTTON (HIDDEN) */
 .theme-toggle-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--rm-btn-sec-bg);
-  border: 1px solid var(--rm-btn-sec-border);
-  color: var(--rm-text-white);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  padding: 0;
-  user-select: none;
-}
-
-.theme-toggle-btn:hover {
-  background: rgba(16, 185, 129, 0.18);
-  border-color: var(--rm-emerald-primary);
-  color: var(--rm-emerald-light);
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-}
-
-.theme-toggle-btn:active {
-  transform: scale(0.96);
-}
-
-.theme-icon {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.theme-icon-sun {
-  display: block;
-  color: #FCD34D;
-}
-.theme-icon-moon {
-  display: none;
-}
-
-[data-theme="light"] .theme-icon-sun {
-  display: none;
-}
-[data-theme="light"] .theme-icon-moon {
-  display: block;
-  color: #0F172A;
+  display: none !important;
 }
 
 .brand-mark {

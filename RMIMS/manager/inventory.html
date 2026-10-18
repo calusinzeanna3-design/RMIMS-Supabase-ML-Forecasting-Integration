@@ -1175,13 +1175,16 @@
                         </div>
 
                         <!-- Selected Materials Container / Tags -->
-                        <div style="margin-top: 12px;">
-                            <label style="font-size:11.5px; font-weight:700; color:#78350F; text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:6px;">
-                                Recipe Raw Materials (<span id="newFpSelectedCount">0</span> Added) <span class="req">*</span>
-                            </label>
+                        <div style="margin-top: 14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-size:11.5px; font-weight:700; color:#78350F; text-transform:uppercase; letter-spacing:0.03em; margin:0;">
+                                    Recipe Raw Materials, Unit Need &amp; Minimum Stock Limits (<span id="newFpSelectedCount">0</span> Added) <span class="req">*</span>
+                                </label>
+                                <span style="font-size:11px; color:#92400E; font-style:italic;">Customize recipe requirement per unit and minimum safety limit</span>
+                            </div>
                             <div id="newFpSelectedMaterialsTags"
-                                style="display:flex; flex-wrap:wrap; gap:8px; min-height:42px; padding:8px 12px; background:#FFFFFF; border:1px solid #FCD34D; border-radius:8px; align-items:center;">
-                                <span id="newFpEmptyHint" style="font-size:12px; color:#94A3B8; font-style:italic;">
+                                style="min-height:50px; padding:4px; background:#FFFFFF; border:1px solid #FCD34D; border-radius:8px;">
+                                <span id="newFpEmptyHint" style="font-size:12px; color:#94A3B8; font-style:italic; display:block; padding:12px;">
                                     No raw materials added yet. Choose an available raw material from the dropdown above and click "+ Add Material".
                                 </span>
                             </div>
@@ -1234,7 +1237,7 @@
      MODAL 6: FINISHED PRODUCT FORMULATION POPUP
      ========================================================== -->
     <div class="mgr-modal-backdrop" id="modalFinishedProductFolder" hidden>
-        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
+        <div class="mgr-modal-box modal-xl" role="dialog" aria-modal="true" style="max-width: 1060px;">
             <div class="mgr-modal-header">
                 <div class="mgr-modal-title-group">
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -1243,6 +1246,10 @@
                     <p id="fpPopupSubtitle">Raw Materials Formulation &amp; Inventory Allocation</p>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn-primary-sm" id="btnFpSaveLimitsHeader" title="Save updated recipe need & minimum stock limits" style="background:#15803D !important; border:1px solid #166534 !important; color:#FFFFFF !important; font-weight:700; padding:5px 12px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Save Limits
+                    </button>
                     <button type="button" class="btn-fp-card-action btn-fp-card-edit" id="btnFpDetailEdit" title="Edit this formulation">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         Edit Formulation
@@ -1257,27 +1264,34 @@
             </div>
 
             <div class="mgr-modal-body">
-                <div class="specs-popup-meta-bar" style="background:#FFFBEB; border-color:#FDE68A;">
-                    <div class="specs-popup-meta-item">
-                        <span style="color:#B45309; font-weight:700;">Role:</span>
-                        <strong style="color:#92400E;">Formulation Guide</strong>
+                <div class="specs-popup-meta-bar" style="background:#FFFBEB; border-color:#FDE68A; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
+                        <div class="specs-popup-meta-item">
+                            <span style="color:#B45309; font-weight:700;">Role:</span>
+                            <strong style="color:#92400E;">Formulation &amp; Material Limits Guide</strong>
+                        </div>
+                        <div class="specs-popup-meta-item">
+                            <span style="color:#B45309; font-weight:700;">Specified Raw Materials:</span>
+                            <strong id="fpPopupCount" style="color:#92400E;">0 Items</strong>
+                        </div>
                     </div>
-                    <div class="specs-popup-meta-item">
-                        <span style="color:#B45309; font-weight:700;">Specified Raw Materials:</span>
-                        <strong id="fpPopupCount" style="color:#92400E;">0 Items</strong>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;" id="fpPopupMetaExtra">
+                        <!-- Populated dynamically with safety limits compliance and bottleneck limit -->
                     </div>
                 </div>
 
                 <div class="table-scroll inv-table-scroll"
-                    style="margin-top: 12px; max-height: 360px; overflow-y: auto;">
+                    style="margin-top: 14px; max-height: 400px; overflow-y: auto;">
                     <table class="inv-main-table">
                         <thead>
                             <tr>
-                                <th>Raw Material</th>
-                                <th style="text-align: right;">Current Stock</th>
-                                <th>Unit</th>
-                                <th>Status</th>
-                                <th>How Many Products Can Produce</th>
+                                <th style="min-width:180px;">Raw Material</th>
+                                <th style="text-align: right; min-width:140px;">Need in Finished Product</th>
+                                <th style="text-align: right; min-width:100px;">Current Stock</th>
+                                <th style="text-align: right; min-width:150px;">Minimum Stock (Limit)</th>
+                                <th style="min-width:60px;">Unit</th>
+                                <th style="min-width:120px;">Limit Status</th>
+                                <th style="text-align: right; min-width:190px;">Production Capacity</th>
                             </tr>
                         </thead>
                         <tbody id="fpPopupMaterialsBody">
@@ -1287,21 +1301,31 @@
                 </div>
 
                 <div
-                    style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; margin-top: 6px;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#15803D" stroke-width="2"
-                        style="flex-shrink:0;">
+                    style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 10px; margin-top: 12px;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#15803D" stroke-width="2"
+                        style="flex-shrink:0; margin-top:1px;">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
-                    <p style="font-size: 11.5px; color: #64748B; margin: 0; line-height: 1.4;">
-                        <strong>Notice:</strong> This recipe formulation specifies material requirements and calculates producible output based on available inventory stock.
+                    <p style="font-size: 11.8px; color: #475569; margin: 0; line-height: 1.5;">
+                        <strong>Finished Product Material Limits:</strong> 
+                        <strong>Minimum Stock</strong> represents the required safety reserve limit for each raw material. 
+                        <strong>Safe Limit</strong> calculates how many finished products you can produce <em>before</em> that raw material dips below its minimum stock threshold. 
+                        <strong>Max Output</strong> indicates maximum production possible before inventory reaches zero (0).
+                        You can adjust your inputs directly in the table above and click <strong>Save Limits</strong>.
                     </p>
                 </div>
             </div>
 
-            <div class="mgr-modal-footer">
+            <div class="mgr-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
                 <button type="button" class="btn-secondary" id="fpPopupCloseBtn">Close</button>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn-primary-sm" id="btnFpSaveLimits" style="background:#15803D !important; border:1px solid #166534 !important; color:#FFFFFF !important; font-weight:700; padding:6px 16px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Save Formulation Limits
+                    </button>
+                </div>
             </div>
         </div>
     </div>
