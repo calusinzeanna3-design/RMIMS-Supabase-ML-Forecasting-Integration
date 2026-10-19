@@ -133,7 +133,7 @@
         return false;
       }
       // Reject staff-internal correction/action requests meant solely for staff member
-      if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested') || category === 'login')) {
+      if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested'))) {
         return false;
       }
       // Guarantee manager receives all pending staff review submissions and transactions
@@ -147,8 +147,16 @@
       ) {
         return true;
       }
-      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+      // Login notifications: Manager gets notified ONLY when a Staff member logs in.
+      // Manager/Admin self-login audits are strictly Admin-only.
+      const isLoginNotif = (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('login detected') || message.includes('account login') || title.includes('session active'));
+      if (isLoginNotif) {
+        const uRole = String(n.userRole || n.role || n.roleScope || targetRole || '').toLowerCase();
+        const isMgrOrAdmin = (uRole === 'manager' || uRole === 'admin' || message.includes('manager account login') || message.includes('administrator account login') || title.includes('administrator authenticated') || title.includes('store manager signed in'));
+        const isStaffUser = (uRole === 'staff' || uRole === 'user' || message.includes('staff') || title.toLowerCase().includes('staff') || targetRole === 'manager' || n.roleScope === 'manager');
+        if (isStaffUser && !isMgrOrAdmin) {
+          return true;
+        }
         return false;
       }
       return (
@@ -192,8 +200,8 @@
       if (title.includes('raw material received') || title.includes('raw material disbursed')) {
         return false;
       }
-      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+      // Login notifications: Staff members will not see login notifications.
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected') || title.includes('session active')) {
         return false;
       }
       return (

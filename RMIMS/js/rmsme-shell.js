@@ -2214,8 +2214,16 @@ import { supabase } from '../supabase/supabase-config.js';
       ) {
         return true;
       }
-      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+      // Login notifications: Manager gets notified ONLY when a Staff member logs in.
+      // Manager/Admin self-login audits are strictly Admin-only.
+      const isLoginNotif = (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('login detected') || message.includes('account login') || title.includes('session active'));
+      if (isLoginNotif) {
+        const uRole = String(n.userRole || n.role || n.roleScope || targetRole || '').toLowerCase();
+        const isMgrOrAdmin = (uRole === 'manager' || uRole === 'admin' || message.includes('manager account login') || message.includes('administrator account login') || title.includes('administrator authenticated') || title.includes('store manager signed in'));
+        const isStaffUser = (uRole === 'staff' || uRole === 'user' || message.includes('staff') || title.toLowerCase().includes('staff') || targetRole === 'manager' || n.roleScope === 'manager');
+        if (isStaffUser && !isMgrOrAdmin) {
+          return true;
+        }
         return false;
       }
       return (
@@ -2256,8 +2264,8 @@ import { supabase } from '../supabase/supabase-config.js';
       ) {
         return false;
       }
-      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+      // Login notifications: Staff members will not see login notifications.
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected') || title.includes('session active')) {
         return false;
       }
       return (
@@ -2696,6 +2704,7 @@ import { supabase } from '../supabase/supabase-config.js';
         if (accountName && currentUserId) {
           const sessionId = sessionStorage.getItem('rmims_login_session_id') || `session-${Date.now()}`;
           const loginId = `notif-login-${sessionId}`;
+          const isStaffLogin = !isManager && role !== 'admin';
           const loginNotif = {
             id: loginId,
             category: 'login',
@@ -2704,12 +2713,13 @@ import { supabase } from '../supabase/supabase-config.js';
             message: `${isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff')} account login detected.`,
             actor: 'Source: System',
             userId: currentUserId,
-            roleScope: 'admin',
-            targetRole: 'admin',
+            userRole: isManager ? 'manager' : (role === 'admin' ? 'admin' : 'staff'),
+            roleScope: isStaffLogin ? 'manager' : 'admin',
+            targetRole: isStaffLogin ? 'manager' : 'admin',
             timestamp: new Date().toISOString()
           };
-          // Only Admin portal stores and displays login events
-          if (isAnyAdmin) {
+          // Admin portal stores and displays all login events; Manager portal stores and displays staff login events
+          if (isAnyAdmin || (isStrictManager && isStaffLogin)) {
             newNotifMap.set(loginId, loginNotif);
           }
 
@@ -2952,8 +2962,9 @@ import { supabase } from '../supabase/supabase-config.js';
             if (!p.accountName || p.accountName === 'Staff User' || p.accountName === 'Manager' || !p.userId) {
               return;
             }
-            // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
-            if (!isAnyAdmin) return;
+            const isStaff = (p.role === 'staff' || p.role === 'user');
+            // Login notifications: Admin sees all logins. Manager sees Staff logins only. Staff sees no login notifications.
+            if (!isAnyAdmin && !(isStrictManager && isStaff)) return;
             const loginId = `notif-login-live-${p.userId}-${new Date(p.timestamp || Date.now()).getTime()}`;
             const stored = getStoredNotifications();
             if (!stored.some(n => n.id === loginId)) {
@@ -2965,8 +2976,9 @@ import { supabase } from '../supabase/supabase-config.js';
                 message: `${p.role === 'admin' ? 'Administrator' : (p.role === 'manager' ? 'Manager' : 'Staff')} account login detected.`,
                 actor: 'Source: System',
                 userId: p.userId,
-                roleScope: 'admin',
-                targetRole: 'admin',
+                userRole: p.role,
+                roleScope: isStaff ? 'manager' : 'admin',
+                targetRole: isStaff ? 'manager' : 'admin',
                 timestamp: p.timestamp || new Date().toISOString()
               });
               saveStoredNotifications(stored);
