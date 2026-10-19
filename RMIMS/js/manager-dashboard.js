@@ -866,6 +866,55 @@ function renderPendingTransactions(staffTx) {
   const tbody = document.getElementById('managerPendingTbody');
   const pending = staffTx.filter(t => (t.status || '').toLowerCase() === 'pending');
 
+  // Guarantee all pending transactions are reflected in Manager notifications
+  if (pending.length > 0) {
+    try {
+      const NOTIF_STORE_KEY = 'rmims_notifications_live_v2';
+      const rawNotifs = localStorage.getItem(NOTIF_STORE_KEY);
+      const notifList = rawNotifs ? JSON.parse(rawNotifs) : [];
+      let notifModified = false;
+
+      pending.forEach(tx => {
+        const ref = tx.ref || tx.id;
+        if (!ref) return;
+        const exists = notifList.some(n => 
+          (n.ref && n.ref === ref && (n.badge === 'Pending Review' || n.badge === 'Updated')) ||
+          (n.title && n.title.includes(ref) && (n.badge === 'Pending Review' || n.badge === 'Updated'))
+        );
+        if (!exists) {
+          const isRec = (tx.type || tx.activity || '').toLowerCase().includes('rec');
+          const act = isRec ? 'Receive' : 'Disburse';
+          notifList.unshift({
+            id: `notif-staff-tx-${ref}`,
+            title: `New Staff ${act}: ${ref}`,
+            message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material || tx.materialName || 'material'} (${ref}).`,
+            category: 'Inventory',
+            badge: 'Pending Review',
+            role: 'manager',
+            targetRole: 'manager',
+            roleScope: 'manager',
+            priority: 'normal',
+            targetUrl: 'manager/staff-activity.html',
+            ref: ref,
+            material: tx.material || tx.materialName,
+            quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
+            actor: tx.staff || 'Staff Member',
+            timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '10:00:00'}` : new Date().toISOString())
+          });
+          notifModified = true;
+        }
+      });
+
+      if (notifModified) {
+        localStorage.setItem(NOTIF_STORE_KEY, JSON.stringify(notifList));
+        window.dispatchEvent(new CustomEvent('rmims:notification_change'));
+        if (window.RMIMS_NOTIFICATIONS_POPUP && typeof window.RMIMS_NOTIFICATIONS_POPUP.updateBadges === 'function') {
+          window.RMIMS_NOTIFICATIONS_POPUP.updateBadges('manager');
+        }
+      }
+    } catch (_) {}
+  }
+
   // 1. Populate Container if present
   if (container) {
     if (pending.length === 0) {

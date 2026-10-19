@@ -430,24 +430,27 @@ export function submitStaffTransaction(data) {
   } catch (e) {}
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
+  let staffTxNotif = null;
   try {
+    const act = tx.activity || (tx.ref.startsWith('REC') ? 'Receive' : 'Disburse');
+    staffTxNotif = {
+      title: `New Staff ${act}: ${tx.ref}`,
+      message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material} (${tx.ref}).`,
+      category: 'Inventory',
+      badge: 'Pending Review',
+      role: 'manager',
+      targetRole: 'manager',
+      roleScope: 'manager',
+      priority: 'normal',
+      targetUrl: 'manager/staff-activity.html',
+      ref: tx.ref,
+      material: tx.material,
+      quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
+      actor: tx.staff || 'Staff Member',
+      timestamp: new Date().toISOString()
+    };
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-      const act = tx.activity || (tx.ref.startsWith('REC') ? 'Receive' : 'Disburse');
-      window.pushRMIMSNotification({
-        title: `New Staff ${act}: ${tx.ref}`,
-        message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material} (${tx.ref}).`,
-        category: 'Inventory',
-        badge: 'Pending Review',
-        role: 'manager',
-        targetRole: 'manager',
-        roleScope: 'manager',
-        priority: 'normal',
-        targetUrl: 'manager/staff-activity.html',
-        ref: tx.ref,
-        material: tx.material,
-        quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
-        actor: tx.staff || 'Staff Member'
-      });
+      window.pushRMIMSNotification(staffTxNotif);
     }
   } catch (e) {}
 
@@ -458,7 +461,8 @@ export function submitStaffTransaction(data) {
     if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
       window.broadcastRMIMSSync({
         transaction: tx,
-        allTransactions: allStaff
+        allTransactions: allStaff,
+        notification: staffTxNotif
       });
     }
   } catch (e) {}
@@ -524,24 +528,27 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
   } catch (e) {}
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
+  let mgrResubmitNotif = null;
   try {
+    mgrResubmitNotif = {
+      title: `Transaction Resubmitted: ${targetRef}`,
+      message: `Staff corrected and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}). Pending review.`,
+      category: 'Inventory',
+      badge: 'Updated',
+      role: 'manager',
+      targetRole: 'manager',
+      roleScope: 'manager',
+      priority: 'normal',
+      targetUrl: 'manager/staff-activity.html',
+      ref: targetRef,
+      material: updatedTx.material,
+      quantity: updatedTx.qty,
+      actor: updatedTx.staff || 'Staff Member',
+      timestamp: new Date().toISOString()
+    };
     if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
       // 1. Notify Manager of resubmission
-      window.pushRMIMSNotification({
-        title: `Transaction Resubmitted: ${targetRef}`,
-        message: `Staff corrected and resubmitted ${targetRef} (${updatedTx.qty} of ${updatedTx.material}). Pending review.`,
-        category: 'Inventory',
-        badge: 'Updated',
-        role: 'manager',
-        targetRole: 'manager',
-        roleScope: 'manager',
-        priority: 'normal',
-        targetUrl: 'manager/staff-activity.html',
-        ref: targetRef,
-        material: updatedTx.material,
-        quantity: updatedTx.qty,
-        actor: updatedTx.staff || 'Staff Member'
-      });
+      window.pushRMIMSNotification(mgrResubmitNotif);
 
       // 2. Notify Staff member that their resubmission is now pending manager review
       window.pushRMIMSNotification({
@@ -557,7 +564,8 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
         ref: targetRef,
         material: updatedTx.material,
         quantity: updatedTx.qty,
-        actor: updatedTx.staff || 'Staff Member'
+        actor: updatedTx.staff || 'Staff Member',
+        timestamp: new Date().toISOString()
       });
     }
   } catch (e) {}
@@ -568,7 +576,8 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
     if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
       window.broadcastRMIMSSync({
         transaction: updatedTx,
-        allTransactions: allStaff
+        allTransactions: allStaff,
+        notification: mgrResubmitNotif
       });
     }
   } catch (e) {}

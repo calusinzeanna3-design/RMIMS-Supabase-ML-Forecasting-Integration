@@ -209,7 +209,7 @@ function saveDisbursements() {
   } catch (e) {}
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initManagerDisburse() {
   rawMaterials = getSystemRawMaterials();
   loadDisbursements();
 
@@ -240,7 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleDisbursePreview();
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initManagerDisburse);
+} else {
+  initManagerDisburse();
+}
 
 function initDatePicker() {
   const dateInput = document.getElementById('disbDateInput');
@@ -1235,24 +1241,26 @@ function escapeHtml(str) {
 let pendingDeleteDisbursementRef = null;
 
 function bindDisbursementActionEvents() {
-  const tbody = document.getElementById('mgrDisburseHistoryTbody');
-  if (tbody) {
-    tbody.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('.btn-mgr-edit-disb');
-      if (editBtn) {
-        const ref = editBtn.dataset.ref;
-        if (ref) openEditDisbursementModal(ref);
-        return;
-      }
+  // Global document-level click delegation for Edit and Delete buttons
+  document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.btn-mgr-edit-disb');
+    if (editBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const ref = editBtn.dataset.ref;
+      if (ref) openEditDisbursementModal(ref);
+      return;
+    }
 
-      const delBtn = e.target.closest('.btn-mgr-del-disb');
-      if (delBtn) {
-        const ref = delBtn.dataset.ref;
-        if (ref) openDeleteDisbursementModal(ref);
-        return;
-      }
-    });
-  }
+    const delBtn = e.target.closest('.btn-mgr-del-disb');
+    if (delBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const ref = delBtn.dataset.ref;
+      if (ref) openDeleteDisbursementModal(ref);
+      return;
+    }
+  });
 
   // Edit modal buttons
   const editModal = document.getElementById('mgrEditDisbModal');
@@ -1261,7 +1269,10 @@ function bindDisbursementActionEvents() {
   const formEdit = document.getElementById('mgrEditDisbForm');
 
   const closeEditModal = () => {
-    if (editModal) editModal.style.display = 'none';
+    if (editModal) {
+      editModal.style.display = 'none';
+      editModal.classList.remove('open', 'active');
+    }
   };
 
   if (btnCloseEdit) btnCloseEdit.addEventListener('click', closeEditModal);
@@ -1270,10 +1281,10 @@ function bindDisbursementActionEvents() {
   if (formEdit) {
     formEdit.addEventListener('submit', (e) => {
       e.preventDefault();
-      const ref = document.getElementById('editDisbRef').value.trim();
-      const quantity = parseFloat(document.getElementById('editDisbQty').value);
-      const usedFor = document.getElementById('editDisbUsedFor').value.trim();
-      const notes = document.getElementById('editDisbNotes').value.trim();
+      const ref = (document.getElementById('editDisbRef')?.value || '').trim();
+      const quantity = parseFloat(document.getElementById('editDisbQty')?.value);
+      const usedFor = (document.getElementById('editDisbUsedFor')?.value || '').trim();
+      const notes = (document.getElementById('editDisbNotes')?.value || '').trim();
 
       if (isNaN(quantity) || quantity <= 0) {
         alert('Please enter a valid positive quantity.');
@@ -1311,7 +1322,10 @@ function bindDisbursementActionEvents() {
 
   const closeDelModal = () => {
     pendingDeleteDisbursementRef = null;
-    if (delModal) delModal.style.display = 'none';
+    if (delModal) {
+      delModal.style.display = 'none';
+      delModal.classList.remove('open', 'active');
+    }
   };
 
   if (btnCloseDel) btnCloseDel.addEventListener('click', closeDelModal);
@@ -1336,30 +1350,89 @@ function bindDisbursementActionEvents() {
   }
 }
 
+function findDisbursementRecord(ref) {
+  if (!ref) return null;
+  const cleanRef = String(ref).trim().toLowerCase();
+  let disb = managerDisbursements.find(d => String(d.ref || '').trim().toLowerCase() === cleanRef);
+  if (disb) return disb;
+
+  try {
+    const raw = localStorage.getItem(MGR_DISBURSEMENTS_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      disb = list.find(d => String(d.ref || '').trim().toLowerCase() === cleanRef);
+      if (disb) return disb;
+    }
+  } catch (_) {}
+
+  try {
+    const rawStaff = localStorage.getItem('rmims_staff_transactions');
+    if (rawStaff) {
+      const staffList = JSON.parse(rawStaff);
+      const st = staffList.find(t => String(t.ref || '').trim().toLowerCase() === cleanRef);
+      if (st) {
+        return {
+          ref: st.ref,
+          materialName: st.material || st.materialName || 'Raw Material',
+          materialId: st.materialId || st.item_code || '',
+          quantity: st.quantity != null ? st.quantity : (st.qtyNum != null ? st.qtyNum : parseFloat(st.qty) || 0),
+          unit: st.unit || 'kg',
+          usedFor: st.usedFor || st.recipient || 'Production Department',
+          notes: st.notes || ''
+        };
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
 function openEditDisbursementModal(ref) {
-  const disb = managerDisbursements.find(d => d.ref === ref);
-  if (!disb) return;
+  const disb = findDisbursementRecord(ref);
+  if (!disb) {
+    alert(`Disbursement record ${ref} could not be located.`);
+    return;
+  }
 
   const modal = document.getElementById('mgrEditDisbModal');
   if (!modal) return;
 
-  const mat = rawMaterials.find(m => String(m.id) === String(disb.materialId) || String(m.item_code) === String(disb.materialId) || (m.name || '').toLowerCase() === (disb.materialName || '').toLowerCase());
+  const mat = rawMaterials.find(m => 
+    String(m.id || '').trim().toLowerCase() === String(disb.materialId || '').trim().toLowerCase() || 
+    String(m.item_code || '').trim().toLowerCase() === String(disb.materialId || '').trim().toLowerCase() || 
+    (m.name || '').toLowerCase() === (disb.materialName || '').toLowerCase()
+  );
   const fallbackUnit = mat ? (mat.unit_of_measure || mat.unit) : '';
 
-  document.getElementById('editDisbRef').value = disb.ref;
-  document.getElementById('editDisbRefDisplay').value = disb.ref;
-  document.getElementById('editDisbMaterial').value = `${disb.materialName} (${disb.materialId || ''})`;
-  document.getElementById('editDisbQty').value = disb.quantity;
-  document.getElementById('editDisbUnit').value = disb.unit || fallbackUnit || '--';
-  document.getElementById('editDisbUsedFor').value = disb.usedFor || '';
-  document.getElementById('editDisbNotes').value = disb.notes || '';
+  const elRef = document.getElementById('editDisbRef');
+  const elRefDisp = document.getElementById('editDisbRefDisplay');
+  const elMat = document.getElementById('editDisbMaterial');
+  const elQty = document.getElementById('editDisbQty');
+  const elUnit = document.getElementById('editDisbUnit');
+  const elUsed = document.getElementById('editDisbUsedFor');
+  const elNotes = document.getElementById('editDisbNotes');
+
+  if (elRef) elRef.value = disb.ref || '';
+  if (elRefDisp) elRefDisp.value = disb.ref || '';
+  if (elMat) elMat.value = `${disb.materialName || 'Raw Material'}${disb.materialId ? ` (${disb.materialId})` : ''}`;
+  if (elQty) elQty.value = disb.quantity != null ? disb.quantity : '';
+  if (elUnit) elUnit.value = disb.unit || fallbackUnit || '--';
+  if (elUsed) elUsed.value = disb.usedFor || disb.recipient || '';
+  if (elNotes) elNotes.value = disb.notes || '';
 
   modal.style.display = 'flex';
+  modal.style.visibility = 'visible';
+  modal.style.opacity = '1';
+  modal.classList.add('open', 'active');
+  modal.removeAttribute('hidden');
 }
 
 function openDeleteDisbursementModal(ref) {
-  const disb = managerDisbursements.find(d => d.ref === ref);
-  if (!disb) return;
+  const disb = findDisbursementRecord(ref);
+  if (!disb) {
+    alert(`Disbursement record ${ref} could not be located.`);
+    return;
+  }
 
   pendingDeleteDisbursementRef = ref;
   const modal = document.getElementById('mgrDeleteDisbModal');
@@ -1371,6 +1444,15 @@ function openDeleteDisbursementModal(ref) {
     warnEl.textContent = `⚠️ Warning: Deleting this disbursement will return +${disb.quantity} ${disb.unit || 'units'} back into "${disb.materialName}" stock.`;
   }
 
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    modal.classList.add('open', 'active');
+    modal.removeAttribute('hidden');
+  }
 }
+
+window.openEditDisbursementModal = openEditDisbursementModal;
+window.openDeleteDisbursementModal = openDeleteDisbursementModal;
 

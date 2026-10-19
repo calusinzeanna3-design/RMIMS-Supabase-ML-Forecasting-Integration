@@ -2200,6 +2200,17 @@ import { supabase } from '../supabase/supabase-config.js';
       if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested'))) {
         return false;
       }
+      // Guarantee manager receives all pending staff review submissions and transactions
+      if (
+        badge.includes('pending review') ||
+        badge.includes('pending') ||
+        title.toLowerCase().includes('new staff') ||
+        title.toLowerCase().includes('resubmitted to manager') ||
+        title.toLowerCase().includes('transaction resubmitted') ||
+        title.toLowerCase().includes('awaiting approval')
+      ) {
+        return true;
+      }
       if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
         return targetRole === 'manager' || title.includes('manager') || message.includes('manager');
       }
@@ -2273,7 +2284,7 @@ import { supabase } from '../supabase/supabase-config.js';
   }
 
   function getVisibleNotifications() {
-    const allNotifs = getStoredNotifications();
+    let allNotifs = getStoredNotifications();
     let currentUserId = null;
     try {
       const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
@@ -2281,6 +2292,54 @@ import { supabase } from '../supabase/supabase-config.js';
     } catch (e) {}
 
     const portalRole = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'staff');
+
+    // Auto-sync pending staff transactions for manager if not yet recorded
+    if (portalRole === 'manager') {
+      try {
+        const staffRaw = localStorage.getItem('rmims_staff_transactions');
+        if (staffRaw) {
+          const staffList = JSON.parse(staffRaw);
+          if (Array.isArray(staffList)) {
+            const pendingStaff = staffList.filter(t => (t.status || '').toLowerCase() === 'pending');
+            let modified = false;
+            pendingStaff.forEach(tx => {
+              const ref = tx.ref || tx.id;
+              if (!ref) return;
+              const exists = allNotifs.some(n => 
+                (n.ref && n.ref === ref && (n.badge === 'Pending Review' || n.badge === 'Updated')) ||
+                (n.title && n.title.includes(ref) && (n.badge === 'Pending Review' || n.badge === 'Updated'))
+              );
+              if (!exists) {
+                const act = tx.activity || (String(ref).startsWith('REC') ? 'Receive' : 'Disburse');
+                const newNotif = {
+                  id: `notif-staff-tx-${ref}`,
+                  title: `New Staff ${act}: ${ref}`,
+                  message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material || tx.materialName || 'material'} (${ref}).`,
+                  category: 'Inventory',
+                  badge: 'Pending Review',
+                  role: 'manager',
+                  targetRole: 'manager',
+                  roleScope: 'manager',
+                  priority: 'normal',
+                  targetUrl: 'manager/staff-activity.html',
+                  ref: ref,
+                  material: tx.material || tx.materialName,
+                  quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
+                  actor: tx.staff || 'Staff Member',
+                  timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '10:00:00'}` : new Date().toISOString())
+                };
+                allNotifs.unshift(newNotif);
+                modified = true;
+              }
+            });
+            if (modified) {
+              saveStoredNotifications(allNotifs);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
     return allNotifs.filter(n => isNotificationInScope(n, portalRole, currentUserId));
   }
 

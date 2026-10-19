@@ -2391,6 +2391,27 @@ function initEventListeners() {
     });
   }
 
+  // Global document-level delegation ensuring Edit & Delete buttons always respond
+  function handleGlobalInventoryTableActions(e) {
+    const editBtn = e.target.closest('.btn-table-edit');
+    if (editBtn) {
+      e.preventDefault();
+      const id = editBtn.dataset.id || editBtn.getAttribute('data-id');
+      if (id) openEditMaterialModal(id);
+      return;
+    }
+    const delBtn = e.target.closest('.btn-table-delete');
+    if (delBtn) {
+      e.preventDefault();
+      const id = delBtn.dataset.id || delBtn.getAttribute('data-id');
+      const name = delBtn.dataset.name || delBtn.getAttribute('data-name');
+      if (id) promptDeleteMaterial(id, name);
+      return;
+    }
+  }
+  document.removeEventListener('click', handleGlobalInventoryTableActions);
+  document.addEventListener('click', handleGlobalInventoryTableActions);
+
   // Table action clicks (delegated)
   const tbody = document.getElementById('overviewTableBody');
   if (tbody) {
@@ -2895,13 +2916,44 @@ function handleAddMaterialSubmit(e) {
  */
 let pendingDeleteMaterialId = null;
 
+function findInventoryItem(id) {
+  if (!id) return null;
+  const cleanId = String(id).trim().toUpperCase();
+  const cleanLow = String(id).trim().toLowerCase();
+
+  let m = (rawMaterials || []).find(x => 
+    String(x.id || '').trim().toUpperCase() === cleanId || 
+    String(x.item_code || '').trim().toUpperCase() === cleanId ||
+    (x.name && x.name.trim().toLowerCase() === cleanLow) ||
+    (x.raw_material_name && x.raw_material_name.trim().toLowerCase() === cleanLow)
+  );
+  if (m) return m;
+
+  try {
+    const sys = getSystemRawMaterials();
+    m = sys.find(x => 
+      String(x.id || '').trim().toUpperCase() === cleanId || 
+      String(x.item_code || '').trim().toUpperCase() === cleanId ||
+      (x.name && x.name.trim().toLowerCase() === cleanLow) ||
+      (x.raw_material_name && x.raw_material_name.trim().toLowerCase() === cleanLow)
+    );
+    if (m) return m;
+  } catch (_) {}
+
+  return null;
+}
+
 function promptDeleteMaterial(id, name) {
-  pendingDeleteMaterialId = id;
+  const foundMat = findInventoryItem(id) || findInventoryItem(name);
+  const actualId = foundMat ? foundMat.id : id;
+  const actualName = foundMat ? (foundMat.raw_material_name || foundMat.name) : (name || id);
+  pendingDeleteMaterialId = actualId;
+
   const modal = document.getElementById('modalDeleteConfirm');
   const nameEl = document.getElementById('deleteTargetMaterialName');
   const codeEl = document.getElementById('deleteTargetMaterialCode');
-  if (nameEl) nameEl.textContent = name || id;
-  if (codeEl) codeEl.textContent = id;
+  if (nameEl) nameEl.textContent = actualName;
+  if (codeEl) codeEl.textContent = actualId;
   if (modal) showModalBackdrop(modal);
 }
 
@@ -2914,7 +2966,7 @@ function closeDeleteConfirmModal() {
 function handleConfirmDeleteMaterial() {
   if (!pendingDeleteMaterialId) return;
   const id = pendingDeleteMaterialId;
-  const mat = rawMaterials.find(m => m.id === id);
+  const mat = findInventoryItem(id);
   const name = mat ? (mat.raw_material_name || mat.name) : id;
 
   deleteSystemRawMaterial(id);
@@ -2930,8 +2982,12 @@ function handleConfirmDeleteMaterial() {
  * ==========================================================
  */
 function openEditMaterialModal(id) {
-  const m = rawMaterials.find(x => x.id === id);
-  if (!m) return;
+  const m = findInventoryItem(id);
+  if (!m) {
+    console.warn('[RMIMS Manager Inventory] Material not found for edit ID:', id);
+    alert(`Material "${id}" could not be loaded for editing.`);
+    return;
+  }
 
   const modal = document.getElementById('modalEditMaterial');
   if (!modal) return;

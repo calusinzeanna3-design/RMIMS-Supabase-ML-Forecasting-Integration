@@ -131,8 +131,20 @@
       ) {
         return false;
       }
-      if (targetRole === 'staff') {
+      // Reject staff-internal correction/action requests meant solely for staff member
+      if (targetRole === 'staff' && (badge.includes('action required') || title.includes('correction requested') || category === 'login')) {
         return false;
+      }
+      // Guarantee manager receives all pending staff review submissions and transactions
+      if (
+        badge.includes('pending review') ||
+        badge.includes('pending') ||
+        title.toLowerCase().includes('new staff') ||
+        title.toLowerCase().includes('resubmitted to manager') ||
+        title.toLowerCase().includes('transaction resubmitted') ||
+        title.toLowerCase().includes('awaiting approval')
+      ) {
+        return true;
       }
       if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
         return targetRole === 'manager' || title.includes('manager') || message.includes('manager');
@@ -1031,23 +1043,91 @@
     push: window.pushRMIMSNotification
   };
 
+  function autoSyncPendingStaffNotifications(role) {
+    if (role !== 'manager') return;
+    try {
+      const raw = localStorage.getItem('rmims_staff_transactions');
+      if (!raw) return;
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return;
+
+      const pending = list.filter(t => (t.status || '').toLowerCase() === 'pending');
+      if (pending.length === 0) return;
+
+      const stored = getNotifications();
+      let modified = false;
+
+      pending.forEach(tx => {
+        const ref = tx.ref || tx.id;
+        if (!ref) return;
+        const exists = stored.some(n => 
+          (n.ref && n.ref === ref && (n.badge === 'Pending Review' || n.badge === 'Updated')) ||
+          (n.title && n.title.includes(ref) && (n.badge === 'Pending Review' || n.badge === 'Updated'))
+        );
+
+        if (!exists) {
+          const act = tx.activity || (String(ref).startsWith('REC') ? 'Receive' : 'Disburse');
+          const newNotif = {
+            id: `notif-staff-tx-${ref}`,
+            title: `New Staff ${act}: ${ref}`,
+            message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material || tx.materialName || 'material'} (${ref}).`,
+            category: 'Inventory',
+            badge: 'Pending Review',
+            role: 'manager',
+            targetRole: 'manager',
+            roleScope: 'manager',
+            priority: 'normal',
+            targetUrl: 'manager/staff-activity.html',
+            ref: ref,
+            material: tx.material || tx.materialName,
+            quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
+            actor: tx.staff || 'Staff Member',
+            timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '10:00:00'}` : new Date().toISOString())
+          };
+          stored.unshift(newNotif);
+          modified = true;
+        }
+      });
+
+      if (modified) {
+        saveNotifications(stored);
+        updateTopbarBadges('manager');
+      }
+    } catch (_) {}
+  }
+
   // Initialize on DOM load
   function init() {
     ensureNotificationStyles();
     bindBellButtons();
     const role = getPortalRole();
+    autoSyncPendingStaffNotifications(role);
     updateTopbarBadges(role);
 
     // Re-check periodically or after dynamic header generation
     setTimeout(() => {
       bindBellButtons();
+      autoSyncPendingStaffNotifications(role);
       updateTopbarBadges(role);
     }, 400);
 
     setTimeout(() => {
       bindBellButtons();
+      autoSyncPendingStaffNotifications(role);
       updateTopbarBadges(role);
     }, 1200);
+
+    window.addEventListener('storage', (e) => {
+      if (!e.key || e.key.includes('staff') || e.key.includes('notif') || e.key.includes('transaction')) {
+        autoSyncPendingStaffNotifications(getPortalRole());
+        updateTopbarBadges(getPortalRole());
+      }
+    });
+
+    window.addEventListener('rmims_staff_transactions_updated', () => {
+      autoSyncPendingStaffNotifications(getPortalRole());
+      updateTopbarBadges(getPortalRole());
+    });
   }
 
   if (document.readyState === 'loading') {

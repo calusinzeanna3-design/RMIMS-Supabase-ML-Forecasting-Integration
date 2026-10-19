@@ -209,7 +209,7 @@ function saveReceipts() {
   } catch (e) {}
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initManagerReceive() {
   rawMaterials = getSystemRawMaterials();
   loadReceipts();
 
@@ -239,7 +239,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleReceivePreview();
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initManagerReceive);
+} else {
+  initManagerReceive();
+}
 
 function initDatePicker() {
   const dateInput = document.getElementById('recDateInput');
@@ -1202,30 +1208,35 @@ function escapeHtml(str) {
 let pendingDeleteReceiptRef = null;
 
 function bindReceiptActionEvents() {
-  const tbody = document.getElementById('mgrReceiveHistoryTbody');
-  if (tbody) {
-    tbody.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('.btn-mgr-edit-rec');
-      if (editBtn) {
-        openEditReceiptModal(editBtn.dataset.ref);
-        return;
-      }
-      const delBtn = e.target.closest('.btn-mgr-del-rec');
-      if (delBtn) {
-        openDeleteReceiptModal(delBtn.dataset.ref);
-        return;
-      }
-    });
-  }
+  // Robust document-level event delegation for Edit/Delete buttons
+  document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.btn-mgr-edit-rec');
+    if (editBtn) {
+      e.preventDefault();
+      const ref = editBtn.dataset.ref || editBtn.getAttribute('data-ref');
+      if (ref) openEditReceiptModal(ref);
+      return;
+    }
+    const delBtn = e.target.closest('.btn-mgr-del-rec');
+    if (delBtn) {
+      e.preventDefault();
+      const ref = delBtn.dataset.ref || delBtn.getAttribute('data-ref');
+      if (ref) openDeleteReceiptModal(ref);
+      return;
+    }
+  });
 
   // Edit modal buttons
+  const editModal = document.getElementById('mgrEditReceiptModal');
   const editForm = document.getElementById('mgrEditReceiptForm');
   const btnCloseEdit = document.getElementById('btnCloseEditReceipt');
   const btnCancelEdit = document.getElementById('btnCancelEditReceipt');
 
   const closeEditModal = () => {
-    const modal = document.getElementById('mgrEditReceiptModal');
-    if (modal) modal.style.display = 'none';
+    if (editModal) {
+      editModal.style.display = 'none';
+      editModal.classList.remove('open', 'active');
+    }
   };
 
   if (btnCloseEdit) btnCloseEdit.addEventListener('click', closeEditModal);
@@ -1234,10 +1245,15 @@ function bindReceiptActionEvents() {
   if (editForm) {
     editForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const ref = document.getElementById('editRecRef').value;
-      const newQty = parseFloat(document.getElementById('editRecQty').value);
-      const supplier = document.getElementById('editRecSupplier').value.trim();
-      const notes = document.getElementById('editRecNotes').value.trim();
+      const elRef = document.getElementById('editRecRef');
+      const elQty = document.getElementById('editRecQty');
+      const elSup = document.getElementById('editRecSupplier');
+      const elNotes = document.getElementById('editRecNotes');
+
+      const ref = elRef ? elRef.value : '';
+      const newQty = elQty ? parseFloat(elQty.value) : NaN;
+      const supplier = elSup ? elSup.value.trim() : '';
+      const notes = elNotes ? elNotes.value.trim() : '';
 
       if (isNaN(newQty) || newQty <= 0) {
         alert('Please enter a valid positive quantity.');
@@ -1264,14 +1280,17 @@ function bindReceiptActionEvents() {
   }
 
   // Delete modal buttons
+  const delModal = document.getElementById('mgrDeleteReceiptModal');
   const btnCloseDel = document.getElementById('btnCloseDeleteReceipt');
   const btnCancelDel = document.getElementById('btnCancelDeleteReceipt');
   const btnConfirmDel = document.getElementById('btnConfirmDeleteReceipt');
 
   const closeDelModal = () => {
     pendingDeleteReceiptRef = null;
-    const modal = document.getElementById('mgrDeleteReceiptModal');
-    if (modal) modal.style.display = 'none';
+    if (delModal) {
+      delModal.style.display = 'none';
+      delModal.classList.remove('open', 'active');
+    }
   };
 
   if (btnCloseDel) btnCloseDel.addEventListener('click', closeDelModal);
@@ -1289,46 +1308,106 @@ function bindReceiptActionEvents() {
         renderKpis();
         renderHistoryTable();
         alert(`✓ Receipt ${ref} deleted and inward stock reverted.`);
+      } else {
+        alert('Error deleting receipt: ' + (res?.message || 'Unknown error'));
       }
     });
   }
 }
 
+function findReceiptRecord(ref) {
+  if (!ref) return null;
+  const cleanRef = String(ref).trim().toLowerCase();
+  let rec = managerReceipts.find(r => String(r.ref || '').trim().toLowerCase() === cleanRef);
+  if (rec) return rec;
+
+  try {
+    const raw = localStorage.getItem(MGR_RECEIPTS_KEY);
+    if (raw) {
+      const list = JSON.parse(raw);
+      rec = list.find(r => String(r.ref || '').trim().toLowerCase() === cleanRef);
+      if (rec) return rec;
+    }
+  } catch (_) {}
+
+  try {
+    const rawStaff = localStorage.getItem('rmims_staff_transactions');
+    if (rawStaff) {
+      const staffList = JSON.parse(rawStaff);
+      const st = staffList.find(t => String(t.ref || '').trim().toLowerCase() === cleanRef);
+      if (st) {
+        return {
+          ref: st.ref,
+          materialName: st.material || st.materialName || 'Raw Material',
+          materialId: st.materialId || st.item_code || '',
+          quantity: st.quantity != null ? st.quantity : (st.qtyNum != null ? st.qtyNum : parseFloat(st.qty) || 0),
+          unit: st.unit || 'kg',
+          supplier: st.supplier || 'Standard Supplier',
+          notes: st.notes || ''
+        };
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
 function openEditReceiptModal(ref) {
-  const rec = managerReceipts.find(r => r.ref === ref);
-  if (!rec) return;
+  const rec = findReceiptRecord(ref);
+  if (!rec) {
+    alert(`Receipt record ${ref} could not be located.`);
+    return;
+  }
 
   const modal = document.getElementById('mgrEditReceiptModal');
   if (!modal) return;
 
-  const mat = rawMaterials.find(m => String(m.id) === String(rec.materialId) || String(m.item_code) === String(rec.materialId) || (m.name || '').toLowerCase() === (rec.materialName || '').toLowerCase());
+  const mat = rawMaterials.find(m => 
+    String(m.id || '').trim().toLowerCase() === String(rec.materialId || '').trim().toLowerCase() || 
+    String(m.item_code || '').trim().toLowerCase() === String(rec.materialId || '').trim().toLowerCase() || 
+    (m.name || '').toLowerCase() === (rec.materialName || '').toLowerCase()
+  );
   const fallbackUnit = mat ? (mat.unit_of_measure || mat.unit) : '';
 
-  document.getElementById('editRecRef').value = rec.ref;
-  document.getElementById('editRecRefDisplay').value = rec.ref;
-  document.getElementById('editRecMaterial').value = `${rec.materialName} (${rec.materialId || ''})`;
-  document.getElementById('editRecQty').value = rec.quantity;
-  document.getElementById('editRecUnit').value = rec.unit || fallbackUnit || '--';
-  document.getElementById('editRecSupplier').value = rec.supplier || '';
-  document.getElementById('editRecNotes').value = rec.notes || '';
+  const elRef = document.getElementById('editRecRef');
+  const elRefDisp = document.getElementById('editRecRefDisplay');
+  const elMat = document.getElementById('editRecMaterial');
+  const elQty = document.getElementById('editRecQty');
+  const elUnit = document.getElementById('editRecUnit');
+  const elSup = document.getElementById('editRecSupplier');
+  const elNotes = document.getElementById('editRecNotes');
+
+  if (elRef) elRef.value = rec.ref || '';
+  if (elRefDisp) elRefDisp.value = rec.ref || '';
+  if (elMat) elMat.value = `${rec.materialName || 'Raw Material'} (${rec.materialId || ''})`;
+  if (elQty) elQty.value = rec.quantity != null ? rec.quantity : 0;
+  if (elUnit) elUnit.value = rec.unit || fallbackUnit || '--';
+  if (elSup) elSup.value = rec.supplier || '';
+  if (elNotes) elNotes.value = rec.notes || '';
 
   modal.style.display = 'flex';
+  modal.classList.add('open', 'active');
 }
 
 function openDeleteReceiptModal(ref) {
-  const rec = managerReceipts.find(r => r.ref === ref);
-  if (!rec) return;
+  const rec = findReceiptRecord(ref);
+  if (!rec) {
+    alert(`Receipt record ${ref} could not be located.`);
+    return;
+  }
 
-  pendingDeleteReceiptRef = ref;
+  pendingDeleteReceiptRef = rec.ref;
   const modal = document.getElementById('mgrDeleteReceiptModal');
+  if (!modal) return;
+
   const codeEl = document.getElementById('deleteRecRefCode');
   const warnEl = document.getElementById('deleteRecStockWarning');
 
-  if (codeEl) codeEl.textContent = ref;
+  if (codeEl) codeEl.textContent = rec.ref;
   if (warnEl) {
     warnEl.textContent = `⚠️ Warning: Deleting this receipt will deduct ${rec.quantity} ${rec.unit || 'units'} from "${rec.materialName}" stock.`;
   }
 
   modal.style.display = 'flex';
+  modal.classList.add('open', 'active');
 }
-

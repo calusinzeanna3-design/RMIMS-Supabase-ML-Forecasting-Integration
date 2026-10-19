@@ -23,7 +23,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initStaffInventory() {
   loadInventory();
   bindEvents();
 
@@ -33,7 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
       loadInventory();
     }
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initStaffInventory);
+} else {
+  initStaffInventory();
+}
 
 function loadInventory() {
   rawMaterials = getSystemRawMaterials();
@@ -96,6 +102,25 @@ function bindEvents() {
       renderTable();
     });
   }
+
+  // Document-level delegation for Edit and Delete
+  document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('.btn-staff-edit');
+    if (editBtn) {
+      e.preventDefault();
+      const id = editBtn.dataset.id || editBtn.getAttribute('data-id');
+      if (id) openStaffEditModal(id);
+      return;
+    }
+    const delBtn = e.target.closest('.btn-staff-delete');
+    if (delBtn) {
+      e.preventDefault();
+      const id = delBtn.dataset.id || delBtn.getAttribute('data-id');
+      const name = delBtn.dataset.name || delBtn.getAttribute('data-name');
+      if (id) openStaffDeleteModal(id, name);
+      return;
+    }
+  });
 
   // Action column delegation (Edit and Delete)
   const table = document.getElementById('staffInventoryTable');
@@ -476,8 +501,16 @@ function renderPaginationControls(totalPages, totalItems) {
 let pendingDeleteStaffMatId = null;
 
 function openStaffEditModal(id) {
-  const m = rawMaterials.find(x => String(x.id) === String(id) || String(x.item_code) === String(id));
-  if (!m) return;
+  const cleanId = String(id || '').trim().toUpperCase();
+  const m = rawMaterials.find(x => 
+    String(x.id || '').trim().toUpperCase() === cleanId || 
+    String(x.item_code || '').trim().toUpperCase() === cleanId ||
+    (x.name && x.name.toLowerCase() === String(id).toLowerCase())
+  );
+  if (!m) {
+    alert(`Material "${id}" could not be located.`);
+    return;
+  }
 
   const modal = document.getElementById('modalStaffEditMaterial');
   if (!modal) return;
