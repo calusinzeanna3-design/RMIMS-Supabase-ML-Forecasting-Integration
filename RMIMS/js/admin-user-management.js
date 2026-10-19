@@ -60,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function isMockUser(u) {
     if (!u) return false;
     const txt = `${u.name || ''} ${u.username || ''} ${u.email || ''} ${u.branchName || ''}`.toLowerCase();
+    const role = String(u.role || '').toLowerCase();
+    // Aizel does not have a staff account; purge any dump staff accounts for Aizel
+    if (txt.includes('aizel') && (role.includes('staff') || role.includes('user'))) return true;
     return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
   }
 

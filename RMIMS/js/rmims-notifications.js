@@ -93,8 +93,9 @@
       ) {
         return false;
       }
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
-        return targetRole === 'admin' || title.includes('admin') || message.includes('admin');
+      // Admin receives and sees all user sign-in/login notifications across roles
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+        return true;
       }
       return (
         targetRole === 'admin' ||
@@ -146,8 +147,9 @@
       ) {
         return true;
       }
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
-        return targetRole === 'manager' || title.includes('manager') || message.includes('manager');
+      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+        return false;
       }
       return (
         targetRole === 'manager' ||
@@ -190,9 +192,9 @@
       if (title.includes('raw material received') || title.includes('raw material disbursed')) {
         return false;
       }
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
-        if (n.userId && currentUserId && n.userId !== currentUserId) return false;
-        return targetRole === 'staff' || targetRole === 'user' || title.includes('staff');
+      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+        return false;
       }
       return (
         targetRole === 'staff' ||
@@ -257,6 +259,9 @@
     const t = (n.title || '').toLowerCase();
     const m = (n.message || '').toLowerCase();
     const a = (n.actor || '').toLowerCase();
+    // Aizel does not have a staff account; purge any dump staff login notifications for Aizel
+    if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
+
     const BANNED_TOKENS = [
       'maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza',
       'carlos mendoza', 'victor morales', 'ethan cruz', 'sarah gomez', 'mark villanueva',
@@ -265,6 +270,27 @@
     if (BANNED_TOKENS.some(tok => t.includes(tok) || m.includes(tok) || a.includes(tok))) return false;
     return true;
   }
+
+
+  // Immediately cleanse any dump staff accounts for Aizel (Aizel has only a Manager account)
+  try {
+    ['rmims_registered_users', 'rmims_pending_users', 'rmims_approved_users'].forEach(key => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return;
+      const filtered = list.filter(u => {
+        if (!u) return false;
+        const name = String(u.name || u.fullName || u.username || '').toLowerCase();
+        const role = String(u.role || '').toLowerCase();
+        if (name.includes('aizel') && (role.includes('staff') || role.includes('user'))) return false;
+        return true;
+      });
+      if (filtered.length !== list.length) {
+        localStorage.setItem(key, JSON.stringify(filtered));
+      }
+    });
+  } catch (_) {}
 
   // Immediately cleanse any dump notifications from localStorage
   try {

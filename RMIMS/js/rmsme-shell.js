@@ -131,6 +131,7 @@ import { supabase } from '../supabase/supabase-config.js';
             if (!n || !n.id) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
+            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth')) return false;
@@ -2079,6 +2080,7 @@ import { supabase } from '../supabase/supabase-config.js';
             if (n.id.startsWith('notif-sys-online-') || n.id.startsWith('notif-stock-low-sugar-')) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
+            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user signed in') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;
@@ -2159,8 +2161,9 @@ import { supabase } from '../supabase/supabase-config.js';
       ) {
         return false;
       }
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
-        return targetRole === 'admin' || title.includes('admin') || message.includes('admin');
+      // Admin receives and sees all user sign-in/login notifications across roles
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+        return true;
       }
       return (
         targetRole === 'admin' ||
@@ -2211,8 +2214,9 @@ import { supabase } from '../supabase/supabase-config.js';
       ) {
         return true;
       }
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
-        return targetRole === 'manager' || title.includes('manager') || message.includes('manager');
+      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+        return false;
       }
       return (
         targetRole === 'manager' ||
@@ -2252,9 +2256,9 @@ import { supabase } from '../supabase/supabase-config.js';
       ) {
         return false;
       }
-      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated')) {
-        if (n.userId && currentUserId && n.userId !== currentUserId) return false;
-        return targetRole === 'staff' || targetRole === 'user' || title.includes('staff');
+      // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
+      if (category === 'login' || n.type === 'user_login' || title.includes('signed in') || title.includes('authenticated') || message.includes('account login detected') || message.includes('login detected')) {
+        return false;
       }
       return (
         targetRole === 'staff' ||
@@ -2700,10 +2704,14 @@ import { supabase } from '../supabase/supabase-config.js';
             message: `${isManager ? 'Manager' : (role === 'admin' ? 'Administrator' : 'Staff')} account login detected.`,
             actor: 'Source: System',
             userId: currentUserId,
-            roleScope: isManager ? 'manager' : role,
+            roleScope: 'admin',
+            targetRole: 'admin',
             timestamp: new Date().toISOString()
           };
-          newNotifMap.set(loginId, loginNotif);
+          // Only Admin portal stores and displays login events
+          if (isAnyAdmin) {
+            newNotifMap.set(loginId, loginNotif);
+          }
 
           // Broadcast sign-in event live to connected sessions
           try {
@@ -2944,6 +2952,8 @@ import { supabase } from '../supabase/supabase-config.js';
             if (!p.accountName || p.accountName === 'Staff User' || p.accountName === 'Manager' || !p.userId) {
               return;
             }
+            // Login notifications are strictly ADMIN-ONLY. Neither Manager nor Staff will see this notification.
+            if (!isAnyAdmin) return;
             const loginId = `notif-login-live-${p.userId}-${new Date(p.timestamp || Date.now()).getTime()}`;
             const stored = getStoredNotifications();
             if (!stored.some(n => n.id === loginId)) {
@@ -2952,10 +2962,11 @@ import { supabase } from '../supabase/supabase-config.js';
                 category: 'login',
                 priority: 'info',
                 title: `${p.accountName} Signed In`,
-                message: `${p.role === 'admin' ? 'Administrator' : 'Staff'} account login detected.`,
+                message: `${p.role === 'admin' ? 'Administrator' : (p.role === 'manager' ? 'Manager' : 'Staff')} account login detected.`,
                 actor: 'Source: System',
                 userId: p.userId,
-                roleScope: p.role,
+                roleScope: 'admin',
+                targetRole: 'admin',
                 timestamp: p.timestamp || new Date().toISOString()
               });
               saveStoredNotifications(stored);

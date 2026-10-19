@@ -696,6 +696,7 @@ import './rmims-notifications.js';
             if (!n || !n.id) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
+            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;
