@@ -120,12 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
       mgrAct.forEach(item => {
         const itemDetails = (item.details || item.activity || '').trim();
         const user = (item.user || '').trim();
-        const bLoc = (item.branchLoc || item.branch || '').trim();
-        const bName = (item.branchName || '').trim();
+        const bLoc = (item.branchLoc || item.branch || (item.role === 'Main Admin' || item.role === 'Administrator' ? 'Headquarters' : '')).trim();
+        const bName = (item.branchName || (item.role === 'Main Admin' || item.role === 'Administrator' ? 'Main Administration' : bLoc)).trim();
         const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
         
-        // Strict requirement: must have a branch and real user name (no orphaned or placeholder logs)
-        if (!hasBranch) return;
+        // Strict requirement: must have a branch/HQ context and real user name
+        if (!hasBranch && item.role !== 'Main Admin') return;
         if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
         
         const txt = `${user} ${itemDetails} ${bLoc} ${bName}`.toLowerCase();
@@ -542,8 +542,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initial Render & Storage Listeners
+  // Initial Local Render
   renderAllActivities();
+
+  // Asynchronously query Supabase for live managerial & staff transactions and audit trails
+  import('../supabase/admin-supabase-service.js')
+    .then(srv => {
+      // 1. Fetch live system activities from Supabase
+      srv.fetchLiveSystemActivities().then(liveLogs => {
+        if (liveLogs && liveLogs.length > 0) {
+          renderAllActivities();
+        }
+      }).catch(() => {});
+
+      // 2. Real-time live websocket sync across devices
+      srv.subscribeToAdminFeed(({ table }) => {
+        if (table === 'stock_receipts' || table === 'material_disbursements' || table === 'admin_activity_logs') {
+          srv.fetchLiveSystemActivities().then(() => {
+            renderAllActivities();
+          }).catch(() => {});
+        }
+      });
+    })
+    .catch(() => {});
 
   window.addEventListener('rmims_inventory_updated', renderAllActivities);
   window.addEventListener('storage', (e) => {

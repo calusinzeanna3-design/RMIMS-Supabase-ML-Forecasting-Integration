@@ -70,7 +70,7 @@ function isMockStore(st) {
 export function getStoresData() {
   try {
     const raw = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
         const clean = {};
@@ -82,13 +82,11 @@ export function getStoresData() {
             clean[id] = st;
           }
         });
-        if (Object.keys(clean).length > 0) {
-          if (modified) {
-            localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(clean));
-            window.dispatchEvent(new Event('rmims_stores_updated'));
-          }
-          return clean;
+        if (modified) {
+          localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(clean));
+          window.dispatchEvent(new Event('rmims_stores_updated'));
         }
+        return clean;
       }
     }
   } catch (err) {
@@ -745,15 +743,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Asynchronously query Supabase for registered branch stores
   import('../supabase/admin-supabase-service.js')
-    .then(srv => srv.fetchBranchStores())
-    .then(remoteStores => {
-      if (remoteStores && Object.keys(remoteStores).length > 0) {
-        const clean = {};
-        Object.entries(remoteStores).forEach(([id, st]) => {
-          if (!isMockStore(st)) clean[id] = st;
+    .then(srv => {
+      srv.fetchBranchStores().then(remoteStores => {
+        if (remoteStores && typeof remoteStores === 'object') {
+          const clean = {};
+          Object.entries(remoteStores).forEach(([id, st]) => {
+            if (!isMockStore(st)) clean[id] = st;
+          });
+          saveStoresData(clean);
+          renderLocationDividers('locationDividersContainer');
+        }
+      }).catch(() => {});
+
+      if (typeof srv.subscribeToAdminFeed === 'function') {
+        srv.subscribeToAdminFeed(({ table }) => {
+          if (table === 'branch_stores' || table === 'branch_store_personnel') {
+            srv.fetchBranchStores().then(remoteStores => {
+              if (remoteStores && typeof remoteStores === 'object') {
+                const clean = {};
+                Object.entries(remoteStores).forEach(([id, st]) => {
+                  if (!isMockStore(st)) clean[id] = st;
+                });
+                saveStoresData(clean);
+                renderLocationDividers('locationDividersContainer');
+              }
+            }).catch(() => {});
+          }
         });
-        saveStoresData(clean);
-        renderLocationDividers('locationDividersContainer');
       }
     })
     .catch(() => {});

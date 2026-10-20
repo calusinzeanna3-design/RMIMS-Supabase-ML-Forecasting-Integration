@@ -2791,6 +2791,8 @@ canvas#usageChart {
   display: none;
   z-index: 100;
   min-width: 410px;
+  max-width: 95vw;
+  box-sizing: border-box;
   transition: min-width 0.25s ease;
 }
 
@@ -2801,6 +2803,8 @@ canvas#usageChart {
 
 .date-picker-popover.dual-calendar {
   min-width: 660px;
+  max-width: 95vw;
+  box-sizing: border-box;
 }
 
 .date-picker-presets {
@@ -3076,6 +3080,50 @@ canvas#usageChart {
   color: #166534 !important;
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(34, 197, 94, 0.15);
+}
+
+@media (max-width: 768px) {
+  .date-picker-popover {
+    position: fixed;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, -50%);
+    min-width: unset;
+    width: 92vw;
+    max-width: 360px;
+    max-height: 90vh;
+    overflow-y: auto;
+    flex-direction: column;
+    padding: 16px;
+    gap: 14px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  }
+  .date-picker-popover.dual-calendar {
+    min-width: unset;
+    width: 92vw;
+    max-width: 380px;
+  }
+  .date-picker-popover.dual-calendar .calendar-dual-grid {
+    grid-template-columns: 1fr;
+  }
+  .date-picker-popover.dual-calendar .calendar-month-col.second-month {
+    display: none;
+  }
+  .date-picker-presets {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--rm-line-soft);
+    padding-right: 0;
+    padding-bottom: 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .preset-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 }
 
 /* ==========================================================
@@ -4376,7 +4424,7 @@ canvas#usageChart {
    ========================================================================== */
 .location-stores-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 16px;
   margin-top: 16px;
 }

@@ -3,6 +3,8 @@
 // dynamic counters, search filtering, and pagination.
 
 document.addEventListener('DOMContentLoaded', () => {
+  let adminSrv = null;
+
   // Modal Elements
   const addModal = document.getElementById('addUserModal');
   const btnOpenAdd = document.getElementById('btnOpenAddUser');
@@ -583,9 +585,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const newId = `user-${Date.now()}`;
-    const users = getStoredRegisteredUsers();
-    users.push({
+    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `user-${Date.now()}`;
+    const newUserRecord = {
       id: newId,
       name,
       username,
@@ -594,8 +595,17 @@ document.addEventListener('DOMContentLoaded', () => {
       branchName,
       role,
       status: 'Active'
-    });
+    };
+    const users = getStoredRegisteredUsers();
+    users.push(newUserRecord);
     saveStoredRegisteredUsers(users);
+
+    // Persist user account directly to Supabase user_profiles
+    if (adminSrv && typeof adminSrv.createUserAccount === 'function') {
+      adminSrv.createUserAccount(newUserRecord).catch(err => {
+        console.warn('[AdminUserManagement] Supabase create user notice:', err.message || err);
+      });
+    }
 
     // Broadcast live notification across all portals (Admin, Manager, Staff)
     try {
@@ -658,19 +668,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = document.getElementById('editUserRole').value;
     const email = document.getElementById('editUserEmail').value.trim();
 
+    const updatedUser = {
+      id,
+      name,
+      username,
+      email,
+      branchLoc,
+      branchName,
+      role
+    };
+
     const users = getStoredRegisteredUsers();
     const userIndex = users.findIndex(u => String(u.id) === String(id));
     if (userIndex !== -1) {
       users[userIndex] = {
         ...users[userIndex],
-        name,
-        username,
-        email,
-        branchLoc,
-        branchName,
-        role
+        ...updatedUser
       };
       saveStoredRegisteredUsers(users);
+    }
+
+    // Persist user update directly to Supabase user_profiles
+    if (adminSrv && typeof adminSrv.updateUserAccount === 'function') {
+      adminSrv.updateUserAccount(updatedUser).catch(err => {
+        console.warn('[AdminUserManagement] Supabase update user notice:', err.message || err);
+      });
     }
 
     closeEditModal();
@@ -709,6 +731,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const remaining = users.filter(u => String(u.id) !== String(id));
     saveStoredRegisteredUsers(remaining);
+
+    // Delete user from Supabase user_profiles to permanently prevent zombie resurrection
+    if (adminSrv && typeof adminSrv.deleteUserAccount === 'function') {
+      adminSrv.deleteUserAccount(id, targetEmail).catch(err => {
+        console.warn('[AdminUserManagement] Supabase delete user notice:', err.message || err);
+      });
+    }
 
     renderRegisteredUsers();
     refreshCounters();
@@ -1151,12 +1180,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Asynchronously query Supabase for registered users and pending approvals
   import('../supabase/admin-supabase-service.js')
-    .then(srv => Promise.all([srv.fetchRegisteredUsers(), srv.fetchPendingApprovals()]))
+    .then(srv => {
+      adminSrv = srv;
+      return Promise.all([srv.fetchRegisteredUsers(), srv.fetchPendingApprovals()]);
+    })
     .then(() => {
       renderPendingUsers();
       renderRegisteredUsers();
       refreshCounters();
       populateBranchDropdowns();
+
+      // Realtime websocket subscription across devices
+      if (adminSrv && typeof adminSrv.subscribeToAdminFeed === 'function') {
+        adminSrv.subscribeToAdminFeed(({ table }) => {
+          if (table === 'user_profiles' || table === 'branch_stores') {
+            Promise.all([adminSrv.fetchRegisteredUsers(), adminSrv.fetchPendingApprovals()]).then(() => {
+              renderPendingUsers();
+              renderRegisteredUsers();
+              refreshCounters();
+              populateBranchDropdowns();
+            }).catch(() => {});
+          }
+        });
+      }
     })
     .catch(() => {});
 

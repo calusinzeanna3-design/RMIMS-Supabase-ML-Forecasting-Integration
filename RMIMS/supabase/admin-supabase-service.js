@@ -203,6 +203,14 @@ export async function deleteBranchStore(storeId) {
   try {
     if (!supabase) return { success: true, offline: true };
 
+    // Cascade delete associated personnel to prevent orphaned records
+    try {
+      await supabase
+        .from('branch_store_personnel')
+        .delete()
+        .eq('branch_id', storeId);
+    } catch (_) {}
+
     const { error } = await supabase
       .from('branch_stores')
       .delete()
@@ -438,6 +446,144 @@ export async function logAdminActivity(entry) {
     console.warn('[AdminSupabase] Log activity failed on Supabase:', err.message || err);
     return activity;
   }
+}
+
+/**
+ * Fetch and consolidate real-time operational and audit activities across Supabase:
+ * - Admin Activity Audit Trails (admin_activity_logs)
+ * - Incoming Stock Receipts by Managers (stock_receipts)
+ * - Outgoing Material Disbursements by Managers/Staff (material_disbursements)
+ * Merges with local storage mirror for offline resilience without mock/fake data.
+ */
+export async function fetchLiveSystemActivities(options = {}) {
+  const limit = options.limit || 100;
+  const combined = [];
+  const seenIds = new Set();
+
+  if (supabase) {
+    try {
+      // 1. Fetch from admin_activity_logs
+      const { data: adminLogs, error: logErr } = await supabase
+        .from('admin_activity_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+
+      if (!logErr && Array.isArray(adminLogs)) {
+        adminLogs.forEach(item => {
+          const id = item.id || `act-${item.timestamp}`;
+          seenIds.add(id);
+          combined.push({
+            id,
+            timestamp: item.timestamp,
+            date: item.timestamp ? String(item.timestamp).slice(0, 10) : new Date().toISOString().slice(0, 10),
+            user: item.user_name || 'Admin',
+            role: item.role || 'Main Admin',
+            branchLoc: item.branch_location || 'Headquarters',
+            branchName: item.branch_name || 'Main Administration',
+            action: item.action || 'Updated',
+            module: item.module || 'System',
+            details: item.details || 'Operation completed.',
+            status: item.status || 'success'
+          });
+        });
+      }
+    } catch (_) {}
+
+    try {
+      // 2. Fetch from stock_receipts (Manager stock intake)
+      const { data: receipts, error: recErr } = await supabase
+        .from('stock_receipts')
+        .select('*, raw_materials(name, item_code)')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!recErr && Array.isArray(receipts)) {
+        receipts.forEach(r => {
+          const id = `rec-${r.id}`;
+          if (seenIds.has(id)) return;
+          seenIds.add(id);
+          const matName = r.raw_materials?.name || 'Raw Material';
+          const rDate = r.receipt_date || (r.created_at ? String(r.created_at).slice(0, 10) : '');
+          combined.push({
+            id,
+            timestamp: r.created_at || (rDate ? `${rDate}T10:00:00Z` : new Date().toISOString()),
+            date: rDate || new Date().toISOString().slice(0, 10),
+            user: r.supplier_name ? `Manager (${r.supplier_name})` : 'Store Manager',
+            role: 'Manager',
+            branchLoc: 'Branch Store',
+            branchName: 'Inventory Operations',
+            action: 'Received',
+            module: 'Stock Receipts',
+            details: `Received ${r.received_quantity} ${r.unit} of ${matName} from ${r.supplier_name || 'Supplier'}.`,
+            status: 'success'
+          });
+        });
+      }
+    } catch (_) {}
+
+    try {
+      // 3. Fetch from material_disbursements (Manager & Staff disbursements)
+      const { data: disbursements, error: disbErr } = await supabase
+        .from('material_disbursements')
+        .select('*, raw_materials(name, item_code)')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!disbErr && Array.isArray(disbursements)) {
+        disbursements.forEach(d => {
+          const id = `disb-${d.id}`;
+          if (seenIds.has(id)) return;
+          seenIds.add(id);
+          const matName = d.raw_materials?.name || 'Raw Material';
+          const dDate = d.usage_date || (d.created_at ? String(d.created_at).slice(0, 10) : '');
+          const reason = d.finished_product_name || d.activity_type || 'Operations';
+          combined.push({
+            id,
+            timestamp: d.created_at || (dDate ? `${dDate}T14:30:00Z` : new Date().toISOString()),
+            date: dDate || new Date().toISOString().slice(0, 10),
+            user: 'Store Staff',
+            role: 'Staff',
+            branchLoc: 'Branch Store',
+            branchName: 'Production Hub',
+            action: 'Disbursed',
+            module: 'Disbursement',
+            details: `Disbursed ${d.consumed_quantity} ${d.unit} of ${matName} for ${reason}.`,
+            status: 'success'
+          });
+        });
+      }
+    } catch (_) {}
+  }
+
+  // 4. Merge with local activities (e.g. actions performed in the current browser session)
+  try {
+    const rawLocal = localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS);
+    const localLogs = rawLocal ? JSON.parse(rawLocal) : [];
+    if (Array.isArray(localLogs)) {
+      localLogs.forEach(item => {
+        const id = item.id || `local-${item.timestamp}-${item.details}`;
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          combined.push(item);
+        }
+      });
+    }
+  } catch (_) {}
+
+  // Sort descending by timestamp
+  combined.sort((a, b) => {
+    const timeA = new Date(a.timestamp || (a.date + 'T00:00:00Z')).getTime();
+    const timeB = new Date(b.timestamp || (b.date + 'T00:00:00Z')).getTime();
+    return timeB - timeA;
+  });
+
+  // Mirror to localStorage
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(combined.slice(0, 150)));
+  } catch (_) {}
+
+  return combined;
 }
 
 // ============================================================================
@@ -916,6 +1062,222 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
   return { success: true, method: 'local_synchronized', identifier };
 }
 
+/**
+ * Create a new user account in Supabase user_profiles.
+ */
+export async function createUserAccount(user) {
+  if (!user || !user.email) return { success: false, error: 'Valid user with email is required' };
+  
+  const userId = user.id && user.id.length > 20 && !user.id.startsWith('user-') 
+    ? user.id 
+    : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `user-${Date.now()}`);
+
+  const roleClean = String(user.role || 'Staff').toLowerCase();
+  const operationalRole = roleClean.includes('admin') ? 'admin' : (roleClean.includes('manager') ? 'manager' : 'staff');
+  const role = operationalRole === 'admin' ? 'admin' : (operationalRole === 'manager' ? 'manager' : 'staff');
+
+  const payload = {
+    id: userId,
+    full_name: user.name || user.fullName || 'User',
+    username: user.username || user.email.split('@')[0],
+    email: user.email.trim().toLowerCase(),
+    branch_location: user.branchLoc || 'Unassigned',
+    branch_name: user.branchName || 'Branch Store',
+    role: role,
+    operational_role: operationalRole,
+    status: user.status ? user.status.toLowerCase() : 'active',
+    updated_at: new Date().toISOString()
+  };
+
+  // 1. Update local storage registered users
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const users = raw ? JSON.parse(raw) : [];
+    const idx = users.findIndex(u => (u.id && u.id === userId) || (u.email && u.email.toLowerCase() === payload.email));
+    const localRecord = {
+      id: userId,
+      name: payload.full_name,
+      username: payload.username,
+      email: payload.email,
+      branchLoc: payload.branch_location,
+      branchName: payload.branch_name,
+      role: user.role || 'Staff',
+      status: 'Active'
+    };
+    if (idx >= 0) users[idx] = localRecord;
+    else users.push(localRecord);
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
+    window.dispatchEvent(new Event('rmims_registered_users_updated'));
+    window.dispatchEvent(new Event('storage'));
+  } catch (_) {}
+
+  // 2. Persist to Supabase
+  if (!supabase) return { success: true, offline: true, user: payload };
+
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .upsert(payload, { onConflict: 'email' })
+      .select();
+
+    if (error) throw error;
+    return { success: true, user: (data && data[0]) || payload };
+  } catch (err) {
+    console.warn('[AdminSupabase] Create user profile failed on Supabase:', err.message || err);
+    return { success: true, offline: true, error: err.message, user: payload };
+  }
+}
+
+/**
+ * Update an existing user account in Supabase user_profiles.
+ */
+export async function updateUserAccount(user) {
+  if (!user || (!user.id && !user.email)) return { success: false, error: 'User ID or email required' };
+
+  const roleClean = String(user.role || 'Staff').toLowerCase();
+  const operationalRole = roleClean.includes('admin') ? 'admin' : (roleClean.includes('manager') ? 'manager' : 'staff');
+  const role = operationalRole === 'admin' ? 'admin' : (operationalRole === 'manager' ? 'manager' : 'staff');
+
+  const updateFields = {
+    full_name: user.name || user.fullName,
+    username: user.username,
+    branch_location: user.branchLoc,
+    branch_name: user.branchName,
+    role: role,
+    operational_role: operationalRole,
+    status: user.status ? user.status.toLowerCase() : 'active',
+    updated_at: new Date().toISOString()
+  };
+
+  // Local storage update
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const users = raw ? JSON.parse(raw) : [];
+    const idx = users.findIndex(u => (user.id && String(u.id) === String(user.id)) || (user.email && u.email?.toLowerCase() === user.email.toLowerCase()));
+    if (idx >= 0) {
+      users[idx] = {
+        ...users[idx],
+        name: updateFields.full_name || users[idx].name,
+        username: updateFields.username || users[idx].username,
+        email: user.email || users[idx].email,
+        branchLoc: updateFields.branch_location || users[idx].branchLoc,
+        branchName: updateFields.branch_name || users[idx].branchName,
+        role: user.role || users[idx].role,
+        status: user.status || users[idx].status || 'Active'
+      };
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
+      window.dispatchEvent(new Event('rmims_registered_users_updated'));
+      window.dispatchEvent(new Event('storage'));
+    }
+  } catch (_) {}
+
+  if (!supabase) return { success: true, offline: true };
+
+  try {
+    let query = supabase.from('user_profiles').update(updateFields);
+    if (user.id && user.id.length > 20 && !user.id.startsWith('user-')) {
+      query = query.eq('id', user.id);
+    } else if (user.email) {
+      query = query.ilike('email', user.email.trim());
+    } else {
+      query = query.ilike('username', user.username.trim());
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err) {
+    console.warn('[AdminSupabase] Update user failed on Supabase:', err.message || err);
+    return { success: true, offline: true, error: err.message };
+  }
+}
+
+/**
+ * Delete a user account from Supabase user_profiles to eliminate zombie / resurrected users.
+ */
+export async function deleteUserAccount(userId, userEmail) {
+  // 1. Remove from local mirrors
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const users = raw ? JSON.parse(raw) : [];
+    const filtered = users.filter(u => 
+      !(userId && String(u.id) === String(userId)) &&
+      !(userEmail && u.email && u.email.toLowerCase() === userEmail.toLowerCase())
+    );
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(filtered));
+
+    const rawApp = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
+    const approved = rawApp ? JSON.parse(rawApp) : [];
+    const filteredApp = approved.filter(u => 
+      !(userId && String(u.id) === String(userId)) &&
+      !(userEmail && u.email && u.email.toLowerCase() === userEmail.toLowerCase())
+    );
+    localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(filteredApp));
+
+    window.dispatchEvent(new Event('rmims_registered_users_updated'));
+    window.dispatchEvent(new Event('storage'));
+  } catch (_) {}
+
+  if (!supabase) return { success: true, offline: true };
+
+  try {
+    let query = supabase.from('user_profiles').delete();
+    if (userId && userId.length > 20 && !userId.startsWith('user-')) {
+      query = query.eq('id', userId);
+    } else if (userEmail) {
+      query = query.ilike('email', userEmail.trim());
+    } else {
+      return { success: false, error: 'Valid identifier required for deletion' };
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err) {
+    console.warn('[AdminSupabase] Delete user failed on Supabase:', err.message || err);
+    return { success: true, offline: true, error: err.message };
+  }
+}
+
+/**
+ * Subscribe to Supabase Realtime channel across core operational tables:
+ * Instantly broadcasts database mutations made by Manager or Staff without page reload.
+ */
+export function subscribeToAdminFeed(onUpdate) {
+  if (!supabase || typeof supabase.channel !== 'function') {
+    return () => {};
+  }
+
+  try {
+    const channel = supabase.channel('rmims-admin-live-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, payload => {
+        if (typeof onUpdate === 'function') onUpdate({ table: 'stock_receipts', payload });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, payload => {
+        if (typeof onUpdate === 'function') onUpdate({ table: 'material_disbursements', payload });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, payload => {
+        if (typeof onUpdate === 'function') onUpdate({ table: 'user_profiles', payload });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_activity_logs' }, payload => {
+        if (typeof onUpdate === 'function') onUpdate({ table: 'admin_activity_logs', payload });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_stores' }, payload => {
+        if (typeof onUpdate === 'function') onUpdate({ table: 'branch_stores', payload });
+      })
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (_) {}
+    };
+  } catch (err) {
+    console.warn('[AdminSupabase] Realtime subscription init notice:', err);
+    return () => {};
+  }
+}
+
 // ============================================================================
 // 5. GLOBAL ADMIN SYSTEM SETTINGS
 // ============================================================================
@@ -1051,9 +1413,14 @@ export default {
   createSystemAlert,
   updateSystemAlertStatus,
   logAdminActivity,
+  fetchLiveSystemActivities,
   fetchRegisteredUsers,
   fetchPendingApprovals,
   approveUserAccount,
+  createUserAccount,
+  updateUserAccount,
+  deleteUserAccount,
+  subscribeToAdminFeed,
   fetchSystemSettings,
   saveSystemSetting,
   permanentlyPurgeAllAccounts

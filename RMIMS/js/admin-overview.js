@@ -982,6 +982,44 @@ document.addEventListener('DOMContentLoaded', () => {
   renderOverviewBranchStores();
   updateOverviewKPICounters();
 
+  // Asynchronously query Supabase for live pending approvals, real-time activities, and registered stores
+  import('../supabase/admin-supabase-service.js')
+    .then(srv => {
+      Promise.all([
+        srv.fetchPendingApprovals(),
+        srv.fetchLiveSystemActivities(),
+        srv.fetchBranchStores()
+      ]).then(() => {
+        renderOverviewPendingApprovals();
+        renderOverviewLatestActivities();
+        renderOverviewBranchStores();
+        updateOverviewKPICounters();
+        updateOverviewChartForRange(initStart, initEnd);
+      }).catch(() => {});
+
+      // Real-time live websocket feed across devices (Manager, Staff, Admin)
+      srv.subscribeToAdminFeed(({ table }) => {
+        if (table === 'user_profiles') {
+          srv.fetchPendingApprovals().then(() => {
+            renderOverviewPendingApprovals();
+            updateOverviewKPICounters();
+          }).catch(() => {});
+        } else if (table === 'stock_receipts' || table === 'material_disbursements' || table === 'admin_activity_logs') {
+          srv.fetchLiveSystemActivities().then(() => {
+            renderOverviewLatestActivities();
+            updateOverviewKPICounters();
+            updateOverviewChartForRange(initStart, initEnd);
+          }).catch(() => {});
+        } else if (table === 'branch_stores') {
+          srv.fetchBranchStores().then(() => {
+            renderOverviewBranchStores();
+            updateOverviewKPICounters();
+          }).catch(() => {});
+        }
+      });
+    })
+    .catch(() => {});
+
   // Initialize and listen for alert engine events and storage synchronization
   refreshOverviewAlerts();
   window.addEventListener('rmims:alerts-updated', refreshOverviewAlerts);
