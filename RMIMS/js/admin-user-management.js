@@ -139,20 +139,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Self-heal on module load
   cleanPendingFromRegisteredDirectory();
 
+  const AUTHENTIC_INITIAL_PENDING_USERS = [
+    {
+      id: '3bea5595-19eb-4d7f-bc17-764161d3cca8',
+      name: 'Staff_2',
+      username: 'Scones_Staff_2',
+      email: 'Scones@gmail.com',
+      branchLoc: 'Lucena',
+      branchName: 'Scones & Muffins Bakery',
+      role: 'Staff Personnel',
+      status: 'Pending',
+      requestedOn: '2026-10-16T05:26:55.705826+00:00'
+    }
+  ];
+
   function getStoredPendingUsers() {
     try {
-      const list = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+      let list = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
       if (Array.isArray(list)) {
-        const clean = list.filter(u => !isMockUser(u));
-        if (clean.length !== list.length) {
-          localStorage.setItem('rmims_pending_users', JSON.stringify(clean));
+        list = list.filter(u => !isMockUser(u));
+        if (list.length === 0) {
+          list = [...AUTHENTIC_INITIAL_PENDING_USERS];
+          localStorage.setItem('rmims_pending_users', JSON.stringify(list));
         }
-        return clean;
+        return list;
       }
     } catch (_) {
-      return [];
+      return [...AUTHENTIC_INITIAL_PENDING_USERS];
     }
-    return [];
+    return [...AUTHENTIC_INITIAL_PENDING_USERS];
   }
 
   function saveStoredPendingUsers(users) {
@@ -177,6 +192,43 @@ document.addEventListener('DOMContentLoaded', () => {
     created_at: new Date().toISOString()
   };
 
+  const AUTHENTIC_INITIAL_REGISTERED_USERS = [
+    MASTER_ADMIN_RECORD,
+    {
+      id: '8436c433-268c-4d72-9e8c-f4dfdb1692f3',
+      name: 'Aizel',
+      username: 'Scones_manager',
+      email: 'zeannapatty@gmail.com',
+      branchLoc: 'Lucena',
+      branchName: 'Scones & Muffins Bakery',
+      role: 'Store Manager',
+      status: 'Active',
+      created_at: '2026-10-16T02:28:41.885691+00:00'
+    },
+    {
+      id: 'c99c9757-de31-4dbc-89da-005fdd9eed35',
+      name: 'Staff_1',
+      username: 'Scones_Staff_1',
+      email: 'Sconesandmuffins@gmail.com',
+      branchLoc: 'Lucena',
+      branchName: 'Scones & Muffins Bakery',
+      role: 'Staff Personnel',
+      status: 'Active',
+      created_at: '2026-10-16T04:59:34.011697+00:00'
+    },
+    {
+      id: 'b7173051-b383-4b51-be77-4f4f3e79a900',
+      name: 'Glazel',
+      username: 'Glazel_Kxc',
+      email: 'zeannapatricia@gmail.com',
+      branchLoc: 'Tiaong',
+      branchName: 'KXC 5-Year Enterprise',
+      role: 'Store Manager',
+      status: 'Active',
+      created_at: '2026-10-16T03:38:10.858827+00:00'
+    }
+  ];
+
   function getStoredRegisteredUsers() {
     try {
       let list = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
@@ -190,21 +242,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      // Always guarantee the first real Admin (Zeanna) is present in the directory
-      const hasRealAdmin = list.some(u => 
-        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-        (u.username && u.username.toLowerCase() === 'zeanna') ||
-        (u.name && u.name.toLowerCase() === 'zeanna')
-      );
-
-      if (!hasRealAdmin) {
-        list.unshift({ ...MASTER_ADMIN_RECORD });
-        localStorage.setItem('rmims_registered_users', JSON.stringify(list));
-      }
+      // Merge in authentic initial registered users if missing
+      AUTHENTIC_INITIAL_REGISTERED_USERS.forEach(initUser => {
+        const uEmail = (initUser.email || '').toLowerCase().trim();
+        const uId = String(initUser.id || '').trim();
+        const exists = list.some(u => 
+          (uEmail && u.email && u.email.toLowerCase().trim() === uEmail) ||
+          (uId && u.id && String(u.id).trim() === uId)
+        );
+        if (!exists) {
+          list.push({ ...initUser });
+        }
+      });
 
       return list;
     } catch (_) {
-      return [{ ...MASTER_ADMIN_RECORD }];
+      return [...AUTHENTIC_INITIAL_REGISTERED_USERS];
     }
   }
 

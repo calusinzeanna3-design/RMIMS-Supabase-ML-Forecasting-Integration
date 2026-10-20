@@ -22,7 +22,8 @@ import {
   checkReferenceDuplicate,
   showDuplicateWarningModal,
   updateManagerDisbursement,
-  deleteManagerDisbursement
+  deleteManagerDisbursement,
+  AUTHENTIC_INITIAL_MGR_DISBURSEMENTS
 } from './rmims-transaction-engine.js';
 
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
@@ -152,6 +153,11 @@ function loadDisbursements() {
     }
   } catch (e) {
     managerDisbursements = [];
+  }
+
+  if (!managerDisbursements || managerDisbursements.length === 0) {
+    managerDisbursements = JSON.parse(JSON.stringify(AUTHENTIC_INITIAL_MGR_DISBURSEMENTS));
+    localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(managerDisbursements));
   }
 
   // Seamlessly merge all approved Staff Disburse transactions

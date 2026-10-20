@@ -59,7 +59,7 @@ export function resolveTenantFromUser(user) {
         return { ...TENANT_CONFIGS[activeFolder] };
       }
     } catch (_) {}
-    return { ...TENANT_CONFIGS[KXC_TENANT_ID] };
+    return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
   }
 
   const strToCheck = [
@@ -93,7 +93,8 @@ export function resolveTenantFromUser(user) {
     strToCheck.includes("scones") ||
     strToCheck.includes("muffin") ||
     strToCheck.includes("nutribun") ||
-    strToCheck.includes("bakery");
+    strToCheck.includes("bakery") ||
+    !strToCheck.includes("kxc");
 
   return isScones ? { ...TENANT_CONFIGS[SCONES_TENANT_ID] } : { ...TENANT_CONFIGS[KXC_TENANT_ID] };
 }
@@ -131,6 +132,14 @@ export function getActiveTenantContext() {
         canSwitchStore: true
       };
     }
+    // Default administrator view to Scones & Muffins Bakery
+    return {
+      ...TENANT_CONFIGS[SCONES_TENANT_ID],
+      isAdmin: true,
+      userRole: "SUPER_ADMIN",
+      assignedUser: user,
+      canSwitchStore: true
+    };
   }
 
   const baseConfig = resolveTenantFromUser(user);

@@ -66,7 +66,7 @@ export function getSystemRawMaterials() {
     try {
         tCtx = getActiveTenantContext();
     } catch (_) {}
-    const isScones = Boolean(tCtx && tCtx.isScones);
+    const isScones = tCtx ? Boolean(tCtx.isScones) : true;
     const baseSource = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
 
     let list = baseSource.map(m => {

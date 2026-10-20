@@ -389,15 +389,11 @@ async function loadDashboard() {
         )
       ]);
 
-      // Additive merge: start with baseline authentic dataset + system custom materials
+      // Additive merge: start with system raw materials matching active tenant
       const matKeyMap = new Map();
-      AUTHENTIC_59_RAW_MATERIALS.forEach(m => {
-        const k = (m.name || m.id || "").toLowerCase().trim();
-        matKeyMap.set(k, { ...m });
-      });
       getSystemRawMaterials().forEach(m => {
         const k = (m.name || m.id || "").toLowerCase().trim();
-        matKeyMap.set(k, { ...(matKeyMap.get(k) || {}), ...m });
+        matKeyMap.set(k, { ...m });
       });
       if (matRes.status === "fulfilled" && !matRes.value?.error && matRes.value?.data && matRes.value.data.length > 0) {
         matRes.value.data.forEach(m => {

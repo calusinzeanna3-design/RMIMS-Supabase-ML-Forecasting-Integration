@@ -2,8 +2,6 @@
 // Empty by default: all finished products and recipe formulations are dynamically created
 // and managed by end-users via New Inputs in the Finished Products / Formulations module.
 
-export const AUTHENTIC_FINISHED_PRODUCTS_CATALOG = [];
-
 // Authoritative Scones & Muffins Bakery 19 Nutribun Raw Materials Finished Product Formulation
 export const AUTHENTIC_SCONES_FINISHED_PRODUCTS = [
   {
@@ -34,4 +32,8 @@ export const AUTHENTIC_SCONES_FINISHED_PRODUCTS = [
     batchUnits: 50,
     created_at: "2026-09-29T08:30:00.000Z"
   }
+];
+
+export const AUTHENTIC_FINISHED_PRODUCTS_CATALOG = [
+  ...AUTHENTIC_SCONES_FINISHED_PRODUCTS
 ];

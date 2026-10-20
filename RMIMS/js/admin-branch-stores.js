@@ -5,8 +5,34 @@
 // 3. Store Personnel List Modal (Separate roles for Branch Managers and Staff & Employees with access codes 🔑, NO revenue)
 // 4. Destructive Branch Deletion & Dynamic Add Branch
 
-// Default Stores Data Seed (Empty by default for production & Supabase integration)
-const DEFAULT_STORES_DATA = {};
+// Default Stores Data Seed (Authentic active branch stores)
+const DEFAULT_STORES_DATA = {
+  "scones-lucena": {
+    id: "scones-lucena",
+    name: "Scones & Muffins Bakery",
+    location: "Lucena",
+    locKey: "lucena",
+    companyId: "1872cf44-e821-4370-b227-d1b7e4fc6f56",
+    managers: [
+      { name: "Aizel", username: "Scones_manager", email: "zeannapatty@gmail.com", accessCode: "MGR-LUC-01" }
+    ],
+    staff: [
+      { name: "Staff_1", username: "Scones_Staff_1", email: "Sconesandmuffins@gmail.com", accessCode: "STF-LUC-01" },
+      { name: "Staff_2", username: "Scones_Staff_2", email: "Scones@gmail.com", accessCode: "STF-LUC-02" }
+    ]
+  },
+  "kxc-tiaong": {
+    id: "kxc-tiaong",
+    name: "KXC 5-Year Enterprise",
+    location: "Tiaong",
+    locKey: "tiaong",
+    companyId: "a72a7971-6ec7-4edc-ae72-89d702199ed9",
+    managers: [
+      { name: "Glazel", username: "Glazel_Kxc", email: "zeannapatricia@gmail.com", accessCode: "MGR-TIA-01" }
+    ],
+    staff: []
+  }
+};
 
 // Dynamic location metadata helper - adapts cleanly to any registered location
 function getLocationMeta(locKey, locationName) {
@@ -56,17 +82,23 @@ export function getStoresData() {
             clean[id] = st;
           }
         });
-        if (modified) {
-          localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(clean));
-          window.dispatchEvent(new Event('rmims_stores_updated'));
+        if (Object.keys(clean).length > 0) {
+          if (modified) {
+            localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(clean));
+            window.dispatchEvent(new Event('rmims_stores_updated'));
+          }
+          return clean;
         }
-        return clean;
       }
     }
   } catch (err) {
     console.warn('Failed reading stores from localStorage:', err);
   }
-  return JSON.parse(JSON.stringify(DEFAULT_STORES_DATA));
+  const defaults = JSON.parse(JSON.stringify(DEFAULT_STORES_DATA));
+  try {
+    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(defaults));
+  } catch (_) {}
+  return defaults;
 }
 
 export function saveStoresData(data) {

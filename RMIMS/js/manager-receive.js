@@ -22,7 +22,8 @@ import {
   checkReferenceDuplicate,
   showDuplicateWarningModal,
   updateManagerReceipt,
-  deleteManagerReceipt
+  deleteManagerReceipt,
+  AUTHENTIC_INITIAL_MGR_RECEIPTS
 } from './rmims-transaction-engine.js';
 
 const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
@@ -152,6 +153,11 @@ function loadReceipts() {
     }
   } catch (e) {
     managerReceipts = [];
+  }
+
+  if (!managerReceipts || managerReceipts.length === 0) {
+    managerReceipts = JSON.parse(JSON.stringify(AUTHENTIC_INITIAL_MGR_RECEIPTS));
+    localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(managerReceipts));
   }
 
   // Seamlessly merge all approved Staff Receive transactions (initial submissions and resubmitted)
