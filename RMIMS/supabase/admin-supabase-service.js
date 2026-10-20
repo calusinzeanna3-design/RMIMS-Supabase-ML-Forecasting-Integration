@@ -1047,6 +1047,190 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
 /**
  * Create a new user account in Supabase user_profiles.
  */
+
+/**
+ * Reject a pending user account registration.
+ * Synchronously removes user from local storage pending queue and updates Supabase user_profiles
+ * status to 'inactive', preventing resurrected / zombie pending accounts.
+ */
+export async function rejectUserAccount(targetParam, rejectedBy = 'Main Admin') {
+  if (!targetParam) return { success: false, error: 'No target specified' };
+  const targetId = typeof targetParam === 'object' ? (targetParam.id || '') : String(targetParam);
+  const targetEmail = typeof targetParam === 'object' ? (targetParam.email || '') : (String(targetParam).includes('@') ? String(targetParam) : '');
+  const targetUsername = typeof targetParam === 'object' ? (targetParam.username || '') : '';
+  const targetName = typeof targetParam === 'object' ? (targetParam.name || '') : '';
+  const identifier = targetEmail || targetUsername || targetId || targetName;
+
+  const cleanEmail = targetEmail.toLowerCase().trim();
+  const cleanUser = targetUsername.toLowerCase().trim();
+  const cleanId = String(targetId).trim();
+  const cleanName = targetName.toLowerCase().trim();
+
+  // 1. Remove from local storage pending queue
+  try {
+    const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_USERS);
+    const pendingList = rawPending ? JSON.parse(rawPending) : [];
+    const remainingPending = pendingList.filter(u => {
+      const uId = String(u.id || '').trim();
+      const uEmail = (u.email || '').toLowerCase().trim();
+      const uUser = (u.username || '').toLowerCase().trim();
+      const uName = (u.name || '').toLowerCase().trim();
+      return !(cleanId && uId && (uId === cleanId || `req_${uId}` === cleanId || `ovRow_${uId}` === cleanId)) &&
+             !(cleanEmail && uEmail && uEmail === cleanEmail) &&
+             !(cleanUser && uUser && uUser === cleanUser) &&
+             !(cleanName && uName && uName === cleanName);
+    });
+    localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(remainingPending));
+
+    // Also remove from registered directory if accidentally present
+    const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    if (rawReg) {
+      const regList = JSON.parse(rawReg);
+      const remainingReg = regList.filter(u => {
+        const uId = String(u.id || '').trim();
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const uUser = (u.username || '').toLowerCase().trim();
+        return !(cleanId && uId && uId === cleanId) &&
+               !(cleanEmail && uEmail && uEmail === cleanEmail) &&
+               !(cleanUser && uUser && uUser === cleanUser);
+      });
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(remainingReg));
+    }
+
+    // Also remove from approved cache if present
+    const rawApp = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
+    if (rawApp) {
+      const appList = JSON.parse(rawApp);
+      const remainingApp = appList.filter(a => {
+        const aId = String(a.id || '').trim();
+        const aEmail = (a.email || '').toLowerCase().trim();
+        const aUser = (a.username || '').toLowerCase().trim();
+        return !(cleanId && aId && aId === cleanId) &&
+               !(cleanEmail && aEmail && aEmail === cleanEmail) &&
+               !(cleanUser && aUser && aUser === cleanUser);
+      });
+      localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(remainingApp));
+    }
+
+    window.dispatchEvent(new Event('rmims_pending_users_updated'));
+    window.dispatchEvent(new Event('rmims_registered_users_updated'));
+    window.dispatchEvent(new Event('storage'));
+  } catch (_) {}
+
+  // 2. Cascade delete from branch stores personnel
+  try {
+    const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+    if (rawStores) {
+      const stores = JSON.parse(rawStores);
+      if (stores && typeof stores === 'object') {
+        let changed = false;
+        Object.values(stores).forEach(st => {
+          if (Array.isArray(st.managers)) {
+            const b4 = st.managers.length;
+            st.managers = st.managers.filter(m => 
+              !(cleanId && String(m.id) === cleanId) &&
+              !(cleanEmail && m.email && m.email.toLowerCase() === cleanEmail) &&
+              !(cleanUser && m.username && m.username.toLowerCase() === cleanUser)
+            );
+            if (st.managers.length !== b4) changed = true;
+          }
+          if (Array.isArray(st.staff)) {
+            const b4 = st.staff.length;
+            st.staff = st.staff.filter(s => 
+              !(cleanId && String(s.id) === cleanId) &&
+              !(cleanEmail && s.email && s.email.toLowerCase() === cleanEmail) &&
+              !(cleanUser && s.username && s.username.toLowerCase() === cleanUser)
+            );
+            if (st.staff.length !== b4) changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
+          window.dispatchEvent(new Event('rmims_stores_updated'));
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 3. Log activity
+  logAdminActivity({
+    action: 'Rejected Account',
+    module: 'User Management',
+    details: `Rejected registration request for ${targetName || identifier} by ${rejectedBy}`
+  });
+
+  // 4. Supabase Cooperation Sync
+  if (!supabase) return { success: true, offline: true };
+
+  let lastError = null;
+
+  const updatePayload = {
+    status: 'inactive',
+    updated_at: new Date().toISOString()
+  };
+
+  // Method A: By UUID
+  if (cleanId && cleanId.length > 20 && !cleanId.startsWith('pending-') && !cleanId.startsWith('user-') && !cleanId.startsWith('req_') && !cleanId.startsWith('ovRow_')) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update(updatePayload)
+        .eq('id', cleanId)
+        .select();
+      if (!error && data && data.length > 0) {
+        console.log('[AdminSupabase] Rejected/Inactivated in Supabase by UUID:', data);
+        return { success: true, method: 'direct_uuid', rows: data };
+      }
+      if (error) lastError = error;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  // Method B: By Email
+  if (cleanEmail) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update(updatePayload)
+        .ilike('email', cleanEmail)
+        .select();
+      if (!error && data && data.length > 0) {
+        console.log('[AdminSupabase] Rejected/Inactivated in Supabase by Email:', data);
+        return { success: true, method: 'direct_email', rows: data };
+      }
+      if (error) lastError = error;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  // Method C: By Username
+  if (cleanUser) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update(updatePayload)
+        .ilike('username', cleanUser)
+        .select();
+      if (!error && data && data.length > 0) {
+        console.log('[AdminSupabase] Rejected/Inactivated in Supabase by Username:', data);
+        return { success: true, method: 'direct_username', rows: data };
+      }
+      if (error) lastError = error;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  if (lastError) {
+    console.warn('[AdminSupabase] Supabase rejection notice:', lastError.message || lastError);
+  }
+
+  return { success: true, method: 'local_synchronized', identifier };
+}
+
+
 export async function createUserAccount(user) {
   if (!user || !user.email) return { success: false, error: 'Valid user with email is required' };
   
@@ -1399,6 +1583,7 @@ export default {
   fetchRegisteredUsers,
   fetchPendingApprovals,
   approveUserAccount,
+  rejectUserAccount,
   createUserAccount,
   updateUserAccount,
   deleteUserAccount,

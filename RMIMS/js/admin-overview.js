@@ -249,7 +249,7 @@ window.approveOverviewAccount = async function (userId, statusId, actionsId, use
   }, 1000);
 };
 
-window.rejectOverviewAccount = function (userId, statusId, actionsId, userName) {
+window.rejectOverviewAccount = async function (userId, statusId, actionsId, userName) {
   const statusEl = document.getElementById(statusId);
   const actionsEl = document.getElementById(actionsId);
 
@@ -271,8 +271,24 @@ window.rejectOverviewAccount = function (userId, statusId, actionsId, userName) 
   }
 
   const currentPending = getStoredPendingUsers();
+  const target = currentPending.find(u => String(u.id) === String(userId));
   const remaining = currentPending.filter(u => String(u.id) !== String(userId));
   saveStoredPendingUsers(remaining);
+
+  // Synchronize rejection directly to Supabase user_profiles (status: inactive)
+  try {
+    const srv = await import('../supabase/admin-supabase-service.js');
+    if (srv && typeof srv.rejectUserAccount === 'function') {
+      await srv.rejectUserAccount({
+        id: target?.id || userId,
+        email: target?.email,
+        username: target?.username,
+        name: userName || target?.name
+      });
+    }
+  } catch (err) {
+    console.warn('[AdminOverview] Supabase rejection notice:', err.message || err);
+  }
 
   logSystemActivity('Rejected Account', `Rejected account request for ${userName}`);
 

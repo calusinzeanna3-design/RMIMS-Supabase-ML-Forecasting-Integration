@@ -141,19 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Self-heal on module load
   cleanPendingFromRegisteredDirectory();
 
-  const AUTHENTIC_INITIAL_PENDING_USERS = [
-    {
-      id: '3bea5595-19eb-4d7f-bc17-764161d3cca8',
-      name: 'Staff_2',
-      username: 'Scones_Staff_2',
-      email: 'Scones@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Staff Personnel',
-      status: 'Pending',
-      requestedOn: '2026-10-16T05:26:55.705826+00:00'
-    }
-  ];
+  const AUTHENTIC_INITIAL_PENDING_USERS = [];
 
   function getStoredPendingUsers() {
     try {
@@ -970,11 +958,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.rejectUser = function (param) {
+  window.rejectUser = async function (param) {
     const pendingList = getStoredPendingUsers();
     let target = pendingList.find(u => String(u.id) === String(param));
     let row = document.getElementById(param) || document.getElementById(`req_${param}`);
     let name = target ? target.name : (row ? row.getAttribute('data-name') : 'User');
+    let email = target ? target.email : (row ? row.getAttribute('data-email') : '');
+    let username = target ? target.username : (row ? row.getAttribute('data-username') : '');
 
     const remaining = pendingList.filter(u => String(u.id) !== String(param) && `req_${u.id}` !== String(param));
     saveStoredPendingUsers(remaining);
@@ -982,9 +972,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Also remove from registered directory if present
     try {
       const regList = getStoredRegisteredUsers();
-      const updatedReg = regList.filter(u => String(u.id) !== String(param) && (target?.email ? u.email?.toLowerCase() !== target.email.toLowerCase() : true));
+      const updatedReg = regList.filter(u => String(u.id) !== String(param) && (email ? u.email?.toLowerCase() !== email.toLowerCase() : true));
       saveStoredRegisteredUsers(updatedReg);
     } catch (_) {}
+
+    // Synchronize rejection directly to Supabase user_profiles (status: inactive)
+    try {
+      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
+      if (srv && typeof srv.rejectUserAccount === 'function') {
+        await srv.rejectUserAccount({
+          id: target?.id || param,
+          email: email,
+          username: username,
+          name: name
+        });
+      }
+    } catch (err) {
+      console.warn('[AdminUserManagement] Supabase rejection notice:', err.message || err);
+    }
 
     // Log Activity
     try {
