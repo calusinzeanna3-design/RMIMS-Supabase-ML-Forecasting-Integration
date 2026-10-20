@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
         
         const txt = `${user} ${itemDetails} ${bLoc} ${bName}`.toLowerCase();
-        if (txt.includes('kxc') || txt.includes('scones') || txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
+        if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
           return;
         }
         if (['receive', 'approve transaction', 'disburse'].includes(itemDetails.toLowerCase())) {
@@ -311,6 +311,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Render and update KPI counters
+  let currentLogPage = 1;
+  const LOGS_PER_PAGE = 10;
+  let currentFilteredActivities = [];
+
   function renderAllActivities() {
     if (!tableBody) return;
     const activities = loadConsolidatedActivities();
@@ -354,7 +358,107 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    tableBody.innerHTML = activities.map(act => {
+    filterRows();
+  }
+
+  // Filter rows function
+  function buildLogPagination(total, perPage) {
+    const container = document.getElementById('activityPaginationControls');
+    const prevBtn = document.getElementById('btnPrevPage');
+    const nextBtn = document.getElementById('btnNextPage');
+    if (!container) return;
+
+    // Remove previously generated number buttons
+    container.querySelectorAll('.pagination-btn.pg-num').forEach(b => b.remove());
+
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+    if (total === 0) {
+      if (prevBtn) {
+        prevBtn.disabled = true;
+        prevBtn.classList.add('disabled');
+      }
+      if (nextBtn) {
+        nextBtn.disabled = true;
+        nextBtn.classList.add('disabled');
+      }
+      const emptyBtn = document.createElement('button');
+      emptyBtn.type = 'button';
+      emptyBtn.className = 'pagination-btn pg-num disabled';
+      emptyBtn.disabled = true;
+      emptyBtn.textContent = '1';
+      container.insertBefore(emptyBtn, nextBtn);
+      return;
+    }
+
+    if (prevBtn) {
+      prevBtn.disabled = (currentLogPage <= 1);
+      if (currentLogPage <= 1) prevBtn.classList.add('disabled');
+      else prevBtn.classList.remove('disabled');
+      prevBtn.onclick = function() {
+        if (currentLogPage > 1) {
+          currentLogPage--;
+          renderPagedActivities();
+        }
+      };
+    }
+
+    if (nextBtn) {
+      nextBtn.disabled = (currentLogPage >= totalPages);
+      if (currentLogPage >= totalPages) nextBtn.classList.add('disabled');
+      else nextBtn.classList.remove('disabled');
+      nextBtn.onclick = function() {
+        if (currentLogPage < totalPages) {
+          currentLogPage++;
+          renderPagedActivities();
+        }
+      };
+    }
+
+    const maxShow = Math.min(totalPages, 5);
+    for (let p = 1; p <= maxShow; p++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pagination-btn pg-num' + (p === currentLogPage ? ' active' : '');
+      btn.textContent = String(p);
+      btn.onclick = (function(page) {
+        return function() {
+          currentLogPage = page;
+          renderPagedActivities();
+        };
+      })(p);
+      container.insertBefore(btn, nextBtn);
+    }
+  }
+
+  function renderPagedActivities() {
+    if (!tableBody) return;
+    const total = currentFilteredActivities.length;
+    const totalPages = Math.max(1, Math.ceil(total / LOGS_PER_PAGE));
+    if (currentLogPage > totalPages) currentLogPage = totalPages;
+    if (currentLogPage < 1) currentLogPage = 1;
+
+    if (total === 0) {
+      tableBody.innerHTML = `
+        <tr id="emptyActivityRow">
+          <td colspan="9" style="text-align: center; padding: 48px 16px; color: var(--rm-ink-dim);">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <span style="font-size: 14.5px; font-weight: 600; color: var(--rm-ink);">No Matching Activity Records</span>
+              <span style="font-size: 12.5px; color: #94A3B8;">No log entries match the selected branch, role, date, or search filter.</span>
+            </div>
+          </td>
+        </tr>
+      `;
+      if (counter) counter.textContent = 'Showing 0 of 0 activities';
+      buildLogPagination(0, LOGS_PER_PAGE);
+      return;
+    }
+
+    const startIdx = (currentLogPage - 1) * LOGS_PER_PAGE;
+    const endIdx = Math.min(startIdx + LOGS_PER_PAGE, total);
+    const paged = currentFilteredActivities.slice(startIdx, endIdx);
+
+    tableBody.innerHTML = paged.map(act => {
       const locRaw = (act.branchLoc || '').trim();
       let locClass = 'neutral';
       if (locRaw.toLowerCase().includes('lucena')) locClass = 'lucena';
@@ -397,13 +501,14 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
-    filterRows();
+    if (counter) {
+      counter.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${total} activities`;
+    }
+    buildLogPagination(total, LOGS_PER_PAGE);
   }
 
-  // Filter rows function
   function filterRows() {
-    if (!table) return;
-
+    const activities = loadConsolidatedActivities();
     const branchVal = branchFilter ? branchFilter.value : 'all';
     const roleVal = roleFilter ? roleFilter.value : 'all';
     const actionVal = actionFilter ? actionFilter.value : 'all';
@@ -413,56 +518,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const q2 = topSearchInput ? topSearchInput.value.toLowerCase().trim() : '';
     const query = q1 || q2;
 
-    const rows = table.querySelectorAll('tbody tr');
-    if (rows.length === 1 && rows[0].id === 'emptyActivityRow') return;
-
-    let visibleCount = 0;
-    let totalCount = rows.length;
-
-    rows.forEach(row => {
-      const rowBranch = (row.getAttribute('data-branch') || '').toLowerCase();
-      const rowLoc = (row.getAttribute('data-branch-loc') || '').toLowerCase();
-      const rowName = (row.getAttribute('data-branch-name') || '').toLowerCase();
-      const rowRole = row.getAttribute('data-role') || '';
-      const rowAction = row.getAttribute('data-action') || '';
-      const rowStatus = row.getAttribute('data-status') || '';
-      const rowDate = row.getAttribute('data-date') || '';
+    currentFilteredActivities = activities.filter(act => {
       const bVal = (branchVal || 'all').toLowerCase();
+      const rowBranch = (act.branchName || '').toLowerCase();
+      const rowLoc = (act.branchLoc || '').toLowerCase();
       const branchMatch = bVal === 'all' || 
-        rowBranch.toLowerCase() === bVal || 
-        rowLoc.toLowerCase() === bVal || 
-        rowName.toLowerCase() === bVal ||
-        (rowBranch && rowBranch.toLowerCase().includes(bVal)) ||
-        (rowName && rowName.toLowerCase().includes(bVal));
-      const roleMatch = roleVal === 'all' || rowRole === roleVal;
-      const actionMatch = actionVal === 'all' || rowAction === actionVal;
-      const statusMatch = statusVal === 'all' || rowStatus === statusVal;
-      const text = row.textContent.toLowerCase();
-      const queryMatch = !query || text.includes(query);
+        rowBranch === bVal || 
+        rowLoc === bVal ||
+        rowBranch.includes(bVal) ||
+        rowLoc.includes(bVal);
 
-      // Date Range Match
+      const rVal = (roleVal || 'all').toLowerCase();
+      const actRole = (act.role || '').toLowerCase();
+      const roleMatch = rVal === 'all' || actRole === rVal || actRole.includes(rVal);
+
+      const aVal = (actionVal || 'all').toLowerCase();
+      const actAction = (act.action || '').toLowerCase();
+      const actionMatch = aVal === 'all' || actAction === aVal || actAction.includes(aVal);
+
+      const sVal = (statusVal || 'all').toLowerCase();
+      const actStatus = (act.status || '').toLowerCase();
+      const statusMatch = sVal === 'all' || actStatus === sVal;
+
+      const fullText = `${act.user || ''} ${act.action || ''} ${act.details || ''} ${act.module || ''} ${act.branchName || ''} ${act.branchLoc || ''}`.toLowerCase();
+      const queryMatch = !query || fullText.includes(query);
+
       let dateMatch = true;
       if (appliedFilter && appliedFilter.start) {
-        if (rowDate) {
+        if (act.date) {
           if (appliedFilter.mode === 'single') {
-            dateMatch = (rowDate === appliedFilter.start);
+            dateMatch = (act.date === appliedFilter.start);
           } else {
-            dateMatch = (rowDate >= appliedFilter.start && rowDate <= appliedFilter.end);
+            dateMatch = (act.date >= appliedFilter.start && act.date <= appliedFilter.end);
           }
         }
       }
 
-      if (branchMatch && roleMatch && actionMatch && statusMatch && queryMatch && dateMatch) {
-        row.style.display = '';
-        visibleCount++;
-      } else {
-        row.style.display = 'none';
-      }
+      return branchMatch && roleMatch && actionMatch && statusMatch && queryMatch && dateMatch;
     });
 
-    if (counter) {
-      counter.textContent = `Showing ${visibleCount > 0 ? 1 : 0} to ${visibleCount} of ${totalCount} activities`;
-    }
+    currentLogPage = 1;
+    renderPagedActivities();
   }
 
   // Event Listeners for Filters

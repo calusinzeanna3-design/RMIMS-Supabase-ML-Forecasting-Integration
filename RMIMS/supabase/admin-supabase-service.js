@@ -641,28 +641,10 @@ export async function fetchRegisteredUsers() {
       });
     }
 
-    // Merge with existing local registered users, STRICTLY filtering out any pending users
-    try {
-      const rawLocal = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-      const localUsers = rawLocal ? JSON.parse(rawLocal) : [];
-      if (Array.isArray(localUsers)) {
-        localUsers.forEach(lu => {
-          if (!lu) return;
-          const s = String(lu.status || '').toLowerCase().trim();
-          if (s === 'pending' || s === 'pending_approval') return; // NEVER include unapproved users
-          const exists = users.some(u => 
-            (u.id && lu.id && String(u.id) === String(lu.id)) ||
-            (u.email && lu.email && u.email.toLowerCase() === lu.email.toLowerCase()) ||
-            (u.username && lu.username && u.username.toLowerCase() === lu.username.toLowerCase())
-          );
-          if (!exists) {
-            users.push(lu);
-          }
-        });
-      }
-    } catch (_) {}
+    // Realtime Supabase synchronization: Supabase user_profiles is the authoritative source.
+    // Sync local mirror with real Supabase records to prevent zombie / orphaned accounts.
 
-    // Ensure any user in STORAGE_KEYS.APPROVED_USERS is retained in registered users with Active status
+    // Ensure approved users cache is kept in sync with Supabase status
     try {
       const rawApproved = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
       const approvedUsers = rawApproved ? JSON.parse(rawApproved) : [];
@@ -670,28 +652,12 @@ export async function fetchRegisteredUsers() {
         approvedUsers.forEach(au => {
           if (!au) return;
           const auEmail = (au.email || '').toLowerCase().trim();
-          const auUser = (au.username || '').toLowerCase().trim();
           const auId = String(au.id || '').trim();
-          const exists = users.find(u => 
+          const match = users.find(u => 
             (auId && u.id && String(u.id) === auId) ||
-            (auEmail && u.email && u.email.toLowerCase() === auEmail) ||
-            (auUser && u.username && u.username.toLowerCase() === auUser)
+            (auEmail && u.email && u.email.toLowerCase() === auEmail)
           );
-          if (exists) {
-            exists.status = 'Active';
-          } else {
-            users.push({
-              id: au.id || `user-${Date.now()}`,
-              name: au.name || au.username || 'User',
-              username: au.username || 'user',
-              email: au.email || '',
-              branchLoc: au.branchLoc || 'Lucena',
-              branchName: au.branchName || 'Branch Store',
-              role: au.role || 'Staff',
-              status: 'Active',
-              created_at: au.approvedAt || new Date().toISOString()
-            });
-          }
+          if (match) match.status = 'Active';
         });
       }
     } catch (_) {}
@@ -745,24 +711,7 @@ export async function fetchPendingApprovals() {
       createdAt: u.created_at
     }));
 
-    // Merge with existing local pending users so newly registered local users awaiting approval are preserved
-    try {
-      const rawLocal = localStorage.getItem(STORAGE_KEYS.PENDING_USERS);
-      const localPending = rawLocal ? JSON.parse(rawLocal) : [];
-      if (Array.isArray(localPending)) {
-        localPending.forEach(lp => {
-          if (!lp) return;
-          const exists = pending.some(p => 
-            (p.id && lp.id && String(p.id) === String(lp.id)) ||
-            (p.email && lp.email && p.email.toLowerCase() === lp.email.toLowerCase()) ||
-            (p.username && lp.username && p.username.toLowerCase() === lp.username.toLowerCase())
-          );
-          if (!exists) {
-            pending.push(lp);
-          }
-        });
-      }
-    } catch (_) {}
+    // Realtime Supabase synchronization: Pending list is synced directly from Supabase user_profiles
 
     // Strictly filter out ANY user who is already approved in STORAGE_KEYS.APPROVED_USERS or REGISTERED_USERS as Active
     try {
@@ -935,6 +884,39 @@ export async function approveUserAccount(targetParam, approvedBy = 'Main Admin')
     window.dispatchEvent(new Event('rmims_pending_users_updated'));
     window.dispatchEvent(new Event('rmims_registered_users_updated'));
     window.dispatchEvent(new Event('storage'));
+  } catch (_) {}
+
+  // 2. Cascade delete from branch stores personnel to eliminate orphaned personnel
+  try {
+    const rawStores = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+    if (rawStores) {
+      const stores = JSON.parse(rawStores);
+      if (stores && typeof stores === 'object') {
+        let changed = false;
+        Object.values(stores).forEach(st => {
+          if (Array.isArray(st.managers)) {
+            const b4 = st.managers.length;
+            st.managers = st.managers.filter(m => 
+              !(userId && String(m.id) === String(userId)) &&
+              !(userEmail && m.email && m.email.toLowerCase() === userEmail.toLowerCase())
+            );
+            if (st.managers.length !== b4) changed = true;
+          }
+          if (Array.isArray(st.staff)) {
+            const b4 = st.staff.length;
+            st.staff = st.staff.filter(s => 
+              !(userId && String(s.id) === String(userId)) &&
+              !(userEmail && s.email && s.email.toLowerCase() === userEmail.toLowerCase())
+            );
+            if (st.staff.length !== b4) changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
+          window.dispatchEvent(new Event('rmims_stores_updated'));
+        }
+      }
+    }
   } catch (_) {}
 
   // 2. Log activity

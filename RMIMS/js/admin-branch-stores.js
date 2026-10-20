@@ -66,6 +66,70 @@ function isMockStore(st) {
   return mockTokens.some(tok => combined.includes(tok));
 }
 
+
+// Dynamically synchronize store personnel with live user profiles
+export function syncStoresWithRealUsers(stores) {
+  if (!stores || typeof stores !== 'object') return stores;
+  try {
+    const rawUsers = localStorage.getItem('rmims_registered_users');
+    if (!rawUsers) return stores;
+    const users = JSON.parse(rawUsers);
+    if (!Array.isArray(users)) return stores;
+
+    // Filter active users only
+    const activeUsers = users.filter(u => {
+      if (!u) return false;
+      const s = String(u.status || '').toLowerCase().trim();
+      return s !== 'pending' && s !== 'pending_approval' && s !== 'inactive';
+    });
+
+    Object.values(stores).forEach(st => {
+      const stLoc = (st.location || st.locKey || '').toLowerCase().trim();
+      const stName = (st.name || '').toLowerCase().trim();
+
+      const matchingUsers = activeUsers.filter(u => {
+        const uLoc = (u.branchLoc || u.branch_location || '').toLowerCase().trim();
+        const uName = (u.branchName || u.branch_name || '').toLowerCase().trim();
+        return (uLoc && stLoc && (uLoc.includes(stLoc) || stLoc.includes(uLoc))) ||
+               (uName && stName && (uName.includes(stName) || stName.includes(uName)));
+      });
+
+      // Filter managers
+      const managers = matchingUsers.filter(u => {
+        const r = String(u.role || u.operational_role || '').toLowerCase();
+        return r.includes('manager') && !r.includes('main admin');
+      }).map((m, idx) => ({
+        id: m.id,
+        name: m.name || m.username || 'Manager',
+        username: m.username || 'manager',
+        email: m.email || '',
+        accessCode: `MGR-${(st.location || 'STR').slice(0, 3).toUpperCase()}-0${idx + 1}`
+      }));
+
+      // Filter staff
+      const staff = matchingUsers.filter(u => {
+        const r = String(u.role || u.operational_role || '').toLowerCase();
+        return (r.includes('staff') || r.includes('employee') || r.includes('user')) && !r.includes('manager') && !r.includes('admin');
+      }).map((s, idx) => ({
+        id: s.id,
+        name: s.name || s.username || 'Staff',
+        username: s.username || 'staff',
+        email: s.email || '',
+        accessCode: `STF-${(st.location || 'STR').slice(0, 3).toUpperCase()}-0${idx + 1}`
+      }));
+
+      // If matching users found, dynamically reflect them
+      if (managers.length > 0 || staff.length > 0 || matchingUsers.length > 0) {
+        st.managers = managers;
+        st.staff = staff;
+      }
+    });
+  } catch (err) {
+    console.warn('Notice in syncStoresWithRealUsers:', err);
+  }
+  return stores;
+}
+
 // Storage Helpers
 export function getStoresData() {
   try {
@@ -86,6 +150,7 @@ export function getStoresData() {
           localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(clean));
           window.dispatchEvent(new Event('rmims_stores_updated'));
         }
+        syncStoresWithRealUsers(clean);
         return clean;
       }
     }
@@ -789,3 +854,9 @@ function escapeJs(str) {
     .replace(/'/g, "\\\\'")
     .replace(/"/g, '\\\\"');
 }
+
+window.addEventListener('rmims_registered_users_updated', () => {
+  const stores = getStoresData();
+  saveStoresData(stores);
+  renderLocationDividers('locationDividersContainer');
+});

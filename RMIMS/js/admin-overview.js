@@ -375,7 +375,7 @@ function renderOverviewLatestActivities() {
       if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
 
       const txt = `${user} ${details} ${bLoc} ${bName}`.toLowerCase();
-      if (txt.includes('kxc') || txt.includes('scones') || txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
+      if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
         return;
       }
       if (['receive', 'approve transaction', 'disburse'].includes(details.toLowerCase())) {
@@ -405,7 +405,7 @@ function renderOverviewLatestActivities() {
       if (['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118'].includes(ref)) return;
 
       const txt = `${user} ${r.supplierName || ''} ${bLoc} ${bName}`.toLowerCase();
-      if (txt.includes('kxc') || txt.includes('scones') || txt.includes('simulated_user')) return;
+      if (txt.includes('simulated_user')) return;
       list.push({
         user: user,
         action: 'Received',
@@ -430,7 +430,7 @@ function renderOverviewLatestActivities() {
       if (['DIS-2026-00091', 'DIS-2026-00088'].includes(ref)) return;
 
       const txt = `${user} ${d.reason || ''} ${bLoc} ${bName}`.toLowerCase();
-      if (txt.includes('kxc') || txt.includes('scones') || txt.includes('simulated_user')) return;
+      if (txt.includes('simulated_user')) return;
       list.push({
         user: user,
         action: 'Disbursed',

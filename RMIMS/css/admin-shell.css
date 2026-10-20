@@ -5254,3 +5254,108 @@ table[class*="table"] {
   }
 }
 
+
+/* ==========================================================================
+   ADMIN ZERO-FAILURE RESPONSIVE HARDENING SAFEGUARDS
+   Ensures flawless display across Mobile (<=480px), Tablet (481px-768px),
+   and Desktop without altering any locked design tokens or aesthetics.
+   ========================================================================== */
+
+.table-responsive {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.25);
+  border-radius: 999px;
+}
+
+@media (max-width: 768px) {
+  /* Modals fit comfortably in viewport */
+  .modal-backdrop,
+  .store-modal-backdrop {
+    padding: 12px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal-card,
+  .store-modal-card,
+  .mgr-modal-card {
+    max-width: 95vw !important;
+    width: 100% !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Date Popover Centering on small devices */
+  #datePickerPopover,
+  .admin-date-picker-popover {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    max-width: 95vw !important;
+    width: auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    z-index: 10000 !important;
+  }
+
+  /* Table Action Buttons wrap without clipping */
+  .btn-table-action,
+  .action-btn-group {
+    display: inline-flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  /* Prevent text overflow in directory cells */
+  .admin-table td,
+  .admin-table th {
+    white-space: nowrap !important;
+  }
+
+  .admin-table td.cell-wrap,
+  .admin-table td:nth-child(8) {
+    white-space: normal !important;
+    min-width: 180px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-pagination {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .card-pagination .pagination-controls {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .modal-footer {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .modal-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}

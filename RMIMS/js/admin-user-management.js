@@ -157,19 +157,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getStoredPendingUsers() {
     try {
-      let list = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-      if (Array.isArray(list)) {
-        list = list.filter(u => !isMockUser(u));
-        if (list.length === 0) {
-          list = [...AUTHENTIC_INITIAL_PENDING_USERS];
-          localStorage.setItem('rmims_pending_users', JSON.stringify(list));
-        }
+      const raw = localStorage.getItem('rmims_pending_users');
+      if (raw === null) {
+        const list = [...AUTHENTIC_INITIAL_PENDING_USERS];
+        localStorage.setItem('rmims_pending_users', JSON.stringify(list));
         return list;
       }
+      let list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        return list.filter(u => !isMockUser(u));
+      }
+      return [];
     } catch (_) {
-      return [...AUTHENTIC_INITIAL_PENDING_USERS];
+      return [];
     }
-    return [...AUTHENTIC_INITIAL_PENDING_USERS];
   }
 
   function saveStoredPendingUsers(users) {
@@ -233,29 +234,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getStoredRegisteredUsers() {
     try {
-      let list = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+      const raw = localStorage.getItem('rmims_registered_users');
+      if (raw === null) {
+        const initial = [...AUTHENTIC_INITIAL_REGISTERED_USERS];
+        localStorage.setItem('rmims_registered_users', JSON.stringify(initial));
+        return initial;
+      }
+      let list = JSON.parse(raw);
       if (!Array.isArray(list)) list = [];
       list = list.filter(u => !isMockUser(u));
 
-      // Strictly exclude any pending or unapproved accounts: they belong ONLY in Awaiting Approval
+      // Strictly exclude any pending or unapproved accounts
       list = list.filter(u => {
         if (!u) return false;
         const s = String(u.status || '').toLowerCase().trim();
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      // Merge in authentic initial registered users if missing
-      AUTHENTIC_INITIAL_REGISTERED_USERS.forEach(initUser => {
-        const uEmail = (initUser.email || '').toLowerCase().trim();
-        const uId = String(initUser.id || '').trim();
-        const exists = list.some(u => 
-          (uEmail && u.email && u.email.toLowerCase().trim() === uEmail) ||
-          (uId && u.id && String(u.id).trim() === uId)
-        );
-        if (!exists) {
-          list.push({ ...initUser });
-        }
-      });
+      // Ensure Master Admin Zeanna is present
+      const hasAdmin = list.some(u => 
+        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
+        (u.name && u.name.toLowerCase() === 'zeanna')
+      );
+      if (!hasAdmin) {
+        list.unshift(MASTER_ADMIN_RECORD);
+      }
 
       return list;
     } catch (_) {
@@ -373,6 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  let currentUserPage = 1;
+  const USERS_PER_PAGE = 8;
+
   function renderRegisteredUsers() {
     const tbody = document.getElementById('usersDirectoryTableBody') || (dirTable ? dirTable.querySelector('tbody') : null);
     if (!tbody) return;
@@ -421,11 +427,23 @@ document.addEventListener('DOMContentLoaded', () => {
       if (paginationCounter) {
         paginationCounter.textContent = 'Showing 0 of 0 active users';
       }
-      buildPaginationButtons(0, 10);
+      buildPaginationButtons(0, USERS_PER_PAGE);
       return;
     }
 
-    tbody.innerHTML = filtered.map(u => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / USERS_PER_PAGE));
+    if (currentUserPage > totalPages) currentUserPage = totalPages;
+    if (currentUserPage < 1) currentUserPage = 1;
+    const startIdx = (currentUserPage - 1) * USERS_PER_PAGE;
+    const endIdx = Math.min(startIdx + USERS_PER_PAGE, filtered.length);
+    const pageUsers = filtered.slice(startIdx, endIdx);
+
+    if (paginationCounter) {
+      paginationCounter.textContent = `Showing ${filtered.length > 0 ? startIdx + 1 : 0} to ${endIdx} of ${filtered.length} active users`;
+    }
+    buildPaginationButtons(filtered.length, USERS_PER_PAGE);
+
+    tbody.innerHTML = pageUsers.map(u => {
       const initials = getInitials(u.name);
       const loc = u.branchLoc || '';
       const bName = u.branchName || 'Unknown Branch';
@@ -1020,8 +1038,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevBtn = document.getElementById('btnUserPrevPage');
     const nextBtn = document.getElementById('btnUserNextPage');
     if (!container) return;
+    
     // Remove previously injected page number buttons
     container.querySelectorAll('.pagination-btn.pg-num').forEach(b => b.remove());
+
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
 
     if (total === 0) {
       if (prevBtn) {
@@ -1042,26 +1063,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (prevBtn) {
-      prevBtn.disabled = true;
-      prevBtn.classList.add('disabled');
-    }
-    const totalPages = perPage > 0 ? Math.ceil(total / perPage) : 1;
-    if (nextBtn) {
-      nextBtn.disabled = totalPages <= 1;
-      if (totalPages <= 1) nextBtn.classList.add('disabled');
-      else nextBtn.classList.remove('disabled');
+      prevBtn.disabled = (currentUserPage <= 1);
+      if (currentUserPage <= 1) prevBtn.classList.add('disabled');
+      else prevBtn.classList.remove('disabled');
+      prevBtn.onclick = function() {
+        if (currentUserPage > 1) {
+          currentUserPage--;
+          renderRegisteredUsers();
+        }
+      };
     }
 
-    const maxShow = Math.min(totalPages, 5);
-    for (let p = 1; p <= maxShow; p++) {
+    if (nextBtn) {
+      nextBtn.disabled = (currentUserPage >= totalPages);
+      if (currentUserPage >= totalPages) nextBtn.classList.add('disabled');
+      else nextBtn.classList.remove('disabled');
+      nextBtn.onclick = function() {
+        if (currentUserPage < totalPages) {
+          currentUserPage++;
+          renderRegisteredUsers();
+        }
+      };
+    }
+
+    for (let p = 1; p <= totalPages; p++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'pagination-btn pg-num' + (p === 1 ? ' active' : '');
+      btn.className = 'pagination-btn pg-num' + (p === currentUserPage ? ' active' : '');
       btn.textContent = String(p);
-      btn.addEventListener('click', function () {
-        container.querySelectorAll('.pagination-btn.pg-num').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-      });
+      btn.onclick = (function(page) {
+        return function() {
+          currentUserPage = page;
+          renderRegisteredUsers();
+        };
+      })(p);
       container.insertBefore(btn, nextBtn);
     }
   }
