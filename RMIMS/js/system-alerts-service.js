@@ -83,11 +83,10 @@ function isLegacyMockAlert(alert) {
   if (!alert) return false;
   const str = `${alert.id || ''} ${alert.type || ''} ${alert.details || ''} ${alert.branch || ''} ${alert.branchLocation || ''}`.toLowerCase();
   return (
-    str.includes('kxc') ||
-    str.includes('scones') ||
     str.includes('simulated_user') ||
     str.includes('regional storage cluster') ||
-    str.includes('duplicate raw material entry detected during sync') ||
+    str.includes('demo_alert') ||
+    str.includes('mock_alert') ||
     str.includes('slow response time (avg. 6.2s')
   );
 }
@@ -114,8 +113,167 @@ try {
   }
 } catch (_) {}
 
+
+/**
+ * Automatically synchronize live user operations (from Manager and Staff portals)
+ * into the Admin System Alerts dashboard.
+ */
+export function syncOperationalAlerts() {
+  try {
+    let alerts = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_ALERTS);
+      alerts = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(alerts)) alerts = [];
+      alerts = alerts.filter(a => !isLegacyMockAlert(a));
+    } catch (_) {
+      alerts = [];
+    }
+
+    let changed = false;
+    const timeNow = formatCurrentDateTime();
+
+    // 1. Scan for Rejected Transactions in rmims_staff_transactions & rmims_manager_activities
+    try {
+      const rawTx = localStorage.getItem('rmims_staff_transactions');
+      const staffTx = rawTx ? JSON.parse(rawTx) : [];
+      if (Array.isArray(staffTx)) {
+        staffTx.filter(t => (t.status || '').toLowerCase() === 'rejected').forEach(t => {
+          const ref = t.ref || t.id || 'TX';
+          const alertId = `alt-rej-${ref.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+          const bInfo = parseBranch(t.branch || t.branchName || t.branchLocation || 'Store Branch');
+          const reason = t.rejectionReason || 'Transaction flagged by store manager';
+          const existing = alerts.find(a => a.id === alertId || (a.type === 'Transaction Rejected by Manager' && a.details && a.details.includes(ref)));
+          
+          if (!existing) {
+            alerts.unshift({
+              id: alertId,
+              type: 'Transaction Rejected by Manager',
+              category: 'functional',
+              severity: 'warning',
+              status: 'ongoing',
+              branchLocation: bInfo.location || 'Lucena',
+              branchName: bInfo.name || 'Store Branch',
+              branch: bInfo.full,
+              occurrence: 1,
+              lastDetected: timeNow,
+              details: `Transaction ${ref} was rejected by Store Manager: "${reason}". Action required by store personnel.`,
+              targetRole: 'Store Manager',
+              actionLabel: 'Send to Manager'
+            });
+            changed = true;
+          }
+        });
+      }
+    } catch (_) {}
+
+    // 2. Scan for Low Stock & Out of Stock Materials across stores
+    try {
+      const storeMaterialsMap = [
+        { key: 'scones_raw_materials', branchLoc: 'Lucena', branchName: 'Scones & Muffins Bakery' },
+        { key: 'kxc_raw_materials', branchLoc: 'Tiaong', branchName: 'KXC 5-Year Enterprise' },
+        { key: 'rmims_raw_materials', branchLoc: 'Lucena', branchName: 'Scones & Muffins Bakery' }
+      ];
+
+      storeMaterialsMap.forEach(sMap => {
+        const rawM = localStorage.getItem(sMap.key);
+        if (!rawM) return;
+        const list = JSON.parse(rawM);
+        if (!Array.isArray(list)) return;
+
+        // Find critical depleted (Out of stock)
+        const outOfStock = list.filter(m => {
+          const s = String(m.status || '').toLowerCase();
+          const stock = Number(m.currentStock ?? m.stock ?? m.quantity ?? 100);
+          return s === 'out of stock' || s === 'critical' || stock <= 0;
+        });
+
+        if (outOfStock.length > 0) {
+          const matNames = outOfStock.map(m => m.name).slice(0, 3).join(', ') + (outOfStock.length > 3 ? ` +${outOfStock.length - 3} more` : '');
+          const alertId = `alt-depleted-${sMap.branchLoc.toLowerCase()}`;
+          const existing = alerts.find(a => a.id === alertId || (a.type === 'Critical Stock Depletion' && a.branchLocation === sMap.branchLoc));
+          if (existing) {
+            if (existing.occurrence !== outOfStock.length) {
+              existing.occurrence = outOfStock.length;
+              existing.lastDetected = timeNow;
+              existing.details = `${outOfStock.length} raw material(s) critically depleted (0 in stock) at ${sMap.branchName}: ${matNames}.`;
+              changed = true;
+            }
+          } else {
+            alerts.unshift({
+              id: alertId,
+              type: 'Critical Stock Depletion',
+              category: 'data',
+              severity: 'critical',
+              status: 'ongoing',
+              branchLocation: sMap.branchLoc,
+              branchName: sMap.branchName,
+              branch: `${sMap.branchName} (${sMap.branchLoc})`,
+              occurrence: outOfStock.length,
+              lastDetected: timeNow,
+              details: `${outOfStock.length} raw material(s) critically depleted (0 in stock) at ${sMap.branchName}: ${matNames}.`,
+              targetRole: 'Inventory Staff',
+              actionLabel: 'Send to Staff'
+            });
+            changed = true;
+          }
+        }
+
+        // Find low stock items
+        const lowStock = list.filter(m => {
+          const s = String(m.status || '').toLowerCase();
+          const stock = Number(m.currentStock ?? m.stock ?? m.quantity ?? 100);
+          const min = Number(m.minStock ?? m.minThreshold ?? 50);
+          return (s === 'low' || s === 'low stock' || stock <= min) && stock > 0;
+        });
+
+        if (lowStock.length > 0) {
+          const matNames = lowStock.map(m => m.name).slice(0, 3).join(', ') + (lowStock.length > 3 ? ` +${lowStock.length - 3} more` : '');
+          const alertId = `alt-lowstock-${sMap.branchLoc.toLowerCase()}`;
+          const existing = alerts.find(a => a.id === alertId || (a.type === 'Low Stock Warning' && a.branchLocation === sMap.branchLoc));
+          if (existing) {
+            if (existing.occurrence !== lowStock.length) {
+              existing.occurrence = lowStock.length;
+              existing.lastDetected = timeNow;
+              existing.details = `${lowStock.length} raw material(s) below safety reorder threshold at ${sMap.branchName}: ${matNames}.`;
+              changed = true;
+            }
+          } else {
+            alerts.unshift({
+              id: alertId,
+              type: 'Low Stock Warning',
+              category: 'data',
+              severity: 'warning',
+              status: 'ongoing',
+              branchLocation: sMap.branchLoc,
+              branchName: sMap.branchName,
+              branch: `${sMap.branchName} (${sMap.branchLoc})`,
+              occurrence: lowStock.length,
+              lastDetected: timeNow,
+              details: `${lowStock.length} raw material(s) below safety reorder threshold at ${sMap.branchName}: ${matNames}.`,
+              targetRole: 'Store Manager',
+              actionLabel: 'Send to Manager'
+            });
+            changed = true;
+          }
+        }
+      });
+    } catch (_) {}
+
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY_ALERTS, JSON.stringify(alerts));
+      window.dispatchEvent(new CustomEvent('rmims:alerts-updated', { detail: { alerts } }));
+    }
+    return alerts;
+  } catch (err) {
+    console.warn('[SystemAlerts] Operational alerts sync notice:', err);
+    return [];
+  }
+}
+
 export function getAlerts() {
   try {
+    syncOperationalAlerts();
     const raw = localStorage.getItem(STORAGE_KEY_ALERTS);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -402,6 +560,32 @@ export function dispatchAlert(alertId, { role, recipientEmail, message, status =
   };
 
   saveAlerts(alerts);
+
+  // Broadcast interactive notification directly to Manager or Staff portal
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      const targetRoleStr = String(alert.targetRole || role || '').toLowerCase();
+      let targetPortalRole = 'all';
+      if (targetRoleStr.includes('manager')) targetPortalRole = 'manager';
+      else if (targetRoleStr.includes('staff')) targetPortalRole = 'staff';
+
+      window.pushRMIMSNotification({
+        title: `Diagnostic Alert from Admin: ${alert.type}`,
+        message: message ? `Administrator note: "${message}". Issue: ${alert.details}` : `Administrator dispatched diagnostic alert: ${alert.details}`,
+        category: 'alert',
+        badge: 'Action Required',
+        role: targetPortalRole,
+        targetRole: targetPortalRole,
+        roleScope: targetPortalRole,
+        priority: alert.severity === 'critical' ? 'critical' : 'warning',
+        targetUrl: targetPortalRole === 'manager' ? 'manager/dashboard.html' : 'user/dashboard.html',
+        actor: 'Main Administrator'
+      });
+    }
+  } catch (e) {
+    console.warn('Failed broadcasting dispatched alert to notifications:', e);
+  }
+
   return alert;
 }
 
@@ -453,6 +637,9 @@ export function resetAlertsToDefault() {
 
 // Global exposure for browser console testing
 if (typeof window !== 'undefined') {
+  window.recordRMIMSIncident = recordSystemIncident;
+  window.recordSystemIncident = recordSystemIncident;
+  window.syncRMIMSAlerts = syncOperationalAlerts;
   window.RMIMS_AlertService = {
     getAlerts,
     recordLoginFailure,

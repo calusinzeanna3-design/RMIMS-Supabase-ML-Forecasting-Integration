@@ -613,8 +613,8 @@ export async function fetchRegisteredUsers() {
         name: u.full_name || u.username || 'User',
         username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
         email: u.email || '',
-        branchLoc: u.branch_location || (u.role === 'admin' ? 'Headquarters' : 'Unassigned'),
-        branchName: u.branch_name || (u.role === 'admin' ? 'Main Administration' : 'Branch Store'),
+        branchLoc: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.name && u.name.toLowerCase() === 'zeanna')) ? 'Headquarters' : (u.branch_location || 'Unassigned'),
+        branchName: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.name && u.name.toLowerCase() === 'zeanna')) ? 'Headquarters' : (u.branch_name || 'Branch Store'),
         role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
           ? 'Administrator' 
           : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),

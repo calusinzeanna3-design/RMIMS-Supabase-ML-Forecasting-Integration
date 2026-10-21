@@ -1043,6 +1043,40 @@
   // Public API to push live notifications from any action (imports, receives, disbursements, backups, logins)
   window.pushRMIMSNotification = function (notif) {
     if (!notif) return;
+
+    // Bridge user operations to System Alerts
+    try {
+      if (typeof window !== 'undefined' && typeof window.recordRMIMSIncident === 'function') {
+        const nTitle = String(notif.title || '').toLowerCase();
+        const nBadge = String(notif.badge || '').toLowerCase();
+        const nMsg = String(notif.message || '');
+        const bName = notif.branch || notif.branchName || 'Store Branch';
+
+        if (nTitle.includes('rejected') || nBadge.includes('rejected')) {
+          window.recordRMIMSIncident({
+            type: 'Transaction Rejected by Manager',
+            category: 'functional',
+            severity: 'warning',
+            branch: bName,
+            details: nMsg || notif.title,
+            targetRole: 'Store Manager',
+            actionLabel: 'Send to Manager'
+          });
+        } else if (nTitle.includes('low stock') || nBadge.includes('low stock')) {
+          window.recordRMIMSIncident({
+            type: 'Low Stock Warning',
+            category: 'data',
+            severity: 'warning',
+            branch: bName,
+            details: nMsg || notif.title,
+            targetRole: 'Inventory Staff',
+            actionLabel: 'Send to Staff'
+          });
+        }
+      }
+    } catch (_) {}
+
+    if (!notif) return;
     const all = getNotifications();
     const id = notif.id || `notif-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     if (all.some(n => String(n.id) === String(id))) return;

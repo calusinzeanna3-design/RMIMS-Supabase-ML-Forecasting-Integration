@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     username: 'zeanna',
     email: 'calusinzeanna3@gmail.com',
     branchLoc: 'Headquarters',
-    branchName: 'Main Administration',
+    branchName: 'Headquarters',
     role: 'Administrator',
     status: 'Active',
     created_at: new Date().toISOString()
@@ -239,7 +239,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      // Ensure Master Admin Zeanna is present
+      // Ensure Master Admin Zeanna is present with Headquarters location (separate from the two store companies)
+      list = list.map(u => {
+        if (!u) return u;
+        const role = String(u.role || '').toLowerCase();
+        const email = String(u.email || '').toLowerCase();
+        const name = String(u.name || '').toLowerCase();
+        const user = String(u.username || '').toLowerCase();
+        if (role === 'administrator' || role === 'admin' || email === 'calusinzeanna3@gmail.com' || name === 'zeanna' || user === 'zeanna' || user === 'calusinzeanna3') {
+          return {
+            ...u,
+            branchLoc: 'Headquarters',
+            branchName: 'Headquarters',
+            role: 'Administrator'
+          };
+        }
+        return u;
+      });
+
       const hasAdmin = list.some(u => 
         (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
         (u.name && u.name.toLowerCase() === 'zeanna')

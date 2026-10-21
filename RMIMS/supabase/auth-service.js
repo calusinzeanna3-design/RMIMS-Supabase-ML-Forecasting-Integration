@@ -456,7 +456,16 @@ export async function loginUser(email, password, expectedRole) {
             hideAuthTransition(transDOM);
             const msg = (error.message || "").toLowerCase();
             if (msg.includes("invalid") || msg.includes("credential") || msg.includes("password")) {
-                recordLoginFailure(email);
+                let userBranch = "Lucena";
+                let userStore = "Scones & Muffins Bakery";
+                try {
+                    const clean = cleanEmailInput.toLowerCase().trim();
+                    if (clean.includes("kxc") || clean.includes("tiaong") || clean.includes("glazel")) {
+                        userBranch = "Tiaong";
+                        userStore = "KXC 5-Year Enterprise";
+                    }
+                } catch (_) {}
+                recordLoginFailure(cleanEmailInput, `${userStore} (${userBranch})`);
             }
             throw new Error(friendlyAuthError(error));
         }
@@ -669,9 +678,9 @@ export async function loginUser(email, password, expectedRole) {
             operational_role: effectiveRole,
             status: profile.status,
             username: profile.username || "",
-            branchName: profile.branch_name || (isScones ? "Scones & Muffins Store" : "Branch Store"),
-            branchLocation: profile.branch_location || "Lucena",
-            branchStore: profile.branch_store || (isScones ? "Scones & Muffins Bakery (Lucena)" : "Branch Store (Lucena)"),
+            branchName: isAdmin ? "Headquarters" : (profile.branch_name || (isScones ? "Scones & Muffins Bakery" : "Branch Store")),
+            branchLocation: isAdmin ? "Headquarters" : (profile.branch_location || "Lucena"),
+            branchStore: isAdmin ? "Headquarters" : (profile.branch_store || (isScones ? "Scones & Muffins Bakery (Lucena)" : "Branch Store")),
             companyId: assignedCompanyId,
             company_id: assignedCompanyId,
             companyName: assignedCompanyName,
