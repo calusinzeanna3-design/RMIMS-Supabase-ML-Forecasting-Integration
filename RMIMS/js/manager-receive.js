@@ -11,6 +11,7 @@
 
 import {
   getSystemRawMaterials,
+  parseSafeDate,
   saveCustomReceipt,
   saveCustomRawMaterial,
   getSystemCustomReceipts
@@ -1056,8 +1057,10 @@ function renderHistoryTable() {
     } else if (sortOrder === 'qty_asc') {
       return Number(a.quantity || 0) - Number(b.quantity || 0);
     } else if (sortOrder === 'oldest') {
-      const dateA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
-      const dateB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
+      const pA = parseSafeDate(a.date) || parseSafeDate(a.receipt_date) || parseSafeDate(a.created_at);
+      const pB = parseSafeDate(b.date) || parseSafeDate(b.receipt_date) || parseSafeDate(b.created_at);
+      const dateA = pA ? pA.getTime() : 0;
+      const dateB = pB ? pB.getTime() : 0;
       if (dateA !== dateB) return dateA - dateB;
       const numA = parseInt(String(a.ref || '').replace(/\D+/g, ''), 10) || 0;
       const numB = parseInt(String(b.ref || '').replace(/\D+/g, ''), 10) || 0;
@@ -1065,8 +1068,10 @@ function renderHistoryTable() {
       return (a.ref || '').localeCompare(b.ref || '');
     } else {
       // Default: latest first (newest timestamp / date first)
-      const dateA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
-      const dateB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
+      const pA = parseSafeDate(a.date) || parseSafeDate(a.receipt_date) || parseSafeDate(a.created_at);
+      const pB = parseSafeDate(b.date) || parseSafeDate(b.receipt_date) || parseSafeDate(b.created_at);
+      const dateA = pA ? pA.getTime() : 0;
+      const dateB = pB ? pB.getTime() : 0;
       if (dateB !== dateA) return dateB - dateA;
       const numA = parseInt(String(a.ref || '').replace(/\D+/g, ''), 10) || 0;
       const numB = parseInt(String(b.ref || '').replace(/\D+/g, ''), 10) || 0;

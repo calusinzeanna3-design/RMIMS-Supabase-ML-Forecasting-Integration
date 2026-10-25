@@ -160,6 +160,13 @@ function getStaffTransactions() {
 /**
  * Retrieve combined real receipts (custom + manager recorded)
  */
+function normalizeTxKey(item) {
+  let k = String(item.ref || item.referenceNo || item.id || '').trim();
+  if (k.toLowerCase().startsWith('rec-')) k = k.slice(4);
+  if (k.toLowerCase().startsWith('disb-')) k = k.slice(5);
+  return k.toUpperCase();
+}
+
 function getCombinedReceipts() {
   const custom = getSystemCustomReceipts();
   let mgr = [];
@@ -170,8 +177,14 @@ function getCombinedReceipts() {
   if (!Array.isArray(mgr)) mgr = [];
 
   const map = new Map();
-  custom.forEach(r => map.set(String(r.id || r.ref), r));
-  mgr.forEach(r => map.set(String(r.id || r.ref), r));
+  custom.forEach(r => {
+    const key = normalizeTxKey(r);
+    if (key) map.set(key, r);
+  });
+  mgr.forEach(r => {
+    const key = normalizeTxKey(r);
+    if (key) map.set(key, r);
+  });
   return Array.from(map.values());
 }
 
@@ -188,8 +201,14 @@ function getCombinedDisbursements() {
   if (!Array.isArray(mgr)) mgr = [];
 
   const map = new Map();
-  custom.forEach(d => map.set(String(d.id || d.ref), d));
-  mgr.forEach(d => map.set(String(d.id || d.ref), d));
+  custom.forEach(d => {
+    const key = normalizeTxKey(d);
+    if (key) map.set(key, d);
+  });
+  mgr.forEach(d => {
+    const key = normalizeTxKey(d);
+    if (key) map.set(key, d);
+  });
   return Array.from(map.values());
 }
 

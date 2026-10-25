@@ -23,34 +23,6 @@ import { getActiveTenantContext } from './tenant-manager.js';
 // Local storage keys for Manager specific overrides & history
 const MGR_STORAGE_OVERRIDES_KEY = 'rmims_manager_material_overrides';
 
-function cleanseLegacySeptemberOverrides() {
-  try {
-    const raw = localStorage.getItem(MGR_STORAGE_OVERRIDES_KEY);
-    if (!raw) return;
-    const ovs = JSON.parse(raw);
-    let modified = false;
-    Object.keys(ovs).forEach(k => {
-      const item = ovs[k];
-      if (item) {
-        if (typeof item.date_added === 'string' && /sep(tember)?s+d{1,2}|2026-09/i.test(item.date_added)) {
-          delete item.date_added;
-          modified = true;
-        }
-        if (typeof item.last_updated === 'string' && /sep(tember)?s+d{1,2}|2026-09/i.test(item.last_updated)) {
-          delete item.last_updated;
-          modified = true;
-        }
-        if (typeof item.display_date === 'string' && /sep(tember)?s+d{1,2}|2026-09/i.test(item.display_date)) {
-          delete item.display_date;
-          modified = true;
-        }
-      }
-    });
-    if (modified) {
-      localStorage.setItem(MGR_STORAGE_OVERRIDES_KEY, JSON.stringify(ovs));
-    }
-  } catch (_) {}
-}
 
 const MGR_ARCHIVED_KEY = 'rmims_manager_archived_materials';
 const MGR_HISTORY_KEY = 'rmims_manager_material_history';
@@ -365,7 +337,7 @@ try {
  * Load materials from authoritative system dataset + manager local storage overrides
  */
 function loadMaterials() {
-  cleanseLegacySeptemberOverrides();
+  
   const baseMaterials = getSystemRawMaterials();
   const overrides = getStoredOverrides();
   const archivedIds = getArchivedIds();
@@ -386,7 +358,8 @@ function loadMaterials() {
     const location = ov.storage_location || m.storage_location || DEFAULT_LOCATIONS[category] || 'Warehouse A - Shelf 1';
     const supplier = ov.supplier || m.supplier || DEFAULT_SUPPLIERS[category] || 'General Supply Co.';
     const description = ov.description || m.description || `Food grade ${specificationName} suitable for food processing operations.`;
-    // Compute real dynamic activity dates from recent receipts, disbursements, or user edits
+
+    // Compute real dynamic activity dates from recent receipts, disbursements, or user inputs
     const allReceipts = getSystemCustomReceipts();
     const allDisbursements = getSystemCustomDisbursements();
 
@@ -399,12 +372,9 @@ function loadMaterials() {
       const rId = String(r.material_id || r.materialId || '').toLowerCase();
       const rName = String(r.material_name || r.materialName || '').toLowerCase();
       if (rId === mIdLower || rName === mNameLower || (mNameLower && (rName.includes(mNameLower) || mNameLower.includes(rName)))) {
-        const dStr = r.receipt_date || r.date || r.created_at;
-        if (dStr) {
-          const d = new Date(dStr);
-          if (!isNaN(d.getTime()) && (!newestTxDate || d.getTime() > newestTxDate.getTime())) {
-            newestTxDate = d;
-          }
+        const d = parseSafeDate(r.receipt_date || r.date || r.created_at);
+        if (d && (!newestTxDate || d.getTime() > newestTxDate.getTime())) {
+          newestTxDate = d;
         }
       }
     });
@@ -413,41 +383,48 @@ function loadMaterials() {
       const dId = String(d.material_id || d.materialId || '').toLowerCase();
       const dName = String(d.material_name || d.materialName || '').toLowerCase();
       if (dId === mIdLower || dName === mNameLower || (mNameLower && (dName.includes(mNameLower) || mNameLower.includes(dName)))) {
-        const dStr = d.usage_date || d.date || d.created_at;
-        if (dStr) {
-          const d = new Date(dStr);
-          if (!isNaN(d.getTime()) && (!newestTxDate || d.getTime() > newestTxDate.getTime())) {
-            newestTxDate = d;
-          }
+        const d = parseSafeDate(d.usage_date || d.date || d.created_at);
+        if (d && (!newestTxDate || d.getTime() > newestTxDate.getTime())) {
+          newestTxDate = d;
         }
       }
     });
 
+    // Authentic Priority Resolution:
+    // 1. If material has a live transaction (e.g. October 16 for small ingredients), use that real transaction date!
+    // 2. If material was manually updated/edited recently, use ov.last_updated!
+    // 3. Otherwise retain its authentic date_added / created_at (e.g. Sep 20, Sep 29) without forcing it to October!
     let effectiveDateObj = newestTxDate;
-    if (ov.last_updated) {
-      const testLast = new Date(ov.last_updated);
-      if (!isNaN(testLast.getTime()) && (!effectiveDateObj || testLast.getTime() > effectiveDateObj.getTime())) {
-        effectiveDateObj = testLast;
-      }
+    if (!effectiveDateObj && ov.last_updated) {
+      const testD = parseSafeDate(ov.last_updated);
+      if (testD) effectiveDateObj = testD;
     }
-    if (!effectiveDateObj && (ov.date_added || m.created_at)) {
-      const testD = new Date(ov.date_added || m.created_at);
-      if (!isNaN(testD.getTime())) effectiveDateObj = testD;
+    if (!effectiveDateObj && ov.date_added) {
+      const testD = parseSafeDate(ov.date_added);
+      if (testD) effectiveDateObj = testD;
     }
-    if (!effectiveDateObj) {
-      effectiveDateObj = new Date();
+    if (!effectiveDateObj && m.created_at) {
+      const testD = parseSafeDate(m.created_at);
+      if (testD) effectiveDateObj = testD;
     }
 
-    const dateAdded = ov.date_added || (m.created_at ? m.created_at.split('T')[0] : effectiveDateObj.toISOString().split('T')[0]);
-    const lastUpdated = ov.last_updated || (effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    let displayDate = ov.display_date || ov.date_added;
+    let displayTime = ov.display_time || ov.time_added || '08:30 AM';
+
+    if (newestTxDate) {
+      // Live transaction takes precedence over static initial date
+      displayDate = newestTxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      displayTime = newestTxDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } else if (effectiveDateObj && !displayDate) {
+      displayDate = effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      displayTime = effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } else if (!displayDate) {
+      displayDate = 'Sep 29, 2026';
+    }
+
+    const dateAdded = ov.date_added || (effectiveDateObj ? effectiveDateObj.toISOString().split('T')[0] : '2026-09-29');
+    const lastUpdated = ov.last_updated || (displayDate + ' ' + displayTime);
     const addedBy = ov.added_by || 'Store Manager';
-
-    let displayDate = effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    let displayTime = effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-    if (ov.time_added) {
-      displayTime = ov.time_added;
-    }
 
     const isArchived = archivedIds.has(id);
     const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((minStock / 7).toFixed(1))));

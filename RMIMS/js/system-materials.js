@@ -14,6 +14,24 @@ export const RMIMS_DELETED_MATERIALS_KEY = "rmims_deleted_material_ids";
 export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials";
 
 /**
+ * Safely and reliably parses complex date strings:
+ * Handles ISO, YYYY-MM-DD, bullet timestamps ("2026-10-16 • 10:30 AM"), standard text dates ("Oct 16, 2026")
+ */
+export function parseSafeDate(dStr) {
+    if (!dStr) return null;
+    if (dStr instanceof Date && !isNaN(dStr.getTime())) return dStr;
+    let str = String(dStr).trim();
+    str = str.replace(/[•|]/g, ' ').replace(/\s+/g, ' ').trim();
+    let d = new Date(str);
+    if (!isNaN(d.getTime())) return d;
+    const datePart = str.split(' ')[0];
+    d = new Date(datePart);
+    if (!isNaN(d.getTime())) return d;
+    return null;
+}
+
+
+/**
  * Returns all active raw materials for the entire system:
  * Automatically selects the appropriate branch store / company dataset:
  * - Scones & Muffins Bakery: 19 Nutribun Materials (Folder: 1872cf44-e821-4370-b227-d1b7e4fc6f56)
