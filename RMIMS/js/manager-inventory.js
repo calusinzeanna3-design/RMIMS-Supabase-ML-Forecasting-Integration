@@ -408,22 +408,18 @@ function loadMaterials() {
       if (testD) effectiveDateObj = testD;
     }
 
-    let displayDate = ov.display_date || ov.date_added;
-    let displayTime = ov.display_time || ov.time_added || '08:30 AM';
+    // If no transaction has been recorded yet, show '—' for Date and Time
+    let displayDate = '—';
+    let displayTime = '—';
 
     if (newestTxDate) {
-      // Live transaction takes precedence over static initial date
+      // Real live transaction inputted by user
       displayDate = newestTxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       displayTime = newestTxDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    } else if (effectiveDateObj && !displayDate) {
-      displayDate = effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      displayTime = effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    } else if (!displayDate) {
-      displayDate = 'Sep 29, 2026';
     }
 
-    const dateAdded = ov.date_added || (effectiveDateObj ? effectiveDateObj.toISOString().split('T')[0] : '2026-09-29');
-    const lastUpdated = ov.last_updated || (displayDate + ' ' + displayTime);
+    const dateAdded = newestTxDate ? newestTxDate.toISOString().split('T')[0] : '—';
+    const lastUpdated = newestTxDate ? (displayDate + ' ' + displayTime) : '—';
     const addedBy = ov.added_by || 'Store Manager';
 
     const isArchived = archivedIds.has(id);

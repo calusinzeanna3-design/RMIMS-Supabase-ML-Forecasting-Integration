@@ -14,6 +14,79 @@ export const RMIMS_DELETED_MATERIALS_KEY = "rmims_deleted_material_ids";
 export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials";
 
 /**
+ * Permanently removes all old test transactions, receipts, disbursements, and stale dates
+ * inputted in previous sessions, ensuring a clean slate so they never affect the system.
+ */
+export function permanentlyPurgeOldWeeklyInputs() {
+    try {
+        const PURGE_FLAG = "rmims_purged_old_weekly_inputs_v5";
+        if (typeof window !== "undefined" && !localStorage.getItem(PURGE_FLAG)) {
+            // 1. Permanently clear all old test receipts
+            localStorage.setItem(RMIMS_CUSTOM_RECEIPTS_KEY, "[]");
+            localStorage.setItem("rmims_manager_receipts", "[]");
+
+            // 2. Permanently clear all old test disbursements
+            localStorage.setItem(RMIMS_CUSTOM_DISBURSEMENTS_KEY, "[]");
+            localStorage.setItem("rmims_manager_disbursements", "[]");
+
+            // 3. Permanently clear all old staff transactions
+            localStorage.setItem("staff_transactions", "[]");
+            localStorage.setItem("rmims_staff_transactions", "[]");
+
+            // 4. Permanently clear old activity logs and histories
+            localStorage.setItem("rmims_manager_activities", "[]");
+            localStorage.setItem("rmims_activity_logs", "[]");
+            localStorage.setItem("rmims_system_activity_logs", "[]");
+            localStorage.setItem("rmims_recent_activities", "[]");
+            localStorage.setItem("rmims_pending_approvals", "[]");
+            localStorage.setItem("rmims_staff_activity_logs", "[]");
+            localStorage.setItem("rmims_material_history", "{}");
+            localStorage.setItem("rmims_stock_history", "{}");
+
+            // 5. Cleanse all overrides to remove old dates and timestamps
+            const ovKeys = [
+                "rmims_manager_material_overrides",
+                "rmims_manager_inventory_overrides",
+                "rmims_material_overrides"
+            ];
+            ovKeys.forEach(ovKey => {
+                const raw = localStorage.getItem(ovKey);
+                if (raw) {
+                    try {
+                        const ovs = JSON.parse(raw);
+                        if (ovs && typeof ovs === 'object') {
+                            Object.keys(ovs).forEach(k => {
+                                if (ovs[k]) {
+                                    delete ovs[k].date_added;
+                                    delete ovs[k].last_updated;
+                                    delete ovs[k].display_date;
+                                    delete ovs[k].display_time;
+                                    delete ovs[k].time_added;
+                                    delete ovs[k].isUserExplicitEdit;
+                                }
+                            });
+                            localStorage.setItem(ovKey, JSON.stringify(ovs));
+                        }
+                    } catch (_) {}
+                }
+            });
+
+            // Set purge flag so it persists clean slate
+            localStorage.setItem(PURGE_FLAG, "true");
+            localStorage.setItem("rmims_inventory_updated", String(Date.now()));
+        }
+    } catch (e) {
+        console.warn("[Purge] Notice:", e);
+    }
+}
+
+// Automatically execute purge on module initialization
+try {
+    permanentlyPurgeOldWeeklyInputs();
+} catch (_) {}
+
+
+/**
  * Safely and reliably parses complex date strings:
  * Handles ISO, YYYY-MM-DD, bullet timestamps ("2026-10-16 • 10:30 AM"), standard text dates ("Oct 16, 2026")
  */
