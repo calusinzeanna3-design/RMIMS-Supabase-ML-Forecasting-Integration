@@ -13,12 +13,14 @@ const DEFAULT_STORES_DATA = {
     location: "Lucena",
     locKey: "lucena",
     companyId: "1872cf44-e821-4370-b227-d1b7e4fc6f56",
+    code: "NB-LUC",
+    category: "Bakery & Production Hub",
     managers: [
-      { name: "Aizel", username: "Scones_manager", email: "zeannapatty@gmail.com", accessCode: "MGR-LUC-01" }
+      { name: "Aizel", username: "Scones_manager", email: "zeannapatty@gmail.com", accessCode: "MGR-LUC-01", status: "APPROVED" }
     ],
     staff: [
-      { name: "Staff_1", username: "Scones_Staff_1", email: "Sconesandmuffins@gmail.com", accessCode: "STF-LUC-01" },
-      { name: "Staff_2", username: "Scones_Staff_2", email: "Scones@gmail.com", accessCode: "STF-LUC-02" }
+      { name: "Staff_1", username: "Scones_Staff_1", email: "Sconesandmuffins@gmail.com", accessCode: "STF-LUC-01", status: "APPROVED" },
+      { name: "Staff_2", username: "Staff_Scones_2", email: "scone2@gmail.com", accessCode: "STF-LUC-02", status: "APPROVED" }
     ]
   },
   "kxc-tiaong": {
@@ -27,8 +29,10 @@ const DEFAULT_STORES_DATA = {
     location: "Tiaong",
     locKey: "tiaong",
     companyId: "a72a7971-6ec7-4edc-ae72-89d702199ed9",
+    code: "RM-TIA",
+    category: "Pasalubong & Enterprise Hub",
     managers: [
-      { name: "Glazel", username: "Glazel_Kxc", email: "zeannapatricia@gmail.com", accessCode: "MGR-TIA-01" }
+      { name: "Glazel", username: "Glazel_Kxc", email: "zeannapatricia@gmail.com", accessCode: "MGR-TIA-01", status: "APPROVED" }
     ],
     staff: []
   }

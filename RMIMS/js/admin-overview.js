@@ -980,8 +980,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // Real-time live websocket feed across devices (Manager, Staff, Admin)
       srv.subscribeToAdminFeed(({ table }) => {
         if (table === 'user_profiles') {
-          srv.fetchPendingApprovals().then(() => {
+          Promise.all([
+            srv.fetchPendingApprovals(),
+            srv.fetchRegisteredUsers(),
+            srv.fetchBranchStores()
+          ]).then(() => {
             renderOverviewPendingApprovals();
+            renderOverviewBranchStores();
             updateOverviewKPICounters();
           }).catch(() => {});
         } else if (table === 'stock_receipts' || table === 'material_disbursements' || table === 'admin_activity_logs') {

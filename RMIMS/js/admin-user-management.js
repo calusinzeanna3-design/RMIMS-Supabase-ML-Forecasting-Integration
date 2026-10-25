@@ -185,6 +185,17 @@ document.addEventListener('DOMContentLoaded', () => {
       created_at: '2026-10-16T04:59:34.011697+00:00'
     },
     {
+      id: '1cc2347e-8f3b-4553-b22e-f3048314991c',
+      name: 'Staff_2',
+      username: 'Staff_Scones_2',
+      email: 'scone2@gmail.com',
+      branchLoc: 'Lucena',
+      branchName: 'Scones & Muffins Bakery',
+      role: 'Staff Personnel',
+      status: 'Active',
+      created_at: '2026-10-25T05:35:44.348261+00:00'
+    },
+    {
       id: 'b7173051-b383-4b51-be77-4f4f3e79a900',
       name: 'Glazel',
       username: 'Glazel_Kxc',
@@ -1037,10 +1048,10 @@ document.addEventListener('DOMContentLoaded', () => {
       populateBranchDropdowns();
 
       // Realtime websocket subscription across devices
-      if (adminSrv && typeof adminSrv.subscribeToAdminFeed === 'function') {
-        adminSrv.subscribeToAdminFeed(({ table }) => {
+      if (typeof subscribeToAdminFeed === 'function') {
+        subscribeToAdminFeed(({ table }) => {
           if (table === 'user_profiles' || table === 'branch_stores') {
-            Promise.all([adminSrv.fetchRegisteredUsers(), adminSrv.fetchPendingApprovals()]).then(() => {
+            Promise.all([fetchRegisteredUsers(), fetchPendingApprovals()]).then(() => {
               renderPendingUsers();
               renderRegisteredUsers();
               refreshCounters();

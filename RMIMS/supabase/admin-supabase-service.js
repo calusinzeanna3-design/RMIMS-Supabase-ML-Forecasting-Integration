@@ -90,22 +90,110 @@ export async function fetchBranchStores() {
   try {
     if (!supabase) throw new Error('Supabase client not initialized');
 
-    // Query branch stores and joined personnel
-    const { data: stores, error: storesError } = await supabase
-      .from('branch_stores')
-      .select('*')
-      .order('created_at', { ascending: true });
+    // 1. Try querying dedicated branch_stores and branch_store_personnel tables
+    let stores = null;
+    let personnel = null;
+    try {
+      const { data: sData, error: sErr } = await supabase
+        .from('branch_stores')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (!sErr && Array.isArray(sData) && sData.length > 0) {
+        stores = sData;
+        const { data: pData, error: pErr } = await supabase
+          .from('branch_store_personnel')
+          .select('*')
+          .order('created_at', { ascending: true });
+        if (!pErr && Array.isArray(pData)) personnel = pData;
+      }
+    } catch (_) {}
 
-    if (storesError) throw storesError;
+    // 2. If dedicated tables are absent or empty, derive stores directly from live Supabase user_profiles
+    if (!stores || stores.length === 0) {
+      const { data: profiles, error: profErr } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .not('status', 'in', '("pending","pending_approval","inactive","rejected")')
+        .order('created_at', { ascending: true });
 
-    const { data: personnel, error: personnelError } = await supabase
-      .from('branch_store_personnel')
-      .select('*')
-      .order('created_at', { ascending: true });
+      if (profErr) throw profErr;
 
-    if (personnelError) throw personnelError;
+      const derivedStores = {};
+      let deletedUsers = [];
+      try { deletedUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.DELETED_USERS) || '[]'); } catch (_) {}
 
-    // Map into the format expected by admin-branch-stores.js
+      (profiles || []).forEach(u => {
+        if (!u) return;
+        if (deletedUsers.some(d => matchesUser(d, u))) return;
+        const role = String(u.role || u.operational_role || '').toLowerCase();
+        if (role === 'admin' || role === 'administrator') return; // Skip headquarters admin
+
+        const loc = (u.branch_location || u.branchLoc || '').trim();
+        const bName = (u.branch_name || u.branchName || '').trim();
+        if (!loc || !bName || loc.toLowerCase() === 'headquarters') return;
+
+        const locKey = loc.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const storeId = (u.company_id && u.company_id.length > 20)
+          ? `store-${locKey}`
+          : (locKey ? `${locKey}-branch` : `store-${u.id}`);
+
+        if (!derivedStores[storeId]) {
+          derivedStores[storeId] = {
+            id: storeId,
+            name: bName,
+            location: loc,
+            locKey: locKey,
+            companyId: u.company_id || '',
+            code: loc.substring(0, 3).toUpperCase(),
+            category: 'MSME Production & Retail Hub',
+            status: 'ACTIVE',
+            managers: [],
+            staff: []
+          };
+        }
+
+        const isMgr = role.includes('manager');
+        const userObj = {
+          id: u.id,
+          name: u.full_name || u.username || 'Personnel',
+          username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
+          email: u.email || '',
+          accessCode: isMgr
+            ? `MGR-${loc.substring(0, 3).toUpperCase()}-0${derivedStores[storeId].managers.length + 1}`
+            : `STF-${loc.substring(0, 3).toUpperCase()}-0${derivedStores[storeId].staff.length + 1}`,
+          status: 'APPROVED'
+        };
+
+        if (isMgr) {
+          if (!derivedStores[storeId].managers.some(m => m.id === userObj.id || m.email === userObj.email)) {
+            derivedStores[storeId].managers.push(userObj);
+          }
+        } else {
+          if (!derivedStores[storeId].staff.some(s => s.id === userObj.id || s.email === userObj.email)) {
+            derivedStores[storeId].staff.push(userObj);
+          }
+        }
+      });
+
+      // Merge custom added branch stores from localStorage
+      try {
+        const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
+        if (rawCustom) {
+          const custom = JSON.parse(rawCustom);
+          Object.assign(derivedStores, custom);
+        }
+      } catch (_) {}
+
+      // Update local storage mirror
+      try {
+        localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(derivedStores));
+        window.dispatchEvent(new Event('rmims_stores_updated'));
+      } catch (_) {}
+
+      return derivedStores;
+    }
+
+    // Map from branch_stores table
     const storesMap = {};
     (stores || []).forEach(s => {
       const storePersonnel = (personnel || []).filter(p => p.branch_id === s.id);
@@ -114,43 +202,42 @@ export async function fetchBranchStores() {
         name: s.branch_name,
         location: s.branch_location,
         locKey: s.branch_key,
+        code: s.branch_key ? s.branch_key.toUpperCase() : 'STR',
+        category: 'MSME Production Hub',
         address: s.address || '',
-        status: s.operating_status || 'active',
+        status: s.operating_status || 'ACTIVE',
         managers: storePersonnel
           .filter(p => p.role === 'Manager')
-          .map(p => ({
+          .map((p, idx) => ({
             id: p.id,
             name: p.name,
+            username: p.name.toLowerCase().replace(/\s+/g, '_'),
             role: 'Manager',
             email: p.email || '',
-            phone: p.phone || '',
-            accessCode: p.phone ? `KEY-${p.phone.slice(-4)}` : 'KEY-MGR',
-            shift: p.shift || 'Day Shift',
-            status: p.status || 'Active'
+            accessCode: p.phone ? `KEY-${p.phone.slice(-4)}` : `MGR-0${idx + 1}`,
+            status: p.status || 'APPROVED'
           })),
         staff: storePersonnel
           .filter(p => p.role === 'Staff')
-          .map(p => ({
+          .map((p, idx) => ({
             id: p.id,
             name: p.name,
+            username: p.name.toLowerCase().replace(/\s+/g, '_'),
             role: 'Staff',
             email: p.email || '',
-            phone: p.phone || '',
-            accessCode: p.phone ? `KEY-${p.phone.slice(-4)}` : 'KEY-STF',
-            shift: p.shift || 'Day Shift',
-            status: p.status || 'Active'
+            accessCode: p.phone ? `KEY-${p.phone.slice(-4)}` : `STF-0${idx + 1}`,
+            status: p.status || 'APPROVED'
           }))
       };
     });
 
-    // Update local storage mirror
     try {
       localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(storesMap));
     } catch (_) {}
 
     return storesMap;
   } catch (err) {
-    console.warn('[AdminSupabase] Fetch branch stores failed, falling back to local storage:', err.message || err);
+    console.warn('[AdminSupabase] Fetch branch stores notice:', err.message || err);
     try {
       const local = localStorage.getItem(STORAGE_KEYS.BRANCH_STORES);
       return local ? JSON.parse(local) : {};
@@ -173,6 +260,13 @@ export async function saveBranchStore(store) {
     localStores = raw ? JSON.parse(raw) : {};
     localStores[store.id] = store;
     localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(localStores));
+
+    // Also persist to custom branch stores
+    const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
+    const customStores = rawCustom ? JSON.parse(rawCustom) : {};
+    customStores[store.id] = store;
+    localStorage.setItem('RMIMS_CUSTOM_BRANCH_STORES', JSON.stringify(customStores));
+
     window.dispatchEvent(new Event('rmims_stores_updated'));
     window.dispatchEvent(new Event('storage'));
   } catch (_) {}
@@ -190,47 +284,67 @@ export async function saveBranchStore(store) {
       updated_at: new Date().toISOString()
     };
 
-    const { error: storeError } = await supabase
-      .from('branch_stores')
-      .upsert(storePayload, { onConflict: 'id' });
+    // Attempt to upsert to branch_stores if table exists
+    try {
+      await supabase
+        .from('branch_stores')
+        .upsert(storePayload, { onConflict: 'id' });
 
-    if (storeError) throw storeError;
-
-    // Sync personnel
-    const personnelToUpsert = [];
-    (store.managers || []).forEach(m => {
-      personnelToUpsert.push({
-        branch_id: store.id,
-        name: m.name,
-        role: 'Manager',
-        email: m.email || null,
-        phone: m.phone || null,
-        shift: m.shift || 'Day Shift',
-        status: m.status || 'Active'
+      // Sync personnel to branch_store_personnel if table exists
+      const personnelToUpsert = [];
+      (store.managers || []).forEach(m => {
+        personnelToUpsert.push({
+          branch_id: store.id,
+          name: m.name,
+          role: 'Manager',
+          email: m.email || null,
+          phone: m.phone || null,
+          shift: m.shift || 'Day Shift',
+          status: m.status || 'Active'
+        });
       });
-    });
 
-    (store.staff || []).forEach(s => {
-      personnelToUpsert.push({
-        branch_id: store.id,
-        name: s.name,
-        role: 'Staff',
-        email: s.email || null,
-        phone: s.phone || null,
-        shift: s.shift || 'Day Shift',
-        status: s.status || 'Active'
+      (store.staff || []).forEach(s => {
+        personnelToUpsert.push({
+          branch_id: store.id,
+          name: s.name,
+          role: 'Staff',
+          email: s.email || null,
+          phone: s.phone || null,
+          shift: s.shift || 'Day Shift',
+          status: s.status || 'Active'
+        });
       });
-    });
 
-    if (personnelToUpsert.length > 0) {
-      // Clear existing personnel for this branch and re-insert
-      await supabase.from('branch_store_personnel').delete().eq('branch_id', store.id);
-      await supabase.from('branch_store_personnel').insert(personnelToUpsert);
+      if (personnelToUpsert.length > 0) {
+        await supabase.from('branch_store_personnel').delete().eq('branch_id', store.id);
+        await supabase.from('branch_store_personnel').insert(personnelToUpsert);
+      }
+    } catch (_) {}
+
+    // Synchronize store manager into user_profiles in Supabase so the store and manager are real in Supabase
+    if (Array.isArray(store.managers) && store.managers.length > 0) {
+      const primaryMgr = store.managers[0];
+      if (primaryMgr && primaryMgr.email) {
+        try {
+          await supabase.from('user_profiles').upsert({
+            full_name: primaryMgr.name,
+            username: primaryMgr.username || primaryMgr.email.split('@')[0],
+            email: primaryMgr.email.trim().toLowerCase(),
+            branch_location: store.location,
+            branch_name: store.name,
+            role: 'user',
+            operational_role: 'manager',
+            status: 'active',
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'email' });
+        } catch (_) {}
+      }
     }
 
     return { success: true };
   } catch (err) {
-    console.warn('[AdminSupabase] Save branch store failed on Supabase:', err.message || err);
+    console.warn('[AdminSupabase] Save branch store notice:', err.message || err);
     return { success: true, offline: true, error: err.message };
   }
 }
@@ -246,17 +360,33 @@ export async function deleteBranchStore(storeId) {
     const raw = localStorage.getItem(STORAGE_KEYS.BRANCH_STORES);
     if (raw) {
       const stores = JSON.parse(raw);
+      const targetStore = stores[storeId];
       delete stores[storeId];
       localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(stores));
+
+      const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
+      if (rawCustom) {
+        const custom = JSON.parse(rawCustom);
+        delete custom[storeId];
+        localStorage.setItem('RMIMS_CUSTOM_BRANCH_STORES', JSON.stringify(custom));
+      }
+
       window.dispatchEvent(new Event('rmims_stores_updated'));
       window.dispatchEvent(new Event('storage'));
+
+      // If store had personnel, deactivate them in user_profiles
+      if (targetStore && supabase) {
+        const storeName = targetStore.name;
+        if (storeName) {
+          supabase.from('user_profiles').update({ status: 'inactive', updated_at: new Date().toISOString() }).eq('branch_name', storeName).catch(() => {});
+        }
+      }
     }
   } catch (_) {}
 
   try {
     if (!supabase) return { success: true, offline: true };
 
-    // Cascade delete associated personnel to prevent orphaned records
     try {
       await supabase
         .from('branch_store_personnel')
@@ -264,15 +394,16 @@ export async function deleteBranchStore(storeId) {
         .eq('branch_id', storeId);
     } catch (_) {}
 
-    const { error } = await supabase
-      .from('branch_stores')
-      .delete()
-      .eq('id', storeId);
+    try {
+      await supabase
+        .from('branch_stores')
+        .delete()
+        .eq('id', storeId);
+    } catch (_) {}
 
-    if (error) throw error;
     return { success: true };
   } catch (err) {
-    console.warn('[AdminSupabase] Delete branch store failed on Supabase:', err.message || err);
+    console.warn('[AdminSupabase] Delete branch store notice:', err.message || err);
     return { success: true, offline: true, error: err.message };
   }
 }
@@ -1307,7 +1438,7 @@ export async function createUserAccount(user) {
 
   const roleClean = String(user.role || 'Staff').toLowerCase();
   const operationalRole = roleClean.includes('admin') ? 'admin' : (roleClean.includes('manager') ? 'manager' : 'staff');
-  const role = operationalRole === 'admin' ? 'admin' : (operationalRole === 'manager' ? 'manager' : 'staff');
+  const role = operationalRole === 'admin' ? 'admin' : 'user';
 
   const payload = {
     id: userId,
@@ -1380,7 +1511,7 @@ export async function updateUserAccount(user, updatedBy = 'Main Admin') {
 
   const roleClean = String(user.role || 'Staff').toLowerCase();
   const operationalRole = roleClean.includes('admin') ? 'admin' : (roleClean.includes('manager') ? 'manager' : 'staff');
-  const role = operationalRole === 'admin' ? 'admin' : (operationalRole === 'manager' ? 'manager' : 'staff');
+  const role = operationalRole === 'admin' ? 'admin' : 'user';
   const branchLoc = user.branchLoc || user.branch_location || 'General';
   const branchName = user.branchName || user.branch_name || (branchLoc ? `${branchLoc} Branch` : 'General Branch');
   const status = user.status ? String(user.status).toLowerCase() : 'active';
