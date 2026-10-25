@@ -1,3 +1,5 @@
+import { isDeletedBranchStore, getDeletedBranchStores } from '../supabase/admin-supabase-service.js';
+export { isDeletedBranchStore, getDeletedBranchStores };
 // RMIMS Admin Branch Stores Controller
 // Implements:
 // 1. Location Divider Architecture (Location Boxes e.g. TIAONG BRANCH, LUCENA BRANCH)
@@ -149,7 +151,7 @@ export function getStoresData() {
         const clean = {};
         let modified = false;
         Object.entries(parsed).forEach(([id, st]) => {
-          if (isMockStore(st)) {
+          if (isMockStore(st) || isDeletedBranchStore(st) || isDeletedBranchStore(id)) {
             modified = true;
           } else {
             clean[id] = st;
@@ -167,21 +169,39 @@ export function getStoresData() {
     console.warn('Failed reading stores from localStorage:', err);
   }
   const defaults = JSON.parse(JSON.stringify(DEFAULT_STORES_DATA));
+  const filteredDefaults = {};
+  Object.entries(defaults).forEach(([id, st]) => {
+    if (!isDeletedBranchStore(st) && !isDeletedBranchStore(id) && !isMockStore(st)) {
+      filteredDefaults[id] = st;
+    }
+  });
   try {
-    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(defaults));
+    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(filteredDefaults));
   } catch (_) {}
-  return defaults;
+  return filteredDefaults;
 }
 
 export function saveStoresData(data) {
   try {
-    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(data));
+    const cleanData = {};
+    if (data && typeof data === 'object') {
+      Object.entries(data).forEach(([id, st]) => {
+        if (!isDeletedBranchStore(st) && !isDeletedBranchStore(id) && !isMockStore(st)) {
+          cleanData[id] = st;
+        }
+      });
+    }
+    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(cleanData));
     window.dispatchEvent(new Event('rmims_stores_updated'));
     window.dispatchEvent(new Event('storage'));
 
     import('../supabase/admin-supabase-service.js')
       .then(srv => {
-        Object.values(data).forEach(st => srv.saveBranchStore(st).catch(() => {}));
+        Object.values(cleanData).forEach(st => {
+          if (!srv.isDeletedBranchStore(st)) {
+            srv.saveBranchStore(st).catch(() => {});
+          }
+        });
       })
       .catch(() => {});
   } catch (err) {
@@ -592,36 +612,56 @@ window.backToLocationBranches = function () {
 // ==========================================================================
 // 4. DESTRUCTIVE BRANCH DELETION
 // ==========================================================================
-window.deleteBranchStore = function () {
+window.deleteBranchStore = async function () {
   if (!currentViewingStoreId) return;
 
   const stores = getStoresData();
   const store = stores[currentViewingStoreId];
-  if (!store) return;
+  if (!store) {
+    window.closeStoreDetails();
+    return;
+  }
 
-  const confirmMsg = `Are you sure you want to permanently delete "${store.name}"?\\n\\nThis will revoke credentials for ${store.managers.length} manager(s) and ${store.staff.length} staff member(s).`;
+  const mgrCount = (store.managers || []).length;
+  const staffCount = (store.staff || []).length;
+  const confirmMsg = `Are you sure you want to permanently delete "${store.name}"?\n\nThis will permanently delete this branch and revoke credentials for ${mgrCount} manager(s) and ${staffCount} staff member(s).`;
   if (!confirm(confirmMsg)) return;
 
   const deletedId = currentViewingStoreId;
-  delete stores[currentViewingStoreId];
+  const deletedStoreObj = JSON.parse(JSON.stringify(store));
+  const locKey = currentViewingLocKey || store.locKey;
+
+  // 1. Immediately delete from local store registry
+  delete stores[deletedId];
   saveStoresData(stores);
 
-  import('../supabase/admin-supabase-service.js')
-    .then(srv => srv.deleteBranchStore(deletedId))
-    .catch(() => {});
+  // 2. Synchronously invoke Supabase to delete from database tables, deactivate user profiles, and record tombstone
+  try {
+    const srv = await import('../supabase/admin-supabase-service.js');
+    if (srv && typeof srv.deleteBranchStore === 'function') {
+      await srv.deleteBranchStore(deletedId, deletedStoreObj);
+    }
+  } catch (err) {
+    console.warn('Error synchronizing branch deletion with Supabase:', err);
+  }
 
   window.closeStoreDetails();
 
-  // Refresh Location Dividers in Branch Module
+  // 3. Refresh Location Dividers in Branch Module
   renderLocationDividers('locationDividersContainer');
 
-  // If location modal was open, refresh it or return to it
-  if (currentViewingLocKey) {
-    window.openLocationBranches(currentViewingLocKey);
+  // 4. If location modal was open, refresh it or close if empty
+  if (locKey) {
+    const remainingGrouped = getStoresByLocation();
+    if (remainingGrouped[locKey] && remainingGrouped[locKey].stores.length > 0) {
+      window.openLocationBranches(locKey);
+    } else {
+      window.closeLocationStoresModal();
+    }
   }
 
   if (window.showAdminToast) {
-    window.showAdminToast(`Deleted branch store "${store.name}" and revoked access credentials.`, 'danger');
+    window.showAdminToast(`Deleted branch store "${deletedStoreObj.name}" and revoked access credentials.`, 'danger');
   }
 };
 
@@ -822,7 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (remoteStores && typeof remoteStores === 'object') {
           const clean = {};
           Object.entries(remoteStores).forEach(([id, st]) => {
-            if (!isMockStore(st)) clean[id] = st;
+            if (!isMockStore(st) && !isDeletedBranchStore(st) && !isDeletedBranchStore(id)) clean[id] = st;
           });
           saveStoresData(clean);
           renderLocationDividers('locationDividersContainer');

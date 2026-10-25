@@ -18,6 +18,7 @@ import { supabase } from './supabase-config.js';
 // Local storage key constants (aligned 1-to-1 with Admin portal views)
 export const STORAGE_KEYS = {
   BRANCH_STORES: 'RMIMS_BRANCH_STORES_V3',
+  DELETED_BRANCH_STORES: 'RMIMS_DELETED_BRANCH_STORES',
   SYSTEM_ALERTS: 'RMIMS_SYSTEM_ALERTS_V2',
   REGISTERED_USERS: 'rmims_registered_users',
   PENDING_USERS: 'rmims_pending_users',
@@ -80,6 +81,57 @@ export function broadcastUserSync(action, user) {
 }
 
 // ============================================================================
+
+/**
+ * Retrieve the persistent registry of deleted branch stores (prevents zombie resurrection).
+ */
+export function getDeletedBranchStores() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_BRANCH_STORES);
+    return raw ? JSON.parse(raw) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * Check if a branch store was permanently deleted by the administrator.
+ */
+export function isDeletedBranchStore(storeOrId) {
+  if (!storeOrId) return false;
+  const deleted = getDeletedBranchStores();
+  if (!Array.isArray(deleted) || deleted.length === 0) return false;
+
+  let id = '', name = '', loc = '', locKey = '', code = '';
+  if (typeof storeOrId === 'string') {
+    id = storeOrId.toLowerCase().trim();
+    locKey = id.replace(/[^a-z0-9]/g, '');
+  } else if (typeof storeOrId === 'object') {
+    id = String(storeOrId.id || '').toLowerCase().trim();
+    name = String(storeOrId.name || storeOrId.branch_name || '').toLowerCase().trim();
+    loc = String(storeOrId.location || storeOrId.branch_location || '').toLowerCase().trim();
+    locKey = String(storeOrId.locKey || storeOrId.branch_key || storeOrId.locationKey || '').toLowerCase().trim();
+    code = String(storeOrId.code || '').toLowerCase().trim();
+  }
+
+  return deleted.some(d => {
+    if (!d) return false;
+    const dId = String(d.id || '').toLowerCase().trim();
+    const dName = String(d.name || '').toLowerCase().trim();
+    const dLoc = String(d.location || '').toLowerCase().trim();
+    const dLocKey = String(d.locKey || '').toLowerCase().trim();
+    const dCode = String(d.code || '').toLowerCase().trim();
+
+    if (id && dId && id === dId) return true;
+    if (name && dName && name === dName) return true;
+    if (code && dCode && code === dCode) return true;
+    if (locKey && dLocKey && locKey === dLocKey) return true;
+    if (name && dId && (dId.includes(name.replace(/[^a-z0-9]/g, '')) || name.replace(/[^a-z0-9]/g, '').includes(dId))) return true;
+    if (id && dName && (id.includes(dName.replace(/[^a-z0-9]/g, '')) || dName.replace(/[^a-z0-9]/g, '').includes(id))) return true;
+    return false;
+  });
+}
+
 // 1. BRANCH STORES & PERSONNEL MANAGEMENT
 // ============================================================================
 
@@ -99,7 +151,7 @@ export async function fetchBranchStores() {
         .select('*')
         .order('created_at', { ascending: true });
       if (!sErr && Array.isArray(sData) && sData.length > 0) {
-        stores = sData;
+        stores = sData.filter(s => !isDeletedBranchStore(s) && !isDeletedBranchStore(s.id) && !isDeletedBranchStore(s.branch_name));
         const { data: pData, error: pErr } = await supabase
           .from('branch_store_personnel')
           .select('*')
@@ -113,7 +165,7 @@ export async function fetchBranchStores() {
       const { data: profiles, error: profErr } = await supabase
         .from('user_profiles')
         .select('*')
-        .not('status', 'in', '("pending","pending_approval","inactive","rejected")')
+        .not('status', 'in', '("pending","pending_approval","inactive","rejected","deleted")')
         .order('created_at', { ascending: true });
 
       if (profErr) throw profErr;
@@ -136,6 +188,10 @@ export async function fetchBranchStores() {
         const storeId = (u.company_id && u.company_id.length > 20)
           ? `store-${locKey}`
           : (locKey ? `${locKey}-branch` : `store-${u.id}`);
+
+        if (isDeletedBranchStore(storeId) || isDeletedBranchStore(bName) || isDeletedBranchStore(loc)) {
+          return;
+        }
 
         if (!derivedStores[storeId]) {
           derivedStores[storeId] = {
@@ -352,53 +408,218 @@ export async function saveBranchStore(store) {
 /**
  * Delete a branch store and all its personnel.
  */
-export async function deleteBranchStore(storeId) {
-  if (!storeId) return;
+/**
+ * Delete a branch store, revoke all its personnel credentials, and permanently blacklist in Supabase & local storage.
+ */
+export async function deleteBranchStore(storeId, storeObj = null) {
+  if (!storeId) return { success: false, error: 'Store ID is required' };
 
-  // Local storage update
+  const cleanStoreId = String(storeId).trim();
+
+  // 1. Resolve full store object if not passed
+  let targetStore = storeObj;
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.BRANCH_STORES);
     if (raw) {
       const stores = JSON.parse(raw);
-      const targetStore = stores[storeId];
-      delete stores[storeId];
-      localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(stores));
-
+      if (!targetStore && stores[cleanStoreId]) {
+        targetStore = stores[cleanStoreId];
+      }
+    }
+    if (!targetStore) {
       const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
       if (rawCustom) {
         const custom = JSON.parse(rawCustom);
-        delete custom[storeId];
-        localStorage.setItem('RMIMS_CUSTOM_BRANCH_STORES', JSON.stringify(custom));
-      }
-
-      window.dispatchEvent(new Event('rmims_stores_updated'));
-      window.dispatchEvent(new Event('storage'));
-
-      // If store had personnel, deactivate them in user_profiles
-      if (targetStore && supabase) {
-        const storeName = targetStore.name;
-        if (storeName) {
-          supabase.from('user_profiles').update({ status: 'inactive', updated_at: new Date().toISOString() }).eq('branch_name', storeName).catch(() => {});
-        }
+        if (custom[cleanStoreId]) targetStore = custom[cleanStoreId];
       }
     }
   } catch (_) {}
 
+  const storeName = targetStore?.name ? String(targetStore.name).trim() : '';
+  const storeLoc = targetStore?.location ? String(targetStore.location).trim() : '';
+  const storeLocKey = targetStore?.locKey || cleanStoreId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const storeCode = targetStore?.code || '';
+  const companyId = targetStore?.companyId || '';
+
+  // 2. Add to authoritative DELETED_BRANCH_STORES tombstone (prevents zombie resurrection)
   try {
-    if (!supabase) return { success: true, offline: true };
+    const rawDelStores = localStorage.getItem(STORAGE_KEYS.DELETED_BRANCH_STORES);
+    const delStoresList = rawDelStores ? JSON.parse(rawDelStores) : [];
+    if (!delStoresList.some(d => (d.id && d.id === cleanStoreId) || (storeName && d.name && d.name.toLowerCase() === storeName.toLowerCase()))) {
+      delStoresList.push({
+        id: cleanStoreId,
+        name: storeName,
+        location: storeLoc,
+        locKey: storeLocKey,
+        code: storeCode,
+        companyId: companyId,
+        deletedAt: new Date().toISOString()
+      });
+      localStorage.setItem(STORAGE_KEYS.DELETED_BRANCH_STORES, JSON.stringify(delStoresList));
+    }
+  } catch (e) {
+    console.warn('Notice saving to DELETED_BRANCH_STORES:', e);
+  }
+
+  // 3. Remove store from RMIMS_BRANCH_STORES_V3 & RMIMS_CUSTOM_BRANCH_STORES
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.BRANCH_STORES);
+    if (raw) {
+      const stores = JSON.parse(raw);
+      delete stores[cleanStoreId];
+      Object.keys(stores).forEach(k => {
+        if (storeName && stores[k]?.name && stores[k].name.toLowerCase() === storeName.toLowerCase()) {
+          delete stores[k];
+        }
+      });
+      localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(stores));
+    }
+    const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
+    if (rawCustom) {
+      const custom = JSON.parse(rawCustom);
+      delete custom[cleanStoreId];
+      Object.keys(custom).forEach(k => {
+        if (storeName && custom[k]?.name && custom[k].name.toLowerCase() === storeName.toLowerCase()) {
+          delete custom[k];
+        }
+      });
+      localStorage.setItem('RMIMS_CUSTOM_BRANCH_STORES', JSON.stringify(custom));
+    }
+  } catch (_) {}
+
+  // 4. Revoke access and permanently blacklist all personnel assigned to this branch
+  const personnelList = [];
+  if (targetStore) {
+    if (Array.isArray(targetStore.managers)) personnelList.push(...targetStore.managers);
+    if (Array.isArray(targetStore.staff)) personnelList.push(...targetStore.staff);
+  }
+
+  try {
+    const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const regUsers = rawReg ? JSON.parse(rawReg) : [];
+    regUsers.forEach(u => {
+      const uLoc = (u.branchLoc || u.branch_location || '').toLowerCase().trim();
+      const uName = (u.branchName || u.branch_name || '').toLowerCase().trim();
+      if ((storeName && uName && uName === storeName.toLowerCase()) || 
+          (storeLoc && uLoc && uLoc === storeLoc.toLowerCase() && !String(u.role || '').toLowerCase().includes('admin'))) {
+        personnelList.push(u);
+      }
+    });
+  } catch (_) {}
+
+  try {
+    const rawDelUsers = localStorage.getItem(STORAGE_KEYS.DELETED_USERS);
+    const delUsersList = rawDelUsers ? JSON.parse(rawDelUsers) : [];
+
+    personnelList.forEach(p => {
+      const pEmail = (p.email || '').toLowerCase().trim();
+      const pId = String(p.id || '').trim();
+      const pUser = (p.username || (pEmail ? pEmail.split('@')[0] : '')).toLowerCase().trim();
+      const pName = p.name || p.full_name || '';
+
+      if (pEmail || pId) {
+        if (!delUsersList.some(d => (pEmail && d.email && d.email === pEmail) || (pId && d.id && d.id === pId))) {
+          delUsersList.push({
+            id: pId,
+            email: pEmail,
+            username: pUser,
+            name: pName,
+            deletedAt: new Date().toISOString(),
+            reason: `Branch "${storeName || cleanStoreId}" permanently deleted`
+          });
+        }
+      }
+    });
+    localStorage.setItem(STORAGE_KEYS.DELETED_USERS, JSON.stringify(delUsersList));
+
+    const filterOutPersonnel = list => (Array.isArray(list) ? list : []).filter(u => {
+      const uEmail = (u.email || '').toLowerCase().trim();
+      const uId = String(u.id || '').trim();
+      const uBranch = (u.branchName || u.branch_name || '').toLowerCase().trim();
+      if (storeName && uBranch === storeName.toLowerCase()) return false;
+      return !personnelList.some(p => {
+        const pEmail = (p.email || '').toLowerCase().trim();
+        const pId = String(p.id || '').trim();
+        return (uEmail && pEmail && uEmail === pEmail) || (uId && pId && uId === pId);
+      });
+    });
+
+    const reg = JSON.parse(localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS) || '[]');
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(filterOutPersonnel(reg)));
+
+    const app = JSON.parse(localStorage.getItem(STORAGE_KEYS.APPROVED_USERS) || '[]');
+    localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(filterOutPersonnel(app)));
+
+    const pend = JSON.parse(localStorage.getItem(STORAGE_KEYS.PENDING_USERS) || '[]');
+    localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(filterOutPersonnel(pend)));
+  } catch (err) {
+    console.warn('Error revoking personnel access:', err);
+  }
+
+  // 5. Log Admin Activity
+  try {
+    logAdminActivity({
+      action: 'Deleted Branch Store',
+      module: 'Branch Stores',
+      details: `Permanently deleted branch "${storeName || cleanStoreId}" (${storeLoc || 'Branch'}) and revoked credentials for all assigned personnel.`
+    });
+  } catch (_) {}
+
+  window.dispatchEvent(new Event('rmims_stores_updated'));
+  window.dispatchEvent(new Event('rmims_registered_users_updated'));
+  window.dispatchEvent(new Event('rmims_pending_users_updated'));
+  window.dispatchEvent(new Event('storage'));
+  broadcastUserSync('BRANCH_STORE_DELETED', { id: cleanStoreId, name: storeName, location: storeLoc });
+
+  // 6. Direct Supabase Database Synchronization
+  if (!supabase) return { success: true, offline: true };
+
+  try {
+    const deactPayload = {
+      status: 'inactive',
+      operational_role: 'inactive',
+      branch_name: 'Revoked Branch',
+      branch_location: 'Revoked',
+      updated_at: new Date().toISOString()
+    };
+
+    if (storeName) {
+      await supabase.from('user_profiles').update(deactPayload).ilike('branch_name', storeName);
+    }
+    for (const p of personnelList) {
+      const pEmail = (p.email || '').toLowerCase().trim();
+      const pId = String(p.id || '').trim();
+      if (pEmail) {
+        await supabase.from('user_profiles').update(deactPayload).ilike('email', pEmail);
+      }
+      if (pId && pId.length > 20 && !pId.startsWith('user-')) {
+        await supabase.from('user_profiles').update(deactPayload).eq('id', pId);
+      }
+    }
 
     try {
-      await supabase
-        .from('branch_store_personnel')
-        .delete()
-        .eq('branch_id', storeId);
+      await supabase.from('branch_store_personnel').delete().eq('branch_id', cleanStoreId);
+      if (companyId) {
+        await supabase.from('branch_store_personnel').delete().eq('branch_id', companyId);
+      }
+      for (const p of personnelList) {
+        if (p.email) {
+          await supabase.from('branch_store_personnel').delete().ilike('email', p.email);
+        }
+      }
     } catch (_) {}
 
     try {
-      await supabase
-        .from('branch_stores')
-        .delete()
-        .eq('id', storeId);
+      await supabase.from('branch_stores').delete().eq('id', cleanStoreId);
+      if (companyId) {
+        await supabase.from('branch_stores').delete().eq('id', companyId);
+      }
+      if (storeName) {
+        await supabase.from('branch_stores').delete().ilike('branch_name', storeName);
+      }
+      if (storeLocKey) {
+        await supabase.from('branch_stores').delete().eq('branch_key', storeLocKey);
+      }
     } catch (_) {}
 
     return { success: true };
@@ -1974,6 +2195,8 @@ if (typeof window !== 'undefined') {
 
 export default {
   STORAGE_KEYS,
+  getDeletedBranchStores,
+  isDeletedBranchStore,
   fetchBranchStores,
   saveBranchStore,
   deleteBranchStore,

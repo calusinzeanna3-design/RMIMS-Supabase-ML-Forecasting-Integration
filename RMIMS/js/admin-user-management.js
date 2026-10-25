@@ -10,6 +10,7 @@ import {
   fetchPendingApprovals,
   fetchRegisteredUsers,
   fetchBranchStores,
+  isDeletedBranchStore,
   approveUserAccount as srvApproveUser,
   rejectUserAccount as srvRejectUser,
   updateUserAccount as srvUpdateUser,
@@ -971,29 +972,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const users = getStoredRegisteredUsers();
     const pending = getStoredPendingUsers();
 
-    // Collect unique locations from registered + pending users
+    // Collect unique locations from registered + pending users (excluding deleted branches)
     const locationSet = new Set();
     [...users, ...pending].forEach(u => {
-      if (u.branchLoc && u.branchLoc.trim()) locationSet.add(u.branchLoc.trim());
+      const loc = (u.branchLoc || u.branch_location || '').trim();
+      const bName = (u.branchName || u.branch_name || '').trim();
+      if (loc && !isDeletedBranchStore(bName) && !isDeletedBranchStore(loc)) {
+        locationSet.add(loc);
+      }
     });
 
-    // Also pull from branch-stores storage if available
+    // Also pull from branch-stores storage if available (strictly excluding deleted branch stores)
     try {
       const storesV3 = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
       const storeList = Array.isArray(storesV3) ? storesV3 : Object.values(storesV3);
       storeList.forEach(s => {
-        const l = s.location || s.address;
-        if (l && l.trim()) locationSet.add(l.trim());
+        if (!isDeletedBranchStore(s) && !isDeletedBranchStore(s.id)) {
+          const l = s.location || s.address;
+          if (l && l.trim()) locationSet.add(l.trim());
+        }
       });
-      const oldStores = JSON.parse(localStorage.getItem('rmims_branch_stores') || '[]');
-      if (Array.isArray(oldStores)) {
-        oldStores.forEach(s => {
-          if (s.location && s.location.trim()) locationSet.add(s.location.trim());
-        });
-      }
     } catch (_) {}
 
-    const locations = Array.from(locationSet).sort();
+    const locations = Array.from(locationSet).filter(loc => !isDeletedBranchStore(loc)).sort();
 
     // Add/Edit modal location selects
     ['newUserBranchLoc', 'editUserBranchLoc'].forEach(id => {
