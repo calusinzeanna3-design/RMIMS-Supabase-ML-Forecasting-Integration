@@ -495,54 +495,87 @@
                     </svg>
                   </div>
                   <div class="card-head-text">
-                    <h3>Backup &amp; Synchronization</h3>
-                    <p>Configure global branch polling intervals, safety stock thresholds, and export database archives.</p>
+                    <h3>Backup &amp; Restore Management</h3>
+                    <p>Role-specific database archives and seamless restore routing across all organizational roles.</p>
                   </div>
                 </div>
 
-                <!-- BRANCH POLICIES & TELEMETRY -->
-                <div class="security-card-box">
-                  <h4 class="security-box-title">Branch Synchronization &amp; Telemetry</h4>
-                  <p class="security-box-sub">Configure network heartbeat polling and real-time safety thresholds across branch stores.</p>
-                  
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px;">
-                    <div class="input-group">
-                      <label for="heartbeatSelect">Branch Heartbeat Interval</label>
-                      <select class="modal-input" id="heartbeatSelect" style="padding: 10px 12px; border: 1.5px solid var(--line-soft); border-radius: 9px; font-size: 13.5px; background:#FFF;">
-                        <option value="5">Every 5 Minutes (Real-time)</option>
-                        <option value="15" selected>Every 15 Minutes (Standard)</option>
-                        <option value="30">Every 30 Minutes (Eco)</option>
-                      </select>
+                <!-- ROLE-BASED BACKUP PACKAGES TABLE -->
+                <div class="security-card-box" style="margin-top: 14px; background: #FFFFFF; border: 1.5px solid var(--line-soft); border-radius: 12px; padding: 18px 20px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                      <h4 class="security-box-title" style="margin: 0; font-size: 15px; font-weight: 700; color: var(--ink);">Role-Specific Data Packages</h4>
+                      <p class="security-box-sub" style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-mid);">Download dedicated role backups or create a full system snapshot with accurate restore targeting.</p>
                     </div>
-
-                    <div class="input-group">
-                      <label for="safetyStockSelect">Safety Stock Alert Threshold</label>
-                      <select class="modal-input" id="safetyStockSelect" style="padding: 10px 12px; border: 1.5px solid var(--line-soft); border-radius: 9px; font-size: 13.5px; background:#FFF;">
-                        <option value="10">Alert when remaining stock &lt; 10%</option>
-                        <option value="15" selected>Alert when remaining stock &lt; 15%</option>
-                        <option value="25">Alert when remaining stock &lt; 25%</option>
-                      </select>
-                    </div>
+                    <button class="btn-primary-sm" id="createCompleteBackupBtn" type="button" style="background: #15803d; border-color: #15803d; padding: 9px 18px; font-weight: 700; border-radius: 9px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download Complete System Backup
+                    </button>
                   </div>
 
-                  <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-                    <button type="button" class="btn-primary-sm" id="btnSaveSettings">
-                      Save Sync Configuration
-                    </button>
+                  <div class="table-scroll" style="border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                      <thead>
+                        <tr style="background: #F8FAFC; border-bottom: 1.5px solid var(--line-soft);">
+                          <th style="padding: 12px 14px; text-align: left; font-weight: 700; color: #475569;">Target Role</th>
+                          <th style="padding: 12px 14px; text-align: left; font-weight: 700; color: #475569;">Scoped Modules &amp; Assets</th>
+                          <th style="padding: 12px 14px; text-align: center; font-weight: 700; color: #475569;">Live Records</th>
+                          <th style="padding: 12px 14px; text-align: left; font-weight: 700; color: #475569;">Restore Destination Route</th>
+                          <th style="padding: 12px 14px; text-align: right; font-weight: 700; color: #475569;">Role Backup Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="backupRolesTbody">
+                        <!-- Populated dynamically via admin-settings.js -->
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                <!-- BACKUP & EXPORT -->
-                <div class="security-row" style="margin-top: 20px; align-items: flex-start;">
-                  <div class="security-row-text" style="flex: 1;">
-                    <strong>Export System Database</strong>
-                    <span>Create a downloadable, encrypted snapshot archive of materials, transactions, and users.</span>
-                  </div>
-                  <div class="button-group">
-                    <button class="btn-primary-sm" id="createCompleteBackupBtn" type="button">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                      Download Database Backup
-                    </button>
+                <!-- RESTORE DATABASE SNAPSHOT BOX -->
+                <div class="security-card-box" style="margin-top: 20px; background: #F8FAFC; border: 1.5px dashed #94A3B8; border-radius: 12px; padding: 22px;">
+                  <div style="display: flex; gap: 16px; align-items: flex-start;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EDE9FE; color: #7C3AED; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                    </div>
+                    <div style="flex: 1;">
+                      <h4 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: var(--ink);">Restore Database Snapshot</h4>
+                      <p style="margin: 0 0 14px 0; font-size: 12.5px; color: var(--text-mid); line-height: 1.5;">
+                        Upload any exported RMSME JSON snapshot (Complete System, Admin, Manager, or Staff). The restore engine will automatically detect the role package, validate data integrity, and route each dataset directly to its designated role and module.
+                      </p>
+
+                      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" id="restoreFileInput" accept=".json,application/json" style="display: none;">
+                        <button type="button" class="btn-outline-sm" id="btnSelectRestoreFile" style="background: #FFFFFF; font-weight: 600; padding: 9px 16px; border: 1.5px solid var(--line-soft); border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center;">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="2" style="margin-right: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          Select Backup File (.json)
+                        </button>
+                        <span id="selectedRestoreFileName" style="font-size: 13px; color: #64748B; font-weight: 500;">No file chosen</span>
+                      </div>
+
+                      <!-- File Preview Details Card (hidden until file chosen) -->
+                      <div id="restorePreviewCard" style="display: none; margin-top: 16px; background: #FFFFFF; border: 1px solid var(--line-soft); border-radius: 10px; padding: 14px 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                          <strong style="font-size: 13px; color: var(--ink);">Snapshot Analysis &amp; Routing Verification</strong>
+                          <span id="restoreRoleBadge" style="font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 700; background: #EDE9FE; color: #7C3AED;">Role Package</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 12px; color: #475569;">
+                          <div><span style="color:#94A3B8;">Export Date:</span> <strong id="restoreDate" style="color:var(--ink);">-</strong></div>
+                          <div><span style="color:#94A3B8;">Source Version:</span> <strong id="restoreVersion" style="color:var(--ink);">-</strong></div>
+                          <div><span style="color:#94A3B8;">Exported By:</span> <strong id="restoreAuthor" style="color:var(--ink);">-</strong></div>
+                          <div><span style="color:#94A3B8;">Payload Size:</span> <strong id="restoreCount" style="color:var(--ink);">-</strong></div>
+                        </div>
+                        <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px;">
+                          <button type="button" class="btn-outline-sm" id="btnCancelRestore" style="padding: 7px 14px;">Cancel</button>
+                          <button type="button" class="btn-primary-sm" id="btnExecuteRestore" style="background: #7C3AED; border-color: #7C3AED; padding: 7px 18px; font-weight: 700; border-radius: 8px;">
+                            Apply &amp; Restore to Role Modules
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
