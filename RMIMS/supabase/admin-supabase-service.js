@@ -2193,6 +2193,397 @@ if (typeof window !== 'undefined') {
   window.permanentlyPurgeAllAccounts = permanentlyPurgeAllAccounts;
 }
 
+// ============================================================================
+// 6. BACKUP & RESTORE SUPABASE SYNCHRONIZATION (ALL ROLES)
+// ============================================================================
+
+/**
+ * Synchronize restored branch stores to Supabase (branch_stores & branch_store_personnel).
+ * Also keeps user_profiles updated for primary managers.
+ */
+export async function syncRestoredBranchStores(storesObj) {
+  if (!storesObj || typeof storesObj !== 'object') return 0;
+  let count = 0;
+  const storeEntries = Array.isArray(storesObj)
+    ? storesObj.map(s => [s.id || s.locKey || s.code, s])
+    : Object.entries(storesObj);
+
+  for (const [id, store] of storeEntries) {
+    if (!store) continue;
+    try {
+      await saveBranchStore(store);
+      count++;
+    } catch (err) {
+      console.warn('[AdminSupabase] Error syncing restored branch store:', id, err);
+    }
+  }
+  return count;
+}
+
+/**
+ * Synchronize restored users directly to Supabase user_profiles table.
+ */
+export async function syncRestoredUsers(users) {
+  if (!Array.isArray(users) || users.length === 0) return 0;
+  let count = 0;
+
+  for (const u of users) {
+    if (!u || isMockUser(u)) continue;
+    const email = String(u.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) continue;
+
+    const role = String(u.role || 'user').toLowerCase();
+    const opRole = String(u.operationalRole || u.operational_role || (role === 'admin' ? 'admin' : (role.includes('manager') ? 'manager' : 'staff'))).toLowerCase();
+    const status = String(u.status || 'active').toLowerCase();
+
+    const payload = {
+      email,
+      full_name: u.name || u.full_name || u.username || email.split('@')[0],
+      username: u.username || email.split('@')[0],
+      role: role.includes('admin') ? 'admin' : 'user',
+      operational_role: opRole,
+      branch_name: u.branchName || u.branch_name || null,
+      branch_location: u.branchLoc || u.branch_location || null,
+      branch_store: u.branchStore || u.branch_store || null,
+      status: (status === 'pending' || status === 'pending_approval') ? 'pending' : 'active',
+      updated_at: new Date().toISOString()
+    };
+
+    if (u.id && u.id.length > 20 && !u.id.startsWith('req_') && !u.id.startsWith('ovrow_')) {
+      payload.id = u.id;
+    }
+
+    try {
+      if (supabase) {
+        const { error } = await supabase
+          .from('user_profiles')
+          .upsert(payload, { onConflict: 'email' });
+        if (!error) count++;
+      }
+    } catch (err) {
+      console.warn('[AdminSupabase] Notice syncing restored user to Supabase:', email, err);
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Synchronize restored system alerts to Supabase system_maintenance_alerts table.
+ */
+export async function syncRestoredSystemAlerts(alerts) {
+  if (!Array.isArray(alerts) || alerts.length === 0) return 0;
+  let count = 0;
+
+  for (const a of alerts) {
+    if (!a) continue;
+    try {
+      if (supabase) {
+        const payload = {
+          title: a.title || a.message || 'System Maintenance Notice',
+          description: a.description || a.desc || '',
+          category: a.category || 'General',
+          severity: a.severity || a.priority || 'medium',
+          status: a.status || 'ACTIVE',
+          branch_name: a.branchName || a.branch_name || 'Global',
+          branch_location: a.branchLocation || a.branch_location || 'Global',
+          created_at: a.timestamp || a.created_at || new Date().toISOString()
+        };
+        const { error } = await supabase
+          .from('system_maintenance_alerts')
+          .insert([payload]);
+        if (!error) count++;
+      }
+    } catch (_) {}
+  }
+  return count;
+}
+
+/**
+ * Synchronize restored raw materials to Supabase raw_materials table.
+ */
+export async function syncRestoredRawMaterials(materials) {
+  if (!Array.isArray(materials) || materials.length === 0) return { count: 0, materialIdMap: {} };
+  let count = 0;
+  const materialIdMap = {};
+
+  for (const m of materials) {
+    if (!m || !m.name) continue;
+    const cleanName = String(m.name).trim();
+    const itemCode = m.item_code || m.itemCode || m.code || `RM-${cleanName.slice(0, 3).toUpperCase()}`;
+    const stockVal = Number(m.current_stock ?? m.stock ?? m.quantity ?? 0);
+    const minThreshold = m.minimum_threshold != null ? Number(m.minimum_threshold) : (m.minStock != null ? Number(m.minStock) : null);
+    const reorderQty = m.reorder_quantity != null ? Number(m.reorder_quantity) : (m.reorderQty != null ? Number(m.reorderQty) : null);
+    const leadTime = m.lead_time_days != null ? Number(m.lead_time_days) : (m.leadTime != null ? Number(m.leadTime) : null);
+    const unit = m.unit_of_measure || m.unit || 'kg';
+
+    const payload = {
+      name: cleanName,
+      item_code: itemCode,
+      description: m.description || '',
+      unit_of_measure: unit,
+      current_stock: Math.max(0, stockVal),
+      minimum_threshold: minThreshold,
+      reorder_quantity: reorderQty,
+      lead_time_days: leadTime,
+      updated_at: new Date().toISOString()
+    };
+
+    if (m.id && m.id.length > 30 && m.id.includes('-')) {
+      payload.id = m.id;
+    }
+
+    try {
+      if (supabase) {
+        const { data: existing } = await supabase
+          .from('raw_materials')
+          .select('id, name')
+          .ilike('name', cleanName)
+          .maybeSingle();
+
+        if (existing && existing.id) {
+          materialIdMap[cleanName.toLowerCase()] = existing.id;
+          const { error: updErr } = await supabase
+            .from('raw_materials')
+            .update(payload)
+            .eq('id', existing.id);
+          if (!updErr) count++;
+        } else {
+          const { data: inserted, error: insErr } = await supabase
+            .from('raw_materials')
+            .insert([payload])
+            .select('id, name');
+          if (!insErr && inserted && inserted[0]) {
+            materialIdMap[cleanName.toLowerCase()] = inserted[0].id;
+            count++;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[AdminSupabase] Notice syncing raw material:', cleanName, err);
+    }
+  }
+
+  return { count, materialIdMap };
+}
+
+/**
+ * Synchronize restored stock receipts to Supabase stock_receipts table.
+ */
+export async function syncRestoredStockReceipts(receipts, materialIdMap = {}) {
+  if (!Array.isArray(receipts) || receipts.length === 0) return 0;
+  let count = 0;
+
+  for (const r of receipts) {
+    if (!r) continue;
+    const matName = String(r.material_name || r.materialName || r.item || r.name || '').trim().toLowerCase();
+    const matId = r.material_id || r.materialId || materialIdMap[matName];
+    const qty = Number(r.received_quantity ?? r.quantity ?? r.qty ?? 0);
+    if (!matId || qty <= 0) continue;
+
+    const payload = {
+      receipt_date: r.receipt_date || r.date || new Date().toISOString().slice(0, 10),
+      material_id: matId,
+      received_quantity: qty,
+      unit: r.unit || 'kg',
+      supplier_name: r.supplier_name || r.supplier || 'Restored Inflow Archive',
+      created_at: r.created_at || new Date().toISOString()
+    };
+
+    try {
+      if (supabase) {
+        const { error } = await supabase
+          .from('stock_receipts')
+          .insert([payload]);
+        if (!error) count++;
+      }
+    } catch (err) {
+      console.warn('[AdminSupabase] Notice syncing stock receipt:', err);
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Synchronize restored material disbursements to Supabase material_disbursements table.
+ */
+export async function syncRestoredMaterialDisbursements(disbursements, materialIdMap = {}) {
+  if (!Array.isArray(disbursements) || disbursements.length === 0) return 0;
+  let count = 0;
+
+  for (const d of disbursements) {
+    if (!d) continue;
+    const matName = String(d.material_name || d.materialName || d.item || d.name || '').trim().toLowerCase();
+    const matId = d.material_id || d.materialId || materialIdMap[matName];
+    const qty = Number(d.consumed_quantity ?? d.quantity ?? d.qty ?? 0);
+    if (!matId || qty <= 0) continue;
+
+    const payload = {
+      usage_date: d.usage_date || d.date || new Date().toISOString().slice(0, 10),
+      material_id: matId,
+      consumed_quantity: qty,
+      unit: d.unit || 'kg',
+      activity_type: d.activity_type || d.activity || 'Restored Consumption Archive',
+      finished_product_name: d.finished_product_name || d.productName || null,
+      created_at: d.created_at || new Date().toISOString()
+    };
+
+    try {
+      if (supabase) {
+        const { error } = await supabase
+          .from('material_disbursements')
+          .insert([payload]);
+        if (!error) count++;
+      }
+    } catch (err) {
+      console.warn('[AdminSupabase] Notice syncing material disbursement:', err);
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Synchronize restored activity / audit logs to Supabase activity_audit_logs.
+ */
+export async function syncRestoredActivityLogs(logs) {
+  if (!Array.isArray(logs) || logs.length === 0) return 0;
+  let count = 0;
+
+  for (const l of logs) {
+    if (!l) continue;
+    try {
+      if (supabase) {
+        const payload = {
+          action: l.action || l.activity || 'Restored System Event',
+          entity_type: l.entity_type || l.module || 'Backup Restore',
+          entity_id: l.entity_id || l.refNo || null,
+          details: typeof l.details === 'object' ? l.details : { message: l.details || l.desc || '' },
+          created_at: l.created_at || l.timestamp || new Date().toISOString()
+        };
+        const { error } = await supabase
+          .from('activity_audit_logs')
+          .insert([payload]);
+        if (!error) count++;
+      }
+    } catch (_) {}
+  }
+
+  return count;
+}
+
+/**
+ * Master Restore Synchronization Pipeline:
+ * Coordinates the automatic linking and direct database push to Supabase tables
+ * for any role (Admin, Manager, Staff, or Complete System).
+ */
+export async function syncRestoredRolePayload(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object' || !snapshot.data) {
+    return { success: false, error: 'Invalid snapshot data structure' };
+  }
+
+  const scope = snapshot.scope || {};
+  const role = (scope.role || snapshot.roleTarget || 'all').toLowerCase();
+  const data = snapshot.data;
+  const counts = {
+    branchStores: 0,
+    users: 0,
+    alerts: 0,
+    rawMaterials: 0,
+    receipts: 0,
+    disbursements: 0,
+    logs: 0
+  };
+
+  try {
+    // 1. Admin Datasets (Branch Stores, Users, Alerts, Settings)
+    if (role === 'admin' || role === 'all' || data.admin) {
+      const adminData = data.admin || data;
+      if (adminData.branchStores) {
+        counts.branchStores = await syncRestoredBranchStores(adminData.branchStores);
+      }
+      const allUsers = [
+        ...(Array.isArray(adminData.registeredUsers) ? adminData.registeredUsers : []),
+        ...(Array.isArray(adminData.approvedUsers) ? adminData.approvedUsers : []),
+        ...(Array.isArray(adminData.pendingUsers) ? adminData.pendingUsers : [])
+      ];
+      if (allUsers.length > 0) {
+        counts.users = await syncRestoredUsers(allUsers);
+      }
+      if (Array.isArray(adminData.systemAlerts)) {
+        counts.alerts = await syncRestoredSystemAlerts(adminData.systemAlerts);
+      }
+      if (adminData.systemSettings && typeof adminData.systemSettings === 'object') {
+        for (const [k, v] of Object.entries(adminData.systemSettings)) {
+          await saveSystemSetting(k, v, 'Restore Synchronization');
+        }
+      }
+    }
+
+    // 2. Manager Datasets (Raw Materials, Stock Receipts, Material Disbursements, Logs)
+    let materialIdMap = {};
+    if (role === 'manager' || role === 'all' || data.manager || data.materials) {
+      const mgrData = data.manager || data;
+      const rawMats = mgrData.rawMaterials || mgrData.materials;
+      if (Array.isArray(rawMats) && rawMats.length > 0) {
+        const matRes = await syncRestoredRawMaterials(rawMats);
+        counts.rawMaterials = matRes.count;
+        materialIdMap = matRes.materialIdMap;
+      }
+
+      const recs = mgrData.receipts || mgrData.customReceipts;
+      if (Array.isArray(recs) && recs.length > 0) {
+        counts.receipts = await syncRestoredStockReceipts(recs, materialIdMap);
+      }
+
+      const disbs = mgrData.disbursements || mgrData.customDisbursements;
+      if (Array.isArray(disbs) && disbs.length > 0) {
+        counts.disbursements = await syncRestoredMaterialDisbursements(disbs, materialIdMap);
+      }
+
+      const acts = mgrData.managerActivities || mgrData.activityLogs;
+      if (Array.isArray(acts) && acts.length > 0) {
+        counts.logs += await syncRestoredActivityLogs(acts);
+      }
+    }
+
+    // 3. Staff Datasets (Transactions, Submissions, Drafts, Activity Logs)
+    if (role === 'staff' || role === 'all' || data.staff) {
+      const stfData = data.staff || data;
+      const stfRecs = stfData.staffDraftReceipts;
+      if (Array.isArray(stfRecs) && stfRecs.length > 0) {
+        counts.receipts += await syncRestoredStockReceipts(stfRecs, materialIdMap);
+      }
+
+      const acts = stfData.userActivityHistory || stfData.staffAuditTrail;
+      if (Array.isArray(acts) && acts.length > 0) {
+        counts.logs += await syncRestoredActivityLogs(acts);
+      }
+    }
+
+    // 4. Log the restore operation itself into admin_activity_logs & activity_audit_logs
+    await logAdminActivity({
+      action: 'Restored & Linked Database Snapshot',
+      module: 'Settings',
+      details: `Restored snapshot (${scope.roleName || role}) linked to ${scope.branchStoreName || 'Global'} (${scope.branchLocation || 'All'}). Synced to Supabase: ${counts.users} users, ${counts.branchStores} stores, ${counts.rawMaterials} materials, ${counts.receipts} receipts, ${counts.disbursements} disbursements.`
+    });
+
+    return {
+      success: true,
+      counts,
+      totalSynced: counts.branchStores + counts.users + counts.alerts + counts.rawMaterials + counts.receipts + counts.disbursements + counts.logs
+    };
+  } catch (err) {
+    console.error('[AdminSupabase] Error executing Supabase restore sync:', err);
+    return {
+      success: false,
+      error: err.message,
+      counts
+    };
+  }
+}
+
 export default {
   STORAGE_KEYS,
   getDeletedBranchStores,
@@ -2215,5 +2606,14 @@ export default {
   subscribeToAdminFeed,
   fetchSystemSettings,
   saveSystemSetting,
-  permanentlyPurgeAllAccounts
+  permanentlyPurgeAllAccounts,
+  syncRestoredBranchStores,
+  syncRestoredUsers,
+  syncRestoredSystemAlerts,
+  syncRestoredRawMaterials,
+  syncRestoredStockReceipts,
+  syncRestoredMaterialDisbursements,
+  syncRestoredActivityLogs,
+  syncRestoredRolePayload
 };
+
