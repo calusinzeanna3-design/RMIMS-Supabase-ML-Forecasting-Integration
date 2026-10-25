@@ -2,7 +2,7 @@
 // Initializes the Branch Stores Usage Chart using authentic RMIMS Emerald styling,
 // handles chart timeframes, interactive account approvals, real-time system alerts, and overview search.
 
-import { getAlerts, getCategoryCounts } from './system-alerts-service.js';
+import { getAlerts, getCategoryCounts, getDiagnosticRecipient, formatCleanBranchLocation } from './system-alerts-service.js';
 import { initAdminCalendarPicker, MONTH_NAMES_SHORT, getLiveTodayISO, getDaysAgoISO, formatDisplayDate } from './admin-calendar-picker.js';
 import { getStoresData } from './admin-branch-stores.js';
 import {
@@ -367,7 +367,7 @@ function renderOverviewLatestActivities() {
       if (!hasBranch) return;
       const displayUser = user || 'Store Manager';
       const ref = r.ref || '';
-      if (['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118'].includes(ref)) return;
+      // Process all authentic live receipts without hardcoded filters
 
       const txt = `${user} ${r.supplierName || ''} ${bLoc} ${bName}`.toLowerCase();
       if (txt.includes('simulated_user')) return;
@@ -392,7 +392,7 @@ function renderOverviewLatestActivities() {
       if (!hasBranch) return;
       const displayUser = user || 'Store Staff';
       const ref = d.ref || '';
-      if (['DIS-2026-00091', 'DIS-2026-00088'].includes(ref)) return;
+      // Process all authentic live disbursements without hardcoded filters
 
       const txt = `${user} ${d.reason || ''} ${bLoc} ${bName}`.toLowerCase();
       if (txt.includes('simulated_user')) return;
@@ -898,7 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (alerts.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align: center; padding: 36px 16px; color: var(--rm-ink-dim);">
+            <td colspan="8" style="text-align: center; padding: 36px 16px; color: var(--rm-ink-dim);">
               <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
                 <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: #10B981; display: flex; align-items: center; justify-content: center;">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -920,20 +920,24 @@ document.addEventListener('DOMContentLoaded', () => {
           const locText = a.branchLocation || a.branch || '';
           const nameText = a.branchName || '';
 
-          const locTextLower = (locText || '').toLowerCase();
+          // Clean, concise branch location label
+          const locBadgeText = formatCleanBranchLocation ? formatCleanBranchLocation(locText, nameText) : (locText || 'System');
+          const locTextLower = locBadgeText.toLowerCase();
           let locClass = 'neutral';
-          let locBadgeText = locText || 'All Branches';
           if (locTextLower.includes('tiaong')) {
             locClass = 'tiaong';
-            locBadgeText = locText;
           } else if (locTextLower.includes('lucena')) {
             locClass = 'lucena';
-            locBadgeText = locText;
-          } else if (locTextLower.includes('headquarters')) {
+          } else if (locTextLower.includes('headquarters') || locTextLower.includes('hq')) {
             locClass = 'hq';
-          } else if (locTextLower) {
-            locClass = 'custom';
+          } else if (locTextLower.includes('system')) {
+            locClass = 'system';
           }
+
+          // Link problem to determined user role
+          const recipient = getDiagnosticRecipient(a);
+          const targetRoleLabel = a.targetRoleLabel || (recipient && recipient.roleLabel) || (a.targetRole === 'Manager' ? 'Store Manager' : (a.targetRole === 'Staff' ? 'Store Staff' : 'Main Administrator'));
+          const roleClass = (a.targetRole || (recipient && recipient.role) || 'Admin').toLowerCase();
 
           return `
             <tr data-status="${escapeHtml(a.status)}">
@@ -943,6 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <strong>${escapeHtml(a.type)}</strong>
                 </div>
               </td>
+              <td><span class="role-badge role-${escapeHtml(roleClass)}">${escapeHtml(targetRoleLabel)}</span></td>
               <td><span class="location-badge ${locClass}">${escapeHtml(locBadgeText)}</span></td>
               <td>${escapeHtml(nameText)}</td>
               <td>${escapeHtml(occurrenceText)}</td>

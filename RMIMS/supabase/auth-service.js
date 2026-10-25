@@ -1,5 +1,5 @@
 import { supabase } from "./supabase-config.js";
-import { recordLoginFailure, clearLoginFailure } from "../js/system-alerts-service.js";
+import { recordLoginFailure, clearLoginFailure, resolveUserAccountContext } from "../js/system-alerts-service.js";
 
 /**
  * Format auth errors into clean, user-friendly messages without exposing sensitive details.
@@ -486,16 +486,8 @@ export async function loginUser(email, password, expectedRole) {
             hideAuthTransition(transDOM);
             const msg = (error.message || "").toLowerCase();
             if (msg.includes("invalid") || msg.includes("credential") || msg.includes("password")) {
-                let userBranch = "Lucena";
-                let userStore = "Scones & Muffins Bakery";
-                try {
-                    const clean = cleanEmailInput.toLowerCase().trim();
-                    if (clean.includes("kxc") || clean.includes("tiaong") || clean.includes("glazel")) {
-                        userBranch = "Tiaong";
-                        userStore = "KXC 5-Year Enterprise";
-                    }
-                } catch (_) {}
-                recordLoginFailure(cleanEmailInput, `${userStore} (${userBranch})`);
+                const userCtx = resolveUserAccountContext(cleanEmailInput);
+                recordLoginFailure(cleanEmailInput, `${userCtx.branchName} (${userCtx.branchLocation})`);
             }
             throw new Error(friendlyAuthError(error));
         }

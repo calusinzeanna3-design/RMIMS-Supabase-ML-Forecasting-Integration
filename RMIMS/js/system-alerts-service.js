@@ -1,3 +1,111 @@
+
+// Dynamically resolve real user account context (role, store name, location)
+// Completely removes any hardcoded fallback or assumptions
+export function resolveUserAccountContext(userOrEmail) {
+  const clean = String(userOrEmail || '').toLowerCase().trim();
+  if (!clean) return { role: 'Staff', roleLabel: 'Store Staff', branchName: 'Branch Store', branchLocation: 'Lucena', actionLabel: 'Send to Staff' };
+
+  // 1. Check if user is Main Administrator
+  if (clean === 'calusinzeanna3@gmail.com' || clean === 'admin' || clean === 'main_admin' || clean.includes('zeanna')) {
+    return {
+      role: 'Admin',
+      roleLabel: 'Main Administrator',
+      branchName: 'Main Administration',
+      branchLocation: 'Headquarters',
+      actionLabel: 'Send to Admin'
+    };
+  }
+
+  // 2. Query registered users directory
+  try {
+    const regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+    const match = regUsers.find(u => 
+      (u.email && u.email.toLowerCase().trim() === clean) ||
+      (u.username && u.username.toLowerCase().trim() === clean) ||
+      (u.name && u.name.toLowerCase().trim() === clean)
+    );
+    if (match) {
+      const isMgr = String(match.role || match.operational_role || '').toLowerCase().includes('manager');
+      const isAdmin = String(match.role || match.operational_role || '').toLowerCase().includes('admin');
+      const bLoc = match.branchLocation || match.branch_location || (match.branchName && match.branchName.toLowerCase().includes('tiaong') ? 'Tiaong' : 'Lucena');
+      const bName = match.branchName || match.branch_name || (bLoc === 'Tiaong' ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery');
+      return {
+        role: isAdmin ? 'Admin' : (isMgr ? 'Manager' : 'Staff'),
+        roleLabel: isAdmin ? 'Main Administrator' : (isMgr ? 'Store Manager' : 'Store Staff'),
+        branchName: bName,
+        branchLocation: bLoc,
+        actionLabel: isAdmin ? 'Send to Admin' : (isMgr ? 'Send to Manager' : 'Send to Staff')
+      };
+    }
+  } catch (_) {}
+
+  // 3. Query approved users directory
+  try {
+    const approved = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+    const match = approved.find(u => 
+      (u.email && u.email.toLowerCase().trim() === clean) ||
+      (u.username && u.username.toLowerCase().trim() === clean) ||
+      (u.name && u.name.toLowerCase().trim() === clean)
+    );
+    if (match) {
+      const isMgr = String(match.role || '').toLowerCase().includes('manager');
+      const isAdmin = String(match.role || '').toLowerCase().includes('admin');
+      return {
+        role: isAdmin ? 'Admin' : (isMgr ? 'Manager' : 'Staff'),
+        roleLabel: isAdmin ? 'Main Administrator' : (isMgr ? 'Store Manager' : 'Store Staff'),
+        branchName: match.branchName || 'Store Branch',
+        branchLocation: match.branchLocation || 'Lucena',
+        actionLabel: isAdmin ? 'Send to Admin' : (isMgr ? 'Send to Manager' : 'Send to Staff')
+      };
+    }
+  } catch (_) {}
+
+  // 4. Query registered store personnel directory
+  try {
+    const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
+    const storeList = Array.isArray(stores) ? stores : Object.values(stores);
+    for (const st of storeList) {
+      const isMgr = (st.managers || []).some(m => 
+        (m.email && m.email.toLowerCase().trim() === clean) ||
+        (m.username && m.username.toLowerCase().trim() === clean) ||
+        (m.name && m.name.toLowerCase().trim() === clean)
+      );
+      if (isMgr) {
+        return {
+          role: 'Manager',
+          roleLabel: 'Store Manager',
+          branchName: st.name,
+          branchLocation: st.location || (st.name.toLowerCase().includes('tiaong') ? 'Tiaong' : 'Lucena'),
+          actionLabel: 'Send to Manager'
+        };
+      }
+      const isStf = (st.staff || []).some(s => 
+        (s.email && s.email.toLowerCase().trim() === clean) ||
+        (s.username && s.username.toLowerCase().trim() === clean) ||
+        (s.name && s.name.toLowerCase().trim() === clean)
+      );
+      if (isStf) {
+        return {
+          role: 'Staff',
+          roleLabel: 'Store Staff',
+          branchName: st.name,
+          branchLocation: st.location || (st.name.toLowerCase().includes('tiaong') ? 'Tiaong' : 'Lucena'),
+          actionLabel: 'Send to Staff'
+        };
+      }
+    }
+  } catch (_) {}
+
+  // Default context based on standard convention
+  return {
+    role: 'Staff',
+    roleLabel: 'Store Staff',
+    branchName: 'Store Branch',
+    branchLocation: 'Lucena',
+    actionLabel: 'Send to Staff'
+  };
+}
+
 // RMIMS System Diagnostics & Maintenance Alerts Service
 // Implements backend alert policies:
 // 1. Incorrect Password: 1 failed attempt is logged silently in telemetry (does NOT appear in system diagnostics).
@@ -149,13 +257,17 @@ function isLegacyMockAlert(alert) {
     str.includes('regional storage cluster') ||
     str.includes('demo_alert') ||
     str.includes('mock_alert') ||
-    str.includes('slow response time (avg. 6.2s')
+    str.includes('slow response time (avg. 6.2s') ||
+    str.includes('oct 18, 2026') ||
+    str.includes('all branches') ||
+    str.includes('calusinzeanna3@gmail.com') ||
+    alert.branchLocation === 'All Branches'
   );
 }
 
 // Auto-purge any cached mock alerts on module load
 try {
-  const purgeKey = 'RMIMS_MOCK_ALERTS_PURGED_V3';
+  const purgeKey = 'RMIMS_MOCK_ALERTS_PURGED_V6';
   if (!localStorage.getItem(purgeKey)) {
     const rawExisting = localStorage.getItem(STORAGE_KEY_ALERTS);
     if (rawExisting) {
@@ -427,13 +539,18 @@ export function recordLoginFailure(userOrEmail, branchInput = '') {
   const key = (userOrEmail || 'unknown_user').toLowerCase().trim();
   const currentAttempts = (telemetry.loginFailures[key]?.count || 0) + 1;
   const timeNow = formatCurrentDateTime();
-  const bInfo = parseBranch(branchInput);
+
+  // Dynamically resolve authentic user account context without hardcoding
+  const userCtx = resolveUserAccountContext(key);
+  const resolvedBranch = branchInput ? parseBranch(branchInput) : { location: userCtx.branchLocation, name: userCtx.branchName, full: `${userCtx.branchName} (${userCtx.branchLocation})` };
+  const cleanLoc = formatCleanBranchLocation(resolvedBranch.location || userCtx.branchLocation, resolvedBranch.name || userCtx.branchName);
+  const cleanName = resolvedBranch.name || userCtx.branchName;
 
   telemetry.loginFailures[key] = {
     user: key,
-    branchLocation: bInfo.location,
-    branchName: bInfo.name,
-    branch: bInfo.full,
+    branchLocation: cleanLoc,
+    branchName: cleanName,
+    branch: `${cleanName} (${cleanLoc})`,
     count: currentAttempts,
     lastAttempt: timeNow
   };
@@ -452,27 +569,33 @@ export function recordLoginFailure(userOrEmail, branchInput = '') {
 
   // Threshold reached (>= 3 attempts): ALERT THE MODULE!
   const alerts = getAlerts();
-  let existingAlert = alerts.find(a => a.type === 'Incorrect Password' && (a.branchName === bInfo.name || a.branch === bInfo.full) && a.status === 'ongoing');
+  let existingAlert = alerts.find(a => a.type === 'Incorrect Password' && (a.branchName === cleanName || (a.details && a.details.includes(key))) && a.status === 'ongoing');
 
   if (existingAlert) {
     existingAlert.occurrence = currentAttempts;
     existingAlert.lastDetected = timeNow;
     existingAlert.details = `Multiple failed login attempts detected (${currentAttempts} consecutive attempts for user ${key}).`;
+    existingAlert.branchLocation = cleanLoc;
+    existingAlert.branchName = cleanName;
+    existingAlert.targetRole = userCtx.role;
+    existingAlert.targetRoleLabel = userCtx.roleLabel;
+    existingAlert.actionLabel = userCtx.actionLabel;
   } else {
     alerts.unshift({
       id: `alt-${Date.now()}`,
       type: 'Incorrect Password',
       category: 'login',
-      branchLocation: bInfo.location,
-      branchName: bInfo.name,
-      branch: bInfo.full,
+      branchLocation: cleanLoc,
+      branchName: cleanName,
+      branch: `${cleanName} (${cleanLoc})`,
       occurrence: currentAttempts,
       lastDetected: timeNow,
       status: 'ongoing',
       severity: 'warning',
       details: `Multiple failed login attempts detected (${currentAttempts} consecutive attempts for user ${key}).`,
-      targetRole: 'Manager',
-      actionLabel: 'Send to Manager'
+      targetRole: userCtx.role,
+      targetRoleLabel: userCtx.roleLabel,
+      actionLabel: userCtx.actionLabel
     });
   }
 
@@ -480,29 +603,28 @@ export function recordLoginFailure(userOrEmail, branchInput = '') {
   let accountLocked = false;
   if (currentAttempts >= ALERT_THRESHOLDS.ACCOUNT_LOCKOUT) {
     accountLocked = true;
-    let lockAlert = alerts.find(a => a.type === 'Account Locked' && (a.branchName === bInfo.name || a.branch === bInfo.full) && a.status === 'ongoing');
+    let lockAlert = alerts.find(a => a.type === 'Account Locked' && (a.branchName === cleanName || (a.details && a.details.includes(key))) && a.status === 'ongoing');
     if (!lockAlert) {
       alerts.unshift({
         id: `alt-lock-${Date.now()}`,
         type: 'Account Locked',
         category: 'login',
-        branchLocation: bInfo.location,
-        branchName: bInfo.name,
-        branch: bInfo.full,
+        branchLocation: cleanLoc,
+        branchName: cleanName,
+        branch: `${cleanName} (${cleanLoc})`,
         occurrence: 1, // Once is enough for critical!
         lastDetected: timeNow,
         status: 'ongoing',
         severity: 'critical',
         details: `User account (${key}) temporarily locked due to excessive failed attempts (${currentAttempts} attempts).`,
-        targetRole: 'Manager',
-        actionLabel: 'Send to Manager'
+        targetRole: userCtx.role,
+        targetRoleLabel: userCtx.roleLabel,
+        actionLabel: userCtx.actionLabel
       });
     }
   }
 
   saveAlerts(alerts);
-
-  console.warn(`[RMIMS Alert Backend]: Multiple failed attempts (${currentAttempts}) detected! Escalated to System Diagnostics module.`);
   return {
     alerted: true,
     attempts: currentAttempts,

@@ -14,6 +14,7 @@ import {
   dispatchAlert,
   getDiagnosticRecipient,
   parseBranch,
+  formatCleanBranchLocation,
   recordLoginFailure,
   recordSystemIncident,
   resetAlertsToDefault,
@@ -118,23 +119,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const locText = a.branchLocation || bInfo.location;
       const nameText = a.branchName || bInfo.name;
       
-      const locTextLower = (locText || '').toLowerCase();
+      // Clean, concise branch location label (No wordy sentences or full fallbacks)
+      const locBadgeText = formatCleanBranchLocation ? formatCleanBranchLocation(locText, nameText) : (locText || 'System');
+      const locTextLower = locBadgeText.toLowerCase();
       let locClass = 'neutral';
-      let locBadgeText = locText || 'All Branches';
       if (locTextLower.includes('tiaong')) {
         locClass = 'tiaong';
-        locBadgeText = locText;
       } else if (locTextLower.includes('lucena')) {
         locClass = 'lucena';
-        locBadgeText = locText;
-      } else if (locTextLower.includes('headquarters')) {
+      } else if (locTextLower.includes('headquarters') || locTextLower.includes('hq')) {
         locClass = 'hq';
-      } else if (locTextLower) {
-        locClass = 'custom';
+      } else if (locTextLower.includes('system')) {
+        locClass = 'system';
       }
 
+      // Link problem to specific determined user role
+      const targetRoleLabel = a.targetRoleLabel || (recipient && recipient.roleLabel) || (a.targetRole === 'Manager' ? 'Store Manager' : (a.targetRole === 'Staff' ? 'Store Staff' : 'Main Administrator'));
+      const roleClass = (a.targetRole || (recipient && recipient.role) || 'Admin').toLowerCase();
+
       // Dynamic Role-based Action label depending on diagnosed problem
-      let actionLabel = a.actionLabel || recipient.actionLabel || 'Send to Maintenance';
+      let actionLabel = a.actionLabel || recipient.actionLabel || 'Send to Admin';
       if (isResolved) {
         actionLabel = a.dispatchRecord ? 'Dispatched (View)' : 'Resolved (View)';
       }
@@ -150,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <strong>${escapeHtml(a.type)}</strong>
             </div>
           </td>
+          <td><span class="role-badge role-${escapeHtml(roleClass)}">${escapeHtml(targetRoleLabel)}</span></td>
           <td><span class="location-badge ${locClass}">${escapeHtml(locBadgeText)}</span></td>
           <td>${escapeHtml(nameText)}</td>
           <td>${escapeHtml(occurrenceText)}</td>
@@ -201,8 +206,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (dispatchRoleSelect) {
-      dispatchRoleSelect.value = assignedRole;
-      if (!dispatchRoleSelect.value) dispatchRoleSelect.value = 'System Maintenance';
+      let roleVal = 'Main Administrator';
+      const roleStr = String(alert.targetRoleLabel || alert.targetRole || assignedRole || '').toLowerCase();
+      if (roleStr.includes('manager')) roleVal = 'Store Manager';
+      else if (roleStr.includes('staff')) roleVal = 'Store Staff';
+      else if (roleStr.includes('security')) roleVal = 'Account Security';
+      else if (roleStr.includes('performance') || roleStr.includes('it')) roleVal = 'IT Maintenance';
+      dispatchRoleSelect.value = roleVal;
     }
 
     if (dispatchContactInput) {

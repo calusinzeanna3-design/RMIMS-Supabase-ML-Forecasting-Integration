@@ -132,9 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
           return;
         }
-        if (['receive', 'approve transaction', 'disburse'].includes(itemDetails.toLowerCase())) {
-          return;
-        }
+        // Authentic operations included
         const itemDate = item.date || (item.timestamp ? String(item.timestamp).slice(0, 10) : LIVE_TODAY);
         list.push({
           id: item.id || `act-${Math.random()}`,
@@ -170,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasBranch) return;
         const displayUser = user || 'Store Manager';
         const ref = r.ref || '';
-        if (['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118'].includes(ref)) return;
+        // Process all authentic live receipts without hardcoded filters
 
         const rDate = r.receiptDate || r.date || (r.timestamp ? String(r.timestamp).slice(0, 10) : LIVE_TODAY);
         const itemCount = Array.isArray(r.items) ? r.items.length : 1;
@@ -208,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasBranch) return;
         const displayUser = user || 'Store Staff';
         const ref = d.ref || '';
-        if (['DIS-2026-00091', 'DIS-2026-00088'].includes(ref)) return;
+        // Process all authentic live disbursements without hardcoded filters
 
         const dDate = d.disbursementDate || d.date || (d.timestamp ? String(d.timestamp).slice(0, 10) : LIVE_TODAY);
         const itemCount = Array.isArray(d.items) ? d.items.length : 1;
@@ -240,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!hasBranch) return;
         const displayUser = user || 'Store Staff';
         const ref = st.ref || '';
-        if (['REC-2026-00125', 'DIS-2026-00091'].includes(ref)) return;
+        // Process all authentic staff transactions without hardcoded filters
         if (user.toLowerCase().includes('john reyes') || user.toLowerCase().includes('maria santos')) return;
 
         const stDate = st.date || (st.timestamp ? String(st.timestamp).slice(0, 10) : LIVE_TODAY);
