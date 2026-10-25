@@ -821,8 +821,13 @@ document.addEventListener('DOMContentLoaded', () => {
       modalScopeBadge.style.background = roleKey === 'admin' ? '#DCFCE7' : roleKey === 'manager' ? '#E0F2FE' : roleKey === 'staff' ? '#FEF3C7' : '#EDE9FE';
       modalScopeBadge.style.color = roleKey === 'admin' ? '#15803D' : roleKey === 'manager' ? '#0284C7' : roleKey === 'staff' ? '#D97706' : '#7C3AED';
 
-      const locText = loc === 'ALL' ? 'All Branch Locations' : loc;
-      modalScopeSummaryText.textContent = `Backup Scope: ${roleNames[roleKey]} • ${targetStoreName} (${locText})`;
+      const locText = loc === 'ALL' ? 'All Locations' : loc;
+      modalScopeSummaryText.textContent = `Target Branch: ${targetStoreName} (${locText})`;
+      if (modalScopeBadge) {
+        modalScopeBadge.textContent = loc === 'ALL' ? 'Global Scope' : loc;
+        modalScopeBadge.style.background = '#E0F2FE';
+        modalScopeBadge.style.color = '#0284C7';
+      }
     }
 
     // Open Role Backup Configuration Popup (Directly locked to clicked breakdown row)
@@ -830,57 +835,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!roleBackupModal) return;
       if (modalBackupRoleSelect) modalBackupRoleSelect.value = roleKey;
 
-      const roleMeta = {
-        manager: {
-          title: 'Branch Store Manager',
-          badgeText: 'Branch Manager',
-          badgeBg: '#E0F2FE',
-          badgeColor: '#0284C7',
-          modules: 'All Manager Data: Raw Materials, Stock Inflows & Receipts, Disbursements, Finished Products, AI Forecasts, Reports & Manager Logs'
-        },
-        staff: {
-          title: 'Staff & Operations Employee',
-          badgeText: 'Staff & Operations',
-          badgeBg: '#FEF3C7',
-          badgeColor: '#D97706',
-          modules: 'All Staff Data: Transaction Submissions, Inflow/Outflow Requests, Draft Receipts & Disbursements, and Staff Operational Activity Logs'
-        },
-        admin: {
-          title: 'Main Administrator',
-          badgeText: 'Main Admin',
-          badgeBg: '#DCFCE7',
-          badgeColor: '#15803D',
-          modules: 'All Admin Data: User Accounts, Approvals, Branch Stores Network, System Alerts, Diagnostic Logs & Global Settings'
-        },
-        all: {
-          title: 'Complete Multi-Role System Archive',
-          badgeText: 'All Roles Unified',
-          badgeBg: '#EDE9FE',
-          badgeColor: '#7C3AED',
-          modules: 'All System Data Unified: Full Database Archive Across Admin, Manager, and Staff'
-        }
-      };
-
-      const meta = roleMeta[roleKey] || roleMeta.manager;
-
       const titleEl = document.getElementById('modalRoleBackupTitle');
-      if (titleEl) titleEl.textContent = `Configure ${meta.title} Backup`;
+      if (titleEl) titleEl.textContent = 'Configure Branch Backup';
 
       const subTitleEl = document.getElementById('modalRoleBackupSubtitle');
-      if (subTitleEl) subTitleEl.textContent = `Target Role: ${meta.title} • Choose branch location and store hub to export`;
-
-      const roleBadge = document.getElementById('modalSelectedRoleBadge');
-      if (roleBadge) {
-        roleBadge.textContent = meta.badgeText;
-        roleBadge.style.background = meta.badgeBg;
-        roleBadge.style.color = meta.badgeColor;
-      }
-
-      const roleTitle = document.getElementById('modalSelectedRoleTitle');
-      if (roleTitle) roleTitle.textContent = meta.title;
-
-      const roleModules = document.getElementById('modalSelectedRoleModules');
-      if (roleModules) roleModules.textContent = meta.modules;
+      if (subTitleEl) subTitleEl.textContent = 'Choose branch location and branch name to export';
 
       populateModalDropdowns('ALL');
       updateModalScopeSummary();
