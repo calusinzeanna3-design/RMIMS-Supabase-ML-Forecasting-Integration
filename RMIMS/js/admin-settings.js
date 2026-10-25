@@ -702,13 +702,13 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         {
           key: 'admin',
-          name: 'Main Administrator',
-          badgeHtml: '<span style="background:#DCFCE7; color:#15803D; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Main Admin</span>',
-          modules: 'All Admin Data: Registered &amp; Approved Users, Pending Account Validations, Branch Stores Network, System Alerts, Diagnostic Logs &amp; Global System Settings',
+          name: 'Main Administrator (Own Admin Only)',
+          badgeHtml: '<span style="background:#DCFCE7; color:#15803D; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Own Admin Only</span>',
+          modules: 'Own Admin Data: Registered &amp; Approved Users, Pending Validations, Branch Stores Network, System Alerts &amp; Root Configurations',
           count: metrics.admin.count,
           countSub: metrics.admin.subtext,
           destination: 'Admin User Management, Branch Stores, System Alerts &amp; Settings',
-          btnLabel: 'Export All Admin Data'
+          btnLabel: 'Export Own Admin Backup'
         }
       ];
 
@@ -836,13 +836,34 @@ document.addEventListener('DOMContentLoaded', () => {
       if (modalBackupRoleSelect) modalBackupRoleSelect.value = roleKey;
 
       const titleEl = document.getElementById('modalRoleBackupTitle');
-      if (titleEl) titleEl.textContent = 'Configure Branch Backup';
-
       const subTitleEl = document.getElementById('modalRoleBackupSubtitle');
-      if (subTitleEl) subTitleEl.textContent = 'Choose branch location and branch name to export';
+      const branchSelectors = document.getElementById('modalBranchSelectorsContainer');
+      const adminScopeBox = document.getElementById('modalAdminScopeContainer');
 
-      populateModalDropdowns('ALL');
-      updateModalScopeSummary();
+      if (roleKey === 'admin') {
+        // OWN ADMIN ONLY: Remove manager & staff branch options
+        if (titleEl) titleEl.textContent = 'Export Main Administrator Backup';
+        if (subTitleEl) subTitleEl.textContent = 'Own Admin Only • Central administration directory & master settings';
+        if (branchSelectors) branchSelectors.style.display = 'none';
+        if (adminScopeBox) adminScopeBox.style.display = 'block';
+        if (modalScopeBadge) {
+          modalScopeBadge.textContent = 'Own Admin Only';
+          modalScopeBadge.style.background = '#DCFCE7';
+          modalScopeBadge.style.color = '#15803D';
+        }
+        if (modalScopeSummaryText) {
+          modalScopeSummaryText.textContent = 'Scope: Main Administrator (Own Admin Only • System-Wide Master Hub)';
+        }
+      } else {
+        // MANAGER OR STAFF: Show branch location and branch name selectors
+        if (titleEl) titleEl.textContent = roleKey === 'manager' ? 'Configure Branch Manager Backup' : 'Configure Staff Backup';
+        if (subTitleEl) subTitleEl.textContent = 'Choose branch location and branch name to export';
+        if (branchSelectors) branchSelectors.style.display = 'block';
+        if (adminScopeBox) adminScopeBox.style.display = 'none';
+        populateModalDropdowns('ALL');
+        updateModalScopeSummary();
+      }
+
       roleBackupModal.classList.add('active');
       roleBackupModal.style.display = 'flex';
       roleBackupModal.style.opacity = '1';
@@ -1041,8 +1062,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Generate Filename
-        const cleanLoc = loc.replace(/[^a-zA-Z0-9]/g, '');
-        const cleanStore = storeName.replace(/[^a-zA-Z0-9]/g, '');
+        let cleanLoc = loc.replace(/[^a-zA-Z0-9]/g, '');
+        let cleanStore = storeName.replace(/[^a-zA-Z0-9]/g, '');
+        if (roleKey === 'admin') {
+          cleanLoc = 'Headquarters';
+          cleanStore = 'OwnAdminOnly';
+          snapshot.scope.branchLocation = 'Headquarters';
+          snapshot.scope.branchStoreName = 'Main Administration (Own Admin Only)';
+        }
         const filename = `RMSME_Backup_${roleKey.toUpperCase()}_${cleanLoc}_${cleanStore}_${dateStr}.json`;
 
         triggerDownload(snapshot, filename);
