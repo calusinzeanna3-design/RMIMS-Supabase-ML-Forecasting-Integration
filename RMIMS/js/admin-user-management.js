@@ -528,15 +528,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Modal Open / Close Handlers
   if (btnOpenAdd && addModal) {
-    btnOpenAdd.addEventListener('click', () => {
+    btnOpenAdd.addEventListener('click', (e) => {
+      if (e) e.preventDefault();
       addModal.classList.add('active');
+      addModal.style.display = 'flex';
+      addModal.style.opacity = '1';
+      addModal.style.visibility = 'visible';
+      addModal.style.pointerEvents = 'auto';
       const nameInput = document.getElementById('newUserName');
       if (nameInput) setTimeout(() => nameInput.focus(), 100);
     });
   }
 
   function closeAddModal() {
-    if (addModal) addModal.classList.remove('active');
+    if (addModal) {
+      addModal.classList.remove('active');
+      addModal.style.display = 'none';
+      addModal.style.opacity = '0';
+      addModal.style.visibility = 'hidden';
+      addModal.style.pointerEvents = 'none';
+    }
     if (addForm) addForm.reset();
   }
 
@@ -544,7 +555,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCancelAdd) btnCancelAdd.addEventListener('click', closeAddModal);
 
   function closeEditModal() {
-    if (editModal) editModal.classList.remove('active');
+    if (editModal) {
+      editModal.classList.remove('active');
+      editModal.style.display = 'none';
+      editModal.style.opacity = '0';
+      editModal.style.visibility = 'hidden';
+      editModal.style.pointerEvents = 'none';
+    }
     if (editForm) editForm.reset();
   }
 
@@ -664,6 +681,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('editUserRole').value = role || 'Staff';
     editModal.classList.add('active');
+    editModal.style.display = 'flex';
+    editModal.style.opacity = '1';
+    editModal.style.visibility = 'visible';
+    editModal.style.pointerEvents = 'auto';
   };
 
   window.submitEditUser = async function () {

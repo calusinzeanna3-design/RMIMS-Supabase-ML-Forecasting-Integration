@@ -797,12 +797,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (modalBackupRoleSelect) modalBackupRoleSelect.value = roleKey;
       populateModalDropdowns('ALL');
       updateModalScopeSummary();
+      roleBackupModal.classList.add('active');
       roleBackupModal.style.display = 'flex';
+      roleBackupModal.style.opacity = '1';
+      roleBackupModal.style.visibility = 'visible';
+      roleBackupModal.style.pointerEvents = 'auto';
     }
 
     function closeRoleBackupModal() {
       if (!roleBackupModal) return;
+      roleBackupModal.classList.remove('active');
       roleBackupModal.style.display = 'none';
+      roleBackupModal.style.opacity = '0';
+      roleBackupModal.style.visibility = 'hidden';
+      roleBackupModal.style.pointerEvents = 'none';
     }
 
     // Listeners for Modal Selects
@@ -1291,7 +1299,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openResetModal() {
       if (!modal) return;
+      modal.classList.add('active');
       modal.style.display = 'flex';
+      modal.style.opacity = '1';
+      modal.style.visibility = 'visible';
+      modal.style.pointerEvents = 'auto';
       if (confirmInput) {
         confirmInput.value = '';
         setTimeout(() => confirmInput.focus(), 100);
@@ -1300,7 +1312,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeResetModal() {
       if (!modal) return;
+      modal.classList.remove('active');
       modal.style.display = 'none';
+      modal.style.opacity = '0';
+      modal.style.visibility = 'hidden';
+      modal.style.pointerEvents = 'none';
       if (confirmInput) confirmInput.value = '';
     }
 

@@ -727,7 +727,7 @@ window.submitAddBranch = function () {
   saveStoresData(stores);
 
   const addModal = document.getElementById('addBranchModal');
-  if (addModal) addModal.classList.remove('active');
+  if (addModal) { addModal.classList.remove('active'); addModal.style.display = 'none'; addModal.style.opacity = '0'; addModal.style.visibility = 'hidden'; addModal.style.pointerEvents = 'none'; }
   const form = document.getElementById('addBranchForm');
   if (form) form.reset();
 

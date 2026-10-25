@@ -2579,22 +2579,29 @@ canvas#usageChart {
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(17, 22, 27, 0.6);
+  background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 100050 !important;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
 }
 
-.admin-modal-backdrop.active {
-  opacity: 1;
-  pointer-events: auto;
+.admin-modal-backdrop.active,
+.admin-modal-backdrop.show {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  display: flex !important;
 }
 
 .admin-modal {
