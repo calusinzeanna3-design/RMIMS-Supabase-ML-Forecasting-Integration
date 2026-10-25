@@ -2,6 +2,22 @@
 // Handles pending approvals, active users directory, add/edit/delete user workflows,
 // dynamic counters, search filtering, and pagination.
 
+import {
+  STORAGE_KEYS,
+  isMockUser,
+  matchesUser,
+  broadcastUserSync,
+  fetchPendingApprovals,
+  fetchRegisteredUsers,
+  fetchBranchStores,
+  approveUserAccount as srvApproveUser,
+  rejectUserAccount as srvRejectUser,
+  updateUserAccount as srvUpdateUser,
+  deleteUserAccount as srvDeleteUser,
+  createUserAccount as srvCreateUser,
+  subscribeToAdminFeed
+} from '../supabase/admin-supabase-service.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   let adminSrv = null;
 
@@ -302,8 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><span class="status-pill status-pending">Pending</span></td>
           <td>
             <div class="action-btn-group">
-              <button type="button" class="btn-approve" onclick="approveUser('${escapeJs(u.id)}')">Approve</button>
-              <button type="button" class="btn-reject" onclick="rejectUser('${escapeJs(u.id)}')">Reject</button>
+              <button type="button" class="btn-approve" data-id="${escapeHtml(u.id)}" data-action="approve" onclick="window.approveUser('${escapeJs(u.id)}'); return false;">Approve</button>
+              <button type="button" class="btn-reject" data-id="${escapeHtml(u.id)}" data-action="reject" onclick="window.rejectUser('${escapeJs(u.id)}'); return false;">Reject</button>
             </div>
           </td>
         </tr>
@@ -585,8 +601,8 @@ document.addEventListener('DOMContentLoaded', () => {
     saveStoredRegisteredUsers(users);
 
     // Persist user account directly to Supabase user_profiles
-    if (adminSrv && typeof adminSrv.createUserAccount === 'function') {
-      adminSrv.createUserAccount(newUserRecord).catch(err => {
+    if (typeof srvCreateUser === 'function') {
+      srvCreateUser(newUserRecord).catch(err => {
         console.warn('[AdminUserManagement] Supabase create user notice:', err.message || err);
       });
     }
@@ -669,8 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
-      await srv.updateUserAccount(updatedUser);
+      await srvUpdateUser(updatedUser);
     } catch (err) {
       console.warn('[AdminUserManagement] Edit user update notice:', err.message || err);
     }
@@ -713,8 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
-      await srv.deleteUserAccount(id, targetEmail, name);
+      await srvDeleteUser(id, targetEmail, name);
     } catch (err) {
       console.warn('[AdminUserManagement] Delete user notice:', err.message || err);
     }
@@ -755,8 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
-      await srv.approveUserAccount(targetPayload);
+      await srvApproveUser(targetPayload);
 
       if (window.showAdminToast) {
         window.showAdminToast(`Account for ${name} approved and synchronized with Supabase (Active).`, 'success');
@@ -789,10 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
-      if (srv && typeof srv.rejectUserAccount === 'function') {
-        await srv.rejectUserAccount(targetPayload);
-      }
+      await srvRejectUser(targetPayload);
     } catch (err) {
       console.warn('[AdminUserManagement] Supabase rejection notice:', err.message || err);
     }
@@ -809,6 +819,34 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cross-component function aliases
   window.approveOverviewAccount = window.approveUser;
   window.rejectOverviewAccount = window.rejectUser;
+
+  // Delegated click handler for pending approval buttons (guarantees clickability)
+  document.addEventListener('click', async (e) => {
+    const approveBtn = e.target.closest('.btn-approve');
+    if (approveBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const row = approveBtn.closest('tr');
+      const param = approveBtn.getAttribute('data-id') || row?.getAttribute('data-id') || row?.id;
+      if (param && typeof window.approveUser === 'function') {
+        await window.approveUser(param);
+      }
+      return;
+    }
+
+    const rejectBtn = e.target.closest('.btn-reject');
+    if (rejectBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const row = rejectBtn.closest('tr');
+      const param = rejectBtn.getAttribute('data-id') || row?.getAttribute('data-id') || row?.id;
+      if (param && typeof window.rejectUser === 'function') {
+        await window.rejectUser(param);
+      }
+      return;
+    }
+  });
+
 
   // Pagination Controls — dynamically build buttons when renderRegisteredUsers runs
   function buildPaginationButtons(total, perPage) {
@@ -991,13 +1029,8 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshCounters();
   populateBranchDropdowns();
 
-  // Asynchronously query Supabase for registered users and pending approvals
-  import('../supabase/admin-supabase-service.js')
-    .then(srv => {
-      adminSrv = srv;
-      return Promise.all([srv.fetchRegisteredUsers(), srv.fetchPendingApprovals()]);
-    })
-    .then(() => {
+  // Query Supabase for registered users and pending approvals
+  Promise.all([fetchRegisteredUsers(), fetchPendingApprovals()]).then(() => {
       renderPendingUsers();
       renderRegisteredUsers();
       refreshCounters();

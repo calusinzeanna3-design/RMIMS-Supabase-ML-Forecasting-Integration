@@ -206,6 +206,37 @@ window.rejectOverviewAccount = async function (userId, statusId, actionsId, user
 window.approveUser = window.approveOverviewAccount;
 window.rejectUser = window.rejectOverviewAccount;
 
+// Delegated click handler for overview pending approval buttons
+document.addEventListener('click', async (e) => {
+  const approveBtn = e.target.closest('.btn-approve');
+  if (approveBtn && !approveBtn.closest('#usersDirectoryTable')) {
+    const row = approveBtn.closest('tr');
+    const param = approveBtn.getAttribute('data-id') || row?.getAttribute('data-id') || row?.id;
+    if (param && typeof window.approveOverviewAccount === 'function') {
+      const statusId = row?.querySelector('.status-pill')?.id || '';
+      const actionsId = row?.querySelector('.action-btn-group')?.id || '';
+      const userName = row?.getAttribute('data-name') || '';
+      e.preventDefault();
+      e.stopPropagation();
+      await window.approveOverviewAccount(param, statusId, actionsId, userName);
+    }
+  }
+  const rejectBtn = e.target.closest('.btn-reject');
+  if (rejectBtn && !rejectBtn.closest('#usersDirectoryTable')) {
+    const row = rejectBtn.closest('tr');
+    const param = rejectBtn.getAttribute('data-id') || row?.getAttribute('data-id') || row?.id;
+    if (param && typeof window.rejectOverviewAccount === 'function') {
+      const statusId = row?.querySelector('.status-pill')?.id || '';
+      const actionsId = row?.querySelector('.action-btn-group')?.id || '';
+      const userName = row?.getAttribute('data-name') || '';
+      e.preventDefault();
+      e.stopPropagation();
+      await window.rejectOverviewAccount(param, statusId, actionsId, userName);
+    }
+  }
+});
+
+
 function renderOverviewPendingApprovals() {
   const tbody = document.getElementById('overviewApprovalTableBody');
   const countBadge = document.getElementById('overviewPendingCount');
