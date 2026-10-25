@@ -708,6 +708,13 @@ export function updateStaffTransaction(refOrId, updatedFields) {
       });
     }
   } catch (e) {}
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.postMessage({ type: 'STAFF_TX_UPDATED', transaction: updatedTx, timestamp: Date.now() });
+      channel.close();
+    }
+  } catch (_) {}
   return { success: true, transaction: updatedTx };
 }
 
@@ -750,6 +757,13 @@ export function deleteStaffTransaction(refOrId) {
       });
     }
   } catch (e) {}
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.postMessage({ type: 'STAFF_TX_DELETED', ref: current.ref || refOrId, timestamp: Date.now() });
+      channel.close();
+    }
+  } catch (_) {}
   return { success: true, transaction: removed };
 }
 

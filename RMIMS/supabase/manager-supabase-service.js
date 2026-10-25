@@ -916,3 +916,111 @@ export async function deleteRawMaterialOnSupabase(idOrCodeOrName) {
 
   return { success: true };
 }
+
+/**
+ * Fetch live stock receipts from Supabase and synchronize with local manager receipts
+ */
+export async function fetchLiveStockReceiptsFromSupabase() {
+  if (!supabase) return JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+
+  try {
+    const { data, error } = await fetchWithTimeout(
+      supabase.from('stock_receipts').select('*').order('receipt_date', { ascending: false }),
+      4000
+    );
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const localReceipts = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+      const map = new Map();
+      localReceipts.forEach(r => {
+        if (r && r.ref) map.set(String(r.ref).toUpperCase(), r);
+      });
+
+      data.forEach(sr => {
+        const key = String(sr.id).toUpperCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: sr.id,
+            ref: sr.id,
+            date: sr.receipt_date,
+            materialId: sr.material_id,
+            materialName: sr.material_name || '',
+            quantity: Number(sr.received_quantity || 0),
+            unit: sr.unit || 'kg',
+            supplier: sr.supplier_name || 'Inward Delivery',
+            recordedBy: 'Store Manager',
+            status: 'Approved',
+            createdAt: sr.created_at
+          });
+        }
+      });
+
+      const updated = Array.from(map.values());
+      localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(updated));
+      return updated;
+    }
+  } catch (err) {
+    console.warn('[ManagerSupabase] Live receipts fetch notice:', err);
+  }
+
+  return JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+}
+
+/**
+ * Delete a stock receipt from Supabase and local storage, reverting stock if applicable
+ */
+export async function deleteStockReceiptOnSupabase(refOrId) {
+  if (!refOrId) return { success: false };
+  const cleanRef = String(refOrId).trim();
+
+  // 1. Delete locally from manager receipts and custom receipts
+  try {
+    let receipts = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+    const targetIdx = receipts.findIndex(r =>
+      (r.ref && r.ref.toLowerCase() === cleanRef.toLowerCase()) ||
+      (r.id && String(r.id).toLowerCase() === cleanRef.toLowerCase())
+    );
+    if (targetIdx !== -1) {
+      const rec = receipts[targetIdx];
+      const qty = parseFloat(rec.quantity || 0);
+      if (qty > 0) {
+        adjustSystemMaterialStock(rec.materialId || rec.materialName || rec.material, -qty);
+      }
+      receipts.splice(targetIdx, 1);
+      localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(receipts));
+    }
+
+    const customKey = 'rmims_custom_receipts';
+    let custom = JSON.parse(localStorage.getItem(customKey) || '[]');
+    custom = custom.filter(c => String(c.id).toLowerCase() !== cleanRef.toLowerCase() && (!c.ref || c.ref.toLowerCase() !== cleanRef.toLowerCase()));
+    localStorage.setItem(customKey, JSON.stringify(custom));
+  } catch (_) {}
+
+  // 2. Delete on Supabase
+  if (supabase) {
+    try {
+      if (cleanRef.length === 36) {
+        await supabase.from('stock_receipts').delete().eq('id', cleanRef);
+      }
+      await supabase.from('stock_receipts').delete().ilike('supplier_name', `%${cleanRef}%`);
+
+      await logManagerActivityToSupabase({
+        action: 'DELETE_STOCK_RECEIPT',
+        entityType: 'stock_receipts',
+        entityId: cleanRef,
+        details: { ref: cleanRef }
+      });
+    } catch (err) {
+      console.warn('[ManagerSupabase] Error deleting stock receipt on Supabase:', err);
+    }
+  }
+
+  // 3. Broadcast sync
+  invalidateForecastCache();
+  broadcastManagerSync({
+    action: 'delete_receipt',
+    ref: cleanRef
+  });
+
+  return { success: true };
+}
+

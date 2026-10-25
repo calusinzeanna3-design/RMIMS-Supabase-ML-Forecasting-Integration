@@ -13,6 +13,10 @@
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
 import {
+  fetchUnifiedInventoryFromSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
+import {
   generateNextReference,
   checkReferenceDuplicate,
   showDuplicateWarningModal,
@@ -409,6 +413,16 @@ document.addEventListener('DOMContentLoaded', () => {
   bindStaffSubmissionActionEvents();
   renderMySubmissions();
 
+  // Live Supabase sync
+  try {
+    fetchUnifiedInventoryFromSupabase().then(() => {
+      rawMaterials = getSystemRawMaterials();
+      populateMaterialSelect();
+      renderMySubmissions();
+      updateBundleReceivePreview();
+    }).catch(() => {});
+  } catch (_) {}
+
   // Cross-tab real-time sync
   const refreshReceiveState = () => {
     rawMaterials = getSystemRawMaterials();
@@ -427,6 +441,16 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleReceivePreview();
   });
+  window.addEventListener('rmims_manager_receipts_updated', refreshReceiveState);
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const syncChannel = new BroadcastChannel('rmims_user_sync');
+      syncChannel.onmessage = () => {
+        refreshReceiveState();
+      };
+    }
+  } catch (_) {}
 });
 
 function initNewReference() {
@@ -703,6 +727,15 @@ function handleConfirmSubmission() {
     supplier: currentReviewData.supplier,
     notes: currentReviewData.notes
   });
+
+  try {
+    broadcastManagerSync({
+      action: 'staff_receive_submitted',
+      ref: currentReviewData.ref,
+      material: currentReviewData.material,
+      quantity: currentReviewData.quantity
+    });
+  } catch (_) {}
 
   const modal = document.getElementById('staffReceiveReviewModal');
   if (modal) {

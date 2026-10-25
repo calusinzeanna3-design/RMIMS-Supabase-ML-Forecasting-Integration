@@ -24,7 +24,13 @@ import {
   updateManagerReceipt,
   deleteManagerReceipt
 } from './rmims-transaction-engine.js';
-import { recordStockReceiptToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
+import {
+  recordStockReceiptToSupabase,
+  fetchUnifiedInventoryFromSupabase,
+  fetchLiveStockReceiptsFromSupabase,
+  deleteStockReceiptOnSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
 
 const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 
@@ -224,6 +230,20 @@ function initManagerReceive() {
   renderKpis();
   renderHistoryTable();
 
+  // Live Supabase Sync
+  try {
+    fetchUnifiedInventoryFromSupabase().then(() => {
+      rawMaterials = getSystemRawMaterials();
+      populateMaterialSelects();
+    }).catch(() => {});
+
+    fetchLiveStockReceiptsFromSupabase().then(() => {
+      loadReceipts();
+      renderKpis();
+      renderHistoryTable();
+    }).catch(() => {});
+  } catch (_) {}
+
   // Listen for storage events to refresh if stock, receipts, or transactions changed elsewhere
   const handleLiveRefresh = () => {
     rawMaterials = getSystemRawMaterials();
@@ -241,6 +261,15 @@ function initManagerReceive() {
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleReceivePreview();
   });
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const syncChannel = new BroadcastChannel('rmims_user_sync');
+      syncChannel.onmessage = () => {
+        handleLiveRefresh();
+      };
+    }
+  } catch (_) {}
 }
 
 if (document.readyState === 'loading') {
@@ -1308,6 +1337,7 @@ function bindReceiptActionEvents() {
     btnConfirmDel.addEventListener('click', () => {
       if (!pendingDeleteReceiptRef) return;
       const ref = pendingDeleteReceiptRef;
+      deleteStockReceiptOnSupabase(ref).catch(() => {});
       const res = deleteManagerReceipt(ref);
       if (res && res.success) {
         closeDelModal();
