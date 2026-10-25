@@ -519,12 +519,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-    /* ==========================================================
-     5. BACKUP & RESTORE MANAGEMENT (ROLE-BASED & COMPLETE)
+      /* ==========================================================
+     5. BACKUP & RESTORE MANAGEMENT (ROLE-BASED & BRANCH-LINKED)
      ========================================================== */
   function initBackupAndRestore() {
     const rolesTbody = document.getElementById('backupRolesTbody');
     const createCompleteBackupBtn = document.getElementById('createCompleteBackupBtn');
+    
+    // Role Backup Modal Elements
+    const roleBackupModal = document.getElementById('roleBackupModal');
+    const btnCloseRoleBackupModal = document.getElementById('btnCloseRoleBackupModal');
+    const btnCancelRoleBackupModal = document.getElementById('btnCancelRoleBackupModal');
+    const btnExecuteRoleBackup = document.getElementById('btnExecuteRoleBackup');
+    const modalBackupRoleSelect = document.getElementById('modalBackupRoleSelect');
+    const modalBackupLocationSelect = document.getElementById('modalBackupLocationSelect');
+    const modalBackupStoreSelect = document.getElementById('modalBackupStoreSelect');
+    const modalScopeBadge = document.getElementById('modalScopeBadge');
+    const modalScopeSummaryText = document.getElementById('modalScopeSummaryText');
+
+    // Restore Elements
     const restoreFileInput = document.getElementById('restoreFileInput');
     const btnSelectRestoreFile = document.getElementById('btnSelectRestoreFile');
     const selectedRestoreFileName = document.getElementById('selectedRestoreFileName');
@@ -532,16 +545,58 @@ document.addEventListener('DOMContentLoaded', () => {
     const restoreRoleBadge = document.getElementById('restoreRoleBadge');
     const restoreDate = document.getElementById('restoreDate');
     const restoreVersion = document.getElementById('restoreVersion');
+    const restoreBranchLoc = document.getElementById('restoreBranchLoc');
+    const restoreBranchStore = document.getElementById('restoreBranchStore');
     const restoreAuthor = document.getElementById('restoreAuthor');
     const restoreCount = document.getElementById('restoreCount');
+    const restoreAutoLinkText = document.getElementById('restoreAutoLinkText');
     const btnCancelRestore = document.getElementById('btnCancelRestore');
     const btnExecuteRestore = document.getElementById('btnExecuteRestore');
 
     let currentRestorePayload = null;
 
-    // Helper: Gather live data metrics per role
+    // Helper: Extract all authentic branch stores and unique locations
+    function getBranchStoreNetwork() {
+      let stores = {};
+      try {
+        const raw = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+        if (raw) stores = JSON.parse(raw);
+      } catch (_) {}
+
+      const storeList = Object.entries(stores).map(([id, st]) => ({
+        id,
+        name: st.name || 'Store Hub',
+        location: st.location || 'Branch',
+        locKey: st.locKey || (st.location ? st.location.toLowerCase().replace(/[^a-z0-9]/g, '') : 'branch'),
+        code: st.code || 'STR'
+      }));
+
+      // Gather unique locations
+      const locSet = new Set();
+      storeList.forEach(s => {
+        if (s.location) locSet.add(s.location.trim());
+      });
+
+      // Also inspect registered users for locations
+      try {
+        const users = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+        users.forEach(u => {
+          const l = (u.branchLoc || u.branch_location || '').trim();
+          if (l) locSet.add(l);
+        });
+      } catch (_) {}
+
+      // Ensure Headquarters is included
+      locSet.add('Headquarters');
+
+      return {
+        locations: Array.from(locSet).sort(),
+        stores: storeList
+      };
+    }
+
+    // Helper: Gather live metrics per role
     function getRoleMetrics() {
-      // 1. Admin data
       let stores = {};
       try { stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}'); } catch (_) {}
       let regUsers = [];
@@ -550,7 +605,6 @@ document.addEventListener('DOMContentLoaded', () => {
       try { alerts = JSON.parse(localStorage.getItem('RMIMS_SYSTEM_ALERTS_V2') || '[]'); } catch (_) {}
       const adminCount = Object.keys(stores).length + regUsers.length + alerts.length;
 
-      // 2. Manager data
       let materials = [];
       try { materials = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]'); } catch (_) {}
       let receipts = [];
@@ -561,14 +615,11 @@ document.addEventListener('DOMContentLoaded', () => {
       try { managerActs = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]'); } catch (_) {}
       const managerCount = materials.length + receipts.length + disbursements.length + managerActs.length;
 
-      // 3. Staff data
       let staffTx = [];
       try { staffTx = JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]'); } catch (_) {}
       let userActs = [];
       try { userActs = JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]'); } catch (_) {}
       const staffCount = staffTx.length + userActs.length;
-
-      const totalCount = adminCount + managerCount + staffCount;
 
       return {
         admin: {
@@ -592,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
           count: staffCount,
           subtext: `${staffTx.length} Submissions, ${userActs.length} Activities`
         },
-        totalCount
+        totalCount: adminCount + managerCount + staffCount
       };
     }
 
@@ -606,36 +657,36 @@ document.addEventListener('DOMContentLoaded', () => {
           key: 'admin',
           name: 'Main Administrator',
           badgeHtml: '<span style="background:#DCFCE7; color:#15803D; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Main Admin</span>',
-          modules: 'System Alerts, User Directory, Branch Stores Network & Settings',
+          modules: 'System Alerts, User Directory, Branch Stores Network &amp; Settings',
           count: metrics.admin.count,
           countSub: metrics.admin.subtext,
-          destination: 'Admin User Management, Branch Stores & System Alerts',
-          btnLabel: 'Export Admin Backup'
+          destination: 'Admin User Management, Branch Stores &amp; System Alerts',
+          btnLabel: 'Configure &amp; Export Backup'
         },
         {
           key: 'manager',
           name: 'Branch Store Manager',
           badgeHtml: '<span style="background:#E0F2FE; color:#0284C7; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Branch Manager</span>',
-          modules: 'Raw Materials Catalog, Stock Receipts, Disbursements & Manager Activities',
+          modules: 'Raw Materials Catalog, Stock Receipts, Disbursements &amp; Manager Activities',
           count: metrics.manager.count,
           countSub: metrics.manager.subtext,
-          destination: 'Manager Inventory, Stock Receive, Disburse & Forecasting',
-          btnLabel: 'Export Manager Backup'
+          destination: 'Manager Inventory, Stock Receive, Disburse &amp; Forecasting',
+          btnLabel: 'Configure &amp; Export Backup'
         },
         {
           key: 'staff',
-          name: 'Staff & Operations Employee',
+          name: 'Staff &amp; Operations Employee',
           badgeHtml: '<span style="background:#FEF3C7; color:#D97706; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Staff &amp; Operations</span>',
-          modules: 'Staff Transaction Submissions & Personal Activity Logs',
+          modules: 'Staff Transaction Submissions &amp; Personal Activity Logs',
           count: metrics.staff.count,
           countSub: metrics.staff.subtext,
-          destination: 'Staff Submission Queues & Operational Activity Roster',
-          btnLabel: 'Export Staff Backup'
+          destination: 'Staff Submission Queues &amp; Operational Activity Roster',
+          btnLabel: 'Configure &amp; Export Backup'
         }
       ];
 
       rolesTbody.innerHTML = roles.map(r => `
-        <tr style="border-bottom: 1px solid var(--line-soft);">
+        <tr class="backup-role-row" data-role="${r.key}" style="border-bottom: 1px solid var(--line-soft); cursor: pointer; transition: background 0.15s ease;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='transparent'">
           <td style="padding: 14px;">
             <div style="display:flex; flex-direction:column; gap:4px;">
               <div>${r.badgeHtml}</div>
@@ -644,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td style="padding: 14px; color:#475569;">
             <div style="font-weight:600; color:var(--ink); font-size:12.5px;">${r.modules}</div>
-            <div style="font-size:11.5px; color:#64748B; margin-top:2px;">Scoped to ${r.name} operational privileges</div>
+            <div style="font-size:11.5px; color:#64748B; margin-top:2px;">Tap to configure branch store and export</div>
           </td>
           <td style="padding: 14px; text-align:center;">
             <span style="display:inline-block; padding:3px 10px; border-radius:6px; background:#F1F5F9; font-weight:700; color:#1E293B; font-size:13px;">
@@ -659,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </td>
           <td style="padding: 14px; text-align:right;">
-            <button type="button" class="btn-outline-sm btn-export-role" data-role="${r.key}" style="padding:7px 14px; font-size:12px; font-weight:600; border-radius:8px; cursor:pointer;">
+            <button type="button" class="btn-outline-sm btn-open-role-backup" data-role="${r.key}" style="padding:7px 14px; font-size:12px; font-weight:600; border-radius:8px; cursor:pointer;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="2" style="margin-right:5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               ${r.btnLabel}
             </button>
@@ -667,12 +718,124 @@ document.addEventListener('DOMContentLoaded', () => {
         </tr>
       `).join('');
 
-      // Bind Export Role Buttons
-      rolesTbody.querySelectorAll('.btn-export-role').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const roleKey = btn.getAttribute('data-role');
-          exportRoleBackup(roleKey);
+      // Clicking anywhere on the row or the button opens the branch backup configuration popup
+      rolesTbody.querySelectorAll('.backup-role-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+          const roleKey = row.getAttribute('data-role');
+          openRoleBackupModal(roleKey);
         });
+      });
+    }
+
+    // Populate Location and Store Dropdowns inside the popup
+    function populateModalDropdowns(selectedLocation = 'ALL') {
+      const net = getBranchStoreNetwork();
+
+      if (modalBackupLocationSelect) {
+        const curLoc = modalBackupLocationSelect.value || selectedLocation;
+        modalBackupLocationSelect.innerHTML = `<option value="ALL">All Branch Locations (Global)</option>` +
+          net.locations.map(loc => `<option value="${loc}" ${loc === curLoc ? 'selected' : ''}>${loc}</option>`).join('');
+      }
+
+      updateStoreDropdown(selectedLocation);
+    }
+
+    // Update Store Dropdown based on selected location
+    function updateStoreDropdown(locFilter = 'ALL') {
+      if (!modalBackupStoreSelect) return;
+      const net = getBranchStoreNetwork();
+
+      let matchingStores = net.stores;
+      if (locFilter && locFilter !== 'ALL') {
+        matchingStores = net.stores.filter(s => s.location && s.location.toLowerCase() === locFilter.toLowerCase());
+      }
+
+      let storeOpts = `<option value="ALL">All Branch Stores in Location</option>`;
+      if (locFilter === 'Headquarters' || locFilter === 'ALL') {
+        storeOpts += `<option value="headquarters-main">Main Administration (Headquarters)</option>`;
+      }
+
+      storeOpts += matchingStores.map(s => `<option value="${s.id}">${s.name} (${s.location})</option>`).join('');
+      modalBackupStoreSelect.innerHTML = storeOpts;
+
+      updateModalScopeSummary();
+    }
+
+    // Update Live Scope Data Summary in the modal
+    function updateModalScopeSummary() {
+      if (!modalScopeSummaryText || !modalScopeBadge) return;
+
+      const roleKey = modalBackupRoleSelect?.value || 'manager';
+      const loc = modalBackupLocationSelect?.value || 'ALL';
+      const storeId = modalBackupStoreSelect?.value || 'ALL';
+      const net = getBranchStoreNetwork();
+
+      let targetStoreName = 'All Branch Stores';
+      if (storeId !== 'ALL') {
+        const found = net.stores.find(s => s.id === storeId);
+        targetStoreName = found ? found.name : (storeId === 'headquarters-main' ? 'Main Administration' : storeId);
+      }
+
+      const roleNames = {
+        admin: 'Main Administrator',
+        manager: 'Branch Store Manager',
+        staff: 'Staff & Operations Employee',
+        all: 'Complete System (All Roles)'
+      };
+
+      modalScopeBadge.textContent = `${roleNames[roleKey] || 'Scoped'}`;
+      modalScopeBadge.style.background = roleKey === 'admin' ? '#DCFCE7' : roleKey === 'manager' ? '#E0F2FE' : roleKey === 'staff' ? '#FEF3C7' : '#EDE9FE';
+      modalScopeBadge.style.color = roleKey === 'admin' ? '#15803D' : roleKey === 'manager' ? '#0284C7' : roleKey === 'staff' ? '#D97706' : '#7C3AED';
+
+      const locText = loc === 'ALL' ? 'All Locations' : loc;
+      modalScopeSummaryText.textContent = `Scoped to: ${roleNames[roleKey]} • ${targetStoreName} (${locText})`;
+    }
+
+    // Open Role Backup Configuration Popup
+    function openRoleBackupModal(roleKey = 'manager') {
+      if (!roleBackupModal) return;
+      if (modalBackupRoleSelect) modalBackupRoleSelect.value = roleKey;
+      populateModalDropdowns('ALL');
+      updateModalScopeSummary();
+      roleBackupModal.style.display = 'flex';
+    }
+
+    function closeRoleBackupModal() {
+      if (!roleBackupModal) return;
+      roleBackupModal.style.display = 'none';
+    }
+
+    // Listeners for Modal Selects
+    if (modalBackupLocationSelect) {
+      modalBackupLocationSelect.addEventListener('change', (e) => {
+        updateStoreDropdown(e.target.value);
+      });
+    }
+
+    if (modalBackupStoreSelect) {
+      modalBackupStoreSelect.addEventListener('change', () => {
+        updateModalScopeSummary();
+      });
+    }
+
+    if (modalBackupRoleSelect) {
+      modalBackupRoleSelect.addEventListener('change', () => {
+        updateModalScopeSummary();
+      });
+    }
+
+    if (btnCloseRoleBackupModal) btnCloseRoleBackupModal.addEventListener('click', closeRoleBackupModal);
+    if (btnCancelRoleBackupModal) btnCancelRoleBackupModal.addEventListener('click', closeRoleBackupModal);
+    if (roleBackupModal) {
+      roleBackupModal.addEventListener('click', (e) => {
+        if (e.target === roleBackupModal) closeRoleBackupModal();
+      });
+    }
+
+    // Top button opens modal for Complete System Backup
+    if (createCompleteBackupBtn) {
+      createCompleteBackupBtn.addEventListener('click', () => {
+        openRoleBackupModal('all');
       });
     }
 
@@ -689,115 +852,116 @@ document.addEventListener('DOMContentLoaded', () => {
       URL.revokeObjectURL(url);
     }
 
-    // Export Specific Role Backup
-    function exportRoleBackup(roleKey) {
-      const metrics = getRoleMetrics();
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const adminEmail = (getStoredAdminUser() || {}).email || 'calusinzeanna3@gmail.com';
+    // Execute Export from Modal
+    if (btnExecuteRoleBackup) {
+      btnExecuteRoleBackup.addEventListener('click', () => {
+        const roleKey = modalBackupRoleSelect?.value || 'manager';
+        const loc = modalBackupLocationSelect?.value || 'ALL';
+        const storeId = modalBackupStoreSelect?.value || 'ALL';
+        const net = getBranchStoreNetwork();
 
-      let snapshot = {
-        app: 'RMSME Raw Materials Inventory Management System',
-        version: '2.0.0',
-        timestamp: new Date().toISOString(),
-        exportedBy: adminEmail,
-        roleTarget: roleKey,
-        data: {}
-      };
+        let storeName = 'All Stores';
+        if (storeId !== 'ALL') {
+          const found = net.stores.find(s => s.id === storeId);
+          storeName = found ? found.name : (storeId === 'headquarters-main' ? 'Main Administration' : storeId);
+        }
 
-      if (roleKey === 'admin') {
-        snapshot.roleName = 'Main Administrator';
-        snapshot.data = {
-          branchStores: metrics.admin.stores,
-          registeredUsers: metrics.admin.regUsers,
-          approvedUsers: JSON.parse(localStorage.getItem('rmims_approved_users') || '[]'),
-          pendingUsers: JSON.parse(localStorage.getItem('rmims_pending_users') || '[]'),
-          systemAlerts: metrics.admin.alerts,
-          systemSettings: JSON.parse(localStorage.getItem('rmims_admin_settings') || '{}')
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const adminEmail = (getStoredAdminUser() || {}).email || 'calusinzeanna3@gmail.com';
+
+        const roleNames = {
+          admin: 'Main Administrator',
+          manager: 'Branch Store Manager',
+          staff: 'Staff & Operations Employee',
+          all: 'Complete System (All Roles)'
         };
-        triggerDownload(snapshot, `RMSME_Backup_Admin_${dateStr}.json`);
-      } else if (roleKey === 'manager') {
-        snapshot.roleName = 'Branch Store Manager';
-        snapshot.data = {
-          rawMaterials: metrics.manager.materials,
-          receipts: metrics.manager.receipts,
-          disbursements: metrics.manager.disbursements,
-          managerActivities: metrics.manager.managerActs
+
+        const snapshot = {
+          app: 'RMSME Raw Materials Inventory Management System',
+          version: '2.0.0',
+          timestamp: new Date().toISOString(),
+          exportedBy: adminEmail,
+          scope: {
+            role: roleKey,
+            roleName: roleNames[roleKey] || 'System Scope',
+            branchLocation: loc,
+            branchStoreId: storeId,
+            branchStoreName: storeName
+          },
+          data: {}
         };
-        triggerDownload(snapshot, `RMSME_Backup_Manager_${dateStr}.json`);
-      } else if (roleKey === 'staff') {
-        snapshot.roleName = 'Staff & Operations Employee';
-        snapshot.data = {
-          staffTransactions: metrics.staff.staffTx,
-          userActivityHistory: metrics.staff.userActs
-        };
-        triggerDownload(snapshot, `RMSME_Backup_Staff_${dateStr}.json`);
-      }
 
-      if (window.showAdminToast) {
-        window.showAdminToast(`Exported backup snapshot for ${snapshot.roleName}.`, 'success');
-      }
-    }
-
-    // Export Complete System Backup
-    if (createCompleteBackupBtn) {
-      createCompleteBackupBtn.addEventListener('click', () => {
-        createCompleteBackupBtn.disabled = true;
-        const origHtml = createCompleteBackupBtn.innerHTML;
-        createCompleteBackupBtn.innerHTML = `
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite; margin-right: 6px;">
-            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
-            <path d="M12 2a10 10 0 0 1 10 10"/>
-          </svg>
-          Generating Complete Archive...
-        `;
-
-        setTimeout(() => {
-          try {
-            const metrics = getRoleMetrics();
-            const dateStr = new Date().toISOString().slice(0, 10);
-            const snapshot = {
-              app: 'RMSME Raw Materials Inventory Management System',
-              version: '2.0.0',
-              timestamp: new Date().toISOString(),
-              exportedBy: (getStoredAdminUser() || {}).email || 'calusinzeanna3@gmail.com',
-              roleTarget: 'all',
-              roleName: 'Complete System (All Roles Unified)',
-              data: {
-                admin: {
-                  branchStores: metrics.admin.stores,
-                  registeredUsers: metrics.admin.regUsers,
-                  approvedUsers: JSON.parse(localStorage.getItem('rmims_approved_users') || '[]'),
-                  pendingUsers: JSON.parse(localStorage.getItem('rmims_pending_users') || '[]'),
-                  systemAlerts: metrics.admin.alerts,
-                  systemSettings: JSON.parse(localStorage.getItem('rmims_admin_settings') || '{}')
-                },
-                manager: {
-                  rawMaterials: metrics.manager.materials,
-                  receipts: metrics.manager.receipts,
-                  disbursements: metrics.manager.disbursements,
-                  managerActivities: metrics.manager.managerActs
-                },
-                staff: {
-                  staffTransactions: metrics.staff.staffTx,
-                  userActivityHistory: metrics.staff.userActs
-                }
-              }
-            };
-
-            triggerDownload(snapshot, `RMSME_Complete_Backup_${dateStr}.json`);
-            if (window.showAdminToast) {
-              window.showAdminToast('Complete system backup archive downloaded successfully.', 'success');
-            }
-          } catch (err) {
-            console.error('Backup error:', err);
-            if (window.showAdminToast) {
-              window.showAdminToast('Failed to export system backup.', 'danger');
-            }
-          } finally {
-            createCompleteBackupBtn.disabled = false;
-            createCompleteBackupBtn.innerHTML = origHtml;
+        // Filter data based on selected location and store
+        const isStoreMatch = (itemBranch, itemLoc) => {
+          if (storeId !== 'ALL' && itemBranch && !itemBranch.toLowerCase().includes(storeName.toLowerCase()) && !storeName.toLowerCase().includes(itemBranch.toLowerCase())) {
+            return false;
           }
-        }, 600);
+          if (loc !== 'ALL' && itemLoc && !itemLoc.toLowerCase().includes(loc.toLowerCase()) && !loc.toLowerCase().includes(itemLoc.toLowerCase())) {
+            return false;
+          }
+          return true;
+        };
+
+        // 1. Gather Admin Scoped Data
+        if (roleKey === 'admin' || roleKey === 'all') {
+          const allStores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
+          const filteredStores = {};
+          Object.entries(allStores).forEach(([id, st]) => {
+            if (isStoreMatch(st.name, st.location)) filteredStores[id] = st;
+          });
+
+          const regUsers = (JSON.parse(localStorage.getItem('rmims_registered_users') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
+          const appUsers = (JSON.parse(localStorage.getItem('rmims_approved_users') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
+          const pendUsers = (JSON.parse(localStorage.getItem('rmims_pending_users') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
+          const alerts = (JSON.parse(localStorage.getItem('RMIMS_SYSTEM_ALERTS_V2') || '[]')).filter(a => isStoreMatch(a.branchName, a.branchLocation));
+
+          snapshot.data.admin = {
+            branchStores: filteredStores,
+            registeredUsers: regUsers,
+            approvedUsers: appUsers,
+            pendingUsers: pendUsers,
+            systemAlerts: alerts,
+            systemSettings: JSON.parse(localStorage.getItem('rmims_admin_settings') || '{}')
+          };
+        }
+
+        // 2. Gather Manager Scoped Data
+        if (roleKey === 'manager' || roleKey === 'all') {
+          const rawMaterials = (JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]')).filter(m => isStoreMatch(m.branch || m.branchName, m.location || m.branchLocation));
+          const receipts = (JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]')).filter(r => isStoreMatch(r.branch || r.branchName, r.branchLocation || r.location));
+          const disbursements = (JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]')).filter(d => isStoreMatch(d.branch || d.branchName, d.branchLocation || d.location));
+          const managerActivities = (JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
+
+          snapshot.data.manager = {
+            rawMaterials,
+            receipts,
+            disbursements,
+            managerActivities
+          };
+        }
+
+        // 3. Gather Staff Scoped Data
+        if (roleKey === 'staff' || roleKey === 'all') {
+          const staffTx = (JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.branchLoc || s.location));
+          const userActivityHistory = (JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
+
+          snapshot.data.staff = {
+            staffTransactions: staffTx,
+            userActivityHistory
+          };
+        }
+
+        // Generate Filename
+        const cleanLoc = loc.replace(/[^a-zA-Z0-9]/g, '');
+        const cleanStore = storeName.replace(/[^a-zA-Z0-9]/g, '');
+        const filename = `RMSME_Backup_${roleKey.toUpperCase()}_${cleanLoc}_${cleanStore}_${dateStr}.json`;
+
+        triggerDownload(snapshot, filename);
+        closeRoleBackupModal();
+
+        if (window.showAdminToast) {
+          window.showAdminToast(`Exported backup snapshot for ${snapshot.scope.roleName} linked to ${storeName} (${loc}).`, 'success');
+        }
       });
     }
 
@@ -822,44 +986,52 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             currentRestorePayload = parsed;
-            const role = (parsed.roleTarget || 'all').toLowerCase();
-            let roleBadgeText = parsed.roleName || 'Complete System Snapshot';
+            const scope = parsed.scope || {};
+            const role = (scope.role || parsed.roleTarget || 'all').toLowerCase();
+            const roleName = scope.roleName || parsed.roleName || 'Complete System Snapshot';
+            const branchLoc = scope.branchLocation || 'All Locations';
+            const branchStore = scope.branchStoreName || 'All Branch Stores';
+
             let badgeBg = '#EDE9FE';
             let badgeColor = '#7C3AED';
-
             if (role === 'admin') {
-              roleBadgeText = 'Main Administrator Data Package';
               badgeBg = '#DCFCE7';
               badgeColor = '#15803D';
             } else if (role === 'manager') {
-              roleBadgeText = 'Branch Store Manager Data Package';
               badgeBg = '#E0F2FE';
               badgeColor = '#0284C7';
             } else if (role === 'staff') {
-              roleBadgeText = 'Staff & Operations Data Package';
               badgeBg = '#FEF3C7';
               badgeColor = '#D97706';
             }
 
             if (restoreRoleBadge) {
-              restoreRoleBadge.textContent = roleBadgeText;
+              restoreRoleBadge.textContent = roleName;
               restoreRoleBadge.style.background = badgeBg;
               restoreRoleBadge.style.color = badgeColor;
             }
 
             if (restoreDate) restoreDate.textContent = parsed.timestamp ? new Date(parsed.timestamp).toLocaleString() : 'N/A';
             if (restoreVersion) restoreVersion.textContent = parsed.version || 'v2.0.0';
+            if (restoreBranchLoc) restoreBranchLoc.textContent = branchLoc;
+            if (restoreBranchStore) restoreBranchStore.textContent = branchStore;
             if (restoreAuthor) restoreAuthor.textContent = parsed.exportedBy || 'Administrator';
 
             // Calculate payload item count
             let count = 0;
-            if (parsed.data) {
-              Object.values(parsed.data).forEach(val => {
+            const countItems = (obj) => {
+              if (!obj || typeof obj !== 'object') return;
+              Object.values(obj).forEach(val => {
                 if (Array.isArray(val)) count += val.length;
-                else if (val && typeof val === 'object') count += Object.keys(val).length;
+                else if (val && typeof val === 'object') countItems(val);
               });
-            }
+            };
+            countItems(parsed.data);
             if (restoreCount) restoreCount.textContent = `${count} Records Identified`;
+
+            if (restoreAutoLinkText) {
+              restoreAutoLinkText.textContent = `Auto-linking enabled: Data will be restored and linked directly to ${branchStore} (${branchLoc}) under ${roleName}.`;
+            }
 
             if (restorePreviewCard) restorePreviewCard.style.display = 'block';
           } catch (err) {
@@ -886,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Execute Restore Routing
+    // Execute Restore Routing and Automatic Branch/Role Linking
     if (btnExecuteRestore) {
       btnExecuteRestore.addEventListener('click', () => {
         if (!currentRestorePayload || !currentRestorePayload.data) {
@@ -894,15 +1066,22 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const role = (currentRestorePayload.roleTarget || 'all').toLowerCase();
-        const roleName = currentRestorePayload.roleName || (role === 'admin' ? 'Administrator' : role === 'manager' ? 'Branch Manager' : role === 'staff' ? 'Staff' : 'Complete System');
+        const scope = currentRestorePayload.scope || {};
+        const role = (scope.role || currentRestorePayload.roleTarget || 'all').toLowerCase();
+        const roleName = scope.roleName || (role === 'admin' ? 'Administrator' : role === 'manager' ? 'Branch Manager' : role === 'staff' ? 'Staff' : 'Complete System');
+        const targetStore = scope.branchStoreName || '';
+        const targetLoc = scope.branchLocation || '';
+        const isSpecificStore = targetStore && targetStore !== 'All Stores' && !targetStore.startsWith('All Branch Stores');
 
-        if (!confirm(`Are you sure you want to restore this snapshot?\n\nData will be applied and routed directly to the ${roleName} modules.`)) {
+        if (!confirm(`Confirm Restore & Automatic Linking:\n\nThis snapshot will be applied and linked directly to:` +
+          `\n• Target Role: ${roleName}` +
+          `\n• Branch Location: ${targetLoc || 'Global'}` +
+          `\n• Branch Store Hub: ${targetStore || 'All Stores'}\n\nProceed?`)) {
           return;
         }
 
         btnExecuteRestore.disabled = true;
-        btnExecuteRestore.textContent = 'Restoring Data...';
+        btnExecuteRestore.textContent = 'Restoring & Linking Data...';
 
         setTimeout(() => {
           try {
@@ -913,52 +1092,103 @@ document.addEventListener('DOMContentLoaded', () => {
             if (role === 'admin' || role === 'all' || data.admin) {
               const adminData = data.admin || data;
               if (adminData.branchStores && typeof adminData.branchStores === 'object') {
-                localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(adminData.branchStores));
+                const curStores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
+                Object.assign(curStores, adminData.branchStores);
+                localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(curStores));
                 restoredCount += Object.keys(adminData.branchStores).length;
               }
               if (Array.isArray(adminData.registeredUsers)) {
-                localStorage.setItem('rmims_registered_users', JSON.stringify(adminData.registeredUsers));
+                const curReg = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+                adminData.registeredUsers.forEach(u => {
+                  if (isSpecificStore) {
+                    u.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') u.branchLoc = targetLoc;
+                  }
+                  const idx = curReg.findIndex(c => (c.email && c.email.toLowerCase() === (u.email || '').toLowerCase()) || (c.id && c.id === u.id));
+                  if (idx >= 0) curReg[idx] = u;
+                  else curReg.push(u);
+                });
+                localStorage.setItem('rmims_registered_users', JSON.stringify(curReg));
                 restoredCount += adminData.registeredUsers.length;
               }
-              if (Array.isArray(adminData.approvedUsers)) {
-                localStorage.setItem('rmims_approved_users', JSON.stringify(adminData.approvedUsers));
-              }
-              if (Array.isArray(adminData.pendingUsers)) {
-                localStorage.setItem('rmims_pending_users', JSON.stringify(adminData.pendingUsers));
-              }
               if (Array.isArray(adminData.systemAlerts)) {
-                localStorage.setItem('RMIMS_SYSTEM_ALERTS_V2', JSON.stringify(adminData.systemAlerts));
+                const curAlerts = JSON.parse(localStorage.getItem('RMIMS_SYSTEM_ALERTS_V2') || '[]');
+                adminData.systemAlerts.forEach(a => {
+                  if (isSpecificStore) {
+                    a.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') a.branchLocation = targetLoc;
+                  }
+                  if (!curAlerts.some(c => c.id === a.id)) curAlerts.push(a);
+                });
+                localStorage.setItem('RMIMS_SYSTEM_ALERTS_V2', JSON.stringify(curAlerts));
                 restoredCount += adminData.systemAlerts.length;
-              }
-              if (adminData.systemSettings && typeof adminData.systemSettings === 'object') {
-                localStorage.setItem('rmims_admin_settings', JSON.stringify(adminData.systemSettings));
               }
 
               window.dispatchEvent(new Event('rmims_stores_updated'));
               window.dispatchEvent(new Event('rmims_registered_users_updated'));
-              window.dispatchEvent(new Event('rmims_pending_users_updated'));
               window.dispatchEvent(new Event('rmims:alerts-updated'));
             }
 
-            // Route 2: Branch Manager Data
+            // Route 2: Branch Manager Data (linked automatically to the target branch store)
             if (role === 'manager' || role === 'all' || data.manager || data.materials) {
               const mgrData = data.manager || data;
               if (Array.isArray(mgrData.rawMaterials || mgrData.materials)) {
                 const mats = mgrData.rawMaterials || mgrData.materials;
-                localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(mats));
+                const curMats = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
+                mats.forEach(m => {
+                  if (isSpecificStore) m.branch = targetStore;
+                  const idx = curMats.findIndex(c => (c.id && c.id === m.id) || (c.name && c.name.toLowerCase() === (m.name || '').toLowerCase()));
+                  if (idx >= 0) curMats[idx] = m;
+                  else curMats.push(m);
+                });
+                localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(curMats));
                 restoredCount += mats.length;
               }
+
               if (Array.isArray(mgrData.receipts)) {
-                localStorage.setItem('rmims_manager_receipts', JSON.stringify(mgrData.receipts));
+                const curRec = JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]');
+                mgrData.receipts.forEach(r => {
+                  if (isSpecificStore) {
+                    r.branch = targetStore;
+                    r.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') r.branchLocation = targetLoc;
+                  }
+                  const idx = curRec.findIndex(c => c.refNo && c.refNo === r.refNo);
+                  if (idx >= 0) curRec[idx] = r;
+                  else curRec.push(r);
+                });
+                localStorage.setItem('rmims_manager_receipts', JSON.stringify(curRec));
                 restoredCount += mgrData.receipts.length;
               }
+
               if (Array.isArray(mgrData.disbursements)) {
-                localStorage.setItem('rmims_manager_disbursements', JSON.stringify(mgrData.disbursements));
+                const curDisb = JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]');
+                mgrData.disbursements.forEach(d => {
+                  if (isSpecificStore) {
+                    d.branch = targetStore;
+                    d.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') d.branchLocation = targetLoc;
+                  }
+                  const idx = curDisb.findIndex(c => c.refNo && c.refNo === d.refNo);
+                  if (idx >= 0) curDisb[idx] = d;
+                  else curDisb.push(d);
+                });
+                localStorage.setItem('rmims_manager_disbursements', JSON.stringify(curDisb));
                 restoredCount += mgrData.disbursements.length;
               }
+
               if (Array.isArray(mgrData.managerActivities || mgrData.activityLogs)) {
                 const acts = mgrData.managerActivities || mgrData.activityLogs;
-                localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
+                const curActs = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
+                acts.forEach(a => {
+                  if (isSpecificStore) {
+                    a.branch = targetStore;
+                    a.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') a.branchLocation = targetLoc;
+                  }
+                  curActs.unshift(a);
+                });
+                localStorage.setItem('rmims_manager_activities', JSON.stringify(curActs.slice(0, 500)));
                 restoredCount += acts.length;
               }
 
@@ -966,45 +1196,64 @@ document.addEventListener('DOMContentLoaded', () => {
               window.dispatchEvent(new Event('rmims_disbursements_updated'));
             }
 
-            // Route 3: Staff & Operations Data
+            // Route 3: Staff & Operations Data (linked automatically to the target branch store)
             if (role === 'staff' || role === 'all' || data.staff) {
               const stfData = data.staff || data;
               if (Array.isArray(stfData.staffTransactions)) {
-                localStorage.setItem('rmims_staff_transactions', JSON.stringify(stfData.staffTransactions));
+                const curTx = JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]');
+                stfData.staffTransactions.forEach(s => {
+                  if (isSpecificStore) {
+                    s.branch = targetStore;
+                    s.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') s.branchLoc = targetLoc;
+                  }
+                  curTx.unshift(s);
+                });
+                localStorage.setItem('rmims_staff_transactions', JSON.stringify(curTx.slice(0, 500)));
                 restoredCount += stfData.staffTransactions.length;
               }
+
               if (Array.isArray(stfData.userActivityHistory)) {
-                localStorage.setItem('rmims_user_activity_history', JSON.stringify(stfData.userActivityHistory));
+                const curHist = JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]');
+                stfData.userActivityHistory.forEach(h => {
+                  if (isSpecificStore) {
+                    h.branch = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') h.branchLocation = targetLoc;
+                  }
+                  curHist.unshift(h);
+                });
+                localStorage.setItem('rmims_user_activity_history', JSON.stringify(curHist.slice(0, 500)));
                 restoredCount += stfData.userActivityHistory.length;
               }
             }
 
             window.dispatchEvent(new Event('storage'));
 
-            // Log Admin Activity
+            // Log Admin Activity in Supabase
             import('../supabase/admin-supabase-service.js')
               .then(srv => {
                 if (srv.logAdminActivity) {
                   srv.logAdminActivity({
-                    action: 'Restored Database Backup',
+                    action: 'Restored & Linked Role Backup',
                     module: 'Settings',
-                    details: `Restored ${restoredCount} records from ${roleName} snapshot archive.`
+                    details: `Restored ${restoredCount} records automatically linked to ${targetStore || 'Global'} (${targetLoc || 'All'}) for ${roleName}.`
                   });
                 }
               })
               .catch(() => {});
 
             if (window.showAdminToast) {
-              window.showAdminToast(`Restored ${restoredCount} records successfully to ${roleName} modules.`, 'success');
+              const linkMsg = isSpecificStore ? ` and automatically linked to ${targetStore} (${targetLoc})` : '';
+              window.showAdminToast(`Restored ${restoredCount} records successfully${linkMsg} for ${roleName}.`, 'success');
             }
 
-            // Reset file input & card
+            // Reset file input & preview
             if (restoreFileInput) restoreFileInput.value = '';
             if (selectedRestoreFileName) selectedRestoreFileName.textContent = 'No file chosen';
             if (restorePreviewCard) restorePreviewCard.style.display = 'none';
             currentRestorePayload = null;
 
-            // Refresh table live record counts
+            // Refresh table live metrics
             renderBackupRolesTable();
           } catch (restoreErr) {
             console.error('Execution error during restore:', restoreErr);

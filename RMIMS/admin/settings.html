@@ -565,8 +565,14 @@
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 12px; color: #475569;">
                           <div><span style="color:#94A3B8;">Export Date:</span> <strong id="restoreDate" style="color:var(--ink);">-</strong></div>
                           <div><span style="color:#94A3B8;">Source Version:</span> <strong id="restoreVersion" style="color:var(--ink);">-</strong></div>
+                          <div><span style="color:#94A3B8;">Target Location:</span> <strong id="restoreBranchLoc" style="color:var(--ink);">-</strong></div>
+                          <div><span style="color:#94A3B8;">Target Branch Store:</span> <strong id="restoreBranchStore" style="color:var(--ink);">-</strong></div>
                           <div><span style="color:#94A3B8;">Exported By:</span> <strong id="restoreAuthor" style="color:var(--ink);">-</strong></div>
                           <div><span style="color:#94A3B8;">Payload Size:</span> <strong id="restoreCount" style="color:var(--ink);">-</strong></div>
+                        </div>
+                        <div id="restoreAutoLinkBanner" style="margin-top: 10px; padding: 8px 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; font-size: 12px; color: #166534; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span id="restoreAutoLinkText">Auto-linking enabled: Data will be routed directly to this branch store and role.</span>
                         </div>
                         <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px;">
                           <button type="button" class="btn-outline-sm" id="btnCancelRestore" style="padding: 7px 14px;">Cancel</button>
@@ -695,6 +701,90 @@
         </div>
 
       </main>
+    </div>
+  </div>
+
+    <!-- ROLE & BRANCH BACKUP CONFIGURATION MODAL -->
+  <div class="admin-modal-backdrop" id="roleBackupModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: #FFFFFF; border-radius: 16px; width: 92%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2); overflow: hidden; border: 1.5px solid var(--line-soft);">
+      <div style="padding: 18px 22px; background: #FAF5FF; border-bottom: 1px solid #F3E8FF; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: #EDE9FE; color: #7C3AED; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #581C87;">Configure Role &amp; Branch Backup</h3>
+            <span style="font-size: 12px; color: #7E22CE;">Choose target role, branch location, and store hub to export</span>
+          </div>
+        </div>
+        <button type="button" id="btnCloseRoleBackupModal" style="background: none; border: none; font-size: 22px; color: #94A3B8; cursor: pointer; padding: 4px;">&times;</button>
+      </div>
+
+      <div style="padding: 20px 24px;">
+        <!-- Option 1: Select Role -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            Target Role to Backup
+          </label>
+          <select id="modalBackupRoleSelect" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid #CBD5E1; border-radius: 8px; font-size: 13.5px; background: #FFFFFF; font-weight: 600; color: #1E293B; outline: none;">
+            <option value="admin">Main Administrator (System Alerts, Users, Branches, Settings)</option>
+            <option value="manager">Branch Store Manager (Materials, Receipts, Disbursements, Forecasts)</option>
+            <option value="staff">Staff &amp; Operations Employee (Submissions &amp; Activity Logs)</option>
+            <option value="all">All Roles Unified (Complete Multi-Role System Archive)</option>
+          </select>
+        </div>
+
+        <!-- Option 2: Select Branch Location / Municipality -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            Branch Location / Municipality
+          </label>
+          <select id="modalBackupLocationSelect" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid #CBD5E1; border-radius: 8px; font-size: 13.5px; background: #FFFFFF; font-weight: 600; color: #1E293B; outline: none;">
+            <option value="ALL">All Branch Locations (Global)</option>
+          </select>
+        </div>
+
+        <!-- Option 3: Select Specific Branch Store -->
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            Branch Store Hub
+          </label>
+          <select id="modalBackupStoreSelect" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid #CBD5E1; border-radius: 8px; font-size: 13.5px; background: #FFFFFF; font-weight: 600; color: #1E293B; outline: none;">
+            <option value="ALL">All Branch Stores in Location</option>
+          </select>
+        </div>
+
+        <!-- Live Scope Data Summary Inset -->
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-size: 11.5px; font-weight: 700; color: #64748B; text-transform: uppercase;">Export Scope Summary</span>
+            <span id="modalScopeBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #EDE9FE; color: #7C3AED; font-weight: 700;">Manager Scope</span>
+          </div>
+          <div id="modalScopeSummaryText" style="font-size: 13px; color: var(--ink); font-weight: 600;">
+            Calculating targeted records...
+          </div>
+          <div style="font-size: 11.5px; color: #64748B; margin-top: 4px;">
+            Upon import, this backup will automatically link and restore into this exact branch store and role.
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" id="btnCancelRoleBackupModal" style="padding: 9px 18px; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">Cancel</button>
+          <button type="button" id="btnExecuteRoleBackup" style="padding: 9px 20px; background: #7C3AED; color: #FFFFFF; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Generate &amp; Download Backup</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
