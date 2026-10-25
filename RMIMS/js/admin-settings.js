@@ -595,53 +595,80 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // Helper: Gather live metrics per role
+    // Helper: Gather live metrics per role across ALL datasets
     function getRoleMetrics() {
+      // 1. Admin Full Datasets
       let stores = {};
       try { stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}'); } catch (_) {}
       let regUsers = [];
       try { regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]'); } catch (_) {}
+      let pendUsers = [];
+      try { pendUsers = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]'); } catch (_) {}
       let alerts = [];
       try { alerts = JSON.parse(localStorage.getItem('RMIMS_SYSTEM_ALERTS_V2') || '[]'); } catch (_) {}
-      const adminCount = Object.keys(stores).length + regUsers.length + alerts.length;
+      let adminLogs = [];
+      try { adminLogs = JSON.parse(localStorage.getItem('rmims_admin_audit_logs') || '[]'); } catch (_) {}
+      const adminCount = Object.keys(stores).length + regUsers.length + pendUsers.length + alerts.length + adminLogs.length;
 
+      // 2. Manager Full Datasets (ALL data: materials, stock, products, receipts, disbursements, forecasts, reports, activities)
       let materials = [];
       try { materials = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]'); } catch (_) {}
       let receipts = [];
       try { receipts = JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]'); } catch (_) {}
       let disbursements = [];
       try { disbursements = JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]'); } catch (_) {}
+      let products = [];
+      try { products = JSON.parse(localStorage.getItem('rmims_finished_products') || '[]'); } catch (_) {}
       let managerActs = [];
       try { managerActs = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]'); } catch (_) {}
-      const managerCount = materials.length + receipts.length + disbursements.length + managerActs.length;
+      let forecasts = [];
+      try { forecasts = Object.keys(JSON.parse(localStorage.getItem('rmims_forecast_cache') || '{}')); } catch (_) {}
+      let reports = [];
+      try { reports = JSON.parse(localStorage.getItem('rmims_saved_reports') || '[]'); } catch (_) {}
+      const managerCount = materials.length + receipts.length + disbursements.length + products.length + managerActs.length + forecasts.length + reports.length;
 
+      // 3. Staff Full Datasets (ALL data: transactions, submissions, drafts, activity logs)
       let staffTx = [];
       try { staffTx = JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]'); } catch (_) {}
+      let staffSubs = [];
+      try { staffSubs = JSON.parse(localStorage.getItem('rmims_staff_submissions') || '[]'); } catch (_) {}
+      let draftRec = [];
+      try { draftRec = JSON.parse(localStorage.getItem('rmims_staff_draft_receipts') || '[]'); } catch (_) {}
+      let draftDisb = [];
+      try { draftDisb = JSON.parse(localStorage.getItem('rmims_staff_draft_disbursements') || '[]'); } catch (_) {}
       let userActs = [];
       try { userActs = JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]'); } catch (_) {}
-      const staffCount = staffTx.length + userActs.length;
+      const staffCount = staffTx.length + staffSubs.length + draftRec.length + draftDisb.length + userActs.length;
 
       return {
         admin: {
           stores,
           regUsers,
+          pendUsers,
           alerts,
+          adminLogs,
           count: adminCount,
-          subtext: `${Object.keys(stores).length} Stores, ${regUsers.length} Users, ${alerts.length} Alerts`
+          subtext: `${Object.keys(stores).length} Stores, ${regUsers.length} Users, ${pendUsers.length} Pending, ${alerts.length} Alerts`
         },
         manager: {
           materials,
           receipts,
           disbursements,
+          products,
           managerActs,
+          forecasts,
+          reports,
           count: managerCount,
-          subtext: `${receipts.length} Receipts, ${disbursements.length} Disbursements, ${materials.length} Raw Materials`
+          subtext: `${materials.length} Materials, ${receipts.length} Receipts, ${disbursements.length} Disbursements, ${products.length} Products, ${forecasts.length} Forecasts, ${managerActs.length} Logs`
         },
         staff: {
           staffTx,
+          staffSubs,
+          draftRec,
+          draftDisb,
           userActs,
           count: staffCount,
-          subtext: `${staffTx.length} Submissions, ${userActs.length} Activities`
+          subtext: `${staffTx.length} Transactions, ${staffSubs.length} Submissions, ${draftRec.length + draftDisb.length} Drafts, ${userActs.length} Logs`
         },
         totalCount: adminCount + managerCount + staffCount
       };
@@ -654,34 +681,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const roles = [
         {
-          key: 'admin',
-          name: 'Main Administrator',
-          badgeHtml: '<span style="background:#DCFCE7; color:#15803D; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Main Admin</span>',
-          modules: 'System Alerts, User Directory, Branch Stores Network &amp; Settings',
-          count: metrics.admin.count,
-          countSub: metrics.admin.subtext,
-          destination: 'Admin User Management, Branch Stores &amp; System Alerts',
-          btnLabel: 'Configure &amp; Export Backup'
-        },
-        {
           key: 'manager',
           name: 'Branch Store Manager',
           badgeHtml: '<span style="background:#E0F2FE; color:#0284C7; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Branch Manager</span>',
-          modules: 'Raw Materials Catalog, Stock Receipts, Disbursements &amp; Manager Activities',
+          modules: 'All Manager Data: Raw Materials Catalog, Stock Inflows &amp; Receipts, Disbursements, Finished Products, AI Forecasting Models, Saved Reports &amp; Manager Operational Logs',
           count: metrics.manager.count,
           countSub: metrics.manager.subtext,
-          destination: 'Manager Inventory, Stock Receive, Disburse &amp; Forecasting',
-          btnLabel: 'Configure &amp; Export Backup'
+          destination: 'Manager Inventory, Stock Receive, Disburse, Forecasting &amp; Reports',
+          btnLabel: 'Export All Manager Data'
         },
         {
           key: 'staff',
           name: 'Staff &amp; Operations Employee',
           badgeHtml: '<span style="background:#FEF3C7; color:#D97706; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Staff &amp; Operations</span>',
-          modules: 'Staff Transaction Submissions &amp; Personal Activity Logs',
+          modules: 'All Staff Data: Transaction Submissions, Inflow/Outflow Verification Requests, Draft Receipts &amp; Disbursements, and Staff Operational Activity Logs',
           count: metrics.staff.count,
           countSub: metrics.staff.subtext,
           destination: 'Staff Submission Queues &amp; Operational Activity Roster',
-          btnLabel: 'Configure &amp; Export Backup'
+          btnLabel: 'Export All Staff Data'
+        },
+        {
+          key: 'admin',
+          name: 'Main Administrator',
+          badgeHtml: '<span style="background:#DCFCE7; color:#15803D; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Main Admin</span>',
+          modules: 'All Admin Data: Registered &amp; Approved Users, Pending Account Validations, Branch Stores Network, System Alerts, Diagnostic Logs &amp; Global System Settings',
+          count: metrics.admin.count,
+          countSub: metrics.admin.subtext,
+          destination: 'Admin User Management, Branch Stores, System Alerts &amp; Settings',
+          btnLabel: 'Export All Admin Data'
         }
       ];
 
@@ -777,18 +804,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const roleNames = {
-        admin: 'Main Administrator',
-        manager: 'Branch Store Manager',
-        staff: 'Staff & Operations Employee',
-        all: 'Complete System (All Roles)'
+        manager: 'Branch Store Manager (All Data: Materials, Stock, Receipts, Disbursements, Forecasts, Reports & Logs)',
+        staff: 'Staff & Operations Employee (All Data: Submissions, Drafts & Activity Logs)',
+        admin: 'Main Administrator (All Data: Users, Branches, Alerts, Settings & Audit Logs)',
+        all: 'Complete System (All Roles Unified: Full Database & All Data)'
       };
 
-      modalScopeBadge.textContent = `${roleNames[roleKey] || 'Scoped'}`;
+      const roleBadges = {
+        manager: 'All Manager Data',
+        staff: 'All Staff Data',
+        admin: 'All Admin Data',
+        all: 'All Roles Unified'
+      };
+
+      modalScopeBadge.textContent = `${roleBadges[roleKey] || 'All Role Data'}`;
       modalScopeBadge.style.background = roleKey === 'admin' ? '#DCFCE7' : roleKey === 'manager' ? '#E0F2FE' : roleKey === 'staff' ? '#FEF3C7' : '#EDE9FE';
       modalScopeBadge.style.color = roleKey === 'admin' ? '#15803D' : roleKey === 'manager' ? '#0284C7' : roleKey === 'staff' ? '#D97706' : '#7C3AED';
 
-      const locText = loc === 'ALL' ? 'All Locations' : loc;
-      modalScopeSummaryText.textContent = `Scoped to: ${roleNames[roleKey]} • ${targetStoreName} (${locText})`;
+      const locText = loc === 'ALL' ? 'All Branch Locations' : loc;
+      modalScopeSummaryText.textContent = `Backup Scope: ${roleNames[roleKey]} • ${targetStoreName} (${locText})`;
     }
 
     // Open Role Backup Configuration Popup
@@ -910,7 +944,63 @@ document.addEventListener('DOMContentLoaded', () => {
           return true;
         };
 
-        // 1. Gather Admin Scoped Data
+        // 1. Gather Manager ALL Data (Materials, Stock, Products, Receipts, Disbursements, Forecasts, Reports, Logs)
+        if (roleKey === 'manager' || roleKey === 'all') {
+          const rawMaterials = (JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]')).filter(m => isStoreMatch(m.branch || m.branchName, m.location || m.branchLocation));
+          const inventoryCache = JSON.parse(localStorage.getItem('rmims_inventory_cache') || '{}');
+          const materialsOverride = JSON.parse(localStorage.getItem('rmims_materials_override') || '{}');
+          const stockAdjustments = (JSON.parse(localStorage.getItem('rmims_stock_adjustments') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.location || s.branchLocation));
+          const finishedProducts = (JSON.parse(localStorage.getItem('rmims_finished_products') || '[]')).filter(p => isStoreMatch(p.branch || p.branchName, p.location || p.branchLocation));
+          const customFinishedProducts = (JSON.parse(localStorage.getItem('rmims_custom_finished_products') || '[]')).filter(p => isStoreMatch(p.branch || p.branchName, p.location || p.branchLocation));
+          const receipts = (JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]')).filter(r => isStoreMatch(r.branch || r.branchName, r.branchLocation || r.location));
+          const customReceipts = (JSON.parse(localStorage.getItem('rmims_custom_receipts') || '[]')).filter(r => isStoreMatch(r.branch || r.branchName, r.branchLocation || r.location));
+          const disbursements = (JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]')).filter(d => isStoreMatch(d.branch || d.branchName, d.branchLocation || d.location));
+          const customDisbursements = (JSON.parse(localStorage.getItem('rmims_custom_disbursements') || '[]')).filter(d => isStoreMatch(d.branch || d.branchName, d.branchLocation || d.location));
+          const forecastCache = JSON.parse(localStorage.getItem('rmims_forecast_cache') || '{}');
+          const latestForecast = JSON.parse(localStorage.getItem('rmims_latest_forecast') || '{}');
+          const historicalUsage = JSON.parse(localStorage.getItem('rmims_historical_usage_cache') || '{}');
+          const savedReports = (JSON.parse(localStorage.getItem('rmims_saved_reports') || '[]')).filter(r => isStoreMatch(r.branch || r.branchName, r.location || r.branchLocation));
+          const managerActivities = (JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
+
+          snapshot.data.manager = {
+            rawMaterials,
+            inventoryCache,
+            materialsOverride,
+            stockAdjustments,
+            finishedProducts,
+            customFinishedProducts,
+            receipts,
+            customReceipts,
+            disbursements,
+            customDisbursements,
+            forecastCache,
+            latestForecast,
+            historicalUsage,
+            savedReports,
+            managerActivities
+          };
+        }
+
+        // 2. Gather Staff ALL Data (Transactions, Submissions, Drafts & Logs)
+        if (roleKey === 'staff' || roleKey === 'all') {
+          const staffTransactions = (JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.branchLoc || s.location));
+          const staffSubmissions = (JSON.parse(localStorage.getItem('rmims_staff_submissions') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.branchLoc || s.location));
+          const staffDraftReceipts = (JSON.parse(localStorage.getItem('rmims_staff_draft_receipts') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.branchLoc || s.location));
+          const staffDraftDisbursements = (JSON.parse(localStorage.getItem('rmims_staff_draft_disbursements') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.branchLoc || s.location));
+          const userActivityHistory = (JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
+          const staffAuditTrail = (JSON.parse(localStorage.getItem('rmims_staff_audit_trail') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
+
+          snapshot.data.staff = {
+            staffTransactions,
+            staffSubmissions,
+            staffDraftReceipts,
+            staffDraftDisbursements,
+            userActivityHistory,
+            staffAuditTrail
+          };
+        }
+
+        // 3. Gather Admin ALL Data (Users, Branches, Alerts, Settings, Logs)
         if (roleKey === 'admin' || roleKey === 'all') {
           const allStores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
           const filteredStores = {};
@@ -921,41 +1011,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const regUsers = (JSON.parse(localStorage.getItem('rmims_registered_users') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
           const appUsers = (JSON.parse(localStorage.getItem('rmims_approved_users') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
           const pendUsers = (JSON.parse(localStorage.getItem('rmims_pending_users') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
+          const userApprovals = (JSON.parse(localStorage.getItem('rmims_user_approvals') || '[]')).filter(u => isStoreMatch(u.branchName, u.branchLoc));
           const alerts = (JSON.parse(localStorage.getItem('RMIMS_SYSTEM_ALERTS_V2') || '[]')).filter(a => isStoreMatch(a.branchName, a.branchLocation));
+          const adminLogs = (JSON.parse(localStorage.getItem('rmims_admin_audit_logs') || '[]'));
 
           snapshot.data.admin = {
             branchStores: filteredStores,
             registeredUsers: regUsers,
             approvedUsers: appUsers,
             pendingUsers: pendUsers,
+            userApprovals,
             systemAlerts: alerts,
-            systemSettings: JSON.parse(localStorage.getItem('rmims_admin_settings') || '{}')
-          };
-        }
-
-        // 2. Gather Manager Scoped Data
-        if (roleKey === 'manager' || roleKey === 'all') {
-          const rawMaterials = (JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]')).filter(m => isStoreMatch(m.branch || m.branchName, m.location || m.branchLocation));
-          const receipts = (JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]')).filter(r => isStoreMatch(r.branch || r.branchName, r.branchLocation || r.location));
-          const disbursements = (JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]')).filter(d => isStoreMatch(d.branch || d.branchName, d.branchLocation || d.location));
-          const managerActivities = (JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
-
-          snapshot.data.manager = {
-            rawMaterials,
-            receipts,
-            disbursements,
-            managerActivities
-          };
-        }
-
-        // 3. Gather Staff Scoped Data
-        if (roleKey === 'staff' || roleKey === 'all') {
-          const staffTx = (JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]')).filter(s => isStoreMatch(s.branch || s.branchName, s.branchLoc || s.location));
-          const userActivityHistory = (JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
-
-          snapshot.data.staff = {
-            staffTransactions: staffTx,
-            userActivityHistory
+            systemSettings: JSON.parse(localStorage.getItem('rmims_admin_settings') || '{}'),
+            adminProfile: JSON.parse(localStorage.getItem('rmims_admin_profile') || '{}'),
+            adminAuditLogs: adminLogs
           };
         }
 
@@ -1137,11 +1206,12 @@ document.addEventListener('DOMContentLoaded', () => {
               window.dispatchEvent(new Event('rmims:alerts-updated'));
             }
 
-            // Route 2: Branch Manager Data (linked automatically to the target branch store)
+            // Route 2: Branch Manager ALL Data (linked automatically to target branch store)
             if (role === 'manager' || role === 'all' || data.manager || data.materials) {
               const mgrData = data.manager || data;
-              if (Array.isArray(mgrData.rawMaterials || mgrData.materials)) {
-                const mats = mgrData.rawMaterials || mgrData.materials;
+              // Raw Materials
+              const mats = mgrData.rawMaterials || mgrData.materials;
+              if (Array.isArray(mats)) {
                 const curMats = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
                 mats.forEach(m => {
                   if (isSpecificStore) m.branch = targetStore;
@@ -1153,9 +1223,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 restoredCount += mats.length;
               }
 
-              if (Array.isArray(mgrData.receipts)) {
+              // Finished Products
+              const prods = mgrData.finishedProducts || mgrData.customFinishedProducts;
+              if (Array.isArray(prods)) {
+                const curProds = JSON.parse(localStorage.getItem('rmims_finished_products') || '[]');
+                prods.forEach(p => {
+                  if (isSpecificStore) {
+                    p.branch = targetStore;
+                    p.branchName = targetStore;
+                  }
+                  const idx = curProds.findIndex(c => (c.id && c.id === p.id) || (c.name && c.name.toLowerCase() === (p.name || '').toLowerCase()));
+                  if (idx >= 0) curProds[idx] = p;
+                  else curProds.push(p);
+                });
+                localStorage.setItem('rmims_finished_products', JSON.stringify(curProds));
+                restoredCount += prods.length;
+              }
+
+              // Receipts & Inflows
+              const recs = mgrData.receipts || mgrData.customReceipts;
+              if (Array.isArray(recs)) {
                 const curRec = JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]');
-                mgrData.receipts.forEach(r => {
+                recs.forEach(r => {
                   if (isSpecificStore) {
                     r.branch = targetStore;
                     r.branchName = targetStore;
@@ -1166,12 +1255,14 @@ document.addEventListener('DOMContentLoaded', () => {
                   else curRec.push(r);
                 });
                 localStorage.setItem('rmims_manager_receipts', JSON.stringify(curRec));
-                restoredCount += mgrData.receipts.length;
+                restoredCount += recs.length;
               }
 
-              if (Array.isArray(mgrData.disbursements)) {
+              // Disbursements & Outflows
+              const disbs = mgrData.disbursements || mgrData.customDisbursements;
+              if (Array.isArray(disbs)) {
                 const curDisb = JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]');
-                mgrData.disbursements.forEach(d => {
+                disbs.forEach(d => {
                   if (isSpecificStore) {
                     d.branch = targetStore;
                     d.branchName = targetStore;
@@ -1182,9 +1273,33 @@ document.addEventListener('DOMContentLoaded', () => {
                   else curDisb.push(d);
                 });
                 localStorage.setItem('rmims_manager_disbursements', JSON.stringify(curDisb));
-                restoredCount += mgrData.disbursements.length;
+                restoredCount += disbs.length;
               }
 
+              // AI Forecasts Cache & Models
+              if (mgrData.forecastCache && typeof mgrData.forecastCache === 'object') {
+                const curFc = JSON.parse(localStorage.getItem('rmims_forecast_cache') || '{}');
+                Object.assign(curFc, mgrData.forecastCache);
+                localStorage.setItem('rmims_forecast_cache', JSON.stringify(curFc));
+                restoredCount += Object.keys(mgrData.forecastCache).length;
+              }
+
+              // Saved Reports
+              if (Array.isArray(mgrData.savedReports)) {
+                const curRep = JSON.parse(localStorage.getItem('rmims_saved_reports') || '[]');
+                mgrData.savedReports.forEach(r => {
+                  if (isSpecificStore) {
+                    r.branch = targetStore;
+                    r.branchName = targetStore;
+                    if (targetLoc && targetLoc !== 'ALL') r.location = targetLoc;
+                  }
+                  curRep.unshift(r);
+                });
+                localStorage.setItem('rmims_saved_reports', JSON.stringify(curRep.slice(0, 200)));
+                restoredCount += mgrData.savedReports.length;
+              }
+
+              // Manager Operational Activities
               if (Array.isArray(mgrData.managerActivities || mgrData.activityLogs)) {
                 const acts = mgrData.managerActivities || mgrData.activityLogs;
                 const curActs = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
@@ -1200,16 +1315,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 restoredCount += acts.length;
               }
 
+              window.dispatchEvent(new Event('rmims_inventory_updated'));
               window.dispatchEvent(new Event('rmims_receipts_updated'));
               window.dispatchEvent(new Event('rmims_disbursements_updated'));
             }
 
-            // Route 3: Staff & Operations Data (linked automatically to the target branch store)
+            // Route 3: Staff & Operations ALL Data (linked automatically to target branch store)
             if (role === 'staff' || role === 'all' || data.staff) {
               const stfData = data.staff || data;
-              if (Array.isArray(stfData.staffTransactions)) {
+              const txs = stfData.staffTransactions || stfData.staffSubmissions;
+              if (Array.isArray(txs)) {
                 const curTx = JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]');
-                stfData.staffTransactions.forEach(s => {
+                txs.forEach(s => {
                   if (isSpecificStore) {
                     s.branch = targetStore;
                     s.branchName = targetStore;
@@ -1218,12 +1335,23 @@ document.addEventListener('DOMContentLoaded', () => {
                   curTx.unshift(s);
                 });
                 localStorage.setItem('rmims_staff_transactions', JSON.stringify(curTx.slice(0, 500)));
-                restoredCount += stfData.staffTransactions.length;
+                restoredCount += txs.length;
               }
 
-              if (Array.isArray(stfData.userActivityHistory)) {
+              if (Array.isArray(stfData.staffDraftReceipts)) {
+                const curDraft = JSON.parse(localStorage.getItem('rmims_staff_draft_receipts') || '[]');
+                stfData.staffDraftReceipts.forEach(d => {
+                  if (isSpecificStore) d.branch = targetStore;
+                  curDraft.unshift(d);
+                });
+                localStorage.setItem('rmims_staff_draft_receipts', JSON.stringify(curDraft));
+                restoredCount += stfData.staffDraftReceipts.length;
+              }
+
+              if (Array.isArray(stfData.userActivityHistory || stfData.staffAuditTrail)) {
+                const hist = stfData.userActivityHistory || stfData.staffAuditTrail;
                 const curHist = JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]');
-                stfData.userActivityHistory.forEach(h => {
+                hist.forEach(h => {
                   if (isSpecificStore) {
                     h.branch = targetStore;
                     if (targetLoc && targetLoc !== 'ALL') h.branchLocation = targetLoc;
@@ -1231,7 +1359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   curHist.unshift(h);
                 });
                 localStorage.setItem('rmims_user_activity_history', JSON.stringify(curHist.slice(0, 500)));
-                restoredCount += stfData.userActivityHistory.length;
+                restoredCount += hist.length;
               }
             }
 
