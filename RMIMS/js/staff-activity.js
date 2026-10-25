@@ -23,6 +23,7 @@ import {
 import {
   getStaffTransactions
 } from './rmims-transaction-engine.js';
+import { approveTransactionOnSupabase, rejectTransactionOnSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
 
 const STAFF_TX_KEY = 'rmims_staff_transactions';
 
@@ -585,11 +586,19 @@ function handleConfirmReturnForCorrection() {
 }
 
 // 3. REJECT LOGIC
-function handleConfirmReject() {
+async function handleConfirmReject() {
   if (!activeReviewItem) return;
 
   const reasonInput = document.getElementById('rejectReasonInput');
   const reason = reasonInput ? reasonInput.value.trim() : '';
+
+  if (!reason) {
+    alert('Please enter the reason for rejection.');
+    if (reasonInput) reasonInput.focus();
+    return;
+  }
+
+  rejectTransactionOnSupabase(activeReviewItem, reason).catch(e => console.warn('[StaffActivity] Supabase notice:', e));
 
   if (!reason) {
     alert('Please enter the reason for rejection.');

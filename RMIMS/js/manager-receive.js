@@ -22,9 +22,9 @@ import {
   checkReferenceDuplicate,
   showDuplicateWarningModal,
   updateManagerReceipt,
-  deleteManagerReceipt,
-  AUTHENTIC_INITIAL_MGR_RECEIPTS
+  deleteManagerReceipt
 } from './rmims-transaction-engine.js';
+import { recordStockReceiptToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
 
 const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 
@@ -140,7 +140,7 @@ function loadReceipts() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         // Cleanse legacy mock IDs
-        managerReceipts = parsed.filter(r => !['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118'].includes(r.ref));
+        managerReceipts = parsed.filter(r => !['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118', 'mgr-rec-001', 'mgr-rec-002', 'mgr-rec-003', 'REC-2026-00001', 'REC-2026-00002', 'REC-2026-00003', 'REC-2026-00004'].includes(r.ref || r.id));
         if (managerReceipts.length !== parsed.length) {
           localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(managerReceipts));
         }
@@ -154,11 +154,7 @@ function loadReceipts() {
   } catch (e) {
     managerReceipts = [];
   }
-
-  if (!managerReceipts || managerReceipts.length === 0) {
-    managerReceipts = JSON.parse(JSON.stringify(AUTHENTIC_INITIAL_MGR_RECEIPTS));
-    localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(managerReceipts));
-  }
+  // Zero zombie data - no fallback reseeding
 
   // Seamlessly merge all approved Staff Receive transactions (initial submissions and resubmitted)
   try {
@@ -888,9 +884,15 @@ function bindReviewModalEvents() {
         }
       } catch (e) {}
 
-      // 5. Broadcast inventory update event across all tabs
-      localStorage.setItem('rmims_inventory_updated', String(Date.now()));
-      window.dispatchEvent(new Event('storage'));
+      // 5. Commit directly to Supabase and broadcast cross-module sync
+      recordStockReceiptToSupabase(p).catch(err => console.warn('[Receive] Supabase sync notice:', err));
+      broadcastManagerSync({
+        action: 'receive',
+        ref: p.ref,
+        material: p.materialName,
+        quantity: p.quantity,
+        unit: p.unit
+      });
 
       // Close modal and show feedback
       closeModal();

@@ -18,164 +18,20 @@ export const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 export const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
 export const BURNED_REFS_KEY = 'rmims_burned_references';
 
-export const AUTHENTIC_INITIAL_STAFF_TRANSACTIONS = [
-  {
-    id: 'tx-staff-001',
-    ref: 'REC-2026-00001',
-    date: '2026-10-18',
-    time: '08:30 AM',
-    staff: 'Staff_1',
-    staffEmail: 'Sconesandmuffins@gmail.com',
-    activity: 'Receive',
-    material: 'All-Purpose / Bread Flour',
-    quantity: 250,
-    qty: '250 g',
-    unit: 'g',
-    supplier: 'San Miguel Mills Inc.',
-    usedFor: '',
-    notes: 'Standard morning stock delivery, quality inspected and intact.',
-    status: 'Approved',
-    createdAt: '2026-10-18T08:30:00.000Z',
-    isUpdated: false
-  },
-  {
-    id: 'tx-staff-002',
-    ref: 'DIS-2026-00001',
-    date: '2026-10-18',
-    time: '10:15 AM',
-    staff: 'Staff_1',
-    staffEmail: 'Sconesandmuffins@gmail.com',
-    activity: 'Disburse',
-    material: 'Refined White Sugar',
-    quantity: 150,
-    qty: '150 g',
-    unit: 'g',
-    supplier: '',
-    usedFor: 'Nutribun Batch #1 Production',
-    notes: 'Disbursed for regular morning Nutribun dough batch.',
-    status: 'Approved',
-    createdAt: '2026-10-18T10:15:00.000Z',
-    isUpdated: false
-  },
-  {
-    id: 'tx-staff-003',
-    ref: 'REC-2026-00002',
-    date: '2026-10-19',
-    time: '09:00 AM',
-    staff: 'Staff_2',
-    staffEmail: 'Scones@gmail.com',
-    activity: 'Receive',
-    material: 'Fresh Whole Eggs',
-    quantity: 30,
-    qty: '30 pcs',
-    unit: 'pcs',
-    supplier: 'Batangas Poultry Supply',
-    usedFor: '',
-    notes: 'Fresh eggs received for pastry production.',
-    status: 'Approved',
-    createdAt: '2026-10-19T09:00:00.000Z',
-    isUpdated: false
-  },
-  {
-    id: 'tx-staff-004',
-    ref: 'DIS-2026-00002',
-    date: '2026-10-19',
-    time: '11:45 AM',
-    staff: 'Staff_2',
-    staffEmail: 'Scones@gmail.com',
-    activity: 'Disburse',
-    material: 'Fresh Yellow Squash (Kalabasa)',
-    quantity: 200,
-    qty: '200 g',
-    unit: 'g',
-    supplier: '',
-    usedFor: 'Nutribun Squash Puree Preparation',
-    notes: 'Steaming and preparation for afternoon batch.',
-    status: 'Pending',
-    createdAt: '2026-10-19T11:45:00.000Z',
-    isUpdated: false
-  }
-];
-
-export const AUTHENTIC_INITIAL_MGR_RECEIPTS = [
-  {
-    id: 'mgr-rec-001',
-    ref: 'REC-2026-00003',
-    date: '2026-10-18',
-    time: '02:00 PM',
-    recordedBy: 'Aizel',
-    material: 'All-Purpose / Bread Flour',
-    quantity: 500,
-    unit: 'g',
-    supplier: 'General Milling Corp.',
-    notes: 'Bulk flour delivery verified and stored in warehouse A.',
-    status: 'Approved',
-    createdAt: '2026-10-18T14:00:00.000Z'
-  },
-  {
-    id: 'mgr-rec-002',
-    ref: 'REC-2026-00004',
-    date: '2026-10-19',
-    time: '01:30 PM',
-    recordedBy: 'Aizel',
-    material: 'Skimmed Milk Powder',
-    quantity: 100,
-    unit: 'g',
-    supplier: 'Alaska Milk Corp.',
-    notes: 'Dairy restocking batch.',
-    status: 'Approved',
-    createdAt: '2026-10-19T13:30:00.000Z'
-  }
-];
-
-export const AUTHENTIC_INITIAL_MGR_DISBURSEMENTS = [
-  {
-    id: 'mgr-disb-001',
-    ref: 'DIS-2026-00003',
-    date: '2026-10-18',
-    time: '03:30 PM',
-    recordedBy: 'Aizel',
-    material: 'All-Purpose / Bread Flour',
-    quantity: 300,
-    unit: 'g',
-    usedFor: 'Bakery Production Line',
-    notes: 'Disbursed for evening production cycle.',
-    status: 'Approved',
-    createdAt: '2026-10-18T15:30:00.000Z'
-  },
-  {
-    id: 'mgr-disb-002',
-    ref: 'DIS-2026-00004',
-    date: '2026-10-19',
-    time: '02:15 PM',
-    recordedBy: 'Aizel',
-    material: 'Instant Dry Yeast',
-    quantity: 50,
-    unit: 'g',
-    usedFor: 'Bakery Dough Fermentation',
-    notes: 'Afternoon bakery run.',
-    status: 'Approved',
-    createdAt: '2026-10-19T14:15:00.000Z'
-  }
-];
-
-export const AUTHENTIC_INITIAL_BURNED_REFS = [
-  'REC-2026-00001', 'REC-2026-00002', 'REC-2026-00003', 'REC-2026-00004',
-  'DIS-2026-00001', 'DIS-2026-00002', 'DIS-2026-00003', 'DIS-2026-00004'
-];
+export const AUTHENTIC_INITIAL_STAFF_TRANSACTIONS = [];
+export const AUTHENTIC_INITIAL_MGR_RECEIPTS = [];
+export const AUTHENTIC_INITIAL_MGR_DISBURSEMENTS = [];
+export const AUTHENTIC_INITIAL_BURNED_REFS = [];
 
 export function getBurnedReferences() {
-  if (typeof localStorage === 'undefined') return [...AUTHENTIC_INITIAL_BURNED_REFS];
+  if (typeof localStorage === 'undefined') return [];
   try {
     const raw = localStorage.getItem(BURNED_REFS_KEY);
     let list = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(list) || list.length === 0) {
-      list = [...AUTHENTIC_INITIAL_BURNED_REFS];
-      try { localStorage.setItem(BURNED_REFS_KEY, JSON.stringify(list)); } catch (_) {}
-    }
+    if (!Array.isArray(list)) list = [];
     return list;
   } catch (e) {
-    return [...AUTHENTIC_INITIAL_BURNED_REFS];
+    return [];
   }
 }
 
@@ -237,11 +93,8 @@ export function getAllCompanyTransactions() {
   // 2. Manager Receipts
   try {
     const rawMgrRec = localStorage.getItem(MGR_RECEIPTS_KEY);
-    let mgrRecList = rawMgrRec ? JSON.parse(rawMgrRec) : null;
-    if (!Array.isArray(mgrRecList) || mgrRecList.length === 0) {
-      mgrRecList = [...AUTHENTIC_INITIAL_MGR_RECEIPTS];
-      try { localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(mgrRecList)); } catch (_) {}
-    }
+    let mgrRecList = rawMgrRec ? JSON.parse(rawMgrRec) : [];
+    if (!Array.isArray(mgrRecList)) mgrRecList = [];
     mgrRecList.forEach(r => {
       if (r && r.ref) {
         transactions.push({
@@ -270,11 +123,8 @@ export function getAllCompanyTransactions() {
   // 3. Manager Disbursements
   try {
     const rawMgrDisb = localStorage.getItem(MGR_DISBURSEMENTS_KEY);
-    let mgrDisbList = rawMgrDisb ? JSON.parse(rawMgrDisb) : null;
-    if (!Array.isArray(mgrDisbList) || mgrDisbList.length === 0) {
-      mgrDisbList = [...AUTHENTIC_INITIAL_MGR_DISBURSEMENTS];
-      try { localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(mgrDisbList)); } catch (_) {}
-    }
+    let mgrDisbList = rawMgrDisb ? JSON.parse(rawMgrDisb) : [];
+    if (!Array.isArray(mgrDisbList)) mgrDisbList = [];
     mgrDisbList.forEach(d => {
       if (d && d.ref) {
         transactions.push({
@@ -727,14 +577,11 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
 export function getStaffTransactions() {
   try {
     const raw = localStorage.getItem(STAFF_TX_KEY);
-    let list = raw ? JSON.parse(raw) : null;
-    if (!Array.isArray(list) || list.length === 0) {
-      list = [...AUTHENTIC_INITIAL_STAFF_TRANSACTIONS];
-      try { localStorage.setItem(STAFF_TX_KEY, JSON.stringify(list)); } catch (_) {}
-    }
-    return list;
+    let list = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(list)) list = [];
+    return list.filter(t => !['tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005', 'st-001', 'st-002', 'st-003', 'st-004', 'st-005'].includes(t.id));
   } catch (e) {
-    return [...AUTHENTIC_INITIAL_STAFF_TRANSACTIONS];
+    return [];
   }
 }
 

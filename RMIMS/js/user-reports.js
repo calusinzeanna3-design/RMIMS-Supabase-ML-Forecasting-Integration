@@ -359,7 +359,7 @@ async function loadAuthoritativeData() {
         let rawReceipts = [];
         let rawDisbursements = [];
 
-        const BACKEND_STANDBY = true;
+        const BACKEND_STANDBY = false;
         if (!BACKEND_STANDBY) {
             try {
                 const fetchWithTimeout = (promise, ms = 3500) => 

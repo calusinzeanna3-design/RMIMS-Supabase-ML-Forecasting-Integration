@@ -20,6 +20,12 @@ import {
   saveCustomDisbursement,
   invalidateForecastCache
 } from './system-materials.js';
+import {
+  fetchManagerDashboardData,
+  approveTransactionOnSupabase,
+  rejectTransactionOnSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
 
 import {
   AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS,
@@ -57,6 +63,21 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('focus', () => {
     refreshDashboardData();
   });
+
+  window.addEventListener('rmims_inventory_updated', () => refreshDashboardData());
+  window.addEventListener('rmims_manager_receipts_updated', () => refreshDashboardData());
+  window.addEventListener('rmims_manager_disbursements_updated', () => refreshDashboardData());
+  window.addEventListener('rmims_staff_transactions_updated', () => refreshDashboardData());
+  window.addEventListener('rmims_staff_activity_updated', () => refreshDashboardData());
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.onmessage = () => {
+        refreshDashboardData();
+      };
+    }
+  } catch (_) {}
 });
 
 /**
@@ -65,14 +86,55 @@ document.addEventListener('DOMContentLoaded', () => {
 function cleanseMockTransactions() {
   try {
     localStorage.setItem('rmims_wipe_baseline_materials', 'false');
-    const raw = localStorage.getItem(STAFF_TX_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
+    const mockIds = [
+      'st-001', 'st-002', 'st-003', 'st-004', 'st-005',
+      'tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005'
+    ];
+    const mockRefs = [
+      'REC-2026-00001', 'REC-2026-00002', 'REC-2026-00003', 'REC-2026-00004',
+      'DIS-2026-00001', 'DIS-2026-00002', 'DIS-2026-00003', 'DIS-2026-00004',
+      'REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118',
+      'mgr-rec-001', 'mgr-rec-002', 'mgr-rec-003',
+      'mgr-disb-001', 'mgr-disb-002', 'mgr-disb-003'
+    ];
+
+    // Cleanse staff transactions
+    const rawStaff = localStorage.getItem(STAFF_TX_KEY);
+    if (rawStaff) {
+      const parsed = JSON.parse(rawStaff);
       if (Array.isArray(parsed)) {
-        const filtered = parsed.filter(t => !['st-001', 'st-002', 'st-003', 'st-004', 'st-005'].includes(t.id));
-        if (filtered.length !== parsed.length) {
-          localStorage.setItem(STAFF_TX_KEY, JSON.stringify(filtered));
-        }
+        const filtered = parsed.filter(t => !mockIds.includes(t.id) && !mockRefs.includes(t.ref));
+        localStorage.setItem(STAFF_TX_KEY, JSON.stringify(filtered));
+      }
+    }
+
+    // Cleanse receipts
+    const rawRec = localStorage.getItem(MGR_RECEIPTS_KEY);
+    if (rawRec) {
+      const parsed = JSON.parse(rawRec);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(r => !mockRefs.includes(r.ref) && !mockRefs.includes(r.id));
+        localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(filtered));
+      }
+    }
+
+    // Cleanse disbursements
+    const rawDisb = localStorage.getItem(MGR_DISBURSEMENTS_KEY);
+    if (rawDisb) {
+      const parsed = JSON.parse(rawDisb);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(d => !mockRefs.includes(d.ref) && !mockRefs.includes(d.id));
+        localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(filtered));
+      }
+    }
+
+    // Cleanse burned references
+    const rawBurned = localStorage.getItem('rmims_burned_references');
+    if (rawBurned) {
+      const parsed = JSON.parse(rawBurned);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(ref => !mockRefs.includes(ref));
+        localStorage.setItem('rmims_burned_references', JSON.stringify(filtered));
       }
     }
   } catch (e) {}
@@ -87,7 +149,9 @@ function getStaffTransactions() {
     if (!raw) return [];
     const list = JSON.parse(raw);
     if (!Array.isArray(list)) return [];
-    return list.filter(t => !['st-001', 'st-002', 'st-003', 'st-004', 'st-005'].includes(t.id));
+    const mockIds = ['st-001', 'st-002', 'st-003', 'st-004', 'st-005', 'tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005'];
+    const mockRefs = ['REC-2026-00001', 'REC-2026-00002', 'REC-2026-00003', 'REC-2026-00004', 'DIS-2026-00001', 'DIS-2026-00002', 'DIS-2026-00003', 'DIS-2026-00004'];
+    return list.filter(t => !mockIds.includes(t.id) && !mockRefs.includes(t.ref));
   } catch (e) {
     return [];
   }
@@ -132,11 +196,11 @@ function getCombinedDisbursements() {
 /**
  * Main dashboard refresh
  */
-function refreshDashboardData() {
-  const materials = getSystemRawMaterials();
-  const staffTx = getStaffTransactions();
-  const receipts = getCombinedReceipts();
-  const disbursements = getCombinedDisbursements();
+async function refreshDashboardData() {
+  let materials = getSystemRawMaterials();
+  let staffTx = getStaffTransactions();
+  let receipts = getCombinedReceipts();
+  let disbursements = getCombinedDisbursements();
 
   renderKpis(materials, receipts, disbursements, staffTx);
   renderManagerUsageChartData();
@@ -145,6 +209,27 @@ function refreshDashboardData() {
   renderSmartAlerts(materials);
   renderRecentActivity(receipts, disbursements, staffTx);
   renderPendingTransactions(staffTx);
+
+  // Live Supabase sync
+  try {
+    const liveData = await fetchManagerDashboardData();
+    if (liveData && liveData.isLive) {
+      materials = getSystemRawMaterials();
+      staffTx = getStaffTransactions();
+      receipts = getCombinedReceipts();
+      disbursements = getCombinedDisbursements();
+
+      renderKpis(materials, receipts, disbursements, staffTx);
+      renderManagerUsageChartData();
+      renderDonutChart(materials);
+      renderTop5Chart(materials, disbursements, staffTx);
+      renderSmartAlerts(materials);
+      renderRecentActivity(receipts, disbursements, staffTx);
+      renderPendingTransactions(staffTx);
+    }
+  } catch (err) {
+    console.warn('[ManagerDashboard] Live fetch notice:', err);
+  }
 }
 
 // 0. Store Inventory & Usage Dual-Line Chart (Inward Receipts vs Disbursements)
@@ -1163,190 +1248,33 @@ function initReviewModal() {
 
   // Approve action
   if (btnApprove) {
-    btnApprove.addEventListener('click', () => {
+    btnApprove.addEventListener('click', async () => {
       if (!activeTxRef) return;
+      const staffTx = getStaffTransactions();
+      const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef));
+      if (!tx) return;
 
-      let approvedTx = null;
+      btnApprove.disabled = true;
+      btnApprove.textContent = 'Approving...';
 
-      // Update in rmims_staff_transactions
-      try {
-        const raw = localStorage.getItem(STAFF_TX_KEY);
-        if (raw) {
-          const staffTx = JSON.parse(raw);
-          const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef));
-          if (tx) {
-            tx.status = 'Approved';
-            tx.approvedBy = 'Manager';
-            tx.approvedAt = new Date().toISOString();
-            approvedTx = tx;
-            localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffTx));
-
-            // Adjust inventory stock accordingly
-            const materials = getSystemRawMaterials();
-            const mat = materials.find(m => (m.name || '').toLowerCase() === (tx.material || tx.materialName || '').toLowerCase());
-            const qty = Number(tx.quantity || tx.qtyNum || 0) || 0;
-            const isRec = (tx.type || tx.activity || '').toLowerCase().includes('rec');
-
-            if (mat) {
-              mat.current_stock = isRec ? (Number(mat.current_stock) + qty) : Math.max(0, Number(mat.current_stock) - qty);
-              saveCustomRawMaterial(mat);
-            }
-
-            // Also persist to Manager Ledger and system records
-            if (isRec) {
-              saveCustomReceipt({
-                id: `rec-${tx.ref}`,
-                referenceNo: tx.ref,
-                material_id: mat ? (mat.id || mat.item_code) : (tx.materialId || tx.item_code || ''),
-                material_name: tx.material || tx.materialName,
-                received_quantity: qty,
-                unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
-                receipt_date: tx.date || new Date().toISOString().slice(0, 10),
-                supplier_name: tx.supplier || 'Staff Inward Delivery',
-                received_by: tx.staff || 'Staff Member'
-              });
-
-              try {
-                const mgrRecRaw = localStorage.getItem(MGR_RECEIPTS_KEY);
-                let mgrRecs = mgrRecRaw ? JSON.parse(mgrRecRaw) : [];
-                if (!Array.isArray(mgrRecs)) mgrRecs = [];
-                mgrRecs = mgrRecs.filter(r => r.ref !== tx.ref);
-                mgrRecs.unshift({
-                  ref: tx.ref,
-                  date: tx.date || new Date().toISOString().slice(0, 10),
-                  time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  materialId: mat ? (mat.id || mat.item_code) : '',
-                  materialName: tx.material || tx.materialName,
-                  quantity: qty,
-                  unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
-                  supplier: tx.supplier || 'Staff Inward Delivery',
-                  recordedBy: tx.staff || 'Staff Member',
-                  approvedBy: 'Store Manager',
-                  status: 'Approved',
-                  notes: tx.notes || `Submitted by ${tx.staff || 'Staff'}, approved by Manager`
-                });
-                localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(mgrRecs));
-              } catch (e) {}
-            } else {
-              saveCustomDisbursement({
-                id: `disb-${tx.ref}`,
-                referenceNo: tx.ref,
-                material_id: mat ? (mat.id || mat.item_code) : (tx.materialId || tx.item_code || ''),
-                material_name: tx.material || tx.materialName,
-                consumed_quantity: qty,
-                unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
-                usage_date: tx.date || new Date().toISOString().slice(0, 10),
-                activity_type: 'Production Usage',
-                finished_product_name: tx.usedFor || 'Production Batch',
-                disbursed_by: tx.staff || 'Staff Member'
-              });
-
-              try {
-                const mgrDisbRaw = localStorage.getItem(MGR_DISBURSEMENTS_KEY);
-                let mgrDisbs = mgrDisbRaw ? JSON.parse(mgrDisbRaw) : [];
-                if (!Array.isArray(mgrDisbs)) mgrDisbs = [];
-                mgrDisbs = mgrDisbs.filter(d => d.ref !== tx.ref);
-                mgrDisbs.unshift({
-                  ref: tx.ref,
-                  date: tx.date || new Date().toISOString().slice(0, 10),
-                  time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  materialId: mat ? (mat.id || mat.item_code) : '',
-                  materialName: tx.material || tx.materialName,
-                  quantity: qty,
-                  unit: tx.unit || (mat ? mat.unit_of_measure : 'kg'),
-                  recipient: tx.usedFor || 'Production Department',
-                  recordedBy: tx.staff || 'Staff Member',
-                  approvedBy: 'Store Manager',
-                  status: 'Approved',
-                  notes: tx.notes || `Submitted by ${tx.staff || 'Staff'}, approved by Manager`
-                });
-                localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(mgrDisbs));
-              } catch (e) {}
-            }
-          }
-        }
-      } catch (e) {}
-
-      // Log manager activity with full branch & user provenance
-      try {
-        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
-        const raw = localStorage.getItem(MGR_ACTIVITIES_KEY);
-        const acts = raw ? JSON.parse(raw) : [];
-        acts.unshift({
-          datetime: 'Just now',
-          timestamp: new Date().toISOString(),
-          activity: `Approve Transaction (${activeTxRef})`,
-          reference: activeTxRef,
-          status: 'Approved',
-          user: curUser.name || curUser.fullName || curUser.username || 'Manager',
-          role: curUser.role || 'Manager',
-          branchLoc: curUser.branchLoc || curUser.location || '',
-          branchName: curUser.branchName || curUser.branch || '',
-          action: 'Approved',
-          module: 'Inventory'
-        });
-        localStorage.setItem(MGR_ACTIVITIES_KEY, JSON.stringify(acts));
-      } catch (e) {}
-
-      // Notify Staff that transaction was approved
-      if (approvedTx) {
-        const staffApproveNotif = {
-          title: `Transaction Approved: ${activeTxRef}`,
-          message: `Store Manager approved ${activeTxRef} (${approvedTx.quantity || approvedTx.qty} of ${approvedTx.material || approvedTx.materialName}). Official stock synchronized.`,
-          category: 'Inventory',
-          badge: 'Approved',
-          role: 'staff',
-          targetRole: 'staff',
-          roleScope: 'staff',
-          priority: 'success',
-          targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeTxRef)}`,
-          ref: activeTxRef,
-          material: approvedTx.material || approvedTx.materialName,
-          quantity: approvedTx.quantity || approvedTx.qty,
-          actor: 'Store Manager'
-        };
-
-        try {
-          if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-            window.pushRMIMSNotification(staffApproveNotif);
-          }
-        } catch (e) {}
-
-        try {
-          if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
-            window.broadcastRMIMSSync({
-              transaction: approvedTx,
-              notification: staffApproveNotif
-            });
-          }
-        } catch (e) {}
-      }
-
-      // Invalidate forecast cache and broadcast
-      invalidateForecastCache();
-      localStorage.setItem('rmims_inventory_updated', String(Date.now()));
-      localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
-      window.dispatchEvent(new Event('storage'));
-      if (approvedTx) {
-        window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: approvedTx }));
-      }
+      await approveTransactionOnSupabase(tx);
 
       resultBanner.style.display = 'block';
       resultBanner.style.background = '#DCFCE7';
       resultBanner.style.color = '#15803D';
-      resultBanner.textContent = '✓ Transaction approved successfully. Inventory stock updated.';
+      resultBanner.textContent = '✓ Transaction approved successfully. Official stock synchronized on Supabase & all modules.';
       actionButtons.style.display = 'none';
 
       setTimeout(() => {
         closeReview();
         refreshDashboardData();
-      }, 1000);
+      }, 900);
     });
   }
 
   // Reject action
   if (btnReject) {
-    btnReject.addEventListener('click', () => {
+    btnReject.addEventListener('click', async () => {
       if (!activeTxRef) return;
 
       if (rejectReasonBox.style.display === 'none') {
@@ -1357,89 +1285,24 @@ function initReviewModal() {
       }
 
       const reason = (rejectReasonInput && rejectReasonInput.value.trim()) || 'Details require correction.';
-      let rejectedTx = null;
+      const staffTx = getStaffTransactions();
+      const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef)) || { ref: activeTxRef };
 
-      // Update in rmims_staff_transactions
-      try {
-        const raw = localStorage.getItem(STAFF_TX_KEY);
-        if (raw) {
-          const staffTx = JSON.parse(raw);
-          const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef));
-          if (tx) {
-            tx.status = 'Rejected';
-            tx.rejectionReason = reason;
-            tx.rejectedBy = 'Manager';
-            tx.rejectedAt = new Date().toISOString();
-            rejectedTx = tx;
-            localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffTx));
-          }
-        }
-      } catch (e) {}
+      btnReject.disabled = true;
+      btnReject.textContent = 'Rejecting...';
 
-      // Log manager activity
-      try {
-        const raw = localStorage.getItem(MGR_ACTIVITIES_KEY);
-        const acts = raw ? JSON.parse(raw) : [];
-        acts.unshift({
-          datetime: 'Just now',
-          activity: 'Reject Transaction',
-          reference: activeTxRef,
-          status: 'Rejected'
-        });
-        localStorage.setItem(MGR_ACTIVITIES_KEY, JSON.stringify(acts));
-      } catch (e) {}
-
-      // Notify Staff that transaction was rejected
-      if (rejectedTx || activeTxRef) {
-        const staffRejectNotif = {
-          title: `Transaction Rejected: ${activeTxRef}`,
-          message: `Transaction ${activeTxRef} was rejected by Store Manager: "${reason}".`,
-          category: 'Inventory',
-          badge: 'Rejected',
-          role: 'staff',
-          targetRole: 'staff',
-          roleScope: 'staff',
-          priority: 'danger',
-          targetUrl: `user/my-activity.html?view=${encodeURIComponent(activeTxRef)}`,
-          ref: activeTxRef,
-          material: rejectedTx?.material || rejectedTx?.materialName || '',
-          quantity: rejectedTx?.quantity || rejectedTx?.qty || '',
-          actor: 'Store Manager'
-        };
-
-        try {
-          if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-            window.pushRMIMSNotification(staffRejectNotif);
-          }
-        } catch (e) {}
-
-        try {
-          if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
-            window.broadcastRMIMSSync({
-              transaction: rejectedTx,
-              notification: staffRejectNotif
-            });
-          }
-        } catch (e) {}
-      }
-
-      localStorage.setItem('rmims_inventory_updated', String(Date.now()));
-      localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
-      window.dispatchEvent(new Event('storage'));
-      if (rejectedTx) {
-        window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: rejectedTx }));
-      }
+      await rejectTransactionOnSupabase(tx, reason);
 
       resultBanner.style.display = 'block';
       resultBanner.style.background = '#FEE2E2';
       resultBanner.style.color = '#DC2626';
-      resultBanner.textContent = `✗ Transaction rejected and returned to Staff. Reason: "${reason}"`;
+      resultBanner.textContent = `✗ Transaction rejected and recorded. Reason: "${reason}"`;
       actionButtons.style.display = 'none';
 
       setTimeout(() => {
         closeReview();
         refreshDashboardData();
-      }, 1200);
+      }, 1000);
     });
   }
 }

@@ -22,9 +22,9 @@ import {
   checkReferenceDuplicate,
   showDuplicateWarningModal,
   updateManagerDisbursement,
-  deleteManagerDisbursement,
-  AUTHENTIC_INITIAL_MGR_DISBURSEMENTS
+  deleteManagerDisbursement
 } from './rmims-transaction-engine.js';
+import { recordMaterialDisbursementToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
 
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
 
@@ -140,7 +140,7 @@ function loadDisbursements() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         // Cleanse legacy mock IDs
-        managerDisbursements = parsed.filter(d => !['DIS-2026-00091', 'DIS-2026-00090', 'DIS-2026-00088', 'DIS-2026-00084'].includes(d.ref));
+        managerDisbursements = parsed.filter(d => !['DIS-2026-00001', 'DIS-2026-00002', 'DIS-2026-00003', 'DIS-2026-00004', 'mgr-disb-001', 'mgr-disb-002', 'mgr-disb-003'].includes(d.ref || d.id));
         if (managerDisbursements.length !== parsed.length) {
           localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(managerDisbursements));
         }
@@ -154,11 +154,7 @@ function loadDisbursements() {
   } catch (e) {
     managerDisbursements = [];
   }
-
-  if (!managerDisbursements || managerDisbursements.length === 0) {
-    managerDisbursements = JSON.parse(JSON.stringify(AUTHENTIC_INITIAL_MGR_DISBURSEMENTS));
-    localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(managerDisbursements));
-  }
+  // Zero zombie data - no fallback reseeding
 
   // Seamlessly merge all approved Staff Disburse transactions
   try {
@@ -943,9 +939,15 @@ function bindReviewModalEvents() {
         }
       } catch (e) {}
 
-      // 5. Broadcast inventory update event across all tabs
-      localStorage.setItem('rmims_inventory_updated', String(Date.now()));
-      window.dispatchEvent(new Event('storage'));
+      // 5. Commit directly to Supabase and broadcast cross-module sync
+      recordMaterialDisbursementToSupabase(p).catch(err => console.warn('[Disburse] Supabase sync notice:', err));
+      broadcastManagerSync({
+        action: 'disburse',
+        ref: p.ref,
+        material: p.materialName,
+        quantity: p.quantity,
+        unit: p.unit
+      });
 
       // Close modal and show feedback
       closeModal();
