@@ -1354,3 +1354,44 @@ td {
     align-items: flex-start;
   }
 }
+
+/* ==========================================================
+   RESTORE & BACKUP LOADING SPINNER STYLES
+   ========================================================== */
+@keyframes restoreSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.restore-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  animation: restoreSpin 0.65s linear infinite;
+}
+
+.restore-mini-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #7c3aed;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: restoreSpin 0.65s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.restore-mini-spinner-light {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: restoreSpin 0.65s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+

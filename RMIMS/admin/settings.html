@@ -574,10 +574,20 @@
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                           <span id="restoreAutoLinkText">Auto-linking enabled: Data will be routed directly to this branch store and role.</span>
                         </div>
+
+                        <!-- Active Restore Loading & Progress Banner -->
+                        <div id="restoreProgressBox" style="display: none; margin-top: 12px; padding: 12px 14px; background: #F5F3FF; border: 1.5px solid #DDD6FE; border-radius: 8px; align-items: center; gap: 12px;">
+                          <span class="restore-spinner" style="width: 20px; height: 20px; border: 2.5px solid #DDD6FE; border-top-color: #7C3AED; border-radius: 50%; display: inline-block; flex-shrink: 0;"></span>
+                          <div style="flex: 1;">
+                            <strong id="restoreProgressTitle" style="display: block; font-size: 13px; color: #5B21B6;">Restoring &amp; Synchronizing Live Database...</strong>
+                            <span id="restoreProgressDetail" style="font-size: 11.5px; color: #7C3AED;">Updating local role datasets and pushing updates directly to Supabase...</span>
+                          </div>
+                        </div>
+
                         <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 10px;">
                           <button type="button" class="btn-outline-sm" id="btnCancelRestore" style="padding: 7px 14px;">Cancel</button>
-                          <button type="button" class="btn-primary-sm" id="btnExecuteRestore" style="background: #7C3AED; border-color: #7C3AED; padding: 7px 18px; font-weight: 700; border-radius: 8px;">
-                            Apply &amp; Restore to Role Modules
+                          <button type="button" class="btn-primary-sm" id="btnExecuteRestore" style="background: #7C3AED; border-color: #7C3AED; padding: 7px 18px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                            <span>Apply &amp; Restore to Role Modules</span>
                           </button>
                         </div>
                       </div>

@@ -954,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         btnExecuteRoleBackup.disabled = true;
-        btnExecuteRoleBackup.textContent = 'Packaging Live Data...';
+        btnExecuteRoleBackup.innerHTML = `<span class="restore-mini-spinner-light"></span> Packaging Live Data...`;
 
         try {
           const snapshot = {
@@ -990,32 +990,31 @@ document.addEventListener('DOMContentLoaded', () => {
             let receipts = (JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]')).filter(r => isStoreMatch(r.branch || r.branchName, r.branchLocation || r.location));
             let disbursements = (JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]')).filter(d => isStoreMatch(d.branch || d.branchName, d.branchLocation || d.location));
 
-            // Merge with live Supabase database if available
+            // Merge with live Supabase database concurrently for high speed
             if (supabase) {
               try {
-                const { data: supaMats } = await supabase.from('raw_materials').select('*');
-                if (Array.isArray(supaMats) && supaMats.length > 0) {
-                  supaMats.forEach(sm => {
+                const [matsRes, recsRes, disbsRes] = await Promise.allSettled([
+                  supabase.from('raw_materials').select('*'),
+                  supabase.from('stock_receipts').select('*').limit(300),
+                  supabase.from('material_disbursements').select('*').limit(300)
+                ]);
+
+                if (matsRes.status === 'fulfilled' && Array.isArray(matsRes.value?.data)) {
+                  matsRes.value.data.forEach(sm => {
                     if (!rawMaterials.some(rm => (rm.id && rm.id === sm.id) || (rm.name && rm.name.toLowerCase() === sm.name.toLowerCase()))) {
                       rawMaterials.push(sm);
                     }
                   });
                 }
-              } catch (_) {}
 
-              try {
-                const { data: supaRecs } = await supabase.from('stock_receipts').select('*').limit(300);
-                if (Array.isArray(supaRecs) && supaRecs.length > 0) {
-                  supaRecs.forEach(sr => {
+                if (recsRes.status === 'fulfilled' && Array.isArray(recsRes.value?.data)) {
+                  recsRes.value.data.forEach(sr => {
                     if (!receipts.some(r => r.id === sr.id)) receipts.push(sr);
                   });
                 }
-              } catch (_) {}
 
-              try {
-                const { data: supaDisbs } = await supabase.from('material_disbursements').select('*').limit(300);
-                if (Array.isArray(supaDisbs) && supaDisbs.length > 0) {
-                  supaDisbs.forEach(sd => {
+                if (disbsRes.status === 'fulfilled' && Array.isArray(disbsRes.value?.data)) {
+                  disbsRes.value.data.forEach(sd => {
                     if (!disbursements.some(d => d.id === sd.id)) disbursements.push(sd);
                   });
                 }
@@ -1172,12 +1171,12 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } finally {
           btnExecuteRoleBackup.disabled = false;
-          btnExecuteRoleBackup.textContent = 'Export Backup Snapshot (.JSON)';
+          btnExecuteRoleBackup.innerHTML = `<span>Export Backup Snapshot (.JSON)</span>`;
         }
       });
     }
 
-    // Restore File Selection Handler
+    // Restore File Selection Handler with Instant Loading Feedback
     if (btnSelectRestoreFile && restoreFileInput) {
       btnSelectRestoreFile.addEventListener('click', () => {
         restoreFileInput.click();
@@ -1187,74 +1186,88 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
 
-        if (selectedRestoreFileName) selectedRestoreFileName.textContent = file.name;
+        // Instant visual loading indicator while reading & analyzing file
+        if (selectedRestoreFileName) {
+          selectedRestoreFileName.innerHTML = `<span class="restore-mini-spinner"></span> <span style="color:#7C3AED; font-weight:600;">Reading &amp; analyzing snapshot...</span>`;
+        }
+        btnSelectRestoreFile.disabled = true;
+        btnSelectRestoreFile.style.opacity = '0.75';
 
         const reader = new FileReader();
         reader.onload = function (event) {
-          try {
-            const parsed = JSON.parse(event.target.result);
-            if (!parsed || typeof parsed !== 'object' || !parsed.data) {
-              throw new Error('Invalid RMSME backup snapshot format.');
+          setTimeout(() => {
+            try {
+              const parsed = JSON.parse(event.target.result);
+              if (!parsed || typeof parsed !== 'object' || !parsed.data) {
+                throw new Error('Invalid RMSME backup snapshot format.');
+              }
+
+              currentRestorePayload = parsed;
+              const scope = parsed.scope || {};
+              const role = (scope.role || parsed.roleTarget || 'all').toLowerCase();
+              const roleName = scope.roleName || parsed.roleName || 'Complete System Snapshot';
+              const branchLoc = scope.branchLocation || 'All Locations';
+              const branchStore = scope.branchStoreName || 'All Branch Stores';
+
+              let badgeBg = '#EDE9FE';
+              let badgeColor = '#7C3AED';
+              if (role === 'admin') {
+                badgeBg = '#DCFCE7';
+                badgeColor = '#15803D';
+              } else if (role === 'manager') {
+                badgeBg = '#E0F2FE';
+                badgeColor = '#0284C7';
+              } else if (role === 'staff') {
+                badgeBg = '#FEF3C7';
+                badgeColor = '#D97706';
+              }
+
+              if (restoreRoleBadge) {
+                restoreRoleBadge.textContent = roleName;
+                restoreRoleBadge.style.background = badgeBg;
+                restoreRoleBadge.style.color = badgeColor;
+              }
+
+              if (restoreDate) restoreDate.textContent = parsed.timestamp ? new Date(parsed.timestamp).toLocaleString() : 'N/A';
+              if (restoreVersion) restoreVersion.textContent = parsed.version || 'v2.0.0';
+              if (restoreBranchLoc) restoreBranchLoc.textContent = branchLoc;
+              if (restoreBranchStore) restoreBranchStore.textContent = branchStore;
+              if (restoreAuthor) restoreAuthor.textContent = parsed.exportedBy || 'Administrator';
+
+              // Calculate payload item count
+              let count = 0;
+              const countItems = (obj) => {
+                if (!obj || typeof obj !== 'object') return;
+                Object.values(obj).forEach(val => {
+                  if (Array.isArray(val)) count += val.length;
+                  else if (val && typeof val === 'object') countItems(val);
+                });
+              };
+              countItems(parsed.data);
+              if (restoreCount) restoreCount.textContent = `${count} Records Identified`;
+
+              if (restoreAutoLinkText) {
+                restoreAutoLinkText.textContent = `Auto-linking enabled: Data will be restored and linked directly to ${branchStore} (${branchLoc}) under ${roleName}.`;
+              }
+
+              if (selectedRestoreFileName) {
+                selectedRestoreFileName.innerHTML = `<span style="color:#16A34A; font-weight:600;">✓ ${file.name}</span> <span style="font-size:11px; color:#64748B;">(${(file.size / 1024).toFixed(1)} KB)</span>`;
+              }
+
+              if (restorePreviewCard) restorePreviewCard.style.display = 'block';
+            } catch (err) {
+              console.error('Snapshot parse error:', err);
+              if (window.showAdminToast) {
+                window.showAdminToast('Uploaded file is not a valid RMSME backup snapshot.', 'danger');
+              }
+              if (selectedRestoreFileName) selectedRestoreFileName.textContent = 'Invalid file chosen';
+              if (restorePreviewCard) restorePreviewCard.style.display = 'none';
+              currentRestorePayload = null;
+            } finally {
+              btnSelectRestoreFile.disabled = false;
+              btnSelectRestoreFile.style.opacity = '1';
             }
-
-            currentRestorePayload = parsed;
-            const scope = parsed.scope || {};
-            const role = (scope.role || parsed.roleTarget || 'all').toLowerCase();
-            const roleName = scope.roleName || parsed.roleName || 'Complete System Snapshot';
-            const branchLoc = scope.branchLocation || 'All Locations';
-            const branchStore = scope.branchStoreName || 'All Branch Stores';
-
-            let badgeBg = '#EDE9FE';
-            let badgeColor = '#7C3AED';
-            if (role === 'admin') {
-              badgeBg = '#DCFCE7';
-              badgeColor = '#15803D';
-            } else if (role === 'manager') {
-              badgeBg = '#E0F2FE';
-              badgeColor = '#0284C7';
-            } else if (role === 'staff') {
-              badgeBg = '#FEF3C7';
-              badgeColor = '#D97706';
-            }
-
-            if (restoreRoleBadge) {
-              restoreRoleBadge.textContent = roleName;
-              restoreRoleBadge.style.background = badgeBg;
-              restoreRoleBadge.style.color = badgeColor;
-            }
-
-            if (restoreDate) restoreDate.textContent = parsed.timestamp ? new Date(parsed.timestamp).toLocaleString() : 'N/A';
-            if (restoreVersion) restoreVersion.textContent = parsed.version || 'v2.0.0';
-            if (restoreBranchLoc) restoreBranchLoc.textContent = branchLoc;
-            if (restoreBranchStore) restoreBranchStore.textContent = branchStore;
-            if (restoreAuthor) restoreAuthor.textContent = parsed.exportedBy || 'Administrator';
-
-            // Calculate payload item count
-            let count = 0;
-            const countItems = (obj) => {
-              if (!obj || typeof obj !== 'object') return;
-              Object.values(obj).forEach(val => {
-                if (Array.isArray(val)) count += val.length;
-                else if (val && typeof val === 'object') countItems(val);
-              });
-            };
-            countItems(parsed.data);
-            if (restoreCount) restoreCount.textContent = `${count} Records Identified`;
-
-            if (restoreAutoLinkText) {
-              restoreAutoLinkText.textContent = `Auto-linking enabled: Data will be restored and linked directly to ${branchStore} (${branchLoc}) under ${roleName}.`;
-            }
-
-            if (restorePreviewCard) restorePreviewCard.style.display = 'block';
-          } catch (err) {
-            console.error('Snapshot parse error:', err);
-            if (window.showAdminToast) {
-              window.showAdminToast('Uploaded file is not a valid RMSME backup snapshot.', 'danger');
-            }
-            if (selectedRestoreFileName) selectedRestoreFileName.textContent = 'Invalid file chosen';
-            if (restorePreviewCard) restorePreviewCard.style.display = 'none';
-            currentRestorePayload = null;
-          }
+          }, 30);
         };
         reader.readAsText(file);
       });
@@ -1266,6 +1279,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (restoreFileInput) restoreFileInput.value = '';
         if (selectedRestoreFileName) selectedRestoreFileName.textContent = 'No file chosen';
         if (restorePreviewCard) restorePreviewCard.style.display = 'none';
+        const restoreProgressBox = document.getElementById('restoreProgressBox');
+        if (restoreProgressBox) restoreProgressBox.style.display = 'none';
         currentRestorePayload = null;
       });
     }
@@ -1289,8 +1304,19 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        const restoreProgressBox = document.getElementById('restoreProgressBox');
+        const restoreProgressTitle = document.getElementById('restoreProgressTitle');
+        const restoreProgressDetail = document.getElementById('restoreProgressDetail');
+
         btnExecuteRestore.disabled = true;
-        btnExecuteRestore.textContent = 'Restoring & Syncing with Supabase...';
+        btnExecuteRestore.innerHTML = `<span class="restore-mini-spinner-light"></span> Restoring &amp; Syncing...`;
+        if (btnCancelRestore) btnCancelRestore.disabled = true;
+
+        if (restoreProgressBox) {
+          restoreProgressBox.style.display = 'flex';
+          if (restoreProgressTitle) restoreProgressTitle.textContent = `Restoring & Synchronizing ${roleName} Data...`;
+          if (restoreProgressDetail) restoreProgressDetail.textContent = `Linking records to ${targetStore || 'target modules'} and committing directly to Supabase...`;
+        }
 
         try {
           const data = currentRestorePayload.data;
@@ -1519,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           window.dispatchEvent(new Event('storage'));
 
-          // Synchronize directly with Supabase Database Tables
+          // Synchronize directly with Supabase Database Tables with rapid pipeline
           let syncResult = null;
           try {
             if (syncRestoredRolePayload) {
@@ -1562,7 +1588,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } finally {
           btnExecuteRestore.disabled = false;
-          btnExecuteRestore.textContent = 'Apply & Restore to Role Modules';
+          btnExecuteRestore.innerHTML = `<span>Apply &amp; Restore to Role Modules</span>`;
+          if (btnCancelRestore) btnCancelRestore.disabled = false;
+          if (restoreProgressBox) restoreProgressBox.style.display = 'none';
         }
       });
     }
