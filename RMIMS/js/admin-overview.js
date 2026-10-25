@@ -5,6 +5,19 @@
 import { getAlerts, getCategoryCounts } from './system-alerts-service.js';
 import { initAdminCalendarPicker, MONTH_NAMES_SHORT, getLiveTodayISO, getDaysAgoISO, formatDisplayDate } from './admin-calendar-picker.js';
 import { getStoresData } from './admin-branch-stores.js';
+import {
+  STORAGE_KEYS,
+  isMockUser,
+  matchesUser,
+  broadcastUserSync,
+  fetchPendingApprovals,
+  fetchRegisteredUsers,
+  fetchBranchStores,
+  fetchLiveSystemActivities,
+  approveUserAccount as srvApproveUser,
+  rejectUserAccount as srvRejectUser,
+  subscribeToAdminFeed
+} from '../supabase/admin-supabase-service.js';
 
 function escapeHtml(str) {
   return String(str || '')
@@ -27,7 +40,21 @@ function getInitials(name) {
 
 function getStoredPendingUsers() {
   try {
-    return JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
+    const raw = localStorage.getItem(STORAGE_KEYS.PENDING_USERS) || '[]';
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+
+    let approved = [];
+    let rejected = [];
+    try { approved = JSON.parse(localStorage.getItem(STORAGE_KEYS.APPROVED_USERS) || '[]'); } catch (_) {}
+    try { rejected = JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECTED_USERS) || '[]'); } catch (_) {}
+
+    return list.filter(u => {
+      if (!u || isMockUser(u)) return false;
+      if (approved.some(a => matchesUser(a, u))) return false;
+      if (rejected.some(r => matchesUser(r, u))) return false;
+      return true;
+    });
   } catch (_) {
     return [];
   }
@@ -35,7 +62,7 @@ function getStoredPendingUsers() {
 
 function saveStoredPendingUsers(users) {
   try {
-    localStorage.setItem('rmims_pending_users', JSON.stringify(users));
+    localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(users));
     window.dispatchEvent(new Event('rmims_pending_users_updated'));
     window.dispatchEvent(new Event('storage'));
   } catch (e) {
@@ -45,7 +72,7 @@ function saveStoredPendingUsers(users) {
 
 function logSystemActivity(action, details) {
   try {
-    const list = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
+    const list = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_LOGS) || '[]');
     list.unshift({
       id: `act-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -60,7 +87,8 @@ function logSystemActivity(action, details) {
       details: details,
       status: 'success'
     });
-    localStorage.setItem('rmims_manager_activities', JSON.stringify(list.slice(0, 50)));
+    localStorage.setItem(STORAGE_KEYS.ACTIVITY_LOGS, JSON.stringify(list.slice(0, 50)));
+    window.dispatchEvent(new Event('storage'));
   } catch (_) {}
 }
 
@@ -84,169 +112,45 @@ window.approveOverviewAccount = async function (userId, statusId, actionsId, use
     `;
   }
 
-  // Remove from pending storage
   const currentPending = getStoredPendingUsers();
   const cleanId = String(userId || '').trim();
   const cleanName = String(userName || '').toLowerCase().trim();
-  const approvedItem = currentPending.find(u => 
-    String(u.id).trim() === cleanId ||
-    `ovRow_${u.id}` === cleanId ||
-    (cleanName && u.name && u.name.toLowerCase().trim() === cleanName) ||
-    (cleanName && u.username && u.username.toLowerCase().trim() === cleanName)
-  );
+  const approvedItem = currentPending.find(u => matchesUser({ id: cleanId, name: cleanName }, u));
 
-  const targetEmail = (approvedItem?.email || '').toLowerCase().trim();
-  const targetUsername = (approvedItem?.username || '').toLowerCase().trim();
+  const resolvedName = userName || approvedItem?.name || 'User';
+  const resolvedRole = approvedItem?.role || 'Staff';
+  const resolvedEmail = approvedItem?.email || '';
+  const resolvedUser = approvedItem?.username || (resolvedEmail ? resolvedEmail.split('@')[0] : 'user');
+  const resolvedBranchLoc = approvedItem?.branchLoc || 'Lucena';
+  const resolvedBranchName = approvedItem?.branchName || 'Branch Store';
 
-  const remaining = currentPending.filter(u => {
-    const uId = String(u.id || '').trim();
-    const uEmail = (u.email || '').toLowerCase().trim();
-    const uUser = (u.username || '').toLowerCase().trim();
-    return uId !== cleanId &&
-           `ovRow_${uId}` !== cleanId &&
-           !(targetEmail && uEmail && uEmail === targetEmail) &&
-           !(targetUsername && uUser && uUser === targetUsername);
-  });
-  saveStoredPendingUsers(remaining);
-
-  // Save into authoritative approved users cache
+  // Delegate to unified, bulletproof approveUserAccount
   try {
-    const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
-    const appUserId = approvedItem?.id || (cleanId && !cleanId.startsWith('ovRow_') ? cleanId : `user-${Date.now()}`);
-    const resolvedName = approvedItem?.name || userName || 'User';
-    const resolvedUser = approvedItem?.username || (targetEmail ? targetEmail.split('@')[0] : 'user');
-    const appIdx = approvedCache.findIndex(a => 
-      (appUserId && a.id && String(a.id).trim() === String(appUserId).trim()) ||
-      (targetEmail && a.email && a.email.toLowerCase().trim() === targetEmail) ||
-      (resolvedUser && a.username && a.username.toLowerCase().trim() === resolvedUser)
-    );
-    const appRecord = {
-      id: appUserId,
-      name: resolvedName,
-      username: resolvedUser,
-      email: approvedItem?.email || '',
-      role: approvedItem?.role || 'Staff',
-      branchLoc: approvedItem?.branchLoc || 'Lucena',
-      branchName: approvedItem?.branchName || 'Branch Store',
-      status: 'Active',
-      approvedAt: new Date().toISOString()
-    };
-    if (appIdx >= 0) {
-      approvedCache[appIdx] = { ...approvedCache[appIdx], ...appRecord };
-    } else {
-      approvedCache.push(appRecord);
-    }
-    localStorage.setItem('rmims_approved_users', JSON.stringify(approvedCache));
-  } catch (_) {}
-
-  // If approved, add or update in registered directory
-  try {
-    const dir = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-    const resId = approvedItem?.id || (cleanId && !cleanId.startsWith('ovRow_') ? cleanId : `user-${Date.now()}`);
-    const resEmail = approvedItem?.email || '';
-    const resUser = approvedItem?.username || (resEmail ? resEmail.split('@')[0] : 'user');
-    const resName = approvedItem?.name || userName || 'User';
-
-    const existingIdx = dir.findIndex(u => 
-      (resId && u.id && String(u.id).trim() === String(resId).trim()) ||
-      (resEmail && u.email && u.email.toLowerCase().trim() === resEmail.toLowerCase().trim()) ||
-      (resUser && u.username && u.username.toLowerCase().trim() === resUser.toLowerCase().trim())
-    );
-
-    if (existingIdx >= 0) {
-      dir[existingIdx].status = 'Active';
-      if (approvedItem?.branchLoc) dir[existingIdx].branchLoc = approvedItem.branchLoc;
-      if (approvedItem?.branchName) dir[existingIdx].branchName = approvedItem.branchName;
-      if (approvedItem?.role) dir[existingIdx].role = approvedItem.role;
-    } else {
-      dir.push({
-        id: resId,
-        name: resName,
-        username: resUser,
-        email: resEmail,
-        branchLoc: approvedItem?.branchLoc || 'Lucena',
-        branchName: approvedItem?.branchName || 'Branch Store',
-        role: approvedItem?.role || 'Staff',
-        status: 'Active'
-      });
-    }
-    localStorage.setItem('rmims_registered_users', JSON.stringify(dir));
-    window.dispatchEvent(new Event('rmims_registered_users_updated'));
-
-    // Also register into RMIMS_BRANCH_STORES_V3
-    try {
-      const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
-      const locRaw = (approvedItem?.branchLoc || '').trim();
-      const locKey = locRaw.toLowerCase().replace(/[^a-z0-9]/g, '') || 'branch';
-      const locationName = locRaw ? (locRaw.toUpperCase().includes('BRANCH') ? locRaw.toUpperCase() : `${locRaw.toUpperCase()} BRANCH`) : 'BRANCH STORE';
-      const address = locRaw || 'Branch Location';
-      const storeKey = (approvedItem?.branchName || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '_');
-      if (!stores[storeKey]) {
-        stores[storeKey] = {
-          id: storeKey,
-          name: approvedItem?.branchName || 'Branch Store',
-          locKey: locKey,
-          locationKey: locKey,
-          locationName: locationName,
-          address: address,
-          managers: [],
-          staff: []
-        };
-      }
-      const isMgr = ((approvedItem?.role || '')).toLowerCase().includes('manager');
-      const memberObj = {
-        id: resId,
-        name: resName,
-        username: resUser,
-        email: resEmail,
-        initials: getInitials(resName),
-        status: 'APPROVED',
-        accessCode: String(Math.floor(100000 + Math.random() * 900000))
-      };
-      if (isMgr) {
-        if (!stores[storeKey].managers.some(m => m.email === resEmail || m.username === resUser)) {
-          stores[storeKey].managers.push(memberObj);
-        }
-      } else {
-        if (!stores[storeKey].staff.some(s => s.email === resEmail || s.username === resUser)) {
-          stores[storeKey].staff.push(memberObj);
-        }
-      }
-      localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
-      window.dispatchEvent(new Event('rmims_stores_updated'));
-    } catch (_) {}
-  } catch (_) {}
-
-  // Standalone Supabase synchronization
-  try {
-    const srv = await import('../supabase/admin-supabase-service.js');
-    const syncRes = await srv.approveUserAccount({
+    const syncRes = await srvApproveUser({
       id: approvedItem?.id || cleanId,
-      email: approvedItem?.email,
-      username: approvedItem?.username,
-      name: userName || approvedItem?.name
+      email: resolvedEmail,
+      username: resolvedUser,
+      name: resolvedName,
+      role: resolvedRole,
+      branchLoc: resolvedBranchLoc,
+      branchName: resolvedBranchName
     });
 
-    if (syncRes && syncRes.success) {
-      if (typeof window.showAdminToast === 'function') {
-        window.showAdminToast(`Account for ${userName} approved and synchronized with Supabase (Active).`, 'success');
-      }
-    } else {
-      if (typeof window.showAdminToast === 'function') {
-        window.showAdminToast(`Account for ${userName} approved locally. Supabase notice: ${syncRes?.error || 'Awaiting sync'}.`, 'warning');
-      }
-    }
-  } catch (_) {
     if (typeof window.showAdminToast === 'function') {
-      window.showAdminToast(`Account for ${userName} approved successfully.`);
+      window.showAdminToast(`Account for ${resolvedName} approved and synchronized with Supabase (Active).`, 'success');
+    }
+  } catch (err) {
+    if (typeof window.showAdminToast === 'function') {
+      window.showAdminToast(`Account for ${resolvedName} approved successfully.`, 'success');
     }
   }
 
-  logSystemActivity('Approved Account', `Approved access for ${userName} (${approvedItem ? approvedItem.role : 'Staff'})`);
-
   setTimeout(() => {
     renderOverviewPendingApprovals();
-  }, 1000);
+    renderOverviewLatestActivities();
+    renderOverviewBranchStores();
+    if (typeof updateOverviewKPICounters === 'function') updateOverviewKPICounters();
+  }, 400);
 };
 
 window.rejectOverviewAccount = async function (userId, statusId, actionsId, userName) {
@@ -271,41 +175,54 @@ window.rejectOverviewAccount = async function (userId, statusId, actionsId, user
   }
 
   const currentPending = getStoredPendingUsers();
-  const target = currentPending.find(u => String(u.id) === String(userId));
-  const remaining = currentPending.filter(u => String(u.id) !== String(userId));
-  saveStoredPendingUsers(remaining);
+  const cleanId = String(userId || '').trim();
+  const cleanName = String(userName || '').toLowerCase().trim();
+  const target = currentPending.find(u => matchesUser({ id: cleanId, name: cleanName }, u));
 
-  // Synchronize rejection directly to Supabase user_profiles (status: inactive)
+  const resolvedName = userName || target?.name || 'User';
+
   try {
-    const srv = await import('../supabase/admin-supabase-service.js');
-    if (srv && typeof srv.rejectUserAccount === 'function') {
-      await srv.rejectUserAccount({
-        id: target?.id || userId,
-        email: target?.email,
-        username: target?.username,
-        name: userName || target?.name
-      });
-    }
+    await srvRejectUser({
+      id: target?.id || cleanId,
+      email: target?.email,
+      username: target?.username,
+      name: resolvedName
+    });
   } catch (err) {
-    console.warn('[AdminOverview] Supabase rejection notice:', err.message || err);
+    console.warn('[AdminOverview] Rejection notice:', err.message || err);
   }
 
-  logSystemActivity('Rejected Account', `Rejected account request for ${userName}`);
-
   if (typeof window.showAdminToast === 'function') {
-    window.showAdminToast(`Account request for ${userName} rejected.`, 'danger');
+    window.showAdminToast(`Account request for ${resolvedName} rejected.`, 'danger');
   }
 
   setTimeout(() => {
     renderOverviewPendingApprovals();
-  }, 1000);
+    if (typeof updateOverviewKPICounters === 'function') updateOverviewKPICounters();
+  }, 400);
 };
+
+// Aliases for unified cross-component compatibility
+window.approveUser = window.approveOverviewAccount;
+window.rejectUser = window.rejectOverviewAccount;
 
 function renderOverviewPendingApprovals() {
   const tbody = document.getElementById('overviewApprovalTableBody');
+  const countBadge = document.getElementById('overviewPendingCount');
   if (!tbody) return;
 
   const pendingList = getStoredPendingUsers();
+
+  if (countBadge) {
+    countBadge.textContent = `${pendingList.length} Request${pendingList.length === 1 ? '' : 's'} Pending`;
+    if (pendingList.length === 0) {
+      countBadge.classList.remove('status-pending');
+      countBadge.classList.add('status-resolved');
+    } else {
+      countBadge.classList.remove('status-resolved');
+      countBadge.classList.add('status-pending');
+    }
+  }
 
   if (pendingList.length === 0) {
     tbody.innerHTML = `
@@ -332,7 +249,7 @@ function renderOverviewPendingApprovals() {
     if (locRaw.toLowerCase().includes('lucena')) locClass = 'lucena';
     else if (locRaw.toLowerCase().includes('tiaong')) locClass = 'tiaong';
     const locBadgeText = locRaw || '—';
-    const roleClass = (u.role || 'Staff').toLowerCase();
+    const roleText = u.role || 'Staff';
     const initials = getInitials(u.name);
     const rowId = `ovRow_${u.id}`;
     const statusId = `ovStat_${u.id}`;
@@ -348,6 +265,7 @@ function renderOverviewPendingApprovals() {
         </td>
         <td><span class="location-badge ${locClass}">${escapeHtml(locBadgeText)}</span></td>
         <td>${escapeHtml(u.branchName || 'Store Branch')}</td>
+        <td>${escapeHtml(roleText)}</td>
         <td>${escapeHtml(u.requestedOn ? (u.requestedOn.includes('T') ? formatDisplayDate(u.requestedOn) : u.requestedOn) : formatDisplayDate(getLiveTodayISO()))}</td>
         <td><span class="status-pill status-pending" id="${statusId}">Pending</span></td>
         <td>
@@ -815,16 +733,31 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const userSet = new Set();
       const customUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-      const mockUserTokens = ['maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza', 'carlos mendoza'];
+      let deletedUsers = [];
+      let rejectedUsers = [];
+      try { deletedUsers = JSON.parse(localStorage.getItem('rmims_deleted_users') || '[]'); } catch (_) {}
+      try { rejectedUsers = JSON.parse(localStorage.getItem('rmims_rejected_users') || '[]'); } catch (_) {}
+
+      const mockUserTokens = [
+        'maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza',
+        'carlos mendoza', 'john doe', 'jane doe', 'test user', 'dummy'
+      ];
+
       customUsers
-        .filter(u => !mockUserTokens.some(tok => (u.name || u.username || '').toLowerCase().includes(tok)))
+        .filter(u => u && !mockUserTokens.some(tok => (u.name || u.username || u.email || '').toLowerCase().includes(tok)))
+        .filter(u => !deletedUsers.some(d => (d.id && d.id === u.id) || (d.email && u.email && d.email.toLowerCase() === u.email.toLowerCase())))
+        .filter(u => !rejectedUsers.some(r => (r.id && r.id === u.id) || (r.email && u.email && r.email.toLowerCase() === u.email.toLowerCase())))
         .filter(u => u.status === 'Active' || !u.status)
-        .forEach(u => userSet.add(u.email || u.username || u.name));
+        .forEach(u => userSet.add((u.email || u.username || u.name).toLowerCase()));
       
       const stores = getStoresData();
       Object.values(stores).forEach(st => {
-        (st.managers || []).forEach(m => userSet.add(m.email || m.username || m.name));
-        (st.staff || []).forEach(s => userSet.add(s.email || s.username || s.name));
+        (st.managers || [])
+          .filter(m => !deletedUsers.some(d => (d.id && d.id === m.id) || (d.email && m.email && d.email.toLowerCase() === m.email.toLowerCase())))
+          .forEach(m => userSet.add((m.email || m.username || m.name).toLowerCase()));
+        (st.staff || [])
+          .filter(s => !deletedUsers.some(d => (d.id && d.id === s.id) || (d.email && s.email && d.email.toLowerCase() === s.email.toLowerCase())))
+          .forEach(s => userSet.add((s.email || s.username || s.name).toLowerCase()));
       });
       if (kpiUsers) {
         kpiUsers.textContent = String(userSet.size);
@@ -1061,6 +994,17 @@ document.addEventListener('DOMContentLoaded', () => {
     updateOverviewKPICounters();
     updateOverviewChartForRange(initStart, initEnd);
   });
+  // Inter-tab instant real-time synchronization
+  try {
+    const bc = new BroadcastChannel('rmims_user_sync');
+    bc.onmessage = (event) => {
+      renderOverviewPendingApprovals();
+      renderOverviewLatestActivities();
+      renderOverviewBranchStores();
+      updateOverviewKPICounters();
+    };
+  } catch (_) {}
+
   window.addEventListener('storage', (e) => {
     if (e.key === 'RMIMS_SYSTEM_ALERTS_V2') {
       refreshOverviewAlerts();

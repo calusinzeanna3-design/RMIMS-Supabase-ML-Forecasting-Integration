@@ -72,13 +72,16 @@ export function syncStoresWithRealUsers(stores) {
   if (!stores || typeof stores !== 'object') return stores;
   try {
     const rawUsers = localStorage.getItem('rmims_registered_users');
-    if (!rawUsers) return stores;
-    const users = JSON.parse(rawUsers);
+    let deletedKeys = [];
+    try { deletedKeys = JSON.parse(localStorage.getItem('rmims_deleted_users') || '[]'); } catch (_) {}
+
+    const users = rawUsers ? JSON.parse(rawUsers) : [];
     if (!Array.isArray(users)) return stores;
 
-    // Filter active users only
+    // Filter active users only and exclude deleted users
     const activeUsers = users.filter(u => {
       if (!u) return false;
+      if (deletedKeys.some(d => (d.id && d.id === u.id) || (d.email && u.email && d.email.toLowerCase() === u.email.toLowerCase()))) return false;
       const s = String(u.status || '').toLowerCase().trim();
       return s !== 'pending' && s !== 'pending_approval' && s !== 'inactive';
     });
@@ -86,6 +89,10 @@ export function syncStoresWithRealUsers(stores) {
     Object.values(stores).forEach(st => {
       const stLoc = (st.location || st.locKey || '').toLowerCase().trim();
       const stName = (st.name || '').toLowerCase().trim();
+
+      // Purge any deleted personnel directly from store
+      st.managers = (st.managers || []).filter(m => !deletedKeys.some(d => (d.id && d.id === m.id) || (d.email && m.email && d.email.toLowerCase() === m.email.toLowerCase())));
+      st.staff = (st.staff || []).filter(s => !deletedKeys.some(d => (d.id && d.id === s.id) || (d.email && s.email && d.email.toLowerCase() === s.email.toLowerCase())));
 
       const matchingUsers = activeUsers.filter(u => {
         const uLoc = (u.branchLoc || u.branch_location || '').toLowerCase().trim();
@@ -118,11 +125,9 @@ export function syncStoresWithRealUsers(stores) {
         accessCode: `STF-${(st.location || 'STR').slice(0, 3).toUpperCase()}-0${idx + 1}`
       }));
 
-      // If matching users found, dynamically reflect them
-      if (managers.length > 0 || staff.length > 0 || matchingUsers.length > 0) {
-        st.managers = managers;
-        st.staff = staff;
-      }
+      // Reflect current live roster
+      st.managers = managers;
+      st.staff = staff;
     });
   } catch (err) {
     console.warn('Notice in syncStoresWithRealUsers:', err);
@@ -858,5 +863,19 @@ function escapeJs(str) {
 window.addEventListener('rmims_registered_users_updated', () => {
   const stores = getStoresData();
   saveStoresData(stores);
+  renderLocationDividers('locationDividersContainer');
+});
+
+
+// Inter-tab and cross-module instant real-time synchronization
+try {
+  const bc = new BroadcastChannel('rmims_user_sync');
+  bc.onmessage = () => {
+    const stores = getStoresData();
+    renderLocationDividers('locationDividersContainer');
+  };
+} catch (_) {}
+
+window.addEventListener('rmims_stores_updated', () => {
   renderLocationDividers('locationDividersContainer');
 });

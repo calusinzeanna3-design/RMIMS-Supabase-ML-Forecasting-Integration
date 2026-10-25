@@ -70,71 +70,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function cleanPendingFromRegisteredDirectory() {
     try {
-      const rawReg = localStorage.getItem('rmims_registered_users');
+      const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
       if (!rawReg) return;
       const regList = JSON.parse(rawReg);
       if (!Array.isArray(regList)) return;
 
       let approvedKeys = [];
-      try {
-        approvedKeys = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
-        if (!Array.isArray(approvedKeys)) approvedKeys = [];
-      } catch (_) {}
+      let rejectedKeys = [];
+      let deletedKeys = [];
+      try { approvedKeys = JSON.parse(localStorage.getItem(STORAGE_KEYS.APPROVED_USERS) || '[]'); } catch (_) {}
+      try { rejectedKeys = JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECTED_USERS) || '[]'); } catch (_) {}
+      try { deletedKeys = JSON.parse(localStorage.getItem(STORAGE_KEYS.DELETED_USERS) || '[]'); } catch (_) {}
 
-      const pendingFromReg = [];
       const cleanReg = [];
-
       regList.forEach(u => {
-        if (!u) return;
-        const uEmail = (u.email || '').toLowerCase().trim();
-        const uUser = (u.username || '').toLowerCase().trim();
-        const uId = String(u.id || '').trim();
-        const uName = (u.name || '').toLowerCase().trim();
+        if (!u || isMockUser(u)) return;
+        if (deletedKeys.some(d => matchesUser(d, u))) return;
+        if (rejectedKeys.some(r => matchesUser(r, u))) return;
 
-        const isApproved = approvedKeys.some(a => 
-          (uEmail && a.email && a.email.toLowerCase().trim() === uEmail) ||
-          (uUser && a.username && a.username.toLowerCase().trim() === uUser) ||
-          (uId && a.id && String(a.id).trim() === uId) ||
-          (uName && a.name && a.name.toLowerCase().trim() === uName)
-        );
-
+        const isApproved = approvedKeys.some(a => matchesUser(a, u));
         if (isApproved) {
           u.status = 'Active';
-          cleanReg.push(u);
-          return;
         }
-
-        const s = String(u.status || '').toLowerCase().trim();
-        if (s === 'pending' || s === 'pending_approval') {
-          pendingFromReg.push(u);
-        } else {
-          cleanReg.push(u);
-        }
+        cleanReg.push(u);
       });
 
-      if (pendingFromReg.length > 0) {
-        // Move unapproved users to pending queue
-        const rawPending = localStorage.getItem('rmims_pending_users');
-        const pendingList = rawPending ? JSON.parse(rawPending) : [];
-        pendingFromReg.forEach(pu => {
-          const exists = pendingList.some(p => 
-            (p.id && pu.id && String(p.id) === String(pu.id)) ||
-            (p.email && pu.email && p.email.toLowerCase() === pu.email.toLowerCase()) ||
-            (p.username && pu.username && p.username.toLowerCase() === pu.username.toLowerCase())
-          );
-          if (!exists) {
-            pendingList.push({
-              ...pu,
-              status: 'Pending',
-              requestedOn: pu.created_at || pu.requestedOn || new Date().toISOString()
-            });
-          }
-        });
-        localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
-        localStorage.setItem('rmims_registered_users', JSON.stringify(cleanReg));
-        window.dispatchEvent(new Event('rmims_pending_users_updated'));
-        window.dispatchEvent(new Event('rmims_registered_users_updated'));
-      }
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(cleanReg));
     } catch (_) {}
   }
 
@@ -677,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     editModal.classList.add('active');
   };
 
-  window.submitEditUser = function () {
+  window.submitEditUser = async function () {
     const id = document.getElementById('editUserId').value;
     const name = document.getElementById('editUserName').value.trim();
     const username = document.getElementById('editUserUsername').value.trim();
@@ -691,6 +652,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = document.getElementById('editUserRole').value;
     const email = document.getElementById('editUserEmail').value.trim();
 
+    if (!name || !username || !email) {
+      if (window.showAdminToast) window.showAdminToast('Please fill out all required fields.', 'danger');
+      return;
+    }
+
     const updatedUser = {
       id,
       name,
@@ -698,36 +664,30 @@ document.addEventListener('DOMContentLoaded', () => {
       email,
       branchLoc,
       branchName,
-      role
+      role,
+      status: 'Active'
     };
 
-    const users = getStoredRegisteredUsers();
-    const userIndex = users.findIndex(u => String(u.id) === String(id));
-    if (userIndex !== -1) {
-      users[userIndex] = {
-        ...users[userIndex],
-        ...updatedUser
-      };
-      saveStoredRegisteredUsers(users);
-    }
-
-    // Persist user update directly to Supabase user_profiles
-    if (adminSrv && typeof adminSrv.updateUserAccount === 'function') {
-      adminSrv.updateUserAccount(updatedUser).catch(err => {
-        console.warn('[AdminUserManagement] Supabase update user notice:', err.message || err);
-      });
+    try {
+      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
+      await srv.updateUserAccount(updatedUser);
+    } catch (err) {
+      console.warn('[AdminUserManagement] Edit user update notice:', err.message || err);
     }
 
     closeEditModal();
     renderRegisteredUsers();
     refreshCounters();
-    window.showAdminToast(`Profile for ${name} updated successfully.`);
+    populateBranchDropdowns();
+    if (window.showAdminToast) {
+      window.showAdminToast(`Profile for ${name} updated and synchronized across all stores.`, 'success');
+    }
   };
 
   // Delete User Handler
-  window.deleteUser = function (id, name) {
+  window.deleteUser = async function (id, name) {
     const users = getStoredRegisteredUsers();
-    const target = users.find(u => String(u.id) === String(id));
+    const target = users.find(u => matchesUser(id, u));
     const targetRole = String(target?.role || '').toLowerCase();
     const targetEmail = String(target?.email || '').toLowerCase();
     const targetName = String(name || target?.name || '').toLowerCase();
@@ -748,36 +708,30 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${name} from the active users directory?`)) {
+    if (!confirm(`Are you sure you want to permanently delete ${name} from all branch stores and user directories?`)) {
       return;
     }
 
-    const remaining = users.filter(u => String(u.id) !== String(id));
-    saveStoredRegisteredUsers(remaining);
-
-    // Delete user from Supabase user_profiles to permanently prevent zombie resurrection
-    if (adminSrv && typeof adminSrv.deleteUserAccount === 'function') {
-      adminSrv.deleteUserAccount(id, targetEmail).catch(err => {
-        console.warn('[AdminUserManagement] Supabase delete user notice:', err.message || err);
-      });
+    try {
+      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
+      await srv.deleteUserAccount(id, targetEmail, name);
+    } catch (err) {
+      console.warn('[AdminUserManagement] Delete user notice:', err.message || err);
     }
 
     renderRegisteredUsers();
     refreshCounters();
-    window.showAdminToast(`User ${name} has been removed.`, 'danger');
+    populateBranchDropdowns();
+    if (window.showAdminToast) {
+      window.showAdminToast(`User ${name} has been removed from all branch stores and directories.`, 'danger');
+    }
   };
 
   // Pending Approval Actions
   window.approveUser = async function (param) {
     const pendingList = getStoredPendingUsers();
     const cleanParam = String(param || '').trim();
-    let target = pendingList.find(u => 
-      String(u.id).trim() === cleanParam ||
-      `req_${u.id}` === cleanParam ||
-      (u.username && u.username.toLowerCase() === cleanParam.toLowerCase()) ||
-      (u.email && u.email.toLowerCase() === cleanParam.toLowerCase()) ||
-      (u.name && u.name.toLowerCase() === cleanParam.toLowerCase())
-    );
+    let target = pendingList.find(u => matchesUser(cleanParam, u));
     let row = document.getElementById(param) || document.getElementById(`req_${param}`);
 
     let name = target ? target.name : (row ? row.getAttribute('data-name') : 'User');
@@ -790,269 +744,71 @@ document.addEventListener('DOMContentLoaded', () => {
     let role = target ? target.role : (row ? row.getAttribute('data-role') : 'Staff');
     let email = target ? target.email : (row ? row.getAttribute('data-email') : `${username}@store.ph`);
 
-    const cleanEmail = (email || '').toLowerCase().trim();
-    const cleanUsername = (username || '').toLowerCase().trim();
-    const cleanId = String(target?.id || param || '').trim();
+    const targetPayload = {
+      id: target && target.id ? target.id : (cleanParam.startsWith('req_') ? cleanParam.slice(4) : cleanParam),
+      name,
+      username,
+      email,
+      role,
+      branchLoc,
+      branchName
+    };
 
-    // Remove from pending users matching ID, req_ID, email, or username
-    const remaining = pendingList.filter(u => {
-      const uId = String(u.id || '').trim();
-      const uEmail = (u.email || '').toLowerCase().trim();
-      const uUser = (u.username || '').toLowerCase().trim();
-      return uId !== cleanId &&
-             `req_${uId}` !== cleanParam &&
-             !(cleanEmail && uEmail && uEmail === cleanEmail) &&
-             !(cleanUsername && uUser && uUser === cleanUsername);
-    });
-    saveStoredPendingUsers(remaining);
-
-    // Add or update in authoritative approved users cache
     try {
-      const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
-      const newUserId = target && target.id ? target.id : (cleanId && !cleanId.startsWith('req_') ? cleanId : `user-${Date.now()}`);
-      const appIdx = approvedCache.findIndex(a => 
-        (newUserId && a.id && String(a.id).trim() === String(newUserId).trim()) ||
-        (cleanEmail && a.email && a.email.toLowerCase().trim() === cleanEmail) ||
-        (cleanUsername && a.username && a.username.toLowerCase().trim() === cleanUsername)
-      );
-      const appRecord = {
-        id: newUserId,
-        name: name,
-        username: username,
-        email: email,
-        role: role,
-        branchLoc: branchLoc,
-        branchName: branchName,
-        status: 'Active',
-        approvedAt: new Date().toISOString()
-      };
-      if (appIdx >= 0) {
-        approvedCache[appIdx] = { ...approvedCache[appIdx], ...appRecord };
-      } else {
-        approvedCache.push(appRecord);
-      }
-      localStorage.setItem('rmims_approved_users', JSON.stringify(approvedCache));
-    } catch (_) {}
+      const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
+      await srv.approveUserAccount(targetPayload);
 
-    // Add or update in registered users directory in storage ONLY after approval
-    const regList = getStoredRegisteredUsers();
-    const newUserId = target && target.id ? target.id : (cleanId && !cleanId.startsWith('req_') ? cleanId : `user-${Date.now()}`);
-    const existingIndex = regList.findIndex(u => 
-      (u.id && newUserId && String(u.id) === String(newUserId)) ||
-      (u.email && email && u.email.toLowerCase() === email.toLowerCase()) ||
-      (u.username && username && u.username.toLowerCase() === username.toLowerCase())
-    );
-    if (existingIndex >= 0) {
-      regList[existingIndex].status = 'Active';
-      if (branchLoc) regList[existingIndex].branchLoc = branchLoc;
-      if (branchName) regList[existingIndex].branchName = branchName;
-      if (role) regList[existingIndex].role = role;
-    } else {
-      regList.push({
-        id: newUserId,
-        name: name,
-        username: username,
-        email: email,
-        branchLoc: branchLoc,
-        branchName: branchName,
-        role: role,
-        status: 'Active'
-      });
+      if (window.showAdminToast) {
+        window.showAdminToast(`Account for ${name} approved and synchronized with Supabase (Active).`, 'success');
+      }
+    } catch (err) {
+      if (window.showAdminToast) {
+        window.showAdminToast(`Account for ${name} approved and activated.`, 'success');
+      }
     }
-    saveStoredRegisteredUsers(regList);
-
-    // Broadcast live notification across all portals (Admin, Manager, Staff)
-    try {
-      if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-        window.pushRMIMSNotification({
-          title: `Account Approved: ${name}`,
-          message: `Administrator approved registration for ${name} (${role}) assigned to ${branchName}.`,
-          category: 'Activity',
-          badge: 'User Management',
-          role: 'admin',
-          targetRole: 'admin',
-          roleScope: 'admin',
-          priority: 'normal',
-          targetUrl: 'admin/user-management.html',
-          actor: 'Administrator'
-        });
-      }
-    } catch (e) {}
-
-    // Log Activity
-    try {
-      const act = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
-      act.unshift({
-        id: `act-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        date: getLiveTodayISO(),
-        user: 'Admin',
-        role: 'Main Admin',
-        branch: branchName,
-        branchLoc: branchLoc,
-        branchName: branchName,
-        action: 'Approved Account',
-        module: 'User Management',
-        details: `Approved ${role} account for ${name} (${branchName})`,
-        status: 'success'
-      });
-      localStorage.setItem('rmims_manager_activities', JSON.stringify(act.slice(0, 50)));
-    } catch (_) {}
-
-    // Automatically register or associate branch store in RMIMS_BRANCH_STORES_V3
-    try {
-      const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
-      const cleanLoc = (branchLoc && branchLoc !== 'Unassigned') ? branchLoc : 'General';
-      const locKey = cleanLoc.toLowerCase().replace(/[^a-z0-9]/g, '') || 'general';
-      const storeKey = branchName.toLowerCase().replace(/[^a-z0-9]/g, '_') || `store_${Date.now()}`;
-      
-      if (!stores[storeKey]) {
-        stores[storeKey] = {
-          id: storeKey,
-          name: branchName,
-          locKey: locKey,
-          locationKey: locKey,
-          locationName: branchName.toUpperCase(),
-          address: branchLoc || 'Unassigned',
-          managers: [],
-          staff: []
-        };
-      }
-
-      const isMgr = role.toLowerCase().includes('manager');
-      const memberObj = {
-        id: newUserId,
-        name: name,
-        username: username,
-        email: email,
-        initials: getInitials(name),
-        status: 'APPROVED',
-        accessCode: String(Math.floor(100000 + Math.random() * 900000))
-      };
-
-      if (isMgr) {
-        if (!stores[storeKey].managers.some(m => m.email === email || m.username === username)) {
-          stores[storeKey].managers.push(memberObj);
-        }
-      } else {
-        if (!stores[storeKey].staff.some(s => s.email === email || s.username === username)) {
-          stores[storeKey].staff.push(memberObj);
-        }
-      }
-
-      localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(stores));
-      window.dispatchEvent(new Event('rmims_stores_updated'));
-      window.dispatchEvent(new Event('storage'));
-    } catch (_) {}
 
     renderPendingUsers();
     renderRegisteredUsers();
     refreshCounters();
-
-    // Synchronize approval to Supabase and await confirmation
-    try {
-      const srv = await import('../supabase/admin-supabase-service.js');
-      const syncResult = await srv.approveUserAccount({
-        id: target && target.id ? target.id : newUserId,
-        email: email,
-        username: username,
-        name: name
-      });
-
-      if (syncResult && syncResult.success) {
-        if (window.showAdminToast) {
-          window.showAdminToast(`Account for ${name} approved and synchronized with Supabase (Active).`, 'success');
-        }
-      } else {
-        if (window.showAdminToast) {
-          window.showAdminToast(`Account approved locally. Supabase sync notice: ${syncResult?.error || 'Awaiting sync'}.`, 'warning');
-        }
-      }
-    } catch (err) {
-      if (window.showAdminToast) {
-        window.showAdminToast(`Account for ${name} approved and activated.`);
-      }
-    }
   };
 
   window.rejectUser = async function (param) {
     const pendingList = getStoredPendingUsers();
-    let target = pendingList.find(u => String(u.id) === String(param));
+    const cleanParam = String(param || '').trim();
+    let target = pendingList.find(u => matchesUser(cleanParam, u));
     let row = document.getElementById(param) || document.getElementById(`req_${param}`);
     let name = target ? target.name : (row ? row.getAttribute('data-name') : 'User');
     let email = target ? target.email : (row ? row.getAttribute('data-email') : '');
     let username = target ? target.username : (row ? row.getAttribute('data-username') : '');
 
-    const remaining = pendingList.filter(u => String(u.id) !== String(param) && `req_${u.id}` !== String(param));
-    saveStoredPendingUsers(remaining);
+    const targetPayload = {
+      id: target?.id || cleanParam,
+      name,
+      email,
+      username
+    };
 
-    // Also remove from registered directory if present
-    try {
-      const regList = getStoredRegisteredUsers();
-      const updatedReg = regList.filter(u => String(u.id) !== String(param) && (email ? u.email?.toLowerCase() !== email.toLowerCase() : true));
-      saveStoredRegisteredUsers(updatedReg);
-    } catch (_) {}
-
-    // Synchronize rejection directly to Supabase user_profiles (status: inactive)
     try {
       const srv = adminSrv || (await import('../supabase/admin-supabase-service.js'));
       if (srv && typeof srv.rejectUserAccount === 'function') {
-        await srv.rejectUserAccount({
-          id: target?.id || param,
-          email: email,
-          username: username,
-          name: name
-        });
+        await srv.rejectUserAccount(targetPayload);
       }
     } catch (err) {
       console.warn('[AdminUserManagement] Supabase rejection notice:', err.message || err);
     }
 
-    // Log Activity
-    try {
-      const act = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
-      act.unshift({
-        id: `act-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        date: getLiveTodayISO(),
-        user: 'Admin',
-        role: 'Main Admin',
-        branch: 'Headquarters',
-        branchLoc: 'Headquarters',
-        branchName: 'Headquarters',
-        action: 'Rejected Account',
-        module: 'User Management',
-        details: `Rejected registration request for ${name}`,
-        status: 'success'
-      });
-      localStorage.setItem('rmims_manager_activities', JSON.stringify(act.slice(0, 50)));
-    } catch (_) {}
-
     renderPendingUsers();
+    renderRegisteredUsers();
     refreshCounters();
-
-    // Broadcast live notification across all portals (Admin, Manager, Staff)
-    try {
-      if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-        window.pushRMIMSNotification({
-          title: `Registration Rejected: ${name}`,
-          message: `Registration request for ${name} was rejected by Administrator.`,
-          category: 'Activity',
-          badge: 'User Management',
-          role: 'admin',
-          targetRole: 'admin',
-          roleScope: 'admin',
-          priority: 'normal',
-          targetUrl: 'admin/user-management.html',
-          actor: 'Administrator'
-        });
-      }
-    } catch (e) {}
 
     if (window.showAdminToast) {
       window.showAdminToast(`Rejected registration for ${name}.`, 'danger');
     }
   };
+
+  // Cross-component function aliases
+  window.approveOverviewAccount = window.approveUser;
+  window.rejectOverviewAccount = window.rejectUser;
 
   // Pagination Controls — dynamically build buttons when renderRegisteredUsers runs
   function buildPaginationButtons(total, perPage) {
@@ -1273,6 +1029,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRegisteredUsers();
     refreshCounters();
   });
+
+  // Inter-tab instant real-time synchronization
+  try {
+    const bc = new BroadcastChannel('rmims_user_sync');
+    bc.onmessage = () => {
+      renderPendingUsers();
+      renderRegisteredUsers();
+      refreshCounters();
+      populateBranchDropdowns();
+    };
+  } catch (_) {}
 
   window.addEventListener('storage', (e) => {
     if (e.key === 'rmims_pending_users') {

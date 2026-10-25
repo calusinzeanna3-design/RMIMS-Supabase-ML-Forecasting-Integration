@@ -22,9 +22,62 @@ export const STORAGE_KEYS = {
   REGISTERED_USERS: 'rmims_registered_users',
   PENDING_USERS: 'rmims_pending_users',
   APPROVED_USERS: 'rmims_approved_users',
+  REJECTED_USERS: 'rmims_rejected_users',
+  DELETED_USERS: 'rmims_deleted_users',
   ACTIVITY_LOGS: 'rmims_manager_activities',
   SYSTEM_SETTINGS: 'rmims_admin_settings'
 };
+
+const BANNED_MOCK_USER_TOKENS = [
+  'maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza',
+  'carlos mendoza', 'victor morales', 'ethan cruz', 'sarah gomez', 'mark villanueva',
+  'john doe', 'jane doe', 'test user', 'dummy', 'sample user', 'placeholder',
+  'test account', 'test@test.com', '@example.com'
+];
+
+export function isMockUser(u) {
+  if (!u) return false;
+  const txt = `${u.name || u.full_name || ''} ${u.username || ''} ${u.email || ''} ${u.branchName || u.branch_name || ''}`.toLowerCase();
+  const role = String(u.role || u.operational_role || '').toLowerCase();
+  if (txt.includes('aizel') && (role.includes('staff') || role.includes('user_staff'))) return true;
+  if (u.email && (u.email.endsWith('@example.com') || u.email.endsWith('@test.com'))) return true;
+  return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
+}
+
+export function matchesUser(target, candidate) {
+  if (!target || !candidate) return false;
+  const tId = String(typeof target === 'object' ? (target.id || '') : target).trim().toLowerCase();
+  const cId = String(typeof candidate === 'object' ? (candidate.id || '') : candidate).trim().toLowerCase();
+  if (tId && cId && (
+    tId === cId || 
+    `req_${cId}` === tId || `ovrow_${cId}` === tId || 
+    `req_${tId}` === cId || `ovrow_${tId}` === cId
+  )) return true;
+
+  const tEmail = String(typeof target === 'object' ? (target.email || '') : (String(target).includes('@') ? target : '')).trim().toLowerCase();
+  const cEmail = String(typeof candidate === 'object' ? (candidate.email || '') : (String(candidate).includes('@') ? candidate : '')).trim().toLowerCase();
+  if (tEmail && cEmail && tEmail === cEmail) return true;
+
+  const tUser = String(typeof target === 'object' ? (target.username || '') : '').trim().toLowerCase();
+  const cUser = String(typeof candidate === 'object' ? (candidate.username || '') : '').trim().toLowerCase();
+  if (tUser && cUser && (tUser === cUser || tUser.replace(/\s+/g, '') === cUser.replace(/\s+/g, ''))) return true;
+
+  const tName = String(typeof target === 'object' ? (target.name || target.full_name || '') : '').trim().toLowerCase();
+  const cName = String(typeof candidate === 'object' ? (candidate.name || candidate.full_name || '') : '').trim().toLowerCase();
+  if (tName && cName && tName.length >= 3 && (tName === cName || tName.replace(/\s+/g, '') === cName.replace(/\s+/g, ''))) return true;
+
+  return false;
+}
+
+export function broadcastUserSync(action, user) {
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.postMessage({ action, user, timestamp: Date.now() });
+      channel.close();
+    }
+  } catch (_) {}
+}
 
 // ============================================================================
 // 1. BRANCH STORES & PERSONNEL MANAGEMENT
@@ -1295,58 +1348,183 @@ export async function createUserAccount(user) {
 }
 
 /**
- * Update an existing user account in Supabase user_profiles.
+ * Update an existing user account in Supabase user_profiles and across all local stores.
+ * Fully unified: synchronizes Registered Users, Branch Stores (RMIMS_BRANCH_STORES_V3),
+ * approved cache, active session profiles, and Supabase user_profiles.
  */
-export async function updateUserAccount(user) {
-  if (!user || (!user.id && !user.email)) return { success: false, error: 'User ID or email required' };
+export async function updateUserAccount(user, updatedBy = 'Main Admin') {
+  if (!user || (!user.id && !user.email && !user.username)) {
+    return { success: false, error: 'User identifier required' };
+  }
+
+  const targetId = String(user.id || '').trim();
+  const targetEmail = String(user.email || '').trim().toLowerCase();
+  const targetUsername = String(user.username || (targetEmail ? targetEmail.split('@')[0] : '')).trim().toLowerCase();
+  const targetName = String(user.name || user.fullName || user.full_name || '').trim();
+
+  const targetObj = { id: targetId, email: targetEmail, username: targetUsername, name: targetName };
 
   const roleClean = String(user.role || 'Staff').toLowerCase();
   const operationalRole = roleClean.includes('admin') ? 'admin' : (roleClean.includes('manager') ? 'manager' : 'staff');
   const role = operationalRole === 'admin' ? 'admin' : (operationalRole === 'manager' ? 'manager' : 'staff');
+  const branchLoc = user.branchLoc || user.branch_location || 'General';
+  const branchName = user.branchName || user.branch_name || (branchLoc ? `${branchLoc} Branch` : 'General Branch');
+  const status = user.status ? String(user.status).toLowerCase() : 'active';
 
   const updateFields = {
-    full_name: user.name || user.fullName,
-    username: user.username,
-    branch_location: user.branchLoc,
-    branch_name: user.branchName,
+    full_name: targetName,
+    username: targetUsername,
+    branch_location: branchLoc,
+    branch_name: branchName,
     role: role,
     operational_role: operationalRole,
-    status: user.status ? user.status.toLowerCase() : 'active',
+    status: status,
     updated_at: new Date().toISOString()
   };
 
-  // Local storage update
+  // 1. Local storage update: REGISTERED_USERS
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
     const users = raw ? JSON.parse(raw) : [];
-    const idx = users.findIndex(u => (user.id && String(u.id) === String(user.id)) || (user.email && u.email?.toLowerCase() === user.email.toLowerCase()));
-    if (idx >= 0) {
-      users[idx] = {
-        ...users[idx],
-        name: updateFields.full_name || users[idx].name,
-        username: updateFields.username || users[idx].username,
-        email: user.email || users[idx].email,
-        branchLoc: updateFields.branch_location || users[idx].branchLoc,
-        branchName: updateFields.branch_name || users[idx].branchName,
-        role: user.role || users[idx].role,
-        status: user.status || users[idx].status || 'Active'
-      };
-      localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
-      window.dispatchEvent(new Event('rmims_registered_users_updated'));
-      window.dispatchEvent(new Event('storage'));
-    }
-  } catch (_) {}
+    const idx = users.findIndex(u => matchesUser(targetObj, u));
+    const mergedRecord = {
+      ...(idx >= 0 ? users[idx] : {}),
+      id: targetId || (idx >= 0 ? users[idx].id : `user-${Date.now()}`),
+      name: targetName || (idx >= 0 ? users[idx].name : 'User'),
+      username: targetUsername || (idx >= 0 ? users[idx].username : 'user'),
+      email: targetEmail || (idx >= 0 ? users[idx].email : ''),
+      branchLoc: branchLoc,
+      branchName: branchName,
+      role: user.role || (idx >= 0 ? users[idx].role : 'Staff'),
+      status: user.status || (idx >= 0 ? users[idx].status : 'Active')
+    };
 
-  if (!supabase) return { success: true, offline: true };
+    if (idx >= 0) {
+      users[idx] = mergedRecord;
+    } else {
+      users.push(mergedRecord);
+    }
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
+
+    // 2. Update APPROVED_USERS cache if present
+    const rawApp = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
+    const approvedList = rawApp ? JSON.parse(rawApp) : [];
+    const appIdx = approvedList.findIndex(a => matchesUser(targetObj, a));
+    if (appIdx >= 0) {
+      approvedList[appIdx] = { ...approvedList[appIdx], ...mergedRecord };
+      localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(approvedList));
+    }
+
+    // 3. Update RMIMS_BRANCH_STORES_V3 personnel
+    try {
+      const stores = JSON.parse(localStorage.getItem(STORAGE_KEYS.BRANCH_STORES) || '{}');
+      let changed = false;
+
+      // Remove user from any existing store to handle reassignments cleanly
+      Object.values(stores).forEach(st => {
+        if (Array.isArray(st.managers)) {
+          const b4 = st.managers.length;
+          st.managers = st.managers.filter(m => !matchesUser(targetObj, m));
+          if (st.managers.length !== b4) changed = true;
+        }
+        if (Array.isArray(st.staff)) {
+          const b4 = st.staff.length;
+          st.staff = st.staff.filter(s => !matchesUser(targetObj, s));
+          if (st.staff.length !== b4) changed = true;
+        }
+      });
+
+      // Place user into current branch store if active
+      if (mergedRecord.status.toLowerCase() === 'active') {
+        const destStoreKey = (branchName || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const destLocKey = (branchLoc || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '') || 'general';
+        if (!stores[destStoreKey]) {
+          stores[destStoreKey] = {
+            id: destStoreKey,
+            name: branchName,
+            locKey: destLocKey,
+            locationKey: destLocKey,
+            locationName: branchName.toUpperCase(),
+            address: branchLoc,
+            managers: [],
+            staff: []
+          };
+          changed = true;
+        }
+
+        const isMgr = String(mergedRecord.role).toLowerCase().includes('manager');
+        const memberItem = {
+          id: mergedRecord.id,
+          name: mergedRecord.name,
+          username: mergedRecord.username,
+          email: mergedRecord.email,
+          status: 'APPROVED',
+          accessCode: String(Math.floor(100000 + Math.random() * 900000))
+        };
+
+        if (isMgr) {
+          if (!stores[destStoreKey].managers.some(m => matchesUser(targetObj, m))) {
+            stores[destStoreKey].managers.push(memberItem);
+            changed = true;
+          }
+        } else {
+          if (!stores[destStoreKey].staff.some(s => matchesUser(targetObj, s))) {
+            stores[destStoreKey].staff.push(memberItem);
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(stores));
+        window.dispatchEvent(new Event('rmims_stores_updated'));
+      }
+    } catch (_) {}
+
+    // 4. Update session profile if edited user is currently logged in
+    try {
+      ['currentUser', 'adminUser', 'rmimsAdminUser', 'userProfile', 'rmims_current_user', 'rmims_auth_user'].forEach(sKey => {
+        const rawSess = localStorage.getItem(sKey);
+        if (rawSess) {
+          const sessObj = JSON.parse(rawSess);
+          if (sessObj && matchesUser(targetObj, sessObj)) {
+            sessObj.fullName = targetName || sessObj.fullName;
+            sessObj.name = targetName || sessObj.name;
+            sessObj.username = targetUsername || sessObj.username;
+            sessObj.email = targetEmail || sessObj.email;
+            sessObj.role = role || sessObj.role;
+            sessObj.operationalRole = operationalRole || sessObj.operationalRole;
+            localStorage.setItem(sKey, JSON.stringify(sessObj));
+          }
+        }
+      });
+    } catch (_) {}
+
+    // 5. Log activity
+    logAdminActivity({
+      action: 'Updated User Account',
+      module: 'User Management',
+      details: `Updated user details for ${targetName || targetUsername || targetEmail} (${mergedRecord.role}, ${branchName}) by ${updatedBy}`
+    });
+
+    window.dispatchEvent(new Event('rmims_registered_users_updated'));
+    window.dispatchEvent(new Event('storage'));
+    broadcastUserSync('USER_UPDATED', mergedRecord);
+  } catch (localErr) {
+    console.warn('[AdminSupabase] Local update error:', localErr);
+  }
+
+  // 6. Supabase direct persistence
+  if (!supabase) return { success: true, offline: true, user: updateFields };
 
   try {
     let query = supabase.from('user_profiles').update(updateFields);
-    if (user.id && user.id.length > 20 && !user.id.startsWith('user-')) {
-      query = query.eq('id', user.id);
-    } else if (user.email) {
-      query = query.ilike('email', user.email.trim());
-    } else {
-      query = query.ilike('username', user.username.trim());
+    if (targetId && targetId.length > 20 && !targetId.startsWith('user-') && !targetId.startsWith('req_')) {
+      query = query.eq('id', targetId);
+    } else if (targetEmail) {
+      query = query.ilike('email', targetEmail);
+    } else if (targetUsername) {
+      query = query.ilike('username', targetUsername);
     }
 
     const { error } = await query;
@@ -1359,48 +1537,117 @@ export async function updateUserAccount(user) {
 }
 
 /**
- * Delete a user account from Supabase user_profiles to eliminate zombie / resurrected users.
+ * Delete a user account from Supabase user_profiles and across all local stores.
+ * Fully unified: removes from Registered Directory, Pending Queue, Approved Cache,
+ * Branch Stores personnel, and permanently blacklists in DELETED_USERS.
  */
-export async function deleteUserAccount(userId, userEmail) {
-  // 1. Remove from local mirrors
+export async function deleteUserAccount(userId, userEmail, userName, deletedBy = 'Main Admin') {
+  const cleanId = String(userId || '').trim();
+  const cleanEmail = String(userEmail || '').trim().toLowerCase();
+  const cleanUser = cleanEmail ? cleanEmail.split('@')[0] : '';
+  const cleanName = String(userName || '').trim();
+
+  const targetObj = { id: cleanId, email: cleanEmail, username: cleanUser, name: cleanName };
+
+  // 1. Add to authoritative deleted users cache (prevents zombie resurrection)
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-    const users = raw ? JSON.parse(raw) : [];
-    const filtered = users.filter(u => 
-      !(userId && String(u.id) === String(userId)) &&
-      !(userEmail && u.email && u.email.toLowerCase() === userEmail.toLowerCase())
-    );
-    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(filtered));
+    const rawDel = localStorage.getItem(STORAGE_KEYS.DELETED_USERS);
+    const delList = rawDel ? JSON.parse(rawDel) : [];
+    if (!delList.some(d => matchesUser(targetObj, d))) {
+      delList.push({
+        id: cleanId,
+        email: cleanEmail,
+        username: cleanUser,
+        name: cleanName,
+        deletedAt: new Date().toISOString()
+      });
+      localStorage.setItem(STORAGE_KEYS.DELETED_USERS, JSON.stringify(delList));
+    }
 
+    // 2. Remove from pending queue
+    const rawPending = localStorage.getItem(STORAGE_KEYS.PENDING_USERS);
+    const pendingList = rawPending ? JSON.parse(rawPending) : [];
+    localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(pendingList.filter(u => !matchesUser(targetObj, u))));
+
+    // 3. Remove from approved users cache
     const rawApp = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
-    const approved = rawApp ? JSON.parse(rawApp) : [];
-    const filteredApp = approved.filter(u => 
-      !(userId && String(u.id) === String(userId)) &&
-      !(userEmail && u.email && u.email.toLowerCase() === userEmail.toLowerCase())
-    );
-    localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(filteredApp));
+    const approvedList = rawApp ? JSON.parse(rawApp) : [];
+    localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(approvedList.filter(a => !matchesUser(targetObj, a))));
 
+    // 4. Remove from registered directory
+    const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+    const regList = rawReg ? JSON.parse(rawReg) : [];
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(regList.filter(u => !matchesUser(targetObj, u))));
+
+    // 5. Remove from RMIMS_BRANCH_STORES_V3 personnel across all stores
+    try {
+      const stores = JSON.parse(localStorage.getItem(STORAGE_KEYS.BRANCH_STORES) || '{}');
+      let changed = false;
+      Object.values(stores).forEach(st => {
+        if (Array.isArray(st.managers)) {
+          const b4 = st.managers.length;
+          st.managers = st.managers.filter(m => !matchesUser(targetObj, m));
+          if (st.managers.length !== b4) changed = true;
+        }
+        if (Array.isArray(st.staff)) {
+          const b4 = st.staff.length;
+          st.staff = st.staff.filter(s => !matchesUser(targetObj, s));
+          if (st.staff.length !== b4) changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(stores));
+        window.dispatchEvent(new Event('rmims_stores_updated'));
+      }
+    } catch (_) {}
+
+    // 6. Log admin activity
+    logAdminActivity({
+      action: 'Deleted User Account',
+      module: 'User Management',
+      details: `Permanently removed user account ${cleanName || cleanUser || cleanEmail || 'User'} by ${deletedBy}`
+    });
+
+    window.dispatchEvent(new Event('rmims_pending_users_updated'));
     window.dispatchEvent(new Event('rmims_registered_users_updated'));
     window.dispatchEvent(new Event('storage'));
-  } catch (_) {}
+    broadcastUserSync('USER_DELETED', targetObj);
+  } catch (localErr) {
+    console.warn('[AdminSupabase] Local delete mirror error:', localErr);
+  }
 
+  // 7. Supabase Direct Synchronization
   if (!supabase) return { success: true, offline: true };
 
   try {
-    let query = supabase.from('user_profiles').delete();
-    if (userId && userId.length > 20 && !userId.startsWith('user-')) {
-      query = query.eq('id', userId);
-    } else if (userEmail) {
-      query = query.ilike('email', userEmail.trim());
-    } else {
-      return { success: false, error: 'Valid identifier required for deletion' };
+    // Step 7a: Immune deactivation fallback: mark 'inactive' so user can NEVER pop up as active or pending even if foreign keys block hard delete
+    const deactPayload = {
+      status: 'inactive',
+      operational_role: 'inactive',
+      updated_at: new Date().toISOString()
+    };
+
+    if (cleanId && cleanId.length > 20 && !cleanId.startsWith('user-') && !cleanId.startsWith('req_')) {
+      await supabase.from('user_profiles').update(deactPayload).eq('id', cleanId);
+    }
+    if (cleanEmail) {
+      await supabase.from('user_profiles').update(deactPayload).ilike('email', cleanEmail);
+    }
+    if (cleanUser) {
+      await supabase.from('user_profiles').update(deactPayload).ilike('username', cleanUser);
     }
 
-    const { error } = await query;
-    if (error) throw error;
+    // Step 7b: Attempt physical delete
+    if (cleanId && cleanId.length > 20 && !cleanId.startsWith('user-') && !cleanId.startsWith('req_')) {
+      await supabase.from('user_profiles').delete().eq('id', cleanId);
+    }
+    if (cleanEmail) {
+      await supabase.from('user_profiles').delete().ilike('email', cleanEmail);
+    }
+
     return { success: true };
   } catch (err) {
-    console.warn('[AdminSupabase] Delete user failed on Supabase:', err.message || err);
+    console.warn('[AdminSupabase] Delete user notice:', err.message || err);
     return { success: true, offline: true, error: err.message };
   }
 }

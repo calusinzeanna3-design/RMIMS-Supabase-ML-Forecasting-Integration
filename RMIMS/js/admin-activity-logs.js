@@ -662,6 +662,15 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(() => {});
 
+  // Inter-tab user mutation synchronization
+  try {
+    const bc = new BroadcastChannel('rmims_user_sync');
+    bc.onmessage = () => {
+      populateBranchFilter();
+      renderAllActivities();
+    };
+  } catch (_) {}
+
   window.addEventListener('rmims_inventory_updated', renderAllActivities);
   window.addEventListener('storage', (e) => {
     if (e.key === 'rmims_manager_activities' || e.key === 'rmims_manager_receipts' || e.key === 'rmims_manager_disbursements' || e.key === 'rmims_staff_transactions') {
