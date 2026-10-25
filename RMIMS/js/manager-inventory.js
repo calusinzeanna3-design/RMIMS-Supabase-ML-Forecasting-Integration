@@ -22,6 +22,36 @@ import { getActiveTenantContext } from './tenant-manager.js';
 
 // Local storage keys for Manager specific overrides & history
 const MGR_STORAGE_OVERRIDES_KEY = 'rmims_manager_material_overrides';
+
+function cleanseLegacySeptemberOverrides() {
+  try {
+    const raw = localStorage.getItem(MGR_STORAGE_OVERRIDES_KEY);
+    if (!raw) return;
+    const ovs = JSON.parse(raw);
+    let modified = false;
+    Object.keys(ovs).forEach(k => {
+      const item = ovs[k];
+      if (item) {
+        if (typeof item.date_added === 'string' && /sep(tember)?s+d{1,2}|2026-09/i.test(item.date_added)) {
+          delete item.date_added;
+          modified = true;
+        }
+        if (typeof item.last_updated === 'string' && /sep(tember)?s+d{1,2}|2026-09/i.test(item.last_updated)) {
+          delete item.last_updated;
+          modified = true;
+        }
+        if (typeof item.display_date === 'string' && /sep(tember)?s+d{1,2}|2026-09/i.test(item.display_date)) {
+          delete item.display_date;
+          modified = true;
+        }
+      }
+    });
+    if (modified) {
+      localStorage.setItem(MGR_STORAGE_OVERRIDES_KEY, JSON.stringify(ovs));
+    }
+  } catch (_) {}
+}
+
 const MGR_ARCHIVED_KEY = 'rmims_manager_archived_materials';
 const MGR_HISTORY_KEY = 'rmims_manager_material_history';
 
@@ -335,6 +365,7 @@ try {
  * Load materials from authoritative system dataset + manager local storage overrides
  */
 function loadMaterials() {
+  cleanseLegacySeptemberOverrides();
   const baseMaterials = getSystemRawMaterials();
   const overrides = getStoredOverrides();
   const archivedIds = getArchivedIds();
@@ -367,7 +398,7 @@ function loadMaterials() {
     allReceipts.forEach(r => {
       const rId = String(r.material_id || r.materialId || '').toLowerCase();
       const rName = String(r.material_name || r.materialName || '').toLowerCase();
-      if (rId === mIdLower || rName === mNameLower || (mNameLower && rName.includes(mNameLower))) {
+      if (rId === mIdLower || rName === mNameLower || (mNameLower && (rName.includes(mNameLower) || mNameLower.includes(rName)))) {
         const dStr = r.receipt_date || r.date || r.created_at;
         if (dStr) {
           const d = new Date(dStr);
@@ -381,7 +412,7 @@ function loadMaterials() {
     allDisbursements.forEach(d => {
       const dId = String(d.material_id || d.materialId || '').toLowerCase();
       const dName = String(d.material_name || d.materialName || '').toLowerCase();
-      if (dId === mIdLower || dName === mNameLower || (mNameLower && dName.includes(mNameLower))) {
+      if (dId === mIdLower || dName === mNameLower || (mNameLower && (dName.includes(mNameLower) || mNameLower.includes(dName)))) {
         const dStr = d.usage_date || d.date || d.created_at;
         if (dStr) {
           const d = new Date(dStr);
@@ -393,12 +424,17 @@ function loadMaterials() {
     });
 
     let effectiveDateObj = newestTxDate;
-    if (!effectiveDateObj && (ov.last_updated || ov.date_added || m.created_at)) {
-      const testD = new Date(ov.last_updated || ov.date_added || m.created_at);
+    if (ov.last_updated) {
+      const testLast = new Date(ov.last_updated);
+      if (!isNaN(testLast.getTime()) && (!effectiveDateObj || testLast.getTime() > effectiveDateObj.getTime())) {
+        effectiveDateObj = testLast;
+      }
+    }
+    if (!effectiveDateObj && (ov.date_added || m.created_at)) {
+      const testD = new Date(ov.date_added || m.created_at);
       if (!isNaN(testD.getTime())) effectiveDateObj = testD;
     }
     if (!effectiveDateObj) {
-      // Default to active registered date
       effectiveDateObj = new Date();
     }
 
@@ -409,9 +445,6 @@ function loadMaterials() {
     let displayDate = effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     let displayTime = effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-    if (ov.date_added && typeof ov.date_added === 'string' && !ov.date_added.includes('-')) {
-      displayDate = ov.date_added;
-    }
     if (ov.time_added) {
       displayTime = ov.time_added;
     }

@@ -1920,7 +1920,17 @@ async function renderRawMaterialsTrendChart() {
     });
 
     const sortedMonths = Array.from(monthMap.keys()).sort();
-    const activeMonths = sortedMonths.length > 0 ? sortedMonths : ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"];
+    let activeMonths = sortedMonths;
+    if (activeMonths.length === 0) {
+      const now = new Date();
+      activeMonths = [];
+      for (let i = 8; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        activeMonths.push(`${y}-${m}`);
+      }
+    }
 
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     labels = activeMonths.map(mKey => {
@@ -2560,7 +2570,11 @@ async function renderAiForecastedSupportCard() {
 
       const dateRangeStr = f7.startDate && f7.endDate
         ? `${new Date(f7.startDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(f7.endDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-        : "Sep 03 – Sep 09, 2026";
+        : (function() {
+      const n = new Date();
+      const n7 = new Date(n.getTime() + 7 * 86400000);
+      return `${n.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${n7.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    })();
 
       let plainInsight = ds.system_insight;
       if (!plainInsight) {
@@ -2709,7 +2723,7 @@ async function updateModalForecastProjection() {
 
     const breakdown = [];
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    let baseDate = new Date(2026, 8, 3); // Start Sep 03, 2026
+    let baseDate = new Date();
 
     if (horizonType === "month" && horizonVal === 1) {
       // For a single month, display weekly distribution for rich operational visibility
@@ -2717,10 +2731,11 @@ async function updateModalForecastProjection() {
       const w2 = Number((avgWeekly * 1.04).toFixed(1));
       const w3 = Number((avgWeekly * 0.98).toFixed(1));
       const w4 = Number((avgWeekly * 1.02).toFixed(1));
-      breakdown.push({ label: "Week 1 (Sep 01–07)", period_date: "W1", forecast_quantity: w1 });
-      breakdown.push({ label: "Week 2 (Sep 08–14)", period_date: "W2", forecast_quantity: w2 });
-      breakdown.push({ label: "Week 3 (Sep 15–21)", period_date: "W3", forecast_quantity: w3 });
-      breakdown.push({ label: "Week 4 (Sep 22–28)", period_date: "W4", forecast_quantity: w4 });
+      const curM = monthNames[baseDate.getMonth()];
+      breakdown.push({ label: `Week 1 (${curM} 01–07)`, period_date: "W1", forecast_quantity: w1 });
+      breakdown.push({ label: `Week 2 (${curM} 08–14)`, period_date: "W2", forecast_quantity: w2 });
+      breakdown.push({ label: `Week 3 (${curM} 15–21)`, period_date: "W3", forecast_quantity: w3 });
+      breakdown.push({ label: `Week 4 (${curM} 22–28)`, period_date: "W4", forecast_quantity: w4 });
     } else {
       for (let i = 0; i < horizonVal; i++) {
         let label = "";

@@ -450,6 +450,9 @@ function handleApproveTransaction() {
   }
   saveTransactions();
 
+  // Supabase commit
+  approveTransactionOnSupabase(activeReviewItem).catch(e => console.warn('[StaffActivity] Supabase notice:', e));
+
   // =========================================================================
   // SECTION 23: OFFICIAL INVENTORY UPDATE RULE
   // Only approved Staff transactions update official inventory and Manager Ledgers
@@ -682,6 +685,7 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
   // 1. Authoritative stock adjustment via system-materials (handles base + overrides)
   if (found || materialName) {
     adjustSystemMaterialStock(matId || resolvedMatName, delta);
+    updateMaterialActivityTimestamp(matId || resolvedMatName, new Date().toISOString(), isReceive ? 'Receive' : 'Disburse', quantity, unit);
   }
 
   // 2. Also ensure custom raw materials list explicitly persists the updated stock

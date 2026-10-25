@@ -29,7 +29,7 @@ export const AUTHENTIC_SCONES_FINISHED_PRODUCTS = [
     ],
     category: "Bakery & Breads",
     batchUnits: 50,
-    created_at: "2026-09-29T08:30:00.000Z"
+    created_at: new Date().toISOString()
   }
 ];
 

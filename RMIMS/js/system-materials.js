@@ -413,7 +413,8 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
     const mat = list.find(m => 
         String(m.id || '').toLowerCase() === searchId ||
         String(m.item_code || '').toLowerCase() === searchId ||
-        (m.name || '').trim().toLowerCase() === searchId
+        (m.name || '').trim().toLowerCase() === searchId ||
+        ((m.name || '').toLowerCase().includes(searchId) && searchId.length > 3)
     );
     if (!mat) return null;
 
@@ -424,20 +425,95 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
 
     saveCustomRawMaterial(mat);
 
+    // Synchronize both manager overrides keys with the new stock & latest timestamp
     try {
-        const ovRaw = localStorage.getItem("rmims_manager_inventory_overrides");
-        if (ovRaw) {
-            const ovs = JSON.parse(ovRaw);
-            const idKey = String(mat.item_code || mat.id).toUpperCase();
-            if (ovs && ovs[idKey]) {
-                ovs[idKey].current_stock = newStock;
-                ovs[idKey].last_updated = mat.last_updated;
-                localStorage.setItem("rmims_manager_inventory_overrides", JSON.stringify(ovs));
+        const ovKeys = ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"];
+        const idKey = String(mat.item_code || mat.id || '').toUpperCase().trim();
+        const nameKey = (mat.name || mat.raw_material_name || '').trim();
+
+        ovKeys.forEach(ovKey => {
+            const ovRaw = localStorage.getItem(ovKey);
+            const ovs = ovRaw ? JSON.parse(ovRaw) : {};
+            const keyToUse = idKey || nameKey;
+            if (keyToUse) {
+                ovs[keyToUse] = {
+                    ...(ovs[keyToUse] || {}),
+                    name: mat.name,
+                    raw_material_name: mat.raw_material_name || mat.name,
+                    current_stock: newStock,
+                    unit: mat.unit || mat.unit_of_measure,
+                    last_updated: mat.last_updated
+                };
+                if (idKey && nameKey && idKey !== nameKey) {
+                    ovs[nameKey] = {
+                        ...(ovs[nameKey] || {}),
+                        current_stock: newStock,
+                        last_updated: mat.last_updated
+                    };
+                }
+                localStorage.setItem(ovKey, JSON.stringify(ovs));
             }
-        }
+        });
     } catch (e) {}
 
+    // Invalidate forecast cache and broadcast
+    invalidateForecastCache();
+    try {
+        localStorage.setItem("rmims_inventory_updated", String(Date.now()));
+        window.dispatchEvent(new Event("storage"));
+        const syncChannel = new BroadcastChannel('rmims_user_sync');
+        syncChannel.postMessage({ type: 'INVENTORY_CHANGED', material: mat.name, currentStock: newStock, time: Date.now() });
+    } catch (_) {}
+
     return mat;
+}
+
+/**
+ * Updates a raw material's activity timestamp across all manager overrides and custom ledgers.
+ * Guarantees that the newest transaction or input immediately updates the inventory display date.
+ */
+export function updateMaterialActivityTimestamp(materialIdOrName, timestamp = new Date().toISOString(), activityType = 'Activity', qty = null, unit = null) {
+    if (!materialIdOrName) return;
+    const search = String(materialIdOrName).trim().toLowerCase();
+    const list = getSystemRawMaterials();
+    const mat = list.find(m => 
+        String(m.id || '').toLowerCase() === search ||
+        String(m.item_code || '').toLowerCase() === search ||
+        (m.name || '').trim().toLowerCase() === search
+    );
+
+    const now = new Date(timestamp);
+    const validTime = !isNaN(now.getTime()) ? now.toISOString() : new Date().toISOString();
+    const idKey = mat ? String(mat.item_code || mat.id || '').toUpperCase().trim() : String(materialIdOrName).toUpperCase().trim();
+    const nameKey = mat ? (mat.name || mat.raw_material_name || '').trim() : String(materialIdOrName).trim();
+
+    try {
+        const ovKeys = ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"];
+        ovKeys.forEach(ovKey => {
+            const ovRaw = localStorage.getItem(ovKey);
+            const ovs = ovRaw ? JSON.parse(ovRaw) : {};
+            const keys = [idKey, nameKey].filter(Boolean);
+            keys.forEach(k => {
+                ovs[k] = {
+                    ...(ovs[k] || {}),
+                    last_updated: validTime
+                };
+            });
+            localStorage.setItem(ovKey, JSON.stringify(ovs));
+        });
+    } catch (_) {}
+
+    if (mat) {
+        mat.last_updated = validTime;
+        saveCustomRawMaterial(mat);
+    }
+
+    try {
+        localStorage.setItem("rmims_inventory_updated", String(Date.now()));
+        window.dispatchEvent(new Event("storage"));
+        const syncChannel = new BroadcastChannel('rmims_user_sync');
+        syncChannel.postMessage({ type: 'MATERIAL_TIMESTAMP_UPDATED', material: nameKey, timestamp: validTime });
+    } catch (_) {}
 }
 
 

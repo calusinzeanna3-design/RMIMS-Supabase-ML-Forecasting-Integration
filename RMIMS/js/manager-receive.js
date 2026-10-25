@@ -26,6 +26,7 @@ import {
 } from './rmims-transaction-engine.js';
 import {
   recordStockReceiptToSupabase,
+  saveRawMaterialToSupabase,
   fetchUnifiedInventoryFromSupabase,
   fetchLiveStockReceiptsFromSupabase,
   deleteStockReceiptOnSupabase,
@@ -830,6 +831,15 @@ function bindReviewModalEvents() {
         mat.last_updated = new Date().toISOString();
         saveCustomRawMaterial(mat);
       }
+      updateMaterialActivityTimestamp(p.materialId || p.materialName, new Date().toISOString(), 'Receive', p.quantity, p.unit);
+      saveRawMaterialToSupabase({
+        id: p.materialId,
+        item_code: p.materialId,
+        name: p.materialName,
+        raw_material_name: p.materialName,
+        current_stock: p.newStock,
+        unit: p.unit
+      }).catch(err => console.warn('[Receive] Supabase stock upsert notice:', err));
 
       // Also ensure custom raw materials list reflects the updated stock
       try {

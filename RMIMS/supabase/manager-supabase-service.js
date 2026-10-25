@@ -195,12 +195,28 @@ export async function recordStockReceiptToSupabase(receipt) {
     const dateOnly = String(rawDate).split(' • ')[0].split('T')[0];
     const qty = Number(receipt.quantity || receipt.received_quantity || 0);
 
+    // Resolve 36-char material UUID if only code or name provided
+    let resolvedMaterialId = (receipt.materialId && receipt.materialId.length === 36) ? receipt.materialId : null;
+    if (!resolvedMaterialId && supabase) {
+      try {
+        const matSearch = receipt.materialId || receipt.item_code || receipt.materialName || receipt.material || '';
+        const { data: foundMat } = await supabase.from('raw_materials')
+          .select('id, current_stock')
+          .or(`item_code.eq.${matSearch},name.ilike.${receipt.materialName || receipt.material || matSearch}`)
+          .limit(1)
+          .maybeSingle();
+        if (foundMat && foundMat.id) {
+          resolvedMaterialId = foundMat.id;
+        }
+      } catch (_) {}
+    }
+
     // 1. Try stored procedure if available
     let rpcSuccess = false;
-    if (receipt.materialId && receipt.materialId.length === 36) {
+    if (resolvedMaterialId) {
       try {
         const { data: rpcData, error: rpcErr } = await supabase.rpc('record_stock_receipt_v2', {
-          p_material_id: receipt.materialId,
+          p_material_id: resolvedMaterialId,
           p_receipt_date: dateOnly,
           p_quantity: qty,
           p_unit: receipt.unit || 'kg',
@@ -220,8 +236,8 @@ export async function recordStockReceiptToSupabase(receipt) {
         unit: receipt.unit || 'kg',
         supplier_name: receipt.supplier || receipt.supplier_name || 'Inward Delivery'
       };
-      if (receipt.materialId && receipt.materialId.length === 36) {
-        payload.material_id = receipt.materialId;
+      if (resolvedMaterialId) {
+        payload.material_id = resolvedMaterialId;
       }
       const { data, error } = await supabase.from('stock_receipts').insert([payload]).select();
       if (error) {
@@ -261,12 +277,28 @@ export async function recordMaterialDisbursementToSupabase(disbursement) {
     const dateOnly = String(rawDate).split(' • ')[0].split('T')[0];
     const qty = Number(disbursement.quantity || disbursement.consumed_quantity || 0);
 
+    // Resolve 36-char material UUID if only code or name provided
+    let resolvedMaterialId = (disbursement.materialId && disbursement.materialId.length === 36) ? disbursement.materialId : null;
+    if (!resolvedMaterialId && supabase) {
+      try {
+        const matSearch = disbursement.materialId || disbursement.item_code || disbursement.materialName || disbursement.material || '';
+        const { data: foundMat } = await supabase.from('raw_materials')
+          .select('id, current_stock')
+          .or(`item_code.eq.${matSearch},name.ilike.${disbursement.materialName || disbursement.material || matSearch}`)
+          .limit(1)
+          .maybeSingle();
+        if (foundMat && foundMat.id) {
+          resolvedMaterialId = foundMat.id;
+        }
+      } catch (_) {}
+    }
+
     // 1. Try stored procedure if available
     let rpcSuccess = false;
-    if (disbursement.materialId && disbursement.materialId.length === 36) {
+    if (resolvedMaterialId) {
       try {
         const { data: rpcData, error: rpcErr } = await supabase.rpc('record_material_disbursement_v2', {
-          p_material_id: disbursement.materialId,
+          p_material_id: resolvedMaterialId,
           p_usage_date: dateOnly,
           p_quantity: qty,
           p_unit: disbursement.unit || 'kg',
@@ -288,8 +320,8 @@ export async function recordMaterialDisbursementToSupabase(disbursement) {
         activity_type: disbursement.activityType || disbursement.activity_type || 'Production Usage',
         finished_product_name: disbursement.recipient || disbursement.usedFor || disbursement.finished_product_name || 'Production Batch'
       };
-      if (disbursement.materialId && disbursement.materialId.length === 36) {
-        payload.material_id = disbursement.materialId;
+      if (resolvedMaterialId) {
+        payload.material_id = resolvedMaterialId;
       }
       const { data, error } = await supabase.from('material_disbursements').insert([payload]).select();
       if (error) {
@@ -367,7 +399,17 @@ export async function approveTransactionOnSupabase(tx) {
   const resolvedMatName = foundMat ? (foundMat.name || foundMat.raw_material_name) : materialName;
   const delta = isReceive ? qty : -qty;
 
-  adjustSystemMaterialStock(matId || resolvedMatName, delta);
+  const updatedMat = adjustSystemMaterialStock(matId || resolvedMatName, delta);
+  if (updatedMat) {
+    saveRawMaterialToSupabase({
+      id: updatedMat.id,
+      item_code: updatedMat.item_code || updatedMat.id,
+      name: updatedMat.name,
+      raw_material_name: updatedMat.raw_material_name || updatedMat.name,
+      current_stock: updatedMat.current_stock,
+      unit: updatedMat.unit || updatedMat.unit_of_measure
+    }).catch(e => console.warn('[ManagerSupabase] Stock sync notice:', e));
+  }
 
   // 2. Persist to Supabase and custom ledgers
   if (isReceive) {
@@ -840,9 +882,20 @@ export async function saveRawMaterialToSupabase(material) {
         payload.item_code = id;
       }
 
-      const { error } = await supabase.from('raw_materials').upsert([payload], { onConflict: 'item_code' });
+      let { error } = await supabase.from('raw_materials').upsert([payload], { onConflict: (id && id.length === 36) ? 'id' : 'item_code' });
       if (error) {
-        console.warn('[ManagerSupabase] Supabase raw_materials upsert notice:', error.message);
+        try {
+          const { data: existing } = await supabase.from('raw_materials')
+            .select('id')
+            .or(`item_code.eq.${id},name.ilike.${name}`)
+            .limit(1)
+            .maybeSingle();
+          if (existing && existing.id) {
+            const { error: updErr } = await supabase.from('raw_materials').update(payload).eq('id', existing.id);
+            if (!updErr) error = null;
+          }
+        } catch (_) {}
+        if (error) console.warn('[ManagerSupabase] Supabase raw_materials upsert notice:', error.message);
       }
 
       await logManagerActivityToSupabase({

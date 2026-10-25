@@ -24,7 +24,7 @@ import {
   updateManagerDisbursement,
   deleteManagerDisbursement
 } from './rmims-transaction-engine.js';
-import { recordMaterialDisbursementToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
+import { recordMaterialDisbursementToSupabase, saveRawMaterialToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
 
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
 
@@ -854,6 +854,15 @@ function bindReviewModalEvents() {
         mat.last_updated = new Date().toISOString();
         saveCustomRawMaterial(mat);
       }
+      updateMaterialActivityTimestamp(p.materialId || p.materialName, new Date().toISOString(), 'Disburse', p.quantity, p.unit);
+      saveRawMaterialToSupabase({
+        id: p.materialId,
+        item_code: p.materialId,
+        name: p.materialName,
+        raw_material_name: p.materialName,
+        current_stock: p.newStock,
+        unit: p.unit
+      }).catch(err => console.warn('[Disburse] Supabase stock upsert notice:', err));
 
       // Also ensure custom raw materials list reflects the reduced stock
       try {
