@@ -1063,6 +1063,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const userActivityHistory = (JSON.parse(localStorage.getItem('rmims_user_activity_history') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
             const staffAuditTrail = (JSON.parse(localStorage.getItem('rmims_staff_audit_trail') || '[]')).filter(a => isStoreMatch(a.branch || a.branchName, a.branchLocation || a.location));
 
+            if (supabase) {
+              try {
+                const { data: supaLogs } = await supabase.from('activity_audit_logs').select('*').limit(200);
+                if (Array.isArray(supaLogs) && supaLogs.length > 0) {
+                  supaLogs.forEach(sl => {
+                    if (!staffAuditTrail.some(st => st.id === sl.id)) {
+                      staffAuditTrail.push(sl);
+                    }
+                  });
+                }
+              } catch (_) {}
+            }
+
             snapshot.data.staff = {
               staffTransactions,
               staffSubmissions,
