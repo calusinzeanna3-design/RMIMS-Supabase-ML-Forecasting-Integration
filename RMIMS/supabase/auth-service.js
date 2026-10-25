@@ -834,6 +834,49 @@ export async function loginUser(email, password, expectedRole) {
             localStorage.setItem(notifStoreKey, JSON.stringify(existingList.slice(0, 100)));
             window.dispatchEvent(new CustomEvent('rmims:notification_change'));
             window.dispatchEvent(new Event('storage'));
+
+            // Record live detected account login activity across all user roles (Admin, Manager, Staff)
+            try {
+                const nowIso = new Date().toISOString();
+                const nowCleanDate = nowIso.slice(0, 10);
+                const cleanLoc = (isAdmin ? 'Headquarters' : (profile.branch_location || (isScones ? 'Lucena' : 'Tiaong'))).trim();
+                const cleanBranchName = (isAdmin ? 'Main Administration' : (profile.branch_name || assignedCompanyName)).trim();
+                
+                const liveLoginActivity = {
+                    id: `act-login-${profile.id}-${Date.now()}`,
+                    timestamp: nowIso,
+                    date: nowCleanDate,
+                    user: sessionFullName,
+                    role: destinationRoleLabel,
+                    branchLoc: cleanLoc,
+                    branchName: cleanBranchName,
+                    action: 'Login',
+                    module: 'Authentication',
+                    details: `${destinationRoleLabel} ${sessionFullName} signed in to ${cleanBranchName} (${cleanLoc}). Session authenticated.`,
+                    status: 'success'
+                };
+
+                const rawMgrActs = localStorage.getItem('rmims_manager_activities');
+                const mgrActsList = rawMgrActs ? JSON.parse(rawMgrActs) : [];
+                mgrActsList.unshift(liveLoginActivity);
+                localStorage.setItem('rmims_manager_activities', JSON.stringify(mgrActsList.slice(0, 200)));
+
+                // Also persist to Supabase admin_activity_logs if connected
+                if (supabase) {
+                    supabase.from('admin_activity_logs').insert([{
+                        id: liveLoginActivity.id,
+                        user_name: liveLoginActivity.user,
+                        role: liveLoginActivity.role,
+                        branch_location: liveLoginActivity.branchLoc,
+                        branch_name: liveLoginActivity.branchName,
+                        action: liveLoginActivity.action,
+                        module: liveLoginActivity.module,
+                        details: liveLoginActivity.details,
+                        status: liveLoginActivity.status,
+                        timestamp: liveLoginActivity.timestamp
+                    }]).then(() => {}).catch(() => {});
+                }
+            } catch (_) {}
         } catch (e) { }
 
         // Step 4: Final verification & launch directly to the user's role workspace

@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (alerts.length === 0) {
         tableBody.innerHTML = `
           <tr>
-            <td colspan="8" style="text-align: center; padding: 48px 16px; color: var(--rm-ink-dim);">
+            <td colspan="9" style="text-align: center; padding: 48px 16px; color: var(--rm-ink-dim);">
               <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
                 <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: #10B981; display: flex; align-items: center; justify-content: center;">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

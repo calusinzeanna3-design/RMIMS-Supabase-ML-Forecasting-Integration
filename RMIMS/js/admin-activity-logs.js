@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Strict requirement: must have a branch/HQ context and real user name
         if (!hasBranch && item.role !== 'Main Admin') return;
-        if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
+        const displayUser = user || (item.role === 'Main Admin' ? 'Zeanna' : (item.role === 'Manager' ? 'Store Manager' : 'Store Staff'));
         
         const txt = `${user} ${itemDetails} ${bLoc} ${bName}`.toLowerCase();
         if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const user = (r.receivedBy || '').trim();
         const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
         if (!hasBranch) return;
-        if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
+        const displayUser = user || 'Store Manager';
         const ref = r.ref || '';
         if (['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118'].includes(ref)) return;
 
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const user = (d.disbursedBy || '').trim();
         const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
         if (!hasBranch) return;
-        if (!user || user.toLowerCase() === 'store staff' || user.toLowerCase() === 'store manager') return;
+        const displayUser = user || 'Store Staff';
         const ref = d.ref || '';
         if (['DIS-2026-00091', 'DIS-2026-00088'].includes(ref)) return;
 
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const user = (st.staff || st.user || '').trim();
         const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
         if (!hasBranch) return;
-        if (!user || user.toLowerCase() === 'store staff' || user.toLowerCase() === 'store manager') return;
+        const displayUser = user || 'Store Staff';
         const ref = st.ref || '';
         if (['REC-2026-00125', 'DIS-2026-00091'].includes(ref)) return;
         if (user.toLowerCase().includes('john reyes') || user.toLowerCase().includes('maria santos')) return;
@@ -464,7 +464,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (locRaw.toLowerCase().includes('lucena')) locClass = 'lucena';
       else if (locRaw.toLowerCase().includes('tiaong')) locClass = 'tiaong';
       else if (locRaw.toLowerCase().includes('hq') || locRaw.toLowerCase().includes('headquarter')) locClass = 'hq';
-      const locBadgeText = locRaw || '—';
+      let locBadgeText = locRaw || '—';
+      if (locBadgeText.toLowerCase().includes('lucena')) locBadgeText = 'Lucena';
+      else if (locBadgeText.toLowerCase().includes('tiaong')) locBadgeText = 'Tiaong';
+      else if (locBadgeText.toLowerCase().includes('hq') || locBadgeText.toLowerCase().includes('headquarter')) locBadgeText = 'Headquarters';
       const roleClass = (act.role || 'Staff').toLowerCase();
       const actionRaw = (act.action || 'Updated').toLowerCase();
       

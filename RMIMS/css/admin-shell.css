@@ -5359,3 +5359,49 @@ table[class*="table"] {
     justify-content: center !important;
   }
 }
+
+
+/* Role Badges for System Alerts and Activities */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.role-badge.role-manager,
+.role-badge.manager {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+.role-badge.role-staff,
+.role-badge.staff {
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #CBD5E1;
+}
+.role-badge.role-admin,
+.role-badge.admin {
+  background: #F3E8FF;
+  color: #6B21A8;
+  border: 1px solid #D8B4FE;
+}
+.role-pill.admin {
+  background: #F3E8FF;
+  color: #6B21A8;
+  border: 1px solid #D8B4FE;
+}
+.location-badge.system {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+.action-tag.received {
+  background: #ECFDF5;
+  color: #047857;
+}

@@ -337,7 +337,7 @@ function renderOverviewLatestActivities() {
       const bName = (m.branchName || '').trim();
       const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
       if (!hasBranch) return;
-      if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
+      const displayUser = user || (m.role === 'Main Admin' ? 'Zeanna' : (m.role === 'Manager' ? 'Store Manager' : 'Store Staff'));
 
       const txt = `${user} ${details} ${bLoc} ${bName}`.toLowerCase();
       if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
@@ -365,7 +365,7 @@ function renderOverviewLatestActivities() {
       const user = (r.receivedBy || '').trim();
       const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
       if (!hasBranch) return;
-      if (!user || user.toLowerCase() === 'store manager' || user.toLowerCase() === 'store staff') return;
+      const displayUser = user || 'Store Manager';
       const ref = r.ref || '';
       if (['REC-2026-00125', 'REC-2026-00124', 'REC-2026-00120', 'REC-2026-00118'].includes(ref)) return;
 
@@ -390,7 +390,7 @@ function renderOverviewLatestActivities() {
       const user = (d.disbursedBy || '').trim();
       const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
       if (!hasBranch) return;
-      if (!user || user.toLowerCase() === 'store staff' || user.toLowerCase() === 'store manager') return;
+      const displayUser = user || 'Store Staff';
       const ref = d.ref || '';
       if (['DIS-2026-00091', 'DIS-2026-00088'].includes(ref)) return;
 

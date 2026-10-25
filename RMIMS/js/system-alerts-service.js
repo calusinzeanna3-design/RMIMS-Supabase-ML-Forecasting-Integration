@@ -17,61 +17,123 @@ export const ALERT_THRESHOLDS = {
   ROUTINE_INCIDENT: 3          // Non-critical warnings require repeated occurrences
 };
 
+// Helper to clean and format branch location to concise labels (e.g., 'Lucena', 'Tiaong', 'Headquarters', 'System')
+// Ensures no long wordy strings or full sentences appear in the location indicators
+export function formatCleanBranchLocation(locInput, branchNameInput = '') {
+  const combined = `${locInput || ''} ${branchNameInput || ''}`.toLowerCase().trim();
+  if (!combined) return 'System';
+  if (combined.includes('lucena')) return 'Lucena';
+  if (combined.includes('tiaong')) return 'Tiaong';
+  if (combined.includes('headquarters') || combined.includes('hq') || combined.includes('admin')) return 'Headquarters';
+  if (combined.includes('all branch') || combined.includes('general system') || combined.includes('cluster') || combined.includes('system')) return 'System';
+  
+  const candidate = (locInput || branchNameInput || '').split(/[\s\-(,]/)[0].trim();
+  if (candidate && candidate.length >= 3 && candidate.length <= 15) {
+    return candidate.charAt(0).toUpperCase() + candidate.slice(1);
+  }
+  return 'System';
+}
+
 // Helper to determine the assigned contact / role depending on the diagnosed problem
 export function getDiagnosticRecipient(alert = {}) {
   const typeLower = (alert.type || '').toLowerCase();
   const catLower = (alert.category || '').toLowerCase();
-  const branchName = alert.branch || 'Branch Store';
+  const branchName = alert.branchName || alert.branch || 'Branch Store';
   const cleanBranchSlug = branchName.toLowerCase().replace(/[^a-z0-9]/g, '');
   const branchDomain = cleanBranchSlug ? `${cleanBranchSlug}.com` : 'rmims.ph';
 
+  // 1. Password / Login / Authentication Failures -> Store Manager
   if (typeLower.includes('password') || typeLower.includes('login') || typeLower.includes('auth')) {
     return {
       role: 'Manager',
-      team: 'Store Management & User Contact',
+      roleLabel: 'Store Manager',
+      team: 'Store Management & Credentials',
       actionLabel: 'Send to Manager',
       defaultContact: `manager@${branchDomain}`,
-      suggestedNote: `Action required: Multiple failed logins detected for ${branchName}. Please assist user with password verification or credential reset.`
+      suggestedNote: `Action required: Multiple failed logins detected for ${branchName}. Store Manager assistance needed to verify credentials or assist password reset.`
     };
   }
 
+  // 2. Account Lockout / User Access Security -> Store Manager
   if (typeLower.includes('lock') || typeLower.includes('security')) {
     return {
       role: 'Manager',
-      team: 'Store Management & Security Contact',
+      roleLabel: 'Store Manager',
+      team: 'Store Management & Security',
       actionLabel: 'Send to Manager',
       defaultContact: `manager@${branchDomain}`,
-      suggestedNote: `Security alert: User account temporarily locked due to excessive failed attempts. Please verify user identity before authorization.`
+      suggestedNote: `Security alert: User account temporarily locked due to consecutive failed attempts. Store Manager verification required before unlocking.`
     };
   }
 
+  // 3. Low Stock / Reorder Thresholds -> Store Manager
+  if (typeLower.includes('low stock') || typeLower.includes('reorder') || typeLower.includes('threshold')) {
+    return {
+      role: 'Manager',
+      roleLabel: 'Store Manager',
+      team: 'Store Management & Purchasing',
+      actionLabel: 'Send to Manager',
+      defaultContact: `manager@${branchDomain}`,
+      suggestedNote: `Stock warning: Raw materials fallen below safety reorder threshold at ${branchName}. Store Manager action required to approve purchase order.`
+    };
+  }
+
+  // 4. Critical Stock Depletion / Out of Stock -> Store Staff
+  if (typeLower.includes('depletion') || typeLower.includes('depleted') || typeLower.includes('out of stock')) {
+    return {
+      role: 'Staff',
+      roleLabel: 'Store Staff',
+      team: 'Branch Inventory & Stocking Personnel',
+      actionLabel: 'Send to Staff',
+      defaultContact: `inventory@${branchDomain}`,
+      suggestedNote: `Critical inventory alert: Zero stock level detected for critical items at ${branchName}. Store Staff on-site inventory check required immediately.`
+    };
+  }
+
+  // 5. Rejected Transactions -> Store Staff
+  if (typeLower.includes('rejected') || typeLower.includes('transaction')) {
+    return {
+      role: 'Staff',
+      roleLabel: 'Store Staff',
+      team: 'Store Operations Personnel',
+      actionLabel: 'Send to Staff',
+      defaultContact: `staff@${branchDomain}`,
+      suggestedNote: `Transaction flagged: Transaction was rejected by the Store Manager. Store Staff personnel must review rejection notes and re-submit.`
+    };
+  }
+
+  // 6. Data Synchronization / Duplicate Entries -> Store Staff
   if (typeLower.includes('duplicate') || typeLower.includes('data') || catLower === 'data') {
     return {
-      role: 'Inventory Staff',
+      role: 'Staff',
+      roleLabel: 'Store Staff',
       team: 'Branch Inventory & Data Operations',
       actionLabel: 'Send to Staff',
       defaultContact: `inventory@${branchDomain}`,
-      suggestedNote: `Data sync warning: Duplicate entry detected in inventory sync for ${branchName}. Please verify batch codes and deduplicate.`
+      suggestedNote: `Data sync warning: Duplicate entry or data discrepancy detected in branch sync for ${branchName}. Store Staff review required.`
     };
   }
 
-  if (typeLower.includes('responsive') || typeLower.includes('performance') || catLower === 'performance') {
+  // 7. System Latency / Server Responsive / Database -> Main Administrator
+  if (typeLower.includes('responsive') || typeLower.includes('performance') || typeLower.includes('latency') || catLower === 'performance' || typeLower.includes('database') || typeLower.includes('offline') || typeLower.includes('network')) {
     return {
-      role: 'IT Maintenance',
-      team: 'System Maintenance & Infrastructure',
-      actionLabel: 'Send to Maintenance',
-      defaultContact: 'it.maintenance@rmims.ph',
-      suggestedNote: `System performance degradation: High latency recorded at ${branchName}. Maintenance team requested to inspect server load and query speeds.`
+      role: 'Admin',
+      roleLabel: 'Main Administrator',
+      team: 'Main Administration & Maintenance',
+      actionLabel: 'Send to Admin',
+      defaultContact: 'calusinzeanna3@gmail.com',
+      suggestedNote: `Infrastructure incident: System performance degradation or connection anomaly detected at ${branchName}. Main Administrator review required.`
     };
   }
 
-  // Functional / Database / Critical errors
+  // Default Fallback: Main Administrator
   return {
-    role: 'System Maintenance',
-    team: 'Core DevOps & Maintenance Team',
-    actionLabel: 'Send to Maintenance',
-    defaultContact: 'maintenance.ops@rmims.ph',
-    suggestedNote: `Critical diagnostic incident: ${alert.type || 'System Issue'} detected at ${branchName}. Immediate system maintenance required.`
+    role: 'Admin',
+    roleLabel: 'Main Administrator',
+    team: 'Main Administration',
+    actionLabel: 'Send to Admin',
+    defaultContact: 'calusinzeanna3@gmail.com',
+    suggestedNote: `System diagnostic incident: ${alert.type || 'Diagnostic Incident'} recorded at ${branchName}. Admin attention requested.`
   };
 }
 
@@ -158,7 +220,8 @@ export function syncOperationalAlerts() {
               occurrence: 1,
               lastDetected: timeNow,
               details: `Transaction ${ref} was rejected by Store Manager: "${reason}". Action required by store personnel.`,
-              targetRole: 'Store Manager',
+              targetRole: 'Staff',
+              targetRoleLabel: 'Store Staff',
               actionLabel: 'Send to Manager'
             });
             changed = true;
@@ -212,7 +275,8 @@ export function syncOperationalAlerts() {
               occurrence: outOfStock.length,
               lastDetected: timeNow,
               details: `${outOfStock.length} raw material(s) critically depleted (0 in stock) at ${sMap.branchName}: ${matNames}.`,
-              targetRole: 'Inventory Staff',
+              targetRole: 'Staff',
+              targetRoleLabel: 'Store Staff',
               actionLabel: 'Send to Staff'
             });
             changed = true;
@@ -251,7 +315,8 @@ export function syncOperationalAlerts() {
               occurrence: lowStock.length,
               lastDetected: timeNow,
               details: `${lowStock.length} raw material(s) below safety reorder threshold at ${sMap.branchName}: ${matNames}.`,
-              targetRole: 'Store Manager',
+              targetRole: 'Manager',
+              targetRoleLabel: 'Store Manager',
               actionLabel: 'Send to Manager'
             });
             changed = true;

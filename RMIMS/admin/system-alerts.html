@@ -269,6 +269,7 @@
               <thead>
                 <tr>
                   <th>Error Type</th>
+                  <th>Affected Role</th>
                   <th>Branch Location</th>
                   <th>Branch Name</th>
                   <th>Occurrence</th>
@@ -326,11 +327,11 @@
         <div class="modal-form-group">
           <label class="modal-form-label" for="dispatchRoleSelect">Send To (Role / Team)</label>
           <select class="modal-input" id="dispatchRoleSelect" onchange="window.handleDispatchRoleChange(this.value)" required>
-            <option value="Store Manager">Store Manager (User Contact & Branch Operations)</option>
+            <option value="Store Manager">Store Manager (User Contact & Branch Purchasing)</option>
+            <option value="Store Staff">Store Staff (Material Handling & Inventory Sync)</option>
+            <option value="Main Administrator">Main Administrator (System & Maintenance Team)</option>
             <option value="IT Maintenance">IT Maintenance (Server Performance & Infrastructure)</option>
-            <option value="System Maintenance">System Maintenance (Database & DevOps Operations)</option>
-            <option value="Inventory Staff">Inventory Staff (Material Activity & Sync Data)</option>
-            <option value="Account Security">Account Security (Access Control & Lockout Verification)</option>
+            <option value="Account Security">Account Security (Access Control & Verification)</option>
           </select>
         </div>
 

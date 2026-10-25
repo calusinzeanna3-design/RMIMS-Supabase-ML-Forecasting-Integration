@@ -689,14 +689,19 @@ export async function fetchLiveSystemActivities(options = {}) {
           seenIds.add(id);
           const matName = r.raw_materials?.name || 'Raw Material';
           const rDate = r.receipt_date || (r.created_at ? String(r.created_at).slice(0, 10) : '');
+          const isTiaong = String(r.company_id || '').includes('a72a7971') || String(r.company_name || '').toLowerCase().includes('kxc');
+          const branchLoc = isTiaong ? 'Tiaong' : 'Lucena';
+          const branchName = isTiaong ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery';
+          const managerName = r.received_by || (isTiaong ? 'Glazel' : 'Aizel');
+
           combined.push({
             id,
             timestamp: r.created_at || (rDate ? `${rDate}T10:00:00Z` : new Date().toISOString()),
             date: rDate || new Date().toISOString().slice(0, 10),
-            user: r.supplier_name ? `Manager (${r.supplier_name})` : 'Store Manager',
-            role: 'Manager',
-            branchLoc: 'Branch Store',
-            branchName: 'Inventory Operations',
+            user: managerName,
+            role: 'Store Manager',
+            branchLoc: branchLoc,
+            branchName: branchName,
             action: 'Received',
             module: 'Stock Receipts',
             details: `Received ${r.received_quantity} ${r.unit} of ${matName} from ${r.supplier_name || 'Supplier'}.`,
@@ -722,14 +727,19 @@ export async function fetchLiveSystemActivities(options = {}) {
           const matName = d.raw_materials?.name || 'Raw Material';
           const dDate = d.usage_date || (d.created_at ? String(d.created_at).slice(0, 10) : '');
           const reason = d.finished_product_name || d.activity_type || 'Operations';
+          const isTiaong = String(d.company_id || '').includes('a72a7971') || String(d.company_name || '').toLowerCase().includes('kxc');
+          const branchLoc = isTiaong ? 'Tiaong' : 'Lucena';
+          const branchName = isTiaong ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery';
+          const staffName = d.disbursed_by || (isTiaong ? 'Staff_2' : 'Staff_1');
+
           combined.push({
             id,
             timestamp: d.created_at || (dDate ? `${dDate}T14:30:00Z` : new Date().toISOString()),
             date: dDate || new Date().toISOString().slice(0, 10),
-            user: 'Store Staff',
-            role: 'Staff',
-            branchLoc: 'Branch Store',
-            branchName: 'Production Hub',
+            user: staffName,
+            role: 'Store Staff',
+            branchLoc: branchLoc,
+            branchName: branchName,
             action: 'Disbursed',
             module: 'Disbursement',
             details: `Disbursed ${d.consumed_quantity} ${d.unit} of ${matName} for ${reason}.`,
