@@ -1165,6 +1165,20 @@ export async function rejectUserAccount(targetParam, rejectedBy = 'Main Admin') 
       localStorage.setItem(STORAGE_KEYS.APPROVED_USERS, JSON.stringify(remainingApp));
     }
 
+    // Save to rejected users cache to immediately block unauthorized login attempts
+    const rawRej = localStorage.getItem(STORAGE_KEYS.REJECTED_USERS);
+    const rejList = rawRej ? JSON.parse(rawRej) : [];
+    if (!rejList.some(r => matchesUser(targetParam, r))) {
+      rejList.push({
+        id: cleanId,
+        email: cleanEmail,
+        username: cleanUser,
+        name: cleanName,
+        rejectedAt: new Date().toISOString()
+      });
+      localStorage.setItem(STORAGE_KEYS.REJECTED_USERS, JSON.stringify(rejList));
+    }
+
     window.dispatchEvent(new Event('rmims_pending_users_updated'));
     window.dispatchEvent(new Event('rmims_registered_users_updated'));
     window.dispatchEvent(new Event('storage'));

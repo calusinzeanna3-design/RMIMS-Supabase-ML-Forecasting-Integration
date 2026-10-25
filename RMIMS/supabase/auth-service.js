@@ -237,13 +237,64 @@ export function autoSyncApprovedUsersCache() {
 // Run immediately on script evaluation
 autoSyncApprovedUsersCache();
 
+export function isUserAccountDeleted(email, uid, username = '') {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanUid = (uid || '').trim();
+    const cleanUser = (username || (cleanEmail ? cleanEmail.split('@')[0] : '')).toLowerCase().trim();
+    try {
+        const deleted = JSON.parse(localStorage.getItem('rmims_deleted_users') || '[]');
+        if (Array.isArray(deleted) && deleted.length > 0) {
+            return deleted.some(d => {
+                if (!d) return false;
+                const dEmail = (d.email || '').toLowerCase().trim();
+                const dId = String(d.id || '').trim();
+                const dUser = (d.username || '').toLowerCase().trim();
+                return (cleanEmail && dEmail && dEmail === cleanEmail) ||
+                       (cleanUid && dId && dId === cleanUid) ||
+                       (cleanUser && dUser && (dUser === cleanUser || dUser.replace(/\s+/g, '') === cleanUser.replace(/\s+/g, '')));
+            });
+        }
+    } catch (_) {}
+    return false;
+}
+
+export function isUserAccountRejected(email, uid, username = '') {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanUid = (uid || '').trim();
+    const cleanUser = (username || (cleanEmail ? cleanEmail.split('@')[0] : '')).toLowerCase().trim();
+    try {
+        const rejected = JSON.parse(localStorage.getItem('rmims_rejected_users') || '[]');
+        if (Array.isArray(rejected) && rejected.length > 0) {
+            return rejected.some(r => {
+                if (!r) return false;
+                const rEmail = (r.email || '').toLowerCase().trim();
+                const rId = String(r.id || '').trim();
+                const rUser = (r.username || '').toLowerCase().trim();
+                return (cleanEmail && rEmail && rEmail === cleanEmail) ||
+                       (cleanUid && rId && rId === cleanUid) ||
+                       (cleanUser && rUser && (rUser === cleanUser || rUser.replace(/\s+/g, '') === cleanUser.replace(/\s+/g, '')));
+            });
+        }
+    } catch (_) {}
+    return false;
+}
+
 export function isUserPendingApproval(email, uid, profileStatus, username = '', fullName = '') {
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanUid = (uid || '').trim();
     const cleanUser = (username || (cleanEmail ? cleanEmail.split('@')[0] : '')).toLowerCase().trim();
     const cleanName = (fullName || '').toLowerCase().trim();
+    const pStatus = (profileStatus || '').toLowerCase().trim();
 
-    // 0. Check explicitly approved users cache (authoritative source of admin approvals)
+    // 0. Deleted or rejected accounts are not pending
+    if (isUserAccountDeleted(cleanEmail, cleanUid, cleanUser) || pStatus === 'deleted') {
+        return false;
+    }
+    if (isUserAccountRejected(cleanEmail, cleanUid, cleanUser) || pStatus === 'rejected') {
+        return false;
+    }
+
+    // 1. Check explicitly approved users cache (authoritative source of admin approvals)
     try {
         const approvedCache = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
         if (Array.isArray(approvedCache) && approvedCache.length > 0) {
@@ -277,7 +328,7 @@ export function isUserPendingApproval(email, uid, profileStatus, username = '', 
         }
     } catch (_) {}
 
-    // 1. Check local registered directory (active accounts take precedence over stale pending records)
+    // 2. Check local registered directory (active accounts take precedence over stale pending records)
     try {
         const registered = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
         if (Array.isArray(registered)) {
@@ -310,13 +361,12 @@ export function isUserPendingApproval(email, uid, profileStatus, username = '', 
         }
     } catch (_) {}
 
-    // 2. Check profile status from Supabase (if Supabase returned active, account is confirmed active)
-    const pStatus = (profileStatus || '').toLowerCase().trim();
+    // 3. Check profile status from Supabase (if Supabase returned active, account is confirmed active)
     if (pStatus === 'active') {
         return false;
     }
 
-    // 3. Check if user is registered in RMIMS_BRANCH_STORES_V3 by admin
+    // 4. Check if user is registered in RMIMS_BRANCH_STORES_V3 by admin
     try {
         const stores = JSON.parse(localStorage.getItem('RMIMS_BRANCH_STORES_V3') || '{}');
         const storeList = Array.isArray(stores) ? stores : Object.values(stores);
@@ -337,28 +387,8 @@ export function isUserPendingApproval(email, uid, profileStatus, username = '', 
         }
     } catch (_) {}
 
-    // 4. Check local pending queue (only after verifying not approved)
-    try {
-        const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-        if (Array.isArray(pending) && pending.some(p => {
-            if (!p) return false;
-            const pEmail = (p.email || '').toLowerCase().trim();
-            const pId = String(p.id || '').trim();
-            const pUser = (p.username || '').toLowerCase().trim();
-            return (cleanEmail && pEmail && pEmail === cleanEmail) ||
-                   (cleanUid && pId && pId === cleanUid) ||
-                   (cleanUser && pUser && pUser === cleanUser);
-        })) {
-            return true;
-        }
-    } catch (_) {}
-
-    // 5. Check if profile explicitly marked as pending in DB
-    if (pStatus === 'pending' || pStatus === 'pending_approval') {
-        return true;
-    }
-
-    return false;
+    // 5. Default fallback: non-admin accounts that are not explicitly approved or active MUST await approval
+    return true;
 }
 
 /**
@@ -597,7 +627,49 @@ export async function loginUser(email, password, expectedRole) {
                 });
             } catch (_) {}
         } else {
-            // Strictly enforce Admin approval: non-admin users must be approved by Main Admin before entering
+            // Unified Admin Security Check 1: Block permanently deleted accounts
+            const isDeleted = isUserAccountDeleted(cleanEmail, uid, accountUsername) || profile.status === "deleted";
+            if (isDeleted) {
+                hideAuthTransition(transDOM);
+                await supabase.auth.signOut();
+                try {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('rmimsCurrentUser');
+                    localStorage.removeItem('userProfile');
+                    sessionStorage.clear();
+                } catch (_) {}
+                throw new Error("This account has been deleted by the Administrator. Access is permanently revoked.");
+            }
+
+            // Unified Admin Security Check 2: Block rejected account applications
+            const isRejected = isUserAccountRejected(cleanEmail, uid, accountUsername) || profile.status === "rejected";
+            if (isRejected) {
+                hideAuthTransition(transDOM);
+                await supabase.auth.signOut();
+                try {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('rmimsCurrentUser');
+                    localStorage.removeItem('userProfile');
+                    sessionStorage.clear();
+                } catch (_) {}
+                throw new Error("Your account application was declined by the Administrator. Access denied.");
+            }
+
+            // Unified Admin Security Check 3: Block inactive/suspended accounts
+            const isInactive = (profile.status === "inactive" || profile.status === "suspended") && !isMasterAdmin;
+            if (isInactive) {
+                hideAuthTransition(transDOM);
+                await supabase.auth.signOut();
+                try {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('rmimsCurrentUser');
+                    localStorage.removeItem('userProfile');
+                    sessionStorage.clear();
+                } catch (_) {}
+                throw new Error("Your account is currently inactive or suspended. Please contact the Administrator.");
+            }
+
+            // Unified Admin Security Check 4: Enforce Admin approval for pending accounts
             const isPending = isUserPendingApproval(cleanEmail, uid, profile.status, accountUsername, accountFullName);
             if (isPending) {
                 hideAuthTransition(transDOM);
