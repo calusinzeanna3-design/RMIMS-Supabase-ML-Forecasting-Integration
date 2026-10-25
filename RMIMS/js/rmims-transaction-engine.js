@@ -456,6 +456,13 @@ export function submitStaffTransaction(data) {
       });
     }
   } catch (e) {}
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.postMessage({ type: 'STAFF_TX_SUBMITTED', transaction: tx, timestamp: Date.now() });
+      channel.close();
+    }
+  } catch (_) {}
   return tx;
 }
 

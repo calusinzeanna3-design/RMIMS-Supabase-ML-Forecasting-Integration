@@ -211,16 +211,39 @@ export function getSystemRawMaterials() {
         console.warn("[SystemMaterials] Could not apply manager overrides:", e);
     }
 
-    // Filter out deleted materials
+    // Filter out deleted materials with multi-alias check
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         if (deletedRaw) {
-            const deletedIds = new Set(JSON.parse(deletedRaw));
-            if (deletedIds.size > 0) {
-                list = list.filter(m => !deletedIds.has(String(m.id)) && !deletedIds.has((m.name || "").toLowerCase().trim()));
+            const deletedArr = JSON.parse(deletedRaw);
+            if (Array.isArray(deletedArr) && deletedArr.length > 0) {
+                const deletedSet = new Set(deletedArr.map(d => String(d).trim().toLowerCase()));
+                list = list.filter(m => {
+                    const mId = String(m.id || "").trim().toLowerCase();
+                    const mCode = String(m.item_code || m.itemCode || "").trim().toLowerCase();
+                    const mName = String(m.name || m.raw_material_name || "").trim().toLowerCase();
+                    return !deletedSet.has(mId) && !deletedSet.has(mCode) && !deletedSet.has(mName);
+                });
             }
         }
     } catch (e) {}
+
+    // Strict deduplication pass: never allow repeating or duplicate materials to show up
+    const seenMatKeys = new Set();
+    const dedupedList = [];
+    list.forEach(m => {
+        const code = String(m.item_code || m.id || "").toUpperCase().trim();
+        const name = String(m.name || m.raw_material_name || "").toLowerCase().trim();
+        const uniqueKey = code || name;
+        if (!uniqueKey) return;
+        if (seenMatKeys.has(uniqueKey) || (name && seenMatKeys.has(`name:${name}`))) {
+            return; // skip duplicate or zombie entry
+        }
+        seenMatKeys.add(uniqueKey);
+        if (name) seenMatKeys.add(`name:${name}`);
+        dedupedList.push(m);
+    });
+    list = dedupedList;
 
     // Final property normalization: ensure every material has both snake_case and camelCase stock & threshold aliases
     return list.map(m => {
@@ -336,33 +359,37 @@ export function deleteSystemRawMaterial(idOrCodeOrName) {
         console.warn("[SystemMaterials] Error removing custom raw material:", e);
     }
 
-    // 2. Mark as deleted in global deleted IDs set
+    // 2. Mark as deleted in global deleted IDs set (include all aliases)
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         let deletedIds = deletedRaw ? JSON.parse(deletedRaw) : [];
         if (!Array.isArray(deletedIds)) deletedIds = [];
         
-        if (!deletedIds.includes(target)) deletedIds.push(target);
-        if (!deletedIds.includes(targetUpper)) deletedIds.push(targetUpper);
-        if (!deletedIds.includes(targetLower)) deletedIds.push(targetLower);
+        [target, targetUpper, targetLower].forEach(val => {
+            if (val && !deletedIds.includes(val)) deletedIds.push(val);
+        });
 
         localStorage.setItem(RMIMS_DELETED_MATERIALS_KEY, JSON.stringify(deletedIds));
     } catch (e) {
         console.warn("[SystemMaterials] Error writing deleted material ID:", e);
     }
 
-    // 3. Remove from manager overrides
-    try {
-        const ovRaw = localStorage.getItem("rmims_manager_inventory_overrides");
-        if (ovRaw) {
-            const ovs = JSON.parse(ovRaw);
-            if (ovs && typeof ovs === 'object') {
-                delete ovs[targetUpper];
-                delete ovs[target];
-                localStorage.setItem("rmims_manager_inventory_overrides", JSON.stringify(ovs));
+    // 3. Remove from both manager overrides storage keys
+    const overrideKeys = ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"];
+    overrideKeys.forEach(ovKey => {
+        try {
+            const ovRaw = localStorage.getItem(ovKey);
+            if (ovRaw) {
+                const ovs = JSON.parse(ovRaw);
+                if (ovs && typeof ovs === 'object') {
+                    delete ovs[target];
+                    delete ovs[targetUpper];
+                    delete ovs[targetLower];
+                    localStorage.setItem(ovKey, JSON.stringify(ovs));
+                }
             }
-        }
-    } catch (e) {}
+        } catch (e) {}
+    });
 
     // 4. Invalidate forecast cache and broadcast
     invalidateForecastCache();

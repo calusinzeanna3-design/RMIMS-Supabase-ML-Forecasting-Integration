@@ -12,6 +12,7 @@ import { supabase } from './supabase-config.js';
 import {
   getSystemRawMaterials,
   saveCustomRawMaterial,
+  deleteSystemRawMaterial,
   saveCustomReceipt,
   saveCustomDisbursement,
   adjustSystemMaterialStock,
@@ -671,4 +672,247 @@ export function broadcastManagerSync(detail = {}) {
       channel.close();
     }
   } catch (_) {}
+}
+
+/**
+ * Fetch live raw materials from Supabase and reconcile into local authoritative cache
+ * Guarantees zero zombie materials and no resurrection of deleted items.
+ */
+export async function fetchUnifiedInventoryFromSupabase() {
+  if (!supabase) return getSystemRawMaterials();
+
+  try {
+    const { data, error } = await fetchWithTimeout(supabase.from('raw_materials').select('*').order('name'), 4000);
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const deletedRaw = localStorage.getItem('rmims_deleted_material_ids');
+      const deletedArr = deletedRaw ? JSON.parse(deletedRaw) : [];
+      const deletedSet = new Set(Array.isArray(deletedArr) ? deletedArr.map(d => String(d).trim().toLowerCase()) : []);
+
+      const localCustom = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
+      const mgrOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}');
+      let customChanged = false;
+
+      data.forEach(sm => {
+        const code = String(sm.item_code || sm.id || '').toUpperCase().trim();
+        const codeLower = code.toLowerCase();
+        const name = (sm.name || '').trim();
+        const nameLower = name.toLowerCase();
+
+        // Never resurrect deleted items
+        if (deletedSet.has(codeLower) || deletedSet.has(nameLower) || (sm.id && deletedSet.has(String(sm.id).toLowerCase()))) {
+          return;
+        }
+
+        const idx = localCustom.findIndex(m =>
+          (m.name || '').trim().toLowerCase() === nameLower ||
+          String(m.item_code || m.id || '').toUpperCase().trim() === code
+        );
+
+        const formatted = {
+          id: sm.id || code,
+          item_code: sm.item_code || code,
+          name: sm.name,
+          raw_material_name: sm.name,
+          unit_of_measure: sm.unit_of_measure,
+          unit: sm.unit_of_measure,
+          current_stock: Number(sm.current_stock ?? 0),
+          currentStock: Number(sm.current_stock ?? 0),
+          minimum_threshold: Number(sm.minimum_threshold ?? 10),
+          minimum_stock: Number(sm.minimum_threshold ?? 10),
+          reorder_quantity: Number(sm.reorder_quantity ?? 25),
+          lead_time_days: Number(sm.lead_time_days ?? 3),
+          description: sm.description || `Raw material ${sm.name}`,
+          created_at: sm.created_at || new Date().toISOString()
+        };
+
+        if (idx !== -1) {
+          localCustom[idx] = { ...localCustom[idx], ...formatted };
+        } else {
+          localCustom.push(formatted);
+        }
+        customChanged = true;
+
+        if (code) {
+          mgrOverrides[code] = {
+            ...(mgrOverrides[code] || {}),
+            name: sm.name,
+            raw_material_name: sm.name,
+            unit: sm.unit_of_measure,
+            current_stock: Number(sm.current_stock ?? 0),
+            minimum_stock: Number(sm.minimum_threshold ?? 10),
+            maximum_stock: Number(sm.reorder_quantity ? sm.reorder_quantity * 4 : 100),
+            last_updated: sm.updated_at || new Date().toISOString()
+          };
+        }
+      });
+
+      if (customChanged) {
+        localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(localCustom));
+        localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
+      }
+    }
+  } catch (err) {
+    console.warn('[ManagerSupabase] Live inventory sync notice:', err);
+  }
+
+  return getSystemRawMaterials();
+}
+
+/**
+ * Save or update a raw material to Supabase and unify across all manager and staff modules
+ */
+export async function saveRawMaterialToSupabase(material) {
+  if (!material) return { success: false, message: 'Invalid material' };
+
+  const id = String(material.id || material.item_code || '').toUpperCase().trim();
+  const name = (material.name || material.raw_material_name || '').trim();
+  const unit = material.unit || material.unit_of_measure || 'kg';
+  const stock = Number(material.current_stock ?? material.currentStock ?? material.stock ?? 0);
+  const minStock = Number(material.minimum_threshold ?? material.minimum_stock ?? material.minimumStock ?? 10);
+  const reorderQty = Number(material.reorder_quantity ?? (minStock * 2) ?? 25);
+  const leadTime = Number(material.lead_time_days ?? 3);
+  const desc = material.description || `Raw material ${name}`;
+  const cat = material.category || 'General Materials';
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const timeStr = dateStr + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  // 1. Authoritative local persistence
+  saveCustomRawMaterial({
+    id: id || `RM-${Date.now()}`,
+    item_code: id,
+    name,
+    raw_material_name: name,
+    specification_name: material.specification_name || name,
+    category: cat,
+    unit_of_measure: unit,
+    unit,
+    current_stock: stock,
+    minimum_threshold: minStock,
+    minimum_stock: minStock,
+    reorder_quantity: reorderQty,
+    lead_time_days: leadTime,
+    description: desc,
+    created_at: material.created_at || now.toISOString()
+  });
+
+  // 2. Synchronize manager material overrides
+  try {
+    const ovRaw = localStorage.getItem('rmims_manager_material_overrides');
+    const ovs = ovRaw ? JSON.parse(ovRaw) : {};
+    ovs[id] = {
+      ...(ovs[id] || {}),
+      name,
+      raw_material_name: name,
+      specification_name: material.specification_name || name,
+      category: cat,
+      unit,
+      current_stock: stock,
+      minimum_stock: minStock,
+      maximum_stock: material.maximum_stock || (minStock * 5) || 100,
+      storage_location: material.storage_location || 'Warehouse A - Shelf 1',
+      supplier: material.supplier || 'General Supply Co.',
+      description: desc,
+      last_updated: timeStr
+    };
+    localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(ovs));
+  } catch (_) {}
+
+  // 3. Supabase upsert
+  if (supabase) {
+    try {
+      const payload = {
+        name,
+        unit_of_measure: unit,
+        current_stock: stock,
+        minimum_threshold: minStock,
+        reorder_quantity: reorderQty,
+        lead_time_days: leadTime,
+        description: desc
+      };
+      if (id && id.length === 36 && !id.startsWith('RM-') && !id.startsWith('NB-')) {
+        payload.id = id;
+      }
+      if (id) {
+        payload.item_code = id;
+      }
+
+      const { error } = await supabase.from('raw_materials').upsert([payload], { onConflict: 'item_code' });
+      if (error) {
+        console.warn('[ManagerSupabase] Supabase raw_materials upsert notice:', error.message);
+      }
+
+      await logManagerActivityToSupabase({
+        action: 'UPSERT_RAW_MATERIAL',
+        entityType: 'raw_materials',
+        entityId: id,
+        details: { id, name, unit, stock, minStock }
+      });
+    } catch (err) {
+      console.warn('[ManagerSupabase] Error saving raw material to Supabase:', err);
+    }
+  }
+
+  // 4. Universal broadcast across all portals
+  broadcastManagerSync({
+    action: 'update_material',
+    id,
+    name,
+    stock,
+    unit
+  });
+
+  return { success: true };
+}
+
+/**
+ * Permanently delete a raw material from Supabase and all local caches.
+ * Ensures the material is never brought back.
+ */
+export async function deleteRawMaterialOnSupabase(idOrCodeOrName) {
+  if (!idOrCodeOrName) return { success: false };
+  const clean = String(idOrCodeOrName).trim();
+
+  // 1. Authoritative local permanent deletion
+  deleteSystemRawMaterial(clean);
+
+  // 2. Remove from manager material overrides
+  try {
+    const ovRaw = localStorage.getItem('rmims_manager_material_overrides');
+    if (ovRaw) {
+      const ovs = JSON.parse(ovRaw);
+      delete ovs[clean];
+      delete ovs[clean.toUpperCase()];
+      delete ovs[clean.toLowerCase()];
+      localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(ovs));
+    }
+  } catch (_) {}
+
+  // 3. Delete from Supabase raw_materials
+  if (supabase) {
+    try {
+      if (clean.length === 36) {
+        await supabase.from('raw_materials').delete().eq('id', clean);
+      }
+      await supabase.from('raw_materials').delete().ilike('item_code', clean);
+      await supabase.from('raw_materials').delete().ilike('name', clean);
+
+      await logManagerActivityToSupabase({
+        action: 'DELETE_RAW_MATERIAL',
+        entityType: 'raw_materials',
+        entityId: clean,
+        details: { target: clean }
+      });
+    } catch (err) {
+      console.warn('[ManagerSupabase] Error deleting material on Supabase:', err);
+    }
+  }
+
+  // 4. Universal broadcast
+  broadcastManagerSync({
+    action: 'delete_material',
+    id: clean
+  });
+
+  return { success: true };
 }

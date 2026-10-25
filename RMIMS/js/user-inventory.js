@@ -8,6 +8,12 @@
  */
 
 import { getSystemRawMaterials, saveCustomRawMaterial, deleteSystemRawMaterial } from './system-materials.js';
+import {
+  fetchUnifiedInventoryFromSupabase,
+  saveRawMaterialToSupabase,
+  deleteRawMaterialOnSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
 
 let rawMaterials = [];
 let currentPage = 1;
@@ -27,12 +33,32 @@ function initStaffInventory() {
   loadInventory();
   bindEvents();
 
-  // Cross-tab real-time sync
+  // Unified live Supabase sync
+  try {
+    fetchUnifiedInventoryFromSupabase().then(() => {
+      loadInventory();
+    }).catch(e => console.warn('[Staff Inventory] Supabase live sync notice:', e));
+  } catch (_) {}
+
+  // Cross-tab and cross-module real-time sync
   window.addEventListener('storage', (e) => {
-    if (!e.key || e.key.includes('materials') || e.key.includes('receipts') || e.key.includes('disburse')) {
+    if (!e.key || e.key.includes('material') || e.key.includes('inventory') || e.key.includes('receipt') || e.key.includes('disburse')) {
       loadInventory();
     }
   });
+
+  window.addEventListener('rmims_inventory_updated', () => {
+    loadInventory();
+  });
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const syncChannel = new BroadcastChannel('rmims_user_sync');
+      syncChannel.onmessage = () => {
+        loadInventory();
+      };
+    }
+  } catch (_) {}
 }
 
 if (document.readyState === 'loading') {
@@ -576,7 +602,7 @@ function handleStaffEditSubmit(e) {
     last_updated: new Date().toISOString()
   };
 
-  saveCustomRawMaterial(updatedMat);
+  saveRawMaterialToSupabase(updatedMat);
   closeStaffEditModal();
   loadInventory();
   alert(`✓ Raw material "${name}" updated successfully.`);
@@ -604,7 +630,7 @@ function handleStaffDeleteSubmit() {
   const m = rawMaterials.find(x => String(x.id) === String(id) || String(x.item_code) === String(id));
   const name = m ? (m.name || m.materialName) : id;
 
-  deleteSystemRawMaterial(id);
+  deleteRawMaterialOnSupabase(id);
   closeStaffDeleteModal();
   loadInventory();
   alert(`✓ Raw material "${name}" deleted from catalog.`);

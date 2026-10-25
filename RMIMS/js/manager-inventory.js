@@ -10,6 +10,12 @@
  */
 
 import { getSystemRawMaterials, saveCustomRawMaterial, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit } from './system-materials.js';
+import {
+  fetchUnifiedInventoryFromSupabase,
+  saveRawMaterialToSupabase,
+  deleteRawMaterialOnSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG, AUTHENTIC_SCONES_FINISHED_PRODUCTS } from './authentic-finished-products.js';
 import { AUTHENTIC_19_SCONES_MATERIALS } from './authentic-scones-dataset.js';
 import { getActiveTenantContext } from './tenant-manager.js';
@@ -286,6 +292,14 @@ function initManagerInventory() {
   loadMaterials();
   initEventListeners();
   renderUI();
+
+  // Unified live Supabase sync
+  try {
+    fetchUnifiedInventoryFromSupabase().then(() => {
+      loadMaterials();
+      renderUI();
+    }).catch(e => console.warn('[Manager Inventory] Supabase live sync notice:', e));
+  } catch (_) {}
 }
 
 if (document.readyState === 'loading') {
@@ -296,11 +310,26 @@ if (document.readyState === 'loading') {
 
 // Listen for storage events (multi-tab sync)
 window.addEventListener('storage', (e) => {
-  if (!e.key || e.key.includes('material') || e.key.includes('inventory')) {
+  if (!e.key || e.key.includes('material') || e.key.includes('inventory') || e.key.includes('receipt') || e.key.includes('disburse')) {
     loadMaterials();
     renderUI();
   }
 });
+
+window.addEventListener('rmims_inventory_updated', () => {
+  loadMaterials();
+  renderUI();
+});
+
+try {
+  if (typeof BroadcastChannel !== 'undefined') {
+    const syncChannel = new BroadcastChannel('rmims_user_sync');
+    syncChannel.onmessage = () => {
+      loadMaterials();
+      renderUI();
+    };
+  }
+} catch (_) {}
 
 /**
  * Load materials from authoritative system dataset + manager local storage overrides
@@ -2901,6 +2930,26 @@ function handleAddMaterialSubmit(e) {
     created_at: now.toISOString()
   });
 
+  saveRawMaterialToSupabase({
+    id,
+    item_code: id,
+    name: rawMaterialName,
+    raw_material_name: rawMaterialName,
+    specification_name: specificationName,
+    category,
+    unit_of_measure: unit,
+    unit,
+    current_stock: currentStock,
+    minimum_threshold: minStock,
+    minimum_stock: minStock,
+    reorder_quantity: maxStock / 2,
+    lead_time_days: 3,
+    storage_location: location,
+    supplier,
+    description,
+    created_at: now.toISOString()
+  });
+
   logMaterialHistory(id, 'Created', `Registered raw material "${rawMaterialName}" (${specificationName}) in catalog with initial stock of ${currentStock} ${unit}.`);
 
   closeAddModal();
@@ -2969,7 +3018,7 @@ function handleConfirmDeleteMaterial() {
   const mat = findInventoryItem(id);
   const name = mat ? (mat.raw_material_name || mat.name) : id;
 
-  deleteSystemRawMaterial(id);
+  deleteRawMaterialOnSupabase(id);
   closeDeleteConfirmModal();
   loadMaterials();
   renderUI();
@@ -3075,6 +3124,45 @@ function handleEditMaterialSubmit(e) {
   };
 
   saveStoredOverrides(overrides);
+
+  saveCustomRawMaterial({
+    id,
+    item_code: id,
+    name: rawMaterialName,
+    raw_material_name: rawMaterialName,
+    specification_name: specificationName,
+    category,
+    unit_of_measure: unit,
+    unit,
+    current_stock: currentStock,
+    minimum_threshold: minStock,
+    minimum_stock: minStock,
+    reorder_quantity: maxStock / 2,
+    lead_time_days: 3,
+    description,
+    last_updated: timeStr
+  });
+
+  saveRawMaterialToSupabase({
+    id,
+    item_code: id,
+    name: rawMaterialName,
+    raw_material_name: rawMaterialName,
+    specification_name: specificationName,
+    category,
+    unit_of_measure: unit,
+    unit,
+    current_stock: currentStock,
+    minimum_threshold: minStock,
+    minimum_stock: minStock,
+    reorder_quantity: maxStock / 2,
+    lead_time_days: 3,
+    storage_location: location,
+    supplier,
+    description,
+    last_updated: timeStr
+  });
+
   logMaterialHistory(id, 'Updated', diffs.join('. ') + '.');
 
   closeEditModal();
@@ -4343,6 +4431,7 @@ async function handleConfirmImportMaterials() {
     if (statusEl) statusEl.textContent = `Successfully imported ${totalRows} raw materials!`;
 
     saveStoredOverrides(overrides);
+    broadcastManagerSync({ action: 'import_materials', count: importedCount });
 
     // Wait briefly at 100% so user sees completion
     await new Promise(r => setTimeout(r, 650));
