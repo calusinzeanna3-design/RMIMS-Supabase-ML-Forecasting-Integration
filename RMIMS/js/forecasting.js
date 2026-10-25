@@ -3810,3 +3810,22 @@ window.addEventListener("storage", (e) => {
         }, 150);
     }
 });
+
+
+try {
+  if (typeof BroadcastChannel !== 'undefined') {
+    const syncChannel = new BroadcastChannel('rmims_user_sync');
+    syncChannel.onmessage = () => {
+      if (typeof _storageDebounceTimer !== 'undefined') {
+        clearTimeout(_storageDebounceTimer);
+        _storageDebounceTimer = setTimeout(() => {
+          invalidateForecastCache();
+          loadAuthoritativeData();
+        }, 150);
+      } else {
+        invalidateForecastCache();
+        loadAuthoritativeData();
+      }
+    };
+  }
+} catch (_) {}

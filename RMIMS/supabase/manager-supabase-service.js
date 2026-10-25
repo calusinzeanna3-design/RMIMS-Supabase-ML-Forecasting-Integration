@@ -76,6 +76,9 @@ export async function fetchManagerDashboardData() {
 
     result.isLive = true;
 
+    // Restore persistent finished products from Supabase
+    fetchLiveFinishedProductsFromSupabase().catch(() => {});
+
     // Synchronize Supabase raw_materials with local storage master cache
     if (result.rawMaterials.length > 0) {
       try {
@@ -1024,3 +1027,93 @@ export async function deleteStockReceiptOnSupabase(refOrId) {
   return { success: true };
 }
 
+
+/**
+ * Permanently saves a Finished Product formulation to Supabase activity audit logs
+ * so it is continuously preserved across sessions and never removed.
+ */
+export async function saveFinishedProductToSupabase(product) {
+  if (!supabase || !product || !product.name) return { success: false };
+  try {
+    await logManagerActivityToSupabase({
+      action: 'UPSERT_FINISHED_PRODUCT',
+      entityType: 'finished_products',
+      entityId: product.id || product.name,
+      details: {
+        id: product.id || ('fp-' + Date.now()),
+        name: product.name,
+        materialNames: product.materialNames || [],
+        recipeDetails: product.recipeDetails || {},
+        category: product.category || 'Bakery & Breads',
+        batchUnits: product.batchUnits || 50,
+        date_added: product.date_added || new Date().toISOString(),
+        last_updated: new Date().toISOString()
+      }
+    });
+    return { success: true };
+  } catch (err) {
+    console.warn('[ManagerSupabase] Error saving finished product formulation to Supabase:', err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Reconciles finished products saved in Supabase activity audit logs into local storage.
+ */
+export async function fetchLiveFinishedProductsFromSupabase() {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('activity_audit_logs')
+      .select('details, created_at')
+      .eq('action', 'UPSERT_FINISHED_PRODUCT')
+      .order('created_at', { ascending: false });
+
+    if (error || !Array.isArray(data)) return [];
+
+    const storageKeys = [
+      'rmims_custom_finished_products',
+      'RMSME_CUSTOM_FINISHED_PRODUCTS',
+      'rmims_finished_products',
+      'rmims_finished_product_context'
+    ];
+
+    let currentList = [];
+    try {
+      const raw = localStorage.getItem('rmims_custom_finished_products');
+      if (raw) currentList = JSON.parse(raw);
+      if (!Array.isArray(currentList)) currentList = [];
+    } catch (_) {}
+
+    const nameMap = new Map();
+    currentList.forEach(p => {
+      if (p && p.name) nameMap.set(String(p.name).toLowerCase().trim(), p);
+    });
+
+    data.forEach(row => {
+      const det = row.details;
+      if (det && det.name) {
+        const norm = String(det.name).toLowerCase().trim();
+        if (!nameMap.has(norm)) {
+          nameMap.set(norm, det);
+        }
+      }
+    });
+
+    const reconciled = Array.from(nameMap.values());
+    if (reconciled.length > currentList.length) {
+      const json = JSON.stringify(reconciled);
+      storageKeys.forEach(k => {
+        try { localStorage.setItem(k, json); } catch (_) {}
+      });
+      try {
+        window.dispatchEvent(new CustomEvent('rmims_finished_products_updated', { detail: reconciled }));
+      } catch (_) {}
+    }
+
+    return reconciled;
+  } catch (e) {
+    console.warn('[ManagerSupabase] Error restoring finished products from Supabase:', e);
+    return [];
+  }
+}

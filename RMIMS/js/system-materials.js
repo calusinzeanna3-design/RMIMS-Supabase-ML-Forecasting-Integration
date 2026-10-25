@@ -481,12 +481,55 @@ export function getSystemNextItemCode(existingMaterials) {
  * Loads custom receipts recorded via Add Material, Inventory, or Material Activity.
  */
 export function getSystemCustomReceipts() {
+    const map = new Map();
+    // 1. Load custom receipts
     try {
         const raw = localStorage.getItem(RMIMS_CUSTOM_RECEIPTS_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-        return [];
-    }
+        if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+                arr.forEach(r => {
+                    const key = String(r.ref || r.id || '').trim();
+                    if (key) map.set(key, r);
+                });
+            }
+        }
+    } catch (_) {}
+
+    // 2. Load manager receipts & approved receipts ledger
+    try {
+        const rawMgr = localStorage.getItem('rmims_manager_receipts');
+        if (rawMgr) {
+            const arrMgr = JSON.parse(rawMgr);
+            if (Array.isArray(arrMgr)) {
+                arrMgr.forEach(r => {
+                    const key = String(r.ref || r.id || '').trim();
+                    if (key) {
+                        const normalized = {
+                            id: r.id || r.ref || key,
+                            ref: r.ref || r.id || key,
+                            material_id: r.materialId || r.material_id,
+                            materialId: r.materialId || r.material_id,
+                            material_name: r.materialName || r.material_name,
+                            materialName: r.materialName || r.material_name,
+                            received_quantity: Number(r.quantity ?? r.received_quantity ?? 0),
+                            receivedQuantity: Number(r.quantity ?? r.received_quantity ?? 0),
+                            quantity: Number(r.quantity ?? r.received_quantity ?? 0),
+                            unit: r.unit || '',
+                            receipt_date: r.date || r.receipt_date || new Date().toISOString().slice(0, 10),
+                            supplier_name: r.supplier || r.supplier_name || 'Inward Delivery',
+                            supplierName: r.supplier || r.supplier_name || 'Inward Delivery',
+                            status: r.status || 'Approved',
+                            created_at: r.createdAt || r.created_at || new Date().toISOString()
+                        };
+                        map.set(key, { ...normalized, ...r });
+                    }
+                });
+            }
+        }
+    } catch (_) {}
+
+    return Array.from(map.values());
 }
 
 /**
@@ -528,12 +571,54 @@ export function saveCustomReceipt(receipt) {
  * Loads custom disbursements recorded via Inventory or Material Activity.
  */
 export function getSystemCustomDisbursements() {
+    const map = new Map();
+    // 1. Load custom disbursements
     try {
         const raw = localStorage.getItem(RMIMS_CUSTOM_DISBURSEMENTS_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-        return [];
-    }
+        if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+                arr.forEach(d => {
+                    const key = String(d.ref || d.id || '').trim();
+                    if (key) map.set(key, d);
+                });
+            }
+        }
+    } catch (_) {}
+
+    // 2. Load manager disbursements & approved disbursements ledger
+    try {
+        const rawMgr = localStorage.getItem('rmims_manager_disbursements');
+        if (rawMgr) {
+            const arrMgr = JSON.parse(rawMgr);
+            if (Array.isArray(arrMgr)) {
+                arrMgr.forEach(d => {
+                    const key = String(d.ref || d.id || '').trim();
+                    if (key) {
+                        const normalized = {
+                            id: d.id || d.ref || key,
+                            ref: d.ref || d.id || key,
+                            material_id: d.materialId || d.material_id,
+                            materialId: d.materialId || d.material_id,
+                            material_name: d.materialName || d.material_name,
+                            materialName: d.materialName || d.material_name,
+                            consumed_quantity: Number(d.quantity ?? d.consumed_quantity ?? 0),
+                            consumedQuantity: Number(d.quantity ?? d.consumed_quantity ?? 0),
+                            quantity: Number(d.quantity ?? d.consumed_quantity ?? 0),
+                            unit: d.unit || '',
+                            usage_date: d.date || d.usage_date || new Date().toISOString().slice(0, 10),
+                            finished_product_name: d.finishedProductName || d.product || d.finished_product_name || 'Operational Usage',
+                            status: d.status || 'Approved',
+                            created_at: d.createdAt || d.created_at || new Date().toISOString()
+                        };
+                        map.set(key, { ...normalized, ...d });
+                    }
+                });
+            }
+        }
+    } catch (_) {}
+
+    return Array.from(map.values());
 }
 
 /**

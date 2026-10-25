@@ -75,6 +75,17 @@ const state = {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const syncChannel = new BroadcastChannel('rmims_user_sync');
+      syncChannel.onmessage = () => {
+        loadAnalyticsData();
+        renderActiveTab();
+      };
+    }
+  } catch (_) {}
+
   initAnalytics();
 });
 

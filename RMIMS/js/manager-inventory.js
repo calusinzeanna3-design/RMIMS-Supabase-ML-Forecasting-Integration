@@ -9,7 +9,7 @@
  *   Last Updated, Added By, Status.
  */
 
-import { getSystemRawMaterials, saveCustomRawMaterial, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit } from './system-materials.js';
+import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit } from './system-materials.js';
 import {
   fetchUnifiedInventoryFromSupabase,
   saveRawMaterialToSupabase,
@@ -355,29 +355,65 @@ function loadMaterials() {
     const location = ov.storage_location || m.storage_location || DEFAULT_LOCATIONS[category] || 'Warehouse A - Shelf 1';
     const supplier = ov.supplier || m.supplier || DEFAULT_SUPPLIERS[category] || 'General Supply Co.';
     const description = ov.description || m.description || `Food grade ${specificationName} suitable for food processing operations.`;
-    const dateAdded = ov.date_added || m.created_at || '2026-09-29';
-    const lastUpdated = ov.last_updated || '2026-09-29 08:30 AM';
-    const addedBy = ov.added_by || 'Store Manager';
+    // Compute real dynamic activity dates from recent receipts, disbursements, or user edits
+    const allReceipts = getSystemCustomReceipts();
+    const allDisbursements = getSystemCustomDisbursements();
 
-    // Compute display_date and display_time cleanly
-    let displayDate = 'Sep 29, 2026';
-    let displayTime = '08:30 AM';
-    try {
-      const d = new Date(dateAdded);
-      if (!isNaN(d.getTime())) {
-        displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        displayTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      } else if (typeof dateAdded === 'string' && dateAdded.includes('-')) {
-        const parts = dateAdded.split('T')[0].split('-');
-        if (parts.length === 3) {
-          const d2 = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          displayDate = d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const mIdLower = id.toLowerCase();
+    const mNameLower = (rawMaterialName || '').toLowerCase();
+
+    let newestTxDate = null;
+
+    allReceipts.forEach(r => {
+      const rId = String(r.material_id || r.materialId || '').toLowerCase();
+      const rName = String(r.material_name || r.materialName || '').toLowerCase();
+      if (rId === mIdLower || rName === mNameLower || (mNameLower && rName.includes(mNameLower))) {
+        const dStr = r.receipt_date || r.date || r.created_at;
+        if (dStr) {
+          const d = new Date(dStr);
+          if (!isNaN(d.getTime()) && (!newestTxDate || d.getTime() > newestTxDate.getTime())) {
+            newestTxDate = d;
+          }
         }
       }
-    } catch (e) {}
-    if (ov.time_added) displayTime = ov.time_added;
+    });
+
+    allDisbursements.forEach(d => {
+      const dId = String(d.material_id || d.materialId || '').toLowerCase();
+      const dName = String(d.material_name || d.materialName || '').toLowerCase();
+      if (dId === mIdLower || dName === mNameLower || (mNameLower && dName.includes(mNameLower))) {
+        const dStr = d.usage_date || d.date || d.created_at;
+        if (dStr) {
+          const d = new Date(dStr);
+          if (!isNaN(d.getTime()) && (!newestTxDate || d.getTime() > newestTxDate.getTime())) {
+            newestTxDate = d;
+          }
+        }
+      }
+    });
+
+    let effectiveDateObj = newestTxDate;
+    if (!effectiveDateObj && (ov.last_updated || ov.date_added || m.created_at)) {
+      const testD = new Date(ov.last_updated || ov.date_added || m.created_at);
+      if (!isNaN(testD.getTime())) effectiveDateObj = testD;
+    }
+    if (!effectiveDateObj) {
+      // Default to active registered date
+      effectiveDateObj = new Date();
+    }
+
+    const dateAdded = ov.date_added || (m.created_at ? m.created_at.split('T')[0] : effectiveDateObj.toISOString().split('T')[0]);
+    const lastUpdated = ov.last_updated || (effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    const addedBy = ov.added_by || 'Store Manager';
+
+    let displayDate = effectiveDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    let displayTime = effectiveDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
     if (ov.date_added && typeof ov.date_added === 'string' && !ov.date_added.includes('-')) {
       displayDate = ov.date_added;
+    }
+    if (ov.time_added) {
+      displayTime = ov.time_added;
     }
 
     const isArchived = archivedIds.has(id);
@@ -462,14 +498,61 @@ function getMaterialHistory(id) {
   try {
     const raw = localStorage.getItem(MGR_HISTORY_KEY);
     const all = raw ? JSON.parse(raw) : {};
-    return all[id] || [
-      {
-        timestamp: 'Sep 20, 2026, 08:30 AM',
-        type: 'Created',
-        user: 'Store Manager',
-        detail: 'Initial catalog registration with verified stock thresholds.'
+    const customEntries = all[id] || [];
+
+    const recs = getSystemCustomReceipts();
+    const disbs = getSystemCustomDisbursements();
+
+    const mIdLower = String(id || '').toLowerCase();
+    const txHistory = [];
+
+    recs.forEach(r => {
+      const rId = String(r.material_id || r.materialId || '').toLowerCase();
+      if (rId === mIdLower || (r.materialName && r.materialName.toLowerCase().includes(mIdLower))) {
+        const dObj = new Date(r.receipt_date || r.date || r.created_at || Date.now());
+        const dStr = !isNaN(dObj.getTime())
+          ? dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          : (r.receipt_date || r.date || 'Recent');
+        txHistory.push({
+          timestamp: dStr,
+          rawTime: dObj.getTime(),
+          type: 'Stock Inward',
+          user: r.recordedBy || 'Store Manager',
+          detail: `Received ${r.received_quantity || r.quantity || 0} ${r.unit || ''} from ${r.supplier_name || r.supplier || 'Vendor'} (Ref: ${r.ref || r.id})`
+        });
       }
-    ];
+    });
+
+    disbs.forEach(d => {
+      const dId = String(d.material_id || d.materialId || '').toLowerCase();
+      if (dId === mIdLower || (d.materialName && d.materialName.toLowerCase().includes(mIdLower))) {
+        const dObj = new Date(d.usage_date || d.date || d.created_at || Date.now());
+        const dStr = !isNaN(dObj.getTime())
+          ? dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + dObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          : (d.usage_date || d.date || 'Recent');
+        txHistory.push({
+          timestamp: dStr,
+          rawTime: dObj.getTime(),
+          type: 'Disbursement',
+          user: d.recordedBy || 'Store Operations',
+          detail: `Disbursed ${d.consumed_quantity || d.quantity || 0} ${d.unit || ''} for ${d.finished_product_name || 'Production Batch'} (Ref: ${d.ref || d.id})`
+        });
+      }
+    });
+
+    const combined = [...txHistory, ...customEntries];
+    if (combined.length === 0) {
+      const now = new Date();
+      return [{
+        timestamp: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        type: 'Active Catalog',
+        user: 'Store Manager',
+        detail: 'Catalog registration verified and synchronized with system boundaries.'
+      }];
+    }
+
+    combined.sort((a, b) => (b.rawTime || 0) - (a.rawTime || 0));
+    return combined;
   } catch (e) {
     return [];
   }
@@ -1300,6 +1383,9 @@ function getCustomFinishedProducts() {
 }
 
 function saveCustomFinishedProducts(list) {
+    if (Array.isArray(list)) {
+      list.forEach(p => { if (typeof saveFinishedProductToSupabase === 'function') saveFinishedProductToSupabase(p).catch(() => {}); });
+    }
   try {
     const json = JSON.stringify(list);
     localStorage.setItem('rmims_custom_finished_products', json);
