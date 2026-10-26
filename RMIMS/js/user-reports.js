@@ -435,8 +435,6 @@ async function loadAuthoritativeData() {
         });
 
         rawMats = Array.from(matBaseMap.values());
-
-        // Merge receipts
         const recBaseMap = new Map();
         if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
             AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));

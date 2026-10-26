@@ -537,6 +537,7 @@ async function loadAuthoritativeData() {
         rawMats = Array.from(matBaseMap.values());
 
         // Always merge baseline datasets so any custom entry stacks on top (unless baseline wiped)
+        const isBaselineWiped = localStorage.getItem("rmims_wipe_baseline_materials") !== "false";
         const recBaseMap = new Map();
         if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
             AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));

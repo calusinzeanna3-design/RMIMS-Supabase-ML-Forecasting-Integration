@@ -19,7 +19,7 @@ export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials"
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const PURGE_FLAG = "rmims_purged_old_weekly_inputs_v5";
+        const PURGE_FLAG = "rmims_purged_brand_new_v7";
         if (typeof window !== "undefined" && !localStorage.getItem(PURGE_FLAG)) {
             // 1. Permanently clear all old test receipts
             localStorage.setItem(RMIMS_CUSTOM_RECEIPTS_KEY, "[]");
@@ -72,6 +72,14 @@ export function permanentlyPurgeOldWeeklyInputs() {
             });
 
             // Set purge flag so it persists clean slate
+            // 6. Permanently wipe all old forecast caches, predictions, and analytics summaries
+            localStorage.removeItem("rmims_forecast_cache");
+            localStorage.removeItem("rmims_forecast_timestamp");
+            localStorage.removeItem("rmims_latest_forecast");
+            localStorage.removeItem("rmims_analytics_cache");
+            localStorage.removeItem("rmims_analytics_summary");
+            localStorage.setItem("rmims_wipe_baseline_materials", "true");
+
             localStorage.setItem(PURGE_FLAG, "true");
             localStorage.setItem("rmims_inventory_updated", String(Date.now()));
         }
@@ -832,6 +840,9 @@ export function invalidateForecastCache() {
     try {
         localStorage.removeItem("rmims_forecast_cache");
         localStorage.removeItem("rmims_forecast_timestamp");
+        localStorage.removeItem("rmims_latest_forecast");
+        localStorage.removeItem("rmims_analytics_cache");
+        localStorage.removeItem("rmims_analytics_summary");
     } catch (e) {}
 }
 

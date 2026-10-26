@@ -7,7 +7,7 @@
 
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
-import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { AUTHENTIC_59_RAW_MATERIALS } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
 import { 
     getActiveTenantContext, 
@@ -418,22 +418,16 @@ async function loadAuthoritativeData() {
             masterMats = masterMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
         }
 
-        // 2. Authoritative Disbursements (Partitioned by Tenant)
+        // 2. Authoritative Disbursements (Strictly Live User Transactions - Zero Mock Historical Datasets)
         const disbMap = new Map();
-        if (!tCtx.isScones && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
-            AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbMap.set(String(d.id), { ...d }));
-        }
         getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
         let masterDisbursements = Array.from(disbMap.values());
         if (deletedDisbIds.size > 0) {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
         }
 
-        // 3. Authoritative Receipts (Partitioned by Tenant)
+        // 3. Authoritative Receipts (Strictly Live User Transactions - Zero Mock Historical Datasets)
         const recMap = new Map();
-        if (!tCtx.isScones && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
-            AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recMap.set(String(r.id), { ...r }));
-        }
         getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
         let masterReceipts = Array.from(recMap.values());
         if (deletedRecIds.size > 0) {
@@ -634,7 +628,7 @@ function computeAuthoritativeForecastBaseline() {
 
         // Dynamic Pattern & Trend Momentum Analysis
         // If recent 7 days are high, momentum factor elevates the predicted requirement
-        let weeklyRunRate = last7DaysUsage > 0 ? last7DaysUsage : (recs.length > 0 ? (totalUsage / Math.max(1, recs.length / 7)) : (m.minStock * 0.5));
+        let weeklyRunRate = last7DaysUsage > 0 ? last7DaysUsage : (recs.length > 0 ? (totalUsage / Math.max(1, recs.length / 7)) : 0);
         
         // Momentum velocity: compare recent 7 days vs prior 7 days
         let momentumVelocity = 1.0;
@@ -644,14 +638,8 @@ function computeAuthoritativeForecastBaseline() {
             momentumVelocity = 1.0 + Math.max(-0.06, Math.min(0.075, growthRate * 0.4));
         }
 
-        let f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
-        let f1mQty = Number((f7Qty * 4.15).toFixed(1));
-
-        // Use authoritative pre-calculated forecast figures from Nutribun schedule (Scones & Muffins)
-        if (m.forecast_weekly != null && Number(m.forecast_weekly) > 0) {
-            f7Qty = Number(Number(m.forecast_weekly).toFixed(2));
-            f1mQty = Number((m.forecast_monthly != null ? Number(m.forecast_monthly) : (f7Qty * 4.15)).toFixed(2));
-        }
+        let f7Qty = recs.length > 0 ? Number((weeklyRunRate * momentumVelocity).toFixed(1)) : 0;
+        let f1mQty = recs.length > 0 ? Number((f7Qty * 4.15).toFixed(1)) : 0;
 
         const tCtx = getActiveTenantContext();
         const curStock = m.currentStock;
@@ -681,9 +669,11 @@ function computeAuthoritativeForecastBaseline() {
                 difference: diff,
                 decision_status: decisionStatus,
                 status: decisionStatus,
-                interpretation: diff < 0 
-                    ? `Potential shortage of ${Math.abs(diff).toFixed(1)} ${m.unit}. Replenishment recommended.`
-                    : (curStock <= m.minStock ? `Stock near minimum threshold. Monitor closely.` : `Sufficient stock for projected 7-day operations.`)
+                interpretation: f7Qty === 0
+                    ? (curStock <= 0 ? `Zero stock recorded. Replenish stock via Inward Receipts.` : (curStock <= m.minStock ? `Stock near minimum threshold (${curStock} ${m.unit}). Monitor closely.` : `Current stock: ${curStock} ${m.unit}. Awaiting production disbursement telemetry.`))
+                    : (diff < 0 
+                        ? `Potential shortage of ${Math.abs(diff).toFixed(1)} ${m.unit}. Replenishment recommended.`
+                        : (curStock <= m.minStock ? `Stock near minimum threshold. Monitor closely.` : `Sufficient stock for projected 7-day operations.`))
             }
         });
     });
@@ -976,7 +966,20 @@ function updateMarginComplianceBanner() {
     const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
     const complianceRate = totalChecks > 0 ? ((inMarginCount / totalChecks) * 100).toFixed(0) : 100;
 
-    if (exceedingMaterials.length === 0) {
+    if (totalChecks === 0) {
+        banner.className = "fc-margin-warning-banner success";
+        if (titleEl) titleEl.textContent = `Disbursement Telemetry Ready`;
+        if (subTextEl) subTextEl.textContent = "Awaiting live production disbursements. Once materials are disbursed, variance corridors will track automatically.";
+        if (badge) {
+            badge.style.background = "rgba(16, 185, 129, 0.14)";
+            badge.style.color = "#047857";
+            badge.style.borderColor = "rgba(16, 185, 129, 0.3)";
+        }
+        if (badgeText) badgeText.textContent = "Brand New State (0 Disbursements)";
+        if (iconWrap) {
+            iconWrap.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+        }
+    } else if (exceedingMaterials.length === 0) {
         banner.className = "fc-margin-warning-banner success";
         if (titleEl) titleEl.textContent = `Disbursement Accuracy & ${thresholdLabel}`;
         if (subTextEl) subTextEl.textContent = tCtx.isScones 
@@ -1052,7 +1055,7 @@ function renderTopKPIs() {
 
         // Next 7 Days Forecast
         const fc = state.forecasts.get(m.name);
-        const next7Qty = fc ? Number(fc.forecast7Day?.quantity || 0) : Math.max(m.minStock * 0.5, 10);
+        const next7Qty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
         const currentStock = Number(m.currentStock) || 0;
         const deficit = Math.max(0, next7Qty - currentStock);
         const dailyAvg = next7Qty / 7;
@@ -1221,7 +1224,12 @@ function renderTopKPIs() {
                 statusTagEl.textContent = "🟡 Low Buffer Alert";
                 statusTagEl.style.background = "var(--fc-orange-light)";
                 statusTagEl.style.color = "var(--fc-orange-dark)";
-                msgEl.innerHTML = `Current stock is close to minimum limit (${stat.currentStock} ${m.unit}). Consider ordering more ${m.unit} this week to maintain a safe buffer.`;
+                msgEl.innerHTML = `Current stock is close to minimum threshold (${stat.currentStock} ${m.unit}). Replenish stock to maintain a safe operational buffer.`;
+            } else if (stat.next7Qty === 0 && stat.past7Qty === 0) {
+                statusTagEl.textContent = "🟢 Stock On Hand";
+                statusTagEl.style.background = "var(--fc-green-light)";
+                statusTagEl.style.color = "var(--fc-green-dark)";
+                msgEl.innerHTML = `Current stock: <strong>${stat.currentStock} ${m.unit}</strong>. Awaiting production usage logs to start generating run-out dates.`;
             } else {
                 statusTagEl.textContent = "🟢 Sufficient Stock";
                 statusTagEl.style.background = "var(--fc-green-light)";
@@ -2024,34 +2032,26 @@ function renderPrimaryChart() {
             const d = new Date(now.getTime() - i * 86400000);
             labels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
             const rawVal = pastDaysUsage[7 - i];
-            // If actual manual disbursement exists, use it. Otherwise, use authentic baseline telemetry within ±7.51% corridor so Ground Truth doesn't flatline at 0.
-            const uVal = rawVal > 0 
-                ? Number(rawVal.toFixed(1))
-                : Number((effectiveDailyRate * (1 + Math.sin(i * 1.5 + 0.2) * (LOCKED_MARGIN_FACTOR * 0.45))).toFixed(1));
+            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            // ML requirement dynamically tracks usage run rate with visible natural oscillation
-            const targetBase = uVal > 0 ? uVal : effectiveDailyRate;
-            const pastReqBaseline = targetBase * (1 + Math.sin(i * 1.35 + 0.4) * 0.052);
-            forecastData.push(Number(pastReqBaseline.toFixed(1)));
+            const pastReqBaseline = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.35 + 0.4) * 0.052)).toFixed(1)) : 0;
+            forecastData.push(pastReqBaseline);
         }
 
         // Today
         labels.push(`Today (${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
         const todayRaw = pastDaysUsage[7];
-        const todayUse = todayRaw > 0 
-            ? Number(todayRaw.toFixed(1))
-            : Number((effectiveDailyRate * (1 + Math.sin(0.2) * (LOCKED_MARGIN_FACTOR * 0.3))).toFixed(1));
+        const todayUse = todayRaw > 0 ? Number(todayRaw.toFixed(1)) : 0;
         usageData.push(todayUse);
-        const todayBase = todayUse > 0 ? todayUse : effectiveDailyRate;
-        forecastData.push(Number(todayBase.toFixed(1)));
+        forecastData.push(effectiveDailyRate > 0 ? Number(effectiveDailyRate.toFixed(1)) : 0);
 
-        // 7 Future Forecasted Days (ML model projects forward from actual run rate)
+        // 7 Future Forecasted Days
         for (let i = 1; i <= 7; i++) {
             const d = new Date(now.getTime() + i * 86400000);
             labels.push(`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} (FC)`);
-            usageData.push(null); // Pending future logging
-            const variance = 1 + Math.sin(i * 1.5 + 0.3) * 0.050;
-            forecastData.push(Number((effectiveDailyRate * variance).toFixed(1)));
+            usageData.push(null);
+            const rate = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.5 + 0.3) * 0.050)).toFixed(1)) : 0;
+            forecastData.push(rate);
         }
 
     } else if (horizon === "weekly") {
@@ -2094,30 +2094,26 @@ function renderPrimaryChart() {
             const d = new Date(now.getTime() - i * 7 * 86400000);
             labels.push(`Week -${i} (${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
             const rawVal = pastWeeksUsage[4 - i];
-            const uVal = rawVal > 0 
-                ? Number(rawVal.toFixed(1)) 
-                : Number((weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.5) * (LOCKED_MARGIN_FACTOR * 0.45))).toFixed(1));
+            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            const pastReq = weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.6) * 0.054);
-            forecastData.push(Number(pastReq.toFixed(1)));
+            const pastReq = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.6) * 0.054)).toFixed(1)) : 0;
+            forecastData.push(pastReq);
         }
 
         // Current Week
         labels.push(`Current Week`);
         const curWeekRaw = pastWeeksUsage[4];
-        const curWeekUse = curWeekRaw > 0 
-            ? Number(curWeekRaw.toFixed(1))
-            : Number((weeklyForecastRate * (1 + Math.sin(0.3) * (LOCKED_MARGIN_FACTOR * 0.3))).toFixed(1));
+        const curWeekUse = curWeekRaw > 0 ? Number(curWeekRaw.toFixed(1)) : 0;
         usageData.push(curWeekUse);
-        forecastData.push(Number(weeklyForecastRate.toFixed(1)));
+        forecastData.push(weeklyForecastRate > 0 ? Number(weeklyForecastRate.toFixed(1)) : 0);
 
-        // 4 Future Forecast Weeks (Projects forward with momentum)
+        // 4 Future Forecast Weeks
         for (let i = 1; i <= 4; i++) {
             const d = new Date(now.getTime() + i * 7 * 86400000);
             labels.push(`Week +${i} (${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
             usageData.push(null);
-            const rate = weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048);
-            forecastData.push(Number(rate.toFixed(1)));
+            const rate = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048)).toFixed(1)) : 0;
+            forecastData.push(rate);
         }
 
     } else { // "monthly"
@@ -2158,30 +2154,26 @@ function renderPrimaryChart() {
             const mIdx = (curMonthIdx - i + 12) % 12;
             labels.push(`${monthNames[mIdx]}`);
             const rawVal = pastMonthsUsage[3 - i];
-            const uVal = rawVal > 0 
-                ? Number(rawVal.toFixed(1))
-                : Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.4) * (LOCKED_MARGIN_FACTOR * 0.45))).toFixed(1));
+            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            const pastMonthReq = monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050);
-            forecastData.push(Number(pastMonthReq.toFixed(1)));
+            const pastMonthReq = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050)).toFixed(1)) : 0;
+            forecastData.push(pastMonthReq);
         }
 
         // Current Month
         labels.push(`${monthNames[curMonthIdx]} (Current)`);
         const curMonthRaw = pastMonthsUsage[3];
-        const curMonthUse = curMonthRaw > 0 
-            ? Number(curMonthRaw.toFixed(1))
-            : Number((monthlyForecastRate * (1 + Math.sin(0.2) * (LOCKED_MARGIN_FACTOR * 0.3))).toFixed(1));
+        const curMonthUse = curMonthRaw > 0 ? Number(curMonthRaw.toFixed(1)) : 0;
         usageData.push(curMonthUse);
-        forecastData.push(Number(monthlyForecastRate.toFixed(1)));
+        forecastData.push(monthlyForecastRate > 0 ? Number(monthlyForecastRate.toFixed(1)) : 0);
 
         // 3 Future Forecast Months
         for (let i = 1; i <= 3; i++) {
             const mIdx = (curMonthIdx + i) % 12;
             labels.push(`${monthNames[mIdx]} (FC)`);
             usageData.push(null);
-            const rate = monthlyForecastRate * (1 + Math.sin(i * 1.1 + 0.3) * 0.045);
-            forecastData.push(Number(rate.toFixed(1)));
+            const rate = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.1 + 0.3) * 0.045)).toFixed(1)) : 0;
+            forecastData.push(rate);
         }
     }
 
@@ -2567,33 +2559,26 @@ function renderProjectionChart() {
             const d = new Date(now.getTime() - i * 86400000);
             labels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
             const rawVal = pastDaysUsage[7 - i];
-            const uVal = rawVal > 0 
-                ? Number(rawVal.toFixed(1))
-                : Number((effectiveDailyRate * (1 + Math.sin(i * 1.5 + 0.2) * 0.035)).toFixed(1));
+            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            // ML requirement dynamically tracks usage run rate
-            const targetBase = uVal > 0 ? uVal : effectiveDailyRate;
-            const pastReqBaseline = targetBase * (1 + Math.sin(i * 1.3) * 0.035);
-            forecastData.push(Number(pastReqBaseline.toFixed(1)));
+            const pastReqBaseline = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.3) * 0.035)).toFixed(1)) : 0;
+            forecastData.push(pastReqBaseline);
         }
 
         // Today
         labels.push(`Today (${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
         const todayRaw = pastDaysUsage[7];
-        const todayUse = todayRaw > 0 
-            ? Number(todayRaw.toFixed(1))
-            : Number((effectiveDailyRate * (1 + Math.sin(0.2) * 0.025)).toFixed(1));
+        const todayUse = todayRaw > 0 ? Number(todayRaw.toFixed(1)) : 0;
         usageData.push(todayUse);
-        const todayBase = todayUse > 0 ? todayUse : effectiveDailyRate;
-        forecastData.push(Number(todayBase.toFixed(1)));
+        forecastData.push(effectiveDailyRate > 0 ? Number(effectiveDailyRate.toFixed(1)) : 0);
 
-        // 7 Future Days (ML model projects forward from actual run rate)
+        // 7 Future Days
         for (let i = 1; i <= 7; i++) {
             const d = new Date(now.getTime() + i * 86400000);
             labels.push(`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
             usageData.push(null);
-            const variance = 1 + Math.sin(i * 1.5) * 0.04;
-            forecastData.push(Number((effectiveDailyRate * variance).toFixed(1)));
+            const rate = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.5) * 0.04)).toFixed(1)) : 0;
+            forecastData.push(rate);
         }
 
     } else if (horizon === "weekly") {
@@ -2633,27 +2618,23 @@ function renderProjectionChart() {
         for (let i = 4; i >= 1; i--) {
             labels.push(`Week -${i}`);
             const rawVal = pastWeeksUsage[4 - i];
-            const uVal = rawVal > 0 
-                ? Number(rawVal.toFixed(1))
-                : Number((weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.5) * 0.035)).toFixed(1));
+            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            const pastReq = weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.6) * 0.054);
-            forecastData.push(Number(pastReq.toFixed(1)));
+            const pastReq = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.6) * 0.054)).toFixed(1)) : 0;
+            forecastData.push(pastReq);
         }
 
         labels.push(`Current Week`);
         const curWeekRaw = pastWeeksUsage[4];
-        const curWeekUse = curWeekRaw > 0 
-            ? Number(curWeekRaw.toFixed(1))
-            : Number((weeklyForecastRate * (1 + Math.sin(0.3) * 0.025)).toFixed(1));
+        const curWeekUse = curWeekRaw > 0 ? Number(curWeekRaw.toFixed(1)) : 0;
         usageData.push(curWeekUse);
-        forecastData.push(Number(weeklyForecastRate.toFixed(1)));
+        forecastData.push(weeklyForecastRate > 0 ? Number(weeklyForecastRate.toFixed(1)) : 0);
 
         for (let i = 1; i <= 4; i++) {
             labels.push(`Week +${i}`);
             usageData.push(null);
-            const rate = weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048);
-            forecastData.push(Number(rate.toFixed(1)));
+            const rate = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048)).toFixed(1)) : 0;
+            forecastData.push(rate);
         }
 
     } else { // "monthly"
@@ -2692,28 +2673,24 @@ function renderProjectionChart() {
             const mIdx = (curMonthIdx - i + 12) % 12;
             labels.push(`${monthNames[mIdx]}`);
             const rawVal = pastMonthsUsage[3 - i];
-            const uVal = rawVal > 0 
-                ? Number(rawVal.toFixed(1))
-                : Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.4) * 0.035)).toFixed(1));
+            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            const pastReq = monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050);
-            forecastData.push(Number(pastReq.toFixed(1)));
+            const pastReq = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050)).toFixed(1)) : 0;
+            forecastData.push(pastReq);
         }
 
         labels.push(`${monthNames[curMonthIdx]} (Current)`);
         const curMonthRaw = pastMonthsUsage[3];
-        const curMonthUse = curMonthRaw > 0 
-            ? Number(curMonthRaw.toFixed(1))
-            : Number((monthlyForecastRate * (1 + Math.sin(0.2) * 0.025)).toFixed(1));
+        const curMonthUse = curMonthRaw > 0 ? Number(curMonthRaw.toFixed(1)) : 0;
         usageData.push(curMonthUse);
-        forecastData.push(Number(monthlyForecastRate.toFixed(1)));
+        forecastData.push(monthlyForecastRate > 0 ? Number(monthlyForecastRate.toFixed(1)) : 0);
 
         for (let i = 1; i <= 3; i++) {
             const mIdx = (curMonthIdx + i) % 12;
             labels.push(`${monthNames[mIdx]} (FC)`);
             usageData.push(null);
-            const rate = monthlyForecastRate * (1 + Math.sin(i * 1.1 + 0.3) * 0.045);
-            forecastData.push(Number(rate.toFixed(1)));
+            const rate = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.1 + 0.3) * 0.045)).toFixed(1)) : 0;
+            forecastData.push(rate);
         }
     }
 

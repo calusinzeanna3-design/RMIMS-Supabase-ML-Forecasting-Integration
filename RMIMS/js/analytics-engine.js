@@ -17,8 +17,6 @@ import {
 } from './system-materials.js';
 
 import {
-  AUTHENTIC_STOCK_RECEIPTS_6MONTHS,
-  AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS,
   AUTHENTIC_FINISHED_PRODUCTS_CATALOG
 } from './authentic-59-dataset.js';
 
@@ -131,22 +129,8 @@ function loadAuthoritativeData() {
   const customReceipts = getSystemCustomReceipts();
   const activeReceiptList = [...mgrReceipts, ...customReceipts];
 
-  // Combine live receipts with authoritative 6-month historical receipts only if baseline is not wiped
+  // Inward receipts strictly use live user-entered transactions (zero mock data)
   let rawReceiptPool = [...activeReceiptList];
-  const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
-  if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
-    AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => {
-      rawReceiptPool.push({
-        id: r.id,
-        ref: r.id,
-        material_id: r.material_id,
-        material_name: r.material_name,
-        quantity: r.received_quantity,
-        unit: r.unit || '',
-        receipt_date: r.receipt_date || '2026-03-01'
-      });
-    });
-  }
 
   const receiptMap = new Map();
   rawReceiptPool.forEach(item => {
@@ -181,22 +165,8 @@ function loadAuthoritativeData() {
   const customDisb = getSystemCustomDisbursements();
   const activeDisbList = [...mgrDisb, ...customDisb];
 
-  // Combine live disbursements with authoritative 6-month historical disbursements only if baseline is not wiped
+  // Outward disbursements strictly use live user-entered transactions (zero mock data)
   let rawDisbPool = [...activeDisbList];
-  if (!isBaselineWiped && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
-    AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => {
-      rawDisbPool.push({
-        id: d.id,
-        ref: d.id,
-        material_id: d.material_id,
-        material_name: d.material_name,
-        quantity: d.consumed_quantity,
-        unit: d.unit || '',
-        usage_date: d.usage_date || '2026-03-01',
-        finished_product_name: d.finished_product_name || 'Production Batch'
-      });
-    });
-  }
 
   const disbMap = new Map();
   rawDisbPool.forEach(item => {
@@ -516,10 +486,29 @@ function renderCard1() {
     return;
   }
 
+  const dataItems = getTopRawMaterialsData(state.card1.topCount);
+
+  if (dataItems.length === 0) {
+    canvas.style.display = 'none';
+    if (emptyBox) {
+      emptyBox.style.display = 'flex';
+      emptyBox.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted, #64748b); padding: 32px 16px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Material Movements Recorded</p>
+          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Transactions will appear here automatically when stock receipts or disbursements are entered.</p>
+        </div>
+      `;
+    }
+    if (state.card1.chart) {
+      state.card1.chart.destroy();
+      state.card1.chart = null;
+    }
+    return;
+  }
+
   canvas.style.display = 'block';
   if (emptyBox) emptyBox.style.display = 'none';
-
-  const dataItems = getTopRawMaterialsData(state.card1.topCount);
   const labels = dataItems.map(d => d.name);
 
   const datasets = [];
@@ -860,10 +849,29 @@ function renderCard2() {
     return;
   }
 
+  const dataItems = getTopFinishedProductsData(state.card2.topCount);
+
+  if (dataItems.length === 0) {
+    canvas.style.display = 'none';
+    if (emptyBox) {
+      emptyBox.style.display = 'flex';
+      emptyBox.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted, #64748b); padding: 32px 16px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Finished Products Production Logged</p>
+          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Finished product production batches will appear here as materials are disbursed.</p>
+        </div>
+      `;
+    }
+    if (state.card2.chart) {
+      state.card2.chart.destroy();
+      state.card2.chart = null;
+    }
+    return;
+  }
+
   canvas.style.display = 'block';
   if (emptyBox) emptyBox.style.display = 'none';
-
-  const dataItems = getTopFinishedProductsData(state.card2.topCount);
   const labels = dataItems.map(d => d.name);
 
   const datasets = [];
