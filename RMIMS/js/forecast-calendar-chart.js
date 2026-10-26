@@ -440,53 +440,30 @@ export function initForecastCalendarCard(containerId, options = {}) {
       }
     });
 
-    // Determine dynamic trained margin of error based on material and tenant context
-    let marginFactor = 0.0751;
-    let marginLabel = '±7.51%';
-    let marginSourceDesc = 'KXC Empirical Model MAPE';
-
+    // Determine fixed margin of error based on system/store:
+    // KXC: 7.51% (±7.51%)
+    // Scones & Muffins: 7.95% (±7.95%)
     let tCtx = null;
     try {
       tCtx = (typeof getActiveTenantContext === 'function') ? getActiveTenantContext() : null;
     } catch (_) {}
 
-    const isSconesTenant = Boolean(
+    const selectedMat = selectedMaterialId !== 'ALL'
+      ? (materials || []).find(m => String(m.id) === String(selectedMaterialId))
+      : null;
+
+    const isScones = Boolean(
       tCtx?.isScones ||
+      (selectedMat && (String(selectedMat.company_id) === '1872cf44-e821-4370-b227-d1b7e4fc6f56' || String(selectedMat.item_code || selectedMat.code || selectedMat.id).startsWith('NB-'))) ||
       localStorage.getItem('rmims_active_company_id') === '1872cf44-e821-4370-b227-d1b7e4fc6f56' ||
       localStorage.getItem('rmims_active_dataset_folder') === '1872cf44-e821-4370-b227-d1b7e4fc6f56' ||
       localStorage.getItem('rmims_active_company_name')?.toLowerCase().includes('scones') ||
       (materials && materials.length <= 25 && materials.some(m => String(m.item_code || m.code || m.id).startsWith('NB-')))
     );
 
-    if (selectedMaterialId !== 'ALL') {
-      const mat = (materials || []).find(m => String(m.id) === String(selectedMaterialId));
-      if (mat) {
-        if (mat.daily_mape !== undefined && mat.daily_mape !== null && !isNaN(parseFloat(mat.daily_mape))) {
-          const rawMape = parseFloat(mat.daily_mape);
-          marginFactor = rawMape / 100;
-          marginLabel = `±${rawMape.toFixed(2)}%`;
-          marginSourceDesc = `${mat.name || 'Material'} Trained MAPE`;
-        } else if (String(mat.item_code || mat.code || mat.id).startsWith('NB-') || isSconesTenant) {
-          marginFactor = 0.0795;
-          marginLabel = '±7.95%';
-          marginSourceDesc = 'Scones & Muffins Daily MAPE';
-        } else {
-          marginFactor = 0.0751;
-          marginLabel = '±7.51%';
-          marginSourceDesc = 'KXC Model MAPE';
-        }
-      }
-    } else {
-      if (isSconesTenant) {
-        marginFactor = 0.0795;
-        marginLabel = '±7.95%';
-        marginSourceDesc = 'Scones & Muffins Trained MAPE (19 Raw Materials)';
-      } else {
-        marginFactor = 0.0751;
-        marginLabel = '±7.51%';
-        marginSourceDesc = 'KXC Empirical Model MAPE (59 Raw Materials)';
-      }
-    }
+    const marginFactor = isScones ? 0.0795 : 0.0751;
+    const marginLabel = isScones ? '±7.95%' : '±7.51%';
+    const marginSourceDesc = isScones ? 'Scones & Muffins' : 'KXC';
 
     let anchorIndex = -1;
     dates.forEach((dateObj, idx) => {
