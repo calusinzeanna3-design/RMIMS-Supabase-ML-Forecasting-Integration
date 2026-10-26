@@ -906,13 +906,13 @@ async function getSession() {
    ========================================================== */
 
 function renderAll() {
-    renderTopKPIs();
-    updateMarginComplianceBanner();
-    renderPrimaryChart();
-    renderProjectionChart();
-    renderOverviewCard();
-    renderDecisionSupport();
-    renderForecastTable();
+    try { renderTopKPIs(); } catch (e) { console.error("renderTopKPIs error:", e); }
+    try { updateMarginComplianceBanner(); } catch (e) { console.error("updateMarginComplianceBanner error:", e); }
+    try { renderPrimaryChart(); } catch (e) { console.error("renderPrimaryChart error:", e); }
+    try { renderProjectionChart(); } catch (e) { console.error("renderProjectionChart error:", e); }
+    try { renderOverviewCard(); } catch (e) { console.error("renderOverviewCard error:", e); }
+    try { renderDecisionSupport(); } catch (e) { console.error("renderDecisionSupport error:", e); }
+    try { renderForecastTable(); } catch (e) { console.error("renderForecastTable error:", e); }
 }
 
 function updateMarginComplianceBanner() {
@@ -2999,6 +2999,7 @@ function renderDecisionSupport() {
 
     container.innerHTML = top3.map(item => {
         const m = item.material;
+        const fc = item.forecast;
         const unit = m.unit;
         const maxVal = Math.max(item.usage7Day, item.receive7Day, item.curStock, item.fQty, 1);
 
