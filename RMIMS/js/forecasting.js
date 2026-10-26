@@ -1305,41 +1305,8 @@ function renderProductDemandConnection() {
 
         let products = Array.from(productMap.values()).sort((a, b) => b.totalUsage - a.totalUsage);
 
-        // 1C. Authentic Fallback if no finished products configured yet
-        if (products.length === 0) {
-            const mats = state.materials && state.materials.length > 0 ? state.materials : [];
-            const sugarMat = mats.find(m => m.name.toLowerCase().includes("sugar")) || mats[0] || { id: "RM-SUGAR", name: "Refined White Sugar", unit: "kg", currentStock: 100 };
-            const colorMat = mats.find(m => m.name.toLowerCase().includes("color") || m.name.toLowerCase().includes("dye")) || mats[1] || { id: "RM-COLOR", name: "Food Grade Color", unit: "kg", currentStock: 22 };
-            const flourMat = mats.find(m => m.name.toLowerCase().includes("flour") || m.name.toLowerCase().includes("powder") || m.name.toLowerCase().includes("starch")) || mats[2] || { id: "RM-FLOUR", name: "Cassava / Rice Flour", unit: "kg", currentStock: 55 };
-            const flavorMat = mats.find(m => m.name.toLowerCase().includes("flavor") || m.name.toLowerCase().includes("vanilla") || m.name.toLowerCase().includes("syrup")) || mats[3] || { id: "RM-FLAVOR", name: "Natural Flavor Extract", unit: "L", currentStock: 18 };
-
-            products = [
-                {
-                    id: "fp_candies",
-                    name: "Sugar-Coated Fruit Candies",
-                    imageUrl: null,
-                    materialIds: new Set([sugarMat.id, colorMat.id, flavorMat.id]),
-                    totalUsage: 220,
-                    usageByMaterial: new Map([[sugarMat.id, 140], [colorMat.id, 2.5], [flavorMat.id, 15]])
-                },
-                {
-                    id: "fp_chips",
-                    name: "Crispy Banana Chips Batch",
-                    imageUrl: null,
-                    materialIds: new Set([sugarMat.id, flourMat.id]),
-                    totalUsage: 180,
-                    usageByMaterial: new Map([[sugarMat.id, 60], [flourMat.id, 45]])
-                },
-                {
-                    id: "fp_treats",
-                    name: "Specialty Baked Treats & Delicacies",
-                    imageUrl: null,
-                    materialIds: new Set([flourMat.id, sugarMat.id]),
-                    totalUsage: 140,
-                    usageByMaterial: new Map([[flourMat.id, 80], [sugarMat.id, 40]])
-                }
-            ];
-        }
+        // Strictly preserve only real finished products or formulations with trained materials
+        // Zero synthetic fallback products or non-trained items
 
         // 2. Map connected Inventory raw materials & compute operational insights
         const renderedProducts = products.map(prod => {

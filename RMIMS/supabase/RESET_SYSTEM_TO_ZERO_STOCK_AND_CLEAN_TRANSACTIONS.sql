@@ -8,16 +8,20 @@
 
 BEGIN;
 
--- 1. Reset all Raw Material current stocks to 0 while preserving material names and codes for forecasting
+-- 1. Permanently remove any raw material that is not part of the trained ML forecasting models (NB-001 to NB-019, RM-001 to RM-059)
+DELETE FROM public.raw_materials
+WHERE item_code NOT LIKE 'NB-%' AND item_code NOT LIKE 'RM-%';
+
+-- 2. Reset all remaining trained Raw Material current stocks to 0 while preserving names, item codes, and forecast parameters
 UPDATE public.raw_materials
 SET current_stock = 0.0
 WHERE TRUE;
 
--- 2. Permanently delete all inward stock deliveries / receipts
+-- 3. Permanently delete all inward stock deliveries / receipts
 DELETE FROM public.stock_receipts
 WHERE TRUE;
 
--- 3. Permanently delete all outward material disbursements / usage logs
+-- 4. Permanently delete all outward material disbursements / usage logs
 DELETE FROM public.material_disbursements
 WHERE TRUE;
 

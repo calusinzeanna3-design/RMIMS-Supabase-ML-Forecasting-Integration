@@ -19,7 +19,7 @@ export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials"
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const PURGE_FLAG = "rmims_purged_zero_stock_clean_slate_v9";
+        const PURGE_FLAG = "rmims_purged_trained_dataset_clean_v10";
         if (typeof window !== "undefined" && !localStorage.getItem(PURGE_FLAG)) {
             // 1. Permanently clear all old test receipts (Manager & Staff)
             localStorage.setItem(RMIMS_CUSTOM_RECEIPTS_KEY, "[]");
@@ -51,8 +51,15 @@ export function permanentlyPurgeOldWeeklyInputs() {
             localStorage.setItem("rmims_manager_inventory_overrides", "{}");
             localStorage.setItem("rmims_material_overrides", "{}");
             localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, "[]");
+            localStorage.setItem("rmims_deleted_material_ids", "[]");
 
-            // 6. Permanently wipe all old forecast caches, predictions, and analytics summaries
+            // 6. Permanently wipe all non-trained custom finished product records
+            localStorage.removeItem("rmims_custom_finished_products");
+            localStorage.removeItem("RMSME_CUSTOM_FINISHED_PRODUCTS");
+            localStorage.removeItem("rmims_finished_products");
+            localStorage.removeItem("rmims_finished_product_context");
+
+            // 7. Permanently wipe all old forecast caches, predictions, and analytics summaries
             localStorage.removeItem("rmims_forecast_cache");
             localStorage.removeItem("rmims_forecast_timestamp");
             localStorage.removeItem("rmims_latest_forecast");
@@ -171,13 +178,16 @@ export function getSystemRawMaterials() {
         };
     });
 
-    // Merge custom materials saved in localStorage (user's real inputted data)
+    // Strict set of valid trained item codes and names
+    const validTrainedCodes = new Set(baseSource.map(m => String(m.item_code || m.id).toUpperCase().trim()));
+    const validTrainedNames = new Set(baseSource.map(m => String(m.name || m.raw_material_name).toLowerCase().trim()));
+
+    // Merge custom materials saved in localStorage (only if matching trained dataset)
     try {
         const stored = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
         if (stored) {
             let customMats = JSON.parse(stored);
             if (Array.isArray(customMats)) {
-                let customModified = false;
                 customMats.forEach(cm => {
                     const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
                     const code = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
@@ -185,46 +195,26 @@ export function getSystemRawMaterials() {
                         (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
                         String(m.item_code || m.id || "").toUpperCase().trim() === code
                     );
-                    const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
-                    if (isScones && (cm.unit !== authUnit || cm.unit_of_measure !== authUnit)) {
-                        cm.unit = authUnit;
-                        cm.unit_of_measure = authUnit;
-                        customModified = true;
-                    }
-                    const record = {
-                        id: cm.id || code || `RM-${String(list.length + 1).padStart(3, "0")}`,
-                        item_code: cm.item_code || cm.itemCode || code,
-                        name: cm.name,
-                        category: cm.category || "General Materials",
-                        unit_of_measure: authUnit,
-                        unit: authUnit,
-                        current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
-                        currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
-                        minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                        minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                        reorder_quantity: Number(cm.reorder_quantity ?? 25),
-                        lead_time_days: Number(cm.lead_time_days ?? 3),
-                        description: cm.description || `Raw material ${cm.name}`,
-                        created_at: cm.created_at || new Date().toISOString()
-                    };
                     if (foundIndex !== -1) {
-                        list[foundIndex] = { ...list[foundIndex], ...record };
-                    } else {
-                        list.push(record);
+                        const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
+                        list[foundIndex] = {
+                            ...list[foundIndex],
+                            unit_of_measure: authUnit,
+                            unit: authUnit,
+                            current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
+                            currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
+                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
+                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10)
+                        };
                     }
                 });
-                if (customModified) {
-                    try {
-                        localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(customMats));
-                    } catch (_) {}
-                }
             }
         }
     } catch (e) {
         console.warn("[SystemMaterials] Could not load custom raw materials:", e);
     }
 
-    // Also check manager inventory overrides for any user-inputted materials or live stock edits
+    // Also check manager inventory overrides (only for materials belonging to trained dataset)
     try {
         const ovKeys = ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"];
         ovKeys.forEach(ovKey => {
@@ -263,29 +253,6 @@ export function getSystemRawMaterials() {
                         minimumStock: minStock !== undefined ? minStock : existing.minimum_threshold,
                         minStock: minStock !== undefined ? minStock : existing.minimum_threshold
                     };
-                } else if (ov.name || ov.raw_material_name) {
-                    const authUnit = getAuthoritativeMaterialUnit(ov, isScones);
-                    const record = {
-                        id: code || ov.id || `RM-${String(list.length + 1).padStart(3, "0")}`,
-                        item_code: code || ov.item_code || ov.id,
-                        name: ov.name || ov.raw_material_name,
-                        raw_material_name: ov.name || ov.raw_material_name,
-                        category: ov.category || "General Materials",
-                        unit_of_measure: authUnit,
-                        unit: authUnit,
-                        current_stock: curStock !== undefined ? curStock : 0,
-                        currentStock: curStock !== undefined ? curStock : 0,
-                        stock: curStock !== undefined ? curStock : 0,
-                        minimum_threshold: minStock !== undefined ? minStock : 10,
-                        minimum_stock: minStock !== undefined ? minStock : 10,
-                        minimumStock: minStock !== undefined ? minStock : 10,
-                        minStock: minStock !== undefined ? minStock : 10,
-                        reorder_quantity: Number(ov.reorder_quantity ?? 25),
-                        lead_time_days: Number(ov.lead_time_days ?? 3),
-                        description: ov.description || `Raw material ${ov.name || ov.raw_material_name}`,
-                        created_at: ov.date_added || new Date().toISOString()
-                    };
-                    list.push(record);
                 }
             });
         });
@@ -325,7 +292,11 @@ export function getSystemRawMaterials() {
         if (name) seenMatKeys.add(`name:${name}`);
         dedupedList.push(m);
     });
-    list = dedupedList;
+    list = dedupedList.filter(m => {
+        const code = String(m.item_code || m.id || "").toUpperCase().trim();
+        const name = String(m.name || m.raw_material_name || "").toLowerCase().trim();
+        return validTrainedCodes.has(code) || validTrainedNames.has(name);
+    });
 
     // Final property normalization: ensure every material has both snake_case and camelCase stock & threshold aliases
     return list.map(m => {

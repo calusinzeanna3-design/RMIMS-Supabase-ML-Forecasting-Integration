@@ -38,36 +38,25 @@ const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 
 // Authentic Bill of Materials (BOM) standard ratios (g/pcs/kl for Scones; kg/L for KXC)
 const BASELINE_BOM_RATIOS = {
-  // Authoritative Scones & Muffins Bakery (19 Nutribun Raw Materials) Ratios
+  // Authoritative Scones & Muffins Bakery (Strict 19 Nutribun Raw Materials) Ratios
   "All-Purpose / Bread Flour": 250,
   "Refined White Sugar": 100,
   "Fresh Yellow Squash (Kalabasa)": 350,
-  "Full Cream Evaporated Milk": 80,
   "Skimmed Milk Powder": 80,
   "Condensed Milk": 100,
   "Fresh Whole Eggs": 1, // 1 pc
   "Baking Shortening": 80,
-  "Pure Vegetable Shortening": 80,
   "Margarine": 80,
-  "Bakery Margarine": 80,
   "Instant Dry Yeast": 15,
   "Baking Soda": 10,
-  "Pure Food-Grade Baking Soda": 10,
   "Iodized Salt": 15,
-  "Fine Iodized Table Salt": 15,
-  "Bread Improver & Anti-Mold": 5,
   "Calcium Propionate": 5,
   "Potassium Sorbate": 5,
   "Crushed Peanuts / Nuts": 50,
-  "Crushed Roasted Peanuts": 50,
   "Desiccated Coconut": 50,
-  "Toasted Desiccated Coconut": 50,
   "Black Sesame Seeds": 20,
-  "Natural Hulled White Sesame": 20,
   "Malunggay (Moringa) Flakes": 20,
-  "Pure Moringa Powder": 20,
   "Vanilla Extract": 5,
-  "Pure Liquid Vanilla Flavor": 5,
   "Plastic Pillow Packaging": 0.02, // 0.02 kl film roll per batch
 
   "Fresh Mature Coconut Meat": 0.40,
