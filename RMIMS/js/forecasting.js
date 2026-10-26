@@ -2799,6 +2799,38 @@ function renderProjectionChart() {
 }
 
 /* ==========================================================
+   HELPER: UNIFIED FORECAST STATUS (Good, Low Stock, Out of Stock)
+   ========================================================== */
+function getForecastStatus(m, fc) {
+    if (!m) return { label: "Good", cls: "fc-status-sufficient", tagCls: "tag-good" };
+    const isMonthly = state.selectedPeriod === "monthly";
+    const req = fc ? (isMonthly ? Number(fc.forecast1Month?.quantity) || 0 : Number(fc.forecast7Day?.quantity) || 0) : 0;
+    const curStock = Number(m.currentStock) || 0;
+    const minStock = Number(m.minStock) || 0;
+    const addNeed = Math.max(0, req - curStock);
+
+    if (curStock <= 0) {
+        return {
+            label: "Out of Stock",
+            cls: "fc-status-shortage",
+            tagCls: "tag-shortage"
+        };
+    }
+    if (curStock <= minStock || addNeed > 0) {
+        return {
+            label: "Low Stock",
+            cls: "fc-status-attention",
+            tagCls: "tag-attention"
+        };
+    }
+    return {
+        label: "Good",
+        cls: "fc-status-sufficient",
+        tagCls: "tag-good"
+    };
+}
+
+/* ==========================================================
    3. RAW MATERIAL FORECAST OVERVIEW CARD
    ========================================================== */
 
