@@ -20,7 +20,8 @@
   --an-orange-light: #FFF7ED;
   --an-blue: #2563EB;
   --an-purple: #8B5CF6;
-  --an-radius: 14px;
+  --an-card-border: rgba(20, 83, 45, 0.08);
+  --an-radius: 18px;
 }
 
 /* ==========================================================

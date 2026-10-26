@@ -1804,41 +1804,156 @@ body.manager-page .rmsme-popover:not([hidden]) {
 }
 
 /* ==========================================================================
-   Manager Dashboard 2 Columns in 1 Row Grid Layout
+   UNIFIED CARD SIZING SYSTEM (ACROSS ALL MANAGER MODULES)
+   1. Multi-Column / 2-Column Grid Cards (Faithful to Image 1 Size)
+   2. Full-Width 1-Row Cards (Faithful to Image 2 Size)
    ========================================================================== */
-body.manager-page .mgr-grid-2col {
+
+/* --- 1. Multi-Column / 2-Column Grid Cards (Image 1 Sizing) --- */
+body.manager-page .mgr-grid-2col,
+body.manager-page .an-bottom-grid,
+body.manager-page .an-grid-2col {
   display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 20px !important;
   margin-bottom: 24px !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  align-items: stretch !important;
 }
 
-body.manager-page .mgr-grid-2col > .admin-card {
+body.manager-page .mgr-grid-2col > .admin-card,
+body.manager-page .mgr-grid-2col > .card,
+body.manager-page .mgr-grid-2col > .mgr-dashboard-card,
+body.manager-page .mgr-grid-2col > section,
+body.manager-page .an-bottom-grid > .an-card,
+body.manager-page .an-bottom-grid > section,
+body.manager-page .an-grid-2col > .an-card {
   width: 100% !important;
   min-width: 0 !important;
+  min-height: 340px !important;
+  max-height: 365px !important;
+  height: 350px !important;
   margin: 0 !important;
+  padding: 22px 24px !important;
+  border-radius: 18px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(20, 83, 45, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06) !important;
   display: flex !important;
   flex-direction: column !important;
   box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
-@media (max-width: 992px) {
-  body.manager-page .mgr-grid-2col {
-    grid-template-columns: 1fr !important;
-  }
+/* Card Header inside Grid Cards (consistent height ~44-48px) */
+body.manager-page .mgr-grid-2col .card-header,
+body.manager-page .mgr-grid-2col .mgr-card-header,
+body.manager-page .mgr-grid-2col .an-card-header,
+body.manager-page .an-bottom-grid .an-card-header {
+  margin-bottom: 12px !important;
+  padding-bottom: 8px !important;
+  flex-shrink: 0 !important;
 }
 
-/* ==========================================================================
-   Manager Dashboard Smart Stock Alerts
-   ========================================================================== */
+/* Chart Canvas container inside Grid Cards (height 220px matching Image 1) */
+body.manager-page .mgr-grid-2col .chart-canvas-container,
+body.manager-page .mgr-grid-2col div[style*="height: 220px"],
+body.manager-page .an-bottom-grid .an-chart-wrap {
+  height: 220px !important;
+  max-height: 220px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Smart Stock Alerts List inside Grid Cards (height 220px scrollable matching Image 1) */
 body.manager-page .smart-alerts-list {
   display: flex !important;
   flex-direction: column !important;
   gap: 10px !important;
   width: 100% !important;
+  height: 220px !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
   box-sizing: border-box !important;
+}
+
+body.manager-page .smart-alerts-list::-webkit-scrollbar {
+  width: 4px !important;
+}
+body.manager-page .smart-alerts-list::-webkit-scrollbar-thumb {
+  background: rgba(20, 83, 45, 0.15) !important;
+  border-radius: 4px !important;
+}
+
+@media (max-width: 992px) {
+  body.manager-page .mgr-grid-2col,
+  body.manager-page .an-bottom-grid,
+  body.manager-page .an-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.manager-page .mgr-grid-2col > .admin-card,
+  body.manager-page .mgr-grid-2col > .card,
+  body.manager-page .mgr-grid-2col > .mgr-dashboard-card,
+  body.manager-page .mgr-grid-2col > section,
+  body.manager-page .an-bottom-grid > .an-card,
+  body.manager-page .an-bottom-grid > section,
+  body.manager-page .an-grid-2col > .an-card {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 320px !important;
+  }
+}
+
+/* --- 2. Full-Width Row Cards (Image 2 Sizing) --- */
+body.manager-page section.admin-card:not(.mgr-grid-2col > *),
+body.manager-page .fc-calendar-chart-card,
+body.manager-page .fc-chart-card-main,
+body.manager-page .fc-grid-row-full > *,
+body.manager-page .mgr-tx-card,
+body.manager-page .mgr-tx-table-card,
+body.manager-page .inv-main-workspace,
+body.manager-page .rpt-filter-engine-card,
+body.manager-page .rpt-preview-section-card,
+body.manager-page .an-card:not(.an-bottom-grid > *) {
+  width: 100% !important;
+  border-radius: 18px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(20, 83, 45, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06) !important;
+  padding: 22px 26px !important;
+  margin-bottom: 24px !important;
+  box-sizing: border-box !important;
+}
+
+/* Standardized Canvas / Chart wrapper for Row Cards (Matching Image 2: ~220px - 250px) */
+body.manager-page .usage-grid .chart-canvas-container {
+  height: 250px !important;
+}
+
+body.manager-page .cal-chart-canvas-wrap {
+  height: 220px !important;
+}
+
+body.manager-page .an-card:not(.an-bottom-grid > *) .an-chart-wrap {
+  height: 240px !important;
+  max-height: 250px !important;
+}
+
+body.manager-page .fc-chart-card-main .fc-chart-canvas-wrap {
+  height: 240px !important;
+  max-height: 250px !important;
+}
+
+/* Standardized Table Container for Row Data Tables (Clean, controlled height ~360-380px) */
+body.manager-page .table-responsive,
+body.manager-page .admin-table-container,
+body.manager-page .mgr-table-wrap,
+body.manager-page .inv-table-container {
+  max-height: 380px !important;
+  overflow-y: auto !important;
+  border-radius: 12px !important;
 }
 
 body.manager-page .smart-alert-item {

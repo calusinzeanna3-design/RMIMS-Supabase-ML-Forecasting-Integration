@@ -586,7 +586,9 @@ body.manager-page .mgr-dashboard-card {
   display: flex !important;
   flex-direction: column !important;
   box-sizing: border-box !important;
-  min-height: 290px !important;
+  min-height: 340px !important;
+  height: 350px !important;
+  max-height: 365px !important;
   transition: transform 0.25s var(--rm-ease-smooth), box-shadow 0.25s var(--rm-ease-smooth), border-color 0.25s ease !important;
 }
 
