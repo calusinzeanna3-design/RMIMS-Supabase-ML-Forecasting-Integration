@@ -1804,19 +1804,30 @@ body.manager-page .rmsme-popover:not([hidden]) {
 }
 
 /* ==========================================================================
-   Manager Dashboard 1 Card Per Row Layout
+   Manager Dashboard 2 Columns in 1 Row Grid Layout
    ========================================================================== */
-body.manager-page .mgr-breakdown-grid {
-  display: flex !important;
-  flex-direction: column !important;
+body.manager-page .mgr-grid-2col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
   gap: 20px !important;
   margin-bottom: 24px !important;
   width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-body.manager-page .mgr-breakdown-grid > .admin-card {
+body.manager-page .mgr-grid-2col > .admin-card {
   width: 100% !important;
+  min-width: 0 !important;
   margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 992px) {
+  body.manager-page .mgr-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ==========================================================================

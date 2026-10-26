@@ -258,11 +258,11 @@
           </div>
         </section>
 
-        <!-- SECTION 4: INVENTORY BREAKDOWN & FORECASTING INTELLIGENCE (1 Card Per Row) -->
-        <div class="mgr-breakdown-grid" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; width: 100%;">
+        <!-- SECTION 4: INVENTORY BREAKDOWN & SMART STOCK ALERTS (2 Columns in 1 Row) -->
+        <div class="mgr-grid-2col">
           
           <!-- Card 1: Inventory Stock Breakdown (Donut Chart) -->
-          <section class="admin-card" style="margin: 0; width: 100%;">
+          <section class="admin-card">
             <div class="card-header">
               <div class="card-title-group">
                 <div class="card-icon-badge emerald">
@@ -278,8 +278,8 @@
               </div>
             </div>
 
-            <div style="display: flex; align-items: center; justify-content: center; gap: 48px; flex-wrap: wrap; padding: 14px 0 8px;">
-              <div style="position: relative; width: 180px; height: 180px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 36px; flex-wrap: wrap; padding: 14px 0 8px; flex: 1;">
+              <div style="position: relative; width: 175px; height: 175px; flex-shrink: 0;">
                 <canvas id="mgrDonutChart"></canvas>
                 <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
                   <span style="font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 800; color: #0F2A1B; line-height: 1;" id="donutTotalCount">0</span>
@@ -287,7 +287,7 @@
                 </div>
               </div>
 
-              <div style="display: flex; flex-direction: column; gap: 12px; min-width: 200px;">
+              <div style="display: flex; flex-direction: column; gap: 12px; min-width: 170px; flex: 1;">
                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
                   <span style="display: inline-flex; align-items: center; gap: 8px; color: #334155; font-weight: 500;">
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: #22C55E;"></span>
@@ -314,7 +314,7 @@
           </section>
 
           <!-- Card 2: Smart Stock Alerts (AI Forecast Support) -->
-          <section class="admin-card" style="margin: 0; width: 100%;">
+          <section class="admin-card">
             <div class="card-header">
               <div class="card-title-group">
                 <div class="card-icon-badge coral">
@@ -341,13 +341,16 @@
               </div>
             </div>
 
-            <div class="smart-alerts-list" style="margin-top: 4px;">
+            <div class="smart-alerts-list" style="margin-top: 4px; flex: 1;">
               <!-- Dynamically populated by manager-dashboard.js -->
             </div>
           </section>
+        </div>
 
+        <!-- SECTION 5: TOP 5 USED & TOP 5 RECEIVED MATERIALS (2 Columns in 1 Row) -->
+        <div class="mgr-grid-2col">
           <!-- Card 3: Top 5 Most Used Materials (This Month) -->
-          <section class="admin-card" style="margin: 0; width: 100%;">
+          <section class="admin-card">
             <div class="card-header">
               <div class="card-title-group">
                 <div class="card-icon-badge emerald">
@@ -366,6 +369,29 @@
 
             <div style="height: 220px; margin-top: 6px; width: 100%;">
               <canvas id="mgrTop5Chart"></canvas>
+            </div>
+          </section>
+
+          <!-- Card 4: Top 5 Received Materials (AI Recommendations) -->
+          <section class="admin-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <div class="card-icon-badge blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </div>
+                <div class="card-headings">
+                  <h2 class="card-title">Top 5 Received Materials (AI Recommendations)</h2>
+                  <span class="card-subtitle">Highest received volume &amp; AI forecasted replenishment</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="height: 220px; margin-top: 6px; width: 100%;">
+              <canvas id="mgrTop5ReceivedChart"></canvas>
             </div>
           </section>
         </div>

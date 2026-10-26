@@ -40,6 +40,7 @@ const MGR_ACTIVITIES_KEY = 'rmims_manager_activities';
 
 let donutChartInstance = null;
 let top5ChartInstance = null;
+let top5ReceivedChartInstance = null;
 let forecastChartInstance = null;
 let managerUsageChartInstance = null;
 let dashboardCalWidgetInstance = null;
@@ -227,6 +228,7 @@ async function refreshDashboardData() {
   renderManagerUsageChartData();
   renderDonutChart(materials);
   renderTop5Chart(materials, disbursements, staffTx);
+  renderTop5ReceivedChart(materials, receipts, staffTx);
   renderSmartAlerts(materials);
   renderRecentActivity(receipts, disbursements, staffTx);
   renderPendingTransactions(staffTx);
@@ -245,6 +247,7 @@ async function refreshDashboardData() {
       renderManagerUsageChartData();
       renderDonutChart(materials);
       renderTop5Chart(materials, disbursements, staffTx);
+      renderTop5ReceivedChart(materials, receipts, staffTx);
       renderSmartAlerts(materials);
       renderRecentActivity(receipts, disbursements, staffTx);
       renderPendingTransactions(staffTx);
@@ -662,6 +665,185 @@ function renderTop5Chart(materials, disbursements, staffTx) {
               const fullItem = sorted[context.dataIndex];
               const u = fullItem?.unit || '';
               return ` Total Consumed: ${fullItem ? fullItem.total : context.parsed.y}${u ? ' ' + u : ''}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false, drawBorder: false },
+          ticks: {
+            color: '#475569',
+            font: { family: 'Inter, sans-serif', size: 11, weight: 600 }
+          }
+        },
+        y: {
+          min: 0,
+          max: dataVals.length > 0 ? Math.ceil((Math.max(...dataVals) * 1.2) / 50) * 50 : 100,
+          ticks: {
+            stepSize: 50,
+            color: '#94A3B8',
+            font: { family: 'Inter, sans-serif', size: 11, weight: 500 }
+          },
+          grid: {
+            color: '#F1F5F9',
+            drawBorder: false
+          }
+        }
+      }
+    },
+    plugins: [valueLabelsPlugin]
+  });
+}
+
+// 3B. Top 5 Received Materials Bar Chart (Real receipts + AI Forecasting replenishment recommendations)
+function renderTop5ReceivedChart(materials, receipts, staffTx) {
+  const ctx = document.getElementById('mgrTop5ReceivedChart');
+  if (!ctx || typeof Chart === 'undefined') return;
+
+  const matMap = new Map();
+  const matUnitMap = new Map();
+  (materials || []).forEach(m => {
+    const mName = m.name || m.material_name || '';
+    const mUnit = m.unit_of_measure || m.unit || '';
+    matMap.set(String(m.id), mName);
+    if (m.item_code) matMap.set(String(m.item_code), mName);
+    matUnitMap.set(mName, mUnit);
+  });
+
+  const receivedByMat = new Map();
+
+  // 1. Live recorded inward receipts
+  (receipts || []).forEach(r => {
+    const name = r.materialName || r.material_name || matMap.get(String(r.material_id)) || matMap.get(String(r.materialId));
+    if (!name) return;
+    const qty = Number(r.quantity || r.received_quantity || 0);
+    const existing = receivedByMat.get(name) || { qty: 0, unit: matUnitMap.get(name) || '', isAiRec: false };
+    existing.qty += qty;
+    receivedByMat.set(name, existing);
+  });
+
+  // 2. Approved staff receipts
+  (staffTx || []).filter(t => t.type === 'Receive' && t.status === 'Approved').forEach(t => {
+    const name = t.material || t.materialName;
+    if (!name) return;
+    const qty = Number(t.quantity || 0);
+    const existing = receivedByMat.get(name) || { qty: 0, unit: matUnitMap.get(name) || '', isAiRec: false };
+    existing.qty += qty;
+    receivedByMat.set(name, existing);
+  });
+
+  // 3. AI Forecasting replenishment recommendations if fewer than 5 recorded receipts
+  (materials || []).forEach(m => {
+    const name = m.name || m.material_name;
+    if (!name) return;
+    const stock = Number(m.current_stock ?? m.currentStock ?? 0);
+    const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minStock ?? 10);
+    const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || Math.max(0.5, Number((min / 7).toFixed(1))));
+    
+    // AI replenishment recommendation: target 14-day safe operating level
+    const recNeed = Math.max(0, Math.round((dailyBurn * 14) - stock));
+
+    if (!receivedByMat.has(name) || receivedByMat.get(name).qty === 0) {
+      if (recNeed > 0) {
+        receivedByMat.set(name, {
+          qty: recNeed,
+          unit: matUnitMap.get(name) || m.unit || '',
+          isAiRec: true
+        });
+      }
+    }
+  });
+
+  // Fallback: If still few items, pick materials with highest daily burn projection
+  if (receivedByMat.size < 5) {
+    (materials || []).forEach(m => {
+      const name = m.name || m.material_name;
+      if (!name || receivedByMat.has(name)) return;
+      const min = Number(m.minimum_threshold ?? m.minStock ?? 10);
+      const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || Math.max(1, Number((min / 7).toFixed(1))));
+      receivedByMat.set(name, {
+        qty: Math.round(dailyBurn * 7),
+        unit: matUnitMap.get(name) || m.unit || '',
+        isAiRec: true
+      });
+    });
+  }
+
+  // Sort descending and pick top 5
+  const sorted = Array.from(receivedByMat.entries())
+    .map(([name, item]) => ({
+      name,
+      total: Math.round(item.qty),
+      unit: item.unit || '',
+      isAiRec: item.isAiRec
+    }))
+    .filter(item => item.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  const labels = sorted.map(item => {
+    return item.name.length > 18 ? item.name.slice(0, 16) + '...' : item.name;
+  });
+  const dataVals = sorted.map(item => item.total);
+
+  const valueLabelsPlugin = {
+    id: 'valueLabelsReceivedPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        if (!meta.hidden) {
+          meta.data.forEach((element, index) => {
+            const val = dataset.data[index];
+            const fullItem = sorted[index];
+            const u = fullItem?.unit || '';
+            const text = `${val}${u ? ' ' + u : ''}`;
+            ctx.save();
+            ctx.fillStyle = '#0F2A1B';
+            ctx.font = '700 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(text, element.x, element.y - 4);
+            ctx.restore();
+          });
+        }
+      });
+    }
+  };
+
+  if (top5ReceivedChartInstance) {
+    top5ReceivedChartInstance.data.labels = labels;
+    top5ReceivedChartInstance.data.datasets[0].data = dataVals;
+    top5ReceivedChartInstance.update();
+    return;
+  }
+
+  top5ReceivedChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: dataVals,
+        backgroundColor: '#38BDF8',
+        hoverBackgroundColor: '#0284C7',
+        borderRadius: 6,
+        borderSkipped: false,
+        barPercentage: 0.55
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const fullItem = sorted[context.dataIndex];
+              const u = fullItem?.unit || '';
+              const prefix = fullItem?.isAiRec ? 'AI Recommended: ' : 'Total Received: ';
+              return ` ${prefix}${fullItem ? fullItem.total : context.parsed.y}${u ? ' ' + u : ''}`;
             }
           }
         }
