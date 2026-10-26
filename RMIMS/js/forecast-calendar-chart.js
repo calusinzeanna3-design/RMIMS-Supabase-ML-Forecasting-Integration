@@ -579,21 +579,24 @@ export function initForecastCalendarCard(containerId, options = {}) {
       // When consumption trends high, future requirement scales up higher (giving high requirement)
       // When consumption trends low, future requirement moderates downward (giving low requirement)
       const trendRef = (consumed != null) ? consumed : baselineConsumption;
-      // Headroom buffer of ~26% to ~34% so requirement is never too near to consumption, matching reference design
-      const bufferHeadroom = 1.28 + (consumeDowFactor > 1.0 ? 0.05 : -0.03);
+      // Headroom buffer of ~18% to ~24% above consumption so requirement has clear visible separation
+      const bufferHeadroom = 1.20 + (consumeDowFactor > 1.0 ? 0.04 : -0.02);
 
       let req = fcMap.get(key);
       if (req === undefined || req === null || req === 0) {
         req = +(trendRef * bufferHeadroom).toFixed(1);
       } else {
-        // Ensure healthy operational headroom above consumption
-        req = Math.max(+req.toFixed(1), +(trendRef * 1.22).toFixed(1));
+        req = Math.max(+req.toFixed(1), +(trendRef * 1.15).toFixed(1));
       }
 
-      // 3. Dynamic margin of error guide based on trained model (MAPE)
-      const margin = +(req * marginFactor).toFixed(2);
-      const upperLimit = +(req + margin).toFixed(2);
-      const lowerLimit = Math.max(0, +(req - margin).toFixed(2));
+      // 3. Dynamic margin of error guide based on trained model (MAPE):
+      // The boundary encapsulates BOTH the forecast and the consumption so they are ALWAYS inside the boundary corridor.
+      // Whenever forecast & consumption move high or low, the MAPE boundary moves in direct lockstep (never steady/straight).
+      const highRef = Math.max(req, (consumed != null ? consumed : req));
+      const lowRef = Math.min(req, (consumed != null ? consumed : req));
+
+      const upperLimit = +(highRef * (1 + marginFactor)).toFixed(2);
+      const lowerLimit = Math.max(0, +(lowRef * (1 - marginFactor)).toFixed(2));
 
       marginUpper.push(upperLimit);
       marginLower.push(lowerLimit);
@@ -724,7 +727,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
             pointHoverRadius: 3,
             fill: '+1', // Fills down to Lower Limit
             backgroundColor: marginBandGrad,
-            tension: 0.42,
+            tension: 0.38,
             cubicInterpolationMode: 'monotone',
             order: 3
           },
@@ -738,7 +741,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
             pointRadius: 0,
             pointHoverRadius: 3,
             fill: false,
-            tension: 0.42,
+            tension: 0.38,
             cubicInterpolationMode: 'monotone',
             order: 3
           },
