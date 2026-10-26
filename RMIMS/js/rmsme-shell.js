@@ -1481,7 +1481,8 @@ import { supabase } from '../supabase/supabase-config.js';
               <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
                 <thead>
                   <tr style="border-bottom:1.5px solid #CBD5E1; color:#64748B; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px;">
-                    <th style="padding:10px 8px;">Date &amp; Time</th>
+                    <th style="padding:10px 8px;">Date</th>
+                    <th style="padding:10px 8px;">Time</th>
                     <th style="padding:10px 8px;">Activity</th>
                     <th style="padding:10px 8px;">Reference</th>
                     <th style="padding:10px 8px;">Status</th>
@@ -1552,22 +1553,39 @@ import { supabase } from '../supabase/supabase-config.js';
         if (!stored || stored.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="4" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
+              <td colspan="5" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
                 No recent activity records found.
               </td>
             </tr>
           `;
-        } else {
-          tbody.innerHTML = stored.map(row => `
+                } else {
+          tbody.innerHTML = stored.map(row => {
+            const dtStr = String(row.datetime || row.date || '');
+            let dPart = dtStr || '—';
+            let tPart = '—';
+            if (dtStr.includes('•')) {
+              const p = dtStr.split('•');
+              dPart = p[0].trim();
+              tPart = p[1].trim();
+            } else if (dtStr.includes('T')) {
+              const cd = new Date(dtStr);
+              if (!isNaN(cd.getTime())) {
+                dPart = cd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                tPart = cd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+              }
+            }
+            return `
             <tr style="border-bottom:1px solid #F1F5F9;">
-              <td style="padding:10px 8px; font-weight:500; color:#334155;">${escapeHtml(row.datetime || row.date || '')}</td>
+              <td style="padding:10px 8px; font-weight:600; color:#334155;">${escapeHtml(dPart)}</td>
+              <td style="padding:10px 8px; font-size:12px; font-weight:600; color:#64748B;">${escapeHtml(tPart)}</td>
               <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(row.activity || row.details || '')}</td>
               <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(row.reference || '—')}</td>
               <td style="padding:10px 8px;">
                 <span style="display:inline-block; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:${(row.status || '').toLowerCase() === 'approved' ? '#DCFCE7; color:#15803D;' : '#FEE2E2; color:#DC2626;'}">${escapeHtml(row.status || 'Success')}</span>
               </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
         }
       }
       activityBackdrop.classList.add('open');

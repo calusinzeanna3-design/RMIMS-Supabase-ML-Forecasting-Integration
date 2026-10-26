@@ -164,7 +164,7 @@ function renderTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align:center; padding:44px 16px; color:#5C7A68;">
+        <td colspan="9" style="text-align:center; padding:44px 16px; color:#5C7A68;">
           <div style="font-weight:700; font-size:15px; color:#0F2A1B; margin-bottom:6px;">No Staff Activity Records</div>
           <div style="font-size:13px; color:#64748B;">No staff material movements match your filter criteria.</div>
         </td>
@@ -192,9 +192,19 @@ function renderTable() {
     // Indicator if resubmitted (for manager table hint)
     const updatedTag = t.isUpdated ? `<span style="margin-left:6px; font-size:11px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-weight:700;">Resubmitted</span>` : '';
 
+    const dateStr = String(t.date || '');
+    let datePart = dateStr || '—';
+    let timePart = t.time || '—';
+    if (dateStr.includes('•')) {
+      const parts = dateStr.split('•');
+      datePart = parts[0].trim();
+      timePart = parts[1].trim();
+    }
+
     return `
       <tr data-ref="${escapeHtml(t.ref)}">
-        <td style="font-weight:500; color:#334155; font-size:12.5px;">${escapeHtml(t.date || 'Recent')}</td>
+        <td style="font-weight:600; color:#334155; font-size:12.5px;">${escapeHtml(datePart)}</td>
+        <td style="font-size:12px; color:#64748B; font-weight:600;">${escapeHtml(timePart)}</td>
         <td>
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="width:28px; height:28px; border-radius:50%; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px;">
@@ -209,7 +219,10 @@ function renderTable() {
           </span>
         </td>
         <td style="font-weight:600; color:#0F2A1B;">
-          ${escapeHtml(t.material || 'Raw Material')} <span style="font-weight:700; color:${isReceive ? '#15803D' : '#D97706'};">(${isReceive ? '+' : '-'}${escapeHtml(t.quantity || 0)}${t.unit ? ' ' + escapeHtml(t.unit) : ''})</span>
+          ${escapeHtml(t.material || 'Raw Material')}
+        </td>
+        <td style="font-weight:700; color:${isReceive ? '#15803D' : '#D97706'};">
+          ${isReceive ? '+' : '-'}${escapeHtml(t.quantity || 0)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}
         </td>
         <td>
           <span class="ref-plain-text" style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B;">${escapeHtml(t.ref || '--')}</span>

@@ -1546,7 +1546,8 @@ function renderSummaryDetailList(viewType) {
             <table class="fc-detail-table">
                 <thead>
                     <tr>
-                        <th style="width: 25%;">Material &amp; Code</th>
+                        <th style="width: 18%;">Raw Material</th>
+                        <th style="width: 12%;">Item Code</th>
                         <th style="width: 16%;">Procurement Priority</th>
                         <th style="width: 14%; text-align: right;">Current Reserve</th>
                         <th style="width: 15%; text-align: right;">Suggested Purchase</th>
@@ -1580,7 +1581,9 @@ function renderSummaryDetailList(viewType) {
                 <tr style="${isShortage ? 'background: #fff8f8;' : ''}">
                     <td>
                         <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${m.name}</div>
-                        <div style="font-size: 0.75rem; color: #64748b; font-family: monospace;">Item Code: ${m.itemCode || '—'}</div>
+                    </td>
+                    <td>
+                        <span style="font-size: 0.8rem; color: #64748b; font-family: monospace; font-weight: 600;">${m.itemCode || '—'}</span>
                     </td>
                     <td>
                         ${priorityBadge}

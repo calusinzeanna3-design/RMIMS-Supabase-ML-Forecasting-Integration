@@ -4787,7 +4787,8 @@ function printInventoryReport(data) {
             <th>Raw Material Name</th>
             <th>Specification Name</th>
             <th>Stock Level</th>
-            <th>Thresholds (Min/Max)</th>
+            <th>Min Stock</th>
+            <th>Max Stock</th>
             <th>Storage Location</th>
             <th>Supplier</th>
             <th>Status</th>
@@ -4800,7 +4801,8 @@ function printInventoryReport(data) {
               <td><strong>${m.raw_material_name || m.name}</strong></td>
               <td>${m.specification_name || ''}</td>
               <td>${m.current_stock} ${m.unit}</td>
-              <td>Min: ${m.minimum_stock} | Max: ${m.maximum_stock} ${m.unit}</td>
+              <td>${m.minimum_stock} ${m.unit}</td>
+              <td>${m.maximum_stock} ${m.unit}</td>
               <td>${m.storage_location}</td>
               <td>${m.supplier}</td>
               <td>

@@ -1090,7 +1090,7 @@ function renderHistoryTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
+        <td colspan="10" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
           <div style="font-weight:700; color:#0F2A1B; margin-bottom:4px;">No disbursements recorded yet</div>
           <div style="font-size:12px; color:#94A3B8;">Outward raw material usage recorded for production will appear here automatically.</div>
         </td>
@@ -1124,7 +1124,7 @@ function renderHistoryTable() {
   if (totalItems === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center; padding:32px; color:#64748B;">
+        <td colspan="10" style="text-align:center; padding:32px; color:#64748B;">
           No disbursement transactions found matching criteria.
         </td>
       </tr>
@@ -1133,7 +1133,7 @@ function renderHistoryTable() {
     return;
   }
 
-  // 4. Render rows with prominent time display
+  // 4. Render rows with separate Date and Time cells
   tbody.innerHTML = pageItems.map(d => {
     const dateStr = String(d.date || '');
     let datePart = dateStr;
@@ -1153,11 +1153,13 @@ function renderHistoryTable() {
       <tr>
         <td><span class="mgr-ref-pill">${escapeHtml(d.ref)}</span></td>
         <td>
-          <div style="font-weight:600; color:#1E293B; font-size:12.5px;">${escapeHtml(datePart)}</div>
-          <div style="font-size:11.5px; color:#B45309; font-weight:700; display:flex; align-items:center; gap:4px; margin-top:2px;">
+          <span class="mgr-date-text" style="font-weight:600; color:#1E293B; font-size:12.5px;">${escapeHtml(datePart)}</span>
+        </td>
+        <td>
+          <span class="mgr-time-text" style="font-size:12px; color:#B45309; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             ${escapeHtml(timePart)}
-          </div>
+          </span>
         </td>
         <td><strong>${escapeHtml(d.materialName)}</strong></td>
         <td><span class="mgr-qty-delta disburse">-${d.quantity} ${escapeHtml(d.unit)}</span></td>

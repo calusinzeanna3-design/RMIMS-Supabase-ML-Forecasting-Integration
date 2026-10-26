@@ -773,7 +773,7 @@ function renderMySubmissions() {
   if (staffTx.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align:center; padding:28px 16px; color:#64748B;">
+        <td colspan="8" style="text-align:center; padding:28px 16px; color:#64748B;">
           No disburse submissions recorded yet.
         </td>
       </tr>

@@ -1084,7 +1084,7 @@ function renderPendingTransactions(staffTx) {
     if (pending.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" class="table-empty-state" style="text-align:center; padding:38px 20px;">
+          <td colspan="8" class="table-empty-state" style="text-align:center; padding:38px 20px;">
             <div class="empty-icon-wrap" style="width:44px; height:44px; border-radius:50%; background:#F0FDF4; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; color:#16A34A;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1104,7 +1104,8 @@ function renderPendingTransactions(staffTx) {
         const actPillCls = isRec ? 'pill-inward' : 'pill-production';
         return `
           <tr>
-            <td><strong>${escapeHtml(t.date || 'Today')}</strong> <small style="color:#64748B;">${escapeHtml(t.time || '')}</small></td>
+            <td><strong>${escapeHtml(t.date || '—')}</strong></td>
+            <td><small style="color:#64748B; font-weight:600;">${escapeHtml(t.time || '—')}</small></td>
             <td><span class="status-pill ${actPillCls}">${actLabel}</span></td>
             <td><strong>${escapeHtml(t.material || t.materialName || '--')}</strong></td>
             <td><strong>${escapeHtml(t.quantity || 0)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</strong></td>

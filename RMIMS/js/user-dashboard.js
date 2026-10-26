@@ -445,7 +445,7 @@ function renderRecentActivity(staffTx) {
   if (staffTx.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align:center; padding:28px 16px; color:#64748B;">
+        <td colspan="8" style="text-align:center; padding:28px 16px; color:#64748B;">
           <strong>No recent transactions recorded.</strong><br>
           <span style="font-size:12px;">Create your first transaction using "Record Receive" or "Record Disburse".</span>
         </td>
@@ -466,7 +466,8 @@ function renderRecentActivity(staffTx) {
 
     return `
       <tr>
-        <td><strong>${escapeHtml(t.date || 'Today')}</strong> <small style="color:#64748B;">${escapeHtml(t.time || '')}</small></td>
+        <td><strong>${escapeHtml(t.date || '—')}</strong></td>
+        <td><small style="color:#64748B; font-weight:600;">${escapeHtml(t.time || '—')}</small></td>
         <td>
           <span style="font-weight:700; color:${t.activity === 'Receive' ? '#15803D' : '#D97706'};">
             ${t.activity === 'Receive' ? '📥 Receive' : '📤 Disburse'}

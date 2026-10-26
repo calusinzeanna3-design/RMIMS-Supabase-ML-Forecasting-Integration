@@ -779,7 +779,7 @@ function renderMySubmissions() {
   if (myReceives.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align:center; padding:28px 16px; color:#64748B;">
+        <td colspan="8" style="text-align:center; padding:28px 16px; color:#64748B;">
           No incoming material submissions recorded yet.
         </td>
       </tr>
@@ -816,7 +816,8 @@ function renderMySubmissions() {
     return `
       <tr style="${isCorrection ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td><code style="background:#F1F5F9; padding:2px 6px; border-radius:5px; font-weight:700; color:#334155;">${escapeHtml(t.ref)}</code></td>
-        <td><strong>${escapeHtml(t.date)}</strong> <small style="color:#64748B;">${escapeHtml(t.time || '')}</small></td>
+        <td><strong>${escapeHtml(t.date || '—')}</strong></td>
+        <td><small style="color:#64748B; font-weight:600;">${escapeHtml(t.time || '—')}</small></td>
         <td><strong>${escapeHtml(t.material)}</strong></td>
         <td><span style="color:#15803D; font-weight:700;">+${t.quantity}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</span></td>
         <td>${escapeHtml(t.supplier || '--')}</td>
