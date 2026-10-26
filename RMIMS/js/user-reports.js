@@ -14,6 +14,7 @@ import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
+import { attachSearchableCombobox } from "./rmims-combobox.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -2627,6 +2628,12 @@ function populateMaterialDropdown() {
 
         showToast(`Filtered by ${state.selectedMaterialName}`, "info");
     };
+
+    attachSearchableCombobox(matSelect, {
+        placeholder: "Filter specific material...",
+        minWidth: "220px",
+        maxWidth: "320px"
+    });
 }
 
 /* ==========================================================

@@ -26,6 +26,7 @@ import {
   deleteManagerDisbursement
 } from './rmims-transaction-engine.js';
 import { recordMaterialDisbursementToSupabase, saveRawMaterialToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
+import { attachSearchableCombobox } from './rmims-combobox.js';
 
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
 
@@ -320,6 +321,11 @@ function populateMaterialSelects() {
 
   // Immediately synchronize unit badge and stock preview
   updateDisburseMaterialSelection();
+
+  attachSearchableCombobox(select, {
+    placeholder: 'Search raw material to disburse...',
+    width: '100%'
+  });
 }
 
 function updateDisburseMaterialSelection() {

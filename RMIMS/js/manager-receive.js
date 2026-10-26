@@ -33,6 +33,7 @@ import {
   deleteStockReceiptOnSupabase,
   broadcastManagerSync
 } from '../supabase/manager-supabase-service.js';
+import { attachSearchableCombobox } from './rmims-combobox.js';
 
 const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 
@@ -343,6 +344,11 @@ function populateMaterialSelects() {
 
   // Immediately synchronize unit badge and stock preview
   updateReceiveMaterialSelection();
+
+  attachSearchableCombobox(select, {
+    placeholder: 'Search raw material to receive...',
+    width: '100%'
+  });
 }
 
 function updateReceiveMaterialSelection() {

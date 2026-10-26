@@ -4299,3 +4299,174 @@ input.inv-input-date.flatpickr-input.active {
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
   transform: translateY(-1px) !important;
 }
+
+/* ==========================================================
+   UNIVERSAL SEARCHABLE TYPABLE COMBOBOX COMPONENT
+   ========================================================== */
+.cal-combobox-wrap,
+.rm-combobox-wrap {
+  position: relative;
+  width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  box-sizing: border-box;
+}
+
+.cal-combobox-input-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 20px;
+  padding: 6px 14px;
+  min-height: 40px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  cursor: text;
+}
+
+.cal-combobox-input-box:hover {
+  border-color: #94A3B8;
+  background: #FFFFFF;
+}
+
+.cal-combobox-input-box:focus-within,
+.cal-combobox-wrap.open .cal-combobox-input-box {
+  border-color: #15803D !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.14) !important;
+}
+
+.cal-combobox-search-icon {
+  width: 16px;
+  height: 16px;
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.cal-combobox-input {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  color: #0F2A1B !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  line-height: 1.4 !important;
+}
+
+.cal-combobox-input::placeholder {
+  color: #94A3B8 !important;
+  font-weight: 500 !important;
+}
+
+.cal-combobox-clear {
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.cal-combobox-clear:hover {
+  color: #DC2626;
+}
+
+.cal-combobox-arrow {
+  width: 16px;
+  height: 16px;
+  color: #64748B;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.cal-combobox-arrow:hover {
+  color: #0F2A1B;
+}
+
+.cal-combobox-wrap.open .cal-combobox-arrow {
+  transform: rotate(180deg);
+  color: #15803D;
+}
+
+.cal-combobox-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid rgba(20, 83, 45, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(15, 42, 27, 0.18);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 99999;
+  padding: 6px;
+  display: none;
+  box-sizing: border-box;
+}
+
+.cal-combobox-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+.cal-combobox-dropdown::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 10px;
+}
+.cal-combobox-dropdown::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 10px;
+}
+.cal-combobox-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+.cal-combobox-dropdown.open {
+  display: block;
+}
+
+.cal-combobox-item {
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1E293B;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.cal-combobox-item:hover,
+.cal-combobox-item.selected {
+  background: #F0FDF4;
+  color: #15803D;
+  font-weight: 700;
+}
+
+.cal-combobox-item .cal-item-code {
+  font-size: 0.72rem;
+  color: #64748B;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-left: 8px;
+}
+
+.cal-combobox-empty {
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94A3B8;
+}

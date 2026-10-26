@@ -26,6 +26,7 @@ import {
   updateStaffTransaction,
   deleteStaffTransaction
 } from './rmims-transaction-engine.js';
+import { attachSearchableCombobox } from './rmims-combobox.js';
 
 // Authentic Bill of Materials (BOM) standard ratios (g/pcs/kl for Scones; kg/L for KXC)
 const BASELINE_BOM_RATIOS = {
@@ -496,6 +497,11 @@ function populateMaterialSelect() {
 
   // Trigger change to sync unit badge and preview
   select.dispatchEvent(new Event('change'));
+
+  attachSearchableCombobox(select, {
+    placeholder: 'Search raw material to receive...',
+    width: '100%'
+  });
 }
 
 function bindFormEvents() {

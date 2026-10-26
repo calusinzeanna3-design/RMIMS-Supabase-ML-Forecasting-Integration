@@ -20,6 +20,7 @@ import {
 } from "./tenant-manager.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache } from "./system-materials.js";
 import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
+import { attachSearchableCombobox } from "./rmims-combobox.js";
 
 /* ==========================================================
    GLOBAL STATE
@@ -3764,6 +3765,15 @@ function populateMaterialDropdown() {
         if (curVal1 && (curVal1 === "ALL" || state.materials.some(m => m.id === curVal1))) {
             select1.value = curVal1;
         }
+        attachSearchableCombobox(select1, {
+            placeholder: "Search raw material...",
+            minWidth: "220px",
+            maxWidth: "320px",
+            onChange: (val) => {
+                state.selectedMaterialId = val;
+                renderPrimaryChart();
+            }
+        });
     }
 
     if (select2) {
@@ -3771,6 +3781,14 @@ function populateMaterialDropdown() {
         if (curVal2 && (curVal2 === "ALL" || state.materials.some(m => m.id === curVal2))) {
             select2.value = curVal2;
         }
+        attachSearchableCombobox(select2, {
+            placeholder: "Search raw material...",
+            minWidth: "220px",
+            maxWidth: "320px",
+            onChange: (val) => {
+                state.projMaterialId = val;
+            }
+        });
     }
 }
 
