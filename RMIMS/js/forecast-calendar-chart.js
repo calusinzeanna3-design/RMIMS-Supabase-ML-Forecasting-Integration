@@ -34,16 +34,34 @@ export function initForecastCalendarCard(containerId, options = {}) {
   let calYear = anchorDate.getFullYear();
   let chartInstance = null;
 
+  const isForecastingPage = typeof window !== 'undefined' && window.location.pathname.includes('forecasting');
+  const showViewAll = options.showViewAll !== undefined ? options.showViewAll : !isForecastingPage;
+
   // Render HTML structure
   container.innerHTML = `
     <div class="fc-calendar-chart-card" id="${instanceId}_card">
       <div class="cal-card-header">
-        <div class="cal-card-title-group">
-          <div class="cal-card-title-row">
-            <span class="cal-pill-badge">AI FORECAST SPLINE</span>
-            <h3 class="cal-card-title">${title}</h3>
+        <div class="cal-card-top-row">
+          <div class="cal-card-title-group">
+            <div class="cal-card-title-row">
+              <span class="cal-pill-badge">AI FORECAST SPLINE</span>
+              <h3 class="cal-card-title">${title}</h3>
+            </div>
+            <p class="cal-card-subtitle">${subtitle}</p>
           </div>
-          <p class="cal-card-subtitle">${subtitle}</p>
+
+          ${showViewAll ? `
+          <div class="cal-card-actions">
+            <!-- Direct Link to Forecasting Module (Standard Card Header View All Button in Upper Right) -->
+            <a href="forecasting.html" class="btn-view-all cal-view-btn" id="${instanceId}_viewBtn" title="View All Forecasting">
+              <span>View All</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </a>
+          </div>
+          ` : ''}
         </div>
 
         <div class="cal-card-controls">
@@ -70,15 +88,6 @@ export function initForecastCalendarCard(containerId, options = {}) {
             <button type="button" class="cal-range-btn ${activeRangeDays === 7 ? 'active' : ''}" data-range="7">7 Days</button>
             <button type="button" class="cal-range-btn ${activeRangeDays === 30 ? 'active' : ''}" data-range="30">30 Days</button>
           </div>
-
-          <!-- Direct Link to Forecasting Module (Standard Card Header View All Button) -->
-          <a href="forecasting.html" class="btn-view-all cal-view-btn" id="${instanceId}_viewBtn" title="View All Forecasting">
-            <span>View All</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <line x1="5" y1="12" x2="19" y2="12"/>
-              <polyline points="12 5 19 12 12 19"/>
-            </svg>
-          </a>
         </div>
       </div>
 

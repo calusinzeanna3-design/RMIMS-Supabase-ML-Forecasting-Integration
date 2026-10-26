@@ -8,36 +8,42 @@
   width: 100% !important;
   box-sizing: border-box !important;
   background: var(--fc-card-bg, #FFFFFF);
-  border: 1px solid rgba(20, 83, 45, 0.12);
-  border-radius: 20px;
-  padding: 18px 24px;
-  box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06);
+  border: 1px solid var(--rm-card-border, rgba(20, 83, 45, 0.08));
+  border-radius: 18px;
+  padding: 20px 24px;
+  box-shadow: var(--rm-shadow-md, 0 4px 20px -2px rgba(15, 42, 27, 0.06));
   margin-bottom: 24px;
   position: relative;
   overflow: visible;
+  outline: none !important;
 }
 
 .fc-calendar-chart-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #0F2A1B 0%, #15803D 50%, #4ADE80 100%);
-  border-radius: 20px 20px 0 0;
+  display: none !important;
 }
 
 /* Card Header & Controls Toolbar */
 .cal-card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 14px;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+}
+
+.cal-card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.cal-card-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .cal-card-title-group {
@@ -248,6 +254,7 @@
 
 /* Direct Link / Navigation to Forecasting Module (Matches other cards' View All buttons) */
 .cal-view-btn,
+.cal-card-actions .btn-view-all,
 .cal-card-controls .btn-view-all {
   display: inline-flex !important;
   align-items: center !important;
@@ -268,6 +275,7 @@
 }
 
 .cal-view-btn:hover,
+.cal-card-actions .btn-view-all:hover,
 .cal-card-controls .btn-view-all:hover {
   background: rgba(34, 197, 94, 0.16) !important;
   color: #0F2A1B !important;
@@ -276,6 +284,7 @@
 }
 
 .cal-view-btn svg,
+.cal-card-actions .btn-view-all svg,
 .cal-card-controls .btn-view-all svg {
   width: 15px !important;
   height: 15px !important;
@@ -285,6 +294,7 @@
 }
 
 .cal-view-btn:hover svg,
+.cal-card-actions .btn-view-all:hover svg,
 .cal-card-controls .btn-view-all:hover svg {
   transform: translateX(2px) !important;
 }
