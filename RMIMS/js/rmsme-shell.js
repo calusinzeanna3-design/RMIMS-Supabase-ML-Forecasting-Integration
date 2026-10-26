@@ -152,20 +152,27 @@ import { supabase } from '../supabase/supabase-config.js';
   const role = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'user');
   const current = (path[path.length - 1] || '').toLowerCase();
 
-  // Instant pre-render role routing guard to prevent UI flicker
+  // Instant pre-render role routing guard to prevent UI flicker and block unauthorized access
   try {
-    const rawLocal = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser');
+    const rawLocal = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || localStorage.getItem('staffUser') || localStorage.getItem('adminUser');
     if (rawLocal) {
       const u = JSON.parse(rawLocal);
       const uOp = String(u.operationalRole || u.operational_role || '').toLowerCase();
       const uBase = String(u.role || '').toLowerCase();
-      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com');
+      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com' && uOp !== 'manager' && uOp !== 'staff');
       const uIsMgr = !uIsAdm && (uOp === 'manager' || uBase === 'manager');
-      if (path.includes('user') && uIsMgr) {
+      const uIsStaff = !uIsAdm && !uIsMgr;
+
+      // Strict role enforcement: do not let unauthorized roles pass
+      if (uIsAdm && (path.includes('manager') || path.includes('user'))) {
+        window.location.replace('../admin/overview.html');
+        return;
+      }
+      if (uIsMgr && (path.includes('user') || isAnyAdmin)) {
         window.location.replace('../manager/dashboard.html');
         return;
       }
-      if (path.includes('manager') && !uIsMgr && !uIsAdm) {
+      if (uIsStaff && (path.includes('manager') || isAnyAdmin)) {
         window.location.replace('../user/dashboard.html');
         return;
       }
@@ -879,13 +886,15 @@ import { supabase } from '../supabase/supabase-config.js';
 
   function syncIdentity() {
     let name = '', email = '';
-    let roleTitle = isManager ? 'Manager' : 'Staff';
+    let roleTitle = isStrictManager ? 'Manager' : (isAnyAdmin ? 'Administrator' : 'Staff');
     let branchName = '', branchLocation = '';
     let hasSession = false;
     try {
-      const candidates = isManager 
-        ? ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'adminUser', 'rmimsAdminUser']
-        : ['staffUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'adminUser', 'rmimsAdminUser'];
+      const candidates = isStrictManager 
+        ? ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile']
+        : (isAnyAdmin
+            ? ['adminUser', 'rmimsAdminUser', 'currentUser', 'rmimsCurrentUser', 'userProfile']
+            : ['staffUser', 'currentUser', 'rmimsCurrentUser', 'userProfile']);
       for (const k of candidates) {
         const raw = localStorage.getItem(k); if (!raw) continue;
         const o = JSON.parse(raw);
@@ -900,7 +909,14 @@ import { supabase } from '../supabase/supabase-config.js';
           email = o.email || '';
           branchName = o.branchName || o.branch_name || '';
           branchLocation = o.branchLocation || o.branch_location || '';
-          roleTitle = (o.role === 'admin' || isAnyAdmin) ? 'Administrator' : (isManager ? 'Manager' : 'Staff');
+          
+          if (isStrictManager) {
+            roleTitle = 'Manager';
+          } else if (isAnyAdmin) {
+            roleTitle = 'Administrator';
+          } else {
+            roleTitle = 'Staff';
+          }
           hasSession = true;
           break;
         }
@@ -908,14 +924,17 @@ import { supabase } from '../supabase/supabase-config.js';
     } catch (e) { }
 
     if (!hasSession) {
-      // Do not prematurely bounce; allow async syncLiveSession to verify with Supabase Auth
+      if (isStrictManager) {
+        document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = 'Manager');
+        document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = 'M');
+      }
       return;
     }
 
-    document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name);
+    document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name || (isStrictManager ? 'Manager' : 'User'));
     document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = email);
-    document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = initials(name));
-    document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = roleTitle);
+    document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isStrictManager ? ((name && initials(name) !== 'A') ? initials(name) : 'M') : (isAnyAdmin ? 'A' : initials(name)));
+    document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = isStrictManager ? 'Manager' : roleTitle);
 
     const branchLabel = formatBranchLabel(branchName, branchLocation);
     document.querySelectorAll('[data-shell-branch]').forEach(e => e.textContent = branchLabel);
@@ -1016,7 +1035,7 @@ import { supabase } from '../supabase/supabase-config.js';
               operational_role: 'admin',
               status: 'active'
             };
-          } else {
+          } else if (!profile.operational_role || profile.operational_role === 'admin') {
             profile.role = 'admin';
             profile.operational_role = 'admin';
             profile.status = 'active';
@@ -1065,7 +1084,7 @@ import { supabase } from '../supabase/supabase-config.js';
         if (profile) {
           const rawOp = String(profile.operational_role || profile.operationalRole || '').trim().toLowerCase();
           const rawBase = String(profile.role || '').trim().toLowerCase();
-          const isUserAdmin = rawBase === 'admin' || rawBase === 'main_admin' || rawOp === 'admin' || isMasterAdmin;
+          const isUserAdmin = rawBase === 'admin' || rawBase === 'main_admin' || rawOp === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
           const isUserManager = !isUserAdmin && (rawOp === 'manager' || rawBase === 'manager');
           const isUserStaff = !isUserAdmin && !isUserManager;
 
@@ -1077,15 +1096,20 @@ import { supabase } from '../supabase/supabase-config.js';
             } catch (_) {}
           }
 
-          // Live role guard:
-          // 1. If accessing manager pages without manager or admin privileges -> redirect to staff workspace
-          if (path.includes('manager') && !isUserManager && !isUserAdmin) {
-            window.location.href = '../user/dashboard.html';
+          // STRICT LIVE ROLE GUARDS: Do NOT let unauthorized accounts pass
+          // 1. If Admin accesses manager or staff pages -> redirect to Admin Overview
+          if (isUserAdmin && (path.includes('manager') || path.includes('user'))) {
+            window.location.href = '../admin/overview.html';
             return;
           }
-          // 2. If a Manager accesses staff workspace pages -> redirect to manager workspace
-          if (path.includes('user') && isUserManager) {
+          // 2. If Manager accesses admin or staff pages -> redirect to Manager Dashboard
+          if (isUserManager && (isAnyAdmin || path.includes('user'))) {
             window.location.href = '../manager/dashboard.html';
+            return;
+          }
+          // 3. If Staff accesses admin or manager pages -> redirect to Staff Dashboard
+          if (isUserStaff && (isAnyAdmin || path.includes('manager'))) {
+            window.location.href = '../user/dashboard.html';
             return;
           }
 
@@ -1094,14 +1118,14 @@ import { supabase } from '../supabase/supabase-config.js';
           if (profile.email) {
             document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = profile.email);
           }
-          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isUserAdmin ? 'A' : (isUserManager ? 'M' : initials(liveName)));
+          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isStrictManager ? ((liveName && initials(liveName) !== 'A') ? initials(liveName) : 'M') : (isUserAdmin ? 'A' : (isUserManager ? 'M' : initials(liveName))));
 
           const pBranchName = profile.branch_name || profile.branchName || '';
           const pBranchLoc = profile.branch_location || profile.branchLocation || '';
           const pBranchLabel = formatBranchLabel(pBranchName, pBranchLoc);
           document.querySelectorAll('[data-shell-branch]').forEach(e => e.textContent = pBranchLabel);
 
-          let liveRoleTitle = isUserAdmin ? 'Administrator' : (isUserManager ? 'Manager' : 'Staff');
+          let liveRoleTitle = isStrictManager ? 'Manager' : (isUserAdmin ? 'Administrator' : (isUserManager ? 'Manager' : 'Staff'));
           document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = liveRoleTitle);
 
           if (current === 'dashboard.html') {

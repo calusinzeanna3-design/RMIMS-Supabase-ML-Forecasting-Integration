@@ -3011,7 +3011,7 @@ onAuthStateChanged(auth, async user => {
           operational_role: "admin",
           status: "active"
         };
-      } else {
+      } else if (!profile.operational_role || profile.operational_role === "admin") {
         profile.role = "admin";
         profile.operational_role = "admin";
         profile.status = "active";
@@ -3060,10 +3060,15 @@ onAuthStateChanged(auth, async user => {
 
     const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
     const rawRole = String(profile.role || '').toLowerCase();
-    const isMgr = rawOp === 'manager' || rawRole === 'manager';
-    const isAdm = rawOp === 'admin' || rawRole === 'admin' || isMasterAdmin;
+    const isAdm = rawOp === 'admin' || rawRole === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
+    const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
 
-    if (!isAdm && !isMgr) {
+    // Strict role check: do not let unauthorized roles pass into Manager Dashboard
+    if (isAdm) {
+      window.location.href = "../admin/overview.html";
+      return;
+    }
+    if (!isMgr) {
       window.location.href = "../user/dashboard.html";
       return;
     }
@@ -3072,9 +3077,9 @@ onAuthStateChanged(auth, async user => {
       window.checkAndShowOnboarding(profile, supabase);
     }
 
-    const firstName = "Manager";
+    const mName = profile.full_name || "Manager";
     const greet = greetingWord();
-    const greetingText = `${greet}, ${firstName}! Overview of your raw materials and inventory activity.`;
+    const greetingText = `${greet}, ${mName}! Overview of your raw materials and inventory activity.`;
 
     if ($("welcomeGreeting")) {
       $("welcomeGreeting").textContent = greetingText;
@@ -3091,16 +3096,19 @@ onAuthStateChanged(auth, async user => {
 
     const profileBtn = $("profileBtn");
     if (profileBtn) {
-      let mName = "Manager";
       const nameEl = profileBtn.querySelector("[data-shell-name]") || profileBtn.querySelector(".profile-name") || profileBtn.querySelector(".mgr-name");
       if (nameEl) nameEl.textContent = mName;
       const roleEl = profileBtn.querySelector("[data-shell-role]") || profileBtn.querySelector(".profile-role") || profileBtn.querySelector(".mgr-role");
       if (roleEl) roleEl.textContent = "Manager";
       const pAv = profileBtn.querySelector("[data-shell-avatar]") || profileBtn.querySelector(".avatar") || profileBtn.querySelector(".profile-avatar");
       if (pAv) {
-        pAv.textContent = "M";
+        pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
       }
     }
+    const dropUserName = $("dropdownUserName");
+    if (dropUserName) dropUserName.textContent = mName;
+    const dropUserRole = $("dropdownUserRole");
+    if (dropUserRole) dropUserRole.textContent = "Manager";
   } catch (err) {
     console.warn("Dashboard role check notice:", err);
   }

@@ -246,16 +246,35 @@ async function bootstrapForecastApp(user) {
             };
         }
 
+        const rawOp = String(profile?.operational_role || profile?.operationalRole || '').toLowerCase();
+        const rawRole = String(profile?.role || '').toLowerCase();
+        const isAdm = rawOp === 'admin' || rawRole === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
+        const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
+
+        // Strict role enforcement
+        if (isAdm) {
+            window.location.href = "../admin/overview.html";
+            return;
+        }
+        if (!isMgr) {
+            window.location.href = "../user/dashboard.html";
+            return;
+        }
+
         const pBtn = document.getElementById("profileBtn") || document.getElementById("rmsmeProfileBtn");
+        const mName = profile?.full_name || "Manager";
         if (pBtn) {
-            let mName = "Manager";
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
             if (nameEl) nameEl.textContent = mName;
             const roleEl = pBtn.querySelector("[data-shell-role]") || pBtn.querySelector(".profile-role") || pBtn.querySelector(".mgr-role");
             if (roleEl) roleEl.textContent = "Manager";
             const pAv = pBtn.querySelector("[data-shell-avatar]") || pBtn.querySelector(".avatar") || pBtn.querySelector(".profile-avatar");
-            if (pAv) pAv.textContent = "M";
+            if (pAv) pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
         }
+        const dropUserName = document.getElementById("dropdownUserName");
+        if (dropUserName) dropUserName.textContent = mName;
+        const dropUserRole = document.getElementById("dropdownUserRole");
+        if (dropUserRole) dropUserRole.textContent = "Manager";
 
         init();
     } catch (e) {
