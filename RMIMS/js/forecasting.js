@@ -2512,14 +2512,12 @@ function renderRequirementBars() {
 }
 
 /* ==========================================================
-   5. AI FORECAST DECISION SUPPORT (VISUAL CHART & 3-CARD COMPARATIVE CONTAINER)
+   5. AI FORECAST DECISION SUPPORT (3-CARD COMPARATIVE CONTAINER)
    ========================================================== */
-
-let aiForecastSupportChartInstance = null;
 
 function renderDecisionSupport() {
     const container = document.getElementById("forecastDecisionContainer");
-    const canvas = document.getElementById("aiForecastSupportChartCanvas");
+    if (!container) return;
 
     let materials = state.materials;
     if (!materials || materials.length === 0) {
@@ -2539,7 +2537,7 @@ function renderDecisionSupport() {
     }
 
     if (!materials || materials.length === 0) {
-        if (container) container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: var(--fc-text-dim);">Evaluating decision support models...</div>`;
+        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: var(--fc-text-dim);">Evaluating decision support models...</div>`;
         return;
     }
 
@@ -2583,206 +2581,97 @@ function renderDecisionSupport() {
         return b.fQty - a.fQty;
     });
 
-    const topMaterials = evaluated.slice(0, 4);
-
-    // 1. RENDER VISUAL CHART ON CANVAS
-    if (canvas && typeof Chart !== "undefined") {
-        const labels = topMaterials.map(item => item.material.name);
-        const stockData = topMaterials.map(item => item.curStock);
-        const reqData = topMaterials.map(item => item.fQty);
-        const inwardData = topMaterials.map(item => item.receive7Day);
-        const units = topMaterials.map(item => item.material.unit || "kg");
-
-        if (aiForecastSupportChartInstance) {
-            aiForecastSupportChartInstance.destroy();
-            aiForecastSupportChartInstance = null;
-        }
-
-        const ctx = canvas.getContext("2d");
-        aiForecastSupportChartInstance = new Chart(ctx, {
-            type: "bar",
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: "Current Stock",
-                        data: stockData,
-                        backgroundColor: topMaterials.map(item => item.isShortage ? "#EF4444" : "#16A34A"),
-                        borderRadius: 6,
-                        barPercentage: 0.8,
-                        categoryPercentage: 0.75
-                    },
-                    {
-                        label: "7D Projected Req",
-                        data: reqData,
-                        backgroundColor: "#0F2A1B",
-                        borderRadius: 6,
-                        barPercentage: 0.8,
-                        categoryPercentage: 0.75
-                    },
-                    {
-                        label: "Expected Inward (7D)",
-                        data: inwardData,
-                        backgroundColor: "#EA580C",
-                        borderRadius: 6,
-                        barPercentage: 0.8,
-                        categoryPercentage: 0.75
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: "#0F2A1B",
-                        titleFont: { size: 12, weight: "bold", family: "'Sora', sans-serif" },
-                        bodyFont: { size: 11, family: "'Plus Jakarta Sans', sans-serif" },
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label(context) {
-                                const idx = context.dataIndex;
-                                const u = units[idx] || "kg";
-                                const dsLabel = context.dataset.label || "";
-                                const val = Number(context.parsed.y || 0).toLocaleString();
-                                return ` ${dsLabel}: ${val} ${u}`;
-                            },
-                            afterBody(items) {
-                                const idx = items[0]?.dataIndex;
-                                if (idx !== undefined && topMaterials[idx]) {
-                                    const it = topMaterials[idx];
-                                    const net = it.curStock - it.fQty;
-                                    const sign = net >= 0 ? "+" : "";
-                                    const u = units[idx] || "kg";
-                                    return ` Net Balance: ${sign}${net.toFixed(1)} ${u} (${it.isShortage ? 'Deficit' : 'Surplus'})`;
-                                }
-                                return "";
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: {
-                            font: { size: 11, weight: "600", family: "'Plus Jakarta Sans', sans-serif" },
-                            color: "#334155",
-                            callback(val, index) {
-                                const name = labels[index] || "";
-                                return name.length > 13 ? name.slice(0, 12) + "…" : name;
-                            }
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: "#F1F5F9" },
-                        ticks: {
-                            font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" },
-                            color: "#64748B",
-                            maxTicksLimit: 5
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // 2. RENDER ACTIONABLE COMPARATIVE DECISION CARDS (Top 3)
     const top3 = evaluated.slice(0, 3);
+
+    // Compute Date Range (Today to +7 Days)
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + 7 * 86400000);
     const startStr = startDate.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
     const endStr = endDate.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
     const durationText = `Next 7 Days (${startStr} – ${endStr})`;
 
-    if (container) {
-        container.innerHTML = top3.map(item => {
-            const m = item.material;
-            const fc = item.forecast;
-            const unit = m.unit || "kg";
-            const maxVal = Math.max(item.usage7Day, item.receive7Day, item.curStock, item.fQty, 1);
+    container.innerHTML = top3.map(item => {
+        const m = item.material;
+        const fc = item.forecast;
+        const unit = m.unit || "kg";
+        const maxVal = Math.max(item.usage7Day, item.receive7Day, item.curStock, item.fQty, 1);
 
-            const usagePct = Math.max(6, Math.min(100, Math.round((item.usage7Day / maxVal) * 100)));
-            const receivePct = Math.max(6, Math.min(100, Math.round((item.receive7Day / maxVal) * 100)));
-            const stockPct = Math.max(6, Math.min(100, Math.round((item.curStock / maxVal) * 100)));
-            const reqPct = Math.max(6, Math.min(100, Math.round((item.fQty / maxVal) * 100)));
+        const usagePct = Math.max(6, Math.min(100, Math.round((item.usage7Day / maxVal) * 100)));
+        const receivePct = Math.max(6, Math.min(100, Math.round((item.receive7Day / maxVal) * 100)));
+        const stockPct = Math.max(6, Math.min(100, Math.round((item.curStock / maxVal) * 100)));
+        const reqPct = Math.max(6, Math.min(100, Math.round((item.fQty / maxVal) * 100)));
 
-            const statusInfo = getForecastStatus(m, fc);
-            const statusTagHtml = `<span class="forecast-status-tag ${statusInfo.tagCls}">${statusInfo.label}</span>`;
+        const statusInfo = getForecastStatus(m, fc);
+        const statusTagHtml = `<span class="forecast-status-tag ${statusInfo.tagCls}">${statusInfo.label}</span>`;
 
-            const insightText = item.isShortage
-                ? `${escapeHtml(m.name)} requires ~${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)} next week. Stock (${item.curStock.toLocaleString()} ${escapeHtml(unit)}) is below projected demand.`
-                : `${escapeHtml(m.name)} stock (${item.curStock.toLocaleString()} ${escapeHtml(unit)}) is sufficient to cover projected demand of ~${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}.`;
+        const insightText = item.isShortage
+            ? `${escapeHtml(m.name)} requires ~${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)} next week. Stock (${item.curStock.toLocaleString()} ${escapeHtml(unit)}) is below projected demand.`
+            : `${escapeHtml(m.name)} stock (${item.curStock.toLocaleString()} ${escapeHtml(unit)}) is sufficient to cover projected demand of ~${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}.`;
 
-            return `
-                <div class="forecast-support-card" data-mat-name="${escapeHtml(m.name)}" title="Click to view full material forecast details">
-                    <!-- Card Header Badges -->
-                    <div class="fsc-top">
-                        <div class="fsc-badges">
-                            <span class="forecast-badge-pill">7-Day Requirement</span>
-                            ${statusTagHtml}
-                        </div>
-                        <div class="fsc-arrow-btn">↗</div>
+        return `
+            <div class="forecast-support-card" data-mat-name="${escapeHtml(m.name)}" title="Click to view full material forecast details">
+                <!-- Card Header Badges -->
+                <div class="fsc-top">
+                    <div class="fsc-badges">
+                        <span class="forecast-badge-pill">7-Day Requirement</span>
+                        ${statusTagHtml}
+                    </div>
+                    <div class="fsc-arrow-btn">↗</div>
+                </div>
+
+                <!-- Material Title -->
+                <div class="fsc-main">
+                    <span class="fsc-mat-name">${escapeHtml(m.name)}</span>
+                    <span class="fsc-item-code">${escapeHtml(m.itemCode)}</span>
+                </div>
+
+                <!-- Duration Banner -->
+                <div class="fsc-duration-banner">
+                    <span>🗓️ Duration: <strong>${durationText}</strong></span>
+                </div>
+
+                <!-- 4 Comparative Progress Bars (Visual Bars) -->
+                <div class="fsc-bargraph-container">
+                    <div class="fsc-bar-row">
+                        <span class="fsc-bar-label"><span class="fsc-bar-dot dot-usage"></span>Usage (7D)</span>
+                        <div class="fsc-bar-track"><div class="fsc-bar-fill bar-usage" style="width: ${usagePct}%;"></div></div>
+                        <span class="fsc-bar-val">${item.usage7Day.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}</span>
                     </div>
 
-                    <!-- Material Title -->
-                    <div class="fsc-main">
-                        <span class="fsc-mat-name">${escapeHtml(m.name)}</span>
-                        <span class="fsc-item-code">${escapeHtml(m.itemCode)}</span>
+                    <div class="fsc-bar-row">
+                        <span class="fsc-bar-label"><span class="fsc-bar-dot dot-receive"></span>Received (7D)</span>
+                        <div class="fsc-bar-track"><div class="fsc-bar-fill bar-receive" style="width: ${receivePct}%;"></div></div>
+                        <span class="fsc-bar-val">${item.receive7Day.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}</span>
                     </div>
 
-                    <!-- Duration Banner -->
-                    <div class="fsc-duration-banner">
-                        <span>🗓️ Duration: <strong>${durationText}</strong></span>
+                    <div class="fsc-bar-row">
+                        <span class="fsc-bar-label"><span class="fsc-bar-dot dot-stock"></span>Current Stock</span>
+                        <div class="fsc-bar-track"><div class="fsc-bar-fill bar-stock" style="width: ${stockPct}%;"></div></div>
+                        <span class="fsc-bar-val">${item.curStock.toLocaleString()} ${escapeHtml(unit)}</span>
                     </div>
 
-                    <!-- 4 Comparative Progress Bars -->
-                    <div class="fsc-bargraph-container">
-                        <div class="fsc-bar-row">
-                            <span class="fsc-bar-label"><span class="fsc-bar-dot dot-usage"></span>Usage (7D)</span>
-                            <div class="fsc-bar-track"><div class="fsc-bar-fill bar-usage" style="width: ${usagePct}%;"></div></div>
-                            <span class="fsc-bar-val">${item.usage7Day.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}</span>
-                        </div>
-
-                        <div class="fsc-bar-row">
-                            <span class="fsc-bar-label"><span class="fsc-bar-dot dot-receive"></span>Received (7D)</span>
-                            <div class="fsc-bar-track"><div class="fsc-bar-fill bar-receive" style="width: ${receivePct}%;"></div></div>
-                            <span class="fsc-bar-val">${item.receive7Day.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}</span>
-                        </div>
-
-                        <div class="fsc-bar-row">
-                            <span class="fsc-bar-label"><span class="fsc-bar-dot dot-stock"></span>Current Stock</span>
-                            <div class="fsc-bar-track"><div class="fsc-bar-fill bar-stock" style="width: ${stockPct}%;"></div></div>
-                            <span class="fsc-bar-val">${item.curStock.toLocaleString()} ${escapeHtml(unit)}</span>
-                        </div>
-
-                        <div class="fsc-bar-row">
-                            <span class="fsc-bar-label"><span class="fsc-bar-dot dot-req"></span>Future Req (7D)</span>
-                            <div class="fsc-bar-track"><div class="fsc-bar-fill bar-req" style="width: ${reqPct}%;"></div></div>
-                            <span class="fsc-bar-val">${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}</span>
-                        </div>
-                    </div>
-
-                    <!-- Bottom Insight Advice Box -->
-                    <div class="fsc-insight-box">
-                        <span>${insightText}</span>
+                    <div class="fsc-bar-row">
+                        <span class="fsc-bar-label"><span class="fsc-bar-dot dot-req"></span>Future Req (7D)</span>
+                        <div class="fsc-bar-track"><div class="fsc-bar-fill bar-req" style="width: ${reqPct}%;"></div></div>
+                        <span class="fsc-bar-val">${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)}</span>
                     </div>
                 </div>
-            `;
-        }).join("");
 
-        // Attach click handlers to open detail modal
-        container.querySelectorAll(".forecast-support-card").forEach(card => {
-            card.addEventListener("click", () => {
-                const mName = card.getAttribute("data-mat-name");
-                openMaterialDetailModal(mName);
-            });
+                <!-- Bottom Insight Advice Box -->
+                <div class="fsc-insight-box">
+                    <span>${insightText}</span>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    // Attach click handlers to open detail modal
+    container.querySelectorAll(".forecast-support-card").forEach(card => {
+        card.addEventListener("click", () => {
+            const mName = card.getAttribute("data-mat-name");
+            openMaterialDetailModal(mName);
         });
-    }
+    });
 
     // Attach View All Forecasts button listener
     const viewAllDecBtn = document.getElementById("viewAllDecisionsBtn");

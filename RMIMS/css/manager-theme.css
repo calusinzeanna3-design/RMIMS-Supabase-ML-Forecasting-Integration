@@ -1928,8 +1928,10 @@ body.manager-page .an-bottom-grid .an-chart-empty {
 
 /* AI Forecasted Support grid inside 2-column card */
 body.manager-page .fc-grid-row-1 .forecast-support-grid {
-  height: 240px !important;
-  max-height: 240px !important;
+  height: auto !important;
+  min-height: 230px !important;
+  max-height: 260px !important;
+  flex: 1 1 auto !important;
   overflow-y: auto !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1939,8 +1941,8 @@ body.manager-page .fc-grid-row-1 .forecast-support-grid {
 }
 
 body.manager-page .fc-grid-row-1 .forecast-support-card {
-  padding: 12px 14px !important;
-  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  border-radius: 14px !important;
   min-height: auto !important;
   flex-shrink: 0 !important;
 }
