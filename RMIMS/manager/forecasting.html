@@ -134,10 +134,13 @@
             </section>
 
 
-            <!-- ROW 1: FORECAST DATA BAR CHART (1 ROW FULL WIDTH) -->
-            <section class="fc-grid-row-1" style="grid-template-columns: minmax(0, 1fr) !important; margin-bottom: 24px;">
+            <!-- ROW 1: 1-ROW UNIFIED FORECAST SPLINE CHART & SIDE CALENDAR -->
+            <div id="forecastingCalendarCardContainer" style="width: 100%; margin-bottom: 24px;"></div>
+
+            <!-- ROW 2: FORECAST DATA BAR CHART & AI FORECASTED SUPPORT (THE TWO IN ONE ROW) -->
+            <section class="fc-grid-row-1" style="margin-bottom: 24px;">
                 <!-- Primary Forecast Data Bar Chart -->
-                <div class="fc-card fc-chart-card-main" style="width: 100%;">
+                <div class="fc-card fc-chart-card-main" style="width: 100%; min-width: 0;">
                     <div class="fc-card-header fc-chart-header-custom">
                         <div class="fc-chart-header-top-row">
                             <div class="fc-chart-header-left">
@@ -195,34 +198,31 @@
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- ROW 1.5: 1-ROW UNIFIED FORECAST SPLINE CHART & SIDE CALENDAR -->
-            <div id="forecastingCalendarCardContainer" style="width: 100%; margin-bottom: 24px;"></div>
-
-            <!-- ROW 2: AI FORECASTED SUPPORT (3-CARD COMPARATIVE DECISION SUPPORT CONTAINER) -->
-            <section class="fc-card" aria-label="AI Forecasted Support">
-                <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; border: 1px solid #86EFAC; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
+                <!-- AI Forecasted Support (3-Card Comparative Decision Support Container) -->
+                <div class="fc-card fc-chart-card-main" aria-label="AI Forecasted Support" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
+                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; border: 1px solid #86EFAC; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
+                            </div>
+                            <div class="fc-card-title-group" style="gap:2px;">
+                                <h2 class="fc-card-title" style="margin:0; font-size:1.05rem;">AI Forecasted Support</h2>
+                                <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">Automated demand projection &amp; operational decision support for next 7 days</p>
+                            </div>
                         </div>
-                        <div class="fc-card-title-group" style="gap:2px;">
-                            <h2 class="fc-card-title" style="margin:0; font-size:1.05rem;">AI Forecasted Support</h2>
-                            <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">Automated demand projection &amp; operational decision support for next 7 days</p>
+                        <div>
+                            <button type="button" class="fc-btn-link" id="viewAllDecisionsBtn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#15803D;">
+                                <span>View All Forecasts</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </button>
                         </div>
                     </div>
-                    <div>
-                        <button type="button" class="fc-btn-link" id="viewAllDecisionsBtn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#15803D;">
-                            <span>View All Forecasts</span>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </button>
-                    </div>
-                </div>
 
-                <div class="fc-card-body" style="padding:16px 20px;">
-                    <div class="forecast-support-grid" id="forecastDecisionContainer">
-                        <!-- Populated dynamically via JS with 3 rich comparative progress cards -->
+                    <div class="fc-card-body" style="padding:16px 20px; flex: 1; display: flex; flex-direction: column;">
+                        <div class="forecast-support-grid" id="forecastDecisionContainer">
+                            <!-- Populated dynamically via JS with 3 rich comparative progress cards -->
+                        </div>
                     </div>
                 </div>
             </section>
