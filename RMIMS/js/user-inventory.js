@@ -68,7 +68,11 @@ if (document.readyState === 'loading') {
 }
 
 function loadInventory() {
-  rawMaterials = getSystemRawMaterials();
+  rawMaterials = (getSystemRawMaterials() || []).filter(m => {
+    const n = String(m.name || m.raw_material_name || '').toLowerCase();
+    const c = String(m.item_code || m.id || '').toUpperCase();
+    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
+  });
   populateCategoryFilter();
   updateKpiCards();
   renderTable();

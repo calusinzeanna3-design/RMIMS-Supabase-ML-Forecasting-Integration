@@ -45,13 +45,11 @@ const BASELINE_BOM_RATIOS = {
   "Calcium Propionate": 5,
   "Potassium Sorbate": 5,
   "Crushed Peanuts / Nuts": 50,
-  "Desiccated Coconut": 50,
   "Black Sesame Seeds": 20,
   "Malunggay (Moringa) Flakes": 20,
   "Vanilla Extract": 5,
   "Plastic Pillow Packaging": 0.02, // 0.02 kl film roll per batch
 
-  "Fresh Mature Coconut Meat": 0.40,
   "Panutsa Cane Sugar": 0.15,
   "Muscovado Brown Sugar": 0.12,
   "Pandan Leaves": 0.02,
@@ -97,7 +95,6 @@ const BASELINE_BOM_RATIOS = {
   "Red Onions": 0.06,
   "Seedless Raisins": 0.04,
   "Whole Black Peppercorns": 0.01,
-  "Fresh Grated Coconut Meat": 0.40,
   "Powdered Milk": 0.08,
   "Fresh Whole Eggs": 0.12,
   "Baking Powder": 0.01,
@@ -169,7 +166,7 @@ const LEGACY_KXC_PRODUCT_NAMES = new Set([
   'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
   'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
   'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
-  'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
+  'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas',
   'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
   'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
   'butter toast crackers'
@@ -469,7 +466,12 @@ function populateMaterialSelect() {
   if (!select) return;
 
   select.innerHTML = '<option value="">-- Choose Material to Receive --</option>';
-  rawMaterials.forEach(m => {
+  const safeMaterials = rawMaterials.filter(m => {
+    const n = String(m.name || m.materialName || m.raw_material_name || '').toLowerCase();
+    const c = String(m.item_code || m.id || '').toUpperCase();
+    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
+  });
+  safeMaterials.forEach(m => {
     const opt = document.createElement('option');
     const matName = m.name || m.materialName || m.raw_material_name || '';
     opt.value = matName;
@@ -759,7 +761,7 @@ function renderMySubmissions() {
   const countEl = document.getElementById('myRecSubCount');
   if (!tbody) return;
 
-  const allStaff = getStaffTransactions();
+  const allStaff = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
   if (allStaff.length === 0) {
     try {
       if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {

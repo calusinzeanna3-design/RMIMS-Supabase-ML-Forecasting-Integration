@@ -351,10 +351,10 @@ async function loadAuthoritativeData() {
         let rawReceipts = [];
         let rawDisbursements = [];
 
-        const BACKEND_STANDBY = false;
-        if (!BACKEND_STANDBY) {
+        // 1. Live Query to Supabase
+        if (supabase) {
             try {
-                const fetchWithTimeout = (promise, ms = 3500) => 
+                const fetchWithTimeout = (promise, ms = 4000) => 
                     Promise.race([
                         promise,
                         new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
@@ -375,33 +375,38 @@ async function loadAuthoritativeData() {
                         .order("usage_date", { ascending: false }))
                 ]);
 
-                if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
-                if (rcvRes.status === "fulfilled" && rcvRes.value?.data && rcvRes.value.data.length > 0) rawReceipts = rcvRes.value.data;
-                if (disbRes.status === "fulfilled" && disbRes.value?.data && disbRes.value.data.length > 0) rawDisbursements = disbRes.value.data;
+                if (matRes.status === "fulfilled" && Array.isArray(matRes.value?.data)) rawMats = matRes.value.data;
+                if (rcvRes.status === "fulfilled" && Array.isArray(rcvRes.value?.data)) rawReceipts = rcvRes.value.data;
+                if (disbRes.status === "fulfilled" && Array.isArray(disbRes.value?.data)) rawDisbursements = disbRes.value.data;
             } catch (e) {
-                console.warn("Using baseline reports dataset:", e);
+                console.warn("[UserReports] Live Supabase query notice:", e);
             }
         }
 
-        const isBaselineWiped = localStorage.getItem('rmims_wipe_baseline_materials') !== 'false';
+        // 2. Material mapping (STRICTLY live: Supabase + custom materials, ZERO mock/baseline fallbacks)
         const matBaseMap = new Map();
-        const baseMats = getSystemRawMaterials();
-        const initialMats = (!isBaselineWiped && (!baseMats || baseMats.length === 0)) ? AUTHENTIC_59_RAW_MATERIALS : (baseMats || []);
-        (initialMats || []).forEach(m => {
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            matBaseMap.set(k, {
-                id: String(m.id || m.item_code || m.itemCode || k),
-                item_code: m.item_code || m.itemCode || m.id || "RM—",
-                name: m.name,
-                unit_of_measure: m.unit_of_measure || m.unit || "",
-                current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                reorder_quantity: Number(m.reorder_quantity ?? 50),
-                lead_time_days: Number(m.lead_time_days ?? 3)
-            });
-        });
+        let localCustomMats = [];
+        try {
+            const stored = localStorage.getItem("rmims_custom_raw_materials");
+            if (stored) localCustomMats = JSON.parse(stored);
+        } catch (_) {}
 
-        // Merge Supabase materials
+        if (Array.isArray(localCustomMats)) {
+            localCustomMats.forEach(m => {
+                const k = String(m.name || m.id || "").toLowerCase().trim();
+                matBaseMap.set(k, {
+                    id: String(m.id || m.item_code || m.itemCode || k),
+                    item_code: m.item_code || m.itemCode || m.id || "RM—",
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
+            });
+        }
+
         (rawMats || []).forEach(m => {
             const k = String(m.name || m.id || "").toLowerCase().trim();
             const existing = matBaseMap.get(k);
@@ -426,22 +431,69 @@ async function loadAuthoritativeData() {
             }
         });
 
-        rawMats = Array.from(matBaseMap.values());
+        rawMats = Array.from(matBaseMap.values()).filter(m => {
+            const n = String(m.name || '').toLowerCase();
+            const c = String(m.item_code || m.id || '').toUpperCase();
+            return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
+        });
+
+        // 3. Receipts mapping (STRICTLY live: Supabase + local receipts, ZERO mock fallbacks)
         const recBaseMap = new Map();
-        if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
-            AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));
-        }
-        getSystemCustomReceipts().forEach(r => recBaseMap.set(String(r.id), { ...r }));
-        rawReceipts.forEach(r => recBaseMap.set(String(r.id), { ...(recBaseMap.get(String(r.id)) || {}), ...r }));
+        let localReceipts = [];
+        try {
+            const r1 = JSON.parse(localStorage.getItem("rmims_manager_receipts") || "[]");
+            const r2 = JSON.parse(localStorage.getItem("rmims_custom_receipts") || "[]");
+            localReceipts = [...r1, ...r2];
+        } catch (_) {}
+
+        localReceipts.forEach(r => {
+            const rId = String(r.id || r.ref || "");
+            if (rId) recBaseMap.set(rId, {
+                id: rId,
+                material_id: r.materialId || r.material_id,
+                received_quantity: Number(r.quantity || r.received_quantity || 0),
+                receipt_date: r.date || r.receipt_date,
+                unit: r.unit,
+                supplier_name: r.supplier || r.supplier_name,
+                received_by: r.recordedBy || r.received_by || "Staff Member",
+                created_at: r.createdAt || r.created_at
+            });
+        });
+
+        (rawReceipts || []).forEach(r => {
+            const rId = String(r.id || "");
+            if (rId) recBaseMap.set(rId, { ...(recBaseMap.get(rId) || {}), ...r });
+        });
         rawReceipts = Array.from(recBaseMap.values());
 
-        // Merge disbursements
+        // 4. Disbursements mapping (STRICTLY live: Supabase + local disbursements, ZERO mock fallbacks)
         const disbBaseMap = new Map();
-        if (!isBaselineWiped && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
-            AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbBaseMap.set(String(d.id), { ...d }));
-        }
-        getSystemCustomDisbursements().forEach(d => disbBaseMap.set(String(d.id), { ...d }));
-        rawDisbursements.forEach(d => disbBaseMap.set(String(d.id), { ...(disbBaseMap.get(String(d.id)) || {}), ...d }));
+        let localDisb = [];
+        try {
+            const d1 = JSON.parse(localStorage.getItem("rmims_manager_disbursements") || "[]");
+            const d2 = JSON.parse(localStorage.getItem("rmims_custom_disbursements") || "[]");
+            localDisb = [...d1, ...d2];
+        } catch (_) {}
+
+        localDisb.forEach(d => {
+            const dId = String(d.id || d.ref || "");
+            if (dId) disbBaseMap.set(dId, {
+                id: dId,
+                material_id: d.materialId || d.material_id,
+                consumed_quantity: Number(d.quantity || d.consumed_quantity || 0),
+                usage_date: d.date || d.usage_date,
+                unit: d.unit,
+                finished_product_name: d.recipient || d.finished_product_name,
+                activity_type: d.activity_type || "Production Issue",
+                recorded_by: d.recordedBy || d.recorded_by || "Staff Member",
+                created_at: d.createdAt || d.created_at
+            });
+        });
+
+        (rawDisbursements || []).forEach(d => {
+            const dId = String(d.id || "");
+            if (dId) disbBaseMap.set(dId, { ...(disbBaseMap.get(dId) || {}), ...d });
+        });
         rawDisbursements = Array.from(disbBaseMap.values());
 
         // Normalize Materials
@@ -2678,4 +2730,43 @@ function showToast(message, type = "info") {
         toast.style.transition = "opacity 0.25s ease";
         setTimeout(() => toast.remove(), 250);
     }, 3200);
+}
+
+
+// Storage & cross-tab sync listeners
+let _userRptStorageDebounce = null;
+window.addEventListener("storage", (e) => {
+    if (!e.key || e.key.startsWith("rmims_") || e.key.includes("inventory") || e.key.includes("material") || e.key.includes("receipt") || e.key.includes("disburse")) {
+        clearTimeout(_userRptStorageDebounce);
+        _userRptStorageDebounce = setTimeout(() => loadAuthoritativeData(), 150);
+    }
+});
+
+window.addEventListener("rmims_inventory_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_manager_receipts_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_manager_disbursements_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_staff_transactions_updated", () => loadAuthoritativeData());
+
+try {
+    if (typeof BroadcastChannel !== "undefined") {
+        const syncChannel = new BroadcastChannel("rmims_user_sync");
+        syncChannel.onmessage = () => {
+            loadAuthoritativeData();
+        };
+    }
+} catch (_) {}
+
+if (supabase && typeof supabase.channel === "function" && !window.__rmimsStaffReportsChannel) {
+    window.__rmimsStaffReportsChannel = supabase
+        .channel("rmims_staff_reports_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
+            loadAuthoritativeData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
+            loadAuthoritativeData();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
+            loadAuthoritativeData();
+        })
+        .subscribe();
 }

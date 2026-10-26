@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function cleanseMockTransactions() {
   try {
-    localStorage.setItem('rmims_wipe_baseline_materials', 'false');
+    localStorage.setItem('rmims_wipe_baseline_materials', 'true');
     const mockIds = [
       'st-001', 'st-002', 'st-003', 'st-004', 'st-005',
       'tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005'

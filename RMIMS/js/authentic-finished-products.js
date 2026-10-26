@@ -21,7 +21,6 @@ export const AUTHENTIC_SCONES_FINISHED_PRODUCTS = [
       "Calcium Propionate",
       "Potassium Sorbate",
       "Crushed Peanuts / Nuts",
-      "Desiccated Coconut",
       "Black Sesame Seeds",
       "Malunggay (Moringa) Flakes",
       "Vanilla Extract",

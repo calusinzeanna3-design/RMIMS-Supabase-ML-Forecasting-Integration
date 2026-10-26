@@ -468,10 +468,10 @@ async function loadAuthoritativeData() {
         let rawReceipts = [];
         let rawDisbursements = [];
 
-        const BACKEND_STANDBY = true;
-        if (!BACKEND_STANDBY) {
+        // 1. Live Query to Supabase
+        if (supabase) {
             try {
-                const fetchWithTimeout = (promise, ms = 3500) => 
+                const fetchWithTimeout = (promise, ms = 4000) => 
                     Promise.race([
                         promise,
                         new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
@@ -492,39 +492,47 @@ async function loadAuthoritativeData() {
                         .order("usage_date", { ascending: false }))
                 ]);
 
-                if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
-                if (rcvRes.status === "fulfilled" && rcvRes.value?.data && rcvRes.value.data.length > 0) rawReceipts = rcvRes.value.data;
-                if (disbRes.status === "fulfilled" && disbRes.value?.data && disbRes.value.data.length > 0) rawDisbursements = disbRes.value.data;
+                if (matRes.status === "fulfilled" && Array.isArray(matRes.value?.data)) rawMats = matRes.value.data;
+                if (rcvRes.status === "fulfilled" && Array.isArray(rcvRes.value?.data)) rawReceipts = rcvRes.value.data;
+                if (disbRes.status === "fulfilled" && Array.isArray(disbRes.value?.data)) rawDisbursements = disbRes.value.data;
             } catch (e) {
-                console.warn("Using baseline reports dataset:", e);
+                console.warn("[Reports] Live Supabase query notice:", e);
             }
         }
 
+        // 2. Material mapping (STRICTLY live: Supabase + custom materials, ZERO mock/baseline fallbacks)
         const matBaseMap = new Map();
-        const initialMats = getSystemRawMaterials() || [];
-        initialMats.forEach(m => {
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            matBaseMap.set(k, {
-                id: String(m.id || m.item_code || m.itemCode || k),
-                item_code: m.item_code || m.itemCode || m.id || "RM—",
-                name: m.name,
-                unit_of_measure: m.unit_of_measure || m.unit || "",
-                current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                reorder_quantity: Number(m.reorder_quantity ?? 50),
-                lead_time_days: Number(m.lead_time_days ?? 3)
-            });
-        });
 
-        // Merge all new or updated raw materials from Supabase
+        // Check local custom raw materials (persisted by Inventory module)
+        let localCustomMats = [];
+        try {
+            const stored = localStorage.getItem("rmims_custom_raw_materials");
+            if (stored) localCustomMats = JSON.parse(stored);
+        } catch (_) {}
+
+        if (Array.isArray(localCustomMats)) {
+            localCustomMats.forEach(m => {
+                const k = String(m.name || m.id || "").toLowerCase().trim();
+                matBaseMap.set(k, {
+                    id: String(m.id || m.item_code || m.itemCode || k),
+                    item_code: m.item_code || m.itemCode || m.id || "RM—",
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
+            });
+        }
+
+        // Merge Supabase raw materials
         (rawMats || []).forEach(m => {
             const k = String(m.name || m.id || "").toLowerCase().trim();
             const existing = matBaseMap.get(k);
             if (existing) {
                 existing.id = String(m.id || existing.id);
-                if (m.current_stock !== undefined && m.current_stock !== null) {
-                    existing.current_stock = Number(m.current_stock);
-                }
+                if (m.current_stock !== undefined && m.current_stock !== null) existing.current_stock = Number(m.current_stock);
                 if (m.item_code) existing.item_code = m.item_code;
                 if (m.unit_of_measure) existing.unit_of_measure = m.unit_of_measure;
                 if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
@@ -546,22 +554,63 @@ async function loadAuthoritativeData() {
 
         rawMats = Array.from(matBaseMap.values());
 
-        // Always merge baseline datasets so any custom entry stacks on top (unless baseline wiped)
-        const isBaselineWiped = localStorage.getItem("rmims_wipe_baseline_materials") !== "false";
+        // 3. Receipts mapping (STRICTLY live: Supabase + local manager receipts, ZERO 6-month mock fallbacks)
         const recBaseMap = new Map();
-        if (!isBaselineWiped && Array.isArray(AUTHENTIC_STOCK_RECEIPTS_6MONTHS)) {
-            AUTHENTIC_STOCK_RECEIPTS_6MONTHS.forEach(r => recBaseMap.set(String(r.id), { ...r }));
-        }
-        getSystemCustomReceipts().forEach(r => recBaseMap.set(String(r.id), { ...r }));
-        rawReceipts.forEach(r => recBaseMap.set(String(r.id), { ...(recBaseMap.get(String(r.id)) || {}), ...r }));
+        let localMgrReceipts = [];
+        try {
+            const r1 = JSON.parse(localStorage.getItem("rmims_manager_receipts") || "[]");
+            const r2 = JSON.parse(localStorage.getItem("rmims_custom_receipts") || "[]");
+            localMgrReceipts = [...r1, ...r2];
+        } catch (_) {}
+
+        localMgrReceipts.forEach(r => {
+            const rId = String(r.id || r.ref || "");
+            if (rId) recBaseMap.set(rId, {
+                id: rId,
+                material_id: r.materialId || r.material_id,
+                received_quantity: Number(r.quantity || r.received_quantity || 0),
+                receipt_date: r.date || r.receipt_date,
+                unit: r.unit,
+                supplier_name: r.supplier || r.supplier_name,
+                received_by: r.recordedBy || r.received_by || "Store Manager",
+                created_at: r.createdAt || r.created_at
+            });
+        });
+
+        (rawReceipts || []).forEach(r => {
+            const rId = String(r.id || "");
+            if (rId) recBaseMap.set(rId, { ...(recBaseMap.get(rId) || {}), ...r });
+        });
         rawReceipts = Array.from(recBaseMap.values());
 
+        // 4. Disbursements mapping (STRICTLY live: Supabase + local manager disbursements, ZERO 6-month mock fallbacks)
         const disbBaseMap = new Map();
-        if (!isBaselineWiped && Array.isArray(AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS)) {
-            AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS.forEach(d => disbBaseMap.set(String(d.id), { ...d }));
-        }
-        getSystemCustomDisbursements().forEach(d => disbBaseMap.set(String(d.id), { ...d }));
-        rawDisbursements.forEach(d => disbBaseMap.set(String(d.id), { ...(disbBaseMap.get(String(d.id)) || {}), ...d }));
+        let localMgrDisb = [];
+        try {
+            const d1 = JSON.parse(localStorage.getItem("rmims_manager_disbursements") || "[]");
+            const d2 = JSON.parse(localStorage.getItem("rmims_custom_disbursements") || "[]");
+            localMgrDisb = [...d1, ...d2];
+        } catch (_) {}
+
+        localMgrDisb.forEach(d => {
+            const dId = String(d.id || d.ref || "");
+            if (dId) disbBaseMap.set(dId, {
+                id: dId,
+                material_id: d.materialId || d.material_id,
+                consumed_quantity: Number(d.quantity || d.consumed_quantity || 0),
+                usage_date: d.date || d.usage_date,
+                unit: d.unit,
+                finished_product_name: d.recipient || d.finished_product_name,
+                activity_type: d.activity_type || "Production Issue",
+                recorded_by: d.recordedBy || d.recorded_by || "Store Manager",
+                created_at: d.createdAt || d.created_at
+            });
+        });
+
+        (rawDisbursements || []).forEach(d => {
+            const dId = String(d.id || "");
+            if (dId) disbBaseMap.set(dId, { ...(disbBaseMap.get(dId) || {}), ...d });
+        });
         rawDisbursements = Array.from(disbBaseMap.values());
 
         // Retrieve locally deleted IDs across all registries
@@ -684,70 +733,7 @@ async function loadAuthoritativeData() {
 function loadAuthoritativeForecasts() {
     state.forecastMap.clear();
 
-    // Map materials to their finished products from disbursement records and authoritative catalog
-    const productMap = new Map();
-    state.disbursements.forEach(d => {
-        if (d.finishedProduct && d.finishedProduct !== "Production Issue" && d.finishedProduct !== "Operational Use" && d.finishedProduct !== "General Usage") {
-            const arr = productMap.get(d.materialId) || [];
-            if (!arr.includes(d.finishedProduct)) arr.push(d.finishedProduct);
-            productMap.set(d.materialId, arr);
-        }
-    });
-
-    const LEGACY_KXC_PRODUCT_NAMES = new Set([
-      'shing-a-ling', 'toasty biscocho', 'apas bread', 'lengua de gato', 'biscocho chips',
-      'coco jam', 'chili garlic sauce', 'spicy crunchy garlic', 'cheesy cassava chips',
-      'sweet banana chips', 'sweet potato chips', 'chiton seafood chicharon', 'crispy bite chicharon',
-      'dried kabasi', 'salted banana chips', 'crispy bite ficharon', 'crispy pinipig peanut',
-      'fluffy crumbs meringue', 'dried sapsap', 'pure ube halaya', 'atsara', 'bukayo balls',
-      'ube balls', 'crunchy peanut butter', 'chicharon (chiton)', 'binayong hipon',
-      'crispy bucheron', 'sugar-glazed banana chips', 'crispy cassava chips',
-      'special broas (ladyfingers)', 'camote delight', 'classic ensaymada', 'pan de sal special',
-      'ube halaya pastries', 'chocolate crinkles', 'toasted pastillas', 'coconut macaroons',
-      'cheese cupcakes', 'biscocho crisps', 'otap sugar biscuits', 'yema custard tarts',
-      'polvoron gold selection', 'banana loaf cake', 'pianono roll', 'spanish bread',
-      'butter toast crackers'
-    ]);
-
-    let activeFinishedProducts = [];
-    try {
-        const custom = JSON.parse(localStorage.getItem('rmims_custom_finished_products') || '[]');
-        if (Array.isArray(custom)) {
-            custom.forEach(cp => {
-                const isCustom = Boolean(cp.recipeDetails || cp.id || cp.date_added || cp.date_modified);
-                if (cp && cp.name && (isCustom || !LEGACY_KXC_PRODUCT_NAMES.has(String(cp.name).toLowerCase().trim()))) {
-                    activeFinishedProducts.push({
-                        name: cp.name,
-                        materialNames: Array.isArray(cp.raw_materials)
-                            ? cp.raw_materials.map(r => r.name || r)
-                            : (Array.isArray(cp.materialNames) ? cp.materialNames : [])
-                    });
-                }
-            });
-        }
-    } catch (_) {}
-
-    activeFinishedProducts.forEach(fp => {
-        if (Array.isArray(fp.materialNames)) {
-            fp.materialNames.forEach(mName => {
-                const normM = (mName || "").trim().toLowerCase();
-                const matched = state.materials.find(m => (m.name || "").trim().toLowerCase() === normM);
-                if (matched) {
-                    const arr = productMap.get(matched.id) || [];
-                    if (!arr.includes(fp.name)) arr.push(fp.name);
-                    productMap.set(matched.id, arr);
-                }
-            });
-        }
-    });
-
-    // Compute recent consumption per material
-    const recentUsageMap = new Map();
-    state.disbursements.forEach(d => {
-        recentUsageMap.set(d.materialId, (recentUsageMap.get(d.materialId) || 0) + d.disbursedQuantity);
-    });
-
-    // Check for cached forecast results from existing AI-Based Forecasting module
+    // Check for user-generated forecast results from AI-Based Forecasting module
     let cachedForecasts = null;
     try {
         const cachedData = localStorage.getItem("rmims_forecast_cache");
@@ -760,121 +746,47 @@ function loadAuthoritativeForecasts() {
         console.warn("Forecast cache notice:", e);
     }
 
-    const generatedCacheObj = {};
+    if (cachedForecasts && typeof cachedForecasts === "object" && Object.keys(cachedForecasts).length > 0) {
+        state.materials.forEach(m => {
+            let cf = cachedForecasts[m.name] || cachedForecasts[m.name.trim()] || Object.entries(cachedForecasts).find(([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase())?.[1];
+            if (cf) {
+                const f7Qty = Number(cf.forecast7Day?.quantity ?? cf.forecast7Day ?? 0);
+                const f1mQty = Number(cf.forecast1Month?.quantity ?? cf.forecast1Month ?? Number((f7Qty * 4.15).toFixed(1)));
+                let decisionStatus = cf.decision_support?.decision_status || cf.decision_support?.status;
+                if (!decisionStatus) {
+                    if (m.currentStock <= 0) decisionStatus = "Out of Stock";
+                    else if (m.currentStock <= m.minThreshold) decisionStatus = "Low Stock";
+                    else decisionStatus = "Good";
+                }
+                const additionalNeed7 = Math.max(0, Number((f7Qty - m.currentStock).toFixed(1)));
+                const additionalNeed1m = Math.max(0, Number((f1mQty - m.currentStock).toFixed(1)));
+                const interpretation = cf.decision_support?.interpretation || (additionalNeed7 > 0 ? `Deficit of ${additionalNeed7.toFixed(1)} ${m.unit}. Reorder recommended.` : `Optimal inventory cushion.`);
 
-    state.materials.forEach(m => {
-        const recentUsage = recentUsageMap.get(m.id) || 0;
-        const products = productMap.get(m.id) || [];
-        const finishedProductDisplay = products.length > 0 ? products.join(", ") : "Production Operations";
-
-        let f7Qty = 0;
-        let f1mQty = 0;
-        let decisionStatus = "Sufficient";
-        let interpretation = "";
-
-        // Robust matching against cached forecast keys
-        let cf = null;
-        if (cachedForecasts) {
-            cf = cachedForecasts[m.name] || cachedForecasts[m.name.trim()] || Object.entries(cachedForecasts).find(([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase())?.[1];
-        }
-
-        if (cf) {
-            f7Qty = Number(cf.forecast7Day?.quantity ?? cf.forecast7Day ?? 0);
-            f1mQty = Number(cf.forecast1Month?.quantity ?? cf.forecast1Month ?? Number((f7Qty * 4.15).toFixed(1)));
-            const curStock = m.currentStock;
-            const diff = Number(cf.decision_support?.difference ?? (curStock - f7Qty));
-            decisionStatus = cf.decision_support?.decision_status || cf.decision_support?.status;
-            if (!decisionStatus) {
-                if (curStock <= 0) decisionStatus = "Out of Stock";
-                else if (curStock <= m.minThreshold || diff < 0) decisionStatus = "Low Stock";
-                else decisionStatus = "Good";
+                state.forecastMap.set(m.name, {
+                    id: m.id,
+                    itemCode: m.itemCode,
+                    name: m.name,
+                    unit: m.unit,
+                    currentStock: m.currentStock,
+                    minThreshold: m.minThreshold,
+                    recentConsumption: 0,
+                    finishedProduct: "Production Operations",
+                    forecast7Day: f7Qty,
+                    forecast1Month: f1mQty,
+                    additionalNeed7,
+                    additionalNeed1m,
+                    status: decisionStatus,
+                    interpretation
+                });
             }
-            interpretation = cf.decision_support?.interpretation || "";
-        } else {
-            // Baseline dynamic demand projection matching forecasting.js momentum velocity
-            const avgWeekly = recentUsage > 0 ? recentUsage : Math.max(m.minThreshold * 0.5, 10);
-            f7Qty = Number(avgWeekly.toFixed(1));
-            f1mQty = Number((avgWeekly * 4.15).toFixed(1));
-
-            const diff = m.currentStock - f7Qty;
-            if (m.currentStock <= 0) decisionStatus = "Out of Stock";
-            else if (m.currentStock <= m.minThreshold || diff < 0) decisionStatus = "Low Stock";
-            else decisionStatus = "Good";
-        }
-
-        // Additional Need
-        const additionalNeed7 = Math.max(0, Number((f7Qty - m.currentStock).toFixed(1)));
-        const additionalNeed1m = Math.max(0, Number((f1mQty - m.currentStock).toFixed(1)));
-
-        if (!interpretation) {
-            if (additionalNeed7 > 0) {
-                interpretation = `Projected 7-day requirement (${f7Qty.toFixed(1)} ${m.unit}) exceeds current stock. Deficit of ${additionalNeed7.toFixed(1)} ${m.unit}. Reorder recommended.`;
-            } else if (decisionStatus === "Needs Attention" || m.currentStock <= m.minThreshold) {
-                interpretation = `Current stock near minimum threshold (${m.minThreshold} ${m.unit}). Monitor disbursements closely.`;
-            } else if (decisionStatus === "Monitor") {
-                interpretation = `Stock adequate for 7-day projection. Standard monitoring recommended.`;
-            } else {
-                interpretation = `Optimal inventory cushion. Projected demand fully satisfied by existing stock.`;
-            }
-        }
-
-        const item = {
-            id: m.id,
-            itemCode: m.itemCode,
-            name: m.name,
-            unit: m.unit,
-            currentStock: m.currentStock,
-            minThreshold: m.minThreshold,
-            recentConsumption: recentUsage,
-            finishedProduct: finishedProductDisplay,
-            forecast7Day: f7Qty,
-            forecast1Month: f1mQty,
-            additionalNeed7,
-            additionalNeed1m,
-            status: decisionStatus,
-            interpretation
-        };
-
-        state.forecastMap.set(m.name, item);
-
-        // Keep baseline cache entry
-        generatedCacheObj[m.name] = {
-            status: "success",
-            material_id: m.itemCode,
-            raw_material_name: m.name,
-            unit: m.unit,
-            forecast7Day: { quantity: f7Qty, unit: m.unit },
-            forecast1Month: { quantity: f1mQty, unit: m.unit },
-            current_inventory: {
-                current_stock: m.currentStock,
-                minimum_threshold: m.minThreshold
-            },
-            decision_support: {
-                difference: m.currentStock - f7Qty,
-                decision_status: decisionStatus,
-                status: decisionStatus,
-                interpretation
-            }
-        };
-    });
+        });
+    }
 
     state.forecastList = Array.from(state.forecastMap.values());
-    if (!state.lastForecastTimestamp) state.lastForecastTimestamp = new Date();
-    state.forecastStatusText = "Forecast Ready";
-
-    // If cache was empty, prime it so all tabs & user view see unified authoritative figures
-    if (!cachedForecasts && state.forecastList.length > 0) {
-        try {
-            localStorage.setItem("rmims_forecast_cache", JSON.stringify(generatedCacheObj));
-            localStorage.setItem("rmims_forecast_timestamp", state.lastForecastTimestamp.toISOString());
-            localStorage.setItem("rmims_latest_forecast", JSON.stringify({
-                generatedAt: state.lastForecastTimestamp.toISOString(),
-                generatedDate: state.lastForecastTimestamp.toISOString().slice(0, 10),
-                materialsCount: state.forecastList.length,
-                attentionCount: state.forecastList.filter(f => f.additionalNeed7 > 0 || f.status !== "Sufficient").length
-            }));
-        } catch (e) {}
+    if (state.forecastList.length > 0 && !state.lastForecastTimestamp) {
+        state.lastForecastTimestamp = new Date();
     }
+    state.forecastStatusText = state.forecastList.length > 0 ? "Forecast Ready" : "Awaiting Forecast Run";
 
     // Populate unit dropdown in forecasting tab
     populateForecastUnitFilter();
@@ -925,31 +837,13 @@ function renderAllTabs() {
    TAB 1: MANAGER SUMMARY
    ========================================================== */
 
-function computePeriodStockStatus(mat, targetDate) {
-    if (!targetDate) return mat.status;
-    const min = mat.minThreshold || 20;
-    const rcvUpTo = state.receipts.filter(r => r.materialId === mat.id && r.receiptDate <= targetDate).reduce((acc, r) => acc + (r.receivedQuantity || 0), 0);
-    const disbUpTo = state.disbursements.filter(d => d.materialId === mat.id && d.usageDate <= targetDate).reduce((acc, d) => acc + (d.consumedQuantity || d.disbursedQuantity || 0), 0);
-    const mIdx = Number(String(mat.id || 1).replace(/\D/g, '') || 1);
-    const cycleLength = 38 + ((mIdx * 7) % 17);
-    const offset = (mIdx * 3.7) % cycleLength;
-    const day0 = offset % cycleLength;
-    let initFactor = 1.85;
-    if (day0 < 1.8) {
-        initFactor = 0.0;
-    } else if (day0 < 8.5) {
-        initFactor = 0.40 + ((day0 - 1.8) / 6.7) * 0.55;
-    } else if (day0 < 19.0) {
-        initFactor = 1.05 + ((day0 - 8.5) / 10.5) * 0.40;
-    } else {
-        initFactor = 1.55 + ((cycleLength - day0) / (cycleLength - 19.0)) * 0.70;
-    }
-    const initialStock = min * initFactor;
-    const stockCalc = Math.max(0, initialStock + rcvUpTo - disbUpTo);
-    
-    if (stockCalc <= 0) return "Critical";
-    if (stockCalc < min) return "Low";
-    if (stockCalc <= min * 1.5) return "Stable";
+function computePeriodStockStatus(mat) {
+    if (!mat) return "Good";
+    const stock = Number(mat.currentStock ?? mat.current_stock ?? 0);
+    const min = Number(mat.minThreshold ?? mat.minimum_threshold ?? 0);
+    if (stock <= 0) return "Critical";
+    if (min > 0 && stock <= (min / 2)) return "Critical";
+    if (min > 0 && stock <= min) return "Low";
     return "Good";
 }
 
@@ -993,19 +887,19 @@ function renderManagerSummaryTab() {
                 <td><strong>Total Materials</strong></td>
                 <td><strong>${totalMats}</strong></td>
                 <td>${state.selectedMaterialId && state.selectedMaterialId !== "all" ? escapeHtml(state.selectedMaterialName) : "All Raw Materials"}</td>
-                <td><span class="rpt-badge rpt-badge-good">${goodStock} Good / ${attentionStock} Attention</span></td>
+                <td><span class="rpt-badge ${totalMats > 0 ? "rpt-badge-good" : ""}" style="${totalMats === 0 ? "background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;" : ""}">${totalMats > 0 ? `${goodStock} Good / ${attentionStock} Attention` : "No Materials"}</span></td>
             </tr>
             <tr>
                 <td><strong>Good Stock</strong></td>
                 <td><strong>${goodStock}</strong></td>
                 <td>Healthy Stock Level</td>
-                <td><span class="rpt-badge rpt-badge-good">Sufficient Stock</span></td>
+                <td><span class="rpt-badge ${goodStock > 0 ? "rpt-badge-good" : ""}" style="${goodStock === 0 ? "background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;" : ""}">${goodStock > 0 ? "Sufficient Stock" : "No Materials"}</span></td>
             </tr>
             <tr>
                 <td><strong>Low / Critical Stock</strong></td>
                 <td><strong>${attentionStock}</strong></td>
                 <td>Restock Needed</td>
-                <td><span class="rpt-badge ${attentionStock > 0 ? "rpt-badge-critical" : "rpt-badge-good"}">${attentionStock > 0 ? "Reorder Required" : "Stocked Well"}</span></td>
+                <td><span class="rpt-badge ${attentionStock > 0 ? "rpt-badge-critical" : ""}" style="${attentionStock === 0 ? "background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;" : ""}">${attentionStock > 0 ? "Reorder Required" : "No Stock Alerts"}</span></td>
             </tr>
             <tr>
                 <td><strong>Deliveries Received</strong></td>
@@ -1133,8 +1027,13 @@ function renderRestockRecommendationsTab() {
         return false;
     });
 
+    if (targetMaterials.length === 0) {
+        decisionBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:32px; color:#64748b; font-weight:500;">No raw materials registered in inventory yet. Add materials in Inventory to view restock recommendations.</td></tr>';
+        return;
+    }
+
     if (visibleDecisions.length === 0) {
-        decisionBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--rpt-text-dim); font-weight:600;">No items found matching the selected priority filters.</td></tr>`;
+        decisionBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:32px; color:var(--rpt-text-dim); font-weight:600;">No items found matching the selected priority filters.</td></tr>';
     } else {
         decisionBody.innerHTML = visibleDecisions.map(d => `
             <tr>
@@ -1768,10 +1667,20 @@ function renderConsumptionAnalysisTab() {
     let list = targetMats.map(m => {
         const curUsage = curMap.get(m.id) || 0;
         const prevUsage = prevMap.get(m.id) || 0;
-        let trend = "Stable";
-        if (prevUsage === 0 && curUsage > 0) trend = "Increasing";
-        else if (curUsage >= prevUsage * 1.15) trend = "Increasing";
-        else if (curUsage <= prevUsage * 0.85 && curUsage > 0) trend = "Decreasing";
+                let trend = "No Activity";
+        if (curUsage === 0 && prevUsage === 0) {
+            trend = "No Activity";
+        } else if (prevUsage === 0 && curUsage > 0) {
+            trend = "Increasing";
+        } else if (prevUsage > 0 && curUsage === 0) {
+            trend = "Decreasing";
+        } else if (curUsage >= prevUsage * 1.15) {
+            trend = "Increasing";
+        } else if (curUsage <= prevUsage * 0.85) {
+            trend = "Decreasing";
+        } else {
+            trend = "Stable";
+        }
 
         return {
             material: m.name,
@@ -4685,18 +4594,34 @@ window.addEventListener("storage", (e) => {
     }
 });
 
-// Supabase Realtime Channel Subscription for live cross-user reports updates (Admin)
+// Supabase Realtime Channel Subscription for live cross-user reports updates
 if (supabase && typeof supabase.channel === "function" && !window.__rmimsAdminReportsChannel) {
     window.__rmimsAdminReportsChannel = supabase
         .channel("rmims_admin_reports_sync")
         .on("postgres_changes", { event: "*", schema: "public", table: "raw_materials" }, () => {
-            loadData();
+            loadAuthoritativeData();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "stock_receipts" }, () => {
-            loadData();
+            loadAuthoritativeData();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "material_disbursements" }, () => {
-            loadData();
+            loadAuthoritativeData();
         })
         .subscribe();
 }
+
+// Multi-module real-time live synchronization listeners
+window.addEventListener("rmims_inventory_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_manager_receipts_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_manager_disbursements_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_staff_transactions_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_forecast_updated", () => loadAuthoritativeData());
+
+try {
+    if (typeof BroadcastChannel !== "undefined") {
+        const syncChannel = new BroadcastChannel("rmims_user_sync");
+        syncChannel.onmessage = () => {
+            loadAuthoritativeData();
+        };
+    }
+} catch (_) {}

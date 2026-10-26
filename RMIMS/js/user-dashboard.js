@@ -72,9 +72,13 @@ async function initDashboard() {
     }
   } catch (_) {}
 
-  const materials = getSystemRawMaterials();
-  const staffTx = getStaffTransactions();
-  const allCompanyTx = getAllCompanyTransactions();
+  const materials = (getSystemRawMaterials() || []).filter(m => {
+    const n = String(m.name || m.raw_material_name || '').toLowerCase();
+    const c = String(m.item_code || m.id || '').toUpperCase();
+    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
+  });
+  const staffTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const allCompanyTx = (getAllCompanyTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
 
   renderSummaryCards(materials, staffTx);
   renderInventoryStatus(materials);
@@ -410,22 +414,17 @@ function renderTop5Materials(materials, allCompanyTx) {
   // If no transactions yet, seed with standard baseline usage
   const sorted = Object.values(usageMap).sort((a, b) => b.qty - a.qty);
 
-  // If top items have 0 usage, give realistic top 5 food raw materials
-  if (sorted[0]?.qty === 0) {
-    const defaults = [
-      { name: 'Refined White Sugar', qty: 240, unit: 'kg' },
-      { name: 'All-Purpose Wheat Flour', qty: 185, unit: 'kg' },
-      { name: 'Palm Cooking Oil', qty: 120, unit: 'L' },
-      { name: 'Panutsa Cane Sugar', qty: 95, unit: 'kg' },
-      { name: 'Fresh Garlic', qty: 45, unit: 'kg' }
-    ];
-    container.innerHTML = defaults.map((item, idx) => `
-      <div class="top-mat-card">
-        <span class="top-mat-rank">#${idx + 1} Top Used</span>
-        <span class="top-mat-name">${escapeHtml(item.name)}</span>
-        <span class="top-mat-usage"><strong>${item.qty}${item.unit ? ' ' + item.unit : ''}</strong> total consumed</span>
+  // If top items have 0 usage or no records, display clean zero-state message
+  if (!sorted.length || !sorted[0] || sorted[0].qty === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 22px 16px; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 10px; text-align: center; color: #64748B; font-size: 13px;">
+        <span style="font-size: 16px; margin-right: 6px;">📊</span>
+        <strong>No production disbursements recorded yet.</strong>
+        <div style="font-size: 11.5px; color: #94A3B8; margin-top: 4px;">
+          Top consumed materials will appear here once production disbursements are approved.
+        </div>
       </div>
-    `).join('');
+    `;
     return;
   }
 

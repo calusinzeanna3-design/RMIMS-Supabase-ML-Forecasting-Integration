@@ -19,7 +19,7 @@ export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials"
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const PURGE_FLAG = "rmims_purged_trained_dataset_clean_v10";
+        const PURGE_FLAG = "rmims_purged_coconut_clean_v14";
         if (typeof window !== "undefined" && !localStorage.getItem(PURGE_FLAG)) {
             // 1. Permanently clear all old test receipts (Manager & Staff)
             localStorage.setItem(RMIMS_CUSTOM_RECEIPTS_KEY, "[]");
@@ -51,7 +51,16 @@ export function permanentlyPurgeOldWeeklyInputs() {
             localStorage.setItem("rmims_manager_inventory_overrides", "{}");
             localStorage.setItem("rmims_material_overrides", "{}");
             localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, "[]");
-            localStorage.setItem("rmims_deleted_material_ids", "[]");
+            
+            // Register all coconut items as permanently deleted so Supabase/local sync never resurrects them
+            const coconutAliases = [
+                'NB-015', 'nb-015', 'RM-033', 'rm-033', 'RM-034', 'rm-034',
+                'Desiccated Coconut', 'desiccated coconut',
+                'Fresh Grated Coconut Meat', 'fresh grated coconut meat',
+                'Fresh Mature Coconut Meat', 'fresh mature coconut meat',
+                'Coconut Meat', 'coconut meat', 'Coconut', 'coconut'
+            ];
+            localStorage.setItem("rmims_deleted_material_ids", JSON.stringify(coconutAliases));
 
             // 6. Permanently wipe all non-trained custom finished product records
             localStorage.removeItem("rmims_custom_finished_products");
@@ -65,7 +74,7 @@ export function permanentlyPurgeOldWeeklyInputs() {
             localStorage.removeItem("rmims_latest_forecast");
             localStorage.removeItem("rmims_analytics_cache");
             localStorage.removeItem("rmims_analytics_summary");
-            localStorage.setItem("rmims_wipe_baseline_materials", "false");
+            localStorage.setItem("rmims_wipe_baseline_materials", "true");
 
             localStorage.setItem(PURGE_FLAG, "true");
             localStorage.setItem("rmims_inventory_updated", String(Date.now()));
@@ -156,7 +165,10 @@ export function getSystemRawMaterials() {
         tCtx = getActiveTenantContext();
     } catch (_) {}
     const isScones = tCtx ? Boolean(tCtx.isScones) : true;
-    const baseSource = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
+    const isWiped = typeof localStorage !== 'undefined'
+        ? (localStorage.getItem(RMIMS_WIPE_BASELINE_MATERIALS_KEY) !== 'false')
+        : true;
+    const baseSource = isWiped ? [] : (isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS);
 
     let list = baseSource.map(m => {
         const stockVal = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
@@ -206,6 +218,24 @@ export function getSystemRawMaterials() {
                             minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
                             minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10)
                         };
+                    } else if (isWiped) {
+                        const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
+                        list.push({
+                            ...cm,
+                            id: String(cm.id || code || `RM-${list.length + 1}`),
+                            item_code: code || cm.id || `RM-${list.length + 1}`,
+                            name: cm.name || cm.raw_material_name,
+                            raw_material_name: cm.name || cm.raw_material_name,
+                            category: cm.category || "General Materials",
+                            unit_of_measure: authUnit,
+                            unit: authUnit,
+                            current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
+                            currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
+                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
+                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
+                            reorder_quantity: Number(cm.reorder_quantity ?? 50),
+                            lead_time_days: Number(cm.lead_time_days ?? 3)
+                        });
                     }
                 });
             }
@@ -292,10 +322,21 @@ export function getSystemRawMaterials() {
         if (name) seenMatKeys.add(`name:${name}`);
         dedupedList.push(m);
     });
-    list = dedupedList.filter(m => {
-        const code = String(m.item_code || m.id || "").toUpperCase().trim();
-        const name = String(m.name || m.raw_material_name || "").toLowerCase().trim();
-        return validTrainedCodes.has(code) || validTrainedNames.has(name);
+    if (!isWiped) {
+        list = dedupedList.filter(m => {
+            const code = String(m.item_code || m.id || "").toUpperCase().trim();
+            const name = String(m.name || m.raw_material_name || "").toLowerCase().trim();
+            return validTrainedCodes.has(code) || validTrainedNames.has(name);
+        });
+    } else {
+        list = dedupedList;
+    }
+
+    // Permanently filter out any coconut materials so they never re-enter system catalogs
+    list = list.filter(m => {
+        const n = String(m.name || m.raw_material_name || '').toLowerCase();
+        const c = String(m.item_code || m.id || '').toUpperCase();
+        return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
     });
 
     // Final property normalization: ensure every material has both snake_case and camelCase stock & threshold aliases
