@@ -2607,18 +2607,21 @@ button.fc-modal-close svg,
 }
 
 .fc-grid-row-1 .forecast-support-grid {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 14px !important;
-  max-height: 425px !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  max-height: 290px !important;
   overflow-y: auto !important;
-  padding-right: 6px !important;
+  padding-right: 4px !important;
+  box-sizing: border-box !important;
+  align-items: stretch !important;
 }
 
 .fc-grid-row-1 .forecast-support-card {
   min-height: auto !important;
-  padding: 16px 18px !important;
-  flex-shrink: 0 !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  gap: 6px !important;
 }
 
 .fc-grid-row-1 .forecast-support-grid::-webkit-scrollbar {

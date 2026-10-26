@@ -2581,7 +2581,7 @@ function renderDecisionSupport() {
         return b.fQty - a.fQty;
     });
 
-    const top3 = evaluated.slice(0, 3);
+    const topCards = evaluated.slice(0, 4);
 
     // Compute Date Range (Today to +7 Days)
     const startDate = new Date();
@@ -2590,7 +2590,7 @@ function renderDecisionSupport() {
     const endStr = endDate.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
     const durationText = `Next 7 Days (${startStr} – ${endStr})`;
 
-    container.innerHTML = top3.map(item => {
+    container.innerHTML = topCards.map(item => {
         const m = item.material;
         const fc = item.forecast;
         const unit = m.unit || "kg";
