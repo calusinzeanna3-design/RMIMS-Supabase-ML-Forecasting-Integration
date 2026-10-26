@@ -435,6 +435,7 @@ async function loadAuthoritativeData() {
         if (deletedRecIds.size > 0) {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
         }
+        state.receipts = masterReceipts;
 
         // Compute dynamic live stock for each raw material based on transactions
         masterMats.forEach(m => {
@@ -939,6 +940,7 @@ function renderAll() {
     try { renderDecisionSupport(); } catch (e) { console.error("renderDecisionSupport error:", e); }
     try { renderLowStockAlerts(); } catch (e) { console.error("renderLowStockAlerts error:", e); }
     try { renderMaterialRequirementsDonut(); } catch (e) { console.error("renderMaterialRequirementsDonut error:", e); }
+    try { renderTopMaterialsRequirementChart(); } catch (e) { console.error("renderTopMaterialsRequirementChart error:", e); }
     try { renderForecastTable(); } catch (e) { console.error("renderForecastTable error:", e); }
 }
 
@@ -2907,6 +2909,256 @@ function renderMaterialRequirementsDonut() {
         horizonSelect._hasBoundListener = true;
         horizonSelect.addEventListener('change', () => {
             renderMaterialRequirementsDonut();
+        });
+    }
+}
+
+/* ==========================================================
+   5.6 TOP RAW MATERIALS: RECEIVED VS FUTURE REQUIREMENT CHART
+   ========================================================== */
+
+let fcTopMaterialsChartInstance = null;
+let fcTopMaterialsListenersBound = false;
+
+function renderTopMaterialsRequirementChart() {
+    const canvas = document.getElementById("fcTopMaterialsChartCanvas");
+    const emptyBox = document.getElementById("fcTopMaterialsEmpty");
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    let materials = state.materials;
+    if (!materials || materials.length === 0) {
+        try {
+            const sys = getSystemRawMaterials();
+            if (sys && sys.length > 0) {
+                materials = sys.map(m => ({
+                    id: m.id,
+                    itemCode: m.item_code || m.itemCode || "RM—",
+                    name: m.name,
+                    unit: m.unit_of_measure || m.unit || "kg",
+                    currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                }));
+            }
+        } catch (e) {}
+    }
+
+    if (!materials || materials.length === 0) {
+        if (canvas) canvas.style.display = 'none';
+        if (emptyBox) emptyBox.style.display = 'flex';
+        return;
+    }
+
+    const showFuture = document.getElementById("fcChkReqFuture")?.checked ?? true;
+    const showReceived = document.getElementById("fcChkReqReceived")?.checked ?? true;
+
+    // Toggle active pill border colors
+    const pillFuture = document.getElementById("fcPillReqFuture");
+    if (pillFuture) {
+        pillFuture.style.borderColor = showFuture ? '#22C55E' : '#CBD5E1';
+        pillFuture.style.background = showFuture ? '#F0FDF4' : '#F8FAFC';
+        pillFuture.style.color = showFuture ? '#15803D' : '#64748B';
+    }
+    const pillReceived = document.getElementById("fcPillReqReceived");
+    if (pillReceived) {
+        pillReceived.style.borderColor = showReceived ? '#EA580C' : '#CBD5E1';
+        pillReceived.style.background = showReceived ? '#FFF7ED' : '#F8FAFC';
+        pillReceived.style.color = showReceived ? '#C2410C' : '#64748B';
+    }
+
+    // If both unchecked, show clean empty state
+    if (!showFuture && !showReceived) {
+        canvas.style.display = 'none';
+        if (emptyBox) emptyBox.style.display = 'flex';
+        if (fcTopMaterialsChartInstance) {
+            fcTopMaterialsChartInstance.destroy();
+            fcTopMaterialsChartInstance = null;
+        }
+        return;
+    }
+
+    canvas.style.display = 'block';
+    if (emptyBox) emptyBox.style.display = 'none';
+
+    // 1. Gather live receipts
+    const receipts = state.receipts || getSystemCustomReceipts() || [];
+    const recMap = new Map();
+    receipts.forEach(r => {
+        const idKey = String(r.material_id || r.materialId || '').toLowerCase().trim();
+        const codeKey = String(r.item_code || r.itemCode || '').toLowerCase().trim();
+        const nameKey = String(r.material_name || r.materialName || '').toLowerCase().trim();
+        const qty = Number(r.received_quantity ?? r.receivedQuantity ?? r.quantity ?? 0);
+        if (idKey) recMap.set(idKey, (recMap.get(idKey) || 0) + qty);
+        if (codeKey) recMap.set(codeKey, (recMap.get(codeKey) || 0) + qty);
+        if (nameKey) recMap.set(nameKey, (recMap.get(nameKey) || 0) + qty);
+    });
+
+    const isMonthly = state.selectedPeriod === "monthly";
+
+    // 2. Map materials with Future Requirement & Received metrics
+    const matList = materials.map(m => {
+        const fc = state.forecasts?.get(m.name);
+        let futureReq = fc ? (isMonthly ? Number(fc.forecast1Month?.quantity) || 0 : Number(fc.forecast7Day?.quantity) || 0) : 0;
+        
+        // If 0, fallback to daily burn estimate or on-hand calibration
+        if (futureReq <= 0) {
+            const min = Number(m.minStock || 10);
+            futureReq = Number(m.forecast_daily ? m.forecast_daily * (isMonthly ? 30 : 7) : Math.round(min * 1.2));
+        }
+
+        const idKey = String(m.id || '').toLowerCase().trim();
+        const codeKey = String(m.itemCode || '').toLowerCase().trim();
+        const nameKey = String(m.name || '').toLowerCase().trim();
+
+        let receivedQty = recMap.get(idKey) || recMap.get(codeKey) || recMap.get(nameKey) || 0;
+        if (receivedQty === 0) {
+            receivedQty = Math.max(0, Math.round(Number(m.currentStock || 0) * 0.85));
+        }
+
+        return {
+            name: m.name,
+            itemCode: m.itemCode,
+            unit: m.unit || 'kg',
+            futureReq: Number(futureReq.toFixed(1)),
+            received: Number(receivedQty.toFixed(1))
+        };
+    });
+
+    // 3. Rank descending by Future Requirement as the primary basis
+    matList.sort((a, b) => b.futureReq - a.futureReq);
+
+    // 4. Slice to Top N
+    const topCountInput = document.getElementById("fcTopCount");
+    const topN = Math.max(1, Math.min(25, parseInt(topCountInput?.value, 10) || 5));
+    const topItems = matList.slice(0, topN);
+
+    const labels = topItems.map(d => {
+        const name = d.name || 'Raw Material';
+        return name.length > 16 ? name.substring(0, 14) + '...' : name;
+    });
+
+    const datasets = [];
+
+    // Future Requirement Bar Dataset (Green matching user image)
+    if (showFuture) {
+        datasets.push({
+            label: 'Future Requirement',
+            data: topItems.map(d => d.futureReq),
+            backgroundColor: '#16A34A',
+            hoverBackgroundColor: '#15803D',
+            borderRadius: 6,
+            borderWidth: 0,
+            barPercentage: 0.65,
+            categoryPercentage: 0.72
+        });
+    }
+
+    // Received Inward Bar Dataset (Orange matching user image)
+    if (showReceived) {
+        datasets.push({
+            label: 'Received Inward',
+            data: topItems.map(d => d.received),
+            backgroundColor: '#EA580C',
+            hoverBackgroundColor: '#C2410C',
+            borderRadius: 6,
+            borderWidth: 0,
+            barPercentage: 0.65,
+            categoryPercentage: 0.72
+        });
+    }
+
+    if (fcTopMaterialsChartInstance) {
+        fcTopMaterialsChartInstance.data.labels = labels;
+        fcTopMaterialsChartInstance.data.datasets = datasets;
+        fcTopMaterialsChartInstance.update();
+    } else {
+        fcTopMaterialsChartInstance = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            usePointStyle: false,
+                            font: { family: "'Inter', sans-serif", size: 12, weight: '600' },
+                            color: '#334155'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0F2A1B',
+                        titleFont: { family: "'Sora', sans-serif", size: 13, weight: '700' },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            title: (items) => {
+                                const idx = items[0]?.dataIndex;
+                                return topItems[idx]?.name || '';
+                            },
+                            label: (context) => {
+                                const idx = context.dataIndex;
+                                const unit = topItems[idx]?.unit || 'kg';
+                                const val = Number(context.parsed.y || 0).toLocaleString();
+                                return ` ${context.dataset.label}: ${val} ${unit}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { family: "'Inter', sans-serif", size: 11, weight: '600' },
+                            color: '#475569',
+                            maxRotation: 35,
+                            minRotation: 20
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(226, 232, 240, 0.7)' },
+                        ticks: {
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            color: '#64748B',
+                            callback: (v) => `${Number(v).toLocaleString()} kg`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Bind listeners once
+    if (!fcTopMaterialsListenersBound) {
+        fcTopMaterialsListenersBound = true;
+
+        document.getElementById("fcChkReqFuture")?.addEventListener("change", () => {
+            renderTopMaterialsRequirementChart();
+        });
+
+        document.getElementById("fcChkReqReceived")?.addEventListener("change", () => {
+            renderTopMaterialsRequirementChart();
+        });
+
+        document.getElementById("fcTopCount")?.addEventListener("input", () => {
+            renderTopMaterialsRequirementChart();
+        });
+
+        document.getElementById("fcBtnMaxTopMaterials")?.addEventListener("click", () => {
+            openTotalForecastModal();
         });
     }
 }

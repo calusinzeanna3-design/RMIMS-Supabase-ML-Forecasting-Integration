@@ -329,6 +329,68 @@
                     </div>
                 </div>
             </section>
+
+            <!-- ROW 3: TOP RAW MATERIALS (RECEIVED VS FUTURE REQUIREMENT) - MATCHING USER SPEC & IMAGE -->
+            <section class="fc-grid-row-full" style="margin-bottom: 24px;">
+                <div class="fc-card fc-chart-card-main" id="fcTopMaterialsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
+                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:16px 20px;">
+                        <div>
+                            <h2 class="fc-card-title" style="margin:0; font-size:1.15rem; font-weight:700; color:#0F2A1B;">Top Raw Materials: Future Requirement &amp; Inward Supply</h2>
+                            <p class="fc-card-subtitle" style="margin:3px 0 0; font-size:0.82rem; color:#64748B;">AI-forecasted future requirement vs received inward deliveries across top raw materials</p>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <!-- Top N Input (Typable number matching Image) -->
+                            <div class="fc-top-box" title="Type how many materials to display" style="display:inline-flex; align-items:center; gap:6px; background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:3px 10px;">
+                                <span style="font-size:11.5px; font-weight:700; color:#475569; letter-spacing:0.04em;">TOP:</span>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*" id="fcTopCount" class="fc-top-input" value="5" maxlength="2" style="width:28px; text-align:center; font-weight:700; border:none; background:transparent; font-size:13px; color:#0F2A1B; outline:none;" aria-label="Top Count">
+                            </div>
+
+                            <!-- Expand / Maximize Button (Matching Image 3) -->
+                            <button type="button" class="cal-expand-icon-btn" id="fcBtnMaxTopMaterials" title="View Full Requirements Breakdown Table" aria-label="Expand table">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                    <polyline points="21 15 21 21 15 21"/>
+                                    <line x1="21" y1="21" x2="14" y2="14"/>
+                                    <polyline points="3 9 3 3 9 3"/>
+                                    <line x1="3" y1="3" x2="10" y2="10"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SHOW METRICS TOOLBAR (Matching Image) -->
+                    <div class="fc-metrics-toolbar" style="display:flex; align-items:center; gap:12px; padding:12px 20px; background:#F8FAFC; border-top:1px solid #F1F5F9; border-bottom:1px solid #F1F5F9; flex-wrap:wrap;">
+                        <span style="font-size:11.5px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.04em;">SHOW METRICS:</span>
+                        
+                        <label class="fc-metric-pill active-green" id="fcPillReqFuture" style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:8px; border:1.5px solid #22C55E; background:#F0FDF4; font-size:12px; font-weight:700; color:#15803D; cursor:pointer;">
+                            <input type="checkbox" id="fcChkReqFuture" checked style="accent-color:#16A34A; cursor:pointer;">
+                            <span style="width:8px; height:8px; border-radius:50%; background:#16A34A;"></span>
+                            <span>Future Requirement (kg/L)</span>
+                        </label>
+
+                        <label class="fc-metric-pill active-orange" id="fcPillReqReceived" style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:8px; border:1.5px solid #EA580C; background:#FFF7ED; font-size:12px; font-weight:700; color:#C2410C; cursor:pointer;">
+                            <input type="checkbox" id="fcChkReqReceived" checked style="accent-color:#EA580C; cursor:pointer;">
+                            <span style="width:8px; height:8px; border-radius:50%; background:#EA580C;"></span>
+                            <span>Received Inward</span>
+                        </label>
+                    </div>
+
+                    <!-- Chart Body -->
+                    <div class="fc-card-body" style="padding:16px 20px; flex: 1; display: flex; flex-direction: column;">
+                        <div class="fc-chart-canvas-wrap" style="position: relative; height: 340px; width: 100%;">
+                            <canvas id="fcTopMaterialsChartCanvas"></canvas>
+                            <div id="fcTopMaterialsEmpty" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; flex-direction:column; color:#64748B;">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" style="margin-bottom:8px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                <span style="font-weight:600; font-size:13px;">No metrics selected. Check Future Requirement or Received Inward above.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 </div>
