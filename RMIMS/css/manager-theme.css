@@ -1830,15 +1830,12 @@ body.manager-page .mgr-grid-2col > .fc-card,
 body.manager-page .mgr-grid-2col > section,
 body.manager-page .fc-grid-row-1 > .fc-card,
 body.manager-page .fc-grid-row-1 > .admin-card,
-body.manager-page .fc-grid-row-1 > section,
-body.manager-page .an-bottom-grid > .an-card,
-body.manager-page .an-bottom-grid > section,
-body.manager-page .an-grid-2col > .an-card {
+body.manager-page .fc-grid-row-1 > section {
   width: 100% !important;
   min-width: 0 !important;
   min-height: 340px !important;
-  max-height: 365px !important;
-  height: 350px !important;
+  max-height: 380px !important;
+  height: auto !important;
   margin: 0 !important;
   padding: 22px 24px !important;
   border-radius: 18px !important;
@@ -1849,6 +1846,28 @@ body.manager-page .an-grid-2col > .an-card {
   flex-direction: column !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
+}
+
+/* Dedicated sizing for bottom cards and alert cards so content never clips */
+body.manager-page .an-bottom-grid > .an-card,
+body.manager-page .an-bottom-grid > section,
+body.manager-page .an-grid-2col > .an-card,
+body.manager-page #lowStockAlertsCard {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 350px !important;
+  max-height: none !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 20px 22px !important;
+  border-radius: 18px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(20, 83, 45, 0.08) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
 }
 
 /* Card Header inside Grid Cards (consistent height ~44-48px) */
@@ -1880,14 +1899,31 @@ body.manager-page .fc-grid-row-1 .fc-card-body {
 body.manager-page .mgr-grid-2col .chart-canvas-container,
 body.manager-page .mgr-grid-2col div[style*="height: 220px"],
 body.manager-page .fc-grid-row-1 .fc-chart-canvas-wrap,
-body.manager-page .fc-grid-row-1 div[style*="height: 320px"],
-body.manager-page .an-bottom-grid .an-chart-wrap,
-body.manager-page .an-bottom-grid div[style*="height: 270px"] {
+body.manager-page .fc-grid-row-1 div[style*="height: 320px"] {
   height: 200px !important;
   max-height: 200px !important;
   min-height: 180px !important;
   width: 100% !important;
   flex-shrink: 0 !important;
+}
+
+body.manager-page .an-bottom-grid .an-chart-wrap,
+body.manager-page .an-bottom-grid div[style*="height: 270px"],
+body.manager-page .an-bottom-grid div[style*="height: 200px"] {
+  height: 180px !important;
+  max-height: 195px !important;
+  min-height: 155px !important;
+  width: 100% !important;
+  flex: 1 1 auto !important;
+  position: relative !important;
+}
+
+body.manager-page .an-bottom-grid .an-chart-empty {
+  padding: 14px 18px !important;
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
 }
 
 /* AI Forecasted Support grid inside 2-column card */
@@ -1909,15 +1945,17 @@ body.manager-page .fc-grid-row-1 .forecast-support-card {
   flex-shrink: 0 !important;
 }
 
-/* Smart Stock Alerts List inside Grid Cards (height 200px scrollable matching Dashboard Manager) */
+/* Smart Stock Alerts List inside Grid Cards (scrollable, never squished) */
 body.manager-page .smart-alerts-list,
 body.manager-page #lowStockAlertsList {
   display: flex !important;
   flex-direction: column !important;
-  gap: 10px !important;
+  gap: 8px !important;
   width: 100% !important;
-  height: 190px !important;
-  max-height: 190px !important;
+  height: auto !important;
+  min-height: 180px !important;
+  max-height: 245px !important;
+  flex: 1 1 auto !important;
   overflow-y: auto !important;
   padding-right: 4px !important;
   box-sizing: border-box !important;
@@ -2044,8 +2082,8 @@ body.manager-page .inv-table-container {
 body.manager-page .smart-alert-item {
   display: flex !important;
   align-items: center !important;
-  gap: 14px !important;
-  padding: 10px 14px !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
   border-radius: 12px !important;
   background: #FFFFFF !important;
   border: 1px solid rgba(20, 83, 45, 0.08) !important;
@@ -2053,7 +2091,10 @@ body.manager-page .smart-alert-item {
   transition: all 0.2s ease !important;
   box-sizing: border-box !important;
   position: relative !important;
-  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  min-height: 56px !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
 body.manager-page .smart-alert-item:hover {
@@ -2110,7 +2151,8 @@ body.manager-page .smart-alert-info {
   min-width: 0 !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 2px !important;
+  gap: 3px !important;
+  overflow: visible !important;
 }
 
 body.manager-page .smart-alert-header {
@@ -2118,7 +2160,7 @@ body.manager-page .smart-alert-header {
   font-size: 13.5px !important;
   font-weight: 700 !important;
   color: var(--rm-ink, #0F2A1B) !important;
-  line-height: 1.2 !important;
+  line-height: 1.35 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -2127,7 +2169,10 @@ body.manager-page .smart-alert-header {
 body.manager-page .smart-alert-msg {
   font-size: 12px !important;
   font-weight: 600 !important;
-  line-height: 1.2 !important;
+  line-height: 1.35 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 body.manager-page .smart-alert-msg.msg-red {
