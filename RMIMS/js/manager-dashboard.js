@@ -31,6 +31,7 @@ import {
   AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS,
   AUTHENTIC_STOCK_RECEIPTS_6MONTHS
 } from './authentic-59-dataset.js';
+import { initForecastCalendarCard } from './forecast-calendar-chart.js';
 
 const STAFF_TX_KEY = 'rmims_staff_transactions';
 const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
@@ -41,6 +42,7 @@ let donutChartInstance = null;
 let top5ChartInstance = null;
 let forecastChartInstance = null;
 let managerUsageChartInstance = null;
+let dashboardCalWidgetInstance = null;
 let currentUsageDays = 14;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -228,6 +230,7 @@ async function refreshDashboardData() {
   renderSmartAlerts(materials);
   renderRecentActivity(receipts, disbursements, staffTx);
   renderPendingTransactions(staffTx);
+  renderDashboardCalendarWidget(materials, disbursements);
 
   // Live Supabase sync
   try {
@@ -245,9 +248,32 @@ async function refreshDashboardData() {
       renderSmartAlerts(materials);
       renderRecentActivity(receipts, disbursements, staffTx);
       renderPendingTransactions(staffTx);
+      renderDashboardCalendarWidget(materials, disbursements);
     }
   } catch (err) {
     console.warn('[ManagerDashboard] Live fetch notice:', err);
+  }
+}
+
+/**
+ * Render/Update 1-Row Forecast Spline & Side Calendar Widget
+ */
+function renderDashboardCalendarWidget(materials, disbursements) {
+  const container = document.getElementById('dashboardCalendarCardContainer');
+  if (!container) return;
+
+  if (!dashboardCalWidgetInstance) {
+    dashboardCalWidgetInstance = initForecastCalendarCard('dashboardCalendarCardContainer', {
+      materials: materials || [],
+      disbursements: disbursements || [],
+      title: 'Material Requirement & Consumption Forecast',
+      subtitle: 'Synchronized multi-day forecast spline with margin of error bounds & calendar tracking'
+    });
+  } else {
+    dashboardCalWidgetInstance.updateData({
+      materials: materials || [],
+      disbursements: disbursements || []
+    });
   }
 }
 

@@ -19,6 +19,7 @@ import {
     TENANT_CONFIGS 
 } from "./tenant-manager.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache } from "./system-materials.js";
+import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
 
 /* ==========================================================
    GLOBAL STATE
@@ -905,11 +906,34 @@ async function getSession() {
    RENDER ALL WORKSPACE
    ========================================================== */
 
+let fcCalendarWidgetInstance = null;
+
+function renderForecastCalendarWidget() {
+    const container = document.getElementById("forecastingCalendarCardContainer");
+    if (!container) return;
+
+    if (!fcCalendarWidgetInstance) {
+        fcCalendarWidgetInstance = initForecastCalendarCard("forecastingCalendarCardContainer", {
+            materials: state.materials || [],
+            disbursements: state.disbursements || [],
+            forecasts: Array.from(state.forecasts.values()),
+            title: "Forecast Requirement & Consumed Materials Spline",
+            subtitle: "Multi-horizon consumption telemetry & forecast guide bounds with side calendar tracking"
+        });
+    } else {
+        fcCalendarWidgetInstance.updateData({
+            materials: state.materials || [],
+            disbursements: state.disbursements || [],
+            forecasts: Array.from(state.forecasts.values())
+        });
+    }
+}
+
 function renderAll() {
     try { renderTopKPIs(); } catch (e) { console.error("renderTopKPIs error:", e); }
     try { updateMarginComplianceBanner(); } catch (e) { console.error("updateMarginComplianceBanner error:", e); }
     try { renderPrimaryChart(); } catch (e) { console.error("renderPrimaryChart error:", e); }
-    try { renderProjectionChart(); } catch (e) { console.error("renderProjectionChart error:", e); }
+    try { renderForecastCalendarWidget(); } catch (e) { console.error("renderForecastCalendarWidget error:", e); }
     try { renderOverviewCard(); } catch (e) { console.error("renderOverviewCard error:", e); }
     try { renderDecisionSupport(); } catch (e) { console.error("renderDecisionSupport error:", e); }
     try { renderForecastTable(); } catch (e) { console.error("renderForecastTable error:", e); }

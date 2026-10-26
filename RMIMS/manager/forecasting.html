@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="../css/admin-shell.css"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
     <link href="../css/forecasting.css" rel="stylesheet"/>
+    <link href="../css/forecast-calendar-chart.css" rel="stylesheet"/>
     <link href="../css/manager-theme.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -133,10 +134,10 @@
             </section>
 
 
-            <!-- ROW 1: FORECAST DATA BAR CHART & OVERVIEW GRID -->
-            <section class="fc-grid-row-1">
+            <!-- ROW 1: FORECAST DATA BAR CHART (1 ROW FULL WIDTH) -->
+            <section class="fc-grid-row-1" style="grid-template-columns: minmax(0, 1fr) !important; margin-bottom: 24px;">
                 <!-- Primary Forecast Data Bar Chart -->
-                <div class="fc-card fc-chart-card-main">
+                <div class="fc-card fc-chart-card-main" style="width: 100%;">
                     <div class="fc-card-header fc-chart-header-custom">
                         <div class="fc-chart-header-top-row">
                             <div class="fc-chart-header-left">
@@ -194,52 +195,10 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Card 2: Forecast Projection Chart Card -->
-                <div class="fc-card fc-chart-card-main">
-                    <div class="fc-card-header fc-chart-header-custom">
-                        <div class="fc-chart-header-top-row">
-                            <div class="fc-chart-header-left">
-                                <div class="fc-pill-badge-dark">Forecast projection</div>
-                                <span class="fc-chart-title-sub">Historical Usage Trend vs. Forecast Projection Curve</span>
-                            </div>
-                        </div>
-                        <div class="fc-chart-header-controls">
-                            <!-- Dropdown for Materials -->
-                            <div class="fc-chart-select-wrap">
-                                <select class="fc-chart-select" id="projMaterialSelect" aria-label="Select Raw Material for Projection">
-                                    <option value="ALL">All Raw Materials (Aggregate Demand)</option>
-                                    <!-- Populated dynamically via JS -->
-                                </select>
-                            </div>
-
-                            <!-- Slide Toggle: Daily / Weekly / Monthly -->
-                            <div class="fc-slide-toggle" id="projHorizonToggle" role="tablist" aria-label="Projection Time Horizon">
-                                <button type="button" class="fc-slide-btn active" data-horizon="daily" role="tab" aria-selected="true">Daily</button>
-                                <button type="button" class="fc-slide-btn" data-horizon="weekly" role="tab" aria-selected="false">Weekly</button>
-                                <button type="button" class="fc-slide-btn" data-horizon="monthly" role="tab" aria-selected="false">Monthly</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="fc-card-body">
-                        <div class="fc-projection-body-wrap">
-                            <div class="fc-projection-canvas-wrap" style="position: relative; height: 320px; flex: 1;">
-                                <canvas id="forecastProjectionChartCanvas"></canvas>
-                            </div>
-                        </div>
-                        <div class="fc-chart-legend-custom">
-                            <div class="fc-legend-item">
-                                <span class="fc-legend-bar-slate"></span>
-                                <span>Recorded Usage (Ground Truth)</span>
-                            </div>
-                            <div class="fc-legend-item">
-                                <span class="fc-legend-bar-mint"></span>
-                                <span>Forecast Projection (AI Requirement)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </section>
+
+            <!-- ROW 1.5: 1-ROW UNIFIED FORECAST SPLINE CHART & SIDE CALENDAR -->
+            <div id="forecastingCalendarCardContainer" style="width: 100%; margin-bottom: 24px;"></div>
 
             <!-- ROW 2: AI FORECASTED SUPPORT (3-CARD COMPARATIVE DECISION SUPPORT CONTAINER) -->
             <section class="fc-card" aria-label="AI Forecasted Support">
