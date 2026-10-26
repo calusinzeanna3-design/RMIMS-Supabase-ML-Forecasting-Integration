@@ -97,16 +97,6 @@ export function initForecastCalendarCard(containerId, options = {}) {
         <!-- Right: Side Mini-Calendar Synchronized with the Chart -->
         <div class="cal-calendar-column">
           <div class="cal-widget-box">
-            <!-- Calendar Top Control Row (Above Month/Year) -->
-            <div class="cal-widget-top-filter">
-              <span class="cal-widget-label">SELECT HORIZON:</span>
-              <select class="cal-widget-select" id="${instanceId}_calHorizonSelect">
-                <option value="1" ${activeRangeDays === 1 ? 'selected' : ''}>1 Day</option>
-                <option value="7" ${activeRangeDays === 7 ? 'selected' : ''}>7 Days</option>
-                <option value="30" ${activeRangeDays === 30 ? 'selected' : ''}>30 Days</option>
-              </select>
-            </div>
-
             <!-- Month/Year Navigation Bar -->
             <div class="cal-nav-bar">
               <span class="cal-month-title" id="${instanceId}_monthTitle">October 2026</span>
