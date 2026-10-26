@@ -493,15 +493,14 @@ async function loadAuthoritativeData() {
             if (t > latestUsageTime) latestUsageTime = t;
         });
         state.latestConsumptionTimestamp = latestUsageTime > 0 ? new Date(latestUsageTime) : new Date();
-
         // 2. Fetch materials from Flask ML backend (if backend active)
         let trainedList = [];
-        if (!BACKEND_STANDBY) {
+        try {
             const apiBase = await getApiBase();
             const { companyId, userRole, datasetFolder } = getActiveCompanyContext();
             const reqHeaders = { 
                 "X-Company-Id": companyId, 
-                "X-User-Role": userRole,
+                "X-User-Role": userRole, 
                 "X-Tenant-Folder": datasetFolder 
             };
             let mlRes = await fetch(`${apiBase}/api/ml/materials`, { headers: reqHeaders }).catch(() => null);
@@ -517,7 +516,7 @@ async function loadAuthoritativeData() {
             if (trainedList.length > 0 && deletedMatIds.size > 0) {
                 trainedList = trainedList.filter(t => !deletedMatIds.has((t.raw_material_name || "").toLowerCase().trim()) && !deletedMatIds.has((t.material_id || "").toLowerCase().trim()));
             }
-        }
+        } catch (_) {}
 
         const supaMap = new Map();
         masterMats.forEach(m => {

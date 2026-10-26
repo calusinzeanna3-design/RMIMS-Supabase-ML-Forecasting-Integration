@@ -626,7 +626,17 @@ function renderCard1() {
 // ============================================================================
 
 function getTopStockData(limit = 5) {
-  const list = state.rawMaterials.map(m => {
+  // Only include materials that have recorded warehouse on-hand stock (> 0)
+  const activeMaterials = state.rawMaterials.filter(m => {
+    const cur = parseFloat(m.current_stock ?? m.currentStock ?? 0);
+    return cur > 0;
+  });
+
+  if (activeMaterials.length === 0) {
+    return [];
+  }
+
+  const list = activeMaterials.map(m => {
     const cur = parseFloat(m.current_stock ?? m.currentStock ?? 0);
     const min = parseFloat(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10);
     const diff = cur - min;
@@ -668,7 +678,37 @@ function renderCardStock() {
 
   if (!state.cardStock.showCurrent && !state.cardStock.showMin) {
     canvas.style.display = 'none';
-    if (emptyBox) emptyBox.style.display = 'flex';
+    if (emptyBox) {
+      emptyBox.style.display = 'flex';
+      emptyBox.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted, #64748b); padding: 32px 16px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Metrics Selected</p>
+          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Check Current Stock or Minimum Buffer above to display chart.</p>
+        </div>
+      `;
+    }
+    if (state.cardStock.chart) {
+      state.cardStock.chart.destroy();
+      state.cardStock.chart = null;
+    }
+    return;
+  }
+
+  const dataItems = getTopStockData(state.cardStock.topCount);
+
+  if (dataItems.length === 0) {
+    canvas.style.display = 'none';
+    if (emptyBox) {
+      emptyBox.style.display = 'flex';
+      emptyBox.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted, #64748b); padding: 32px 16px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">Awaiting Inward Deliveries</p>
+          <p style="font-size: 0.85rem; max-width: 340px; margin: 0 auto; color: #64748b;">No warehouse raw materials have been received into inventory yet. On-hand stocks and minimum threshold buffers will appear here once materials are received.</p>
+        </div>
+      `;
+    }
     if (state.cardStock.chart) {
       state.cardStock.chart.destroy();
       state.cardStock.chart = null;
@@ -679,7 +719,6 @@ function renderCardStock() {
   canvas.style.display = 'block';
   if (emptyBox) emptyBox.style.display = 'none';
 
-  const dataItems = getTopStockData(state.cardStock.topCount);
   const labels = dataItems.map(d => d.name);
 
   const datasets = [];
@@ -1338,6 +1377,18 @@ function renderModalChart(targetType) {
     }
   } else if (targetType === 'stock_levels') {
     const dataItems = getTopStockData(30);
+    if (dataItems.length === 0) {
+      if (tableContainer) {
+        tableContainer.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted, #64748b); padding: 48px 16px;">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            <p style="font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">Awaiting Inward Deliveries</p>
+            <p style="font-size: 0.88rem; max-width: 380px; margin: 0 auto; color: #64748b;">No warehouse raw materials have been received into inventory yet. Full stock ledger will render here once materials are received.</p>
+          </div>
+        `;
+      }
+      return;
+    }
     const labels = dataItems.map(d => d.name);
 
     state.modal.chart = new Chart(canvas, {
