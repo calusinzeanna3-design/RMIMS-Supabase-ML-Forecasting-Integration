@@ -278,7 +278,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
   });
 
   // Expand table modal click listener
-  const expandBtn = card.querySelector(`#${instanceId}_expandTableBtn`);
+  const expandBtn = container.querySelector(`#${instanceId}_expandTableBtn`) || document.getElementById(`${instanceId}_expandTableBtn`);
   if (expandBtn) {
     expandBtn.addEventListener('click', () => {
       if (typeof window.openTotalForecastModal === 'function') {
@@ -638,7 +638,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
   }
 
   function updateChart() {
-    if (!window.Chart || !canvas) return;
+    const ChartClass = typeof Chart !== 'undefined' ? Chart : (window.Chart || globalThis.Chart);
+    if (!ChartClass || !canvas) return;
 
     const data = computeChartData();
     const ctx = canvas.getContext('2d');
@@ -885,7 +886,9 @@ export function initForecastCalendarCard(containerId, options = {}) {
       }
     };
 
-    if (chartInstance) {
+    const existingChart = (ChartClass.getChart && ChartClass.getChart(canvas)) || chartInstance;
+    if (existingChart) {
+      chartInstance = existingChart;
       chartInstance.data.anchorIndex = data.anchorIndex;
       chartInstance.data.labels = data.labels;
       chartInstance.data.datasets[0].label = `Upper Limit (+${(data.marginFactor * 100).toFixed(2)}%)`;
@@ -896,7 +899,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
       chartInstance.data.datasets[3].data = data.consumedData;
       chartInstance.update();
     } else {
-      chartInstance = new window.Chart(ctx, chartConfig);
+      chartInstance = new ChartClass(ctx, chartConfig);
     }
   }
 

@@ -344,7 +344,8 @@
   min-width: 0 !important;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
 }
 
 /* Top-Left Legend (Matches reference image style) */
@@ -353,7 +354,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 0.76rem;
   font-weight: 600;
   color: #475569;
@@ -411,7 +412,7 @@
   padding-left: 18px;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   box-sizing: border-box !important;
 }
 
