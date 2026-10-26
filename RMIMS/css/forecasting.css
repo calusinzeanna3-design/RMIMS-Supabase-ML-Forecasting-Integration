@@ -686,12 +686,12 @@
   flex-shrink: 0 !important;
 }
 
-/* Override manager-theme.css 22px card padding so headers and tables cleanly span card width */
-body.manager-page .fc-card,
+/* Adopt manager-theme.css card padding and elevation matching Manager Dashboard */
+body.manager-page .fc-card {
+  box-sizing: border-box !important;
+}
 body.admin-page .fc-card {
-  padding: 0 !important;
-  overflow: visible !important;
-  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .fc-card:hover {

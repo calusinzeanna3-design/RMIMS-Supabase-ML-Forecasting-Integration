@@ -89,9 +89,9 @@
             <div id="forecastingCalendarCardContainer" style="width: 100%; margin-bottom: 24px;"></div>
 
             <!-- ROW 2: FORECAST DATA BAR CHART & AI FORECASTED SUPPORT (THE TWO IN ONE ROW) -->
-            <section class="fc-grid-row-1" style="margin-bottom: 24px;">
+            <section class="mgr-grid-2col fc-grid-row-1" style="margin-bottom: 24px;">
                 <!-- Primary Forecast Data Bar Chart -->
-                <div class="fc-card fc-chart-card-main" style="width: 100%; min-width: 0;">
+                <div class="admin-card fc-card fc-chart-card-main" style="width: 100%; min-width: 0;">
                     <div class="fc-card-header fc-chart-header-custom">
                         <div class="fc-chart-header-top-row">
                             <div class="fc-chart-header-left">
@@ -142,7 +142,7 @@
                         </div>
                     </div>
                     <div class="fc-card-body">
-                        <div class="fc-chart-canvas-wrap" style="position: relative; height: 320px; width: 100%;">
+                        <div class="fc-chart-canvas-wrap" style="position: relative; height: 200px; width: 100%;">
                             <canvas id="consumptionForecastChartCanvas"></canvas>
                         </div>
                         <div class="fc-chart-legend-custom">
@@ -163,8 +163,8 @@
                 </div>
 
                 <!-- AI Forecasted Support (3-Card Comparative Decision Support Container) -->
-                <div class="fc-card fc-chart-card-main" aria-label="AI Forecasted Support" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
-                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
+                <div class="admin-card fc-card fc-chart-card-main" aria-label="AI Forecasted Support" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
+                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:0 0 8px 0;">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; border: 1px solid #86EFAC; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
@@ -182,7 +182,7 @@
                         </div>
                     </div>
 
-                    <div class="fc-card-body" style="padding:16px 20px; flex: 1; display: flex; flex-direction: column;">
+                    <div class="fc-card-body" style="padding:0; flex: 1; display: flex; flex-direction: column;">
                         <div class="forecast-support-grid" id="forecastDecisionContainer">
                             <!-- Populated dynamically via JS with 3 rich comparative progress cards -->
                         </div>
@@ -191,9 +191,9 @@
             </section>
 
             <!-- ROW 2.5: LOW-STOCK ALERTS & RAW MATERIALS REQUIREMENTS (SAME 2 IN ONE ROW) -->
-            <section class="fc-grid-row-1" style="margin-bottom: 24px;">
+            <section class="mgr-grid-2col fc-grid-row-1" style="margin-bottom: 24px;">
                 <!-- Card 1: Smart Stock Alerts (Low-Stock & Out of Stock Alerts) -->
-                <div class="fc-card fc-chart-card-main" id="lowStockAlertsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
+                <div class="admin-card fc-card fc-chart-card-main" id="lowStockAlertsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
                     <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <div style="width:36px; height:36px; border-radius:10px; background:#FEE2E2; color:#DC2626; border: 1px solid #FCA5A5; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -268,8 +268,8 @@
                 </div>
 
                 <!-- Card 2: Raw Materials Requirements (Donut Chart) -->
-                <div class="fc-card fc-chart-card-main" id="matRequirementsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
-                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
+                <div class="admin-card fc-card fc-chart-card-main" id="matRequirementsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
+                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:0 0 8px 0;">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; border: 1px solid #86EFAC; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;">
@@ -290,10 +290,10 @@
                         </div>
                     </div>
 
-                    <div class="fc-card-body" style="padding:16px 20px; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 280px;">
+                    <div class="fc-card-body" style="padding:0; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0;">
                         <div style="display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; width: 100%;">
                             <!-- Donut Chart Canvas with Center Text -->
-                            <div style="position: relative; width: 190px; height: 190px; flex-shrink: 0;">
+                            <div style="position: relative; width: 175px; height: 175px; flex-shrink: 0;">
                                 <canvas id="matRequirementsDonutCanvas"></canvas>
                                 <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
                                     <span style="font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 800; color: #0F2A1B; line-height: 1;" id="reqTotalCount">0</span>
@@ -332,8 +332,8 @@
 
             <!-- ROW 3: TOP RAW MATERIALS (RECEIVED VS FUTURE REQUIREMENT) - MATCHING USER SPEC & IMAGE -->
             <section class="fc-grid-row-full" style="margin-bottom: 24px;">
-                <div class="fc-card fc-chart-card-main" id="fcTopMaterialsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
-                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:16px 20px;">
+                <div class="admin-card fc-card fc-chart-card-main" id="fcTopMaterialsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
+                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:0 0 12px 0;">
                         <div>
                             <h2 class="fc-card-title" style="margin:0; font-size:1.15rem; font-weight:700; color:#0F2A1B;">Top Raw Materials: Future Requirement &amp; Inward Supply</h2>
                             <p class="fc-card-subtitle" style="margin:3px 0 0; font-size:0.82rem; color:#64748B;">AI-forecasted future requirement vs received inward deliveries across top raw materials</p>
