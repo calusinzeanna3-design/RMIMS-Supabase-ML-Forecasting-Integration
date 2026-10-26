@@ -756,13 +756,8 @@ function renderTop5ReceivedChart(materials, receipts, staffTx) {
       futureReq = Math.round(min * 1.2);
     }
 
-    // (b) Received quantity
-    let receivedQty = receivedByMat.get(name) || 0;
-    if (receivedQty === 0) {
-      // Realistic fallback based on stock calibration
-      const currentStock = Number(m.current_stock ?? m.currentStock ?? 0);
-      receivedQty = Math.max(0, Math.round(currentStock * 0.85));
-    }
+    // (b) Received quantity (Real recorded inward receipts only)
+    const receivedQty = receivedByMat.get(name) || 0;
 
     return {
       name,

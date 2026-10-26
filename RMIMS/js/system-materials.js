@@ -19,19 +19,22 @@ export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials"
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const PURGE_FLAG = "rmims_purged_brand_new_v7";
+        const PURGE_FLAG = "rmims_purged_zero_stock_clean_slate_v9";
         if (typeof window !== "undefined" && !localStorage.getItem(PURGE_FLAG)) {
-            // 1. Permanently clear all old test receipts
+            // 1. Permanently clear all old test receipts (Manager & Staff)
             localStorage.setItem(RMIMS_CUSTOM_RECEIPTS_KEY, "[]");
             localStorage.setItem("rmims_manager_receipts", "[]");
+            localStorage.setItem("rmims_custom_receipts", "[]");
 
-            // 2. Permanently clear all old test disbursements
+            // 2. Permanently clear all old test disbursements (Manager & Staff)
             localStorage.setItem(RMIMS_CUSTOM_DISBURSEMENTS_KEY, "[]");
             localStorage.setItem("rmims_manager_disbursements", "[]");
+            localStorage.setItem("rmims_custom_disbursements", "[]");
 
-            // 3. Permanently clear all old staff transactions
+            // 3. Permanently clear all old staff transactions and requests
             localStorage.setItem("staff_transactions", "[]");
             localStorage.setItem("rmims_staff_transactions", "[]");
+            localStorage.setItem("rmims_staff_activity_logs", "[]");
 
             // 4. Permanently clear old activity logs and histories
             localStorage.setItem("rmims_manager_activities", "[]");
@@ -39,49 +42,29 @@ export function permanentlyPurgeOldWeeklyInputs() {
             localStorage.setItem("rmims_system_activity_logs", "[]");
             localStorage.setItem("rmims_recent_activities", "[]");
             localStorage.setItem("rmims_pending_approvals", "[]");
-            localStorage.setItem("rmims_staff_activity_logs", "[]");
             localStorage.setItem("rmims_material_history", "{}");
             localStorage.setItem("rmims_stock_history", "{}");
+            localStorage.setItem("rmims_burned_references", "[]");
 
-            // 5. Cleanse all overrides to remove old dates and timestamps
-            const ovKeys = [
-                "rmims_manager_material_overrides",
-                "rmims_manager_inventory_overrides",
-                "rmims_material_overrides"
-            ];
-            ovKeys.forEach(ovKey => {
-                const raw = localStorage.getItem(ovKey);
-                if (raw) {
-                    try {
-                        const ovs = JSON.parse(raw);
-                        if (ovs && typeof ovs === 'object') {
-                            Object.keys(ovs).forEach(k => {
-                                if (ovs[k]) {
-                                    delete ovs[k].date_added;
-                                    delete ovs[k].last_updated;
-                                    delete ovs[k].display_date;
-                                    delete ovs[k].display_time;
-                                    delete ovs[k].time_added;
-                                    delete ovs[k].isUserExplicitEdit;
-                                }
-                            });
-                            localStorage.setItem(ovKey, JSON.stringify(ovs));
-                        }
-                    } catch (_) {}
-                }
-            });
+            // 5. Cleanse all overrides and reset inventory stock to 0
+            localStorage.setItem("rmims_manager_material_overrides", "{}");
+            localStorage.setItem("rmims_manager_inventory_overrides", "{}");
+            localStorage.setItem("rmims_material_overrides", "{}");
+            localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, "[]");
 
-            // Set purge flag so it persists clean slate
             // 6. Permanently wipe all old forecast caches, predictions, and analytics summaries
             localStorage.removeItem("rmims_forecast_cache");
             localStorage.removeItem("rmims_forecast_timestamp");
             localStorage.removeItem("rmims_latest_forecast");
             localStorage.removeItem("rmims_analytics_cache");
             localStorage.removeItem("rmims_analytics_summary");
-            localStorage.setItem("rmims_wipe_baseline_materials", "true");
+            localStorage.setItem("rmims_wipe_baseline_materials", "false");
 
             localStorage.setItem(PURGE_FLAG, "true");
             localStorage.setItem("rmims_inventory_updated", String(Date.now()));
+            localStorage.setItem("rmims_manager_receipts_updated", String(Date.now()));
+            localStorage.setItem("rmims_manager_disbursements_updated", String(Date.now()));
+            localStorage.setItem("rmims_staff_transactions_updated", String(Date.now()));
         }
     } catch (e) {
         console.warn("[Purge] Notice:", e);

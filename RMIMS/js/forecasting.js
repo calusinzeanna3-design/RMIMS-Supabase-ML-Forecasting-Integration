@@ -2555,20 +2555,26 @@ function renderDecisionSupport() {
         const isShortage = curStock < fQty || curStock <= m.minStock;
         const deficit = Math.max(0, fQty - curStock);
 
-        // Past 7-day usage
+        // Past 7-day usage (from real recorded disbursements)
         const usage7Day = disbursements
             .filter(d => (d.materialId === m.id || d.material_id === m.id) && (now.getTime() - new Date(d.usageDate || d.created_at || d.createdAt).getTime()) <= 7 * 86400000)
             .reduce((sum, d) => sum + Number(d.consumedQuantity || d.consumed_quantity || 0), 0);
 
-        const receive7Day = Number((usage7Day > 0 ? usage7Day * 1.08 + 15 : fQty * 1.05 + 10).toFixed(1));
+        // Past 7-day inward receipts (from real recorded receipts)
+        const receipts = Array.isArray(state.receipts) && state.receipts.length > 0
+            ? state.receipts
+            : (typeof getSystemCustomReceipts === "function" ? getSystemCustomReceipts() : []);
+        const receive7Day = receipts
+            .filter(r => (r.materialId === m.id || r.material_id === m.id) && (now.getTime() - new Date(r.receiptDate || r.created_at || r.createdAt).getTime()) <= 7 * 86400000)
+            .reduce((sum, r) => sum + Number(r.receivedQuantity || r.received_quantity || r.quantity || 0), 0);
 
         return {
             material: m,
             forecast: fc,
             fQty: Number(fQty.toFixed(1)),
             curStock,
-            usage7Day: Number((usage7Day > 0 ? usage7Day : fQty * 0.95).toFixed(1)),
-            receive7Day,
+            usage7Day: Number(usage7Day.toFixed(1)),
+            receive7Day: Number(receive7Day.toFixed(1)),
             isShortage,
             deficit
         };
@@ -2596,10 +2602,10 @@ function renderDecisionSupport() {
         const unit = m.unit || "kg";
         const maxVal = Math.max(item.usage7Day, item.receive7Day, item.curStock, item.fQty, 1);
 
-        const usagePct = Math.max(6, Math.min(100, Math.round((item.usage7Day / maxVal) * 100)));
-        const receivePct = Math.max(6, Math.min(100, Math.round((item.receive7Day / maxVal) * 100)));
-        const stockPct = Math.max(6, Math.min(100, Math.round((item.curStock / maxVal) * 100)));
-        const reqPct = Math.max(6, Math.min(100, Math.round((item.fQty / maxVal) * 100)));
+        const usagePct = maxVal > 0 && item.usage7Day > 0 ? Math.max(6, Math.min(100, Math.round((item.usage7Day / maxVal) * 100))) : 0;
+        const receivePct = maxVal > 0 && item.receive7Day > 0 ? Math.max(6, Math.min(100, Math.round((item.receive7Day / maxVal) * 100))) : 0;
+        const stockPct = maxVal > 0 && item.curStock > 0 ? Math.max(6, Math.min(100, Math.round((item.curStock / maxVal) * 100))) : 0;
+        const reqPct = maxVal > 0 && item.fQty > 0 ? Math.max(6, Math.min(100, Math.round((item.fQty / maxVal) * 100))) : 0;
 
         const statusInfo = getForecastStatus(m, fc);
         const statusTagHtml = `<span class="forecast-status-tag ${statusInfo.tagCls}">${statusInfo.label}</span>`;
@@ -3050,10 +3056,7 @@ function renderTopMaterialsRequirementChart() {
         const codeKey = String(m.itemCode || '').toLowerCase().trim();
         const nameKey = String(m.name || '').toLowerCase().trim();
 
-        let receivedQty = recMap.get(idKey) || recMap.get(codeKey) || recMap.get(nameKey) || 0;
-        if (receivedQty === 0) {
-            receivedQty = Math.max(0, Math.round(Number(m.currentStock || 0) * 0.85));
-        }
+        const receivedQty = recMap.get(idKey) || recMap.get(codeKey) || recMap.get(nameKey) || 0;
 
         return {
             name: m.name,
