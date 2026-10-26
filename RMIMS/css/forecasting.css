@@ -2245,9 +2245,10 @@ button.fc-modal-close svg,
 
 .fc-modal-table th,
 .fc-modal-body .fc-table th {
-  position: sticky;
-  top: 0;
-  background: #F0FDF4;
+  position: sticky !important;
+  top: 0 !important;
+  background: #F0FDF4 !important;
+  z-index: 5 !important;
   color: #166534;
   font-size: 0.74rem;
   font-weight: 800;
@@ -2537,12 +2538,16 @@ button.fc-modal-close svg,
 }
 
 /* Modal Finished Product Context Table */
-.fc-modal-body .fc-table-container {
+.fc-modal-body .fc-table-container,
+.fc-table-modal-container {
   border-radius: 14px;
   border: 1px solid rgba(20, 83, 45, 0.12);
-  overflow: hidden;
+  max-height: 52vh !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
   box-shadow: 0 4px 14px -2px rgba(15, 42, 27, 0.04);
   background: #FFFFFF;
+  -webkit-overflow-scrolling: touch;
 }
 
 .fc-modal-body .fc-table {

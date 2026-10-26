@@ -775,10 +775,9 @@ function loadAuthoritativeForecasts() {
             const diff = Number(cf.decision_support?.difference ?? (curStock - f7Qty));
             decisionStatus = cf.decision_support?.decision_status || cf.decision_support?.status;
             if (!decisionStatus) {
-                if (diff < 0) decisionStatus = "Potential Shortage";
-                else if (curStock <= m.minThreshold) decisionStatus = "Needs Attention";
-                else if (diff <= m.minThreshold) decisionStatus = "Monitor";
-                else decisionStatus = "Sufficient";
+                if (curStock <= 0) decisionStatus = "Out of Stock";
+                else if (curStock <= m.minThreshold || diff < 0) decisionStatus = "Low Stock";
+                else decisionStatus = "Good";
             }
             interpretation = cf.decision_support?.interpretation || "";
         } else {
@@ -788,10 +787,9 @@ function loadAuthoritativeForecasts() {
             f1mQty = Number((avgWeekly * 4.15).toFixed(1));
 
             const diff = m.currentStock - f7Qty;
-            if (diff < 0) decisionStatus = "Potential Shortage";
-            else if (m.currentStock <= m.minThreshold) decisionStatus = "Needs Attention";
-            else if (diff <= m.minThreshold) decisionStatus = "Monitor";
-            else decisionStatus = "Sufficient";
+            if (m.currentStock <= 0) decisionStatus = "Out of Stock";
+            else if (m.currentStock <= m.minThreshold || diff < 0) decisionStatus = "Low Stock";
+            else decisionStatus = "Good";
         }
 
         // Additional Need
@@ -2052,14 +2050,12 @@ function renderAiForecastingTab() {
             const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
 
             let badge = "";
-            if (item.status === "Potential Shortage" || addNeed > 0) {
-                badge = `<span class="rpt-badge rpt-badge-shortage"><span class="rpt-status-dot" style="background:#dc2626;"></span>Potential Shortage</span>`;
-            } else if (item.status === "Needs Attention" || item.status === "Low Stock Attention" || item.currentStock <= item.minThreshold) {
-                badge = `<span class="rpt-badge rpt-badge-attention"><span class="rpt-status-dot" style="background:#ea580c;"></span>Needs Attention</span>`;
-            } else if (item.status === "Monitor") {
-                badge = `<span class="rpt-badge rpt-badge-monitor"><span class="rpt-status-dot" style="background:#2563eb;"></span>Monitor</span>`;
+            if (item.currentStock <= 0) {
+                badge = `<span class="rpt-badge rpt-badge-shortage"><span class="rpt-status-dot" style="background:#dc2626;"></span>Out of Stock</span>`;
+            } else if (item.currentStock <= item.minThreshold || addNeed > 0) {
+                badge = `<span class="rpt-badge rpt-badge-attention"><span class="rpt-status-dot" style="background:#ea580c;"></span>Low Stock</span>`;
             } else {
-                badge = `<span class="rpt-badge rpt-badge-good"><span class="rpt-status-dot" style="background:#16a34a;"></span>Sufficient</span>`;
+                badge = `<span class="rpt-badge rpt-badge-good"><span class="rpt-status-dot" style="background:#16a34a;"></span>Good</span>`;
             }
 
             return `
@@ -2519,7 +2515,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                         <td>${(f.currentStock || 0).toLocaleString()} ${escapeHtml(f.unit)}</td>
                                         <td><strong>${(isMonthly ? (f.forecast1Month || 0) : (f.forecast7Day || 0)).toFixed(1)}</strong> ${escapeHtml(f.unit)}</td>
                                         <td><strong style="color:${addNeeded > 0 ? '#DC2626' : '#059669'};">${addNeeded > 0 ? "+" + addNeeded.toFixed(1) : "0"}</strong> ${escapeHtml(f.unit)}</td>
-                                        <td><strong style="color:${f.status === 'Deficit Risk' ? '#DC2626' : (f.status === 'Tight' ? '#D97706' : '#059669')}">${escapeHtml(f.status || 'Sufficient')}</strong></td>
+                                        <td><strong style="color:${(f.status === 'Out of Stock' || f.currentStock <= 0) ? '#DC2626' : ((f.status === 'Low Stock' || f.currentStock <= f.minThreshold) ? '#D97706' : '#059669')}">${escapeHtml(f.status || 'Good')}</strong></td>
                                     </tr>
                                 `;
                             }).join("")

@@ -644,9 +644,9 @@ function computeAuthoritativeForecastBaseline() {
         const tCtx = getActiveTenantContext();
         const curStock = m.currentStock;
         const diff = curStock - f7Qty;
-        let decisionStatus = "Sufficient";
-        if (diff < 0) decisionStatus = "Potential Shortage";
-        else if (curStock <= m.minStock) decisionStatus = "Low Stock Attention";
+        let decisionStatus = "Good";
+        if (curStock <= 0) decisionStatus = "Out of Stock";
+        else if (diff < 0 || curStock <= m.minStock) decisionStatus = "Low Stock";
 
         state.forecasts.set(m.name, {
             status: "success",
@@ -814,7 +814,7 @@ async function generateAllForecasts() {
                             },
                             decision_support: {
                                 difference: diff,
-                                status: (data.status === "Potential Shortage" || data.status === "Sufficient" || data.status === "Low Stock Attention") ? data.status : (diff < 0 ? "Potential Shortage" : (curStock <= m.minStock ? "Low Stock Attention" : "Sufficient"))
+                                status: curStock <= 0 ? "Out of Stock" : (diff < 0 || curStock <= m.minStock ? "Low Stock" : "Good")
                             },
                             daily_breakdown_7d: data.daily_breakdown_7d || []
                         };
@@ -1221,17 +1221,17 @@ function renderTopKPIs() {
                 statusTagEl.style.color = "var(--fc-red-dark)";
                 msgEl.innerHTML = `Stock will run out in about <strong>${stat.daysLeft} days</strong>. Buy at least <strong>${stat.deficit.toLocaleString()} ${m.unit}</strong> soon so production will not stop.`;
             } else if (stat.currentStock <= m.minStock) {
-                statusTagEl.textContent = "🟡 Low Buffer Alert";
+                statusTagEl.textContent = "🟡 Low Stock";
                 statusTagEl.style.background = "var(--fc-orange-light)";
                 statusTagEl.style.color = "var(--fc-orange-dark)";
                 msgEl.innerHTML = `Current stock is close to minimum threshold (${stat.currentStock} ${m.unit}). Replenish stock to maintain a safe operational buffer.`;
             } else if (stat.next7Qty === 0 && stat.past7Qty === 0) {
-                statusTagEl.textContent = "🟢 Stock On Hand";
+                statusTagEl.textContent = "🟢 Good";
                 statusTagEl.style.background = "var(--fc-green-light)";
                 statusTagEl.style.color = "var(--fc-green-dark)";
                 msgEl.innerHTML = `Current stock: <strong>${stat.currentStock} ${m.unit}</strong>. Awaiting production usage logs to start generating run-out dates.`;
             } else {
-                statusTagEl.textContent = "🟢 Sufficient Stock";
+                statusTagEl.textContent = "🟢 Good";
                 statusTagEl.style.background = "var(--fc-green-light)";
                 statusTagEl.style.color = "var(--fc-green-dark)";
                 msgEl.innerHTML = `You have enough stock for about <strong>${stat.daysLeft} days</strong> of production. No need to buy more right now.`;
@@ -2821,7 +2821,8 @@ function renderOverviewCard() {
             : 0;
         const addNeed = Math.max(0, reqQty - m.currentStock);
         const statusCls = addNeed > 0 ? "need-more" : "";
-        const statusText = addNeed > 0 ? `+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${m.unit} needed` : "Sufficient";
+        const statusInfo = getForecastStatus(m, fc);
+        const statusText = statusInfo.label;
 
         return `
             <div class="fc-overview-item" data-mat-name="${escapeHtml(m.name)}">
@@ -2974,9 +2975,8 @@ function renderDecisionSupport() {
         const stockPct = Math.max(6, Math.min(100, Math.round((item.curStock / maxVal) * 100)));
         const reqPct = Math.max(6, Math.min(100, Math.round((item.fQty / maxVal) * 100)));
 
-        const statusTagHtml = item.isShortage
-            ? `<span class="forecast-status-tag tag-shortage">Potential Shortage</span>`
-            : `<span class="forecast-status-tag tag-sufficient">Sufficient Stock</span>`;
+        const statusInfo = getForecastStatus(m, fc);
+        const statusTagHtml = `<span class="forecast-status-tag ${statusInfo.tagCls}">${statusInfo.label}</span>`;
 
         const insightText = item.isShortage
             ? `${escapeHtml(m.name)} requires ~${item.fQty.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(unit)} next week. Stock (${item.curStock.toLocaleString()} ${escapeHtml(unit)}) is below the projected demand.`
@@ -3084,10 +3084,13 @@ function renderForecastTable() {
             if (!matchName && !matchCode && !matchProd) return false;
         }
 
-        // Status
-        if (statusFilter === "ATTENTION" && addNeed === 0 && m.currentStock > m.minStock) return false;
-        if (statusFilter === "SUFFICIENT" && (addNeed > 0 || m.currentStock <= m.minStock)) return false;
-        if (statusFilter === "UNAVAILABLE" && fc) return false;
+        // Status - only Good, Low Stock, Out of Stock
+        const statusInfo = getForecastStatus(m, fc);
+        if (statusFilter === "GOOD" && statusInfo.label !== "Good") return false;
+        if (statusFilter === "LOW_STOCK" && statusInfo.label !== "Low Stock") return false;
+        if (statusFilter === "OUT_OF_STOCK" && statusInfo.label !== "Out of Stock") return false;
+        if (statusFilter === "SUFFICIENT" && statusInfo.label !== "Good") return false;
+        if (statusFilter === "ATTENTION" && statusInfo.label !== "Low Stock" && statusInfo.label !== "Out of Stock") return false;
 
         // Unit
         if (unitFilter !== "ALL" && m.unit !== unitFilter) return false;
@@ -3165,8 +3168,9 @@ function renderForecastTable() {
         const prodNames = Array.from(new Set(state.disbursements.filter(d => d.materialId === m.id && d.productName).map(d => d.productName))).slice(0, 2);
         const prodDisplay = prodNames.length > 0 ? prodNames.join(", ") : "General Usage";
 
-        const statusCls = !fc ? "fc-status-unavailable" : (addNeed > 0 ? "fc-status-shortage" : "fc-status-sufficient");
-        const statusLabel = !fc ? "Unavailable" : (addNeed > 0 ? "Needs Attention" : "Sufficient");
+        const statusInfo = getForecastStatus(m, fc);
+        const statusCls = statusInfo.cls;
+        const statusLabel = statusInfo.label;
 
         return `
             <tr style="cursor:pointer;" class="fc-table-row" data-mat-name="${escapeHtml(m.name)}">
@@ -3280,8 +3284,12 @@ function renderModalTotalForecastTable() {
         const req = fc ? (isMonthly ? Number(fc.forecast1Month?.quantity) || 0 : Number(fc.forecast7Day?.quantity) || 0) : 0;
         const addNeed = Math.max(0, req - m.currentStock);
 
-        if (filterVal === "shortage" && addNeed <= 0) return false;
-        if (filterVal === "sufficient" && addNeed > 0) return false;
+        const statusInfo = getForecastStatus(m, fc);
+        if (filterVal === "good" && statusInfo.label !== "Good") return false;
+        if (filterVal === "low_stock" && statusInfo.label !== "Low Stock") return false;
+        if (filterVal === "out_of_stock" && statusInfo.label !== "Out of Stock") return false;
+        if (filterVal === "shortage" && statusInfo.label === "Good") return false;
+        if (filterVal === "sufficient" && statusInfo.label !== "Good") return false;
 
         if (query) {
             const prodNames = state.disbursements.filter(d => d.materialId === m.id && d.productName).map(d => d.productName).join(" ").toLowerCase();
@@ -3447,8 +3455,8 @@ function openMaterialDetailModal(mName) {
     }
 
     if (statusEl) {
-        const cls = addNeed > 0 ? "fc-status-shortage" : "fc-status-sufficient";
-        statusEl.innerHTML = `<span class="fc-status-badge ${cls}"><span class="fc-status-dot"></span>${addNeed > 0 ? "Needs Attention" : "Sufficient"}</span>`;
+        const statusInfo = getForecastStatus(mat, fc);
+        statusEl.innerHTML = `<span class="fc-status-badge ${statusInfo.cls}"><span class="fc-status-dot"></span>${statusInfo.label}</span>`;
     }
 
     if (insightTextEl) {

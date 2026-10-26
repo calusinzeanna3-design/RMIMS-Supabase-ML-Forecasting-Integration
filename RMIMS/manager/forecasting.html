@@ -361,9 +361,9 @@
                     <div class="fc-table-filters">
                         <select class="fc-select" id="tableStatusFilter" aria-label="Filter by Status">
                             <option value="ALL">All Statuses</option>
-                            <option value="ATTENTION">Needs Attention</option>
-                            <option value="SUFFICIENT">Sufficient Stock</option>
-                            <option value="UNAVAILABLE">Forecast Unavailable</option>
+                            <option value="GOOD">Good</option>
+                            <option value="LOW_STOCK">Low Stock</option>
+                            <option value="OUT_OF_STOCK">Out of Stock</option>
                         </select>
 
                         <select class="fc-select" id="tableUnitFilter" aria-label="Filter by Unit">
@@ -465,15 +465,16 @@
             <div class="fc-modal-filter-group">
                 <select id="modalTotalForecastFilter" class="fc-select-compact" aria-label="Filter status">
                     <option value="all">All Statuses</option>
-                    <option value="shortage">Potential Shortage Risk</option>
-                    <option value="sufficient">Sufficient Stock Only</option>
+                    <option value="good">Good</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
                 </select>
                 <span class="fc-count-pill" id="modalTotalForecastCount">0 Materials</span>
             </div>
         </div>
 
-        <div class="fc-modal-body" style="padding: 0 24px 16px 24px;">
-            <div class="fc-table-container fc-table-modal-container">
+        <div class="fc-modal-body" style="padding: 0 24px 16px 24px; max-height: calc(88vh - 150px); overflow-y: auto;">
+            <div class="fc-table-container fc-table-modal-container" style="max-height: 52vh; overflow-y: auto; overflow-x: auto;">
                 <table class="fc-table fc-modal-table">
                     <thead>
                         <tr>
