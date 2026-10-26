@@ -275,9 +275,28 @@ export function initForecastCalendarCard(containerId, options = {}) {
   }
 
   function getDateWindow(anchor, rangeDays) {
-    // Range ends on anchorDate, covers rangeDays consecutive days
     const dates = [];
-    for (let i = rangeDays - 1; i >= 0; i--) {
+    if (rangeDays === 1) {
+      // User requirement: When 1 day is selected, display exactly 7 days
+      // Center the recent/selected day so it is not pushed to the very end
+      for (let i = -3; i <= 3; i++) {
+        const d = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + i);
+        dates.push(d);
+      }
+      return dates;
+    }
+
+    if (rangeDays === 7) {
+      // Exactly 7 days, with recent day at index 4 so it's not cut off at the edge
+      for (let i = -4; i <= 2; i++) {
+        const d = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + i);
+        dates.push(d);
+      }
+      return dates;
+    }
+
+    // 30 days
+    for (let i = 29; i >= 0; i--) {
       const d = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - i);
       dates.push(d);
     }
@@ -300,7 +319,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
     // Format footer text
     const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     if (activeRangeDays === 1) {
-      footerInfo.innerHTML = `<strong>Selected Date:</strong> ${fmt(anchorDate)}`;
+      footerInfo.innerHTML = `<strong>Recent Day:</strong> ${fmt(anchorDate)} &bull; 7-Day Context Displayed`;
     } else {
       footerInfo.innerHTML = `<strong>Window:</strong> ${fmt(startDate)} &mdash; ${fmt(endDate)} (${activeRangeDays} Days)`;
     }
@@ -419,9 +438,15 @@ export function initForecastCalendarCard(containerId, options = {}) {
       }
     });
 
+    let anchorIndex = -1;
     dates.forEach((dateObj, idx) => {
+      if (isSameDay(dateObj, anchorDate)) {
+        anchorIndex = idx;
+      }
       const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-      const label = dateObj.toLocaleDateString('en-US', activeRangeDays === 1 ? { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric' });
+      const isAnchor = isSameDay(dateObj, anchorDate);
+      const baseLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const label = (activeRangeDays === 1 && isAnchor) ? `${baseLabel} (Recent)` : baseLabel;
       labels.push(label);
 
       // Consumed actuals
@@ -452,7 +477,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
       marginLower.push(Math.max(0, +(req - margin).toFixed(2)));
     });
 
-    return { labels, consumedData, forecastData, marginUpper, marginLower };
+    return { labels, consumedData, forecastData, marginUpper, marginLower, anchorIndex };
   }
 
   function updateChart() {
@@ -476,9 +501,86 @@ export function initForecastCalendarCard(containerId, options = {}) {
     marginBandGrad.addColorStop(0, 'rgba(134, 239, 172, 0.22)');
     marginBandGrad.addColorStop(1, 'rgba(134, 239, 172, 0.04)');
 
+    // Custom Plugin: Whisker Guide with Hollow Dash Caps ⊖ and Solid Center Dot ● for the Recent Day
+    const recentDayWhiskerPlugin = {
+      id: 'recentDayWhiskerPlugin',
+      afterDatasetsDraw(chart) {
+        const anchorIdx = chart.data.anchorIndex;
+        if (anchorIdx === undefined || anchorIdx === null || anchorIdx < 0) return;
+
+        const metaUpper = chart.getDatasetMeta(0);
+        const metaLower = chart.getDatasetMeta(1);
+        const metaForecast = chart.getDatasetMeta(2);
+
+        if (!metaForecast || !metaForecast.data || !metaForecast.data[anchorIdx]) return;
+
+        const ptForecast = metaForecast.data[anchorIdx];
+        const ptUpper = metaUpper?.data?.[anchorIdx];
+        const ptLower = metaLower?.data?.[anchorIdx];
+
+        if (!ptForecast || !ptUpper || !ptLower) return;
+
+        const c = chart.ctx;
+        c.save();
+
+        const x = ptForecast.x;
+        const yUpper = ptUpper.y;
+        const yLower = ptLower.y;
+        const yCenter = ptForecast.y;
+
+        // 1. Vertical dashed connector whisker
+        c.beginPath();
+        c.setLineDash([3, 3]);
+        c.strokeStyle = '#22C55E';
+        c.lineWidth = 1.6;
+        c.moveTo(x, yUpper);
+        c.lineTo(x, yLower);
+        c.stroke();
+        c.setLineDash([]);
+
+        // Helper to draw hollow circle with horizontal dash: ⊖
+        const drawWhiskerCap = (cx, cy) => {
+          const r = 5.5;
+          c.beginPath();
+          c.arc(cx, cy, r, 0, Math.PI * 2);
+          c.fillStyle = '#FFFFFF';
+          c.fill();
+          c.strokeStyle = '#22C55E';
+          c.lineWidth = 1.8;
+          c.stroke();
+
+          c.beginPath();
+          c.strokeStyle = '#15803D';
+          c.lineWidth = 1.6;
+          c.moveTo(cx - 3, cy);
+          c.lineTo(cx + 3, cy);
+          c.stroke();
+        };
+
+        // 2. Draw upper limit cap ⊖
+        drawWhiskerCap(x, yUpper);
+
+        // 3. Draw lower limit cap ⊖
+        drawWhiskerCap(x, yLower);
+
+        // 4. Draw prominent solid dark center dot ● with white border on the curve
+        c.beginPath();
+        c.arc(x, yCenter, 6.5, 0, Math.PI * 2);
+        c.fillStyle = '#0F2A1B';
+        c.fill();
+        c.strokeStyle = '#FFFFFF';
+        c.lineWidth = 2.5;
+        c.stroke();
+
+        c.restore();
+      }
+    };
+
     const chartConfig = {
       type: 'line',
+      plugins: [recentDayWhiskerPlugin],
       data: {
+        anchorIndex: data.anchorIndex,
         labels: data.labels,
         datasets: [
           // Upper Margin Limit
@@ -518,10 +620,10 @@ export function initForecastCalendarCard(containerId, options = {}) {
             borderWidth: 3.2,
             backgroundColor: darkGrad,
             fill: true,
-            pointRadius: data.labels.length > 20 ? 1.5 : 4,
+            pointRadius: (ctx) => (ctx.dataIndex === data.anchorIndex ? 0 : 3.5),
             pointBackgroundColor: '#0F2A1B',
             pointBorderColor: '#FFFFFF',
-            pointBorderWidth: 2,
+            pointBorderWidth: 1.5,
             pointHoverRadius: 7,
             pointHoverBackgroundColor: '#0F2A1B',
             pointHoverBorderColor: '#FFFFFF',
@@ -538,10 +640,10 @@ export function initForecastCalendarCard(containerId, options = {}) {
             backgroundColor: greenGrad,
             fill: true,
             spanGaps: true,
-            pointRadius: data.labels.length > 20 ? 1.5 : 4,
+            pointRadius: 3.5,
             pointBackgroundColor: '#16A34A',
             pointBorderColor: '#FFFFFF',
-            pointBorderWidth: 2,
+            pointBorderWidth: 1.5,
             pointHoverRadius: 7,
             pointHoverBackgroundColor: '#16A34A',
             pointHoverBorderColor: '#FFFFFF',
@@ -597,8 +699,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
               color: '#64748B',
               font: { size: 11, family: 'Inter', weight: '500' },
               maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: activeRangeDays === 30 ? 10 : activeRangeDays === 7 ? 7 : 12
+              autoSkip: false
             }
           },
           y: {
@@ -618,6 +719,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
     };
 
     if (chartInstance) {
+      chartInstance.data.anchorIndex = data.anchorIndex;
       chartInstance.data.labels = data.labels;
       chartInstance.data.datasets[0].data = data.marginUpper;
       chartInstance.data.datasets[1].data = data.marginLower;
