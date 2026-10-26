@@ -2867,10 +2867,85 @@ button.fc-modal-close svg,
   flex-shrink: 0;
 }
 
+/* Low-Stock Alerts List & Items */
+.low-stock-alert-item {
+  background: rgba(254, 242, 242, 0.65);
+  border: 1px solid rgba(239, 68, 68, 0.14);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.low-stock-alert-item:hover {
+  transform: translateX(3px);
+  background: rgba(254, 242, 242, 0.95);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.ls-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ls-item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 19px;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.06);
+}
+
+.ls-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ls-item-name {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #0F2A1B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ls-item-sku {
+  font-size: 11.5px;
+  color: #64748B;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.ls-item-qty {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #EF4444;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 1380px) {
-  .fc-grid-row-1 { grid-template-columns: minmax(0, 1fr); }
-  .forecast-support-grid { grid-template-columns: minmax(0, 1fr); }
+  .fc-grid-row-1 { grid-template-columns: minmax(0, 1fr) !important; }
+  .forecast-support-grid { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 @media (max-width: 1100px) {

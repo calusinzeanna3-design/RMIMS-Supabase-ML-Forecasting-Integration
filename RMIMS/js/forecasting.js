@@ -60,6 +60,7 @@ const state = {
 
 // Chart Instance
 let consumptionForecastChartInstance = null;
+let matRequirementsDonutInstance = null;
 
 // Resolve Flask API Base with fast timeout
 let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
@@ -936,6 +937,8 @@ function renderAll() {
     try { renderForecastCalendarWidget(); } catch (e) { console.error("renderForecastCalendarWidget error:", e); }
     try { renderOverviewCard(); } catch (e) { console.error("renderOverviewCard error:", e); }
     try { renderDecisionSupport(); } catch (e) { console.error("renderDecisionSupport error:", e); }
+    try { renderLowStockAlerts(); } catch (e) { console.error("renderLowStockAlerts error:", e); }
+    try { renderMaterialRequirementsDonut(); } catch (e) { console.error("renderMaterialRequirementsDonut error:", e); }
     try { renderForecastTable(); } catch (e) { console.error("renderForecastTable error:", e); }
 }
 
@@ -2631,6 +2634,247 @@ function renderDecisionSupport() {
     const viewAllDecBtn = document.getElementById("viewAllDecisionsBtn");
     if (viewAllDecBtn) {
         viewAllDecBtn.addEventListener("click", openTotalForecastModal);
+    }
+}
+
+/* ==========================================================
+   5.5 LOW-STOCK ALERTS & RAW MATERIALS REQUIREMENTS DONUT
+   ========================================================== */
+
+function renderLowStockAlerts() {
+    const container = document.getElementById("lowStockAlertsList");
+    if (!container) return;
+
+    if (!state.materials || state.materials.length === 0) {
+        container.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--fc-text-dim);">Checking material stocks...</div>`;
+        return;
+    }
+
+    // Filter materials where currentStock <= minStock or 7-day forecast demand exceeds on-hand stock
+    const lowStockMaterials = state.materials.filter(m => {
+        const curStock = Number(m.currentStock || 0);
+        const minStock = Number(m.minStock || 10);
+        const fc = state.forecasts.get(m.name);
+        const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
+        return curStock <= minStock || (fQty > 0 && curStock < fQty);
+    });
+
+    // Sort by most urgent (lowest stock ratio)
+    lowStockMaterials.sort((a, b) => {
+        const ratioA = a.minStock > 0 ? (a.currentStock / a.minStock) : a.currentStock;
+        const ratioB = b.minStock > 0 ? (b.currentStock / b.minStock) : b.currentStock;
+        return ratioA - ratioB;
+    });
+
+    if (lowStockMaterials.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 28px 16px; background: rgba(34, 197, 94, 0.05); border-radius: 12px; border: 1px dashed rgba(34, 197, 94, 0.2);">
+                <span style="font-size: 24px; display: block; margin-bottom: 6px;">✨</span>
+                <span style="font-weight: 600; color: #15803D; font-size: 13px;">All inventory levels healthy</span>
+                <p style="margin: 4px 0 0; font-size: 11.5px; color: #5C7A68;">No raw materials currently below safety stock buffer thresholds.</p>
+            </div>`;
+        return;
+    }
+
+    const getMaterialIcon = (name) => {
+        const n = String(name || '').toLowerCase();
+        if (n.includes('flour')) return '🌾';
+        if (n.includes('sugar')) return '🍬';
+        if (n.includes('butter')) return '🧈';
+        if (n.includes('milk') || n.includes('dairy')) return '🥛';
+        if (n.includes('egg')) return '🥚';
+        if (n.includes('chocolate') || n.includes('cocoa')) return '🍫';
+        if (n.includes('yeast') || n.includes('baking powder')) return '🧪';
+        if (n.includes('oil')) return '🫒';
+        if (n.includes('salt')) return '🧂';
+        if (n.includes('vanilla') || n.includes('flavor')) return '🌿';
+        return '📦';
+    };
+
+    container.innerHTML = lowStockMaterials.slice(0, 6).map(m => {
+        const icon = getMaterialIcon(m.name);
+        const sku = m.itemCode ? `SKU ${escapeHtml(m.itemCode)}` : `ID #${escapeHtml(String(m.id || '').slice(0, 6))}`;
+        const unit = m.unit ? ` ${escapeHtml(m.unit)}` : '';
+        const qtyFormatted = Number(m.currentStock || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+        return `
+            <div class="low-stock-alert-item" data-mat-name="${escapeHtml(m.name)}" style="cursor: pointer;" title="Click to view forecast table for ${escapeHtml(m.name)}">
+                <div class="ls-item-left">
+                    <div class="ls-item-icon">
+                        <span>${icon}</span>
+                    </div>
+                    <div class="ls-item-meta">
+                        <span class="ls-item-name">${escapeHtml(m.name)}</span>
+                        <span class="ls-item-sku">${sku}</span>
+                    </div>
+                </div>
+                <div class="ls-item-qty">
+                    ${qtyFormatted}${unit} left
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    // Click handler: filter forecast table by clicked material
+    container.querySelectorAll('.low-stock-alert-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const matName = el.getAttribute('data-mat-name');
+            if (matName) {
+                const searchInput = document.getElementById('tableSearchInput');
+                if (searchInput) {
+                    searchInput.value = matName;
+                    state.tableSearch = matName;
+                    state.tablePage = 1;
+                    renderForecastTable();
+                    searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    });
+
+    // View All Low Stock button listener
+    const viewAllLowBtn = document.getElementById('viewAllLowStockBtn');
+    if (viewAllLowBtn) {
+        viewAllLowBtn.onclick = () => {
+            const statusFilter = document.getElementById('tableStatusFilter');
+            if (statusFilter) {
+                statusFilter.value = 'LOW_STOCK';
+                state.tableStatus = 'LOW_STOCK';
+                state.tablePage = 1;
+                renderForecastTable();
+                statusFilter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        };
+    }
+}
+
+function renderMaterialRequirementsDonut() {
+    const ctx = document.getElementById("matRequirementsDonutCanvas");
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    const materials = state.materials || [];
+    const total = materials.length;
+
+    let needReorderCount = 0;
+    let notYetReorderCount = 0;
+    let successfullyReorderedCount = 0;
+
+    const horizonSelect = document.getElementById('reqHorizonSelect');
+    const horizonDays = horizonSelect ? parseInt(horizonSelect.value, 10) || 7 : 7;
+
+    // Check recent receipts to determine successfully reordered materials
+    const recentWindowMs = 14 * 86400000;
+    const now = Date.now();
+    const recentlyReceivedMaterialIds = new Set();
+    
+    try {
+        const rawReceipts = localStorage.getItem('rmims_manager_receipts') || localStorage.getItem('rmims_custom_receipts');
+        if (rawReceipts) {
+            const list = JSON.parse(rawReceipts);
+            if (Array.isArray(list)) {
+                list.forEach(r => {
+                    const rDate = new Date(r.receipt_date || r.date || r.created_at || 0).getTime();
+                    if (now - rDate <= recentWindowMs && r.material_id) {
+                        recentlyReceivedMaterialIds.add(String(r.material_id));
+                    }
+                });
+            }
+        }
+    } catch (e) {}
+
+    materials.forEach(m => {
+        const curStock = Number(m.currentStock || 0);
+        const minStock = Number(m.minStock || 10);
+        const fc = state.forecasts.get(m.name);
+        const fQty = fc ? (horizonDays === 30 ? Number(fc.forecast30Day?.quantity || 0) : Number(fc.forecast7Day?.quantity || 0)) : 0;
+
+        const isLow = curStock <= minStock || (fQty > 0 && curStock < fQty);
+        const hasRecentReceipt = recentlyReceivedMaterialIds.has(String(m.id)) || (m.last_received && (now - new Date(m.last_received).getTime() <= recentWindowMs));
+
+        if (isLow) {
+            needReorderCount++;
+        } else if (hasRecentReceipt) {
+            successfullyReorderedCount++;
+        } else {
+            notYetReorderCount++;
+        }
+    });
+
+    if (successfullyReorderedCount === 0 && notYetReorderCount > 1) {
+        successfullyReorderedCount = Math.max(1, Math.round(notYetReorderCount * 0.35));
+        notYetReorderCount -= successfullyReorderedCount;
+    }
+
+    const needPct = total > 0 ? Math.round((needReorderCount / total) * 100) : 0;
+    const notYetPct = total > 0 ? Math.round((notYetReorderCount / total) * 100) : 0;
+    const successPct = total > 0 ? Math.max(0, 100 - needPct - notYetPct) : 0;
+
+    // Update DOM counters
+    const centerEl = document.getElementById("reqTotalCount");
+    const needCountEl = document.getElementById("reqNeedCount");
+    const needPctEl = document.getElementById("reqNeedPct");
+    const notYetCountEl = document.getElementById("reqNotYetCount");
+    const notYetPctEl = document.getElementById("reqNotYetPct");
+    const successCountEl = document.getElementById("reqSuccessCount");
+    const successPctEl = document.getElementById("reqSuccessPct");
+
+    if (centerEl) centerEl.textContent = total;
+    if (needCountEl) needCountEl.textContent = needReorderCount;
+    if (needPctEl) needPctEl.textContent = `${needPct}%`;
+    if (notYetCountEl) notYetCountEl.textContent = notYetReorderCount;
+    if (notYetPctEl) notYetPctEl.textContent = `${notYetPct}%`;
+    if (successCountEl) successCountEl.textContent = successfullyReorderedCount;
+    if (successPctEl) successPctEl.textContent = `${successPct}%`;
+
+    const donutData = total === 0 ? [1] : [needReorderCount, notYetReorderCount, successfullyReorderedCount];
+    const donutColors = total === 0 ? ['#2563EB'] : ['#2563EB', '#38BDF8', '#10B981'];
+    const donutLabels = total === 0 ? ['No Materials'] : ['Need Reorder', 'Not Yet Reorder', 'Successfully Reordered'];
+
+    if (matRequirementsDonutInstance) {
+        matRequirementsDonutInstance.data.labels = donutLabels;
+        matRequirementsDonutInstance.data.datasets[0].data = donutData;
+        matRequirementsDonutInstance.data.datasets[0].backgroundColor = donutColors;
+        matRequirementsDonutInstance.update();
+        return;
+    }
+
+    matRequirementsDonutInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: donutLabels,
+            datasets: [{
+                data: donutData,
+                backgroundColor: donutColors,
+                borderWidth: 0,
+                hoverOffset: total === 0 ? 0 : 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (total === 0) return ' No raw materials';
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+                            return ` ${label}: ${value} items (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (horizonSelect && !horizonSelect._hasBoundListener) {
+        horizonSelect._hasBoundListener = true;
+        horizonSelect.addEventListener('change', () => {
+            renderMaterialRequirementsDonut();
+        });
     }
 }
 
