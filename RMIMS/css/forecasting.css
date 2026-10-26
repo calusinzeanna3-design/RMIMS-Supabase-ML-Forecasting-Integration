@@ -2968,3 +2968,81 @@ button.fc-modal-close svg,
   .fc-search-wrap { max-width: none; }
 }
 
+/* ==========================================================
+   TOP COUNT BADGE (Top Raw Materials) - Matching Image 2
+   ========================================================== */
+.fc-top-box {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 10px !important;
+  padding: 3px 6px 3px 12px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+.fc-top-box .fc-top-label {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #0F2A1B !important;
+  letter-spacing: 0.05em !important;
+  user-select: none !important;
+  line-height: 1 !important;
+}
+
+input[type="text"].fc-top-input,
+input[type="number"].fc-top-input,
+.fc-top-input,
+#fcTopCount {
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 1px solid #CBD5E1 !important;
+  background: #FFFFFF !important;
+  border-radius: 8px !important;
+  font-family: inherit !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  color: #0F2A1B !important;
+  text-align: center !important;
+  outline: none !important;
+  line-height: 28px !important;
+  box-sizing: border-box !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  appearance: textfield !important;
+  -moz-appearance: textfield !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.fc-top-input:hover,
+#fcTopCount:hover {
+  border-color: #94A3B8 !important;
+  background: #FFFFFF !important;
+}
+
+.fc-top-input:focus,
+#fcTopCount:focus {
+  border-color: #16A34A !important;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2) !important;
+  background: #FFFFFF !important;
+  color: #0F2A1B !important;
+}
+
+.fc-top-input::-webkit-outer-spin-button,
+.fc-top-input::-webkit-inner-spin-button,
+#fcTopCount::-webkit-outer-spin-button,
+#fcTopCount::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
