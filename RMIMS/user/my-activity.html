@@ -168,7 +168,7 @@
     </header>
 
     <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
-      <div class="mgr-tx-container">
+      <div class="mgr-tx-container staff-activity-container" style="padding: 0;">
 
       <!-- Attention Alert Banner if any items need correction -->
       <div id="correctionAlertBanner" class="correction-banner" style="display:none;">
@@ -182,51 +182,71 @@
         <button type="button" class="btn-primary" id="btnFilterCorrections" style="padding:6px 14px; font-size:12px; background:#D97706; border-radius:8px; align-self:center;">View Corrections</button>
       </div>
 
-      <!-- Metric Summary Cards -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:24px;">
-        <div class="activity-stat-card">
-          <div class="stat-icon-wrap" style="background:#DCFCE7; color:#15803D;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
-          <div>
-            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Total Submissions</span>
-            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#0F2A1B; display:block;" id="statTotalSub">0</strong>
-          </div>
-        </div>
-
-        <div class="activity-stat-card">
-          <div class="stat-icon-wrap" style="background:#E0F2FE; color:#0369A1;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div>
-            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Pending Verification</span>
-            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#0369A1; display:block;" id="statPendingSub">0</strong>
-          </div>
-        </div>
-
-        <div class="activity-stat-card">
-          <div class="stat-icon-wrap" style="background:#DCFCE7; color:#16A34A;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <div>
-            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Approved</span>
-            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#16A34A; display:block;" id="statApprovedSub">0</strong>
-          </div>
-        </div>
-
-        <div class="activity-stat-card">
-          <div class="stat-icon-wrap" style="background:#FEF3C7; color:#D97706;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
-          <div>
-            <span style="font-size:12px; color:#64748B; font-weight:600; text-transform:uppercase;">Correction Needed</span>
-            <strong style="font-size:22px; font-weight:800; font-family:'Sora',sans-serif; color:#D97706; display:block;" id="statCorrectionSub">0</strong>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Ledger Table Card -->
+      <!-- Section: Activity & Submissions Ledger (Enclosing 4 KPI Metric Cards & Pagination - Matching Manager Staff Activity) -->
       <section class="mgr-tx-table-card">
+
+        <!-- 4 Mini Metric KPI Cards (Inside Activity Ledger Card) -->
+        <div class="mgr-tx-kpi-grid" id="staffTxKpiGrid">
+          <!-- 1. Total Submissions -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-blue">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label">Total Submissions</span>
+              <span class="mgr-tx-kpi-value" id="statTotalSub">0</span>
+              <span class="mgr-tx-kpi-sub" id="statTotalSubSub">Personal staff logs</span>
+            </div>
+          </div>
+
+          <!-- 2. Pending Verification -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-amber">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label" style="color:#D97706;">Pending Verification</span>
+              <span class="mgr-tx-kpi-value" style="color:#D97706;" id="statPendingSub">0</span>
+              <span class="mgr-tx-kpi-sub" style="color:#D97706;" id="statPendingSubSub">Awaiting manager action</span>
+            </div>
+          </div>
+
+          <!-- 3. Approved Submissions -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-green">
+              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label" style="color:#15803D;">Approved</span>
+              <span class="mgr-tx-kpi-value" style="color:#15803D;" id="statApprovedSub">0</span>
+              <span class="mgr-tx-kpi-sub" style="color:#15803D;" id="statApprovedSubSub">Inventory updated</span>
+            </div>
+          </div>
+
+          <!-- 4. Correction Needed -->
+          <div class="mgr-tx-kpi-card">
+            <div class="mgr-tx-kpi-icon icon-red">
+              <svg viewBox="0 0 24 24"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="mgr-tx-kpi-body">
+              <span class="mgr-tx-kpi-label" style="color:#DC2626;">Correction Needed</span>
+              <span class="mgr-tx-kpi-value" style="color:#DC2626;" id="statCorrectionSub">0</span>
+              <span class="mgr-tx-kpi-sub" style="color:#DC2626;" id="statCorrectionSubSub">Manager notes sent</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledger Header Title -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-top:8px; margin-bottom:14px;">
+          <div>
+            <h3 style="margin:0; font-family:var(--rm-font-display, 'Sora', sans-serif); font-size:17px; font-weight:700; color:var(--rm-ink, #0F2A1B);">
+              Activity &amp; Submissions Ledger
+            </h3>
+            <p style="margin:2px 0 0; font-size:12.5px; color:var(--rm-ink-dim, #5C7A68);">
+              Track your personal Receive and Disburse submissions, review manager messages, and update records.
+            </p>
+          </div>
+        </div>
         
         <!-- Filter Bar -->
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; border-bottom:1px solid #E2E8F0; padding-bottom:16px;">
