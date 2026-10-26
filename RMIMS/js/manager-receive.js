@@ -349,6 +349,15 @@ function populateMaterialSelects() {
     placeholder: 'Search raw material to receive...',
     width: '100%'
   });
+
+  if (filter) {
+    attachSearchableCombobox(filter, {
+      placeholder: 'Search material...',
+      width: 'auto',
+      minWidth: '170px',
+      maxWidth: '240px'
+    });
+  }
 }
 
 function updateReceiveMaterialSelection() {

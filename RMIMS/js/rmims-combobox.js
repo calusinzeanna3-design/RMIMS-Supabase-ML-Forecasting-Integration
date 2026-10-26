@@ -32,7 +32,17 @@ export function attachSearchableCombobox(selectEl, options = {}) {
   const wrap = document.createElement('div');
   wrap.className = `cal-combobox-wrap rm-combobox-wrap ${customClass}`.trim();
   wrap.id = `${instanceId}_wrap`;
-  if (width) wrap.style.width = width;
+  if (width) {
+    wrap.style.width = width;
+    if (width !== '100%') {
+      wrap.style.display = 'inline-block';
+      wrap.style.verticalAlign = 'middle';
+    }
+  } else if (minWidth || maxWidth) {
+    wrap.style.width = 'auto';
+    wrap.style.display = 'inline-block';
+    wrap.style.verticalAlign = 'middle';
+  }
   if (minWidth) wrap.style.minWidth = minWidth;
   if (maxWidth) wrap.style.maxWidth = maxWidth;
 
