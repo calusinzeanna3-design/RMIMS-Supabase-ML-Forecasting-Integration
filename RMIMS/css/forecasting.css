@@ -191,12 +191,13 @@
   background: var(--fc-card-bg, #ffffff);
   border: 1px solid rgba(20, 83, 45, 0.09);
   border-radius: 20px;
-  padding: 22px 24px;
+  padding: 20px 24px;
   box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   justify-content: space-between;
-  min-height: 172px;
+  align-items: flex-start;
+  min-height: 122px;
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
   position: relative;
   overflow: hidden;
@@ -215,16 +216,16 @@
   opacity: 0.85;
 }
 
-#cardUsageAndNeeds::before {
-  background: linear-gradient(90deg, #15803D 0%, #22C55E 50%, #86EFAC 100%);
+#cardNeedsRestock::before {
+  background: linear-gradient(90deg, #15803D 0%, #22C55E 100%);
 }
 
 #cardLowStockWarning::before {
-  background: linear-gradient(90deg, #DC2626 0%, #F87171 100%);
+  background: linear-gradient(90deg, #D97706 0%, #FBBF24 100%);
 }
 
-#cardSuggestedActions::before {
-  background: linear-gradient(90deg, #15803D 0%, #22C55E 100%);
+#cardOutOfStockWarning::before {
+  background: linear-gradient(90deg, #DC2626 0%, #F87171 100%);
 }
 
 .fc-kpi-card:hover {
@@ -242,6 +243,13 @@
 }
 
 #cardLowStockWarning.active-summary-card {
+  border-color: #D97706 !important;
+  box-shadow: 0 10px 28px -2px rgba(217, 119, 6, 0.22) !important;
+  outline: 2px solid #D97706;
+  outline-offset: -2px;
+}
+
+#cardOutOfStockWarning.active-summary-card {
   border-color: #DC2626 !important;
   box-shadow: 0 10px 28px -2px rgba(220, 38, 38, 0.22) !important;
   outline: 2px solid #DC2626;
@@ -464,6 +472,13 @@
   color: #DC2626;
   border-color: rgba(239, 68, 68, 0.3);
   box-shadow: 0 6px 16px rgba(220, 38, 38, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.fc-icon-amber {
+  background: radial-gradient(circle at 35% 35%, #FEF3C7 0%, #FDE68A 100%);
+  color: #D97706;
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 6px 16px rgba(217, 119, 6, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .fc-icon-green {

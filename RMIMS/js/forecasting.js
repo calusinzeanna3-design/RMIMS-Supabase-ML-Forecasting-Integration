@@ -1078,8 +1078,21 @@ function renderTopKPIs() {
 
     state.materialStats = materialStats;
 
-    // 2. Card 2: Low Stock Warning (Next 7 Days)
-    const lowStockItems = materialStats.filter(s => s.deficit > 0 || s.currentStock <= s.material.minStock);
+    // Card 1: Materials Needing Restock (Next 7-day forecast demand exceeds on-hand stock or deficit > 0)
+    const restockItems = materialStats.filter(s => s.deficit > 0 || (s.next7Qty > s.currentStock));
+    const restockCount = restockItems.length;
+    const restockCountEl = document.getElementById("kpiRestockCount");
+    const restockSubEl = document.getElementById("kpiRestockSubtitle");
+
+    if (restockCountEl) restockCountEl.textContent = restockCount.toLocaleString();
+    if (restockSubEl) {
+        restockSubEl.textContent = restockCount === 1
+            ? "1 raw material needs restock based on 7-day demand."
+            : `${restockCount} raw materials need restock based on 7-day demand.`;
+    }
+
+    // Card 2: Low Stock Warning (Stock at or below minimum safety buffer, or depletion within 7 days)
+    const lowStockItems = materialStats.filter(s => s.currentStock > 0 && (s.currentStock <= s.material.minStock || s.deficit > 0));
     state.lowStockItems = lowStockItems;
 
     const attnCountEl = document.getElementById("kpiAttentionCount");
@@ -1088,9 +1101,25 @@ function renderTopKPIs() {
     if (attnCountEl) attnCountEl.textContent = lowStockItems.length.toLocaleString();
     if (attnSubEl) {
         attnSubEl.textContent = lowStockItems.length === 1
-            ? "1 raw material will run out before next week ends if not restocked."
-            : `${lowStockItems.length} raw materials will run out before next week ends if not restocked.`;
+            ? "1 item running close to or below safe buffer."
+            : `${lowStockItems.length} items running close to or below safe buffer.`;
     }
+
+    // Card 3: Out of Stock Alert (Zero on-hand stock)
+    const outOfStockItems = materialStats.filter(s => s.currentStock <= 0);
+    const outCountEl = document.getElementById("kpiOutOfStockCount");
+    const outSubEl = document.getElementById("kpiOutOfStockSubtitle");
+
+    if (outCountEl) outCountEl.textContent = outOfStockItems.length.toLocaleString();
+    if (outSubEl) {
+        outSubEl.textContent = outOfStockItems.length === 1
+            ? "1 item depleted with 0 stock available."
+            : `${outOfStockItems.length} items depleted with 0 stock available.`;
+    }
+
+    // Clear legacy rotators if active
+    if (usageRotatorTimer) { clearInterval(usageRotatorTimer); usageRotatorTimer = null; }
+    if (actionRotatorTimer) { clearInterval(actionRotatorTimer); actionRotatorTimer = null; }
 
     // Update Planner Strip Counters & Freshness
     const plannerTotalEl = document.getElementById("plannerTotalCount");
@@ -1107,512 +1136,6 @@ function renderTopKPIs() {
         } else {
             plannerUpdatedEl.textContent = `Updated today`;
         }
-    }
-
-    // 3. Card 1 Rotator: Raw Material Usage & Needs (Every 4.5s)
-    function updateUsageCard() {
-        const pillEl = document.getElementById("kpiCycleIndexPill");
-        const nameEl = document.getElementById("kpiActiveMatName");
-        const trendEl = document.getElementById("kpiActiveMatTrend");
-        const pastQtyEl = document.getElementById("kpiActivePastQty");
-        const pastBarEl = document.getElementById("kpiActivePastBar");
-        const nextQtyEl = document.getElementById("kpiActiveNextQty");
-        const nextBarEl = document.getElementById("kpiActiveNextBar");
-
-        if (materialStats.length === 0) {
-            if (pillEl) pillEl.textContent = "0 / 0";
-            if (nameEl) nameEl.textContent = "No materials in catalog";
-            if (trendEl) {
-                trendEl.textContent = "—";
-                trendEl.style.background = "#f1f5f9";
-                trendEl.style.color = "var(--fc-text-mid)";
-            }
-            if (pastQtyEl) pastQtyEl.textContent = "0 kg";
-            if (nextQtyEl) nextQtyEl.textContent = "0 kg";
-            if (pastBarEl) pastBarEl.style.width = "0%";
-            if (nextBarEl) nextBarEl.style.width = "0%";
-            return;
-        }
-        if (currentUsageIndex >= materialStats.length) currentUsageIndex = 0;
-
-        const stat = materialStats[currentUsageIndex];
-        const m = stat.material;
-
-        if (pillEl) pillEl.textContent = `${currentUsageIndex + 1} / ${materialStats.length}`;
-        if (nameEl) nameEl.textContent = `${m.name}`;
-
-        // Trend calculation
-        if (trendEl) {
-            if (stat.past7Qty === 0 && stat.next7Qty > 0) {
-                trendEl.textContent = `New Demand`;
-                trendEl.style.background = "var(--fc-blue-light)";
-                trendEl.style.color = "var(--fc-blue-dark)";
-            } else if (stat.next7Qty > stat.past7Qty) {
-                const diffPct = Math.round(((stat.next7Qty - stat.past7Qty) / (stat.past7Qty || 1)) * 100);
-                trendEl.textContent = `+${diffPct}% Next Week`;
-                trendEl.style.background = "var(--fc-orange-light)";
-                trendEl.style.color = "var(--fc-orange-dark)";
-            } else if (stat.next7Qty < stat.past7Qty) {
-                const diffPct = Math.round(((stat.past7Qty - stat.next7Qty) / (stat.past7Qty || 1)) * 100);
-                trendEl.textContent = `-${diffPct}% Next Week`;
-                trendEl.style.background = "var(--fc-green-light)";
-                trendEl.style.color = "var(--fc-green-dark)";
-            } else {
-                trendEl.textContent = `Steady Demand`;
-                trendEl.style.background = "#f1f5f9";
-                trendEl.style.color = "var(--fc-text-mid)";
-            }
-        }
-
-        if (pastQtyEl) pastQtyEl.textContent = `${stat.past7Qty.toLocaleString()} ${m.unit}`;
-        if (nextQtyEl) nextQtyEl.textContent = `${stat.next7Qty.toLocaleString()} ${m.unit}`;
-
-        // Normalizing progress bars relative to the higher value
-        const maxVal = Math.max(stat.past7Qty, stat.next7Qty, 1);
-        const pastPct = Math.min(100, Math.round((stat.past7Qty / maxVal) * 100));
-        const nextPct = Math.min(100, Math.round((stat.next7Qty / maxVal) * 100));
-
-        if (pastBarEl) pastBarEl.style.width = `${pastPct}%`;
-        if (nextBarEl) nextBarEl.style.width = `${nextPct}%`;
-    }
-
-    updateUsageCard();
-
-    if (usageRotatorTimer) clearInterval(usageRotatorTimer);
-    usageRotatorTimer = setInterval(() => {
-        if (!isUsagePaused && materialStats.length > 0) {
-            currentUsageIndex = (currentUsageIndex + 1) % materialStats.length;
-            updateUsageCard();
-        }
-    }, 4500);
-
-    // 4. Card 3 Rotator: Suggested Actions for Next 7 Days (Every 5.5s)
-    const actionList = lowStockItems.length > 0 ? lowStockItems : materialStats;
-
-    function updateActionCard() {
-        const pillEl = document.getElementById("kpiActionIndexPill");
-        const titleEl = document.getElementById("kpiActionMatName");
-        const statusTagEl = document.getElementById("kpiActionStatusTag");
-        const msgEl = document.getElementById("kpiActionMessage");
-
-        if (actionList.length === 0) {
-            if (pillEl) pillEl.textContent = "0 / 0";
-            if (titleEl) titleEl.textContent = "No active materials";
-            if (statusTagEl) {
-                statusTagEl.textContent = "Healthy";
-                statusTagEl.style.background = "var(--fc-green-light)";
-                statusTagEl.style.color = "var(--fc-green-dark)";
-            }
-            if (msgEl) msgEl.textContent = "Catalog is currently empty. Add raw materials to start generating AI stock requirement recommendations.";
-            return;
-        }
-        if (currentActionIndex >= actionList.length) currentActionIndex = 0;
-
-        const stat = actionList[currentActionIndex];
-        const m = stat.material;
-
-        if (pillEl) pillEl.textContent = `Item ${currentActionIndex + 1} of ${actionList.length}`;
-        if (titleEl) titleEl.textContent = `${m.name} (${m.itemCode})`;
-
-        if (statusTagEl && msgEl) {
-            if (stat.deficit > 0) {
-                statusTagEl.textContent = "🔴 Low Stock Warning";
-                statusTagEl.style.background = "var(--fc-red-light)";
-                statusTagEl.style.color = "var(--fc-red-dark)";
-                msgEl.innerHTML = `Stock will run out in about <strong>${stat.daysLeft} days</strong>. Buy at least <strong>${stat.deficit.toLocaleString()} ${m.unit}</strong> soon so production will not stop.`;
-            } else if (stat.currentStock <= m.minStock) {
-                statusTagEl.textContent = "🟡 Low Stock";
-                statusTagEl.style.background = "var(--fc-orange-light)";
-                statusTagEl.style.color = "var(--fc-orange-dark)";
-                msgEl.innerHTML = `Current stock is close to minimum threshold (${stat.currentStock} ${m.unit}). Replenish stock to maintain a safe operational buffer.`;
-            } else if (stat.next7Qty === 0 && stat.past7Qty === 0) {
-                statusTagEl.textContent = "🟢 Good";
-                statusTagEl.style.background = "var(--fc-green-light)";
-                statusTagEl.style.color = "var(--fc-green-dark)";
-                msgEl.innerHTML = `Current stock: <strong>${stat.currentStock} ${m.unit}</strong>. Awaiting production usage logs to start generating run-out dates.`;
-            } else {
-                statusTagEl.textContent = "🟢 Good";
-                statusTagEl.style.background = "var(--fc-green-light)";
-                statusTagEl.style.color = "var(--fc-green-dark)";
-                msgEl.innerHTML = `You have enough stock for about <strong>${stat.daysLeft} days</strong> of production. No need to buy more right now.`;
-            }
-        }
-    }
-
-    updateActionCard();
-
-    if (actionRotatorTimer) clearInterval(actionRotatorTimer);
-    actionRotatorTimer = setInterval(() => {
-        if (!isActionPaused && actionList.length > 0) {
-            currentActionIndex = (currentActionIndex + 1) % actionList.length;
-            updateActionCard();
-        }
-    }, 5500);
-
-    // Initial render of Summary Detail List below the top cards
-    renderSummaryDetailList();
-}
-
-/* ==========================================================
-   1.1 SUMMARY DETAIL BREAKDOWN CARD CONTROLLER & RENDERER
-   ========================================================== */
-
-let currentDetailView = 'usage'; // 'usage' | 'lowstock' | 'actions'
-
-function switchSummaryDetailView(viewType, shouldScroll = false) {
-    if (!['usage', 'lowstock', 'actions'].includes(viewType)) viewType = 'usage';
-    currentDetailView = viewType;
-
-    // Update tab buttons
-    const btnUsage = document.getElementById("tabBtnUsage");
-    const btnLowStock = document.getElementById("tabBtnLowStock");
-    const btnActions = document.getElementById("tabBtnActions");
-
-    if (btnUsage) {
-        btnUsage.classList.toggle("active", viewType === "usage");
-        btnUsage.style.background = viewType === "usage" ? "#ffffff" : "transparent";
-        btnUsage.style.color = viewType === "usage" ? "#15803D" : "#475569";
-        btnUsage.style.boxShadow = viewType === "usage" ? "0 2px 8px rgba(0,0,0,0.08)" : "none";
-    }
-    if (btnLowStock) {
-        btnLowStock.classList.toggle("active", viewType === "lowstock");
-        btnLowStock.style.background = viewType === "lowstock" ? "#ffffff" : "transparent";
-        btnLowStock.style.color = viewType === "lowstock" ? "#DC2626" : "#475569";
-        btnLowStock.style.boxShadow = viewType === "lowstock" ? "0 2px 8px rgba(0,0,0,0.08)" : "none";
-    }
-    if (btnActions) {
-        btnActions.classList.toggle("active", viewType === "actions");
-        btnActions.style.background = viewType === "actions" ? "#ffffff" : "transparent";
-        btnActions.style.color = viewType === "actions" ? "#15803D" : "#475569";
-        btnActions.style.boxShadow = viewType === "actions" ? "0 2px 8px rgba(0,0,0,0.08)" : "none";
-    }
-
-    // Update Top Summary Cards active border highlight
-    const cardUsage = document.getElementById("cardUsageAndNeeds");
-    const cardLowStock = document.getElementById("cardLowStockWarning");
-    const cardActions = document.getElementById("cardSuggestedActions");
-
-    if (cardUsage) cardUsage.classList.toggle("active-summary-card", viewType === "usage");
-    if (cardLowStock) cardLowStock.classList.toggle("active-summary-card", viewType === "lowstock");
-    if (cardActions) cardActions.classList.toggle("active-summary-card", viewType === "actions");
-
-    // Update Header Title and Subtitle
-    const titleEl = document.getElementById("summaryDetailTitle");
-    const subEl = document.getElementById("summaryDetailSubtitle");
-    const badgeEl = document.getElementById("summaryDetailBadge");
-
-    if (viewType === "usage") {
-        if (titleEl) titleEl.textContent = "Raw Material Usage & Needs Breakdown";
-        if (subEl) subEl.textContent = "Complete list of registered raw materials with past 7-day usage and upcoming 7-day forecast.";
-        if (badgeEl) badgeEl.textContent = "Usage & Needs";
-    } else if (viewType === "lowstock") {
-        if (titleEl) titleEl.textContent = "Low Stock Warnings & Imminent Shortages";
-        if (subEl) subEl.textContent = "Raw materials that will run out before next week ends unless reordered promptly.";
-        if (badgeEl) badgeEl.textContent = "Shortage Alert";
-    } else if (viewType === "actions") {
-        if (titleEl) titleEl.textContent = "Suggested Restock Actions & Recommendations";
-        if (subEl) subEl.textContent = "Intelligent procurement advice detailing exact purchase quantities to prevent production halt.";
-        if (badgeEl) badgeEl.textContent = "Procurement Advice";
-    }
-
-    renderSummaryDetailList(viewType);
-
-    if (shouldScroll) {
-        const detailCard = document.getElementById("fcSummaryDetailCard");
-        if (detailCard) {
-            detailCard.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-    }
-}
-
-function renderSummaryDetailList(viewType) {
-    const container = document.getElementById("fcSummaryDetailListContainer");
-    if (!container) return;
-
-    const activeView = viewType || currentDetailView || 'usage';
-    const materialStats = state.materialStats || [];
-    const lowStockItems = state.lowStockItems || [];
-    const query = (document.getElementById("summaryDetailSearchInput")?.value || "").toLowerCase().trim();
-
-    // Update Tab Counts
-    const tabCountUsage = document.getElementById("tabCountUsage");
-    const tabCountLowStock = document.getElementById("tabCountLowStock");
-    const tabCountActions = document.getElementById("tabCountActions");
-    if (tabCountUsage) tabCountUsage.textContent = materialStats.length.toString();
-    if (tabCountLowStock) tabCountLowStock.textContent = lowStockItems.length.toString();
-    if (tabCountActions) tabCountActions.textContent = (lowStockItems.length > 0 ? lowStockItems.length : materialStats.length).toString();
-
-    if (materialStats.length === 0) {
-        container.innerHTML = `
-            <div style="padding: 40px 20px; text-align: center; color: #64748b;">
-                <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#94a3b8" stroke-width="1.5" style="margin-bottom: 12px; display: inline-block;">
-                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                </svg>
-                <div style="font-weight: 700; font-size: 1rem; color: #1e293b;">No Raw Materials Registered</div>
-                <p style="font-size: 0.85rem; margin-top: 4px;">Register raw materials in inventory to display usage, demand, and intelligent stockout forecasts.</p>
-            </div>
-        `;
-        return;
-    }
-
-    if (activeView === 'usage') {
-        let items = materialStats;
-        if (query) {
-            items = items.filter(s => {
-                const m = s.material;
-                return (m.name && m.name.toLowerCase().includes(query)) ||
-                       (m.itemCode && m.itemCode.toLowerCase().includes(query)) ||
-                       (m.category && m.category.toLowerCase().includes(query));
-            });
-        }
-
-        if (items.length === 0) {
-            container.innerHTML = `<div style="padding: 30px; text-align: center; color: #64748b;">No materials match "<strong>${query}</strong>"</div>`;
-            return;
-        }
-
-        let html = `
-            <table class="fc-detail-table">
-                <thead>
-                    <tr>
-                        <th style="width: 25%;">Raw Material</th>
-                        <th style="width: 14%;">Category</th>
-                        <th style="width: 14%; text-align: right;">Current In-Stock</th>
-                        <th style="width: 14%; text-align: right;">Past 7 Days Used</th>
-                        <th style="width: 15%; text-align: right;">Next 7 Days Needed</th>
-                        <th style="width: 18%;">Demand Trend</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        items.forEach(stat => {
-            const m = stat.material;
-            let trendLabel = "Steady Demand";
-            let trendBg = "#f1f5f9";
-            let trendColor = "#475569";
-
-            if (stat.past7Qty === 0 && stat.next7Qty > 0) {
-                trendLabel = "New Demand";
-                trendBg = "#e0f2fe";
-                trendColor = "#0369a1";
-            } else if (stat.next7Qty > stat.past7Qty) {
-                const diffPct = Math.round(((stat.next7Qty - stat.past7Qty) / (stat.past7Qty || 1)) * 100);
-                trendLabel = `+${diffPct}% Next Week`;
-                trendBg = "#ffedd5";
-                trendColor = "#c2410c";
-            } else if (stat.next7Qty < stat.past7Qty) {
-                const diffPct = Math.round(((stat.past7Qty - stat.next7Qty) / (stat.past7Qty || 1)) * 100);
-                trendLabel = `-${diffPct}% Next Week`;
-                trendBg = "#dcfce7";
-                trendColor = "#15803d";
-            }
-
-            const maxBar = Math.max(stat.past7Qty, stat.next7Qty, 1);
-            const pastPct = Math.min(100, Math.round((stat.past7Qty / maxBar) * 100));
-            const nextPct = Math.min(100, Math.round((stat.next7Qty / maxBar) * 100));
-
-            html += `
-                <tr>
-                    <td>
-                        <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${m.name}</div>
-                        <div style="font-size: 0.75rem; color: #64748b; font-family: monospace;">Code: ${m.itemCode || '—'}</div>
-                    </td>
-                    <td>
-                        <span style="font-size: 0.75rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: #f8fafc; border: 1px solid #e2e8f0; color: #475569;">
-                            ${m.category || 'General'}
-                        </span>
-                    </td>
-                    <td style="text-align: right; font-weight: 700; color: #1e293b;">
-                        ${stat.currentStock.toLocaleString()} <span style="font-weight: 500; font-size: 0.8rem; color: #64748b;">${m.unit}</span>
-                    </td>
-                    <td style="text-align: right; font-weight: 600; color: #334155;">
-                        <div>${stat.past7Qty.toLocaleString()} <span style="font-weight: 400; font-size: 0.8rem; color: #64748b;">${m.unit}</span></div>
-                        <div style="width: 80px; height: 4px; background: #e2e8f0; border-radius: 99px; margin: 4px 0 0 auto; overflow: hidden;">
-                            <div style="width: ${pastPct}%; height: 100%; background: #94a3b8; border-radius: 99px;"></div>
-                        </div>
-                    </td>
-                    <td style="text-align: right; font-weight: 700; color: #15803D;">
-                        <div>${stat.next7Qty.toLocaleString()} <span style="font-weight: 400; font-size: 0.8rem; color: #64748b;">${m.unit}</span></div>
-                        <div style="width: 80px; height: 4px; background: #dcfce7; border-radius: 99px; margin: 4px 0 0 auto; overflow: hidden;">
-                            <div style="width: ${nextPct}%; height: 100%; background: #22c55e; border-radius: 99px;"></div>
-                        </div>
-                    </td>
-                    <td>
-                        <span style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: ${trendBg}; color: ${trendColor};">
-                            ${trendLabel}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
-
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-
-    } else if (activeView === 'lowstock') {
-        let items = lowStockItems;
-        if (query) {
-            items = items.filter(s => {
-                const m = s.material;
-                return (m.name && m.name.toLowerCase().includes(query)) ||
-                       (m.itemCode && m.itemCode.toLowerCase().includes(query)) ||
-                       (m.category && m.category.toLowerCase().includes(query));
-            });
-        }
-
-        if (items.length === 0) {
-            if (query) {
-                container.innerHTML = `<div style="padding: 30px; text-align: center; color: #64748b;">No low stock materials match "<strong>${query}</strong>"</div>`;
-            } else {
-                container.innerHTML = `
-                    <div style="padding: 36px 20px; text-align: center; background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
-                        <span style="font-size: 2rem; display: block; margin-bottom: 8px;">🎉</span>
-                        <div style="font-size: 1.05rem; font-weight: 700; color: #166534;">Healthy Stock Levels Across All Materials</div>
-                        <p style="font-size: 0.85rem; color: #15803d; margin-top: 4px; max-width: 500px; margin-left: auto; margin-right: auto;">
-                            No raw materials have projected deficits or run-outs within the next 7 days. Current inventory is sufficient to sustain active production.
-                        </p>
-                    </div>
-                `;
-            }
-            return;
-        }
-
-        let html = `
-            <table class="fc-detail-table">
-                <thead>
-                    <tr>
-                        <th style="width: 25%;">Material</th>
-                        <th style="width: 13%; text-align: right;">In-Stock</th>
-                        <th style="width: 14%; text-align: right;">7-Day Demand</th>
-                        <th style="width: 14%; text-align: right; color: #dc2626;">Projected Shortage</th>
-                        <th style="width: 14%;">Stockout In</th>
-                        <th style="width: 20%;">Restock Guidance</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        items.forEach(stat => {
-            const m = stat.material;
-            const isCritical = stat.deficit > 0;
-
-            let urgencyBadge = `<span style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: #fee2e2; color: #dc2626;">🔴 Runs out in ${stat.daysLeft}d</span>`;
-            if (!isCritical) {
-                urgencyBadge = `<span style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: #fef3c7; color: #d97706;">🟡 Low Buffer (${stat.daysLeft}d)</span>`;
-            }
-
-            html += `
-                <tr style="${isCritical ? 'background: #fff8f8;' : ''}">
-                    <td>
-                        <div style="font-weight: 700; color: ${isCritical ? '#991b1b' : '#0f172a'}; font-size: 0.9rem;">${m.name}</div>
-                        <div style="font-size: 0.75rem; color: #64748b; font-family: monospace;">Code: ${m.itemCode || '—'}</div>
-                    </td>
-                    <td style="text-align: right; font-weight: 700; color: #334155;">
-                        ${stat.currentStock.toLocaleString()} <span style="font-weight: 400; font-size: 0.8rem; color: #64748b;">${m.unit}</span>
-                    </td>
-                    <td style="text-align: right; font-weight: 600; color: #0f172a;">
-                        ${stat.next7Qty.toLocaleString()} <span style="font-weight: 400; font-size: 0.8rem; color: #64748b;">${m.unit}</span>
-                    </td>
-                    <td style="text-align: right; font-weight: 800; color: ${isCritical ? '#dc2626' : '#d97706'}; font-size: 0.95rem;">
-                        ${isCritical ? `-${stat.deficit.toLocaleString()}` : '0'} <span style="font-weight: 500; font-size: 0.8rem;">${m.unit}</span>
-                    </td>
-                    <td>
-                        ${urgencyBadge}
-                    </td>
-                    <td>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: ${isCritical ? '#b91c1c' : '#b45309'};">
-                            ${isCritical 
-                                ? `Order at least <strong>${stat.deficit.toLocaleString()} ${m.unit}</strong> immediately`
-                                : `Consider purchasing to exceed min threshold (${m.minStock} ${m.unit})`}
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-
-    } else if (activeView === 'actions') {
-        let items = lowStockItems.length > 0 ? lowStockItems : materialStats;
-        if (query) {
-            items = items.filter(s => {
-                const m = s.material;
-                return (m.name && m.name.toLowerCase().includes(query)) ||
-                       (m.itemCode && m.itemCode.toLowerCase().includes(query)) ||
-                       (m.category && m.category.toLowerCase().includes(query));
-            });
-        }
-
-        if (items.length === 0) {
-            container.innerHTML = `<div style="padding: 30px; text-align: center; color: #64748b;">No recommendations match "<strong>${query}</strong>"</div>`;
-            return;
-        }
-
-        let html = `
-            <table class="fc-detail-table">
-                <thead>
-                    <tr>
-                        <th style="width: 18%;">Raw Material</th>
-                        <th style="width: 12%;">Item Code</th>
-                        <th style="width: 16%;">Procurement Priority</th>
-                        <th style="width: 14%; text-align: right;">Current Reserve</th>
-                        <th style="width: 15%; text-align: right;">Suggested Purchase</th>
-                        <th style="width: 30%;">Action Recommendation</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        items.forEach(stat => {
-            const m = stat.material;
-            const isShortage = stat.deficit > 0;
-            const isLowBuffer = !isShortage && stat.currentStock <= m.minStock;
-
-            let priorityBadge = `<span style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: #dcfce7; color: #15803d;">🟢 Stock Sufficient</span>`;
-            let suggestedQty = "0";
-            let actionText = `You have enough stock for about <strong>${stat.daysLeft} days</strong> of production. No need to purchase right now.`;
-
-            if (isShortage) {
-                priorityBadge = `<span style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: #fee2e2; color: #dc2626;">🔴 Urgent Restock</span>`;
-                suggestedQty = `+${stat.deficit.toLocaleString()}`;
-                actionText = `Stock will run out in about <strong>${stat.daysLeft} days</strong>. Buy at least <strong>${stat.deficit.toLocaleString()} ${m.unit}</strong> soon so production will not stop.`;
-            } else if (isLowBuffer) {
-                const bufferNeed = Math.max(1, Math.round(m.minStock * 1.5 - stat.currentStock));
-                priorityBadge = `<span style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; background: #fef3c7; color: #d97706;">🟡 Buffer Reorder</span>`;
-                suggestedQty = `+${bufferNeed.toLocaleString()}`;
-                actionText = `Current stock is close to minimum limit (${stat.currentStock} ${m.unit}). Consider ordering more ${m.unit} this week to maintain a safe buffer.`;
-            }
-
-            html += `
-                <tr style="${isShortage ? 'background: #fff8f8;' : ''}">
-                    <td>
-                        <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${m.name}</div>
-                    </td>
-                    <td>
-                        <span style="font-size: 0.8rem; color: #64748b; font-family: monospace; font-weight: 600;">${m.itemCode || '—'}</span>
-                    </td>
-                    <td>
-                        ${priorityBadge}
-                    </td>
-                    <td style="text-align: right; font-weight: 600; color: #334155;">
-                        ${stat.currentStock.toLocaleString()} <span style="font-weight: 400; font-size: 0.8rem; color: #64748b;">${m.unit}</span>
-                    </td>
-                    <td style="text-align: right; font-weight: 800; color: ${isShortage ? '#dc2626' : (isLowBuffer ? '#d97706' : '#15803d')};">
-                        ${suggestedQty} <span style="font-weight: 500; font-size: 0.8rem;">${m.unit}</span>
-                    </td>
-                    <td>
-                        <div style="font-size: 0.83rem; line-height: 1.45; color: #334155;">
-                            ${actionText}
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-
-        html += `</tbody></table>`;
-        container.innerHTML = html;
     }
 }
 
@@ -3727,36 +3250,59 @@ function initEventListeners() {
         });
     }
 
-    // 3. Top Summary Card Listeners (Switch detail list card below, no popup modals)
-    const cardUsage = document.getElementById("cardUsageAndNeeds");
-    if (cardUsage) {
-        cardUsage.addEventListener("click", () => {
-            switchSummaryDetailView('usage', true);
+    // 3. Top Summary Card Interactive Filter Listeners
+    function applyCardFilter(targetStatus, cardElement) {
+        const tableFilter = document.getElementById("tableStatusFilter");
+        const allCards = document.querySelectorAll(".fc-kpi-card");
+
+        if (state.tableStatus === targetStatus) {
+            // Toggle off
+            state.tableStatus = "ALL";
+            if (tableFilter) tableFilter.value = "ALL";
+            allCards.forEach(c => c.classList.remove("active-summary-card"));
+        } else {
+            // Activate filter
+            state.tableStatus = targetStatus;
+            if (tableFilter) {
+                if (targetStatus === "LOW_STOCK" || targetStatus === "OUT_OF_STOCK") {
+                    tableFilter.value = targetStatus;
+                } else {
+                    tableFilter.value = "ALL";
+                }
+            }
+            allCards.forEach(c => c.classList.remove("active-summary-card"));
+            if (cardElement) cardElement.classList.add("active-summary-card");
+        }
+
+        state.tablePage = 1;
+        renderForecastTable();
+
+        const tableSec = document.getElementById("forecastTableBody");
+        if (tableSec) {
+            tableSec.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }
+
+    const cardRestock = document.getElementById("cardNeedsRestock") || document.getElementById("cardUsageAndNeeds");
+    if (cardRestock) {
+        cardRestock.addEventListener("click", () => {
+            applyCardFilter("RESTOCK", cardRestock);
         });
     }
 
     const cardLowStock = document.getElementById("cardLowStockWarning");
     if (cardLowStock) {
         cardLowStock.addEventListener("click", () => {
-            switchSummaryDetailView('lowstock', true);
+            applyCardFilter("LOW_STOCK", cardLowStock);
         });
     }
 
-    const cardActions = document.getElementById("cardSuggestedActions");
-    if (cardActions) {
-        cardActions.addEventListener("click", () => {
-            switchSummaryDetailView('actions', true);
+    const cardOutOfStock = document.getElementById("cardOutOfStockWarning");
+    if (cardOutOfStock) {
+        cardOutOfStock.addEventListener("click", () => {
+            applyCardFilter("OUT_OF_STOCK", cardOutOfStock);
         });
     }
-
-    // Detail card tab buttons & search input
-    document.getElementById("tabBtnUsage")?.addEventListener("click", () => switchSummaryDetailView('usage', false));
-    document.getElementById("tabBtnLowStock")?.addEventListener("click", () => switchSummaryDetailView('lowstock', false));
-    document.getElementById("tabBtnActions")?.addEventListener("click", () => switchSummaryDetailView('actions', false));
-
-    document.getElementById("summaryDetailSearchInput")?.addEventListener("input", () => {
-        renderSummaryDetailList(currentDetailView);
-    });
 
     const viewAllNeedsBtn = document.getElementById("viewAllNeedsBtn");
     if (viewAllNeedsBtn) viewAllNeedsBtn.addEventListener("click", openTotalForecastModal);

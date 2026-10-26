@@ -84,124 +84,50 @@
         </header>
 
         <main class="admin-scroll-body" style="padding: 20px 24px 48px; width: 100%; box-sizing: border-box; overflow-y: auto;">
-            <!-- TOP 3 SUMMARY CARDS (Fit full width, edge-to-edge) -->
-            <section class="fc-forecast-cards-grid" aria-label="Forecast Summary Cards" style="display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 16px !important; width: 100% !important; box-sizing: border-box !important; margin-bottom: 18px;">
-                <!-- Card 1: Raw Material Usage & Needs (Auto-cycles through materials) -->
-                <div class="fc-kpi-card fc-card-rotator fc-card-interactive active-summary-card" id="cardUsageAndNeeds" title="Click to view complete usage &amp; needs list below">
-                    <div class="fc-kpi-content" style="width: 100%;">
-                        <div class="fc-card-head-row">
-                            <span class="fc-kpi-label">Raw Material Usage &amp; Needs</span>
-                            <span class="fc-cycle-pill" id="kpiCycleIndexPill">0 / 0</span>
-                        </div>
-                        
-                        <div class="fc-rotator-item-body" id="kpiUsageRotatorBody">
-                            <div class="fc-rotator-name-row">
-                                <span class="fc-rotator-mat-name" id="kpiActiveMatName">Loading...</span>
-                                <span class="fc-rotator-trend-badge" id="kpiActiveMatTrend">—</span>
-                            </div>
-                            
-                            <!-- 2 Progress Bars: Past 7 Days vs Next 7 Days Needs -->
-                            <div class="fc-rotator-metrics">
-                                <div class="fc-rotator-bar-block">
-                                    <div class="fc-rotator-bar-label-row">
-                                        <span>Used in Last 7 Days</span>
-                                        <strong id="kpiActivePastQty">--</strong>
-                                    </div>
-                                    <div class="fc-cycle-track">
-                                        <div class="fc-cycle-fill fc-fill-past" id="kpiActivePastBar" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-
-                                <div class="fc-rotator-bar-block">
-                                    <div class="fc-rotator-bar-label-row">
-                                        <span>Needed for Next 7 Days</span>
-                                        <strong id="kpiActiveNextQty">--</strong>
-                                    </div>
-                                    <div class="fc-cycle-track">
-                                        <div class="fc-cycle-fill fc-fill-next" id="kpiActiveNextBar" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <span class="fc-kpi-subtext" style="color: #15803D; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">👉 Click to view material usage &amp; needs list below</span>
-                    </div>
-                </div>
-
-                <!-- Card 2: Low Stock Warning (Count of shortages) -->
-                <div class="fc-kpi-card fc-card-interactive" id="cardLowStockWarning" title="Click to view low stock warnings below">
+            <!-- TOP 3 SUMMARY CARDS (Standard Summary Cards) -->
+            <section class="fc-forecast-cards-grid" aria-label="Forecast Summary Cards" style="display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 16px !important; width: 100% !important; box-sizing: border-box !important; margin-bottom: 20px;">
+                <!-- Card 1: Raw Materials Needing Restock -->
+                <div class="fc-kpi-card fc-card-interactive" id="cardNeedsRestock" title="Click to filter table by raw materials requiring restock">
                     <div class="fc-kpi-content">
-                        <span class="fc-kpi-label">Low Stock Warning (Next 7 Days)</span>
-                        <div class="fc-kpi-value-wrap">
-                            <span class="fc-kpi-value" id="kpiAttentionCount" style="color: var(--fc-red);">0</span>
+                        <span class="fc-kpi-label">Materials Needing Restock</span>
+                        <div class="fc-kpi-value-wrap" style="margin-top: 6px;">
+                            <span class="fc-kpi-value" id="kpiRestockCount" style="color: #15803D;">0</span>
                             <span style="font-size: 0.95rem; font-weight: 700; color: var(--fc-text-mid); margin-left: 4px;">Items</span>
                         </div>
-                        <p class="fc-warning-desc" id="kpiAttentionSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:2px 0 4px 0;">Items with insufficient stock for next week's demand</p>
-                        <span class="fc-kpi-subtext" style="color: #DC2626; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">👉 Click to view low stock warnings below</span>
+                        <p class="fc-warning-desc" id="kpiRestockSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:4px 0 0 0;">7-day forecast demand exceeds on-hand stock</p>
+                    </div>
+                    <div class="fc-kpi-icon fc-icon-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    </div>
+                </div>
+
+                <!-- Card 2: Low Stock Warning (Next 7 Days) -->
+                <div class="fc-kpi-card fc-card-interactive" id="cardLowStockWarning" title="Click to filter table by low stock materials">
+                    <div class="fc-kpi-content">
+                        <span class="fc-kpi-label">Low Stock Alert (Next 7 Days)</span>
+                        <div class="fc-kpi-value-wrap" style="margin-top: 6px;">
+                            <span class="fc-kpi-value" id="kpiAttentionCount" style="color: #D97706;">0</span>
+                            <span style="font-size: 0.95rem; font-weight: 700; color: var(--fc-text-mid); margin-left: 4px;">Items</span>
+                        </div>
+                        <p class="fc-warning-desc" id="kpiAttentionSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:4px 0 0 0;">Stock near or below safe buffer thresholds</p>
+                    </div>
+                    <div class="fc-kpi-icon fc-icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                </div>
+
+                <!-- Card 3: Out of Stock Alert -->
+                <div class="fc-kpi-card fc-card-interactive" id="cardOutOfStockWarning" title="Click to filter table by out of stock materials">
+                    <div class="fc-kpi-content">
+                        <span class="fc-kpi-label">Out of Stock Alert</span>
+                        <div class="fc-kpi-value-wrap" style="margin-top: 6px;">
+                            <span class="fc-kpi-value" id="kpiOutOfStockCount" style="color: #DC2626;">0</span>
+                            <span style="font-size: 0.95rem; font-weight: 700; color: var(--fc-text-mid); margin-left: 4px;">Items</span>
+                        </div>
+                        <p class="fc-warning-desc" id="kpiOutOfStockSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:4px 0 0 0;">Zero reserve on hand (immediate reorder required)</p>
                     </div>
                     <div class="fc-kpi-icon fc-icon-red">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                    </div>
-                </div>
-
-                <!-- Card 3: Suggested Actions for Next 7 Days (Auto-cycles through actionable advice) -->
-                <div class="fc-kpi-card fc-card-rotator fc-card-interactive" id="cardSuggestedActions" title="Click to view suggested restock actions below">
-                    <div class="fc-kpi-content" style="width: 100%;">
-                        <div class="fc-card-head-row">
-                            <span class="fc-kpi-label">Suggested Actions for Next 7 Days</span>
-                            <span class="fc-cycle-pill" id="kpiActionIndexPill">0 / 0</span>
-                        </div>
-                        
-                        <div class="fc-action-box" id="kpiActionBox">
-                            <div class="fc-action-header-row">
-                                <strong class="fc-action-mat-title" id="kpiActionMatName">Checking stock levels...</strong>
-                                <span class="fc-action-status-tag" id="kpiActionStatusTag">—</span>
-                            </div>
-                            <p class="fc-action-text" id="kpiActionMessage">Evaluating 7-day requirements...</p>
-                        </div>
-                        <span class="fc-kpi-subtext" style="color: #15803D; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-top: 6px;">👉 Click to view suggested restock actions below</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SUMMARY DETAIL LIST CARD (Displays the list for the selected summary card above) -->
-            <section class="fc-card" id="fcSummaryDetailCard" style="width: 100%; box-sizing: border-box; margin-bottom: 24px; border: 1px solid rgba(21, 128, 61, 0.2); box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.08);">
-                <div class="fc-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 18px 24px; border-bottom: 1px solid var(--fc-card-border); background: #ffffff;">
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <div class="fc-pill-badge-dark" id="summaryDetailBadge" style="background: #0f172a; color: #ffffff; padding: 5px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;">Detailed List</div>
-                        <div>
-                            <h3 class="fc-card-title" id="summaryDetailTitle" style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">Raw Material Usage &amp; Needs Breakdown</h3>
-                            <p id="summaryDetailSubtitle" style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b;">Complete list of registered raw materials with past 7-day usage and upcoming 7-day forecast.</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <!-- Filter Tabs matching the 3 top cards -->
-                        <div class="fc-summary-tabs" role="tablist" style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; gap: 4px;">
-                            <button type="button" class="fc-summary-tab active" id="tabBtnUsage" data-view="usage">
-                                📊 Usage &amp; Needs (<span id="tabCountUsage">0</span>)
-                            </button>
-                            <button type="button" class="fc-summary-tab" id="tabBtnLowStock" data-view="lowstock">
-                                ⚠️ Low Stock Warnings (<span id="tabCountLowStock">0</span>)
-                            </button>
-                            <button type="button" class="fc-summary-tab" id="tabBtnActions" data-view="actions">
-                                💡 Suggested Actions (<span id="tabCountActions">0</span>)
-                            </button>
-                        </div>
-                        <!-- Search Box for filtering this detail list -->
-                        <div style="position: relative; min-width: 220px;">
-                            <input type="text" id="summaryDetailSearchInput" placeholder="Filter materials..." style="width: 100%; padding: 8px 12px 8px 32px; font-size: 0.82rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background: #ffffff;">
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#94a3b8" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none;">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="fc-card-body" id="fcSummaryDetailBody" style="padding: 20px 24px; background: #ffffff;">
-                    <div id="fcSummaryDetailListContainer" style="overflow-x: auto; width: 100%;">
-                        <div style="padding: 32px; text-align: center; color: #94a3b8;">
-                            Loading forecast breakdown list...
-                        </div>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                     </div>
                 </div>
             </section>
