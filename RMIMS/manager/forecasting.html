@@ -264,7 +264,7 @@
                 <div class="fc-card fc-chart-card-main" id="matRequirementsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
                     <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <div style="width:36px; height:36px; border-radius:10px; background:#DBEAFE; color:#2563EB; border: 1px solid #93C5FD; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; border: 1px solid #86EFAC; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;">
                                     <circle cx="12" cy="12" r="10"/>
                                     <path d="M12 2a10 10 0 0 1 10 10h-10z"/>
@@ -294,121 +294,30 @@
                                 </div>
                             </div>
 
-                            <!-- Dynamic Legend matching User's 3 Categories -->
+                            <!-- Dynamic Legend matching User's 3 Categories with System Brand Colors -->
                             <div style="display: flex; flex-direction: column; gap: 14px; min-width: 180px; flex: 1;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
                                     <span style="display: inline-flex; align-items: center; gap: 8px; color: #1E293B; font-weight: 600;">
-                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #2563EB;"></span>
+                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #EF4444;"></span>
                                         Need Reorder
                                     </span>
                                     <span style="font-weight: 700; color: #0F2A1B;"><span id="reqNeedCount">0</span> (<span id="reqNeedPct">0%</span>)</span>
                                 </div>
                                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
                                     <span style="display: inline-flex; align-items: center; gap: 8px; color: #1E293B; font-weight: 600;">
-                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #38BDF8;"></span>
+                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #22C55E;"></span>
                                         Not Yet Reorder
                                     </span>
                                     <span style="font-weight: 700; color: #0F2A1B;"><span id="reqNotYetCount">0</span> (<span id="reqNotYetPct">0%</span>)</span>
                                 </div>
                                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
                                     <span style="display: inline-flex; align-items: center; gap: 8px; color: #1E293B; font-weight: 600;">
-                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981;"></span>
+                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #0F2A1B;"></span>
                                         Successfully Reordered
                                     </span>
                                     <span style="font-weight: 700; color: #0F2A1B;"><span id="reqSuccessCount">0</span> (<span id="reqSuccessPct">0%</span>)</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ROW 3: FULL-WIDTH RAW MATERIAL FORECAST TABLE -->
-            <section class="fc-card">
-                <div class="fc-card-header">
-                    <div class="fc-card-title-group">
-                        <h2 class="fc-card-title">Raw Material Forecast Table</h2>
-                        <p class="fc-card-subtitle">Authoritative operational ledger comparing current stock and upcoming forecasted demand</p>
-                    </div>
-                </div>
-
-                <!-- Table Toolbar -->
-                <div class="fc-table-toolbar">
-                    <div class="fc-search-wrap">
-                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                        <input type="text" class="fc-search-input" id="tableSearchInput" placeholder="Search by Material Name, ID, or Finished Product Context..."/>
-                    </div>
-
-                    <div class="fc-table-filters">
-                        <select class="fc-select" id="tableStatusFilter" aria-label="Filter by Status">
-                            <option value="ALL">All Statuses</option>
-                            <option value="GOOD">Good</option>
-                            <option value="LOW_STOCK">Low Stock</option>
-                            <option value="OUT_OF_STOCK">Out of Stock</option>
-                        </select>
-
-                        <select class="fc-select" id="tableUnitFilter" aria-label="Filter by Unit">
-                            <option value="ALL">All Units</option>
-                        </select>
-
-                        <select class="fc-select" id="tableSortSelect" aria-label="Sort Table">
-                            <option value="latest">Sort: Latest</option>
-                            <option value="oldest">Sort: Oldest</option>
-                            <option value="az">Material: A–Z</option>
-                            <option value="za">Material: Z–A</option>
-                            <option value="high_forecast" selected>Highest Forecast</option>
-                            <option value="low_forecast">Lowest Forecast</option>
-                            <option value="high_need">Highest Additional Need</option>
-                            <option value="low_stock">Lowest Stock</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Table Content -->
-                <div class="fc-table-container">
-                    <table class="fc-table" id="forecastTable">
-                        <thead>
-                            <tr>
-                                <th>Raw Material</th>
-                                <th>ID</th>
-                                <th>Finished Product Context</th>
-                                <th>Unit</th>
-                                <th>Current Stock</th>
-                                <th>Recent Consumption</th>
-                                <th>Forecast Requirement</th>
-                                <th>Additional Need</th>
-                                <th>Status</th>
-                                <th>Forecast Date</th>
-                            </tr>
-                        </thead>
-                        <tbody id="forecastTableBody">
-                            <!-- Populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Table Pagination -->
-                <div class="fc-table-pagination">
-                    <div class="fc-page-info" id="tablePageInfo">
-                        Showing 0 to 0 of 0 records
-                    </div>
-                    <div class="fc-table-filters" style="gap: 12px;">
-                        <div style="display:flex; align-items:center; gap: 6px;">
-                            <span style="font-size:0.75rem; color:var(--fc-text-muted); font-weight:600;">Rows:</span>
-                            <select class="fc-select" id="tableRowsPerPageSelect" style="padding: 4px 8px; font-size: 0.75rem;">
-                                <option value="10" selected>10</option>
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                        <div class="fc-page-controls" id="tablePaginationControls">
-                            <button type="button" class="fc-page-btn fc-page-nav-btn disabled" disabled aria-label="Previous page">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                            </button>
-                            <button type="button" class="fc-page-btn disabled" data-page="1" disabled>1</button>
-                            <button type="button" class="fc-page-btn fc-page-nav-btn disabled" disabled aria-label="Next page">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                            </button>
                         </div>
                     </div>
                 </div>

@@ -2715,34 +2715,25 @@ function renderLowStockAlerts() {
         `;
     }).join("");
 
-    // Click handler: filter forecast table by clicked material
+    // Click handler: open detailed forecast modal for clicked material
     container.querySelectorAll('.low-stock-alert-item').forEach(el => {
         el.addEventListener('click', () => {
             const matName = el.getAttribute('data-mat-name');
             if (matName) {
-                const searchInput = document.getElementById('tableSearchInput');
-                if (searchInput) {
-                    searchInput.value = matName;
-                    state.tableSearch = matName;
-                    state.tablePage = 1;
-                    renderForecastTable();
-                    searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+                openMaterialDetailModal(matName);
             }
         });
     });
 
-    // View All Low Stock button listener
+    // View All Low Stock button listener: open full breakdown modal filtered to low stock
     const viewAllLowBtn = document.getElementById('viewAllLowStockBtn');
     if (viewAllLowBtn) {
         viewAllLowBtn.onclick = () => {
-            const statusFilter = document.getElementById('tableStatusFilter');
-            if (statusFilter) {
-                statusFilter.value = 'LOW_STOCK';
-                state.tableStatus = 'LOW_STOCK';
-                state.tablePage = 1;
-                renderForecastTable();
-                statusFilter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            openTotalForecastModal();
+            const filter = document.getElementById('modalTotalForecastFilter');
+            if (filter) {
+                filter.value = 'low_stock';
+                renderModalTotalForecastTable();
             }
         };
     }
@@ -2827,7 +2818,7 @@ function renderMaterialRequirementsDonut() {
     if (successPctEl) successPctEl.textContent = `${successPct}%`;
 
     const donutData = total === 0 ? [1] : [needReorderCount, notYetReorderCount, successfullyReorderedCount];
-    const donutColors = total === 0 ? ['#2563EB'] : ['#2563EB', '#38BDF8', '#10B981'];
+    const donutColors = total === 0 ? ['#22C55E'] : ['#EF4444', '#22C55E', '#0F2A1B'];
     const donutLabels = total === 0 ? ['No Materials'] : ['Need Reorder', 'Not Yet Reorder', 'Successfully Reordered'];
 
     if (matRequirementsDonutInstance) {
