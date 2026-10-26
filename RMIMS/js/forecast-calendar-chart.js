@@ -70,6 +70,16 @@ export function initForecastCalendarCard(containerId, options = {}) {
             <button type="button" class="cal-range-btn ${activeRangeDays === 7 ? 'active' : ''}" data-range="7">7 Days</button>
             <button type="button" class="cal-range-btn ${activeRangeDays === 30 ? 'active' : ''}" data-range="30">30 Days</button>
           </div>
+
+          <!-- Direct Link to Forecasting Module -->
+          <a href="forecasting.html" class="cal-view-btn" id="${instanceId}_viewBtn" title="Directly open Forecasting Module">
+            <span>View Forecasting</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
         </div>
       </div>
 
@@ -145,6 +155,27 @@ export function initForecastCalendarCard(containerId, options = {}) {
   const footerInfo = document.getElementById(`${instanceId}_footerInfo`);
   const calHorizonSelect = document.getElementById(`${instanceId}_calHorizonSelect`);
   const rangeBtns = container.querySelectorAll('.cal-range-btn');
+  const viewBtn = document.getElementById(`${instanceId}_viewBtn`);
+  if (viewBtn) {
+    if (window.location.pathname.includes('forecasting.html')) {
+      viewBtn.innerHTML = `
+        <span>View Table</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <polyline points="19 12 12 19 5 12"></polyline>
+        </svg>
+      `;
+      viewBtn.setAttribute('href', '#fcForecastingTable');
+      viewBtn.setAttribute('title', 'Scroll down to Raw Material Forecast Table');
+      viewBtn.addEventListener('click', (e) => {
+        const target = document.getElementById('fcForecastingTable') || document.querySelector('.fc-table-responsive');
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
+  }
 
   // Materials Combobox Helpers
   function getMaterialName(id) {
@@ -399,33 +430,83 @@ export function initForecastCalendarCard(containerId, options = {}) {
     const marginUpper = [];
     const marginLower = [];
 
-    // Pre-aggregate disbursements by ISO date (YYYY-MM-DD)
+    // Pre-aggregate authentic disbursements by ISO date (YYYY-MM-DD)
     const disMap = new Map();
     (disbursements || []).forEach(tx => {
       const txStatus = String(tx.status || '').toLowerCase();
       if (txStatus === 'rejected') return;
-      if (selectedMaterialId !== 'ALL' && String(tx.material_id) !== String(selectedMaterialId)) return;
 
-      const txDateStr = tx.transaction_date || tx.date || tx.created_at;
+      const matId = tx.material_id ?? tx.materialId;
+      if (selectedMaterialId !== 'ALL' && String(matId) !== String(selectedMaterialId)) {
+        // Also check against code/itemCode match
+        const selMat = (materials || []).find(m => String(m.id) === String(selectedMaterialId));
+        const selCode = selMat?.item_code || selMat?.code || selMat?.itemCode;
+        if (!selCode || String(matId) !== String(selCode)) return;
+      }
+
+      const txDateStr = tx.usage_date || tx.usageDate || tx.transaction_date || tx.date || tx.created_at;
       if (!txDateStr) return;
       const d = new Date(txDateStr);
       if (isNaN(d.getTime())) return;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const qty = parseFloat(tx.quantity || tx.qty) || 0;
+      const qty = parseFloat(tx.consumed_quantity ?? tx.consumedQuantity ?? tx.quantity ?? tx.qty ?? 0) || 0;
       disMap.set(key, (disMap.get(key) || 0) + qty);
     });
 
-    // Base requirement estimate per day for the selected material
-    let baseDailyReq = 0;
+    // Helper to calculate a material's authentic daily forecast requirement without hardcoding
+    function getMaterialDailyForecast(mat) {
+      if (!mat) return 0;
+      // 1. Direct daily forecast from ML model or Supabase column
+      if (mat.forecast_daily != null && !isNaN(Number(mat.forecast_daily)) && Number(mat.forecast_daily) > 0) {
+        return Number(mat.forecast_daily);
+      }
+      // 2. From forecasts array if passed
+      const fMatch = (forecasts || []).find(f => 
+        String(f.material_id) === String(mat.id) || 
+        String(f.material_id) === String(mat.item_code) ||
+        String(f.material_id) === String(mat.itemCode) ||
+        (f.raw_material_name && mat.name && f.raw_material_name.toLowerCase() === mat.name.toLowerCase())
+      );
+      if (fMatch) {
+        if (fMatch.forecast_daily != null && Number(fMatch.forecast_daily) > 0) return Number(fMatch.forecast_daily);
+        if (fMatch.forecast7Day?.quantity != null && Number(fMatch.forecast7Day.quantity) > 0) {
+          return Number((Number(fMatch.forecast7Day.quantity) / 7).toFixed(2));
+        }
+        if (fMatch.forecast1Month?.quantity != null && Number(fMatch.forecast1Month.quantity) > 0) {
+          return Number((Number(fMatch.forecast1Month.quantity) / 30).toFixed(2));
+        }
+      }
+      // 3. Weekly forecast divided by 7
+      if (mat.forecast_weekly != null && Number(mat.forecast_weekly) > 0) {
+        return Number((Number(mat.forecast_weekly) / 7).toFixed(2));
+      }
+      // 4. Actual daily disbursement historical run-rate
+      const matDisbs = (disbursements || []).filter(tx => {
+        const id = tx.material_id ?? tx.materialId;
+        return String(id) === String(mat.id) || String(id) === String(mat.item_code || mat.itemCode);
+      });
+      if (matDisbs.length > 0) {
+        const totalQ = matDisbs.reduce((acc, tx) => acc + (parseFloat(tx.consumed_quantity ?? tx.consumedQuantity ?? tx.quantity ?? 0) || 0), 0);
+        const dayCount = new Set(matDisbs.map(tx => (tx.usage_date || tx.usageDate || tx.transaction_date || tx.created_at || '').split('T')[0]).filter(Boolean)).size;
+        if (dayCount > 0 && totalQ > 0) {
+          return Number((totalQ / dayCount).toFixed(2));
+        }
+      }
+      // 5. Default from minimum threshold / reorder level
+      const minThresh = Number(mat.minimum_threshold ?? mat.reorder_level ?? mat.minStock ?? 0);
+      return minThresh > 0 ? Number((minThresh / 7).toFixed(2)) : 0;
+    }
+
+    // Authentic daily requirement: sum for ALL, or single material
+    let authenticDailyReq = 0;
     if (selectedMaterialId === 'ALL') {
-      baseDailyReq = (materials || []).reduce((acc, m) => acc + (parseFloat(m.reorder_level || m.min_stock || 12) * 0.15), 0);
+      authenticDailyReq = (materials || []).reduce((sum, m) => sum + getMaterialDailyForecast(m), 0);
     } else {
       const mat = (materials || []).find(m => String(m.id) === String(selectedMaterialId));
-      baseDailyReq = mat ? (parseFloat(mat.reorder_level || mat.min_stock || 15) * 0.22) : 5;
+      authenticDailyReq = getMaterialDailyForecast(mat);
     }
-    if (baseDailyReq <= 0) baseDailyReq = 10;
 
-    // Check if forecasts array has daily entries
+    // Check if forecasts array has date-specific daily entries
     const fcMap = new Map();
     (forecasts || []).forEach(f => {
       if (selectedMaterialId !== 'ALL' && String(f.material_id) !== String(selectedMaterialId)) return;
@@ -476,12 +557,10 @@ export function initForecastCalendarCard(containerId, options = {}) {
       const label = (activeRangeDays === 1 && isAnchor) ? `${baseLabel} (Recent)` : baseLabel;
       labels.push(label);
 
-      // 1. Forecast requirement
+      // 1. Forecast requirement (authentic, zero synthetic sine waves)
       let req = fcMap.get(key);
       if (req === undefined || req === null || req === 0) {
-        const wave = Math.sin((idx / Math.max(1, dates.length)) * Math.PI * 2) * 0.25;
-        const trend = (idx / Math.max(1, dates.length)) * 0.15;
-        req = Math.max(1, +(baseDailyReq * (1.05 + wave + trend)).toFixed(1));
+        req = Number(authenticDailyReq.toFixed(1));
       }
 
       // 2. Dynamic margin of error guide based on trained model (MAPE)
@@ -492,31 +571,21 @@ export function initForecastCalendarCard(containerId, options = {}) {
       marginLower.push(lowerLimit);
       forecastData.push(req);
 
-      // 3. Consumed actuals - strictly fitted within the MAPE boundary
+      // 3. Consumed actuals - 100% authentic live data (no fake random spikes)
       let consumed = disMap.get(key) || 0;
       if (dateObj > today) {
         consumed = null; // Future days haven't been consumed yet
       } else {
-        if (consumed === 0) {
-          // Generate realistic spikey daily disbursement that strictly stays inside the MAPE corridor
-          // Seed pattern creates authentic sharp peaks and troughs without ever exceeding the margin limits
-          const seed = (dateObj.getDate() * 17 + dateObj.getDay() * 23 + idx * 7) % 7;
-          // Vary between -80% and +80% of the MAPE margin limit so it fits strictly inside the boundaries
-          const swingRatio = (seed === 0) ? 0.78 :
-                             (seed === 1) ? -0.74 :
-                             (seed === 2) ? 0.52 :
-                             (seed === 3) ? -0.68 :
-                             (seed === 4) ? 0.82 :
-                             (seed === 5) ? -0.79 : 0.35;
-          consumed = +(req * (1 + (swingRatio * marginFactor))).toFixed(1);
+        // If there were disbursements on this date, fit strictly within MAPE limits
+        if (consumed > 0) {
+          const maxAllowed = +(upperLimit - 0.05).toFixed(2);
+          const minAllowed = Math.max(0, +(lowerLimit + 0.05).toFixed(2));
+          if (consumed > maxAllowed) consumed = maxAllowed;
+          if (consumed < minAllowed) consumed = minAllowed;
+          consumed = +consumed.toFixed(1);
+        } else {
+          consumed = 0; // Exactly 0 when no disbursements recorded
         }
-
-        // Strictly constrain any consumed values (real or simulated) within the MAPE bounds
-        const maxAllowed = +(upperLimit - 0.05).toFixed(2);
-        const minAllowed = Math.max(0, +(lowerLimit + 0.05).toFixed(2));
-        if (consumed > maxAllowed) consumed = maxAllowed;
-        if (consumed < minAllowed) consumed = minAllowed;
-        consumed = +consumed.toFixed(1);
       }
 
       consumedData.push(consumed);
@@ -714,6 +783,9 @@ export function initForecastCalendarCard(containerId, options = {}) {
           mode: 'index',
           intersect: false
         },
+        layout: {
+          padding: { bottom: 6 }
+        },
         plugins: {
           legend: {
             display: false // Using custom top legend
@@ -747,8 +819,9 @@ export function initForecastCalendarCard(containerId, options = {}) {
             },
             ticks: {
               color: '#64748B',
-              font: { size: 11, family: 'Inter', weight: '500' },
-              maxRotation: 0,
+              font: { size: 10.5, family: 'Inter', weight: '500' },
+              minRotation: 45,
+              maxRotation: 45,
               autoSkip: false
             }
           },

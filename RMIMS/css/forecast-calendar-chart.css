@@ -246,6 +246,44 @@
   box-shadow: 0 2px 6px rgba(21, 128, 61, 0.25);
 }
 
+/* Direct Link / Navigation to Forecasting Module */
+.cal-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0F2A1B;
+  color: #FFFFFF !important;
+  text-decoration: none;
+  font-family: 'Sora', 'Inter', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 9px;
+  border: 1px solid #15803D;
+  box-shadow: 0 2px 5px rgba(15, 42, 27, 0.15);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cal-view-btn:hover {
+  background: #14532D;
+  border-color: #22C55E;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);
+}
+
+.cal-view-btn svg {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.2s ease;
+}
+
+.cal-view-btn:hover svg {
+  transform: translateX(2px) translateY(-1px);
+}
+
 /* ==========================================================
    MAIN BODY: STRICTLY SIDE-BY-SIDE (CHART LEFT, CALENDAR RIGHT)
    ========================================================== */
