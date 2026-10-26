@@ -349,20 +349,19 @@ async function loadAuthoritativeData() {
         assertRbacFolderAccess(tCtx.datasetFolder);
         renderTenantBanner();
 
-        // 1. Fetch Supabase Data
+        // 1. Fetch Live Supabase Data
         let rawMats = [];
         let rawUsage = [];
         let rawReceipts = [];
 
-        const BACKEND_STANDBY = true;
-        if (!BACKEND_STANDBY) {
-            try {
-                const fetchWithTimeout = (promise, ms = 3500) => 
-                    Promise.race([
-                        promise,
-                        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
-                    ]);
+        try {
+            const fetchWithTimeout = (promise, ms = 3500) => 
+                Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+                ]);
 
+            if (supabase) {
                 const [matRes, useRes, recRes] = await Promise.allSettled([
                     fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")),
                     fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })),
@@ -372,9 +371,9 @@ async function loadAuthoritativeData() {
                 if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
                 if (useRes.status === "fulfilled" && useRes.value?.data && useRes.value.data.length > 0) rawUsage = useRes.value.data;
                 if (recRes.status === "fulfilled" && recRes.value?.data && recRes.value.data.length > 0) rawReceipts = recRes.value.data;
-            } catch (e) {
-                console.warn("Using baseline forecasting dataset:", e);
             }
+        } catch (e) {
+            console.warn("Using baseline forecasting dataset with local fallback:", e);
         }
 
         let deletedMatIds = new Set();
@@ -434,6 +433,16 @@ async function loadAuthoritativeData() {
             }
         });
 
+        // If live Supabase returned raw_materials, merge stocks
+        rawMats.forEach(sm => {
+            const k = String(sm.name || sm.id || "").toLowerCase().trim();
+            if (matMap.has(k)) {
+                const target = matMap.get(k);
+                target.current_stock = Number(sm.current_stock ?? target.current_stock);
+                if (sm.minimum_threshold) target.minimum_threshold = Number(sm.minimum_threshold);
+            }
+        });
+
         let masterMats = Array.from(matMap.values());
         if (deletedMatIds.size > 0) {
             masterMats = masterMats.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
@@ -442,6 +451,7 @@ async function loadAuthoritativeData() {
         // 2. Authoritative Disbursements (Strictly Live User Transactions - Zero Mock Historical Datasets)
         const disbMap = new Map();
         getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
+        rawUsage.forEach(u => disbMap.set(String(u.id), { ...u }));
         let masterDisbursements = Array.from(disbMap.values());
         if (deletedDisbIds.size > 0) {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
@@ -450,6 +460,7 @@ async function loadAuthoritativeData() {
         // 3. Authoritative Receipts (Strictly Live User Transactions - Zero Mock Historical Datasets)
         const recMap = new Map();
         getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
+        rawReceipts.forEach(r => recMap.set(String(r.id), { ...r }));
         let masterReceipts = Array.from(recMap.values());
         if (deletedRecIds.size > 0) {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
@@ -2512,7 +2523,25 @@ function renderDecisionSupport() {
         ? state.disbursements
         : (typeof getSystemCustomDisbursements === "function" ? getSystemCustomDisbursements() : []);
 
+    const receipts = Array.isArray(state.receipts) && state.receipts.length > 0
+        ? state.receipts
+        : (typeof getSystemCustomReceipts === "function" ? getSystemCustomReceipts() : []);
+
     const now = new Date();
+
+    // Check if there are any actual operational transactions executed
+    const hasTransactions = disbursements.length > 0 || receipts.length > 0;
+    if (!hasTransactions) {
+        container.innerHTML = `
+            <div class="fc-decision-standby" style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; background: #F8FAFC; border: 1.5px dashed #CBD5E1; border-radius: 14px;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <div style="font-weight: 700; font-size: 14px; color: #0F2A1B; margin-bottom: 4px;">AI Forecasting Decision Support Standby</div>
+                <div style="font-size: 12px; color: #64748B; max-width: 460px; margin: 0 auto;">Operational decision recommendations activate as daily transactions are executed. Record daily usage or inward receipts to generate dynamic replenishment advice and shortage alerts.</div>
+            </div>`;
+        return;
+    }
 
     // Sort materials: Potential Shortages first, then key operational materials
     const evaluated = materials.map(m => {
@@ -2528,9 +2557,6 @@ function renderDecisionSupport() {
             .reduce((sum, d) => sum + Number(d.consumedQuantity || d.consumed_quantity || 0), 0);
 
         // Past 7-day inward receipts (from real recorded receipts)
-        const receipts = Array.isArray(state.receipts) && state.receipts.length > 0
-            ? state.receipts
-            : (typeof getSystemCustomReceipts === "function" ? getSystemCustomReceipts() : []);
         const receive7Day = receipts
             .filter(r => (r.materialId === m.id || r.material_id === m.id) && (now.getTime() - new Date(r.receiptDate || r.created_at || r.createdAt).getTime()) <= 7 * 86400000)
             .reduce((sum, r) => sum + Number(r.receivedQuantity || r.received_quantity || r.quantity || 0), 0);
@@ -2678,15 +2704,77 @@ function renderLowStockAlerts() {
         } catch (e) {}
     }
 
+    // Expand Table Button in Low Stock card header - ALWAYS active and clickable
+    const openTableBtn = document.getElementById('openTableFromLowStockBtn');
+    if (openTableBtn) {
+        openTableBtn.onclick = () => {
+            openTotalForecastModal();
+        };
+    }
+    const viewAllLowBtn = document.getElementById('viewAllLowStockBtn');
+    if (viewAllLowBtn) {
+        viewAllLowBtn.onclick = () => {
+            openTotalForecastModal();
+            const filter = document.getElementById('modalTotalForecastFilter');
+            if (filter) {
+                filter.value = 'low_stock';
+                renderModalTotalForecastTable();
+            }
+        };
+    }
+
     if (!materials || materials.length === 0) {
         container.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--fc-text-dim);">Checking material stocks...</div>`;
         return;
     }
 
-    // Filter materials where currentStock <= minStock or 7-day forecast demand exceeds on-hand stock
+    // Collect materials that had actual recent activity/updates for each day (within 48 hours)
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const recentActivityMatKeys = new Set();
+
+    const allDisbs = Array.isArray(state.disbursements) && state.disbursements.length > 0
+        ? state.disbursements
+        : (typeof getSystemCustomDisbursements === "function" ? getSystemCustomDisbursements() : []);
+    allDisbs.forEach(d => {
+        const dDate = d.usage_date || d.usageDate || d.transaction_date || d.created_at || d.date;
+        if (!dDate) return;
+        const dStr = String(dDate).split('T')[0];
+        const diffDays = Math.abs(now.getTime() - new Date(dDate).getTime()) / 86400000;
+        if (dStr === todayStr || diffDays <= 2) {
+            if (d.material_id) recentActivityMatKeys.add(String(d.material_id).toLowerCase().trim());
+            if (d.materialId) recentActivityMatKeys.add(String(d.materialId).toLowerCase().trim());
+            if (d.materialName) recentActivityMatKeys.add(String(d.materialName).toLowerCase().trim());
+            if (d.material_name) recentActivityMatKeys.add(String(d.material_name).toLowerCase().trim());
+        }
+    });
+
+    const allRecs = Array.isArray(state.receipts) && state.receipts.length > 0
+        ? state.receipts
+        : (typeof getSystemCustomReceipts === "function" ? getSystemCustomReceipts() : []);
+    allRecs.forEach(r => {
+        const rDate = r.receipt_date || r.receiptDate || r.transaction_date || r.created_at || r.date;
+        if (!rDate) return;
+        const rStr = String(rDate).split('T')[0];
+        const diffDays = Math.abs(now.getTime() - new Date(rDate).getTime()) / 86400000;
+        if (rStr === todayStr || diffDays <= 2) {
+            if (r.material_id) recentActivityMatKeys.add(String(r.material_id).toLowerCase().trim());
+            if (r.materialId) recentActivityMatKeys.add(String(r.materialId).toLowerCase().trim());
+            if (r.materialName) recentActivityMatKeys.add(String(r.materialName).toLowerCase().trim());
+            if (r.material_name) recentActivityMatKeys.add(String(r.material_name).toLowerCase().trim());
+        }
+    });
+
+    // In the display card: ONLY show materials that have recent updates of each day where stock alert results apply
     const lowStockMaterials = materials.filter(m => {
-        const curStock = Number(m.currentStock || 0);
-        const minStock = Number(m.minStock || 10);
+        const idKey = String(m.id || '').toLowerCase().trim();
+        const codeKey = String(m.itemCode || m.item_code || '').toLowerCase().trim();
+        const nameKey = String(m.name || '').toLowerCase().trim();
+        const hasRecentUpdate = recentActivityMatKeys.has(idKey) || recentActivityMatKeys.has(codeKey) || recentActivityMatKeys.has(nameKey);
+        if (!hasRecentUpdate) return false;
+
+        const curStock = Number(m.currentStock ?? m.current_stock ?? 0);
+        const minStock = Number(m.minStock ?? m.minimum_threshold ?? 10);
         const fc = state.forecasts?.get(m.name);
         const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
         return curStock <= minStock || (fQty > 0 && curStock < fQty);
@@ -2701,10 +2789,12 @@ function renderLowStockAlerts() {
 
     if (lowStockMaterials.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 28px 16px; background: rgba(34, 197, 94, 0.05); border-radius: 12px; border: 1px dashed rgba(34, 197, 94, 0.2);">
-                <span style="font-size: 24px; display: block; margin-bottom: 6px;">✨</span>
-                <span style="font-weight: 600; color: #15803D; font-size: 13px;">All inventory levels healthy</span>
-                <p style="margin: 4px 0 0; font-size: 11.5px; color: #5C7A68;">No raw materials currently below safety stock buffer thresholds.</p>
+            <div style="text-align: center; padding: 28px 16px; background: rgba(34, 197, 94, 0.04); border-radius: 12px; border: 1px dashed rgba(34, 197, 94, 0.25);">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #DCFCE7; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; color: #15803D;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span style="font-weight: 700; color: #15803D; font-size: 13px;">No Daily Stock Alert Updates</span>
+                <p style="margin: 4px 0 0; font-size: 11.5px; color: #5C7A68; max-width: 320px; margin-left: auto; margin-right: auto;">Stock depletion alerts appear here as daily transactions are executed. Click the expand icon to inspect the full inventory list.</p>
             </div>`;
         return;
     }
@@ -2774,27 +2864,6 @@ function renderLowStockAlerts() {
             }
         });
     });
-
-    // View All Low Stock button listener: open full breakdown modal filtered to low stock
-    const viewAllLowBtn = document.getElementById('viewAllLowStockBtn');
-    if (viewAllLowBtn) {
-        viewAllLowBtn.onclick = () => {
-            openTotalForecastModal();
-            const filter = document.getElementById('modalTotalForecastFilter');
-            if (filter) {
-                filter.value = 'low_stock';
-                renderModalTotalForecastTable();
-            }
-        };
-    }
-
-    // View / Expand Table Button in Low Stock card header
-    const openTableBtn = document.getElementById('openTableFromLowStockBtn');
-    if (openTableBtn) {
-        openTableBtn.onclick = () => {
-            openTotalForecastModal();
-        };
-    }
 }
 
 function renderMaterialRequirementsDonut() {
@@ -3006,6 +3075,36 @@ function renderTopMaterialsRequirementChart() {
         if (nameKey) recMap.set(nameKey, (recMap.get(nameKey) || 0) + qty);
     });
 
+    const totalReceivedSum = Array.from(recMap.values()).reduce((sum, v) => sum + v, 0);
+
+    // If there is no execution of inputting received raw materials across the catalog:
+    if (totalReceivedSum <= 0) {
+        canvas.style.display = 'none';
+        if (!emptyBox) {
+            emptyBox = document.createElement('div');
+            emptyBox.id = 'fcTopMaterialsEmpty';
+            canvas.parentNode.appendChild(emptyBox);
+        }
+        emptyBox.style.display = 'flex';
+        emptyBox.innerHTML = `
+            <div style="height: 100%; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 36px 16px; background: #F8FAFC; border: 1.5px dashed #E2E8F0; border-radius: 12px; color: #64748B; width: 100%;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: #FFF7ED; color: #EA580C; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </div>
+                <div style="font-weight: 700; font-size: 14px; color: #0F2A1B; margin-bottom: 4px;">Awaiting Inward Deliveries</div>
+                <div style="font-size: 12px; color: #64748B; max-width: 380px; margin: 0 auto;">No inward raw material receipts have been executed yet. Record raw material receipts to generate top inward supply and future requirement rankings.</div>
+            </div>
+        `;
+        if (fcTopMaterialsChartInstance) {
+            fcTopMaterialsChartInstance.destroy();
+            fcTopMaterialsChartInstance = null;
+        }
+        return;
+    }
+
+    canvas.style.display = 'block';
+    if (emptyBox) emptyBox.style.display = 'none';
+
     const isMonthly = state.selectedPeriod === "monthly";
 
     // 2. Map materials with Future Requirement & Received metrics
@@ -3032,10 +3131,10 @@ function renderTopMaterialsRequirementChart() {
             futureReq: Number(futureReq.toFixed(1)),
             received: Number(receivedQty.toFixed(1))
         };
-    });
+    }).filter(m => m.received > 0);
 
-    // 3. Rank descending by Future Requirement as the primary basis
-    matList.sort((a, b) => b.futureReq - a.futureReq);
+    // 3. Rank descending by Received quantity (giving results when there's receive results)
+    matList.sort((a, b) => b.received - a.received);
 
     // 4. Slice to Top N
     const topCountInput = document.getElementById("fcTopCount");

@@ -600,8 +600,38 @@ function renderTop5Chart(materials, disbursements, staffTx) {
   // Sort descending and pick top 5
   const sorted = Array.from(usageByMat.entries())
     .map(([name, total]) => ({ name, total: Math.round(total) }))
+    .filter(item => item.total > 0)
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
+
+  const parent = ctx.parentNode;
+  let emptyBox = document.getElementById('mgrTop5UsedEmpty');
+  if (sorted.length === 0) {
+    ctx.style.display = 'none';
+    if (!emptyBox && parent) {
+      emptyBox = document.createElement('div');
+      emptyBox.id = 'mgrTop5UsedEmpty';
+      emptyBox.style.cssText = 'height: 100%; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px; background: #F8FAFC; border: 1.5px dashed #E2E8F0; border-radius: 12px; color: #64748B; width: 100%;';
+      emptyBox.innerHTML = `
+        <div style="width: 38px; height: 38px; border-radius: 50%; background: #ECFDF5; color: #059669; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div style="font-weight: 700; font-size: 13.5px; color: #0F2A1B; margin-bottom: 4px;">Awaiting Material Disbursements</div>
+        <div style="font-size: 12px; color: #64748B; max-width: 320px;">No raw material disbursements recorded yet. Consumption volume rankings will appear once material usage is recorded.</div>
+      `;
+      parent.appendChild(emptyBox);
+    } else if (emptyBox) {
+      emptyBox.style.display = 'flex';
+    }
+    if (top5ChartInstance) {
+      top5ChartInstance.destroy();
+      top5ChartInstance = null;
+    }
+    return;
+  } else {
+    ctx.style.display = 'block';
+    if (emptyBox) emptyBox.style.display = 'none';
+  }
 
   const labels = sorted.map(item => {
     // Keep labels concise for clean bar rendering
@@ -730,6 +760,38 @@ function renderTop5ReceivedChart(materials, receipts, staffTx) {
     receivedByMat.set(name, (receivedByMat.get(name) || 0) + qty);
   });
 
+  const totalReceivedAcrossSystem = Array.from(receivedByMat.values()).reduce((sum, v) => sum + v, 0);
+
+  const parent = ctx.parentNode;
+  let emptyBox = document.getElementById('mgrTop5ReceivedEmpty');
+
+  if (totalReceivedAcrossSystem <= 0) {
+    ctx.style.display = 'none';
+    if (!emptyBox && parent) {
+      emptyBox = document.createElement('div');
+      emptyBox.id = 'mgrTop5ReceivedEmpty';
+      emptyBox.style.cssText = 'height: 100%; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px; background: #F8FAFC; border: 1.5px dashed #E2E8F0; border-radius: 12px; color: #64748B; width: 100%;';
+      emptyBox.innerHTML = `
+        <div style="width: 38px; height: 38px; border-radius: 50%; background: #FFF7ED; color: #EA580C; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div style="font-weight: 700; font-size: 13.5px; color: #0F2A1B; margin-bottom: 4px;">Awaiting Inward Deliveries</div>
+        <div style="font-size: 12px; color: #64748B; max-width: 320px;">No inward raw material receipts have been executed yet. Record or approve receipts to view received comparisons.</div>
+      `;
+      parent.appendChild(emptyBox);
+    } else if (emptyBox) {
+      emptyBox.style.display = 'flex';
+    }
+    if (top5ReceivedChartInstance) {
+      top5ReceivedChartInstance.destroy();
+      top5ReceivedChartInstance = null;
+    }
+    return;
+  } else {
+    ctx.style.display = 'block';
+    if (emptyBox) emptyBox.style.display = 'none';
+  }
+
   // 2. Retrieve AI forecast cache for accurate 7-day Future Requirement
   let forecastCache = {};
   try {
@@ -765,10 +827,10 @@ function renderTop5ReceivedChart(materials, receipts, staffTx) {
       futureReq: Math.round(futureReq),
       received: Math.round(receivedQty)
     };
-  }).filter(m => m.name && (m.futureReq > 0 || m.received > 0));
+  }).filter(m => m.name && m.received > 0);
 
-  // 4. Primary Ranking: Descending with Future Requirement as the basis
-  matList.sort((a, b) => b.futureReq - a.futureReq);
+  // 4. Primary Ranking: Descending with Received inward quantity as the basis
+  matList.sort((a, b) => b.received - a.received);
 
   // 5. Slice Top 5
   const topItems = matList.slice(0, 5);
@@ -992,8 +1054,48 @@ function renderSmartAlerts(materials) {
   const container = document.querySelector('.smart-alerts-list');
   if (!container) return;
 
-  // Filter materials that are low or out of stock
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const recentUpdatedMatNames = new Set();
+
+  const disbs = getCombinedDisbursements();
+  disbs.forEach(d => {
+    const dDate = d.usage_date || d.usageDate || d.transaction_date || d.created_at || d.date;
+    if (!dDate) return;
+    const dStr = String(dDate).split('T')[0];
+    const diffDays = Math.abs(now.getTime() - new Date(dDate).getTime()) / 86400000;
+    if (dStr === todayStr || diffDays <= 2) {
+      if (d.materialName) recentUpdatedMatNames.add(String(d.materialName).toLowerCase().trim());
+      if (d.material_name) recentUpdatedMatNames.add(String(d.material_name).toLowerCase().trim());
+      if (d.material) recentUpdatedMatNames.add(String(d.material).toLowerCase().trim());
+      if (d.material_id) recentUpdatedMatNames.add(String(d.material_id).toLowerCase().trim());
+      if (d.materialId) recentUpdatedMatNames.add(String(d.materialId).toLowerCase().trim());
+    }
+  });
+
+  const recs = getCombinedReceipts();
+  recs.forEach(r => {
+    const rDate = r.receipt_date || r.receiptDate || r.transaction_date || r.created_at || r.date;
+    if (!rDate) return;
+    const rStr = String(rDate).split('T')[0];
+    const diffDays = Math.abs(now.getTime() - new Date(rDate).getTime()) / 86400000;
+    if (rStr === todayStr || diffDays <= 2) {
+      if (r.materialName) recentUpdatedMatNames.add(String(r.materialName).toLowerCase().trim());
+      if (r.material_name) recentUpdatedMatNames.add(String(r.material_name).toLowerCase().trim());
+      if (r.material) recentUpdatedMatNames.add(String(r.material).toLowerCase().trim());
+      if (r.material_id) recentUpdatedMatNames.add(String(r.material_id).toLowerCase().trim());
+      if (r.materialId) recentUpdatedMatNames.add(String(r.materialId).toLowerCase().trim());
+    }
+  });
+
+  // Filter materials that had recent updates of each day AND are low or out of stock
   const criticalMaterials = materials.filter(m => {
+    const nameKey = String(m.name || m.material_name || '').toLowerCase().trim();
+    const idKey = String(m.id || '').toLowerCase().trim();
+    const codeKey = String(m.item_code || m.itemCode || '').toLowerCase().trim();
+    const hasRecentUpdate = recentUpdatedMatNames.has(nameKey) || recentUpdatedMatNames.has(idKey) || recentUpdatedMatNames.has(codeKey);
+    if (!hasRecentUpdate) return false;
+
     const met = getMaterialMetrics(m);
     return met.statusKey === 'out' || met.statusKey === 'low';
   });
@@ -1007,27 +1109,14 @@ function renderSmartAlerts(materials) {
     return metA.daysRemaining - metB.daysRemaining;
   });
 
-  if (materials.length === 0) {
+  if (criticalMaterials.length === 0) {
     container.innerHTML = `
       <div style="padding: 24px 16px; text-align: center; background: #F8FCF9; border: 1px dashed rgba(20, 83, 45, 0.2); border-radius: 12px; color: #166534;">
         <div style="width: 38px; height: 38px; border-radius: 50%; background: #DCFCE7; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; color: #15803D;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <div style="font-weight: 700; font-size: 13.5px; color: #14532D; margin-bottom: 2px;">System Ready — Inventory Standby</div>
-        <div style="font-size: 12px; color: #5C7A68;">Enter or receive raw materials to begin tracking AI stock alerts.</div>
-      </div>
-    `;
-    return;
-  }
-
-  if (criticalMaterials.length === 0) {
-    container.innerHTML = `
-      <div style="padding: 24px 16px; text-align: center; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; color: #166534;">
-        <div style="width: 38px; height: 38px; border-radius: 50%; background: #DCFCE7; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; color: #15803D;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div style="font-weight: 700; font-size: 13.5px; color: #14532D; margin-bottom: 2px;">All Stock Levels Healthy</div>
-        <div style="font-size: 12px; color: #15803D;">All raw materials currently meet or exceed minimum safety thresholds.</div>
+        <div style="font-weight: 700; font-size: 13.5px; color: #14532D; margin-bottom: 2px;">No Daily Stock Alert Updates</div>
+        <div style="font-size: 12px; color: #5C7A68;">Daily stock depletion alerts will appear here as transactions occur. Use "View All" to inspect the full stock catalog.</div>
       </div>
     `;
     return;

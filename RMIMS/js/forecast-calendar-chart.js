@@ -590,43 +590,30 @@ export function initForecastCalendarCard(containerId, options = {}) {
       const label = (activeRangeDays === 1 && isAnchor) ? `${baseLabel} (Recent)` : baseLabel;
       labels.push(label);
 
-      // 1. Consumed Materials: Dynamic operational consumption with natural highs and lows across dates
-      // Baseline consumption burn rate
-      const baseUsage = authenticDailyReq > 0 ? authenticDailyReq : 25;
-
-      // Authentic day-of-week and cyclical production rhythm across the dates window
-      // Bakery & snack production batches vary across the week (peak mid-week, steady weekend)
-      const dow = dateObj.getDay();
-      const consumeDowFactor = isScones
-        ? [0.86, 0.96, 1.12, 1.22, 1.15, 0.98, 0.86][dow]  // Bakery Holt-Winters seasonal rhythm
-        : [0.88, 0.96, 1.10, 1.18, 1.12, 1.02, 0.90][dow]; // KXC manufacturing seasonal rhythm
-      const progress = idx / Math.max(1, dates.length - 1);
-
-      // Operational consumption trajectory with natural production rhythm across dates
-      const consumeWave = Math.sin((progress * 2.1 - 0.2) * Math.PI) * 0.08;
-      const baselineConsumption = Math.max(1, +(baseUsage * consumeDowFactor * (1 + consumeWave)).toFixed(1));
-
+      // 1. Consumed Materials: Real recorded disbursements for this date only.
+      // If there's no disbursement executed for this date, consumed is 0.0 (No hardcoded sine wave fallback!)
       let actualConsumed = disMap.get(key);
-      let consumed = (actualConsumed && actualConsumed > 0) ? +actualConsumed.toFixed(1) : baselineConsumption;
+      let consumed = (actualConsumed && actualConsumed > 0) ? +actualConsumed.toFixed(1) : 0;
 
-      // 2. Future Requirement: Consumption is the basis that moves the forecast
-      // - The forecast tracks consumption highs and lows as its foundation
-      // - The crossover offset oscillates smoothly within ±(marginFactor * 0.60) (~±4.7% for 7.95%)
-      // This strictly guarantees:
-      // a) Consumption is the basis that moves the forecast
-      // b) Forecast and consumption cross/intersect smoothly
-      // c) BOTH curves ("the 2") remain strictly INSIDE the MAPE boundary corridor across all dates
-      const crossoverWave = Math.sin((progress * 2.2 - 0.25) * Math.PI);
-      const offsetFactor = crossoverWave * (marginFactor * 0.60);
+      // 2. Future Requirement: Authentic demand requirement without synthetic oscillation
+      let req = 0;
+      if (fcMap.has(key)) {
+        req = +Number(fcMap.get(key)).toFixed(1);
+      } else if (authenticDailyReq > 0) {
+        req = +Number(authenticDailyReq).toFixed(1);
+      } else if (consumed > 0) {
+        req = consumed;
+      }
 
-      let req = Math.max(1, +(consumed * (1 + offsetFactor)).toFixed(1));
-
-      // 3. Strict Non-Expandable Margin of Error Corridor (MAPE):
-      // The corridor stays strictly at its exact percentage (7.95% for Scones & Muffins, 7.51% for KXC).
-      // Both the forecast line and the consumption line are strictly contained within this boundary.
-      const margin = +(req * marginFactor).toFixed(2);
-      const upperLimit = +(req + margin).toFixed(2);
-      const lowerLimit = Math.max(0, +(req - margin).toFixed(2));
+      // 3. Strict Margin of Error Corridor (MAPE):
+      let margin = 0;
+      let upperLimit = 0;
+      let lowerLimit = 0;
+      if (req > 0) {
+        margin = +(req * marginFactor).toFixed(2);
+        upperLimit = +(req + margin).toFixed(2);
+        lowerLimit = Math.max(0, +(req - margin).toFixed(2));
+      }
 
       marginUpper.push(upperLimit);
       marginLower.push(lowerLimit);
