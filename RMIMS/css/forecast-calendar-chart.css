@@ -43,7 +43,33 @@
 .cal-card-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.cal-expand-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(20, 83, 45, 0.16);
+  background: #FFFFFF;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(15, 42, 27, 0.05);
+  flex-shrink: 0;
+}
+
+.cal-expand-icon-btn:hover {
+  background: #DCFCE7;
+  color: #15803D;
+  border-color: #86EFAC;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(22, 101, 52, 0.12);
 }
 
 .cal-card-title-group {

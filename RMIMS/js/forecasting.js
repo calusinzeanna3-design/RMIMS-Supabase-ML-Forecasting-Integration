@@ -2645,16 +2645,33 @@ function renderLowStockAlerts() {
     const container = document.getElementById("lowStockAlertsList");
     if (!container) return;
 
-    if (!state.materials || state.materials.length === 0) {
+    let materials = state.materials;
+    if (!materials || materials.length === 0) {
+        try {
+            const sys = getSystemRawMaterials();
+            if (sys && sys.length > 0) {
+                materials = sys.map(m => ({
+                    id: m.id,
+                    itemCode: m.item_code || m.itemCode || "RM—",
+                    name: m.name,
+                    unit: m.unit_of_measure || m.unit || "kg",
+                    currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                }));
+            }
+        } catch (e) {}
+    }
+
+    if (!materials || materials.length === 0) {
         container.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--fc-text-dim);">Checking material stocks...</div>`;
         return;
     }
 
     // Filter materials where currentStock <= minStock or 7-day forecast demand exceeds on-hand stock
-    const lowStockMaterials = state.materials.filter(m => {
+    const lowStockMaterials = materials.filter(m => {
         const curStock = Number(m.currentStock || 0);
         const minStock = Number(m.minStock || 10);
-        const fc = state.forecasts.get(m.name);
+        const fc = state.forecasts?.get(m.name);
         const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
         return curStock <= minStock || (fQty > 0 && curStock < fQty);
     });
@@ -2676,47 +2693,64 @@ function renderLowStockAlerts() {
         return;
     }
 
-    const getMaterialIcon = (name) => {
+    const getThumb = (name) => {
         const n = String(name || '').toLowerCase();
-        if (n.includes('flour')) return '🌾';
-        if (n.includes('sugar')) return '🍬';
-        if (n.includes('butter')) return '🧈';
-        if (n.includes('milk') || n.includes('dairy')) return '🥛';
-        if (n.includes('egg')) return '🥚';
-        if (n.includes('chocolate') || n.includes('cocoa')) return '🍫';
-        if (n.includes('yeast') || n.includes('baking powder')) return '🧪';
-        if (n.includes('oil')) return '🫒';
-        if (n.includes('salt')) return '🧂';
-        if (n.includes('vanilla') || n.includes('flavor')) return '🌿';
-        return '📦';
+        if (n.includes('flour') || n.includes('soda') || n.includes('powder') || n.includes('sorbate') || n.includes('starch') || n.includes('shortening')) return '../assets/flour-thumb.jpg';
+        if (n.includes('butter') || n.includes('margarine') || n.includes('cheese')) return '../assets/butter-thumb.jpg';
+        if (n.includes('oil') || n.includes('liquid') || n.includes('vanilla') || n.includes('syrup')) return '../assets/oil-thumb.jpg';
+        return '../assets/sugar-thumb.jpg';
     };
 
-    container.innerHTML = lowStockMaterials.slice(0, 6).map(m => {
-        const icon = getMaterialIcon(m.name);
-        const sku = m.itemCode ? `SKU ${escapeHtml(m.itemCode)}` : `ID #${escapeHtml(String(m.id || '').slice(0, 6))}`;
-        const unit = m.unit ? ` ${escapeHtml(m.unit)}` : '';
-        const qtyFormatted = Number(m.currentStock || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    container.innerHTML = lowStockMaterials.slice(0, 6).map(mat => {
+        const stock = Number(mat.currentStock || 0);
+        const min = Number(mat.minStock || 10);
+        const unit = mat.unit || 'kg';
+        const thumbSrc = getThumb(mat.name);
+
+        const fc = state.forecasts?.get(mat.name);
+        const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
+        const dailyBurn = fQty > 0 ? (fQty / 7) : (min > 0 ? min / 7 : 1);
+        let days = dailyBurn > 0 ? Math.round(stock / dailyBurn) : (stock <= min ? 2 : 7);
+
+        let indClass = 'ind-amber';
+        let msgClass = 'msg-amber';
+        let badgeClass = 'badge-watch';
+        let badgeText = 'Watch Stock';
+        let msg = `May run low in ${days > 0 ? days : 1} days`;
+
+        if (stock <= 0) {
+            indClass = 'ind-red';
+            msgClass = 'msg-red';
+            badgeClass = 'badge-low';
+            badgeText = 'Out of Stock';
+            msg = 'Stock exhausted - Reorder required';
+        } else if (stock <= min || days <= 3) {
+            indClass = 'ind-red';
+            msgClass = 'msg-red';
+            badgeClass = 'badge-low';
+            badgeText = 'Low Stock';
+            msg = `May run low in ${Math.max(1, days)} day${days === 1 ? '' : 's'}`;
+        }
 
         return `
-            <div class="low-stock-alert-item" data-mat-name="${escapeHtml(m.name)}" style="cursor: pointer;" title="Click to view forecast table for ${escapeHtml(m.name)}">
-                <div class="ls-item-left">
-                    <div class="ls-item-icon">
-                        <span>${icon}</span>
-                    </div>
-                    <div class="ls-item-meta">
-                        <span class="ls-item-name">${escapeHtml(m.name)}</span>
-                        <span class="ls-item-sku">${sku}</span>
-                    </div>
+            <div class="smart-alert-item" data-mat-name="${escapeHtml(mat.name)}" style="cursor: pointer;" title="Click to view forecast for ${escapeHtml(mat.name)}">
+                <img src="${thumbSrc}" alt="${escapeHtml(mat.name)}" class="smart-alert-thumb" style="width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; max-height: 44px !important; object-fit: cover !important; border-radius: 10px !important; flex-shrink: 0 !important;">
+                <div class="smart-alert-indicator ${indClass}">
+                    <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
-                <div class="ls-item-qty">
-                    ${qtyFormatted}${unit} left
+                <div class="smart-alert-info">
+                    <div class="smart-alert-header">${escapeHtml(mat.name)}</div>
+                    <div class="smart-alert-msg ${msgClass}">${msg}</div>
+                    <div class="smart-alert-sub">Current: ${stock.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit} &nbsp;|&nbsp; Min: ${min.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}</div>
                 </div>
+                <span class="smart-alert-badge ${badgeClass}">${badgeText}</span>
+                <span class="row-arrow">›</span>
             </div>
         `;
     }).join("");
 
     // Click handler: open detailed forecast modal for clicked material
-    container.querySelectorAll('.low-stock-alert-item').forEach(el => {
+    container.querySelectorAll('.smart-alert-item').forEach(el => {
         el.addEventListener('click', () => {
             const matName = el.getAttribute('data-mat-name');
             if (matName) {
@@ -2735,6 +2769,14 @@ function renderLowStockAlerts() {
                 filter.value = 'low_stock';
                 renderModalTotalForecastTable();
             }
+        };
+    }
+
+    // View / Expand Table Button in Low Stock card header
+    const openTableBtn = document.getElementById('openTableFromLowStockBtn');
+    if (openTableBtn) {
+        openTableBtn.onclick = () => {
+            openTotalForecastModal();
         };
     }
 }
@@ -3083,9 +3125,21 @@ function renderModalTotalForecastTable() {
     if (!tbody) return;
 
     const isMonthly = state.selectedPeriod === "monthly";
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const recentUsageMap = new Map();
-    state.disbursements.forEach(d => {
-        recentUsageMap.set(d.materialId, (recentUsageMap.get(d.materialId) || 0) + d.consumedQuantity);
+    const consumedTotalMap = new Map();
+
+    (state.disbursements || []).forEach(d => {
+        const matId = d.materialId;
+        const qty = Number(d.consumedQuantity || d.quantity || 0);
+        if (!matId || isNaN(qty)) return;
+
+        consumedTotalMap.set(matId, (consumedTotalMap.get(matId) || 0) + qty);
+
+        const dTime = new Date(d.usageDate || d.date || d.disbursementDate || d.createdAt || 0).getTime();
+        if (dTime >= sevenDaysAgo || !dTime) {
+            recentUsageMap.set(matId, (recentUsageMap.get(matId) || 0) + qty);
+        }
     });
 
     const query = (searchInput?.value || "").toLowerCase().trim();
@@ -3133,7 +3187,7 @@ function renderModalTotalForecastTable() {
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 28px; color: #64748B;">
+                <td colspan="7" style="text-align: center; padding: 28px; color: #64748B;">
                     No raw materials match your search filter.
                 </td>
             </tr>
@@ -3146,9 +3200,17 @@ function renderModalTotalForecastTable() {
         const req = fc ? (isMonthly ? Number(fc.forecast1Month?.quantity) || 0 : Number(fc.forecast7Day?.quantity) || 0) : 0;
         const addNeed = Math.max(0, req - m.currentStock);
         const recentUse = recentUsageMap.get(m.id) || 0;
+        const consumedTotal = consumedTotalMap.get(m.id) || recentUse;
 
-        const prodNames = Array.from(new Set(state.disbursements.filter(d => d.materialId === m.id && d.productName).map(d => d.productName))).slice(0, 2);
-        const prodDisplay = prodNames.length > 0 ? prodNames.join(", ") : "Production Stock";
+        const statusInfo = getForecastStatus(m, fc);
+        let statusBadge = '';
+        if (statusInfo.label === 'Out of Stock') {
+            statusBadge = `<span class="mgr-status-pill status-pill status-out" style="background:#FEE2E2; color:#DC2626; border:1px solid #FECACA; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#DC2626;"></span>Out of Stock</span>`;
+        } else if (statusInfo.label === 'Low Stock') {
+            statusBadge = `<span class="mgr-status-pill status-pill status-low" style="background:#FEF3C7; color:#D97706; border:1px solid #FED7AA; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#D97706;"></span>Low Stock</span>`;
+        } else {
+            statusBadge = `<span class="mgr-status-pill status-pill status-good" style="background:#DCFCE7; color:#15803D; border:1px solid #BBF7D0; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#15803D;"></span>Good</span>`;
+        }
 
         return `
             <tr>
@@ -3159,13 +3221,16 @@ function renderModalTotalForecastTable() {
                     </div>
                 </td>
                 <td>
-                    <span class="fc-product-context">${escapeHtml(prodDisplay)}</span>
+                    ${statusBadge}
                 </td>
                 <td style="text-align: right;">
                     <span class="fc-num-bold">${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>
                 </td>
                 <td style="text-align: right;">
-                    <span class="fc-num-muted">${recentUse.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>
+                    <span class="fc-num-muted" style="font-weight: 600; color: #1E293B;">${recentUse.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>
+                </td>
+                <td style="text-align: right;">
+                    <span class="fc-num-muted" style="font-weight: 700; color: #0F2A1B;">${consumedTotal.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>
                 </td>
                 <td style="text-align: right;">
                     <span class="fc-num-demand">${req.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small>
@@ -3194,6 +3259,10 @@ function openTotalForecastModal() {
 
     renderModalTotalForecastTable();
     overlay.classList.add("open");
+}
+
+if (typeof window !== "undefined") {
+    window.openTotalForecastModal = openTotalForecastModal;
 }
 
 function closeTotalForecastModal() {
@@ -3545,22 +3614,47 @@ function initEventListeners() {
     const cardRestock = document.getElementById("cardNeedsRestock") || document.getElementById("cardUsageAndNeeds");
     if (cardRestock) {
         cardRestock.addEventListener("click", () => {
-            applyCardFilter("RESTOCK", cardRestock);
+            openTotalForecastModal();
+            const filter = document.getElementById("modalTotalForecastFilter");
+            if (filter) {
+                filter.value = "all";
+                renderModalTotalForecastTable();
+            }
         });
     }
 
     const cardLowStock = document.getElementById("cardLowStockWarning");
     if (cardLowStock) {
         cardLowStock.addEventListener("click", () => {
-            applyCardFilter("LOW_STOCK", cardLowStock);
+            openTotalForecastModal();
+            const filter = document.getElementById("modalTotalForecastFilter");
+            if (filter) {
+                filter.value = "low_stock";
+                renderModalTotalForecastTable();
+            }
         });
     }
 
     const cardOutOfStock = document.getElementById("cardOutOfStockWarning");
     if (cardOutOfStock) {
         cardOutOfStock.addEventListener("click", () => {
-            applyCardFilter("OUT_OF_STOCK", cardOutOfStock);
+            openTotalForecastModal();
+            const filter = document.getElementById("modalTotalForecastFilter");
+            if (filter) {
+                filter.value = "out_of_stock";
+                renderModalTotalForecastTable();
+            }
         });
+    }
+
+    const fcChartExpandBtn = document.getElementById("fcChartExpandTableBtn");
+    if (fcChartExpandBtn) {
+        fcChartExpandBtn.addEventListener("click", openTotalForecastModal);
+    }
+
+    const openTableFromLowStockBtn = document.getElementById("openTableFromLowStockBtn");
+    if (openTableFromLowStockBtn) {
+        openTableFromLowStockBtn.addEventListener("click", openTotalForecastModal);
     }
 
     const viewAllNeedsBtn = document.getElementById("viewAllNeedsBtn");

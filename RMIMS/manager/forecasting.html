@@ -85,55 +85,6 @@
         </header>
 
         <main class="admin-scroll-body" style="padding: 20px 24px 48px; width: 100%; box-sizing: border-box; overflow-y: auto;">
-            <!-- TOP 3 SUMMARY CARDS (Standard Summary Cards) -->
-            <section class="fc-forecast-cards-grid" aria-label="Forecast Summary Cards" style="display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 16px !important; width: 100% !important; box-sizing: border-box !important; margin-bottom: 20px;">
-                <!-- Card 1: Raw Materials Needing Restock -->
-                <div class="fc-kpi-card fc-card-interactive" id="cardNeedsRestock" title="Click to filter table by raw materials requiring restock">
-                    <div class="fc-kpi-content">
-                        <span class="fc-kpi-label">Materials Needing Restock</span>
-                        <div class="fc-kpi-value-wrap" style="margin-top: 6px;">
-                            <span class="fc-kpi-value" id="kpiRestockCount" style="color: #15803D;">0</span>
-                            <span style="font-size: 0.95rem; font-weight: 700; color: var(--fc-text-mid); margin-left: 4px;">Items</span>
-                        </div>
-                        <p class="fc-warning-desc" id="kpiRestockSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:4px 0 0 0;">7-day forecast demand exceeds on-hand stock</p>
-                    </div>
-                    <div class="fc-kpi-icon fc-icon-green">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                    </div>
-                </div>
-
-                <!-- Card 2: Low Stock Warning (Next 7 Days) -->
-                <div class="fc-kpi-card fc-card-interactive" id="cardLowStockWarning" title="Click to filter table by low stock materials">
-                    <div class="fc-kpi-content">
-                        <span class="fc-kpi-label">Low Stock Alert (Next 7 Days)</span>
-                        <div class="fc-kpi-value-wrap" style="margin-top: 6px;">
-                            <span class="fc-kpi-value" id="kpiAttentionCount" style="color: #D97706;">0</span>
-                            <span style="font-size: 0.95rem; font-weight: 700; color: var(--fc-text-mid); margin-left: 4px;">Items</span>
-                        </div>
-                        <p class="fc-warning-desc" id="kpiAttentionSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:4px 0 0 0;">Stock near or below safe buffer thresholds</p>
-                    </div>
-                    <div class="fc-kpi-icon fc-icon-amber">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    </div>
-                </div>
-
-                <!-- Card 3: Out of Stock Alert -->
-                <div class="fc-kpi-card fc-card-interactive" id="cardOutOfStockWarning" title="Click to filter table by out of stock materials">
-                    <div class="fc-kpi-content">
-                        <span class="fc-kpi-label">Out of Stock Alert</span>
-                        <div class="fc-kpi-value-wrap" style="margin-top: 6px;">
-                            <span class="fc-kpi-value" id="kpiOutOfStockCount" style="color: #DC2626;">0</span>
-                            <span style="font-size: 0.95rem; font-weight: 700; color: var(--fc-text-mid); margin-left: 4px;">Items</span>
-                        </div>
-                        <p class="fc-warning-desc" id="kpiOutOfStockSubtitle" style="font-size:0.8rem; color:var(--fc-text-muted); margin:4px 0 0 0;">Zero reserve on hand (immediate reorder required)</p>
-                    </div>
-                    <div class="fc-kpi-icon fc-icon-red">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    </div>
-                </div>
-            </section>
-
-
             <!-- ROW 1: 1-ROW UNIFIED FORECAST SPLINE CHART & SIDE CALENDAR -->
             <div id="forecastingCalendarCardContainer" style="width: 100%; margin-bottom: 24px;"></div>
 
@@ -158,6 +109,18 @@
                                 <button type="button" class="fc-zoom-btn" id="fcChartZoomResetBtn" title="Reset Zoom &amp; Pan View">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="12" height="12"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                                     <span>Reset</span>
+                                </button>
+                                <button type="button" class="fc-zoom-btn cal-expand-icon-btn" id="fcChartExpandTableBtn" title="View Full Stock Status &amp; Forecast Table" aria-label="View stock status table" style="width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; margin-left: 4px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="21" y1="3" x2="14" y2="10"/>
+                                        <polyline points="9 21 3 21 3 15"/>
+                                        <line x1="3" y1="21" x2="10" y2="14"/>
+                                        <polyline points="21 15 21 21 15 21"/>
+                                        <line x1="21" y1="21" x2="14" y2="14"/>
+                                        <polyline points="3 9 3 3 9 3"/>
+                                        <line x1="3" y1="3" x2="10" y2="10"/>
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -229,7 +192,7 @@
 
             <!-- ROW 2.5: LOW-STOCK ALERTS & RAW MATERIALS REQUIREMENTS (SAME 2 IN ONE ROW) -->
             <section class="fc-grid-row-1" style="margin-bottom: 24px;">
-                <!-- Card 1: Low-Stock Alerts -->
+                <!-- Card 1: Smart Stock Alerts (Low-Stock & Out of Stock Alerts) -->
                 <div class="fc-card fc-chart-card-main" id="lowStockAlertsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
                     <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
                         <div style="display:flex; align-items:center; gap:12px;">
@@ -241,20 +204,64 @@
                                 </svg>
                             </div>
                             <div class="fc-card-title-group" style="gap:2px;">
-                                <h2 class="fc-card-title" style="margin:0; font-size:1.05rem;">Low-Stock Alerts</h2>
-                                <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">Raw materials with reserves near or below safety threshold</p>
+                                <h2 class="fc-card-title" style="margin:0; font-size:1.05rem;">Smart Stock Alerts</h2>
+                                <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">AI-assisted depletion warnings and safety thresholds</p>
                             </div>
                         </div>
-                        <div>
-                            <button type="button" class="fc-btn-link" id="viewAllLowStockBtn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#DC2626;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <!-- View / Expand Table Modal Button (Matching Image 3) -->
+                            <button type="button" class="cal-expand-icon-btn" id="openTableFromLowStockBtn" title="View Full Stock Status &amp; Forecast Table" aria-label="Expand stock status table">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                    <polyline points="21 15 21 21 15 21"/>
+                                    <line x1="21" y1="21" x2="14" y2="14"/>
+                                    <polyline points="3 9 3 3 9 3"/>
+                                    <line x1="3" y1="3" x2="10" y2="10"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="fc-btn-link" id="viewAllLowStockBtn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#15803D;">
                                 <span>View All</span>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                             </button>
                         </div>
                     </div>
 
+                    <!-- EMBEDDED 3 STAT CARDS STRIP (MOVED FROM TOP INTO THIS CARD) -->
+                    <div class="fc-alert-stats-strip" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0;">
+                        <div class="fc-mini-stat" id="cardLowStockWarning" style="background: #FFFFFF; border: 1px solid #FED7AA; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" title="Click to view Low Stock materials in table">
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em;">Low Stock</div>
+                                <div style="font-size: 17px; font-weight: 800; color: #D97706; line-height: 1.2;"><span id="kpiAttentionCount">0</span> <span style="font-size: 11px; font-weight: 600; color: #64748B;">Items</span></div>
+                            </div>
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: #FEF3C7; color: #D97706; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            </div>
+                        </div>
+                        <div class="fc-mini-stat" id="cardOutOfStockWarning" style="background: #FFFFFF; border: 1px solid #FECACA; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" title="Click to view Out of Stock materials in table">
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #DC2626; text-transform: uppercase; letter-spacing: 0.04em;">Out of Stock</div>
+                                <div style="font-size: 17px; font-weight: 800; color: #DC2626; line-height: 1.2;"><span id="kpiOutOfStockCount">0</span> <span style="font-size: 11px; font-weight: 600; color: #64748B;">Items</span></div>
+                            </div>
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: #FEE2E2; color: #DC2626; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            </div>
+                        </div>
+                        <div class="fc-mini-stat" id="cardNeedsRestock" style="background: #FFFFFF; border: 1px solid #BBF7D0; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" title="Click to view materials needing restock in table">
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #15803D; text-transform: uppercase; letter-spacing: 0.04em;">Need Restock</div>
+                                <div style="font-size: 17px; font-weight: 800; color: #15803D; line-height: 1.2;"><span id="kpiRestockCount">0</span> <span style="font-size: 11px; font-weight: 600; color: #64748B;">Items</span></div>
+                            </div>
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: #DCFCE7; color: #15803D; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="fc-card-body" style="padding:16px 20px; flex: 1; display: flex; flex-direction: column;">
-                        <div id="lowStockAlertsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 4px;">
+                        <div id="lowStockAlertsList" class="smart-alerts-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 4px;">
                             <!-- Populated dynamically via JS -->
                         </div>
                     </div>
@@ -368,12 +375,13 @@
                 <table class="fc-table fc-modal-table">
                     <thead>
                         <tr>
-                            <th style="width: 26%;">Raw Material</th>
-                            <th style="width: 22%;">Finished Product Context</th>
+                            <th style="width: 20%;">Raw Material</th>
+                            <th style="width: 14%;">Stock Status</th>
                             <th style="width: 13%; text-align: right;">Current Stock</th>
-                            <th style="width: 13%; text-align: right;">Recent Usage</th>
+                            <th style="width: 13%; text-align: right;">7 Days Used</th>
+                            <th style="width: 13%; text-align: right;">Consumed Total</th>
                             <th style="width: 13%; text-align: right;">Forecast Demand</th>
-                            <th style="width: 13%; text-align: right;">Additional Need</th>
+                            <th style="width: 14%; text-align: right;">Additional Need</th>
                         </tr>
                     </thead>
                     <tbody id="modalTotalForecastTableBody">

@@ -50,8 +50,21 @@ export function initForecastCalendarCard(containerId, options = {}) {
             <p class="cal-card-subtitle">${subtitle}</p>
           </div>
 
-          ${showViewAll ? `
           <div class="cal-card-actions">
+            <!-- View / Expand Table Modal Button (Matching Image 3) -->
+            <button type="button" class="cal-expand-icon-btn" id="${instanceId}_expandTableBtn" title="View Full Stock Status &amp; Requirements Table" aria-label="Expand stock status table">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+                <polyline points="21 15 21 21 15 21"/>
+                <line x1="21" y1="21" x2="14" y2="14"/>
+                <polyline points="3 9 3 3 9 3"/>
+                <line x1="3" y1="3" x2="10" y2="10"/>
+              </svg>
+            </button>
+            ${showViewAll ? `
             <!-- Direct Link to Forecasting Module (Standard Card Header View All Button in Upper Right) -->
             <a href="forecasting.html" class="btn-view-all cal-view-btn" id="${instanceId}_viewBtn" title="View All Forecasting">
               <span>View All</span>
@@ -60,8 +73,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
                 <polyline points="12 5 19 12 12 19"/>
               </svg>
             </a>
+            ` : ''}
           </div>
-          ` : ''}
         </div>
 
         <div class="cal-card-controls">
@@ -263,6 +276,18 @@ export function initForecastCalendarCard(containerId, options = {}) {
       comboInput.value = getMaterialName(selectedMaterialId);
     }
   });
+
+  // Expand table modal click listener
+  const expandBtn = card.querySelector(`#${instanceId}_expandTableBtn`);
+  if (expandBtn) {
+    expandBtn.addEventListener('click', () => {
+      if (typeof window.openTotalForecastModal === 'function') {
+        window.openTotalForecastModal();
+      } else {
+        window.location.href = 'forecasting.html';
+      }
+    });
+  }
 
   // Range button toggles
   rangeBtns.forEach(btn => {
