@@ -345,7 +345,7 @@ function renderTable() {
     const isFiltered = Boolean(searchVal || catVal !== 'all' || statusVal !== 'all');
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; padding: 56px 20px; background: #FFFFFF; border-bottom: none;">
+        <td colspan="11" style="text-align: center; padding: 56px 20px; background: #FFFFFF; border-bottom: none;">
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
             <div style="width: 52px; height: 52px; border-radius: 14px; background: #F8FCF9; border: 1px solid var(--rm-line); color: #64748B; display: flex; align-items: center; justify-content: center; box-shadow: var(--rm-shadow-sm);">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -369,10 +369,47 @@ function renderTable() {
     return;
   }
 
+  // Pre-fetch receipts and disbursements for material activity timestamp matching
+  let localReceipts = [];
+  let localDisbursements = [];
+  try {
+    localReceipts = JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]');
+  } catch (_) {}
+  try {
+    localDisbursements = JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]');
+  } catch (_) {}
+
   // Render Table Rows (Unified Manager & Staff Stock Status Table Rows)
   tbody.innerHTML = pageItems.map(m => {
     const met = computeMetrics(m);
     const unit = m.unit_of_measure || m.unit || '';
+
+    // Derive latest activity Date & Time for this raw material
+    const matId = String(m.id || m.item_code || '');
+    const matName = String(m.name || m.materialName || '').toLowerCase();
+
+    const matchedRcvs = localReceipts.filter(r => 
+      (r.materialId && String(r.materialId) === matId) || (r.materialName && String(r.materialName).toLowerCase() === matName)
+    );
+    const matchedDisbs = localDisbursements.filter(d => 
+      (d.materialId && String(d.materialId) === matId) || (d.materialName && String(d.materialName).toLowerCase() === matName)
+    );
+
+    let latestActDate = m.display_date || m.date_added || m.updated_at || '';
+    let latestActTime = m.display_time || '';
+
+    const allMovements = [
+      ...matchedRcvs.map(r => ({ date: r.receiptDate || '', time: r.receiptTime || '' })),
+      ...matchedDisbs.map(d => ({ date: d.usageDate || '', time: d.usageTime || '' }))
+    ];
+    if (allMovements.length > 0) {
+      allMovements.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
+      if (allMovements[0].date) latestActDate = allMovements[0].date;
+      if (allMovements[0].time) latestActTime = allMovements[0].time;
+    }
+    if (!latestActDate) {
+      latestActDate = new Date().toISOString().split('T')[0];
+    }
 
     let statusText = 'Good';
     let statusPillClass = 'status-pill-good';
@@ -427,6 +464,12 @@ function renderTable() {
           <span style="color:#1E293B; font-weight:600;">
             ${formattedMin}${unit ? ' ' + unit : ''}
           </span>
+        </td>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
+          <span class="mgr-date-text" style="color: #334155; font-size:12.5px; font-weight:600;">${escapeHtml(latestActDate)}</span>
+        </td>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
+          <span class="mgr-time-text" style="color: #475569; font-size:12px; font-weight:500;">${escapeHtml(latestActTime || '—')}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span class="mgr-status-pill ${statusPillClass}">

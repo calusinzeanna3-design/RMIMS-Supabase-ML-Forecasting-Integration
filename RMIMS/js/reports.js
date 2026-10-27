@@ -1453,11 +1453,12 @@ function renderMaterialReceivingTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
-                <td>${escapeHtml(r.receiptDate)} ${r.receiptTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(r.receiptTime)}</span>` : ''}</td>
+                <td>${escapeHtml(r.receiptDate)}</td>
+                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(r.receiptTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
                 <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(r.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
@@ -1522,11 +1523,12 @@ function renderMaterialDisbursementTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
-                <td>${escapeHtml(d.usageDate)} ${d.usageTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(d.usageTime)}</span>` : ''}</td>
+                <td>${escapeHtml(d.usageDate)}</td>
+                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(d.usageTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
                 <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(d.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
@@ -1626,7 +1628,7 @@ function renderMaterialActivityTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => {
             const isRcv = a.type === "Received";
@@ -1636,7 +1638,8 @@ function renderMaterialActivityTab() {
 
             return `
                 <tr>
-                    <td>${escapeHtml(a.date)} ${a.time ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(a.time)}</span>` : ''}</td>
+                    <td>${escapeHtml(a.date)}</td>
+                    <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(a.time || '—')}</span></td>
                     <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
                     <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(a.materialCode || '—')}</span></td>
                     <td><span class="rpt-badge ${badgeCls}">${a.type}</span></td>
