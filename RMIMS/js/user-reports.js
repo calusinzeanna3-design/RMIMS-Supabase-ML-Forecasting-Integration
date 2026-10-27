@@ -528,8 +528,19 @@ async function loadAuthoritativeData() {
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
             const rMat = matMap.get(r.material_id) || matMap.get((r.raw_material_name || "").toLowerCase().trim());
+            const refNo = r.reference_no || r.ref || r.id || "—";
+            const matCode = rMat ? (rMat.itemCode || rMat.item_code || rMat.id || "—") : (r.item_code || r.material_id || "—");
+            let rTime = r.time || r.receipt_time || "";
+            if (!rTime && r.created_at && r.created_at.includes("T")) {
+                const parts = r.created_at.split("T")[1];
+                rTime = parts ? parts.substring(0, 5) : "";
+            }
             return {
                 id: r.id,
+                referenceNo: refNo,
+                ref: refNo,
+                receiptTime: rTime,
+                materialCode: matCode,
                 receiptDate: r.receipt_date || (r.created_at ? r.created_at.slice(0, 10) : "—"),
                 materialId: r.material_id,
                 materialName: rMat ? rMat.name : (r.raw_material_name || "Unknown Material"),
@@ -543,8 +554,19 @@ async function loadAuthoritativeData() {
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
             const dMat = matMap.get(d.material_id) || matMap.get((d.raw_material_name || "").toLowerCase().trim());
+            const refNo = d.reference_no || d.ref || d.id || "—";
+            const matCode = dMat ? (dMat.itemCode || dMat.item_code || dMat.id || "—") : (d.item_code || d.material_id || "—");
+            let dTime = d.time || d.usage_time || "";
+            if (!dTime && d.created_at && d.created_at.includes("T")) {
+                const parts = d.created_at.split("T")[1];
+                dTime = parts ? parts.substring(0, 5) : "";
+            }
             return {
                 id: d.id,
+                referenceNo: refNo,
+                ref: refNo,
+                usageTime: dTime,
+                materialCode: matCode,
                 usageDate: d.usage_date || (d.created_at ? d.created_at.slice(0, 10) : "—"),
                 materialId: d.material_id,
                 materialName: dMat ? dMat.name : (d.raw_material_name || "Unknown Material"),
@@ -701,12 +723,13 @@ function renderMaterialReceivingTab() {
     const pageItems = list.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
                 <td>${escapeHtml(r.receiptDate)} ${r.receiptTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(r.receiptTime)}</span>` : ''}</td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(r.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
                 <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
                 <td>${escapeHtml(r.unit)}</td>
@@ -756,12 +779,13 @@ function renderMaterialDisbursementTab() {
     const pageItems = list.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748b;">No production disbursement records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No production disbursement records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
                 <td>${escapeHtml(d.usageDate)} ${d.usageTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(d.usageTime)}</span>` : ''}</td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(d.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
                 <td>${escapeHtml(d.finishedProduct)}</td>
                 <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
@@ -791,6 +815,7 @@ function renderMaterialActivityTab() {
         date: r.receiptDate,
         time: r.receiptTime || '',
         referenceNo: r.referenceNo || '—',
+        materialCode: r.materialCode || '—',
         type: "Received",
         material: r.materialName,
         netQty: r.receivedQuantity,
@@ -806,6 +831,7 @@ function renderMaterialActivityTab() {
         date: d.usageDate,
         time: d.usageTime || '',
         referenceNo: d.referenceNo || '—',
+        materialCode: d.materialCode || '—',
         type: "Disbursed",
         material: d.materialName,
         netQty: -d.disbursedQuantity,
@@ -838,12 +864,13 @@ function renderMaterialActivityTab() {
     const pageItems = list.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => `
             <tr>
                 <td>${escapeHtml(a.date)} ${a.time ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(a.time)}</span>` : ''}</td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(a.materialCode || '—')}</span></td>
                 <td>
                     <span class="rpt-badge ${a.type === 'Received' ? 'rpt-badge-good' : 'rpt-badge-critical'}">
                         ${escapeHtml(a.type)}
