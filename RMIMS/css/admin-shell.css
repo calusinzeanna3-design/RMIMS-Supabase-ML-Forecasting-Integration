@@ -4843,16 +4843,17 @@ table[class*="table"] {
   stroke-width: 2.2;
 }
 
-/* 6. Breakpoint: Desktop Laptops & Compact Monitors (1025px to 1280px) */
-@media (min-width: 1025px) and (max-width: 1280px) {
+/* 6. Breakpoint: Desktop look on Laptops, Small Monitors & Tablets (769px to 1280px)
+   The sidebar stays PERMANENT like desktop - only its size is adjusted. */
+@media (min-width: 769px) and (max-width: 1280px) {
   :root {
-    --sidebar-w: 230px;
+    --sidebar-w: clamp(200px, 19vw, 230px);
   }
 
   .admin-sidebar {
-    width: 230px !important;
-    min-width: 230px !important;
-    max-width: 230px !important;
+    width: var(--sidebar-w) !important;
+    min-width: var(--sidebar-w) !important;
+    max-width: var(--sidebar-w) !important;
   }
 
   .sidebar-header {
@@ -4912,8 +4913,8 @@ table[class*="table"] {
   }
 }
 
-/* 7. Breakpoint: Non-Desktop Devices: iPad, Tablets & Phones (<= 1024px) */
-@media (max-width: 1024px) {
+/* 7. Breakpoint: Phones & Small Tablets (<= 768px) - Hamburger drawer */
+@media (max-width: 768px) {
   /* Show Hamburger Menu Button in Topbar Header */
   .mobile-sidebar-toggle {
     display: inline-flex !important;
@@ -5206,7 +5207,7 @@ table[class*="table"] {
   }
 }
 
-/* 8. Tablet & iPad Specifically (641px to 1024px): Side-by-Side Design Preserved */
+/* 8. Tablet & Small Laptop (641px to 1024px): Side-by-Side Design Preserved */
 @media (min-width: 641px) and (max-width: 1024px) {
   /* Dashboard Usage Grid: Side-by-side like desktop design, responsive scaling */
   .usage-grid {
@@ -5783,4 +5784,221 @@ section.admin-card,
   .usage-grid .chart-canvas-container {
     height: clamp(160px, 22vw, 210px) !important;
   }
+}
+
+
+/* ==========================================================================
+   DESKTOP-PERMANENT FLUID SCALING (cards, summary cards, fonts, table, dropdowns)
+   Desktop look never changes layout - everything simply shrinks smoothly
+   as the screen gets smaller. Values cap at the original desktop sizes.
+   ========================================================================== */
+
+/* Profile pill & bell never overlap (fixes avatar covering the bell) */
+.topbar-right {
+  gap: clamp(8px, 1.1vw, 16px) !important;
+  flex-shrink: 0 !important;
+}
+.topbar-right > .rmsme-popover-anchor,
+.topbar-right > .popover-anchor,
+.topbar-right > .topbar-icon-btn {
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+@media (min-width: 769px) {
+  .topbar-profile,
+  .profile-btn,
+  .mgr-profile-pill,
+  body.manager-page .topbar-profile,
+  body.manager-page .profile-btn,
+  body.manager-page .mgr-profile-pill {
+    width: auto !important;
+    min-width: 0 !important;
+    height: clamp(36px, 3vw, 40px) !important;
+    padding: 3px clamp(10px, 1vw, 14px) 3px 4px !important;
+    border-radius: 9999px !important;
+    gap: clamp(7px, 0.8vw, 10px) !important;
+  }
+  .topbar-profile .profile-meta,
+  body.manager-page .topbar-profile .profile-meta,
+  #profileBtn .profile-meta {
+    display: flex !important;
+  }
+  .profile-name, .mgr-name { font-size: clamp(12px, 1vw, 13.5px) !important; }
+  .profile-role, .mgr-role { font-size: clamp(10px, 0.85vw, 11px) !important; }
+  .topbar-icon-btn {
+    width: clamp(34px, 3vw, 40px) !important;
+    height: clamp(34px, 3vw, 40px) !important;
+    min-width: clamp(34px, 3vw, 40px) !important;
+    max-width: clamp(34px, 3vw, 40px) !important;
+  }
+  .topbar-title { font-size: clamp(17px, 1.6vw, 22px) !important; }
+  .topbar-subtitle {
+    font-size: clamp(11px, 0.95vw, 12.5px) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+  .topbar-kicker { font-size: clamp(9.5px, 0.8vw, 11px) !important; }
+  .admin-topbar { padding: 0 clamp(16px, 2.2vw, 32px) !important; }
+  .admin-scroll-body {
+    padding: clamp(14px, 1.8vw, 28px) clamp(14px, 2vw, 32px) 40px !important;
+    gap: clamp(14px, 1.6vw, 24px) !important;
+  }
+}
+
+/* Phones: pill collapses to avatar only - text fully hidden (no overlap) */
+@media (max-width: 768px) {
+  .topbar-profile,
+  .profile-btn,
+  .mgr-profile-pill,
+  body.manager-page .topbar-profile,
+  body.manager-page .profile-btn,
+  body.manager-page .mgr-profile-pill,
+  #profileBtn {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    border-radius: 50% !important;
+  }
+  .topbar-profile .profile-meta,
+  .profile-btn .profile-meta,
+  .mgr-profile-pill .mgr-profile-meta,
+  body.manager-page .topbar-profile .profile-meta,
+  body.manager-page .profile-meta,
+  #profileBtn .profile-meta {
+    display: none !important;
+  }
+  .topbar-icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+  }
+}
+
+/* Summary / KPI cards - same design, fluid size */
+.kpi-stat-card {
+  padding: clamp(10px, 1.3vw, 18px) clamp(12px, 1.4vw, 20px) !important;
+  gap: clamp(10px, 1.1vw, 16px) !important;
+  border-radius: clamp(12px, 1.2vw, 16px) !important;
+  min-width: 0 !important;
+}
+.kpi-icon-box {
+  width: clamp(36px, 3.4vw, 48px) !important;
+  height: clamp(36px, 3.4vw, 48px) !important;
+  border-radius: clamp(10px, 1vw, 14px) !important;
+}
+.kpi-icon-box svg {
+  width: clamp(18px, 1.7vw, 24px) !important;
+  height: clamp(18px, 1.7vw, 24px) !important;
+}
+.kpi-meta { min-width: 0 !important; }
+.kpi-label { font-size: clamp(11px, 0.9vw, 12px) !important; }
+.kpi-number { font-size: clamp(19px, 2vw, 28px) !important; }
+.kpi-trend { font-size: clamp(10px, 0.85vw, 11.5px) !important; }
+.kpi-subtext {
+  font-size: clamp(10px, 0.8vw, 11px) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Main cards */
+.admin-card {
+  padding: clamp(14px, 1.7vw, 24px) clamp(12px, 1.7vw, 24px) !important;
+  border-radius: clamp(12px, 1.3vw, 18px) !important;
+}
+.card-icon-badge {
+  width: clamp(30px, 2.7vw, 38px) !important;
+  height: clamp(30px, 2.7vw, 38px) !important;
+  border-radius: clamp(8px, 0.8vw, 10px) !important;
+}
+.card-icon-badge svg {
+  width: clamp(15px, 1.3vw, 20px) !important;
+  height: clamp(15px, 1.3vw, 20px) !important;
+}
+.card-title { font-size: clamp(13px, 1.25vw, 16px) !important; }
+.card-subtitle { font-size: clamp(10.5px, 0.9vw, 12.5px) !important; }
+.card-header { gap: clamp(8px, 1vw, 14px) !important; }
+.card-actions { gap: clamp(5px, 0.6vw, 10px) !important; }
+.card-actions button,
+.card-actions a,
+.card-action-btn-outline,
+.card-action-btn-emerald,
+.btn-primary-action {
+  font-size: clamp(11px, 0.95vw, 13.5px) !important;
+  padding: clamp(5px, 0.55vw, 8px) clamp(8px, 1vw, 16px) !important;
+  white-space: nowrap !important;
+}
+.card-actions button svg,
+.card-actions a svg {
+  width: clamp(12px, 1vw, 14px) !important;
+  height: clamp(12px, 1vw, 14px) !important;
+}
+
+/* Dropdowns & search inside filter toolbars - fluid, never clipped */
+select,
+.dropdown-select,
+.filter-select,
+.mgr-select-filter,
+.inv-filter-toolbar select {
+  font-size: clamp(11px, 0.95vw, 13.5px) !important;
+  min-height: clamp(32px, 2.8vw, 40px) !important;
+  padding-left: clamp(8px, 0.9vw, 14px) !important;
+  padding-right: clamp(24px, 2vw, 32px) !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+.inv-filter-toolbar input[type="search"],
+.inv-filter-toolbar input[type="text"],
+.inv-filter-toolbar .search-input {
+  font-size: clamp(11px, 0.95vw, 13.5px) !important;
+  min-height: clamp(32px, 2.8vw, 40px) !important;
+  min-width: 0 !important;
+}
+.inv-filter-toolbar {
+  gap: clamp(6px, 0.8vw, 12px) !important;
+  padding: clamp(8px, 1vw, 16px) !important;
+}
+
+/* Tables - fluid header/cell sizing (beats page-level fixed sizes) */
+body .admin-card table thead th,
+body .admin-card table.inv-main-table thead th,
+body .admin-card #overviewTable thead th {
+  font-size: clamp(10px, 0.82vw, 11.5px) !important;
+  padding: clamp(9px, 0.95vw, 14px) clamp(10px, 1.2vw, 18px) !important;
+}
+body .admin-card table tbody td,
+body .admin-card table.inv-main-table tbody td,
+body .admin-card #overviewTable tbody td {
+  font-size: clamp(11px, 0.9vw, 13px) !important;
+  padding: clamp(9px, 0.95vw, 14px) clamp(10px, 1.2vw, 18px) !important;
+}
+
+/* Phones: smaller still */
+@media (max-width: 640px) {
+  .kpi-stat-card { padding: 9px 10px !important; gap: 9px !important; }
+  .kpi-icon-box { width: 32px !important; height: 32px !important; border-radius: 9px !important; }
+  .kpi-icon-box svg { width: 16px !important; height: 16px !important; }
+  .kpi-number { font-size: clamp(16px, 4.6vw, 20px) !important; }
+  .kpi-label { font-size: 10.5px !important; }
+  .kpi-subtext { font-size: 9.5px !important; }
+  .card-title { font-size: clamp(12.5px, 3.4vw, 14px) !important; }
+  .card-subtitle { font-size: 10.5px !important; }
+  .card-actions button,
+  .card-actions a { font-size: 11px !important; padding: 5px 9px !important; }
+  select,
+  .dropdown-select,
+  .filter-select { font-size: 11.5px !important; min-height: 32px !important; }
+  body .admin-card table thead th { font-size: 10px !important; padding: 8px 10px !important; }
+  body .admin-card table tbody td { font-size: 11px !important; padding: 8px 10px !important; }
 }

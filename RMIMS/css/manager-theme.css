@@ -80,7 +80,7 @@ body.manager-page .admin-app {
 /* ==========================================================================
    SIDEBAR (100% Adopted from Admin)
    ========================================================================== */
-@media (min-width: 1025px) {
+@media (min-width: 769px) {
   body.manager-page .sidebar,
   body.manager-page .admin-sidebar {
     position: fixed !important;
@@ -107,7 +107,7 @@ body.manager-page .admin-app {
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   body.manager-page .sidebar,
   body.manager-page .admin-sidebar {
     position: fixed !important;
@@ -383,7 +383,7 @@ body.manager-page .nav-btn-help {
 /* ==========================================================================
    MAIN CONTENT WRAPPER
    ========================================================================== */
-@media (min-width: 1025px) {
+@media (min-width: 769px) {
   body.manager-page .content,
   body.manager-page .manager-main,
   body.manager-page .admin-main {
@@ -402,7 +402,7 @@ body.manager-page .nav-btn-help {
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   body.manager-page .content,
   body.manager-page .manager-main,
   body.manager-page .admin-main {
