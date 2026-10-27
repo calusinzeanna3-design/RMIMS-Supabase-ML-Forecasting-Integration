@@ -529,7 +529,8 @@ function renderRecentActivity(staffTx) {
             ${t.activity === 'Receive' ? '📥 Receive' : '📤 Disburse'}
           </span>
         </td>
-        <td><strong>${escapeHtml(t.material || '--')}</strong> (${escapeHtml(t.qty || '')})</td>
+        <td><strong>${escapeHtml(t.material || '--')}</strong></td>
+        <td><span style="font-weight:700; color:${t.activity === 'Receive' ? '#15803D' : '#D97706'};">${escapeHtml(t.qty || '')}</span></td>
         <td><code style="background:#F1F5F9; padding:2px 6px; border-radius:5px; font-weight:700; color:#334155;">${escapeHtml(t.ref)}</code></td>
         <td>
           <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>

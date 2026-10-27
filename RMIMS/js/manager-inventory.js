@@ -758,7 +758,7 @@ function renderInventoryTable() {
   if (thead) {
     thead.innerHTML = `
       <tr style="background-color: #15803D !important;">
-        <th style="width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Code Raw Materials</th>
+        <th style="width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Material Code</th>
         <th style="background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Raw Material Name</th>
         <th style="text-align: right; width: 110px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Current Stock</th>
         <th style="text-align: right; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Min Stock</th>
