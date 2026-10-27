@@ -80,7 +80,7 @@ body.manager-page .admin-app {
 /* ==========================================================================
    SIDEBAR (100% Adopted from Admin)
    ========================================================================== */
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
   body.manager-page .sidebar,
   body.manager-page .admin-sidebar {
     position: fixed !important;
@@ -107,27 +107,45 @@ body.manager-page .admin-app {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   body.manager-page .sidebar,
   body.manager-page .admin-sidebar {
     position: fixed !important;
     left: 0 !important;
     top: 0 !important;
     bottom: 0 !important;
-    width: 280px !important;
-    max-width: 82vw !important;
+    width: clamp(260px, 32vw, 300px) !important;
+    max-width: 84vw !important;
     height: 100vh !important;
     height: 100dvh !important;
+    max-height: 100dvh !important;
     z-index: 100050 !important;
     transform: translateX(-100%) !important;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
     box-shadow: none !important;
+    /* Scrollable only on non-desktop (iPad, tablet, phone) */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    box-sizing: border-box !important;
   }
   body.rmsme-mobile-drawer-open.manager-page .sidebar,
   body.rmsme-mobile-drawer-open.manager-page .admin-sidebar,
   body.manager-page .admin-sidebar.mobile-open {
     transform: translateX(0) !important;
     box-shadow: 14px 0 45px rgba(0, 0, 0, 0.45) !important;
+  }
+  body.manager-page .sidebar .sidebar-nav,
+  body.manager-page .admin-sidebar .sidebar-nav {
+    overflow-y: visible !important;
+    flex: 1 0 auto !important;
+  }
+  body.manager-page .sidebar .sidebar-bottom-nav,
+  body.manager-page .admin-sidebar .sidebar-bottom-nav {
+    flex-shrink: 0 !important;
+    margin-top: auto !important;
   }
 }
 
@@ -365,7 +383,7 @@ body.manager-page .nav-btn-help {
 /* ==========================================================================
    MAIN CONTENT WRAPPER
    ========================================================================== */
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
   body.manager-page .content,
   body.manager-page .manager-main,
   body.manager-page .admin-main {
@@ -384,7 +402,7 @@ body.manager-page .nav-btn-help {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   body.manager-page .content,
   body.manager-page .manager-main,
   body.manager-page .admin-main {

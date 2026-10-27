@@ -557,17 +557,104 @@
   color: #0F2A1B;
 }
 
-/* Responsive adjustment for small tablets/phones */
-@media (max-width: 860px) {
+/* ==========================================================
+   RESPONSIVE LAYOUT: TABLET/iPAD SIDE-BY-SIDE vs. PHONE BELOW (COMPACT)
+   On tablets/iPad (641px - 1024px): Preserves desktop side-by-side layout,
+   scaling the spline chart and mini-calendar proportionally.
+   On phones (<= 640px): Calendar moves below the chart and is styled
+   compact and small so it leaves space for other cards to view.
+   ========================================================== */
+
+/* Tablet & iPad (641px to 1024px): Side-by-side like desktop */
+@media (min-width: 641px) and (max-width: 1024px) {
   .cal-card-body {
-    flex-direction: column !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: clamp(10px, 1.8vw, 16px) !important;
   }
+
+  .cal-chart-column {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .cal-chart-canvas-wrap {
+    height: clamp(170px, 22vw, 210px) !important;
+  }
+
+  .cal-calendar-column {
+    width: clamp(200px, 26vw, 240px) !important;
+    min-width: 190px !important;
+    max-width: 240px !important;
+    padding-left: clamp(10px, 1.5vw, 14px) !important;
+  }
+
+  .cal-day-cell {
+    width: clamp(24px, 3.2vw, 28px) !important;
+    height: clamp(24px, 3.2vw, 28px) !important;
+    font-size: 0.72rem !important;
+  }
+}
+
+/* Phone (<= 640px): Calendar moves below chart and scales small & compact */
+@media (max-width: 640px) {
+  .fc-calendar-chart-card {
+    padding: clamp(12px, 3vw, 16px) !important;
+    border-radius: 14px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .cal-card-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .cal-chart-canvas-wrap {
+    height: clamp(160px, 45vw, 190px) !important;
+  }
+
   .cal-calendar-column {
     width: 100% !important;
-    max-width: 100% !important;
-    border-left: none;
-    border-top: 1px solid rgba(20, 83, 45, 0.08);
-    padding-left: 0;
-    padding-top: 16px;
+    max-width: 260px !important;
+    margin: 0 auto !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(20, 83, 45, 0.08) !important;
+    padding-left: 0 !important;
+    padding-top: 8px !important;
+  }
+
+  .cal-widget-box {
+    gap: 4px !important;
+  }
+
+  .cal-month-title {
+    font-size: 0.78rem !important;
+  }
+
+  .cal-nav-btn {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .cal-nav-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cal-days-header span {
+    font-size: 0.65rem !important;
+  }
+
+  .cal-day-cell {
+    width: clamp(22px, 6.5vw, 26px) !important;
+    height: clamp(22px, 6.5vw, 26px) !important;
+    font-size: 0.7rem !important;
+    border-radius: 4px !important;
+  }
+
+  .cal-footer-range-info {
+    font-size: 0.65rem !important;
   }
 }
