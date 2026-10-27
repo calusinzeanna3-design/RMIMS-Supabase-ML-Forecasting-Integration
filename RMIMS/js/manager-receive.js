@@ -1134,7 +1134,7 @@ function renderHistoryTable() {
   tbody.innerHTML = pageItems.map(r => {
     const dateStr = String(r.date || '');
     let datePart = dateStr;
-    let timePart = '10:00 AM';
+    let timePart = r.time || '';
 
     if (dateStr.includes('•')) {
       const parts = dateStr.split('•');
@@ -1145,6 +1145,10 @@ function renderHistoryTable() {
       datePart = parts[0].trim();
       timePart = parts.slice(1).join(',').trim();
     }
+    if (!timePart && r.createdAt && r.createdAt.includes('T')) {
+      timePart = r.createdAt.split('T')[1].substring(0, 5);
+    }
+    if (!timePart) timePart = '10:00 AM';
 
     return `
       <tr>

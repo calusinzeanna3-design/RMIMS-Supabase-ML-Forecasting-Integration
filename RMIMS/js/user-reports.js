@@ -367,11 +367,11 @@ async function loadAuthoritativeData() {
                         .order("name")),
                     fetchWithTimeout(supabase
                         .from("stock_receipts")
-                        .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
+                        .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at, reference_no")
                         .order("receipt_date", { ascending: false })),
                     fetchWithTimeout(supabase
                         .from("material_disbursements")
-                        .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
+                        .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at, reference_no")
                         .order("usage_date", { ascending: false }))
                 ]);
 
@@ -701,11 +701,12 @@ function renderMaterialReceivingTab() {
     const pageItems = list.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
-                <td>${escapeHtml(r.receiptDate)}</td>
+                <td>${escapeHtml(r.receiptDate)} ${r.receiptTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(r.receiptTime)}</span>` : ''}</td>
+                <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
                 <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
                 <td>${escapeHtml(r.unit)}</td>
@@ -755,11 +756,12 @@ function renderMaterialDisbursementTab() {
     const pageItems = list.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No production disbursement records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748b;">No production disbursement records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
-                <td>${escapeHtml(d.usageDate)}</td>
+                <td>${escapeHtml(d.usageDate)} ${d.usageTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(d.usageTime)}</span>` : ''}</td>
+                <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
                 <td>${escapeHtml(d.finishedProduct)}</td>
                 <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
@@ -787,6 +789,8 @@ function renderMaterialActivityTab() {
         (!state.selectedMaterialId || state.selectedMaterialId === "all" || r.materialId === state.selectedMaterialId)
     ).map(r => ({
         date: r.receiptDate,
+        time: r.receiptTime || '',
+        referenceNo: r.referenceNo || '—',
         type: "Received",
         material: r.materialName,
         netQty: r.receivedQuantity,
@@ -800,6 +804,8 @@ function renderMaterialActivityTab() {
         (!state.selectedMaterialId || state.selectedMaterialId === "all" || d.materialId === state.selectedMaterialId)
     ).map(d => ({
         date: d.usageDate,
+        time: d.usageTime || '',
+        referenceNo: d.referenceNo || '—',
         type: "Disbursed",
         material: d.materialName,
         netQty: -d.disbursedQuantity,
@@ -832,11 +838,12 @@ function renderMaterialActivityTab() {
     const pageItems = list.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => `
             <tr>
-                <td>${escapeHtml(a.date)}</td>
+                <td>${escapeHtml(a.date)} ${a.time ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(a.time)}</span>` : ''}</td>
+                <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
                 <td>
                     <span class="rpt-badge ${a.type === 'Received' ? 'rpt-badge-good' : 'rpt-badge-critical'}">
                         ${escapeHtml(a.type)}

@@ -284,10 +284,12 @@ export function getCompanyAcronym(tenantOrUser = null) {
  * - Manager: "2026SMM-"
  * - Staff: "2026SMSt-"
  */
-export function getRoleReferencePrefix(role = 'manager', tenantOrUser = null) {
+export function getRoleReferencePrefix(role = 'manager', tenantOrUser = null, type = 'REC') {
   const currentYear = new Date().getFullYear();
   const acronym = getCompanyAcronym(tenantOrUser);
   const cleanRole = String(role || '').toLowerCase();
   const roleTag = (cleanRole === 'staff' || cleanRole === 'user') ? 'St' : 'M';
-  return `${currentYear}${acronym}${roleTag}-`;
+  const cleanType = String(type || 'REC').toUpperCase();
+  const typeLetter = (cleanType === 'DIS' || cleanType === 'DISBURSE') ? 'D' : 'R';
+  return `${currentYear}${acronym}${roleTag}-${typeLetter}`;
 }

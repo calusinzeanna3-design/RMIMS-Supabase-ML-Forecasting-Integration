@@ -227,25 +227,32 @@ export function generateNextReference(type = 'REC', role = null, context = null)
   const cleanRole = String(resolvedRole).toLowerCase();
   const roleTag = (cleanRole === 'staff' || cleanRole === 'user') ? 'St' : 'M';
   const acronym = getCompanyAcronym(context);
+  const cleanType = String(type || 'REC').toUpperCase();
+  const typeLetter = (cleanType === 'DIS' || cleanType === 'DISBURSE') ? 'D' : 'R';
 
   // Standard format required by specification:
-  // e.g. Scones and Muffins Manager: "2026SMM-"
-  // e.g. Scones and Muffins Staff:   "2026SMSt-"
-  const prefix = `${currentYear}${acronym}${roleTag}-`;
+  // e.g. SMM-R#### in manager, SMSt-D#### as staff (incorporating current year 2026):
+  // Manager Receive:  "2026SMM-R0001"
+  // Manager Disburse: "2026SMM-D0001"
+  // Staff Receive:    "2026SMSt-R0001"
+  // Staff Disburse:   "2026SMSt-D0001"
+  const prefix = `${currentYear}${acronym}${roleTag}-${typeLetter}`;
 
   const allTx = getAllCompanyTransactions();
   const burned = getBurnedReferences();
 
   let maxNum = 0;
 
-  // Regex to match exact new pattern e.g. 2026SMM-0001 or 2026SMSt-0001
-  const exactRegex = new RegExp(`^${currentYear}${acronym}${roleTag}-(\\d+)`, 'i');
-  // Fallback regex for any reference with the same role tag and year
+  // Regex to match exact new pattern e.g. 2026SMM-R0001 or SMM-R0001
+  const exactRegex = new RegExp(`^(?:${currentYear})?${acronym}${roleTag}-${typeLetter}(\\d+)`, 'i');
+  // Match any reference with the same role and type letter
+  const typeRegex = new RegExp(`${roleTag}-${typeLetter}(\\d+)`, 'i');
+  // Fallback regex for prior references with the same role tag
   const roleRegex = new RegExp(`^${currentYear}.*?${roleTag}-(\\d+)`, 'i');
 
   allTx.forEach(t => {
     if (t.ref) {
-      let match = t.ref.match(exactRegex) || t.ref.match(roleRegex);
+      let match = t.ref.match(exactRegex) || t.ref.match(typeRegex) || t.ref.match(roleRegex);
       if (match) {
         const num = parseInt(match[1], 10);
         if (num > maxNum) maxNum = num;
@@ -255,7 +262,7 @@ export function generateNextReference(type = 'REC', role = null, context = null)
 
   burned.forEach(ref => {
     if (ref) {
-      let match = ref.match(exactRegex) || ref.match(roleRegex);
+      let match = ref.match(exactRegex) || ref.match(typeRegex) || ref.match(roleRegex);
       if (match) {
         const num = parseInt(match[1], 10);
         if (num > maxNum) maxNum = num;

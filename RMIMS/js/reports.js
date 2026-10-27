@@ -667,8 +667,17 @@ async function loadAuthoritativeData() {
         state.receipts = rawReceipts.map(r => {
             const mat = matMap.get(r.material_id);
             const supName = (r.supplier_name && r.supplier_name.toLowerCase() !== "all" ? r.supplier_name : "Supplier").trim();
+            const refNo = r.reference_no || r.ref || r.id || "—";
+            let rTime = r.time || r.receipt_time || "";
+            if (!rTime && r.created_at && r.created_at.includes("T")) {
+                const parts = r.created_at.split("T")[1];
+                rTime = parts ? parts.substring(0, 5) : "";
+            }
             return {
                 id: r.id,
+                referenceNo: refNo,
+                ref: refNo,
+                receiptTime: rTime,
                 materialId: r.material_id,
                 materialName: mat ? mat.name : "Raw Material",
                 receivedQuantity: Number(r.received_quantity || 0),
@@ -685,8 +694,17 @@ async function loadAuthoritativeData() {
             const mat = matMap.get(d.material_id);
             const pName = (d.finished_product_name && d.finished_product_name.toLowerCase() !== "all" ? d.finished_product_name : (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "General Production")).trim();
             const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? d.activity_type : "Production Issue").trim();
+            const refNo = d.reference_no || d.ref || d.id || "—";
+            let dTime = d.time || d.usage_time || "";
+            if (!dTime && d.created_at && d.created_at.includes("T")) {
+                const parts = d.created_at.split("T")[1];
+                dTime = parts ? parts.substring(0, 5) : "";
+            }
             return {
                 id: d.id,
+                referenceNo: refNo,
+                ref: refNo,
+                usageTime: dTime,
                 materialId: d.material_id,
                 materialName: mat ? mat.name : "Raw Material",
                 disbursedQuantity: Number(d.consumed_quantity || 0),
@@ -1429,11 +1447,12 @@ function renderMaterialReceivingTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
-                <td>${escapeHtml(r.receiptDate)}</td>
+                <td>${escapeHtml(r.receiptDate)} ${r.receiptTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(r.receiptTime)}</span>` : ''}</td>
+                <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
                 <td><strong style="color:var(--rpt-green-dark);">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
                 <td>${escapeHtml(r.unit)}</td>
@@ -1496,11 +1515,12 @@ function renderMaterialDisbursementTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
-                <td>${escapeHtml(d.usageDate)}</td>
+                <td>${escapeHtml(d.usageDate)} ${d.usageTime ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(d.usageTime)}</span>` : ''}</td>
+                <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
                 <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(d.finishedProduct)}</span></td>
                 <td><strong style="color:var(--rpt-orange-dark);">${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
@@ -1545,6 +1565,8 @@ function renderMaterialActivityTab() {
     periodReceipts.forEach(r => {
         activities.push({
             date: r.receiptDate,
+            time: r.receiptTime || '',
+            referenceNo: r.referenceNo || '—',
             type: "Received",
             material: r.materialName,
             qty: r.receivedQuantity,
@@ -1557,6 +1579,8 @@ function renderMaterialActivityTab() {
     periodDisbursements.forEach(d => {
         activities.push({
             date: d.usageDate,
+            time: d.usageTime || '',
+            referenceNo: d.referenceNo || '—',
             type: "Disbursed",
             material: d.materialName,
             qty: -d.disbursedQuantity,
@@ -1592,7 +1616,7 @@ function renderMaterialActivityTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => {
             const isRcv = a.type === "Received";
@@ -1602,7 +1626,8 @@ function renderMaterialActivityTab() {
 
             return `
                 <tr>
-                    <td>${escapeHtml(a.date)}</td>
+                    <td>${escapeHtml(a.date)} ${a.time ? `<span style="font-size:0.75rem; color:#64748B; font-weight:600; display:block;">${escapeHtml(a.time)}</span>` : ''}</td>
+                    <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
                     <td><span class="rpt-badge ${badgeCls}">${a.type}</span></td>
                     <td><strong>${escapeHtml(a.material)}</strong></td>
                     <td><strong style="color:${qtyColor};">${qtyStr}</strong></td>

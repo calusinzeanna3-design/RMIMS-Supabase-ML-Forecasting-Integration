@@ -212,6 +212,12 @@ function renderTable() {
       datePart = parts[0].trim();
       timePart = parts[1].trim();
     }
+    if ((!timePart || timePart === '—') && (t.createdAt || t.timestamp)) {
+      const ts = t.createdAt || t.timestamp;
+      if (ts.includes('T')) {
+        timePart = ts.split('T')[1].substring(0, 5);
+      }
+    }
 
     return `
       <tr data-ref="${escapeHtml(t.ref)}">
