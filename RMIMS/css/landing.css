@@ -4946,3 +4946,79 @@ a:focus-visible, button:focus-visible, .feature-card:focus-visible, .process-ste
   }
 }
 
+
+
+/* ==========================================================================
+   MASTER RESPONSIVE ADAPTIVE COMPONENT SCALING (LANDING / INDEX)
+   ========================================================================== */
+.landing-section {
+  padding: clamp(48px, 8vw, 100px) 0 !important;
+  min-height: auto !important;
+}
+
+.view-inner-container,
+.ff-hero-container {
+  width: min(100% - clamp(20px, 4vw, 48px), 1400px) !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ff-hero-title {
+  font-size: clamp(24px, 4.2vw, 48px) !important;
+  max-width: 920px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ff-hero-desc {
+  font-size: clamp(13px, 1.2vw, 15px) !important;
+  max-width: 700px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ff-btn-primary,
+.ff-btn-secondary,
+.btn-lg,
+.btn-sm,
+.btn {
+  font-size: clamp(12.5px, 1.2vw, 14.5px) !important;
+  padding: clamp(8px, 1.2vw, 13px) clamp(16px, 2vw, 30px) !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ff-cards-stage {
+  width: 100% !important;
+  max-width: 1260px !important;
+  box-sizing: border-box !important;
+  padding-inline: clamp(8px, 2vw, 16px) !important;
+}
+
+.ff-card,
+.about-card,
+.feature-card,
+.bento-card,
+.benefit-card,
+.faq-card,
+.ff-bento-wide-card,
+.ff-advantage-card,
+.ff-price-card {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: clamp(16px, 2.5vw, 28px) !important;
+  border-radius: clamp(14px, 2vw, 24px) !important;
+}
+
+@media (max-width: 1024px) {
+  .ff-cards-stage {
+    grid-template-columns: 1fr !important;
+    max-width: 580px !important;
+    gap: 20px !important;
+  }
+  .ff-card-left,
+  .ff-card-center,
+  .ff-card-right {
+    transform: none !important;
+  }
+}

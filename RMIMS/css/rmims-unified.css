@@ -2627,20 +2627,34 @@ table {
 
 .overview-cards {
   display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 20px !important;
-  margin-bottom: 28px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: clamp(10px, 1.5vw, 20px) !important;
+  margin-bottom: clamp(14px, 2vw, 28px) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 992px) {
+  .overview-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .overview-cards {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .ov-card {
   display: flex !important;
   align-items: center !important;
-  gap: 14px !important;
+  gap: clamp(10px, 1.2vw, 14px) !important;
   text-align: left !important;
   background: var(--rm-white, #ffffff) !important;
   border: 1.5px solid var(--rm-line, rgba(20, 83, 45, 0.12)) !important;
-  padding: 18px 20px !important;
-  border-radius: 16px !important;
+  padding: clamp(12px, 1.5vw, 18px) clamp(12px, 1.8vw, 20px) !important;
+  border-radius: clamp(12px, 1.2vw, 16px) !important;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
   cursor: pointer !important;
   font-family: inherit !important;
@@ -2648,8 +2662,11 @@ table {
   position: relative !important;
   overflow: hidden !important;
   height: 100% !important;
-  min-height: 94px !important;
+  min-height: clamp(74px, 8vw, 94px) !important;
   box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 .ov-card-static {
@@ -4471,4 +4488,58 @@ input.inv-input-date.flatpickr-input.active {
   font-size: 0.8rem;
   font-weight: 600;
   color: #94A3B8;
+}
+
+/* ==========================================================================
+   MASTER RESPONSIVE OPERATIONS & ADAPTIVE COMPONENT SCALING (STAFF / USER)
+   ========================================================================== */
+select,
+.dropdown-select,
+.filter-select,
+.mgr-form-select,
+.mgr-select-filter,
+.rpt-select,
+.modal-input select,
+.rmims-combobox {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  font-size: clamp(11.5px, 1.2vw, 13px) !important;
+  padding-top: clamp(4px, 0.8vw, 7px) !important;
+  padding-bottom: clamp(4px, 0.8vw, 7px) !important;
+  padding-left: clamp(8px, 1vw, 12px) !important;
+  padding-right: clamp(22px, 2vw, 28px) !important;
+  min-height: clamp(32px, 3.8vw, 38px) !important;
+  height: auto !important;
+  border-radius: clamp(6px, 1vw, 10px) !important;
+}
+
+button,
+.btn,
+.btn-primary-action,
+.btn-view-all,
+.btn-table-action,
+.card-action-btn-emerald,
+.card-action-btn-outline,
+.btn-clear-filters {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  font-size: clamp(11.5px, 1.2vw, 13.5px) !important;
+  padding: clamp(5px, 0.8vw, 8px) clamp(10px, 1.2vw, 16px) !important;
+  border-radius: clamp(6px, 1vw, 10px) !important;
+  white-space: normal !important;
+}
+
+.panel,
+.panel-header,
+.command-grid,
+.chart-grid {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.panel-title {
+  font-size: clamp(13px, 1.5vw, 16px) !important;
+  word-break: break-word !important;
 }

@@ -2170,32 +2170,56 @@ body.manager-page .rpt-filter-engine-card,
 body.manager-page .rpt-preview-section-card,
 body.manager-page .an-card:not(.an-bottom-grid > *) {
   width: 100% !important;
-  border-radius: 18px !important;
+  border-radius: clamp(12px, 1.5vw, 18px) !important;
   background: #FFFFFF !important;
   border: 1px solid rgba(20, 83, 45, 0.08) !important;
   box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06) !important;
-  padding: 22px 26px !important;
-  margin-bottom: 24px !important;
+  padding: clamp(14px, 2vw, 22px) clamp(12px, 2.2vw, 26px) !important;
+  margin-bottom: clamp(14px, 2vw, 24px) !important;
   box-sizing: border-box !important;
 }
 
-/* Standardized Canvas / Chart wrapper for Row Cards (Matching Dashboard Manager: ~220px - 250px) */
+/* Standardized Canvas / Chart wrapper for Row Cards (Matching Dashboard Manager: ~200px - 250px) */
 body.manager-page .usage-grid .chart-canvas-container {
-  height: 250px !important;
+  height: clamp(180px, 24vw, 250px) !important;
+  max-height: 250px !important;
+  min-height: 170px !important;
 }
 
 body.manager-page .cal-chart-canvas-wrap {
-  height: 220px !important;
+  height: clamp(170px, 22vw, 220px) !important;
 }
 
 body.manager-page .an-card:not(.an-bottom-grid > *) .an-chart-wrap {
-  height: 240px !important;
+  height: clamp(180px, 23vw, 240px) !important;
   max-height: 250px !important;
 }
 
 body.manager-page #fcTopMaterialsCard .fc-chart-canvas-wrap {
-  height: 220px !important;
+  height: clamp(170px, 22vw, 220px) !important;
   max-height: 240px !important;
+}
+
+@media (max-width: 768px) {
+  body.manager-page section.admin-card:not(.mgr-grid-2col > *):not(.fc-grid-row-1 > *):not(.an-bottom-grid > *),
+  body.manager-page .fc-calendar-chart-card,
+  body.manager-page .fc-chart-card-main:not(.fc-grid-row-1 > *):not(.mgr-grid-2col > *),
+  body.manager-page .fc-grid-row-full > *,
+  body.manager-page #fcTopMaterialsCard,
+  body.manager-page .mgr-tx-card,
+  body.manager-page .mgr-tx-table-card,
+  body.manager-page .inv-main-workspace,
+  body.manager-page .rpt-filter-engine-card,
+  body.manager-page .rpt-preview-section-card,
+  body.manager-page .an-card:not(.an-bottom-grid > *) {
+    padding: clamp(12px, 2.5vw, 16px) !important;
+    margin-bottom: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  body.manager-page .usage-grid .chart-canvas-container {
+    height: clamp(160px, 26vw, 210px) !important;
+  }
 }
 
 /* Standardized Table Container for Row Data Tables (Clean, controlled height ~360-380px) */
