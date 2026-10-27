@@ -165,10 +165,9 @@ export function getSystemRawMaterials() {
         tCtx = getActiveTenantContext();
     } catch (_) {}
     const isScones = tCtx ? Boolean(tCtx.isScones) : true;
-    const isWiped = typeof localStorage !== 'undefined'
-        ? (localStorage.getItem(RMIMS_WIPE_BASELINE_MATERIALS_KEY) !== 'false')
-        : true;
-    const baseSource = isWiped ? [] : (isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS);
+    // STRICT ZERO-MOCK RULE: Never fall back to or seed hardcoded mock materials.
+    // Raw materials are purely driven by real inputs from Supabase and user entry.
+    const baseSource = [];
 
     let list = baseSource.map(m => {
         const stockVal = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
@@ -218,7 +217,7 @@ export function getSystemRawMaterials() {
                             minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
                             minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10)
                         };
-                    } else if (isWiped) {
+                    } else {
                         const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
                         list.push({
                             ...cm,
@@ -322,15 +321,7 @@ export function getSystemRawMaterials() {
         if (name) seenMatKeys.add(`name:${name}`);
         dedupedList.push(m);
     });
-    if (!isWiped) {
-        list = dedupedList.filter(m => {
-            const code = String(m.item_code || m.id || "").toUpperCase().trim();
-            const name = String(m.name || m.raw_material_name || "").toLowerCase().trim();
-            return validTrainedCodes.has(code) || validTrainedNames.has(name);
-        });
-    } else {
-        list = dedupedList;
-    }
+    list = dedupedList;
 
     // Permanently filter out any coconut materials so they never re-enter system catalogs
     list = list.filter(m => {
@@ -422,6 +413,30 @@ export function saveCustomRawMaterial(mat) {
     localStorage.setItem("rmims_inventory_updated", String(Date.now()));
     window.dispatchEvent(new Event("storage"));
 
+    // 5. Asynchronously persist real input to Supabase raw_materials table
+    if (typeof window !== "undefined" && window.supabase && fullRecord.name) {
+        (async () => {
+            try {
+                const payload = {
+                    item_code: fullRecord.item_code,
+                    name: fullRecord.name,
+                    description: fullRecord.description || `Raw material ${fullRecord.name}`,
+                    unit_of_measure: fullRecord.unit_of_measure || "kg",
+                    minimum_threshold: fullRecord.minimum_threshold,
+                    reorder_quantity: fullRecord.reorder_quantity,
+                    lead_time_days: fullRecord.lead_time_days,
+                    current_stock: fullRecord.current_stock
+                };
+                if (fullRecord.id && fullRecord.id.length === 36) {
+                    payload.id = fullRecord.id;
+                }
+                await window.supabase.from("raw_materials").upsert([payload], {
+                    onConflict: payload.id ? "id" : "item_code"
+                });
+            } catch (_) {}
+        })();
+    }
+
     return fullRecord;
 }
 
@@ -494,6 +509,31 @@ export function deleteSystemRawMaterial(idOrCodeOrName) {
     }));
     localStorage.setItem("rmims_inventory_updated", String(Date.now()));
     window.dispatchEvent(new Event("storage"));
+
+    // 5. Asynchronously delete from Supabase (cascading dependent receipts & disbursements first to prevent foreign key block)
+    if (typeof window !== "undefined" && window.supabase) {
+        (async () => {
+            try {
+                let resolvedMatId = (target.length === 36) ? target : null;
+                if (!resolvedMatId) {
+                    const { data: row } = await window.supabase.from('raw_materials')
+                        .select('id')
+                        .or(`item_code.ilike.${target},name.ilike.${target}`)
+                        .limit(1)
+                        .maybeSingle();
+                    if (row && row.id) resolvedMatId = row.id;
+                }
+                if (resolvedMatId) {
+                    await window.supabase.from('stock_receipts').delete().eq('material_id', resolvedMatId);
+                    await window.supabase.from('material_disbursements').delete().eq('material_id', resolvedMatId);
+                    await window.supabase.from('raw_materials').delete().eq('id', resolvedMatId);
+                }
+                await window.supabase.from('raw_materials').delete().ilike('item_code', target);
+                await window.supabase.from('raw_materials').delete().ilike('name', target);
+            } catch (_) {}
+        })();
+    }
+
     return true;
 }
 

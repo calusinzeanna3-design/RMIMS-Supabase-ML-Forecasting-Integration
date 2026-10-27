@@ -79,21 +79,21 @@ export async function fetchManagerDashboardData() {
     // Restore persistent finished products from Supabase
     fetchLiveFinishedProductsFromSupabase().catch(() => {});
 
-    // Synchronize Supabase raw_materials with local storage master cache
-    if (result.rawMaterials.length > 0) {
+    // Authoritatively synchronize Supabase raw_materials with local storage master cache
+    if (matRes.status === 'fulfilled' && Array.isArray(matRes.value?.data)) {
       try {
-        const localCustom = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
-        result.rawMaterials.forEach(sm => {
-          const normName = (sm.name || '').trim().toLowerCase();
+        const cleanMats = matRes.value.data.filter(sm => {
+          const nameLower = (sm.name || '').toLowerCase();
+          const code = String(sm.item_code || sm.id || '').toUpperCase();
+          return !nameLower.includes('coconut') && code !== 'NB-015' && code !== 'RM-033' && code !== 'RM-034';
+        });
+        const reconciled = cleanMats.map(sm => {
           const code = String(sm.item_code || sm.id || '').toUpperCase().trim();
-          const idx = localCustom.findIndex(m =>
-            (m.name || '').trim().toLowerCase() === normName ||
-            String(m.item_code || m.id || '').toUpperCase().trim() === code
-          );
-          const formatted = {
-            id: sm.id,
+          return {
+            id: sm.id || code,
             item_code: sm.item_code || code,
             name: sm.name,
+            raw_material_name: sm.name,
             unit_of_measure: sm.unit_of_measure,
             unit: sm.unit_of_measure,
             current_stock: Number(sm.current_stock ?? 0),
@@ -105,73 +105,69 @@ export async function fetchManagerDashboardData() {
             description: sm.description || `Raw material ${sm.name}`,
             created_at: sm.created_at || new Date().toISOString()
           };
-          if (idx !== -1) {
-            localCustom[idx] = { ...localCustom[idx], ...formatted };
-          } else {
-            localCustom.push(formatted);
-          }
         });
-        localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(localCustom));
+        localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(reconciled));
+        const mgrOverrides = {};
+        reconciled.forEach(m => {
+          mgrOverrides[m.item_code] = {
+            name: m.name,
+            raw_material_name: m.name,
+            unit: m.unit,
+            current_stock: m.current_stock,
+            minimum_stock: m.minimum_threshold,
+            maximum_stock: m.reorder_quantity * 4,
+            last_updated: m.created_at
+          };
+        });
+        localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
       } catch (e) {
         console.warn('[ManagerSupabase] Error syncing materials to local storage:', e);
       }
     }
 
-    // Synchronize Supabase receipts with local manager receipts
-    if (result.stockReceipts.length > 0) {
+    // Authoritatively synchronize Supabase receipts with local manager receipts
+    if (rcvRes.status === 'fulfilled' && Array.isArray(rcvRes.value?.data)) {
       try {
-        const localReceipts = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
-        const map = new Map();
-        localReceipts.forEach(r => map.set(String(r.ref || r.id), r));
-        result.stockReceipts.forEach(sr => {
-          const key = String(sr.id);
-          if (!map.has(key)) {
-            map.set(key, {
-              id: sr.id,
-              ref: sr.id,
-              date: sr.receipt_date,
-              materialId: sr.material_id,
-              materialName: sr.material_name || '',
-              quantity: Number(sr.received_quantity || 0),
-              unit: sr.unit || 'kg',
-              supplier: sr.supplier_name || 'Inward Delivery',
-              recordedBy: 'Store Manager',
-              status: 'Approved',
-              createdAt: sr.created_at
-            });
-          }
-        });
-        localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(Array.from(map.values())));
+        const reconciledRec = rcvRes.value.data
+          .filter(sr => !String(sr.supplier_name || '').toLowerCase().includes('coconut'))
+          .map(sr => ({
+            id: sr.id,
+            ref: sr.id,
+            date: sr.receipt_date,
+            materialId: sr.material_id,
+            materialName: sr.material_name || '',
+            quantity: Number(sr.received_quantity || 0),
+            unit: sr.unit || 'kg',
+            supplier: sr.supplier_name || 'Inward Delivery',
+            recordedBy: sr.received_by || 'Store Manager',
+            status: 'Approved',
+            createdAt: sr.created_at
+          }));
+        localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(reconciledRec));
       } catch (e) {
         console.warn('[ManagerSupabase] Error syncing receipts to local storage:', e);
       }
     }
 
-    // Synchronize Supabase disbursements with local manager disbursements
-    if (result.materialDisbursements.length > 0) {
+    // Authoritatively synchronize Supabase disbursements with local manager disbursements
+    if (disbRes.status === 'fulfilled' && Array.isArray(disbRes.value?.data)) {
       try {
-        const localDisb = JSON.parse(localStorage.getItem(MGR_DISBURSEMENTS_KEY) || '[]');
-        const map = new Map();
-        localDisb.forEach(d => map.set(String(d.ref || d.id), d));
-        result.materialDisbursements.forEach(sd => {
-          const key = String(sd.id);
-          if (!map.has(key)) {
-            map.set(key, {
-              id: sd.id,
-              ref: sd.id,
-              date: sd.usage_date,
-              materialId: sd.material_id,
-              materialName: sd.material_name || '',
-              quantity: Number(sd.consumed_quantity || 0),
-              unit: sd.unit || 'kg',
-              recipient: sd.finished_product_name || sd.activity_type || 'Production Batch',
-              recordedBy: 'Store Manager',
-              status: 'Approved',
-              createdAt: sd.created_at
-            });
-          }
-        });
-        localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(Array.from(map.values())));
+        const reconciledDisb = disbRes.value.data
+          .filter(sd => !String(sd.finished_product_name || '').toLowerCase().includes('coconut'))
+          .map(sd => ({
+            id: sd.id,
+            ref: sd.id,
+            date: sd.usage_date,
+            materialId: sd.material_id,
+            materialName: sd.material_name || '',
+            quantity: Number(sd.consumed_quantity || 0),
+            unit: sd.unit || 'kg',
+            recipient: sd.finished_product_name || sd.activity_type || 'Production Batch',
+            recordedBy: sd.recorded_by || 'Store Manager',
+            status: 'Approved',
+            createdAt: sd.created_at
+          }));
+        localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(reconciledDisb));
       } catch (e) {
         console.warn('[ManagerSupabase] Error syncing disbursements to local storage:', e);
       }
@@ -234,7 +230,7 @@ export async function recordStockReceiptToSupabase(receipt) {
         receipt_date: dateOnly,
         received_quantity: qty,
         unit: receipt.unit || 'kg',
-        supplier_name: receipt.supplier || receipt.supplier_name || 'Inward Delivery'
+        supplier_name: (receipt.supplier || receipt.supplier_name || 'Inward Delivery') + (receipt.ref ? ` [Ref: ${receipt.ref}]` : '')
       };
       if (resolvedMaterialId) {
         payload.material_id = resolvedMaterialId;
@@ -302,7 +298,7 @@ export async function recordMaterialDisbursementToSupabase(disbursement) {
           p_usage_date: dateOnly,
           p_quantity: qty,
           p_unit: disbursement.unit || 'kg',
-          p_activity_type: disbursement.activityType || disbursement.activity_type || 'Production Usage',
+          p_activity_type: (disbursement.activityType || disbursement.activity_type || 'Production Usage') + (disbursement.ref ? ` [Ref: ${disbursement.ref}]` : ''),
           p_finished_product_name: disbursement.recipient || disbursement.usedFor || disbursement.finished_product_name || 'Production Batch'
         });
         if (!rpcErr && rpcData?.success) {
@@ -317,7 +313,7 @@ export async function recordMaterialDisbursementToSupabase(disbursement) {
         usage_date: dateOnly,
         consumed_quantity: qty,
         unit: disbursement.unit || 'kg',
-        activity_type: disbursement.activityType || disbursement.activity_type || 'Production Usage',
+        activity_type: (disbursement.activityType || disbursement.activity_type || 'Production Usage') + (disbursement.ref ? ` [Ref: ${disbursement.ref}]` : ''),
         finished_product_name: disbursement.recipient || disbursement.usedFor || disbursement.finished_product_name || 'Production Batch'
       };
       if (resolvedMaterialId) {
@@ -728,32 +724,25 @@ export async function fetchUnifiedInventoryFromSupabase() {
 
   try {
     const { data, error } = await fetchWithTimeout(supabase.from('raw_materials').select('*').order('name'), 4000);
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       const deletedRaw = localStorage.getItem('rmims_deleted_material_ids');
       const deletedArr = deletedRaw ? JSON.parse(deletedRaw) : [];
       const deletedSet = new Set(Array.isArray(deletedArr) ? deletedArr.map(d => String(d).trim().toLowerCase()) : []);
 
-      const localCustom = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
-      const mgrOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}');
-      let customChanged = false;
+      // Filter out any coconut or explicitly deleted items
+      const cleanData = data.filter(sm => {
+        const codeLower = String(sm.item_code || sm.id || '').toLowerCase().trim();
+        const nameLower = (sm.name || '').trim().toLowerCase();
+        const idLower = String(sm.id || '').toLowerCase().trim();
+        return !deletedSet.has(codeLower) && !deletedSet.has(nameLower) && !deletedSet.has(idLower) &&
+               !nameLower.includes('coconut') && codeLower !== 'nb-015' && codeLower !== 'rm-033' && codeLower !== 'rm-034';
+      });
 
-      data.forEach(sm => {
+      // EXACT authoritative sync: localCustom matches authoritative Supabase rows.
+      // If a material was deleted from Supabase, it is NOT preserved locally.
+      const reconciled = cleanData.map(sm => {
         const code = String(sm.item_code || sm.id || '').toUpperCase().trim();
-        const codeLower = code.toLowerCase();
-        const name = (sm.name || '').trim();
-        const nameLower = name.toLowerCase();
-
-        // Never resurrect deleted items
-        if (deletedSet.has(codeLower) || deletedSet.has(nameLower) || (sm.id && deletedSet.has(String(sm.id).toLowerCase()))) {
-          return;
-        }
-
-        const idx = localCustom.findIndex(m =>
-          (m.name || '').trim().toLowerCase() === nameLower ||
-          String(m.item_code || m.id || '').toUpperCase().trim() === code
-        );
-
-        const formatted = {
+        return {
           id: sm.id || code,
           item_code: sm.item_code || code,
           name: sm.name,
@@ -769,32 +758,23 @@ export async function fetchUnifiedInventoryFromSupabase() {
           description: sm.description || `Raw material ${sm.name}`,
           created_at: sm.created_at || new Date().toISOString()
         };
-
-        if (idx !== -1) {
-          localCustom[idx] = { ...localCustom[idx], ...formatted };
-        } else {
-          localCustom.push(formatted);
-        }
-        customChanged = true;
-
-        if (code) {
-          mgrOverrides[code] = {
-            ...(mgrOverrides[code] || {}),
-            name: sm.name,
-            raw_material_name: sm.name,
-            unit: sm.unit_of_measure,
-            current_stock: Number(sm.current_stock ?? 0),
-            minimum_stock: Number(sm.minimum_threshold ?? 10),
-            maximum_stock: Number(sm.reorder_quantity ? sm.reorder_quantity * 4 : 100),
-            last_updated: sm.updated_at || new Date().toISOString()
-          };
-        }
       });
 
-      if (customChanged) {
-        localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(localCustom));
-        localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
-      }
+      localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(reconciled));
+
+      const mgrOverrides = {};
+      reconciled.forEach(m => {
+        mgrOverrides[m.item_code] = {
+          name: m.name,
+          raw_material_name: m.name,
+          unit: m.unit,
+          current_stock: m.current_stock,
+          minimum_stock: m.minimum_threshold,
+          maximum_stock: m.reorder_quantity ? m.reorder_quantity * 4 : 100,
+          last_updated: m.created_at
+        };
+      });
+      localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
     }
   } catch (err) {
     console.warn('[ManagerSupabase] Live inventory sync notice:', err);
@@ -944,11 +924,23 @@ export async function deleteRawMaterialOnSupabase(idOrCodeOrName) {
     }
   } catch (_) {}
 
-  // 3. Delete from Supabase raw_materials
+  // 3. Delete from Supabase raw_materials (cascading child transactions first to prevent foreign key error)
   if (supabase) {
     try {
-      if (clean.length === 36) {
-        await supabase.from('raw_materials').delete().eq('id', clean);
+      let resolvedMatId = (clean.length === 36) ? clean : null;
+      if (!resolvedMatId) {
+        const { data: matRow } = await supabase.from('raw_materials')
+          .select('id')
+          .or(`item_code.ilike.${clean},name.ilike.${clean}`)
+          .limit(1)
+          .maybeSingle();
+        if (matRow && matRow.id) resolvedMatId = matRow.id;
+      }
+
+      if (resolvedMatId) {
+        await supabase.from('stock_receipts').delete().eq('material_id', resolvedMatId);
+        await supabase.from('material_disbursements').delete().eq('material_id', resolvedMatId);
+        await supabase.from('raw_materials').delete().eq('id', resolvedMatId);
       }
       await supabase.from('raw_materials').delete().ilike('item_code', clean);
       await supabase.from('raw_materials').delete().ilike('name', clean);
@@ -984,35 +976,31 @@ export async function fetchLiveStockReceiptsFromSupabase() {
       supabase.from('stock_receipts').select('*').order('receipt_date', { ascending: false }),
       4000
     );
-    if (!error && Array.isArray(data) && data.length > 0) {
-      const localReceipts = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
-      const map = new Map();
-      localReceipts.forEach(r => {
-        if (r && r.ref) map.set(String(r.ref).toUpperCase(), r);
-      });
+    if (!error && Array.isArray(data)) {
+      let deletedRecIds = new Set();
+      try {
+        deletedRecIds = new Set(JSON.parse(localStorage.getItem('rmims_deleted_receipt_ids') || '[]').map(x => String(x)));
+      } catch (_) {}
 
-      data.forEach(sr => {
-        const key = String(sr.id).toUpperCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            id: sr.id,
-            ref: sr.id,
-            date: sr.receipt_date,
-            materialId: sr.material_id,
-            materialName: sr.material_name || '',
-            quantity: Number(sr.received_quantity || 0),
-            unit: sr.unit || 'kg',
-            supplier: sr.supplier_name || 'Inward Delivery',
-            recordedBy: 'Store Manager',
-            status: 'Approved',
-            createdAt: sr.created_at
-          });
-        }
-      });
+      // EXACT authoritative sync: receipts match Supabase records
+      const reconciled = data
+        .filter(sr => !deletedRecIds.has(String(sr.id)) && !String(sr.supplier_name || '').toLowerCase().includes('coconut'))
+        .map(sr => ({
+          id: sr.id,
+          ref: sr.id,
+          date: sr.receipt_date,
+          materialId: sr.material_id,
+          materialName: sr.material_name || '',
+          quantity: Number(sr.received_quantity || 0),
+          unit: sr.unit || 'kg',
+          supplier: sr.supplier_name || 'Inward Delivery',
+          recordedBy: sr.received_by || 'Store Manager',
+          status: 'Approved',
+          createdAt: sr.created_at
+        }));
 
-      const updated = Array.from(map.values());
-      localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(updated));
-      return updated;
+      localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(reconciled));
+      return reconciled;
     }
   } catch (err) {
     console.warn('[ManagerSupabase] Live receipts fetch notice:', err);
@@ -1074,6 +1062,57 @@ export async function deleteStockReceiptOnSupabase(refOrId) {
   invalidateForecastCache();
   broadcastManagerSync({
     action: 'delete_receipt',
+    ref: cleanRef
+  });
+
+  return { success: true };
+}
+
+/**
+ * Permanently deletes a material disbursement from Supabase and local storage
+ */
+export async function deleteMaterialDisbursementOnSupabase(refOrId) {
+  if (!refOrId) return { success: false };
+  const cleanRef = String(refOrId).trim();
+
+  // 1. Delete locally from rmims_manager_disbursements and rmims_custom_disbursements
+  try {
+    let disbursements = JSON.parse(localStorage.getItem(MGR_DISBURSEMENTS_KEY) || '[]');
+    const targetIdx = disbursements.findIndex(d => String(d.id).toLowerCase() === cleanRef.toLowerCase() || (d.ref && d.ref.toLowerCase() === cleanRef.toLowerCase()));
+    if (targetIdx !== -1) {
+      disbursements.splice(targetIdx, 1);
+      localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(disbursements));
+    }
+
+    const customKey = 'rmims_custom_disbursements';
+    let custom = JSON.parse(localStorage.getItem(customKey) || '[]');
+    custom = custom.filter(c => String(c.id).toLowerCase() !== cleanRef.toLowerCase() && (!c.ref || c.ref.toLowerCase() !== cleanRef.toLowerCase()));
+    localStorage.setItem(customKey, JSON.stringify(custom));
+  } catch (_) {}
+
+  // 2. Delete on Supabase
+  if (supabase) {
+    try {
+      if (cleanRef.length === 36) {
+        await supabase.from('material_disbursements').delete().eq('id', cleanRef);
+      }
+      await supabase.from('material_disbursements').delete().ilike('activity_type', `%${cleanRef}%`);
+
+      await logManagerActivityToSupabase({
+        action: 'DELETE_MATERIAL_DISBURSEMENT',
+        entityType: 'material_disbursements',
+        entityId: cleanRef,
+        details: { ref: cleanRef }
+      });
+    } catch (err) {
+      console.warn('[ManagerSupabase] Error deleting material disbursement on Supabase:', err);
+    }
+  }
+
+  // 3. Broadcast sync
+  invalidateForecastCache();
+  broadcastManagerSync({
+    action: 'delete_disbursement',
     ref: cleanRef
   });
 
@@ -1205,17 +1244,33 @@ if (supabase && typeof supabase.channel === 'function' && typeof window !== 'und
   try {
     window.__rmimsGlobalSupabaseChannel = supabase
       .channel('rmims_global_live_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, (payload) => {
+        if (payload.eventType === 'DELETE' && payload.old) {
+          const oldTarget = payload.old.id || payload.old.item_code || payload.old.name;
+          if (oldTarget) deleteSystemRawMaterial(oldTarget);
+        }
         fetchUnifiedInventoryFromSupabase().then(() => {
           broadcastManagerSync({ source: 'supabase_raw_materials' });
         });
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, (payload) => {
+        if (payload.eventType === 'DELETE' && payload.old) {
+          const oldId = String(payload.old.id || '').trim();
+          let recs = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+          recs = recs.filter(r => r.ref !== oldId && r.id !== oldId);
+          localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(recs));
+        }
         fetchLiveStockReceiptsFromSupabase().then(() => {
           broadcastManagerSync({ source: 'supabase_stock_receipts' });
         });
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, (payload) => {
+        if (payload.eventType === 'DELETE' && payload.old) {
+          const oldId = String(payload.old.id || '').trim();
+          let disbs = JSON.parse(localStorage.getItem(MGR_DISBURSEMENTS_KEY) || '[]');
+          disbs = disbs.filter(d => d.ref !== oldId && d.id !== oldId);
+          localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(disbs));
+        }
         fetchManagerDashboardData().then(() => {
           broadcastManagerSync({ source: 'supabase_material_disbursements' });
         });

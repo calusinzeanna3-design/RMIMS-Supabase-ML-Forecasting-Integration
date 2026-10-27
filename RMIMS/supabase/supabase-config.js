@@ -35,4 +35,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 export const auth = supabase;
 export const db = supabase;
 
+if (typeof window !== 'undefined') {
+    window.supabase = supabase;
+    window.__rmimsSupabase = supabase;
+}
+
 export default supabase;

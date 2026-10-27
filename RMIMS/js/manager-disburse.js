@@ -25,7 +25,7 @@ import {
   updateManagerDisbursement,
   deleteManagerDisbursement
 } from './rmims-transaction-engine.js';
-import { recordMaterialDisbursementToSupabase, saveRawMaterialToSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
+import { recordMaterialDisbursementToSupabase, saveRawMaterialToSupabase, broadcastManagerSync, deleteMaterialDisbursementOnSupabase } from '../supabase/manager-supabase-service.js';
 import { attachSearchableCombobox } from './rmims-combobox.js';
 
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
@@ -1363,6 +1363,7 @@ function bindDisbursementActionEvents() {
     btnConfirmDel.addEventListener('click', () => {
       if (!pendingDeleteDisbursementRef) return;
       const ref = pendingDeleteDisbursementRef;
+      deleteMaterialDisbursementOnSupabase(ref).catch(() => {});
       const res = deleteManagerDisbursement(ref);
       if (res && res.success) {
         closeDelModal();

@@ -1042,43 +1042,44 @@ import { supabase } from '../supabase/supabase-config.js';
           }
         }
 
-        if (!profile) {
-          try {
-            const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
-            if (raw) {
-              const cached = JSON.parse(raw);
-              if (cached.email && cached.email.toLowerCase() === cleanEmail) {
-                profile = {
-                  id: authUser.id || authUser.uid,
-                  email: authUser.email,
-                  full_name: cached.fullName || cached.name || "User",
-                  role: cached.role || (isMasterAdmin ? "admin" : "user"),
-                  operational_role: cached.operationalRole || (isMasterAdmin ? "admin" : "staff"),
-                  status: "active",
-                  branch_name: cached.branchName || cached.branch_name || "",
-                  branch_location: cached.branchLocation || cached.branch_location || ""
-                };
-              }
-            }
-          } catch (e) {}
-        }
-
-        if (!profile && authUser) {
-          const meta = authUser.user_metadata || {};
-          const metaRole = meta.operational_role || (meta.role === "manager" ? "manager" : "staff");
+        if (!profile && isMasterAdmin) {
           profile = {
-            id: authUser.id,
+            id: authUser.id || authUser.uid,
             email: authUser.email,
-            full_name: meta.full_name || authUser.email.split('@')[0],
-            role: meta.role || (isMasterAdmin ? "admin" : "user"),
-            operational_role: metaRole,
-            status: "active",
-            branch_name: meta.branch_name || "Branch Store",
-            branch_location: meta.branch_location || "Lucena"
+            full_name: 'Zeanna',
+            role: 'admin',
+            operational_role: 'admin',
+            status: 'active',
+            branch_name: 'Admin HQ',
+            branch_location: 'Lucena'
           };
           try {
             await supabase.from('user_profiles').upsert(profile);
           } catch (_) {}
+        }
+
+        // STRICT REAL-DATA RULE: If user profile was deleted from Supabase, do NOT auto-create mock or resurrected profile
+        if (!profile) {
+          try {
+            await supabase.auth.signOut();
+          } catch (_) {}
+          localStorage.removeItem('currentUser');
+          localStorage.removeItem('rmimsCurrentUser');
+          localStorage.removeItem('userProfile');
+          window.location.href = '../login.html';
+          return;
+        }
+
+        // If account has been deactivated or rejected by Admin, respect Supabase state (do not resurrect status to active)
+        if (profile.status && profile.status !== 'active' && !isMasterAdmin) {
+          try {
+            await supabase.auth.signOut();
+          } catch (_) {}
+          localStorage.removeItem('currentUser');
+          localStorage.removeItem('rmimsCurrentUser');
+          localStorage.removeItem('userProfile');
+          window.location.href = '../login.html?error=account_deactivated';
+          return;
         }
 
         if (profile) {
@@ -1087,14 +1088,6 @@ import { supabase } from '../supabase/supabase-config.js';
           const isUserAdmin = rawBase === 'admin' || rawBase === 'main_admin' || rawOp === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
           const isUserManager = !isUserAdmin && (rawOp === 'manager' || rawBase === 'manager');
           const isUserStaff = !isUserAdmin && !isUserManager;
-
-          // Standalone autonomous login: ensure valid registered users remain active with zero fallback
-          if (profile.status && profile.status !== 'active' && !isMasterAdmin) {
-            profile.status = 'active';
-            try {
-              await supabase.from('user_profiles').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', profile.id);
-            } catch (_) {}
-          }
 
           // STRICT LIVE ROLE GUARDS: Do NOT let unauthorized accounts pass
           // 1. If Admin accesses manager or staff pages -> redirect to Admin Overview
