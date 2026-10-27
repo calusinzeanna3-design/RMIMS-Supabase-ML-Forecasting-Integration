@@ -1170,3 +1170,63 @@ export async function fetchLiveFinishedProductsFromSupabase() {
     return [];
   }
 }
+
+/**
+ * Permanently purge all old test/mock data from Supabase tables
+ */
+export async function purgeAllLegacyMockDataFromSupabase() {
+  if (!supabase) return;
+  try {
+    // 1. Delete coconut materials from raw_materials
+    await supabase.from('raw_materials').delete().or('item_code.in.(NB-015,RM-033,RM-034),name.ilike.%coconut%');
+    // 2. Delete coconut transactions from stock_receipts & material_disbursements
+    await supabase.from('stock_receipts').delete().or('supplier_name.ilike.%coconut%,unit.ilike.%coconut%');
+    await supabase.from('material_disbursements').delete().or('finished_product_name.ilike.%coconut%');
+  } catch (e) {
+    console.warn('[ManagerSupabase] Supabase mock cleanup notice:', e);
+  }
+}
+
+// Auto-run cleanup on initialization
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem('rmims_supabase_mock_purged_v2')) {
+    purgeAllLegacyMockDataFromSupabase().then(() => {
+      localStorage.setItem('rmims_supabase_mock_purged_v2', 'true');
+    }).catch(() => {});
+  }
+} catch (_) {}
+
+/**
+ * Universal Global Realtime Supabase Channel
+ * Listens to all mutations across raw_materials, stock_receipts, material_disbursements, activity_audit_logs
+ * and automatically broadcasts across all browser tabs and role modules.
+ */
+if (supabase && typeof supabase.channel === 'function' && typeof window !== 'undefined' && !window.__rmimsGlobalSupabaseChannel) {
+  try {
+    window.__rmimsGlobalSupabaseChannel = supabase
+      .channel('rmims_global_live_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, () => {
+        fetchUnifiedInventoryFromSupabase().then(() => {
+          broadcastManagerSync({ source: 'supabase_raw_materials' });
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, () => {
+        fetchLiveStockReceiptsFromSupabase().then(() => {
+          broadcastManagerSync({ source: 'supabase_stock_receipts' });
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'material_disbursements' }, () => {
+        fetchManagerDashboardData().then(() => {
+          broadcastManagerSync({ source: 'supabase_material_disbursements' });
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_audit_logs' }, () => {
+        fetchLiveFinishedProductsFromSupabase().then(() => {
+          broadcastManagerSync({ source: 'supabase_audit_logs' });
+        });
+      })
+      .subscribe();
+  } catch (err) {
+    console.warn('[ManagerSupabase] Global realtime subscription notice:', err);
+  }
+}

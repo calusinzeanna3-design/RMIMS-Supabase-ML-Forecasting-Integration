@@ -12,6 +12,7 @@
 
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
+import { broadcastManagerSync } from '../supabase/manager-supabase-service.js';
 import {
   generateNextReference,
   checkReferenceDuplicate,
@@ -424,6 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('rmims_staff_transactions_updated', refreshDisburseState);
   window.addEventListener('rmims_inventory_updated', refreshDisburseState);
+  window.addEventListener('rmims_manager_receipts_updated', refreshDisburseState);
+  window.addEventListener('rmims_manager_disbursements_updated', refreshDisburseState);
+  window.addEventListener('rmims_staff_activity_updated', refreshDisburseState);
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleDisbursePreview();
   });
@@ -725,6 +729,15 @@ function handleConfirmSubmission() {
     notes: currentReviewData.notes,
     status: 'Pending'
   });
+
+  try {
+    broadcastManagerSync({
+      action: 'staff_disburse_submitted',
+      ref: currentReviewData.ref,
+      material: currentReviewData.material,
+      quantity: currentReviewData.quantity
+    });
+  } catch (_) {}
 
   // Close review modal
   const modal = document.getElementById('staffDisburseReviewModal');

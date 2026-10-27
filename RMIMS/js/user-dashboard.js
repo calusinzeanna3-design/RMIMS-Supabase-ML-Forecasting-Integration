@@ -10,6 +10,7 @@
 
 import { getSystemRawMaterials, getSystemCustomDisbursements } from './system-materials.js';
 import { getStaffTransactions, getAllCompanyTransactions } from './rmims-transaction-engine.js';
+import { fetchUnifiedInventoryFromSupabase, fetchManagerDashboardData } from '../supabase/manager-supabase-service.js';
 
 // Get the current staff name from the live session (no hardcoded fallback)
 function getLiveStaffName() {
@@ -56,6 +57,24 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('rmims_staff_transactions_updated', refreshStaffDashboard);
   window.addEventListener('rmims_staff_activity_updated', refreshStaffDashboard);
   window.addEventListener('rmims_inventory_updated', refreshStaffDashboard);
+  window.addEventListener('rmims_manager_receipts_updated', refreshStaffDashboard);
+  window.addEventListener('rmims_manager_disbursements_updated', refreshStaffDashboard);
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.onmessage = () => {
+        refreshStaffDashboard();
+      };
+    }
+  } catch (_) {}
+
+  // Live Supabase sync on load
+  try {
+    fetchUnifiedInventoryFromSupabase().then(() => {
+      refreshStaffDashboard();
+    }).catch(() => {});
+  } catch (_) {}
 });
 
 async function initDashboard() {

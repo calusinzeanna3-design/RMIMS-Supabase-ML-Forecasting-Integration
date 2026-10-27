@@ -429,6 +429,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateBundleReceivePreview();
   });
   window.addEventListener('rmims_manager_receipts_updated', refreshReceiveState);
+  window.addEventListener('rmims_manager_disbursements_updated', refreshReceiveState);
+  window.addEventListener('rmims_staff_activity_updated', refreshReceiveState);
 
   try {
     if (typeof BroadcastChannel !== 'undefined') {

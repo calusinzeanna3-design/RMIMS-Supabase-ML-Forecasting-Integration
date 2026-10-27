@@ -50,6 +50,18 @@ function initStaffInventory() {
   window.addEventListener('rmims_inventory_updated', () => {
     loadInventory();
   });
+  window.addEventListener('rmims_manager_receipts_updated', () => {
+    loadInventory();
+  });
+  window.addEventListener('rmims_manager_disbursements_updated', () => {
+    loadInventory();
+  });
+  window.addEventListener('rmims_staff_transactions_updated', () => {
+    loadInventory();
+  });
+  window.addEventListener('rmims_staff_activity_updated', () => {
+    loadInventory();
+  });
 
   try {
     if (typeof BroadcastChannel !== 'undefined') {

@@ -84,7 +84,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.addEventListener('rmims_staff_transactions_updated', refreshAllState);
+  window.addEventListener('rmims_staff_activity_updated', refreshAllState);
   window.addEventListener('rmims_inventory_updated', refreshAllState);
+  window.addEventListener('rmims_manager_receipts_updated', refreshAllState);
+  window.addEventListener('rmims_manager_disbursements_updated', refreshAllState);
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.onmessage = () => {
+        refreshAllState();
+      };
+    }
+  } catch (_) {}
 
   // URL query check: e.g. ?review=REC-2026-00125
   try {

@@ -2746,6 +2746,7 @@ window.addEventListener("rmims_inventory_updated", () => loadAuthoritativeData()
 window.addEventListener("rmims_manager_receipts_updated", () => loadAuthoritativeData());
 window.addEventListener("rmims_manager_disbursements_updated", () => loadAuthoritativeData());
 window.addEventListener("rmims_staff_transactions_updated", () => loadAuthoritativeData());
+window.addEventListener("rmims_staff_activity_updated", () => loadAuthoritativeData());
 
 try {
     if (typeof BroadcastChannel !== "undefined") {

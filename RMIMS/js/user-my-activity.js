@@ -114,7 +114,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   window.addEventListener('rmims_staff_transactions_updated', refreshActivityState);
+  window.addEventListener('rmims_staff_activity_updated', refreshActivityState);
   window.addEventListener('rmims_inventory_updated', refreshActivityState);
+  window.addEventListener('rmims_manager_receipts_updated', refreshActivityState);
+  window.addEventListener('rmims_manager_disbursements_updated', refreshActivityState);
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('rmims_user_sync');
+      channel.onmessage = () => {
+        refreshActivityState();
+      };
+    }
+  } catch (_) {}
 
   // If no transactions currently loaded, ping for state synchronization
   if (allTransactions.length === 0) {
