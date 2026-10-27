@@ -26,7 +26,8 @@ export const TENANT_CONFIGS = {
     prefix: "RM-",
     defaultBranch: "Headquarters (Lucena)",
     badgeColor: "#10b981",
-    isScones: false
+    isScones: false,
+    companyAcronym: "KXC"
   },
   [SCONES_TENANT_ID]: {
     id: SCONES_TENANT_ID,
@@ -43,7 +44,8 @@ export const TENANT_CONFIGS = {
     prefix: "NB-",
     defaultBranch: "Scones & Muffins Store (Lucena)",
     badgeColor: "#f59e0b",
-    isScones: true
+    isScones: true,
+    companyAcronym: "SM"
   }
 };
 
@@ -215,4 +217,77 @@ export function getTenantMaterials() {
     current_stock: Number(m.current_stock || 0),
     minimum_threshold: Number(m.minimum_threshold || 10)
   }));
+}
+
+/**
+ * Computes or resolves the unique company acronym from tenant config, user profile, or branch name.
+ * Examples:
+ * - "Scones & Muffins Bakery" / "Scones and Muffins" -> "SM"
+ * - "KXC 5-Year Enterprise" -> "KXC"
+ * - "Golden Crust Bakery" -> "GCB"
+ */
+export function getCompanyAcronym(tenantOrUser = null) {
+  let context = tenantOrUser;
+  if (!context) {
+    try {
+      context = getActiveTenantContext();
+    } catch (_) {}
+  }
+
+  // 1. If explicit companyAcronym is defined on tenant
+  if (context?.companyAcronym) {
+    return String(context.companyAcronym).toUpperCase().trim();
+  }
+  if (context?.isScones) {
+    return "SM";
+  }
+
+  // 2. Derive from company_name, companyName, branch_name, branchName, or name
+  const candidateName = String(
+    context?.company_name ||
+    context?.companyName ||
+    context?.name ||
+    context?.branch_name ||
+    context?.branchName ||
+    context?.branch ||
+    ""
+  ).trim();
+
+  if (!candidateName) return "SM"; // Default to authentic Scones & Muffins
+
+  const lower = candidateName.toLowerCase();
+  if (lower.includes("scones") || lower.includes("muffin")) return "SM";
+  if (lower.includes("kxc")) return "KXC";
+
+  // Clean and extract significant words (omit connector words)
+  const words = candidateName
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => !["and", "&", "the", "of", "in", "store", "branch", "enterprise", "ph", "inc", "corp", "co"].includes(w.toLowerCase()));
+
+  if (words.length >= 2) {
+    const acronym = words.map(w => w[0].toUpperCase()).join("");
+    return acronym.slice(0, 4);
+  } else if (words.length === 1 && words[0].length >= 2) {
+    if (words[0] === words[0].toUpperCase()) {
+      return words[0].slice(0, 4);
+    }
+    return words[0].slice(0, 3).toUpperCase();
+  }
+
+  return "SM";
+}
+
+/**
+ * Generates the standardized RBAC reference prefix for a given role and company/branch.
+ * Example for Scones & Muffins in 2026:
+ * - Manager: "2026SMM-"
+ * - Staff: "2026SMSt-"
+ */
+export function getRoleReferencePrefix(role = 'manager', tenantOrUser = null) {
+  const currentYear = new Date().getFullYear();
+  const acronym = getCompanyAcronym(tenantOrUser);
+  const cleanRole = String(role || '').toLowerCase();
+  const roleTag = (cleanRole === 'staff' || cleanRole === 'user') ? 'St' : 'M';
+  return `${currentYear}${acronym}${roleTag}-`;
 }

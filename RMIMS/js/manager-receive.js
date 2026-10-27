@@ -128,7 +128,7 @@ let ledgerPageSize = 5;
 
 // Generate next sequential reference number
 function getNextReceiveReference() {
-  return generateNextReference('REC');
+  return generateNextReference('REC', 'manager');
 }
 
 function loadReceipts() {
@@ -286,7 +286,7 @@ function initDatePicker() {
 function initReferenceDisplay() {
   const refDisplay = document.getElementById('mgrRecRefDisplay');
   if (refDisplay) {
-    refDisplay.textContent = generateNextReference('REC');
+    refDisplay.textContent = generateNextReference('REC', 'manager');
   }
 }
 

@@ -12,6 +12,7 @@
  */
 
 import { adjustSystemMaterialStock } from './system-materials.js';
+import { getCompanyAcronym, getRoleReferencePrefix } from './tenant-manager.js';
 
 export const STAFF_TX_KEY = 'rmims_staff_transactions';
 export const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
@@ -189,22 +190,62 @@ export function getAllCompanyTransactions() {
 /**
  * Generate next unique reference number across all company records.
  * Non-editable, non-reusable.
+ * Follows RBAC company & role format:
+ * - Manager: e.g. "2026SMM-0001"
+ * - Staff:   e.g. "2026SMSt-0001"
  * @param {'REC' | 'DIS'} type
- * @returns {string} e.g. "REC-2026-00125" or "DIS-2026-00091"
+ * @param {'manager' | 'staff' | null} role
+ * @param {object | null} context
+ * @returns {string} e.g. "2026SMM-0001" or "2026SMSt-0001"
  */
-export function generateNextReference(type = 'REC') {
+export function generateNextReference(type = 'REC', role = null, context = null) {
   const currentYear = new Date().getFullYear();
-  const prefix = `${type.toUpperCase()}-${currentYear}-`;
+
+  // 1. Resolve role (Manager vs Staff)
+  let resolvedRole = role;
+  if (!resolvedRole) {
+    if (typeof window !== 'undefined') {
+      const p = (window.location.pathname || '').toLowerCase();
+      if (p.includes('/manager/')) resolvedRole = 'manager';
+      else if (p.includes('/user/')) resolvedRole = 'staff';
+    }
+  }
+  if (!resolvedRole) {
+    try {
+      const uRaw = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile');
+      if (uRaw) {
+        const u = JSON.parse(uRaw);
+        const r = String(u.operational_role || u.operationalRole || u.role || '').toLowerCase();
+        resolvedRole = (r === 'staff' || r === 'user') ? 'staff' : 'manager';
+      }
+    } catch (_) {}
+  }
+  if (!resolvedRole) {
+    resolvedRole = 'manager';
+  }
+
+  const cleanRole = String(resolvedRole).toLowerCase();
+  const roleTag = (cleanRole === 'staff' || cleanRole === 'user') ? 'St' : 'M';
+  const acronym = getCompanyAcronym(context);
+
+  // Standard format required by specification:
+  // e.g. Scones and Muffins Manager: "2026SMM-"
+  // e.g. Scones and Muffins Staff:   "2026SMSt-"
+  const prefix = `${currentYear}${acronym}${roleTag}-`;
 
   const allTx = getAllCompanyTransactions();
   const burned = getBurnedReferences();
 
   let maxNum = 0;
 
-  // Search existing transactions
+  // Regex to match exact new pattern e.g. 2026SMM-0001 or 2026SMSt-0001
+  const exactRegex = new RegExp(`^${currentYear}${acronym}${roleTag}-(\\d+)`, 'i');
+  // Fallback regex for any reference with the same role tag and year
+  const roleRegex = new RegExp(`^${currentYear}.*?${roleTag}-(\\d+)`, 'i');
+
   allTx.forEach(t => {
-    if (t.ref && t.ref.toUpperCase().startsWith(prefix)) {
-      const match = t.ref.match(new RegExp(`${type.toUpperCase()}-${currentYear}-(\\d+)`, 'i'));
+    if (t.ref) {
+      let match = t.ref.match(exactRegex) || t.ref.match(roleRegex);
       if (match) {
         const num = parseInt(match[1], 10);
         if (num > maxNum) maxNum = num;
@@ -212,10 +253,9 @@ export function generateNextReference(type = 'REC') {
     }
   });
 
-  // Search burned references
   burned.forEach(ref => {
-    if (ref && ref.toUpperCase().startsWith(prefix)) {
-      const match = ref.match(new RegExp(`${type.toUpperCase()}-${currentYear}-(\\d+)`, 'i'));
+    if (ref) {
+      let match = ref.match(exactRegex) || ref.match(roleRegex);
       if (match) {
         const num = parseInt(match[1], 10);
         if (num > maxNum) maxNum = num;
@@ -223,9 +263,9 @@ export function generateNextReference(type = 'REC') {
     }
   });
 
-  // Sequence starts brand new from 1 (e.g. 00001)
+  // Continuous sequence starting at 0001, padded to 4 digits
   const nextNum = maxNum + 1;
-  return `${prefix}${String(nextNum).padStart(5, '0')}`;
+  return `${prefix}${String(nextNum).padStart(4, '0')}`;
 }
 
 /**

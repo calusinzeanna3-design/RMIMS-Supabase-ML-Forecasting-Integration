@@ -96,7 +96,28 @@ async function initDashboard() {
     const c = String(m.item_code || m.id || '').toUpperCase();
     return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
   });
-  const staffTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+
+  const activeStaffName = getLiveStaffName().trim().toLowerCase();
+  let staffUserEmail = '';
+  try {
+    const raw = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile') || localStorage.getItem('staffUser');
+    if (raw) staffUserEmail = String(JSON.parse(raw)?.email || '').trim().toLowerCase();
+  } catch (_) {}
+
+  const rawStaffTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+
+  // Strict user isolation for staff member's personal activity on dashboard:
+  // Brand new staff account starts with 0 personal submissions
+  const staffTx = (activeStaffName || staffUserEmail)
+    ? rawStaffTx.filter(t => {
+        const tEmail = String(t.staffEmail || '').trim().toLowerCase();
+        const tStaff = String(t.staff || '').trim().toLowerCase();
+        if (staffUserEmail && tEmail) return tEmail === staffUserEmail;
+        if (activeStaffName && tStaff) return tStaff === activeStaffName;
+        return false;
+      })
+    : rawStaffTx;
+
   const allCompanyTx = (getAllCompanyTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
 
   renderSummaryCards(materials, staffTx);
@@ -104,7 +125,7 @@ async function initDashboard() {
   renderSmartAlerts(materials);
   renderTop5Materials(materials, allCompanyTx);
   renderRecentActivity(staffTx);
-  renderStaffChart();
+  renderStaffChart(staffTx);
 }
 
 function initStaffChart() {
@@ -120,13 +141,30 @@ function initStaffChart() {
   renderStaffChart();
 }
 
-function renderStaffChart() {
+function renderStaffChart(providedStaffTx = null) {
   const ctx = document.getElementById('staffActivityChart');
   if (!ctx || typeof Chart === 'undefined') return;
 
-  const staffTx = getStaffTransactions();
-  const allCompanyTx = getAllCompanyTransactions();
-  const txSource = staffTx.length > 0 ? staffTx : allCompanyTx;
+  let txSource = providedStaffTx;
+  if (!txSource) {
+    const activeStaffName = getLiveStaffName().trim().toLowerCase();
+    let staffUserEmail = '';
+    try {
+      const raw = localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('userProfile') || localStorage.getItem('staffUser');
+      if (raw) staffUserEmail = String(JSON.parse(raw)?.email || '').trim().toLowerCase();
+    } catch (_) {}
+
+    const rawStaffTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+    txSource = (activeStaffName || staffUserEmail)
+      ? rawStaffTx.filter(t => {
+          const tEmail = String(t.staffEmail || '').trim().toLowerCase();
+          const tStaff = String(t.staff || '').trim().toLowerCase();
+          if (staffUserEmail && tEmail) return tEmail === staffUserEmail;
+          if (activeStaffName && tStaff) return tStaff === activeStaffName;
+          return false;
+        })
+      : rawStaffTx;
+  }
 
   const labels = [];
   const recData = [];

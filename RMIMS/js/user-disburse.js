@@ -385,20 +385,23 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Returns the current logged-in staff info from the live session
 function getLiveStaffInfo() {
-  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'user'];
+  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'staffUser'];
   for (const key of candidates) {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const o = JSON.parse(raw);
-      if (o && (o.fullName || o.name || o.email)) {
-        return { name: o.fullName || o.name || '', email: o.email || '' };
+      if (o && (o.fullName || o.name || o.email || o.id)) {
+        return {
+          name: o.fullName || o.name || 'Staff Member',
+          email: o.email || '',
+          id: o.id || ''
+        };
       }
     } catch (_) {}
   }
-  return { name: '', email: '' };
+  return { name: 'Staff Member', email: '', id: '' };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -434,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initNewReference() {
-  currentRef = generateNextReference('DIS');
+  currentRef = generateNextReference('DIS', 'staff');
   const displayEl = document.getElementById('staffDisbRefDisplay');
   if (displayEl) displayEl.textContent = currentRef;
 }
@@ -719,6 +722,7 @@ function handleConfirmSubmission() {
     date: currentReviewData.date,
     staff: getLiveStaffInfo().name,
     staffEmail: getLiveStaffInfo().email,
+    staffId: getLiveStaffInfo().id,
     role: 'Staff',
     activity: 'Disburse',
     type: 'Disburse',

@@ -121,7 +121,7 @@ let ledgerPageSize = 5;
 
 // Generate next sequential reference number
 function generateNextReferenceLocal() {
-  return generateNextReference('DIS');
+  return generateNextReference('DIS', 'manager');
 }
 
 function loadDisbursements() {
@@ -257,7 +257,7 @@ function initDatePicker() {
 function initReferenceDisplay() {
   const refDisplay = document.getElementById('mgrDisbRefDisplay');
   if (refDisplay) {
-    refDisplay.textContent = generateNextReference('DIS');
+    refDisplay.textContent = generateNextReference('DIS', 'manager');
   }
 }
 

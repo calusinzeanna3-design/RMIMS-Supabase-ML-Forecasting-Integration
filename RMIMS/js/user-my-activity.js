@@ -337,8 +337,40 @@ function bindEvents() {
   }
 }
 
+function getActiveStaffUser() {
+  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'staffUser'];
+  for (const key of candidates) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const o = JSON.parse(raw);
+      if (o && (o.email || o.id || o.fullName || o.name)) return o;
+    } catch (_) {}
+  }
+  return null;
+}
+
 function loadAndRenderActivity() {
-  allTransactions = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const activeUser = getActiveStaffUser();
+  const cleanEmail = String(activeUser?.email || '').trim().toLowerCase();
+  const cleanName = String(activeUser?.fullName || activeUser?.name || '').trim().toLowerCase();
+
+  const rawStaffList = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+
+  // Strict user isolation for My Activity:
+  // If a new account logs in, their personal activity starts brand new (0 transactions).
+  if (activeUser && (cleanEmail || cleanName)) {
+    allTransactions = rawStaffList.filter(t => {
+      const tEmail = String(t.staffEmail || '').trim().toLowerCase();
+      const tStaff = String(t.staff || '').trim().toLowerCase();
+      if (cleanEmail && tEmail) return tEmail === cleanEmail;
+      if (cleanName && tStaff) return tStaff === cleanName;
+      return false;
+    });
+  } else {
+    allTransactions = rawStaffList;
+  }
+
   if (allTransactions.length === 0) {
     try {
       if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
