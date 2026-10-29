@@ -11,7 +11,7 @@
  * - Resubmitted transactions display 🔵 UPDATED inside Manager Review popup
  */
 
-import { adjustSystemMaterialStock } from './system-materials.js';
+import { adjustSystemMaterialStock, getSystemRawMaterials } from './system-materials.js';
 import { getCompanyAcronym, getRoleReferencePrefix } from './tenant-manager.js';
 
 export const STAFF_TX_KEY = 'rmims_staff_transactions';
@@ -69,7 +69,7 @@ export function getAllCompanyTransactions() {
               date: t.date || '',
               time: t.time || '',
               staff: t.staff || 'Staff Member',
-              activity: t.activity || (t.ref.startsWith('REC') ? 'Receive' : 'Disburse'),
+              activity: t.activity || ((t.ref.startsWith('REC') || /-R\d+/i.test(t.ref)) ? 'Receive' : 'Disburse'),
               material: t.material || t.rawMaterial || '',
               qty: t.qty || (t.quantity ? `${t.quantity} ${t.unit || ''}` : ''),
               qtyNum: parseFloat(t.quantity || t.qtyNum || 0),
@@ -440,6 +440,22 @@ export function showDuplicateWarningModal({ refNumber, existingTransaction, onCa
  */
 export function submitStaffTransaction(data) {
   const allStaff = getStaffTransactions();
+  let resolvedMatId = data.materialId || data.item_code || '';
+  let resolvedMatName = data.material || data.materialName || '';
+  try {
+    const mats = getSystemRawMaterials() || [];
+    const q = String(resolvedMatName || resolvedMatId).trim().toLowerCase();
+    const found = mats.find(m =>
+      (m.name || m.raw_material_name || '').trim().toLowerCase() === q ||
+      String(m.id || '').toLowerCase() === q ||
+      String(m.item_code || '').toLowerCase() === q
+    );
+    if (found) {
+      resolvedMatId = found.id || found.item_code || resolvedMatId;
+      resolvedMatName = found.name || found.raw_material_name || resolvedMatName;
+    }
+  } catch (_) {}
+
   const tx = {
     id: `st-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     ref: data.ref,
@@ -448,7 +464,9 @@ export function submitStaffTransaction(data) {
     staff: data.staff || '',
     staffEmail: data.staffEmail || '',
     activity: data.activity, // 'Receive' or 'Disburse'
-    material: data.material,
+    materialId: resolvedMatId,
+    material: resolvedMatName,
+    materialName: resolvedMatName,
     quantity: parseFloat(data.quantity || 0),
     qty: `${data.quantity}${data.unit ? ' ' + data.unit : ''}`,
     unit: data.unit || '',
@@ -469,7 +487,7 @@ export function submitStaffTransaction(data) {
   // Broadcast live notification across all portals (Admin, Manager, Staff)
   let staffTxNotif = null;
   try {
-    const act = tx.activity || (tx.ref.startsWith('REC') ? 'Receive' : 'Disburse');
+    const act = tx.activity || ((tx.ref.startsWith('REC') || /-R\d+/i.test(tx.ref)) ? 'Receive' : 'Disburse');
     staffTxNotif = {
       title: `New Staff ${act}: ${tx.ref}`,
       message: `${tx.staff || 'Staff member'} submitted a ${act.toLowerCase()} record for ${tx.qty || (tx.quantity + ' ' + (tx.unit || ''))} of ${tx.material} (${tx.ref}).`,

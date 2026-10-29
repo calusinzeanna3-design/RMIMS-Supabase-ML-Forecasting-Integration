@@ -95,11 +95,11 @@ import './rmims-custom-select.js';
 
   // Profile click dropdown and session menu
   function setupProfileMenu() {
-    const profileBtn = document.querySelector('.topbar-profile');
+    const profileBtn = document.querySelector('#profileBtn, .topbar-profile');
     if (!profileBtn) return;
 
     // Check if anchor wrapper exists; if not, wrap profileBtn
-    let anchor = profileBtn.closest('.rmsme-popover-anchor');
+    let anchor = profileBtn.closest('.rmsme-popover-anchor, .popover-anchor');
     if (!anchor) {
       anchor = document.createElement('div');
       anchor.className = 'rmsme-popover-anchor';
@@ -108,7 +108,7 @@ import './rmims-custom-select.js';
       anchor.appendChild(profileBtn);
     }
 
-    let dropdown = document.getElementById('profileDropdown') || document.getElementById('adminProfileDropdown');
+    let dropdown = document.getElementById('profileDropdown') || document.getElementById('adminProfileDropdown') || anchor.querySelector('.mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown');
     if (!dropdown) {
       dropdown = document.createElement('div');
       dropdown.id = 'profileDropdown';
@@ -145,30 +145,40 @@ import './rmims-custom-select.js';
     function closeAdminMenu() {
       dropdown.setAttribute('hidden', '');
       dropdown.hidden = true;
-      dropdown.classList.remove('open');
-      dropdown.style.display = 'none';
+      dropdown.classList.remove('open', 'active');
+      dropdown.style.setProperty('display', 'none', 'important');
+      dropdown.style.setProperty('visibility', 'hidden', 'important');
+      dropdown.style.setProperty('opacity', '0', 'important');
+      dropdown.style.setProperty('pointer-events', 'none', 'important');
       profileBtn.setAttribute('aria-expanded', 'false');
     }
 
     function toggleAdminMenu() {
-      const willOpen = dropdown.hidden || dropdown.hasAttribute('hidden') || !dropdown.classList.contains('open');
+      const isCurrentlyOpen = !dropdown.hidden && !dropdown.hasAttribute('hidden') && dropdown.classList.contains('open') && dropdown.style.display !== 'none';
+      const willOpen = !isCurrentlyOpen;
       if (willOpen) {
+        try {
+          if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
+            window.RMIMS_CUSTOM_SELECT.closeAll();
+          }
+          if (window.RMIMS_NOTIFICATIONS_POPUP && typeof window.RMIMS_NOTIFICATIONS_POPUP.close === 'function') {
+            window.RMIMS_NOTIFICATIONS_POPUP.close();
+          }
+        } catch (_) {}
         dropdown.removeAttribute('hidden');
         dropdown.hidden = false;
         dropdown.classList.add('open');
-        dropdown.style.display = 'flex';
-        dropdown.style.visibility = 'visible';
-        dropdown.style.opacity = '1';
+        dropdown.style.setProperty('display', 'flex', 'important');
+        dropdown.style.setProperty('visibility', 'visible', 'important');
+        dropdown.style.setProperty('opacity', '1', 'important');
+        dropdown.style.setProperty('pointer-events', 'auto', 'important');
+        dropdown.style.zIndex = '10005';
         profileBtn.setAttribute('aria-expanded', 'true');
         const curName = document.querySelector('.profile-name')?.textContent || 'Admin';
         const nameSlot = dropdown.querySelector('#dropdownAdminName, [data-shell-name]');
         if (nameSlot) nameSlot.textContent = curName;
       } else {
-        dropdown.setAttribute('hidden', '');
-        dropdown.hidden = true;
-        dropdown.classList.remove('open');
-        dropdown.style.display = 'none';
-        profileBtn.setAttribute('aria-expanded', 'false');
+        closeAdminMenu();
       }
     }
 
@@ -179,7 +189,9 @@ import './rmims-custom-select.js';
     });
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('#profileAnchor, #adminProfileAnchor') && !e.target.closest('.mgr-profile-dropdown, .admin-profile-dropdown') && !e.target.closest('.topbar-profile')) {
+      if (!e.target.closest('#profileAnchor, #adminProfileAnchor, .rmsme-popover-anchor') &&
+          !e.target.closest('.mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown') &&
+          !e.target.closest('#profileBtn, .topbar-profile')) {
         closeAdminMenu();
       }
     });
@@ -190,22 +202,26 @@ import './rmims-custom-select.js';
       }
     });
 
-    dropdown.querySelector('#headerLogoutBtn, #adminHeaderLogoutBtn')?.addEventListener('click', async (e) => {
-      e.preventDefault();
-      localStorage.removeItem('adminUser');
-      localStorage.removeItem('rmimsAdminUser');
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('userProfile');
-      localStorage.removeItem('rmsmeCurrentUser');
-      try {
-        sessionStorage.clear();
-        const { supabase } = await import('../supabase/supabase-config.js');
-        if (supabase && supabase.auth) {
-          await supabase.auth.signOut();
-        }
-      } catch (_) {}
-      window.location.href = '../login.html';
-    });
+    const logoutBtn = dropdown.querySelector('#headerLogoutBtn, #adminHeaderLogoutBtn');
+    if (logoutBtn && !logoutBtn._adminLogoutBound) {
+      logoutBtn._adminLogoutBound = true;
+      logoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('rmimsAdminUser');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('rmsmeCurrentUser');
+        try {
+          sessionStorage.clear();
+          const { supabase } = await import('../supabase/supabase-config.js');
+          if (supabase && supabase.auth) {
+            await supabase.auth.signOut();
+          }
+        } catch (_) {}
+        window.location.href = '../login.html';
+      });
+    }
   }
 
   // Bell notifications toggle
@@ -389,38 +405,69 @@ import './rmims-custom-select.js';
       modalBackdrop.classList.remove('show');
     }
 
-    if (openBtn) {
+    if (!document.getElementById('rmsmeAdminHelpInlineStyle')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'rmsmeAdminHelpInlineStyle';
+      styleEl.textContent = `
+        .help-faq-answer {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+          opacity: 0;
+        }
+        .help-faq-item.active .help-faq-answer {
+          max-height: 240px !important;
+          padding: 0 16px 14px 60px !important;
+          opacity: 1 !important;
+        }
+        .help-faq-item.active .help-faq-chevron {
+          transform: rotate(180deg);
+          color: #059669;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    if (openBtn && !openBtn._helpOpenBound) {
+      openBtn._helpOpenBound = true;
       openBtn.addEventListener('click', (e) => {
         e.preventDefault();
         openHelp();
       });
     }
 
-    if (closeBtn) {
+    if (closeBtn && !closeBtn._helpCloseBound) {
+      closeBtn._helpCloseBound = true;
       closeBtn.addEventListener('click', closeHelp);
     }
 
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) {
-        closeHelp();
-      }
-    });
+    if (!modalBackdrop._helpBackdropBound) {
+      modalBackdrop._helpBackdropBound = true;
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) {
+          closeHelp();
+        }
+      });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modalBackdrop.classList.contains('show')) {
-        closeHelp();
-      }
-    });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalBackdrop.classList.contains('show')) {
+          closeHelp();
+        }
+      });
+    }
 
     // 3. Accordion toggling
     const faqTriggers = modalBackdrop.querySelectorAll('.help-faq-trigger');
     faqTriggers.forEach(trigger => {
-      trigger.addEventListener('click', () => {
+      if (trigger._faqBound) return;
+      trigger._faqBound = true;
+      trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const item = trigger.closest('.help-faq-item');
         if (!item) return;
         const isActive = item.classList.contains('active');
         
-        // Optional accordion behavior: collapse others or just toggle clicked
         faqTriggers.forEach(t => {
           const other = t.closest('.help-faq-item');
           if (other && other !== item) other.classList.remove('active');
@@ -436,7 +483,8 @@ import './rmims-custom-select.js';
 
     // 4. Start Guide Button -> Triggers Onboarding ("when we say guide is onboarding")
     const startGuideBtn = document.getElementById('btnStartOnboardingGuide');
-    if (startGuideBtn) {
+    if (startGuideBtn && !startGuideBtn._helpGuideBound) {
+      startGuideBtn._helpGuideBound = true;
       startGuideBtn.addEventListener('click', async () => {
         closeHelp();
         try {
@@ -834,7 +882,14 @@ import './rmims-custom-select.js';
     });
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  let _adminShellInitialized = false;
+  function initAdminShell() {
+    if (_adminShellInitialized) {
+      setupProfileMenu();
+      setupNotifications();
+      return;
+    }
+    _adminShellInitialized = true;
     cleanseLegacyMockData();
     updateLiveClock();
     setInterval(updateLiveClock, 1000); // live 1-second accurate frontdesk clock monitoring
@@ -844,7 +899,14 @@ import './rmims-custom-select.js';
     setupNotifications();
     setupHelpCenter();
     setupMobileDrawer();
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminShell);
+  } else {
+    initAdminShell();
+  }
+  setTimeout(setupProfileMenu, 300);
 
   window.addEventListener('storage', (e) => {
     if (e.key === 'currentUser' || e.key === 'userProfile' || e.key === 'rmimsCurrentUser') {

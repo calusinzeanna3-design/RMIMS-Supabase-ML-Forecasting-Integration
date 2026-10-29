@@ -16,6 +16,7 @@ import {
   saveCustomReceipt,
   saveCustomDisbursement,
   adjustSystemMaterialStock,
+  updateMaterialActivityTimestamp,
   invalidateForecastCache
 } from '../js/system-materials.js';
 
@@ -101,17 +102,28 @@ export async function fetchManagerDashboardData() {
             created_at: sm.created_at || new Date().toISOString()
           };
         });
-        localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(reconciled));
-        const mgrOverrides = {};
+        // Preserve locally imported/updated materials during dashboard sync
+        let existingOverrides = {};
+        try { existingOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}'); } catch (_) {}
+        const mgrOverrides = { ...existingOverrides };
         reconciled.forEach(m => {
+          const prev = existingOverrides[m.item_code] || {};
+          const usePrev = prev.is_imported || prev.is_manual_override || Boolean(prev.last_updated) || (prev.current_stock > 0 && m.current_stock === 0);
+          const firstDate = prev.date_added || prev.first_date || m.date_added || (m.created_at ? String(m.created_at).slice(0, 10) : '');
+          const latestDate = prev.last_updated || prev.latest_date || m.updated_at || m.created_at || firstDate;
           mgrOverrides[m.item_code] = {
+            ...prev,
             name: m.name,
             raw_material_name: m.name,
-            unit: m.unit,
-            current_stock: m.current_stock,
-            minimum_stock: m.minimum_threshold,
-            maximum_stock: m.reorder_quantity * 4,
-            last_updated: m.created_at
+            unit: prev.unit || m.unit,
+            current_stock: usePrev ? prev.current_stock : m.current_stock,
+            minimum_stock: prev.minimum_stock ?? m.minimum_threshold,
+            maximum_stock: prev.maximum_stock || (m.reorder_quantity * 4),
+            date_added: firstDate,
+            first_date: firstDate,
+            display_date: prev.display_date || firstDate || '',
+            last_updated: latestDate,
+            latest_date: latestDate
           };
         });
         localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
@@ -120,10 +132,22 @@ export async function fetchManagerDashboardData() {
       }
     }
 
-    // Authoritatively synchronize Supabase receipts with local manager receipts
+    // Authoritatively synchronize Supabase receipts with local manager receipts (merge without wiping local entries)
     if (rcvRes.status === 'fulfilled' && Array.isArray(rcvRes.value?.data)) {
       try {
-        const reconciledRec = rcvRes.value.data
+        let deletedRecIds = new Set();
+        try {
+          deletedRecIds = new Set(JSON.parse(localStorage.getItem('rmims_deleted_receipt_ids') || '[]').map(x => String(x)));
+        } catch (_) {}
+
+        let existingLocalRec = [];
+        try {
+          const parsed = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+          if (Array.isArray(parsed)) existingLocalRec = parsed.filter(r => r && !deletedRecIds.has(String(r.ref || r.id)));
+        } catch (_) {}
+
+        const remoteRec = rcvRes.value.data
+          .filter(sr => sr && !deletedRecIds.has(String(sr.id)))
           .map(sr => ({
             id: sr.id,
             ref: sr.id,
@@ -137,16 +161,35 @@ export async function fetchManagerDashboardData() {
             status: 'Approved',
             createdAt: sr.created_at
           }));
-        localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(reconciledRec));
+
+        const recMap = new Map();
+        existingLocalRec.forEach(r => recMap.set(String(r.ref || r.id), r));
+        remoteRec.forEach(r => {
+          const k = String(r.ref || r.id);
+          if (!recMap.has(k)) recMap.set(k, r);
+        });
+        localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(Array.from(recMap.values())));
       } catch (e) {
         console.warn('[ManagerSupabase] Error syncing receipts to local storage:', e);
       }
     }
 
-    // Authoritatively synchronize Supabase disbursements with local manager disbursements
+    // Authoritatively synchronize Supabase disbursements with local manager disbursements (merge without wiping local entries)
     if (disbRes.status === 'fulfilled' && Array.isArray(disbRes.value?.data)) {
       try {
-        const reconciledDisb = disbRes.value.data
+        let deletedDisbIds = new Set();
+        try {
+          deletedDisbIds = new Set(JSON.parse(localStorage.getItem('rmims_deleted_disbursement_ids') || '[]').map(x => String(x)));
+        } catch (_) {}
+
+        let existingLocalDisb = [];
+        try {
+          const parsed = JSON.parse(localStorage.getItem(MGR_DISBURSEMENTS_KEY) || '[]');
+          if (Array.isArray(parsed)) existingLocalDisb = parsed.filter(d => d && !deletedDisbIds.has(String(d.ref || d.id)));
+        } catch (_) {}
+
+        const remoteDisb = disbRes.value.data
+          .filter(sd => sd && !deletedDisbIds.has(String(sd.id)))
           .map(sd => ({
             id: sd.id,
             ref: sd.id,
@@ -156,11 +199,19 @@ export async function fetchManagerDashboardData() {
             quantity: Number(sd.consumed_quantity || 0),
             unit: sd.unit || 'kg',
             recipient: sd.finished_product_name || sd.activity_type || 'Production Batch',
+            usedFor: sd.finished_product_name || sd.activity_type || 'Production Batch',
             recordedBy: sd.recorded_by || 'Store Manager',
             status: 'Approved',
             createdAt: sd.created_at
           }));
-        localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(reconciledDisb));
+
+        const disbMap = new Map();
+        existingLocalDisb.forEach(d => disbMap.set(String(d.ref || d.id), d));
+        remoteDisb.forEach(d => {
+          const k = String(d.ref || d.id);
+          if (!disbMap.has(k)) disbMap.set(k, d);
+        });
+        localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(Array.from(disbMap.values())));
       } catch (e) {
         console.warn('[ManagerSupabase] Error syncing disbursements to local storage:', e);
       }
@@ -369,8 +420,10 @@ export async function logManagerActivityToSupabase({ action, entityType, entityI
 export async function approveTransactionOnSupabase(tx) {
   if (!tx) return { success: false, message: 'Invalid transaction' };
 
+  const refStr = String(tx.ref || '');
   const isReceive = (tx.activity || tx.type || '').toLowerCase().includes('rec') ||
-                    String(tx.ref || '').toUpperCase().startsWith('REC');
+                    refStr.toUpperCase().startsWith('REC') ||
+                    /-R\d+/i.test(refStr);
   const qty = parseFloat(tx.quantity != null ? tx.quantity : (tx.qtyNum != null ? tx.qtyNum : tx.qty)) || 0;
   const unit = tx.unit || (tx.qty ? String(tx.qty).replace(/^[0-9.\s]+/, '') : '') || 'kg';
   const materialName = tx.material || tx.materialName || '';
@@ -389,6 +442,7 @@ export async function approveTransactionOnSupabase(tx) {
   const delta = isReceive ? qty : -qty;
 
   const updatedMat = adjustSystemMaterialStock(matId || resolvedMatName, delta);
+  updateMaterialActivityTimestamp(matId || resolvedMatName, new Date().toISOString(), isReceive ? 'Receive' : 'Disburse', qty, unit);
   if (updatedMat) {
     saveRawMaterialToSupabase({
       id: updatedMat.id,
@@ -839,18 +893,76 @@ export async function fetchUnifiedInventoryFromSupabase() {
         };
       });
 
-      localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(reconciled));
+      // Merge with existing local custom materials and manager overrides so imported/updated stocks and dates are preserved
+      let existingCustom = [];
+      try { existingCustom = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]'); } catch (_) {}
+      let existingOverrides = {};
+      try { existingOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}'); } catch (_) {}
 
-      const mgrOverrides = {};
+      const mergedMap = new Map();
       reconciled.forEach(m => {
-        mgrOverrides[m.item_code] = {
+        const key = String(m.item_code || m.id || '').toUpperCase().trim();
+        const locOv = existingOverrides[key] || {};
+        const locCust = Array.isArray(existingCustom) ? existingCustom.find(c => String(c.item_code || c.id || '').toUpperCase().trim() === key || (c.name || '').toLowerCase() === (m.name || '').toLowerCase()) : null;
+        const preserveLocal = (locOv && (locOv.is_imported || locOv.is_manual_override || (locOv.current_stock > 0 && m.current_stock === 0))) ||
+                              (locCust && (locCust.is_imported || locCust.is_manual_override || (locCust.current_stock > 0 && m.current_stock === 0)));
+        const finalStock = preserveLocal
+          ? Number(locOv.current_stock ?? locCust?.current_stock ?? m.current_stock ?? 0)
+          : (m.current_stock > 0 ? m.current_stock : Number(locOv.current_stock ?? locCust?.current_stock ?? 0));
+        const finalMin = Number(locOv.minimum_stock ?? locCust?.minimum_stock ?? m.minimum_threshold ?? 10);
+        const firstDate = locOv.date_added || locOv.first_date || locCust?.date_added || locCust?.first_date || m.date_added || (m.created_at ? String(m.created_at).slice(0, 10) : '');
+        const latestDate = locOv.last_updated || locOv.latest_date || locCust?.last_updated || locCust?.latest_date || m.updated_at || m.created_at || firstDate;
+        mergedMap.set(key, {
+          ...m,
+          ...(locCust || {}),
+          id: m.id || key,
+          item_code: key || m.id,
+          current_stock: finalStock,
+          currentStock: finalStock,
+          minimum_threshold: finalMin,
+          minimum_stock: finalMin,
+          date_added: firstDate,
+          first_date: firstDate,
+          display_date: locOv.display_date || locCust?.display_date || firstDate || '',
+          last_updated: latestDate,
+          latest_date: latestDate,
+          is_imported: Boolean(locOv.is_imported || locCust?.is_imported),
+          is_manual_override: Boolean(locOv.is_manual_override || locCust?.is_manual_override)
+        });
+      });
+
+      if (Array.isArray(existingCustom)) {
+        existingCustom.forEach(c => {
+          if (!c) return;
+          const key = String(c.item_code || c.id || '').toUpperCase().trim();
+          if (key && !mergedMap.has(key) && !deletedSet.has(key.toLowerCase())) {
+            mergedMap.set(key, c);
+          }
+        });
+      }
+
+      const finalReconciled = Array.from(mergedMap.values());
+      localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(finalReconciled));
+
+      const mgrOverrides = { ...existingOverrides };
+      finalReconciled.forEach(m => {
+        const key = String(m.item_code || m.id || '').toUpperCase().trim();
+        const prev = existingOverrides[key] || {};
+        const firstDate = prev.date_added || prev.first_date || m.date_added || '';
+        const latestDate = prev.last_updated || prev.latest_date || m.last_updated || m.created_at || firstDate;
+        mgrOverrides[key] = {
+          ...prev,
           name: m.name,
-          raw_material_name: m.name,
-          unit: m.unit,
+          raw_material_name: m.raw_material_name || m.name,
+          unit: prev.unit || m.unit,
           current_stock: m.current_stock,
           minimum_stock: m.minimum_threshold,
-          maximum_stock: m.reorder_quantity ? m.reorder_quantity * 4 : 100,
-          last_updated: m.created_at
+          maximum_stock: prev.maximum_stock || (m.reorder_quantity ? m.reorder_quantity * 4 : 100),
+          date_added: firstDate,
+          first_date: firstDate,
+          display_date: prev.display_date || m.display_date || firstDate || '',
+          last_updated: latestDate,
+          latest_date: latestDate
         };
       });
       localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
@@ -880,6 +992,8 @@ export async function saveRawMaterialToSupabase(material) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   const timeStr = dateStr + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const resolvedFirstDate = material.date_added || material.first_date || now.toISOString().slice(0, 10);
+  const resolvedLatestDate = material.last_updated || material.latest_date || timeStr;
 
   // 1. Authoritative local persistence
   saveCustomRawMaterial({
@@ -897,15 +1011,24 @@ export async function saveRawMaterialToSupabase(material) {
     reorder_quantity: reorderQty,
     lead_time_days: leadTime,
     description: desc,
-    created_at: material.created_at || now.toISOString()
+    date_added: resolvedFirstDate,
+    first_date: resolvedFirstDate,
+    display_date: material.display_date || resolvedFirstDate,
+    last_updated: resolvedLatestDate,
+    latest_date: resolvedLatestDate,
+    created_at: material.created_at || now.toISOString(),
+    is_imported: Boolean(material.is_imported),
+    is_manual_override: true
   });
 
   // 2. Synchronize manager material overrides
   try {
     const ovRaw = localStorage.getItem('rmims_manager_material_overrides');
     const ovs = ovRaw ? JSON.parse(ovRaw) : {};
+    const prevOv = ovs[id] || {};
+    const firstDateToKeep = material.date_added || prevOv.date_added || resolvedFirstDate;
     ovs[id] = {
-      ...(ovs[id] || {}),
+      ...prevOv,
       name,
       raw_material_name: name,
       specification_name: material.specification_name || name,
@@ -917,7 +1040,13 @@ export async function saveRawMaterialToSupabase(material) {
       storage_location: material.storage_location || 'Warehouse A - Shelf 1',
       supplier: material.supplier || 'General Supply Co.',
       description: desc,
-      last_updated: timeStr
+      date_added: firstDateToKeep,
+      first_date: firstDateToKeep,
+      display_date: material.display_date || prevOv.display_date || firstDateToKeep,
+      last_updated: resolvedLatestDate,
+      latest_date: resolvedLatestDate,
+      is_imported: Boolean(material.is_imported || prevOv.is_imported),
+      is_manual_override: true
     };
     localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(ovs));
   } catch (_) {}
@@ -1061,9 +1190,15 @@ export async function fetchLiveStockReceiptsFromSupabase() {
         deletedRecIds = new Set(JSON.parse(localStorage.getItem('rmims_deleted_receipt_ids') || '[]').map(x => String(x)));
       } catch (_) {}
 
-      // EXACT authoritative sync: receipts match Supabase records
-      const reconciled = data
-        .filter(sr => !deletedRecIds.has(String(sr.id)))
+      // Merge Supabase receipts with existing local receipts so local records are never wiped
+      let existingLocalRec = [];
+      try {
+        const parsed = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
+        if (Array.isArray(parsed)) existingLocalRec = parsed.filter(r => r && !deletedRecIds.has(String(r.ref || r.id)));
+      } catch (_) {}
+
+      const remoteRec = data
+        .filter(sr => sr && !deletedRecIds.has(String(sr.id)))
         .map(sr => ({
           id: sr.id,
           ref: sr.id,
@@ -1077,6 +1212,14 @@ export async function fetchLiveStockReceiptsFromSupabase() {
           status: 'Approved',
           createdAt: sr.created_at
         }));
+
+      const recMap = new Map();
+      existingLocalRec.forEach(r => recMap.set(String(r.ref || r.id), r));
+      remoteRec.forEach(r => {
+        const k = String(r.ref || r.id);
+        if (!recMap.has(k)) recMap.set(k, r);
+      });
+      const reconciled = Array.from(recMap.values());
 
       localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(reconciled));
       return reconciled;

@@ -14,136 +14,301 @@ export const RMIMS_CUSTOM_DISBURSEMENTS_KEY = "rmims_custom_disbursements";
 export const RMIMS_DELETED_MATERIALS_KEY = "rmims_deleted_material_ids";
 export const RMIMS_WIPE_BASELINE_MATERIALS_KEY = "rmims_wipe_baseline_materials";
 
-// Strictly protected authentic catalog item codes that can NEVER be deleted or blacklisted
-export const PROTECTED_SCONES_CODES = new Set([
-  "NB-001", "NB-002", "NB-003", "NB-004", "NB-005", "NB-006", "NB-007", "NB-008", "NB-009", "NB-010",
-  "NB-011", "NB-012", "NB-013", "NB-014", "NB-015", "NB-016", "NB-017", "NB-018", "NB-019"
-]);
+// No hardcoded or undeletable material locks — all materials are controlled 100% by the end user
+export const PROTECTED_SCONES_CODES = new Set();
+export const PROTECTED_KXC_CODES = new Set();
+export const PROTECTED_MATERIAL_CODES = new Set();
+export const PROTECTED_MATERIAL_NAMES = new Set();
 
-export const PROTECTED_KXC_CODES = new Set(
-  Array.from({ length: 59 }, (_, i) => `RM-${String(i + 1).padStart(3, '0')}`)
-);
-
-export const PROTECTED_MATERIAL_CODES = new Set([
-  ...PROTECTED_SCONES_CODES,
-  ...PROTECTED_KXC_CODES
-]);
-
-export const PROTECTED_MATERIAL_NAMES = new Set([
-  "desiccated coconut",
-  "coconut meat",
-  "fresh fine grated coconut meat",
-  "fresh mature coconut kernel",
-  "fresh grated coconut meat"
-]);
-
-/**
- * Self-healing cleanse: ensures protected authentic materials (e.g. NB-015, RM-033, RM-034)
- * are NEVER kept in localStorage deleted or archived blacklists.
- */
 export function cleanseMaterialBlacklists() {
-  try {
-    if (typeof localStorage === "undefined") return;
-
-    const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
-    if (deletedRaw) {
-      let deletedArr = JSON.parse(deletedRaw);
-      if (Array.isArray(deletedArr)) {
-        const cleaned = deletedArr.filter(id => {
-          const s = String(id).toUpperCase().trim();
-          const sLower = String(id).toLowerCase().trim();
-          if (PROTECTED_MATERIAL_CODES.has(s)) return false;
-          if (PROTECTED_MATERIAL_NAMES.has(sLower)) return false;
-          if (s.startsWith("NB-") || s.startsWith("RM-")) {
-            const num = parseInt(s.replace(/^[A-Z]+-?0*/i, ""), 10);
-            if (s.startsWith("NB-") && num >= 1 && num <= 19) return false;
-            if (s.startsWith("RM-") && num >= 1 && num <= 59) return false;
-          }
-          return true;
-        });
-        if (cleaned.length !== deletedArr.length) {
-          localStorage.setItem(RMIMS_DELETED_MATERIALS_KEY, JSON.stringify(cleaned));
-        }
-      }
-    }
-
-    const archRaw = localStorage.getItem("rmims_manager_archived_materials");
-    if (archRaw) {
-      let archArr = JSON.parse(archRaw);
-      if (Array.isArray(archArr)) {
-        const cleaned = archArr.filter(id => {
-          const s = String(id).toUpperCase().trim();
-          return !PROTECTED_MATERIAL_CODES.has(s);
-        });
-        if (cleaned.length !== archArr.length) {
-          localStorage.setItem("rmims_manager_archived_materials", JSON.stringify(cleaned));
-        }
-      }
-    }
-  } catch (_) {}
+  // End-user deletions are respected permanently
 }
 
-// Run self-healing cleanse immediately
-cleanseMaterialBlacklists();
-
 /**
- * Permanently removes all old test transactions, receipts, disbursements, and stale dates
- * inputted in previous sessions, ensuring a clean slate so they never affect the system.
+ * Permanently removes all system-seeded/patched dummy data while preserving
+ * any genuine end-user imported or manually added materials and transactions.
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const PURGE_FLAG = "rmims_purged_coconut_clean_v15";
-        if (typeof window !== "undefined" && !localStorage.getItem(PURGE_FLAG)) {
-            // 1. Permanently clear all old test receipts (Manager & Staff)
-            localStorage.setItem(RMIMS_CUSTOM_RECEIPTS_KEY, "[]");
-            localStorage.setItem("rmims_manager_receipts", "[]");
-            localStorage.setItem("rmims_custom_receipts", "[]");
+        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v19";
+        if (typeof window !== "undefined" && !localStorage.getItem(END_USER_CLEAN_FLAG)) {
+            const isUserCreatedItem = (item) => {
+                if (!item || typeof item !== "object") return false;
+                if (item.is_imported === true) return true;
+                const sup = String(item.supplier || "").toLowerCase();
+                const desc = String(item.description || "").toLowerCase();
+                if (sup.includes("imported") || desc.includes("imported")) return true;
+                if (item.added_by === "Store Manager" || item.added_by === "Staff") return true;
+                // Distinguish genuine user input from system-patched 2026-10-29 defaults
+                if (item.is_manual_override === true && item.date_added && item.date_added !== "2026-10-29") return true;
+                return false;
+            };
 
-            // 2. Permanently clear all old test disbursements (Manager & Staff)
-            localStorage.setItem(RMIMS_CUSTOM_DISBURSEMENTS_KEY, "[]");
-            localStorage.setItem("rmims_manager_disbursements", "[]");
-            localStorage.setItem("rmims_custom_disbursements", "[]");
+            try {
+                const customRaw = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
+                if (customRaw) {
+                    const arr = JSON.parse(customRaw);
+                    if (Array.isArray(arr)) {
+                        const kept = arr.filter(isUserCreatedItem);
+                        localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(kept));
+                    }
+                }
+            } catch (_) {}
 
-            // 3. Permanently clear all old staff transactions and requests
-            localStorage.setItem("staff_transactions", "[]");
-            localStorage.setItem("rmims_staff_transactions", "[]");
-            localStorage.setItem("rmims_staff_activity_logs", "[]");
+            ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"].forEach(k => {
+                try {
+                    const ovRaw = localStorage.getItem(k);
+                    if (ovRaw) {
+                        const ovs = JSON.parse(ovRaw);
+                        if (ovs && typeof ovs === "object") {
+                            const cleanedOvs = {};
+                            Object.keys(ovs).forEach(key => {
+                                if (isUserCreatedItem(ovs[key])) {
+                                    cleanedOvs[key] = ovs[key];
+                                }
+                            });
+                            localStorage.setItem(k, JSON.stringify(cleanedOvs));
+                        }
+                    }
+                } catch (_) {}
+            });
 
-            // 4. Permanently clear old activity logs and histories
-            localStorage.setItem("rmims_manager_activities", "[]");
-            localStorage.setItem("rmims_activity_logs", "[]");
-            localStorage.setItem("rmims_system_activity_logs", "[]");
-            localStorage.setItem("rmims_recent_activities", "[]");
-            localStorage.setItem("rmims_pending_approvals", "[]");
-            localStorage.setItem("rmims_material_history", "{}");
-            localStorage.setItem("rmims_stock_history", "{}");
-            localStorage.setItem("rmims_burned_references", "[]");
+            // Remove auto-seeded Scones Formulation finished product if it was system-generated
+            ["rmims_custom_finished_products", "RMSME_CUSTOM_FINISHED_PRODUCTS", "rmims_finished_products", "rmims_finished_product_context"].forEach(fpKey => {
+                try {
+                    const fpRaw = localStorage.getItem(fpKey);
+                    if (fpRaw) {
+                        const fpArr = JSON.parse(fpRaw);
+                        if (Array.isArray(fpArr)) {
+                            const userFps = fpArr.filter(fp => fp && fp.id !== "fp-scones-formulation");
+                            localStorage.setItem(fpKey, JSON.stringify(userFps));
+                        }
+                    }
+                } catch (_) {}
+            });
 
-            // 5. Cleanse any stale deleted blacklist entries
-            cleanseMaterialBlacklists();
-
-            // 6. Permanently wipe all old forecast caches, predictions, and analytics summaries
             localStorage.removeItem("rmims_forecast_cache");
             localStorage.removeItem("rmims_forecast_timestamp");
             localStorage.removeItem("rmims_latest_forecast");
             localStorage.removeItem("rmims_analytics_cache");
             localStorage.removeItem("rmims_analytics_summary");
-            localStorage.setItem("rmims_wipe_baseline_materials", "true");
-
-            localStorage.setItem(PURGE_FLAG, "true");
-            localStorage.setItem("rmims_inventory_updated", String(Date.now()));
-            localStorage.setItem("rmims_manager_receipts_updated", String(Date.now()));
-            localStorage.setItem("rmims_manager_disbursements_updated", String(Date.now()));
-            localStorage.setItem("rmims_staff_transactions_updated", String(Date.now()));
+            localStorage.setItem(END_USER_CLEAN_FLAG, "true");
         }
     } catch (e) {
         console.warn("[Purge] Notice:", e);
     }
 }
 
-// Automatically execute purge on module initialization
+// Automatically execute clean check on module initialization
 try {
     permanentlyPurgeOldWeeklyInputs();
+} catch (_) {}
+
+/**
+ * Recognizes raw material names already registered by the AI Forecasting models
+ * (Scones & Muffins: NB-001..NB-019; KXC Enterprise: RM-001..RM-059) even when
+ * the Excel spreadsheet rows are shuffled or use short names (e.g. "All Purpose Flour" -> NB-001, "Squash" -> NB-003).
+ */
+export function resolveForecastingMaterialByName(rawName, isSconesParam = null) {
+    if (!rawName) return null;
+    const clean = String(rawName).trim().toLowerCase();
+    const norm = clean.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!norm) return null;
+
+    let isScones = isSconesParam;
+    if (isScones === null || isScones === undefined) {
+        try {
+            const tCtx = getActiveTenantContext();
+            isScones = tCtx ? Boolean(tCtx.isScones) : true;
+        } catch (_) {
+            isScones = true;
+        }
+    }
+
+    if (isScones) {
+        // 1. Direct or normalized match against AUTHENTIC_19_SCONES_MATERIALS
+        for (const m of AUTHENTIC_19_SCONES_MATERIALS) {
+            const mNorm = String(m.name || m.raw_material_name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (mNorm === norm) {
+                return { code: m.item_code || m.id, canonicalName: m.name, unit: m.unit || 'g', category: m.category || 'Baking Supplies' };
+            }
+        }
+        // 2. Intelligent keyword / alias recognition for all 19 registered Scones & Muffins forecasting materials
+        const sconesRules = [
+            { code: 'NB-001', unit: 'g', category: 'Grains & Flours', canonicalName: 'All-Purpose / Bread Flour', test: (s) => /\b(all\s*purpose|bread\s*flour|ap\s*flour|wheat\s*flour|flour)\b/.test(s) },
+            { code: 'NB-002', unit: 'g', category: 'Sweeteners', canonicalName: 'Refined White Sugar', test: (s) => /\b(refined.*sugar|white\s*sugar|washed\s*sugar|granulated\s*sugar|sugar)\b/.test(s) },
+            { code: 'NB-003', unit: 'g', category: 'Produce / Agricultural', canonicalName: 'Fresh Yellow Squash (Kalabasa)', test: (s) => /\b(squash|kalabasa|calabaza|pumpkin)\b/.test(s) },
+            { code: 'NB-004', unit: 'g', category: 'Dairy', canonicalName: 'Skimmed Milk Powder', test: (s) => /\b(skimmed\s*milk|skim\s*milk|milk\s*powder|powdered\s*milk)\b/.test(s) },
+            { code: 'NB-005', unit: 'g', category: 'Dairy', canonicalName: 'Condensed Milk', test: (s) => /\b(condensed\s*milk|condensed)\b/.test(s) },
+            { code: 'NB-006', unit: 'pcs', category: 'Dairy & Eggs', canonicalName: 'Fresh Whole Eggs', test: (s) => /\b(whole\s*eggs?|fresh\s*eggs?|eggs?)\b/.test(s) },
+            { code: 'NB-007', unit: 'g', category: 'Fats & Oils', canonicalName: 'Baking Shortening', test: (s) => /\b(baking\s*shortening|vegetable\s*shortening|shortening|lard)\b/.test(s) },
+            { code: 'NB-008', unit: 'g', category: 'Fats & Oils', canonicalName: 'Margarine', test: (s) => /\b(margarine|butter)\b/.test(s) },
+            { code: 'NB-009', unit: 'g', category: 'Leavening Agents', canonicalName: 'Instant Dry Yeast', test: (s) => /\b(instant.*yeast|dry\s*yeast|active\s*yeast|yeast)\b/.test(s) },
+            { code: 'NB-010', unit: 'g', category: 'Leavening Agents', canonicalName: 'Baking Soda', test: (s) => /\b(baking\s*soda|sodium\s*bicarbonate|bicarbonate|soda)\b/.test(s) },
+            { code: 'NB-011', unit: 'g', category: 'Seasonings & Spices', canonicalName: 'Iodized Salt', test: (s) => /\b(iodized\s*salt|fine\s*salt|sea\s*salt|rock\s*salt|salt)\b/.test(s) },
+            { code: 'NB-012', unit: 'g', category: 'Preservatives & Additives', canonicalName: 'Calcium Propionate', test: (s) => /\b(calcium\s*propionate|propionate)\b/.test(s) },
+            { code: 'NB-013', unit: 'g', category: 'Preservatives & Additives', canonicalName: 'Potassium Sorbate', test: (s) => /\b(potassium\s*sorbate|sorbate)\b/.test(s) },
+            { code: 'NB-014', unit: 'g', category: 'Nuts & Seeds', canonicalName: 'Crushed Peanuts / Nuts', test: (s) => /\b(crushed\s*peanuts?|peanuts?|nuts?)\b/.test(s) },
+            { code: 'NB-015', unit: 'g', category: 'Produce / Agricultural', canonicalName: 'Desiccated Coconut', test: (s) => /\b(desiccated\s*coconut|dessicated\s*coconut|shredded\s*coconut|coconut)\b/.test(s) },
+            { code: 'NB-016', unit: 'g', category: 'Nuts & Seeds', canonicalName: 'Black Sesame Seeds', test: (s) => /\b(black\s*sesame|sesame\s*seeds?|sesame)\b/.test(s) },
+            { code: 'NB-017', unit: 'g', category: 'Produce / Agricultural', canonicalName: 'Malunggay (Moringa) Flakes', test: (s) => /\b(malunggay|moringa)\b/.test(s) },
+            { code: 'NB-018', unit: 'g', category: 'Flavorings & Extracts', canonicalName: 'Vanilla Extract', test: (s) => /\b(vanilla\s*extract|vanilla\s*flavor|vanilla)\b/.test(s) },
+            { code: 'NB-019', unit: 'kl', category: 'Packaging Materials', canonicalName: 'Plastic Pillow Packaging', test: (s) => /\b(plastic\s*pillow|pillow\s*packaging|pillow\s*pack|packaging|cellophane|wrapper)\b/.test(s) }
+        ];
+        for (const rule of sconesRules) {
+            if (rule.test(norm)) {
+                return rule;
+            }
+        }
+    } else {
+        // KXC Enterprise 59 forecasting materials matching
+        for (const m of AUTHENTIC_59_RAW_MATERIALS) {
+            const mNorm = String(m.name || m.raw_material_name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (mNorm === norm || (norm.length >= 4 && (mNorm.includes(norm) || norm.includes(mNorm)))) {
+                return { code: m.item_code || m.id, canonicalName: m.name, unit: m.unit_of_measure || m.unit || 'kg', category: m.category || 'General Materials' };
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Heals any previously imported materials or overrides that were assigned sequential
+ * auto-codes (e.g. NB-188 for "Squash") into their registered forecasting codes (e.g. NB-003),
+ * preserving the earliest first_date and the latest latest_date & current_stock.
+ */
+export function healForecastingMaterialCodes() {
+    if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+    try {
+        // 1. Heal rmims_custom_raw_materials
+        const rawCustom = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
+        if (rawCustom) {
+            const arr = JSON.parse(rawCustom);
+            if (Array.isArray(arr) && arr.length > 0) {
+                const byCode = new Map();
+                let mutated = false;
+                arr.forEach(item => {
+                    if (!item || typeof item !== "object") return;
+                    const name = item.name || item.raw_material_name || "";
+                    const currentCode = String(item.item_code || item.id || "").toUpperCase().trim();
+                    const isSconesCode = currentCode.startsWith("NB-") || !currentCode.startsWith("RM-");
+                    const recognized = resolveForecastingMaterialByName(name, isSconesCode);
+                    const targetCode = recognized ? recognized.code : currentCode;
+                    if (recognized && targetCode !== currentCode) {
+                        mutated = true;
+                    }
+                    const updatedItem = {
+                        ...item,
+                        id: targetCode || item.id,
+                        item_code: targetCode || item.item_code
+                    };
+                    const key = targetCode || name.toLowerCase().trim();
+                    if (!byCode.has(key)) {
+                        byCode.set(key, updatedItem);
+                    } else {
+                        mutated = true;
+                        const prev = byCode.get(key);
+                        const prevFirst = prev.first_date || prev.date_added || "";
+                        const currFirst = updatedItem.first_date || updatedItem.date_added || "";
+                        const prevLatest = prev.latest_date || prev.last_updated || prevFirst || "";
+                        const currLatest = updatedItem.latest_date || updatedItem.last_updated || currFirst || "";
+
+                        const earliestDate = (prevFirst && currFirst)
+                            ? (prevFirst <= currFirst ? prevFirst : currFirst)
+                            : (prevFirst || currFirst);
+                        const isCurrNewer = !prevLatest || (currLatest && currLatest >= prevLatest);
+                        const latestWinner = isCurrNewer ? updatedItem : prev;
+                        const latestDate = (prevLatest && currLatest)
+                            ? (currLatest >= prevLatest ? currLatest : prevLatest)
+                            : (currLatest || prevLatest || earliestDate);
+
+                        byCode.set(key, {
+                            ...prev,
+                            ...latestWinner,
+                            id: targetCode || latestWinner.id,
+                            item_code: targetCode || latestWinner.item_code,
+                            date_added: earliestDate,
+                            first_date: earliestDate,
+                            display_date: earliestDate,
+                            last_updated: latestDate,
+                            latest_date: latestDate
+                        });
+                    }
+                });
+                if (mutated) {
+                    localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(Array.from(byCode.values())));
+                }
+            }
+        }
+
+        // 2. Heal manager overrides
+        ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"].forEach(ovKey => {
+            const ovRaw = localStorage.getItem(ovKey);
+            if (!ovRaw) return;
+            const ovs = JSON.parse(ovRaw);
+            if (!ovs || typeof ovs !== "object") return;
+            const healedOvs = {};
+            let ovMutated = false;
+
+            Object.keys(ovs).forEach(k => {
+                const ov = ovs[k];
+                if (!ov || typeof ov !== "object") return;
+                const name = ov.name || ov.raw_material_name || "";
+                const currentCode = String(ov.item_code || ov.id || k || "").toUpperCase().trim();
+                const isSconesCode = currentCode.startsWith("NB-") || !currentCode.startsWith("RM-");
+                const recognized = resolveForecastingMaterialByName(name, isSconesCode);
+                const targetKey = recognized ? recognized.code : k;
+                if (recognized && targetKey !== k) {
+                    ovMutated = true;
+                }
+                if (!healedOvs[targetKey]) {
+                    healedOvs[targetKey] = {
+                        ...ov,
+                        id: recognized ? recognized.code : (ov.id || k),
+                        item_code: recognized ? recognized.code : (ov.item_code || k)
+                    };
+                } else {
+                    ovMutated = true;
+                    const prev = healedOvs[targetKey];
+                    const prevFirst = prev.first_date || prev.date_added || "";
+                    const currFirst = ov.first_date || ov.date_added || "";
+                    const prevLatest = prev.latest_date || prev.last_updated || prevFirst || "";
+                    const currLatest = ov.latest_date || ov.last_updated || currFirst || "";
+
+                    const earliestDate = (prevFirst && currFirst)
+                        ? (prevFirst <= currFirst ? prevFirst : currFirst)
+                        : (prevFirst || currFirst);
+                    const isCurrNewer = !prevLatest || (currLatest && currLatest >= prevLatest);
+                    const latestWinner = isCurrNewer ? ov : prev;
+                    const latestDate = (prevLatest && currLatest)
+                        ? (currLatest >= prevLatest ? currLatest : prevLatest)
+                        : (currLatest || prevLatest || earliestDate);
+
+                    healedOvs[targetKey] = {
+                        ...prev,
+                        ...latestWinner,
+                        id: targetKey,
+                        item_code: targetKey,
+                        date_added: earliestDate,
+                        first_date: earliestDate,
+                        display_date: earliestDate,
+                        last_updated: latestDate,
+                        latest_date: latestDate
+                    };
+                }
+            });
+
+            if (ovMutated) {
+                localStorage.setItem(ovKey, JSON.stringify(healedOvs));
+            }
+        });
+    } catch (e) {
+        console.warn("[SystemMaterials] Code heal notice:", e);
+    }
+}
+
+try {
+    healForecastingMaterialCodes();
 } catch (_) {}
 
 
@@ -181,6 +346,10 @@ export function parseSafeDate(dStr) {
  */
 export function getAuthoritativeMaterialUnit(material, isScones = false) {
     if (!material) return "kg";
+    // Always respect an explicit user-provided or imported unit first
+    const explicitUnit = (material.unit_of_measure || material.unit || "").trim();
+    if (explicitUnit) return explicitUnit;
+
     const code = String(material.item_code || material.itemCode || material.id || material.code || "").toUpperCase().trim();
     const name = String(material.name || material.raw_material_name || "").toLowerCase().trim();
 
@@ -203,96 +372,74 @@ export function getAuthoritativeMaterialUnit(material, isScones = false) {
         return "g";
     }
 
-    return material.unit_of_measure || material.unit || "kg";
+    return "kg";
 }
 
 /**
- * Returns all active raw materials for the entire system:
- * Automatically selects the appropriate branch store / company dataset:
- * - Scones & Muffins Bakery: 19 Nutribun Materials (Folder: 1872cf44-e821-4370-b227-d1b7e4fc6f56)
- * - KXC Enterprise: 59 Materials (Folder: a72a7971-6ec7-4edc-ae72-89d702199ed9)
- * Seamlessly merges any custom user-added materials and enforces authentic units.
+ * Returns ONLY active raw materials imported or added by the end user (or stored in Supabase).
+ * Strictly NEVER auto-seeds dummy/hardcoded catalog items.
  */
 export function getSystemRawMaterials() {
+    try {
+        healForecastingMaterialCodes();
+    } catch (_) {}
     let tCtx = null;
     try {
         tCtx = getActiveTenantContext();
     } catch (_) {}
     const isScones = tCtx ? Boolean(tCtx.isScones) : true;
-    const baseSource = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
+    const prefix = isScones ? "NB-" : "RM-";
+    const otherPrefix = isScones ? "RM-" : "NB-";
+    const catalogRef = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
 
-    let list = baseSource.map(m => {
-        const stockVal = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-        const minVal = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-        const correctUnit = getAuthoritativeMaterialUnit(m, isScones);
-        return {
-            ...m,
-            id: String(m.id || m.item_code),
-            item_code: m.item_code || m.id,
-            current_stock: stockVal,
-            currentStock: stockVal,
-            stock: stockVal,
-            minimum_threshold: minVal,
-            minimum_stock: minVal,
-            minimumStock: minVal,
-            minStock: minVal,
-            unit_of_measure: correctUnit,
-            unit: correctUnit
-        };
-    });
+    let list = [];
 
-    // Strict set of valid trained item codes and names
-    const validTrainedCodes = new Set(baseSource.map(m => String(m.item_code || m.id).toUpperCase().trim()));
-    const validTrainedNames = new Set(baseSource.map(m => String(m.name || m.raw_material_name).toLowerCase().trim()));
-
-    // Merge custom materials saved in localStorage (only if matching trained dataset)
+    // 1. Load user-imported / user-added materials from rmims_custom_raw_materials
     try {
         const stored = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
         if (stored) {
-            let customMats = JSON.parse(stored);
+            const customMats = JSON.parse(stored);
             if (Array.isArray(customMats)) {
                 customMats.forEach(cm => {
-                    const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
+                    if (!cm || (!cm.name && !cm.raw_material_name)) return;
                     const code = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
-                    const foundIndex = list.findIndex(m => 
-                        (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
-                        String(m.item_code || m.id || "").toUpperCase().trim() === code
+                    if (code.startsWith(otherPrefix)) return; // tenant isolation
+
+                    const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
+                    const catMatch = catalogRef.find(b =>
+                        (b.name || b.raw_material_name || "").trim().toLowerCase() === normName ||
+                        (code && String(b.item_code || b.id || "").toUpperCase().trim() === code)
                     );
-                    if (foundIndex !== -1) {
-                        const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
-                        list[foundIndex] = {
-                            ...list[foundIndex],
-                            unit_of_measure: authUnit,
-                            unit: authUnit,
-                            current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
-                            currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
-                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10)
-                        };
-                    } else {
-                        // Strict tenant air-gap: ONLY add custom material if its code matches the active company's prefix
-                        const prefix = isScones ? "NB-" : "RM-";
-                        if (code && !code.startsWith(prefix)) {
-                            return; // skip material belonging to different company
-                        }
-                        const authUnit = getAuthoritativeMaterialUnit(cm, isScones);
-                        list.push({
-                            ...cm,
-                            id: String(cm.id || code || `${prefix}${list.length + 1}`),
-                            item_code: code || cm.id || `${prefix}${list.length + 1}`,
-                            name: cm.name || cm.raw_material_name,
-                            raw_material_name: cm.name || cm.raw_material_name,
-                            category: cm.category || (isScones ? "Baking Supplies" : "General Materials"),
-                            unit_of_measure: authUnit,
-                            unit: authUnit,
-                            current_stock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
-                            currentStock: Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0),
-                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            reorder_quantity: Number(cm.reorder_quantity ?? 50),
-                            lead_time_days: Number(cm.lead_time_days ?? 3)
-                        });
-                    }
+
+                    const resolvedUnit = (cm.unit || cm.unit_of_measure || (catMatch && (catMatch.unit || catMatch.unit_of_measure)) || getAuthoritativeMaterialUnit(cm, isScones));
+                    const resolvedStock = Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0);
+                    const resolvedMin = Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? cm.minStock ?? 10);
+                    const firstDate = cm.date_added || cm.first_date || (cm.created_at ? String(cm.created_at).slice(0, 10) : "");
+                    const latestDate = cm.last_updated || cm.latest_date || cm.updated_at || firstDate || "";
+
+                    list.push({
+                        ...(catMatch ? { image_url: catMatch.image_url, category: catMatch.category } : {}),
+                        ...cm,
+                        id: String(cm.id || code || (catMatch && catMatch.id) || `${prefix}${String(list.length + 1).padStart(3, "0")}`),
+                        item_code: code || (catMatch && catMatch.item_code) || String(cm.id || `${prefix}${String(list.length + 1).padStart(3, "0")}`),
+                        name: cm.name || cm.raw_material_name,
+                        raw_material_name: cm.raw_material_name || cm.name,
+                        category: cm.category || (catMatch && catMatch.category) || (isScones ? "Baking Supplies" : "General Materials"),
+                        unit_of_measure: resolvedUnit,
+                        unit: resolvedUnit,
+                        current_stock: resolvedStock,
+                        currentStock: resolvedStock,
+                        stock: resolvedStock,
+                        minimum_threshold: resolvedMin,
+                        minimum_stock: resolvedMin,
+                        minimumStock: resolvedMin,
+                        minStock: resolvedMin,
+                        date_added: firstDate,
+                        first_date: firstDate,
+                        display_date: cm.display_date || firstDate || "",
+                        last_updated: latestDate,
+                        latest_date: latestDate
+                    });
                 });
             }
         }
@@ -300,7 +447,7 @@ export function getSystemRawMaterials() {
         console.warn("[SystemMaterials] Could not load custom raw materials:", e);
     }
 
-    // Also check manager inventory overrides (only for materials belonging to trained dataset)
+    // 2. Merge manager inventory overrides (including any items imported or added directly to overrides)
     try {
         const ovKeys = ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"];
         ovKeys.forEach(ovKey => {
@@ -311,13 +458,16 @@ export function getSystemRawMaterials() {
 
             Object.keys(ovs).forEach(key => {
                 const ov = ovs[key];
-                if (!ov) return;
-                const code = String(key || ov.id || ov.item_code || "").toUpperCase().trim();
+                if (!ov || (!ov.name && !ov.raw_material_name)) return;
+                const code = String(ov.item_code || ov.id || key || "").toUpperCase().trim();
+                if (code.startsWith(otherPrefix)) return;
+
                 const normName = (ov.name || ov.raw_material_name || "").trim().toLowerCase();
                 const foundIndex = list.findIndex(m =>
                     (code && String(m.item_code || m.id || "").toUpperCase().trim() === code) ||
                     (normName && (m.name || m.raw_material_name || "").trim().toLowerCase() === normName)
                 );
+
                 const curStock = ov.current_stock !== undefined ? Number(ov.current_stock) : undefined;
                 const minStock = (ov.minimum_stock !== undefined || ov.minimum_threshold !== undefined)
                     ? Number(ov.minimum_stock ?? ov.minimum_threshold)
@@ -325,20 +475,67 @@ export function getSystemRawMaterials() {
 
                 if (foundIndex !== -1) {
                     const existing = list[foundIndex];
-                    const authUnit = getAuthoritativeMaterialUnit(existing, isScones);
+                    const resolvedUnit = ov.unit || ov.unit_of_measure || existing.unit || getAuthoritativeMaterialUnit(existing, isScones);
+                    const finalStock = curStock !== undefined ? curStock : existing.current_stock;
+                    const finalMin = minStock !== undefined ? minStock : existing.minimum_threshold;
+                    const firstDate = ov.date_added || ov.first_date || existing.date_added || "";
+                    const latestDate = ov.last_updated || ov.latest_date || existing.last_updated || firstDate || "";
+
                     list[foundIndex] = {
                         ...existing,
                         ...ov,
-                        unit: authUnit,
-                        unit_of_measure: authUnit,
-                        current_stock: curStock !== undefined ? curStock : existing.current_stock,
-                        currentStock: curStock !== undefined ? curStock : existing.current_stock,
-                        stock: curStock !== undefined ? curStock : existing.current_stock,
-                        minimum_threshold: minStock !== undefined ? minStock : existing.minimum_threshold,
-                        minimum_stock: minStock !== undefined ? minStock : existing.minimum_threshold,
-                        minimumStock: minStock !== undefined ? minStock : existing.minimum_threshold,
-                        minStock: minStock !== undefined ? minStock : existing.minimum_threshold
+                        id: existing.id,
+                        item_code: existing.item_code || existing.id,
+                        unit: resolvedUnit,
+                        unit_of_measure: resolvedUnit,
+                        current_stock: finalStock,
+                        currentStock: finalStock,
+                        stock: finalStock,
+                        minimum_threshold: finalMin,
+                        minimum_stock: finalMin,
+                        minimumStock: finalMin,
+                        minStock: finalMin,
+                        date_added: firstDate,
+                        first_date: firstDate,
+                        display_date: ov.display_date || firstDate || existing.display_date || "",
+                        last_updated: latestDate,
+                        latest_date: latestDate
                     };
+                } else {
+                    const catMatch = catalogRef.find(b =>
+                        (b.name || b.raw_material_name || "").trim().toLowerCase() === normName ||
+                        (code && String(b.item_code || b.id || "").toUpperCase().trim() === code)
+                    );
+                    const resolvedCode = (code.startsWith(prefix) ? code : (catMatch && catMatch.item_code)) || `${prefix}${String(list.length + 1).padStart(3, "0")}`;
+                    const resolvedUnit = ov.unit || ov.unit_of_measure || (catMatch && (catMatch.unit || catMatch.unit_of_measure)) || getAuthoritativeMaterialUnit(ov, isScones);
+                    const finalStock = curStock !== undefined ? curStock : 0;
+                    const finalMin = minStock !== undefined ? minStock : 10;
+                    const firstDate = ov.date_added || ov.first_date || "";
+                    const latestDate = ov.last_updated || ov.latest_date || firstDate || "";
+
+                    list.push({
+                        ...(catMatch ? { image_url: catMatch.image_url, category: catMatch.category } : {}),
+                        ...ov,
+                        id: resolvedCode,
+                        item_code: resolvedCode,
+                        name: ov.name || ov.raw_material_name,
+                        raw_material_name: ov.raw_material_name || ov.name,
+                        category: ov.category || (catMatch && catMatch.category) || (isScones ? "Baking Supplies" : "General Materials"),
+                        unit: resolvedUnit,
+                        unit_of_measure: resolvedUnit,
+                        current_stock: finalStock,
+                        currentStock: finalStock,
+                        stock: finalStock,
+                        minimum_threshold: finalMin,
+                        minimum_stock: finalMin,
+                        minimumStock: finalMin,
+                        minStock: finalMin,
+                        date_added: firstDate,
+                        first_date: firstDate,
+                        display_date: ov.display_date || firstDate || "",
+                        last_updated: latestDate,
+                        latest_date: latestDate
+                    });
                 }
             });
         });
@@ -346,7 +543,7 @@ export function getSystemRawMaterials() {
         console.warn("[SystemMaterials] Could not apply manager overrides:", e);
     }
 
-    // Filter out deleted materials with multi-alias check (guaranteeing protected authentic items are NEVER dropped)
+    // 3. Filter out deleted materials
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         if (deletedRaw) {
@@ -354,64 +551,23 @@ export function getSystemRawMaterials() {
             if (Array.isArray(deletedArr) && deletedArr.length > 0) {
                 const deletedSet = new Set(deletedArr.map(d => String(d).trim().toLowerCase()));
                 list = list.filter(m => {
-                    const mId = String(m.id || "").trim().toUpperCase();
-                    const mCode = String(m.item_code || m.itemCode || "").trim().toUpperCase();
+                    const mId = String(m.id || "").trim().toLowerCase();
+                    const mCode = String(m.item_code || m.itemCode || "").trim().toLowerCase();
                     const mName = String(m.name || m.raw_material_name || "").trim().toLowerCase();
-                    // Protected authentic items can NEVER be dropped!
-                    if (PROTECTED_MATERIAL_CODES.has(mId) || PROTECTED_MATERIAL_CODES.has(mCode)) {
-                        return true;
-                    }
-                    if (PROTECTED_MATERIAL_NAMES.has(mName)) {
-                        return true;
-                    }
-                    return !deletedSet.has(mId.toLowerCase()) && !deletedSet.has(mCode.toLowerCase()) && !deletedSet.has(mName);
+                    return !deletedSet.has(mId) && !deletedSet.has(mCode) && !deletedSet.has(mName);
                 });
             }
         }
     } catch (e) {}
 
-    // Strict Tenant Isolation Pass: Air-gap raw materials strictly by company prefix
-    const expectedPrefix = isScones ? "NB-" : "RM-";
-    list = list.filter(m => {
-        const c = String(m.item_code || m.id || "").toUpperCase().trim();
-        return c.startsWith(expectedPrefix);
-    });
-
-    // Ensure baseline catalog completeness:
-    // Scones MUST have all 19 authentic materials (NB-001 through NB-019)
-    // KXC MUST have all 59 authentic materials (RM-001 through RM-059)
-    baseSource.forEach(baseItem => {
-        const bCode = String(baseItem.item_code || baseItem.id).toUpperCase().trim();
-        const exists = list.some(m => String(m.item_code || m.id).toUpperCase().trim() === bCode);
-        if (!exists) {
-            const sVal = Number(baseItem.current_stock ?? baseItem.currentStock ?? 0);
-            const mVal = Number(baseItem.minimum_threshold ?? baseItem.minimum_stock ?? 10);
-            const uVal = getAuthoritativeMaterialUnit(baseItem, isScones);
-            list.push({
-                ...baseItem,
-                id: bCode,
-                item_code: bCode,
-                current_stock: sVal,
-                currentStock: sVal,
-                stock: sVal,
-                minimum_threshold: mVal,
-                minimum_stock: mVal,
-                minimumStock: mVal,
-                minStock: mVal,
-                unit_of_measure: uVal,
-                unit: uVal
-            });
-        }
-    });
-
-    // Sort strictly chronological by item code number
+    // 4. Sort sequentially by item code number
     list.sort((a, b) => {
         const numA = parseInt(String(a.item_code || a.id).replace(/^[A-Z]+-?0*/i, "") || "0", 10);
         const numB = parseInt(String(b.item_code || b.id).replace(/^[A-Z]+-?0*/i, "") || "0", 10);
         return numA - numB;
     });
 
-    // Strict deduplication pass: never allow repeating or duplicate materials to show up
+    // 5. Deduplicate by item code and normalized name
     const seenMatKeys = new Set();
     const dedupedList = [];
     list.forEach(m => {
@@ -420,19 +576,17 @@ export function getSystemRawMaterials() {
         const uniqueKey = code || name;
         if (!uniqueKey) return;
         if (seenMatKeys.has(uniqueKey) || (name && seenMatKeys.has(`name:${name}`))) {
-            return; // skip duplicate or zombie entry
+            return;
         }
         seenMatKeys.add(uniqueKey);
         if (name) seenMatKeys.add(`name:${name}`);
         dedupedList.push(m);
     });
-    list = dedupedList;
 
-    // Final property normalization: ensure every material has both snake_case and camelCase stock & threshold aliases
-    return list.map(m => {
+    return dedupedList.map(m => {
         const s = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
         const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-        const u = getAuthoritativeMaterialUnit(m, isScones);
+        const u = m.unit || m.unit_of_measure || getAuthoritativeMaterialUnit(m, isScones);
         return {
             ...m,
             current_stock: s,
@@ -461,30 +615,63 @@ export function saveCustomRawMaterial(mat) {
         custom = [];
     }
 
-    const normName = (mat.name || "").trim().toLowerCase();
-    const code = String(mat.item_code || mat.itemCode || mat.id || "").toUpperCase().trim();
+    const normName = (mat.name || mat.raw_material_name || "").trim().toLowerCase();
+    let code = String(mat.item_code || mat.itemCode || mat.id || "").toUpperCase().trim();
+    const isSconesCode = code.startsWith("NB-") || !code.startsWith("RM-");
+    const recognized = resolveForecastingMaterialByName(mat.name || mat.raw_material_name, isSconesCode);
+    if (recognized && recognized.code) {
+        code = recognized.code;
+    }
+
+    // Find any previous match so we preserve the earliest ever first_date
+    const prevEntry = custom.find(m =>
+        (m.name || m.raw_material_name || "").trim().toLowerCase() === normName ||
+        String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim() === code
+    );
 
     // Remove any previous match to avoid duplicates
     custom = custom.filter(m => 
-        (m.name || "").trim().toLowerCase() !== normName &&
+        (m.name || m.raw_material_name || "").trim().toLowerCase() !== normName &&
         String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim() !== code
     );
 
+    const incomingFirst = mat.first_date || mat.date_added || (prevEntry && (prevEntry.first_date || prevEntry.date_added)) || new Date().toISOString().slice(0, 10);
+    const prevFirst = prevEntry ? (prevEntry.first_date || prevEntry.date_added || "") : "";
+    const resolvedFirstDate = (prevFirst && incomingFirst)
+        ? (prevFirst <= incomingFirst ? prevFirst : incomingFirst)
+        : (incomingFirst || prevFirst);
+    const incomingLatest = mat.latest_date || mat.last_updated || incomingFirst;
+    const prevLatest = prevEntry ? (prevEntry.latest_date || prevEntry.last_updated || "") : "";
+    const resolvedLatestDate = (prevLatest && incomingLatest)
+        ? (incomingLatest >= prevLatest ? incomingLatest : prevLatest)
+        : (incomingLatest || prevLatest || resolvedFirstDate);
+
     const fullRecord = {
-        id: mat.id || code || `RM-${Date.now()}`,
-        item_code: mat.item_code || mat.itemCode || code,
-        name: mat.name,
-        category: mat.category || "General Materials",
-        unit_of_measure: mat.unit_of_measure || mat.unit || "kg",
-        unit: mat.unit_of_measure || mat.unit || "kg",
+        id: code || mat.id || `RM-${Date.now()}`,
+        item_code: code || mat.item_code || mat.itemCode,
+        name: mat.name || mat.raw_material_name,
+        raw_material_name: mat.raw_material_name || mat.name,
+        specification_name: mat.specification_name || mat.name || mat.raw_material_name,
+        category: mat.category || (recognized && recognized.category) || "General Materials",
+        unit_of_measure: mat.unit_of_measure || mat.unit || (recognized && recognized.unit) || "kg",
+        unit: mat.unit_of_measure || mat.unit || (recognized && recognized.unit) || "kg",
         current_stock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
         currentStock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
         minimum_threshold: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
         minimum_stock: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
         reorder_quantity: Number(mat.reorder_quantity ?? 25),
         lead_time_days: Number(mat.lead_time_days ?? 3),
-        description: mat.description || `Raw material ${mat.name}`,
-        created_at: mat.created_at || new Date().toISOString()
+        storage_location: mat.storage_location || "Warehouse A - Shelf 1",
+        supplier: mat.supplier || "General Supply Co.",
+        description: mat.description || `Raw material ${mat.name || mat.raw_material_name}`,
+        date_added: resolvedFirstDate,
+        first_date: resolvedFirstDate,
+        display_date: mat.display_date || resolvedFirstDate,
+        last_updated: resolvedLatestDate,
+        latest_date: resolvedLatestDate,
+        created_at: mat.created_at || (prevEntry && prevEntry.created_at) || new Date().toISOString(),
+        is_imported: Boolean(mat.is_imported || (prevEntry && prevEntry.is_imported)),
+        is_manual_override: true
     };
 
     custom.push(fullRecord);
@@ -680,13 +867,15 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
                     raw_material_name: mat.raw_material_name || mat.name,
                     current_stock: newStock,
                     unit: mat.unit || mat.unit_of_measure,
-                    last_updated: mat.last_updated
+                    last_updated: mat.last_updated,
+                    is_manual_override: true
                 };
                 if (idKey && nameKey && idKey !== nameKey) {
                     ovs[nameKey] = {
                         ...(ovs[nameKey] || {}),
                         current_stock: newStock,
-                        last_updated: mat.last_updated
+                        last_updated: mat.last_updated,
+                        is_manual_override: true
                     };
                 }
                 localStorage.setItem(ovKey, JSON.stringify(ovs));

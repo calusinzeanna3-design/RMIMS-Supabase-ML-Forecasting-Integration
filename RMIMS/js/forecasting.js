@@ -247,8 +247,8 @@ async function bootstrapForecastApp(user) {
             };
         }
 
-        const rawOp = String(profile?.operational_role || profile?.operationalRole || '').toLowerCase();
-        const rawRole = String(profile?.role || '').toLowerCase();
+        const rawOp = String(profile?.operational_role || profile?.operationalRole || activeUser?.operationalRole || activeUser?.operational_role || '').toLowerCase();
+        const rawRole = String(profile?.role || activeUser?.role || '').toLowerCase();
         const isAdm = rawOp === 'admin' || rawRole === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
         const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
 
@@ -410,7 +410,11 @@ async function loadAuthoritativeData() {
 
         let deletedMatIds = new Set();
         try {
-            deletedMatIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]").map(x => String(x).toLowerCase().trim()));
+            const arr1 = JSON.parse(localStorage.getItem("rmims_deleted_material_ids") || "[]");
+            const arr2 = JSON.parse(localStorage.getItem("rmims_deleted_raw_materials") || "[]");
+            [...arr1, ...arr2].forEach(x => {
+                if (x) deletedMatIds.add(String(x).toLowerCase().trim());
+            });
         } catch (e) {}
 
         let deletedDisbIds = new Set();
@@ -487,18 +491,11 @@ async function loadAuthoritativeData() {
             return code.startsWith(expectedPrefix);
         });
 
-        // Protected authentic items can NEVER be dropped by deletedMatIds
         if (deletedMatIds.size > 0) {
             masterMats = masterMats.filter(m => {
-                const code = String(m.item_code || m.id || "").toUpperCase().trim();
+                const code = String(m.item_code || m.id || "").toLowerCase().trim();
                 const name = String(m.name || "").toLowerCase().trim();
-                if (code.startsWith("NB-") || code.startsWith("RM-")) {
-                    const num = parseInt(code.replace(/^[A-Z]+-?0*/i, ""), 10);
-                    if (code.startsWith("NB-") && num >= 1 && num <= 19) return true;
-                    if (code.startsWith("RM-") && num >= 1 && num <= 59) return true;
-                }
-                if (name === "desiccated coconut" || name.includes("coconut meat")) return true;
-                return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has(name);
+                return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has(code) && !deletedMatIds.has(name);
             });
         }
 
@@ -576,58 +573,33 @@ async function loadAuthoritativeData() {
                 });
                 if (deletedMatIds.size > 0) {
                     trainedList = trainedList.filter(t => {
-                        const c = String(t.material_id || "").toUpperCase().trim();
+                        const c = String(t.material_id || "").toLowerCase().trim();
                         const n = String(t.raw_material_name || "").toLowerCase().trim();
-                        if (c.startsWith("NB-") || c.startsWith("RM-")) {
-                            const num = parseInt(c.replace(/^[A-Z]+-?0*/i, ""), 10);
-                            if (c.startsWith("NB-") && num >= 1 && num <= 19) return true;
-                            if (c.startsWith("RM-") && num >= 1 && num <= 59) return true;
-                        }
-                        if (n === "desiccated coconut" || n.includes("coconut meat")) return true;
-                        return !deletedMatIds.has(n) && !deletedMatIds.has(c.toLowerCase());
+                        return !deletedMatIds.has(n) && !deletedMatIds.has(c);
                     });
                 }
             }
         } catch (_) {}
 
-        const supaMap = new Map();
-        masterMats.forEach(m => {
-            if (m.name) supaMap.set(m.name.toLowerCase().trim(), m);
-            if (m.item_code) supaMap.set(m.item_code.toLowerCase().trim(), m);
+        const trainedMap = new Map();
+        trainedList.forEach(t => {
+            if (t.raw_material_name) trainedMap.set(t.raw_material_name.toLowerCase().trim(), t);
+            if (t.material_id) trainedMap.set(t.material_id.toLowerCase().trim(), t);
         });
 
-        // Normalize Materials Catalog
-        if (trainedList.length > 0) {
-            state.materials = trainedList.map(t => {
-                const sMatch = supaMap.get(t.raw_material_name?.toLowerCase().trim()) || supaMap.get(t.material_id?.toLowerCase().trim());
-                return {
-                    id: sMatch ? sMatch.id : t.material_id,
-                    itemCode: t.material_id || (sMatch ? sMatch.item_code : (tCtx.isScones ? "NB-000" : "RM-000")),
-                    name: t.raw_material_name,
-                    unit: sMatch ? (sMatch.unit_of_measure || t.unit) : t.unit,
-                    currentStock: sMatch ? Number(sMatch.current_stock) || 0 : 0,
-                    minStock: sMatch ? Number(sMatch.minimum_threshold) || 0 : 0,
-                    lags: t.lags || 7,
-                    isTrained: true,
-                    forecast_daily: sMatch?.forecast_daily,
-                    forecast_weekly: sMatch?.forecast_weekly,
-                    forecast_monthly: sMatch?.forecast_monthly,
-                    forecast_90d: sMatch?.forecast_90d,
-                    daily_mape: sMatch?.daily_mape,
-                    weekly_mape: sMatch?.weekly_mape,
-                    p90_margin: sMatch?.p90_margin,
-                    p95_margin: sMatch?.p95_margin
-                };
-            });
-        } else {
-            state.materials = masterMats.map(m => ({
+        // Build Materials Catalog strictly from end-user imported/added/Supabase materials (masterMats)
+        state.materials = masterMats.map(m => {
+            const tMatch = trainedMap.get((m.name || "").toLowerCase().trim()) || trainedMap.get((m.item_code || m.id || "").toLowerCase().trim());
+            return {
                 id: m.id,
-                itemCode: m.item_code || (tCtx.isScones ? "NB-000" : "RM-000"),
+                itemCode: m.item_code || (tMatch ? tMatch.material_id : (tCtx.isScones ? "NB-000" : "RM-000")),
                 name: m.name,
-                unit: (m.unit_of_measure || (tCtx.isScones ? "g" : "kg")).trim(),
-                currentStock: Number(m.current_stock) || 0,
-                minStock: Number(m.minimum_threshold) || 0,
-                lags: 7,
+                unit: (m.unit_of_measure || m.unit || (tMatch ? tMatch.unit : (tCtx.isScones ? "g" : "kg"))).trim(),
+                currentStock: Number(m.current_stock ?? m.currentStock) || 0,
+                minStock: Number(m.minimum_threshold ?? m.minimum_stock) || 0,
+                dateAdded: m.date_added || m.first_date || "",
+                lastUpdated: m.last_updated || m.latest_date || m.date_added || "",
+                lags: tMatch?.lags || 7,
                 isTrained: true,
                 forecast_daily: m.forecast_daily,
                 forecast_weekly: m.forecast_weekly,
@@ -637,36 +609,7 @@ async function loadAuthoritativeData() {
                 weekly_mape: m.weekly_mape,
                 p90_margin: m.p90_margin,
                 p95_margin: m.p95_margin
-            }));
-        }
-
-        // Baseline completeness assurance:
-        // Guarantee exactly 19 materials for Scones (NB-001 through NB-019)
-        // Guarantee exactly 59 materials for KXC (RM-001 through RM-059)
-        const baseCatalog = tCtx.isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
-        baseCatalog.forEach(baseItem => {
-            const bCode = String(baseItem.item_code || baseItem.id).toUpperCase().trim();
-            const exists = state.materials.some(m => String(m.itemCode || m.id).toUpperCase().trim() === bCode);
-            if (!exists) {
-                state.materials.push({
-                    id: bCode,
-                    itemCode: bCode,
-                    name: baseItem.name || baseItem.raw_material_name,
-                    unit: baseItem.unit || baseItem.unit_of_measure || (tCtx.isScones ? "g" : "kg"),
-                    currentStock: Number(baseItem.current_stock || 0),
-                    minStock: Number(baseItem.minimum_threshold || 10),
-                    lags: 7,
-                    isTrained: true,
-                    forecast_daily: baseItem.forecast_daily,
-                    forecast_weekly: baseItem.forecast_weekly,
-                    forecast_monthly: baseItem.forecast_monthly,
-                    forecast_90d: baseItem.forecast_90d,
-                    daily_mape: baseItem.daily_mape,
-                    weekly_mape: baseItem.weekly_mape,
-                    p90_margin: baseItem.p90_margin,
-                    p95_margin: baseItem.p95_margin
-                });
-            }
+            };
         });
 
         // Strictly filter to active company prefix only and sort chronologically by SKU
@@ -674,11 +617,6 @@ async function loadAuthoritativeData() {
             const c = String(m.itemCode || m.id || "").toUpperCase().trim();
             return c.startsWith(expectedPrefix);
         });
-
-        if (tCtx.isScones) {
-            const sconesSet = new Set(AUTHENTIC_19_SCONES_MATERIALS.map(m => m.item_code));
-            state.materials = state.materials.filter(m => sconesSet.has(String(m.itemCode || m.id).toUpperCase().trim()));
-        }
 
         state.materials.sort((a, b) => {
             const numA = parseInt(String(a.itemCode || a.id).replace(/^[A-Z]+-?0*/i, "") || "0", 10);

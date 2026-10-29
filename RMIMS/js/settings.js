@@ -226,15 +226,51 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     try {
-        let { data: profile, error } = await supabase
-            .from("user_profiles")
-            .select("id, full_name, email, role, operational_role, status, created_at, updated_at, avatar_url")
-            .eq("id", user.uid)
-            .maybeSingle();
-
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
         const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+
+        let profile = null;
+        try {
+            const { data } = await supabase
+                .from("user_profiles")
+                .select("id, full_name, email, role, operational_role, status, created_at, updated_at, avatar_url")
+                .eq("id", uid)
+                .maybeSingle();
+            if (data) profile = data;
+        } catch (_) {}
+
+        if (!profile) {
+            try {
+                const { data } = await supabase
+                    .from("user_profiles")
+                    .select("id, full_name, email, role, status, created_at, updated_at")
+                    .eq("id", uid)
+                    .maybeSingle();
+                if (data) profile = data;
+            } catch (_) {}
+        }
+
+        const local = getLocalManagerOrAdmin();
+        if (!profile && local && !local.redirect) {
+            profile = {
+                id: uid,
+                full_name: local.fullName,
+                email: user.email || local.email,
+                role: local.role,
+                operational_role: local.operationalRole || local.role,
+                status: local.status || "active",
+                created_at: local.createdAt,
+                updated_at: local.updatedAt
+            };
+        } else if (profile && local && !local.redirect) {
+            if (!profile.operational_role) {
+                profile.operational_role = local.operationalRole || local.role || user.user_metadata?.operational_role || profile.role;
+            }
+            if (String(local.status || "").toLowerCase() === "active" && String(profile.status || "").toLowerCase() === "pending") {
+                profile.status = "active";
+            }
+        }
 
         if (isMasterAdmin) {
             if (!profile) {
@@ -253,33 +289,17 @@ onAuthStateChanged(auth, async (user) => {
                 profile.operational_role = "admin";
                 profile.status = "active";
             }
-            error = null;
         }
 
-        if (!profile) {
-            const local = getLocalManagerOrAdmin();
-            if (local && !local.redirect) {
-                profile = {
-                    id: uid,
-                    full_name: local.fullName,
-                    email: user.email || local.email,
-                    role: local.role,
-                    operational_role: local.operationalRole || local.role,
-                    status: local.status,
-                    created_at: local.createdAt,
-                    updated_at: local.updatedAt
-                };
-                error = null;
-            }
-        }
-
-        if (profile && profile.status !== "active") {
+        const pStatus = String(profile?.status || "").toLowerCase();
+        const isRevoked = pStatus === "deleted" || pStatus === "rejected" || pStatus === "locked" || pStatus === "inactive" || pStatus === "suspended";
+        if (profile && isRevoked && !isMasterAdmin) {
             window.location.href = "../login.html";
             return;
         }
 
-        const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
-        const rawRole = String(profile.role || '').toLowerCase();
+        const rawOp = String(profile?.operational_role || profile?.operationalRole || (local && !local.redirect ? local.role : '') || '').toLowerCase();
+        const rawRole = String(profile?.role || (local && !local.redirect ? local.role : '') || '').toLowerCase();
         const isAdm = rawOp === 'admin' || rawRole === 'admin' || isMasterAdmin;
         const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
 

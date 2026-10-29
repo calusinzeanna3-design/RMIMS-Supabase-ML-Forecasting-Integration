@@ -252,40 +252,26 @@ async function loadData() {
             if (mName) disbSumMap.set(mName, (disbSumMap.get(mName) || 0) + q);
         });
 
-        state.materials = rawList.map((d, mIdx) => {
-            const min = d.minimum_threshold !== null && d.minimum_threshold !== undefined ? num(d.minimum_threshold) : 25;
-            const cycleLength = 38 + ((mIdx * 7) % 17);
-            const offset = (mIdx * 3.7) % cycleLength;
-            const day0 = offset % cycleLength;
-            let initFactor = 1.85;
-            if (day0 < 1.8) initFactor = 0.0;
-            else if (day0 < 8.5) initFactor = 0.40 + ((day0 - 1.8) / 6.7) * 0.55;
-            else if (day0 < 19.0) initFactor = 1.05 + ((day0 - 8.5) / 10.5) * 0.40;
-            else initFactor = 1.55 + ((cycleLength - day0) / (cycleLength - 19.0)) * 0.70;
-            const initialStock = min * initFactor;
-
-            const mId = String(d.id);
-            const mCode = String(d.item_code || "");
-            const mName = String(d.name || "").toLowerCase().trim();
-            const totalRcv = rcvSumMap.get(mId) || rcvSumMap.get(mCode) || rcvSumMap.get(mName) || 0;
-            const totalDisb = disbSumMap.get(mId) || disbSumMap.get(mCode) || disbSumMap.get(mName) || 0;
-
-            const computedStock = (totalRcv > 0 || totalDisb > 0)
-                ? Math.max(0, Number((initialStock + totalRcv - totalDisb).toFixed(2)))
-                : num(d.current_stock);
+        state.materials = rawList.map((d) => {
+            const min = d.minimum_threshold !== null && d.minimum_threshold !== undefined ? num(d.minimum_threshold) : 10;
+            const computedStock = Math.max(0, num(d.current_stock ?? d.currentStock ?? 0));
+            const firstDate = d.date_added || d.first_date || (d.created_at ? String(d.created_at).slice(0, 10) : null);
+            const latestDate = d.last_updated || d.latest_date || d.updated_at || firstDate || null;
 
             return {
                 id: d.id,
                 itemCode: d.item_code || "",
                 name: d.name || "",
-                unit: d.unit_of_measure || "kg",
+                unit: d.unit_of_measure || d.unit || "kg",
                 currentStock: computedStock,
                 minStock: min,
                 reorderQuantity: d.reorder_quantity !== null && d.reorder_quantity !== undefined ? num(d.reorder_quantity) : null,
                 leadTimeDays: d.lead_time_days !== null && d.lead_time_days !== undefined ? num(d.lead_time_days) : null,
                 note: d.description || "",
-                createdAt: d.created_at || null,
-                updatedAt: d.updated_at || null
+                dateAdded: firstDate,
+                lastUpdated: latestDate,
+                createdAt: firstDate || d.created_at || null,
+                updatedAt: latestDate || d.updated_at || null
             };
         });
 

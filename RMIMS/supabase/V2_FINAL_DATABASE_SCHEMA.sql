@@ -55,6 +55,10 @@ CREATE TABLE IF NOT EXISTS public.raw_materials (
     reorder_quantity NUMERIC DEFAULT NULL CHECK (reorder_quantity IS NULL OR reorder_quantity > 0),
     lead_time_days INTEGER DEFAULT NULL CHECK (lead_time_days IS NULL OR lead_time_days >= 0),
     current_stock NUMERIC NOT NULL DEFAULT 0 CHECK (current_stock >= 0),
+    date_added DATE DEFAULT CURRENT_DATE,
+    first_date DATE DEFAULT CURRENT_DATE,
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT now(),
+    latest_date TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

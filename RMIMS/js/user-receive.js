@@ -399,7 +399,7 @@ function getLiveStaffInfo() {
   return { name: 'Staff_1', email: 'sconesandmuffins@gmail.com', id: '' };
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initUserReceive() {
   rawMaterials = getSystemRawMaterials();
   populateMaterialSelect();
   initDatePicker();
@@ -448,7 +448,13 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
   } catch (_) {}
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUserReceive);
+} else {
+  initUserReceive();
+}
 
 function initNewReference() {
   currentRef = generateNextReference('REC', 'staff');
@@ -475,7 +481,10 @@ function populateMaterialSelect() {
   const select = document.getElementById('staffRecMaterial');
   if (!select) return;
 
-  const safeMaterials = rawMaterials;
+  const prevVal = select.value;
+  select.innerHTML = '<option value="">-- Choose Material to Receive --</option>';
+
+  const safeMaterials = [...(rawMaterials || [])].sort((a, b) => (a.name || a.materialName || '').localeCompare(b.name || b.materialName || ''));
   safeMaterials.forEach(m => {
     const opt = document.createElement('option');
     const matName = m.name || m.materialName || m.raw_material_name || '';
@@ -489,18 +498,22 @@ function populateMaterialSelect() {
     select.appendChild(opt);
   });
 
-  // Pre-select via URL parameters if present
+  // Pre-select via URL parameters if present, otherwise preserve current selection
   try {
     const sp = new URLSearchParams(window.location.search);
     const targetMat = sp.get('material') || sp.get('id') || sp.get('item_code') || sp.get('code');
-    if (targetMat) {
+    if (prevVal && Array.from(select.options).some(o => o.value === prevVal)) {
+      select.value = prevVal;
+    } else if (targetMat) {
       const match = Array.from(select.options).find(o => 
         String(o.value).toUpperCase() === targetMat.toUpperCase() ||
         String(o.dataset.name || '').toLowerCase() === targetMat.toLowerCase()
       );
       if (match) select.value = match.value;
     }
-  } catch (_) {}
+  } catch (_) {
+    if (prevVal) select.value = prevVal;
+  }
 
   // Trigger change to sync unit badge and preview
   select.dispatchEvent(new Event('change'));
@@ -751,7 +764,13 @@ function handleConfirmSubmission() {
   alert(`✓ Transaction ${currentReviewData.ref} submitted to Manager for verification! Status: Pending.`);
 
   // Reset form and generate fresh reference
-  document.getElementById('staffReceiveForm').reset();
+  const formEl = document.getElementById('staffReceiveForm');
+  if (formEl) formEl.reset();
+  const matSelectEl = document.getElementById('staffRecMaterial');
+  if (matSelectEl) {
+    matSelectEl.value = '';
+    if (matSelectEl._rmimsCombobox) matSelectEl._rmimsCombobox.sync();
+  }
   document.getElementById('staffRecStockPreview').style.display = 'none';
   const unitBadge = document.getElementById('staffRecUnitBadge');
   if (unitBadge) unitBadge.textContent = '--';
@@ -769,7 +788,7 @@ function renderMySubmissions() {
   const countEl = document.getElementById('myRecSubCount');
   if (!tbody) return;
 
-  const allStaff = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const allStaff = getStaffTransactions() || [];
   if (allStaff.length === 0) {
     try {
       if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
@@ -777,7 +796,11 @@ function renderMySubmissions() {
       }
     } catch (_) {}
   }
-  const myReceives = allStaff.filter(t => t.activity === 'Receive');
+  const myReceives = allStaff.filter(t => {
+    const act = String(t.activity || t.type || '').toLowerCase();
+    const refStr = String(t.ref || '');
+    return act.includes('rec') || refStr.toUpperCase().startsWith('REC') || /-R\d+/i.test(refStr);
+  });
 
   if (countEl) countEl.textContent = `${myReceives.length} submissions`;
 

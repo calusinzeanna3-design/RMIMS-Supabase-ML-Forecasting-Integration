@@ -105,18 +105,20 @@ async function initDashboard() {
   } catch (_) {}
 
   const rawStaffTx = getStaffTransactions() || [];
+  const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
 
-  // Strict user isolation for staff member's personal activity on dashboard:
-  // Brand new staff account starts with 0 personal submissions
-  const staffTx = (activeStaffName || staffUserEmail)
-    ? rawStaffTx.filter(t => {
-        const tEmail = String(t.staffEmail || '').trim().toLowerCase();
-        const tStaff = String(t.staff || '').trim().toLowerCase();
-        if (staffUserEmail && tEmail) return tEmail === staffUserEmail;
-        if (activeStaffName && tStaff) return tStaff === activeStaffName;
-        return false;
-      })
-    : rawStaffTx;
+  // Filter for active staff member while gracefully falling back to company staff transactions if names were generic
+  let staffTx = rawStaffTx;
+  if (activeStaffName || staffUserEmail) {
+    const matched = rawStaffTx.filter(t => {
+      const tEmail = String(t.staffEmail || '').trim().toLowerCase();
+      const tStaff = String(t.staff || '').trim().toLowerCase();
+      if (staffUserEmail && tEmail) return tEmail === staffUserEmail;
+      if (activeStaffName && tStaff) return tStaff === activeStaffName || BANNED_STAFF.includes(tStaff);
+      return true;
+    });
+    staffTx = matched.length > 0 ? matched : rawStaffTx;
+  }
 
   const allCompanyTx = getAllCompanyTransactions() || [];
 

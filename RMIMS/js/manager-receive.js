@@ -14,7 +14,8 @@ import {
   parseSafeDate,
   saveCustomReceipt,
   saveCustomRawMaterial,
-  getSystemCustomReceipts
+  getSystemCustomReceipts,
+  updateMaterialActivityTimestamp
 } from './system-materials.js';
 
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
@@ -121,6 +122,7 @@ const INITIAL_MGR_RECEIPTS = [];
 let rawMaterials = [];
 let managerReceipts = [];
 let currentPendingReceive = null;
+let isSavingReceive = false;
 
 // Pagination state
 let currentLedgerPage = 1;
@@ -162,8 +164,10 @@ function loadReceipts() {
       if (Array.isArray(staffTxList)) {
         let modified = false;
         staffTxList.forEach(t => {
+          const refStr = String(t.ref || '');
           const isRec = (t.activity || t.type || '').toLowerCase().includes('rec') ||
-                        String(t.ref || '').toUpperCase().startsWith('REC');
+                        refStr.toUpperCase().startsWith('REC') ||
+                        /-R\d+/i.test(refStr);
           if (isRec && t.status === 'Approved' && t.ref) {
             const rawQty = t.quantity != null ? t.quantity : (t.qtyNum != null ? t.qtyNum : t.qty);
             const numQty = parseFloat(rawQty) || 0;
@@ -238,8 +242,10 @@ function initManagerReceive() {
 
   // Listen for storage events to refresh if stock, receipts, or transactions changed elsewhere
   const handleLiveRefresh = () => {
+    if (isSavingReceive) return;
     rawMaterials = getSystemRawMaterials();
     loadReceipts();
+    populateMaterialSelects();
     renderKpis();
     renderHistoryTable();
     updateBundleReceivePreview();
@@ -293,6 +299,10 @@ function initReferenceDisplay() {
 function populateMaterialSelects() {
   const select = document.getElementById('recMaterialSelect');
   const filter = document.getElementById('recMaterialFilter');
+  if (!select) return;
+
+  const prevVal = select.value;
+  const prevFilterVal = filter ? filter.value : 'all';
 
   // Sort materials alphabetically
   const sorted = [...rawMaterials].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -326,18 +336,26 @@ function populateMaterialSelects() {
     }
   });
 
-  // Pre-select via URL parameters if present
+  // Pre-select via URL parameters if present, otherwise preserve current selection
   try {
     const sp = new URLSearchParams(window.location.search);
     const targetMat = sp.get('material') || sp.get('id') || sp.get('item_code') || sp.get('code');
-    if (targetMat) {
+    if (prevVal && Array.from(select.options).some(o => o.value === prevVal)) {
+      select.value = prevVal;
+    } else if (targetMat) {
       const match = Array.from(select.options).find(o => 
         String(o.value).toUpperCase() === targetMat.toUpperCase() ||
         String(o.dataset.name || '').toLowerCase() === targetMat.toLowerCase()
       );
       if (match) select.value = match.value;
     }
-  } catch (_) {}
+  } catch (_) {
+    if (prevVal) select.value = prevVal;
+  }
+
+  if (filter && prevFilterVal && Array.from(filter.options).some(o => o.value === prevFilterVal)) {
+    filter.value = prevFilterVal;
+  }
 
   // Material change updates preview, unit badge & triggers Bundle Receive recognition
   select.onchange = updateReceiveMaterialSelection;
@@ -383,6 +401,9 @@ function updateReceiveMaterialSelection() {
 
     // Update Bundle Receive finished products
     updateBundleReceivePreview();
+  } else {
+    if (previewWrap) previewWrap.style.display = 'none';
+    if (unitBadge) unitBadge.textContent = '--';
     if (qtyInput) qtyInput.placeholder = 'e.g. 50';
     hideBundleReceiveSection();
   }
@@ -405,10 +426,13 @@ function bindFormEvents() {
   if (btnReset) {
     btnReset.addEventListener('click', () => {
       setTimeout(() => {
+        const selectEl = document.getElementById('recMaterialSelect');
+        if (selectEl && selectEl._rmimsCombobox) selectEl._rmimsCombobox.sync();
         document.getElementById('recStockPreviewWrap').style.display = 'none';
         const unitBadge = document.getElementById('recUnitBadge');
         if (unitBadge) unitBadge.textContent = '--';
         hideBundleReceiveSection();
+        initDatePicker();
         initReferenceDisplay();
       }, 50);
     });
@@ -828,138 +852,152 @@ function bindReviewModalEvents() {
       if (!currentPendingReceive) return;
 
       const p = currentPendingReceive;
+      isSavingReceive = true;
 
-      // 1. Update raw material stock in system-materials and persist
-      const mat = rawMaterials.find(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
-      if (mat) {
-        mat.current_stock = p.newStock;
-        mat.last_updated = new Date().toISOString();
-        saveCustomRawMaterial(mat);
-      }
-      updateMaterialActivityTimestamp(p.materialId || p.materialName, new Date().toISOString(), 'Receive', p.quantity, p.unit);
-      saveRawMaterialToSupabase({
-        id: p.materialId,
-        item_code: p.materialId,
-        name: p.materialName,
-        raw_material_name: p.materialName,
-        current_stock: p.newStock,
-        unit: p.unit
-      }).catch(err => console.warn('[Receive] Supabase stock upsert notice:', err));
-
-      // Also ensure custom raw materials list reflects the updated stock
       try {
-        const customMats = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
-        const idx = customMats.findIndex(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
-        if (idx !== -1) {
-          customMats[idx].current_stock = p.newStock;
-          customMats[idx].last_updated = new Date().toISOString();
-          localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(customMats));
-        }
-      } catch (e) {}
+        // Resolve authentic manager identity first
+        let managerName = 'Aizel';
+        try {
+          const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
+          const e = (curUser.email || '').toLowerCase();
+          if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
+          else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
+          else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
+          else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+            managerName = curUser.fullName;
+          }
+        } catch (_) {}
 
-      // Resolve authentic manager identity
-      let managerName = 'Aizel';
-      try {
-        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
-        const e = (curUser.email || '').toLowerCase();
-        if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
-        else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
-        else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
-        else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
-          managerName = curUser.fullName;
-        }
-      } catch (_) {}
-
-      // 2. Persist to system receipts ledger
-      saveCustomReceipt({
-        id: p.ref,
-        material_id: p.materialId,
-        material_name: p.materialName,
-        received_quantity: p.quantity,
-        unit: p.unit,
-        receipt_date: p.date,
-        supplier_name: p.supplier,
-        received_by: managerName
-      });
-
-      // 3. Persist to manager receipts ledger with exact delivery time
-      const record = {
-        ref: p.ref,
-        date: p.date,
-        materialId: p.materialId,
-        materialName: p.materialName,
-        quantity: p.quantity,
-        unit: p.unit,
-        supplier: p.supplier,
-        recordedBy: managerName,
-        status: 'Approved',
-        notes: p.notes
-      };
-
-      managerReceipts.unshift(record);
-      saveReceipts();
-
-      // 4. Record into manager activities with full branch & user provenance
-      try {
-        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
-        const actRaw = localStorage.getItem('rmims_manager_activities');
-        const acts = actRaw ? JSON.parse(actRaw) : [];
-        acts.unshift({
-          datetime: p.date,
-          timestamp: new Date().toISOString(),
-          activity: `Receive Raw Material: +${p.quantity} ${p.unit} ${p.materialName}`,
-          reference: p.ref,
+        // 1. Persist to manager receipts ledger FIRST so storage events never overwrite it
+        const record = {
+          ref: p.ref,
+          date: p.date,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          materialId: p.materialId,
+          materialName: p.materialName,
+          quantity: p.quantity,
+          unit: p.unit,
+          supplier: p.supplier,
+          recordedBy: managerName,
           status: 'Approved',
-          user: managerName,
-          role: 'Manager',
-          branchLoc: curUser.branchLoc || curUser.location || '',
-          branchName: curUser.branchName || curUser.branch || '',
-          action: 'Received',
-          module: 'Inventory'
-        });
-        localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
-      } catch (e) {}
+          notes: p.notes
+        };
 
-      // Broadcast live notification across all roles (Admin, Manager, Staff)
-      try {
-        if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-          window.pushRMIMSNotification({
-            title: `Raw Material Received: ${p.materialName}`,
-            message: `Delivery of ${p.quantity} ${p.unit} for ${p.materialName} recorded by Store Manager (${p.ref}).`,
-            category: 'Inventory',
-            badge: 'Received',
-            role: 'manager',
-            targetRole: 'manager',
-            roleScope: 'manager',
-            priority: 'normal',
-            targetUrl: 'manager/receive.html',
-            ref: p.ref,
-            material: p.materialName,
-            quantity: `${p.quantity} ${p.unit}`,
-            actor: 'Store Manager'
-          });
+        managerReceipts = managerReceipts.filter(r => r.ref !== p.ref);
+        managerReceipts.unshift(record);
+        saveReceipts();
+
+        // 2. Update raw material stock in system-materials and persist
+        const mat = rawMaterials.find(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
+        if (mat) {
+          mat.current_stock = p.newStock;
+          mat.last_updated = new Date().toISOString();
+          saveCustomRawMaterial(mat);
         }
-      } catch (e) {}
+        updateMaterialActivityTimestamp(p.materialId || p.materialName, new Date().toISOString(), 'Receive', p.quantity, p.unit);
+        saveRawMaterialToSupabase({
+          id: p.materialId,
+          item_code: p.materialId,
+          name: p.materialName,
+          raw_material_name: p.materialName,
+          current_stock: p.newStock,
+          unit: p.unit
+        }).catch(err => console.warn('[Receive] Supabase stock upsert notice:', err));
 
-      // 5. Commit directly to Supabase and broadcast cross-module sync
-      recordStockReceiptToSupabase(p).catch(err => console.warn('[Receive] Supabase sync notice:', err));
-      broadcastManagerSync({
-        action: 'receive',
-        ref: p.ref,
-        material: p.materialName,
-        quantity: p.quantity,
-        unit: p.unit
-      });
+        // Also ensure custom raw materials list reflects the updated stock
+        try {
+          const customMats = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
+          const idx = customMats.findIndex(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
+          if (idx !== -1) {
+            customMats[idx].current_stock = p.newStock;
+            customMats[idx].last_updated = new Date().toISOString();
+            localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(customMats));
+          }
+        } catch (e) {}
+
+        // 3. Persist to system receipts ledger
+        saveCustomReceipt({
+          id: p.ref,
+          material_id: p.materialId,
+          material_name: p.materialName,
+          received_quantity: p.quantity,
+          unit: p.unit,
+          receipt_date: p.date,
+          supplier_name: p.supplier,
+          received_by: managerName
+        });
+
+        // 4. Record into manager activities with full branch & user provenance
+        try {
+          const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+          const actRaw = localStorage.getItem('rmims_manager_activities');
+          const acts = actRaw ? JSON.parse(actRaw) : [];
+          acts.unshift({
+            datetime: p.date,
+            timestamp: new Date().toISOString(),
+            activity: `Receive Raw Material: +${p.quantity} ${p.unit} ${p.materialName}`,
+            reference: p.ref,
+            status: 'Approved',
+            user: managerName,
+            role: 'Manager',
+            branchLoc: curUser.branchLoc || curUser.location || '',
+            branchName: curUser.branchName || curUser.branch || '',
+            action: 'Received',
+            module: 'Inventory'
+          });
+          localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
+        } catch (e) {}
+
+        // Broadcast live notification across all roles (Admin, Manager, Staff)
+        try {
+          if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+            window.pushRMIMSNotification({
+              title: `Raw Material Received: ${p.materialName}`,
+              message: `Delivery of ${p.quantity} ${p.unit} for ${p.materialName} recorded by Store Manager (${p.ref}).`,
+              category: 'Inventory',
+              badge: 'Received',
+              role: 'manager',
+              targetRole: 'manager',
+              roleScope: 'manager',
+              priority: 'normal',
+              targetUrl: 'manager/receive.html',
+              ref: p.ref,
+              material: p.materialName,
+              quantity: `${p.quantity} ${p.unit}`,
+              actor: 'Store Manager'
+            });
+          }
+        } catch (e) {}
+
+        // 5. Commit directly to Supabase and broadcast cross-module sync
+        recordStockReceiptToSupabase(p).catch(err => console.warn('[Receive] Supabase sync notice:', err));
+        broadcastManagerSync({
+          action: 'receive',
+          ref: p.ref,
+          material: p.materialName,
+          quantity: p.quantity,
+          unit: p.unit
+        });
+      } finally {
+        isSavingReceive = false;
+      }
 
       // Close modal and show feedback
       closeModal();
 
       // Reset form & generate new reference number
-      document.getElementById('mgrReceiveForm').reset();
+      const formEl = document.getElementById('mgrReceiveForm');
+      if (formEl) formEl.reset();
+      const selectEl = document.getElementById('recMaterialSelect');
+      if (selectEl) {
+        selectEl.value = '';
+        if (selectEl._rmimsCombobox) selectEl._rmimsCombobox.sync();
+      }
       document.getElementById('recStockPreviewWrap').style.display = 'none';
       hideBundleReceiveSection();
       rawMaterials = getSystemRawMaterials();
       populateMaterialSelects();
+      initDatePicker();
       initReferenceDisplay();
       renderKpis();
       currentLedgerPage = 1;

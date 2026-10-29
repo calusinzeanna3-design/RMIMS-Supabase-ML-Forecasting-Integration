@@ -17,7 +17,61 @@ import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { getActiveTenantContext } from "./tenant-manager.js";
-import { getMaterialAiRequirement } from "./reports.js";
+function getMaterialAiRequirement(material, tenantCtx) {
+    if (!material) return { forecast7Day: 0, reorderQty: 0, unit: "g" };
+    const mName = String(material.name || material.raw_material_name || "").toLowerCase().trim();
+    const mCode = String(material.itemCode || material.item_code || material.id || "").toUpperCase().trim();
+    const curStock = Number(material.currentStock ?? material.current_stock ?? 0);
+    const minThreshold = Number(material.minThreshold ?? material.minimum_threshold ?? material.minimum_stock ?? 0);
+    const unit = (material.unit || material.unit_of_measure || (mCode.startsWith("NB-") ? "g" : "kg")).trim();
+
+    let cachedFc = null;
+    try {
+        const rawCache = localStorage.getItem("rmims_forecast_cache");
+        if (rawCache) {
+            const cacheObj = JSON.parse(rawCache);
+            cachedFc = cacheObj[material.name] || cacheObj[mName] || Object.values(cacheObj).find(c => 
+                String(c.material_id || "").toUpperCase().trim() === mCode ||
+                String(c.raw_material_name || "").toLowerCase().trim() === mName
+            );
+        }
+    } catch (_) {}
+
+    const isScones = tenantCtx ? Boolean(tenantCtx.isScones) : mCode.startsWith("NB-");
+    const catalog = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
+    const baseMat = catalog.find(b => 
+        String(b.item_code || b.id).toUpperCase().trim() === mCode ||
+        String(b.name || b.raw_material_name || "").toLowerCase().trim() === mName
+    );
+
+    let f7Day = 0;
+    if (cachedFc && cachedFc.forecast7Day && Number(cachedFc.forecast7Day.quantity) > 0) {
+        f7Day = Number(cachedFc.forecast7Day.quantity);
+    } else if (baseMat && Number(baseMat.forecast_weekly) > 0) {
+        f7Day = Number(baseMat.forecast_weekly);
+    } else if (material.forecast_weekly && Number(material.forecast_weekly) > 0) {
+        f7Day = Number(material.forecast_weekly);
+    } else if (baseMat && Number(baseMat.forecast_daily) > 0) {
+        f7Day = Number((baseMat.forecast_daily * 7).toFixed(1));
+    }
+
+    let reorderNeeded = 0;
+    if (curStock <= 0) {
+        reorderNeeded = f7Day > 0 ? f7Day : (minThreshold > 0 ? minThreshold : 50);
+    } else if (curStock < (f7Day + minThreshold)) {
+        reorderNeeded = (f7Day + minThreshold) - curStock;
+    }
+
+    const isCountUnit = unit.toLowerCase() === "pcs" || unit.toLowerCase() === "pieces";
+    const roundedReorder = isCountUnit ? Math.ceil(reorderNeeded) : Number(reorderNeeded.toFixed(1));
+    const roundedFc = isCountUnit ? Math.ceil(f7Day) : Number(f7Day.toFixed(1));
+
+    return {
+        forecast7Day: roundedFc,
+        reorderQty: roundedReorder,
+        unit: unit
+    };
+}
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -460,6 +514,17 @@ async function loadAuthoritativeData() {
                 if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
                 if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
                 if (m.lead_time_days !== undefined && m.lead_time_days !== null) existing.lead_time_days = Number(m.lead_time_days);
+            } else if (m.name) {
+                matBaseMap.set(k, {
+                    id: String(m.id || smCode),
+                    item_code: smCode,
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? 0),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
             }
         });
 

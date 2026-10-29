@@ -121,43 +121,51 @@ function switchSection(sectionKey) {
 
 function getLocalStaffUser() {
     try {
-        const raw = localStorage.getItem("staffUser") ||
-                    localStorage.getItem("currentUser") || 
-                    localStorage.getItem("rmimsCurrentUser") || 
-                    localStorage.getItem("userProfile");
-        if (raw) {
-            const u = JSON.parse(raw);
-            if (u && typeof u === "object") {
-                const role = (u.role || u.operationalRole || "").toLowerCase();
-                const isManagerEmail = (u.email || "").toLowerCase().includes("manager@");
-                const isAdminEmail = (u.email || "").toLowerCase().startsWith("admin");
-                const isStaffRole = role === "user" || role === "staff";
-                const uid = u.id || u.uid || "active-staff-session";
-                let sName = isStaffRole ? (u.fullName || u.name || "Store Staff") : "Store Staff";
-                if (sName.toLowerCase().includes("rafael") || sName.toLowerCase().includes("cruz")) {
-                    sName = "Store Staff";
-                }
-                return {
-                    uid,
-                    fullName: sName,
-                    email: u.email || "",
-                    role: "user",
-                    status: u.status || "active",
-                    createdAt: u.createdAt || u.created_at || new Date().toISOString(),
-                    updatedAt: u.updatedAt || u.updated_at || new Date().toISOString()
-                };
+        const keys = ["staffUser", "currentUser", "rmimsCurrentUser", "userProfile"];
+        for (const k of keys) {
+            const raw = localStorage.getItem(k);
+            if (!raw) continue;
+            let u = null;
+            try { u = JSON.parse(raw); } catch (_) { continue; }
+            if (!u || typeof u !== "object") continue;
+
+            const uid = u.id || u.uid || "active-staff-session";
+            const cleanEmail = String(u.email || "").toLowerCase().trim();
+            let sName = String(u.fullName || u.name || u.full_name || "").trim();
+            const BANNED_STAFF_NAMES = ["manager", "user account", "user", "account", "staff member", "staff user", "store manager", "admin", "administrator", "store staff", "—", "-"];
+            if (!sName || BANNED_STAFF_NAMES.includes(sName.toLowerCase()) || sName.toLowerCase().includes("rafael") || sName.toLowerCase().includes("cruz")) {
+                if (cleanEmail === "sconesandmuffins@gmail.com") sName = "Staff_1";
+                else if (cleanEmail === "scone2@gmail.com") sName = "Staff_2";
+                else sName = "Staff_1";
             }
+            return {
+                uid,
+                fullName: sName,
+                email: u.email || "",
+                role: "user",
+                status: u.status || "active",
+                createdAt: u.createdAt || u.created_at || new Date().toISOString(),
+                updatedAt: u.updatedAt || u.updated_at || new Date().toISOString()
+            };
         }
     } catch (e) {
         console.warn("Could not read local staff session:", e);
     }
 
-    return { redirect: "../login.html" };
+    return null;
 }
 
 let isStaffInitialized = false;
+function ensureStaffUiInitialized() {
+    if (!isStaffInitialized) {
+        isStaffInitialized = true;
+        initNav();
+        initActions();
+    }
+}
 
 function applyStaffUser(userData) {
+    ensureStaffUiInitialized();
     if (!userData) return;
     if (userData.redirect) {
         window.location.href = userData.redirect;
@@ -169,7 +177,7 @@ function applyStaffUser(userData) {
     updateUserDisplay(currentUser.fullName);
 
     // Populate Form Fields
-    if ($("fullName")) $("fullName").value = currentUser.fullName || "Store Staff";
+    if ($("fullName")) $("fullName").value = currentUser.fullName || "Staff_1";
     if ($("email")) $("email").value = currentUser.email || "";
     if ($("role")) $("role").value = "Staff Member";
 
@@ -183,22 +191,13 @@ function applyStaffUser(userData) {
     loadProfilePhoto();
     loadSessionInfo();
     loadDataSummary();
-
-    if (!isStaffInitialized) {
-        isStaffInitialized = true;
-        initNav();
-        initActions();
-    }
 }
 
-// Immediately check local staff session on page load so staff never sees a redirect
+// Immediately initialize UI navigation & actions and apply local staff session if available
+ensureStaffUiInitialized();
 const immediateStaffUser = getLocalStaffUser();
 if (immediateStaffUser) {
-    if (immediateStaffUser.redirect) {
-        window.location.href = immediateStaffUser.redirect;
-    } else {
-        applyStaffUser(immediateStaffUser);
-    }
+    applyStaffUser(immediateStaffUser);
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -213,23 +212,50 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     try {
-        const { data: profile, error } = await supabase
-            .from("user_profiles")
-            .select("id, full_name, email, role, operational_role, status, created_at, updated_at")
-            .eq("id", user.uid)
-            .maybeSingle();
+        let profile = null;
+        try {
+            const { data } = await supabase
+                .from("user_profiles")
+                .select("id, full_name, email, role, operational_role, status, created_at, updated_at")
+                .eq("id", user.uid)
+                .maybeSingle();
+            if (data) profile = data;
+        } catch (_) {}
 
-        if (error || !profile) {
-            const local = getLocalStaffUser();
+        if (!profile) {
+            try {
+                const { data } = await supabase
+                    .from("user_profiles")
+                    .select("id, full_name, email, role, status, created_at, updated_at")
+                    .eq("id", user.uid)
+                    .maybeSingle();
+                if (data) profile = data;
+            } catch (_) {}
+        }
+
+        const local = getLocalStaffUser();
+        if (!profile) {
             if (local) {
                 applyStaffUser(local);
                 return;
             }
-            window.location.href = "../login.html";
+            applyStaffUser({
+                uid: user.uid || user.id || "active-staff-session",
+                fullName: user.displayName || user.user_metadata?.full_name || "Staff_1",
+                email: user.email || "",
+                role: "user",
+                status: "active",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
             return;
         }
 
-        const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
+        if (local && String(local.status || "").toLowerCase() === "active" && String(profile.status || "").toLowerCase() === "pending") {
+            profile.status = "active";
+        }
+
+        const rawOp = String(profile.operational_role || profile.operationalRole || user.user_metadata?.operational_role || '').toLowerCase();
         const rawRole = String(profile.role || '').toLowerCase();
         const isAdm = rawOp === 'admin' || rawRole === 'admin';
         const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
@@ -243,7 +269,9 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        if (profile.status !== "active") {
+        const pStatus = String(profile.status || "").toLowerCase();
+        const isRevoked = pStatus === "deleted" || pStatus === "rejected" || pStatus === "locked" || pStatus === "inactive" || pStatus === "suspended";
+        if (isRevoked) {
             window.location.href = "../login.html";
             return;
         }
@@ -479,38 +507,10 @@ function initActions() {
                 return;
             }
 
-            // Security Gate 1: Verify legitimate registered email
-            const cleanEmail = (currentUser.email || "").toLowerCase().trim();
-            const LEGIT_EMAILS = [
-                "zeannapatty@gmail.com",
-                "zeannapatricia@gmail.com",
-                "calusinzeanna3@gmail.com",
-                "sconesandmuffins@gmail.com",
-                "scone2@gmail.com"
-            ];
-            let isLegitEmail = LEGIT_EMAILS.includes(cleanEmail);
-            if (!isLegitEmail && cleanEmail) {
-                try {
-                    const reg = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
-                    isLegitEmail = reg.some(u => u && (u.email || "").toLowerCase().trim() === cleanEmail && String(u.status || "").toLowerCase() === "active");
-                } catch (_) {}
-            }
-
-            if (!cleanEmail || !isLegitEmail) {
-                console.error("[Security] Blocked unauthorized profile alteration attempt from non-legit account:", cleanEmail);
-                const userObjKeys = ["currentUser", "rmimsCurrentUser", "userProfile", "managerUser", "staffUser", "adminUser", "rmimsAdminUser"];
-                userObjKeys.forEach(k => localStorage.removeItem(k));
-                sessionStorage.clear();
-                try { await supabase.auth.signOut(); } catch (_) {}
-                alert("Security Alert: Unauthorized account session. Profile modification blocked.");
-                window.location.replace("../login.html");
-                return;
-            }
-
-            // Security Gate 2: Block unauthorized / zombie placeholder names
+            // Security Gate: Block unauthorized / zombie placeholder names
             const BANNED_INPUT_NAMES = ["manager", "user account", "user", "account", "unauthorized", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
             if (BANNED_INPUT_NAMES.includes(newName.toLowerCase())) {
-                if (nameErr) nameErr.textContent = "Unauthorized name. Please enter your authentic registered name.";
+                if (nameErr) nameErr.textContent = "Please enter your valid staff name.";
                 return;
             }
 
@@ -534,7 +534,7 @@ function initActions() {
 
                 // Synchronize across active localStorage user keys
                 try {
-                    const keys = ["currentUser", "rmimsCurrentUser", "userProfile"];
+                    const keys = ["staffUser", "currentUser", "rmimsCurrentUser", "userProfile"];
                     keys.forEach(k => {
                         const raw = localStorage.getItem(k);
                         if (raw) {

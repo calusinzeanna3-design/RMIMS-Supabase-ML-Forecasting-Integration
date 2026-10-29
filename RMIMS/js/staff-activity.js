@@ -17,6 +17,7 @@ import {
   saveCustomReceipt,
   saveCustomDisbursement,
   adjustSystemMaterialStock,
+  updateMaterialActivityTimestamp,
   invalidateForecastCache
 } from './system-materials.js';
 
@@ -50,7 +51,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initStaffActivity() {
   loadTransactions();
   populateStaffFilterOptions();
   renderCounters();
@@ -109,7 +110,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   } catch (e) {}
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initStaffActivity);
+} else {
+  initStaffActivity();
+}
 
 function populateStaffFilterOptions() {
   const select = document.getElementById('staffMemberFilter');
@@ -458,8 +465,10 @@ function closeReviewModal() {
 function handleApproveTransaction() {
   if (!activeReviewItem) return;
 
+  const refStr = String(activeReviewItem.ref || '');
   const isReceive = (activeReviewItem.activity || activeReviewItem.type || '').toLowerCase().includes('rec') ||
-                    String(activeReviewItem.ref || '').toUpperCase().startsWith('REC');
+                    refStr.toUpperCase().startsWith('REC') ||
+                    /-R\d+/i.test(refStr);
   const rawQty = activeReviewItem.quantity != null ? activeReviewItem.quantity :
                  (activeReviewItem.qtyNum != null ? activeReviewItem.qtyNum : activeReviewItem.qty);
   const qty = parseFloat(rawQty) || 0;
@@ -496,14 +505,8 @@ function handleApproveTransaction() {
   }
   saveTransactions();
 
-  // Supabase commit
+  // Authoritative single stock update + Supabase & ledger commit via approveTransactionOnSupabase
   approveTransactionOnSupabase(activeReviewItem).catch(e => console.warn('[StaffActivity] Supabase notice:', e));
-
-  // =========================================================================
-  // SECTION 23: OFFICIAL INVENTORY UPDATE RULE
-  // Only approved Staff transactions update official inventory and Manager Ledgers
-  // =========================================================================
-  updateSystemInventory(materialName, qty, isReceive, activeReviewItem);
 
   renderCounters();
   renderTable();

@@ -9,7 +9,7 @@
  *   Last Updated, Added By, Status.
  */
 
-import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit, getSconesMaterialImagePath } from './system-materials.js';
+import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, saveCustomReceipt, saveCustomDisbursement, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit, getSconesMaterialImagePath, resolveForecastingMaterialByName } from './system-materials.js';
 import {
   fetchUnifiedInventoryFromSupabase,
   saveRawMaterialToSupabase,
@@ -405,33 +405,44 @@ function loadMaterials() {
     // 1. If material has a live transaction (e.g. October 16 for small ingredients), use that real transaction date!
     // 2. If material was manually updated/edited recently, use ov.last_updated!
     // 3. Otherwise retain its authentic date_added / created_at (e.g. Sep 20, Sep 29) without forcing it to October!
-    let effectiveDateObj = newestTxDate;
-    if (!effectiveDateObj && ov.last_updated) {
-      const testD = parseSafeDate(ov.last_updated);
-      if (testD) effectiveDateObj = testD;
+    const formatShortDate = (val) => {
+      if (!val || val === '—') return '—';
+      const d = parseSafeDate(val);
+      if (d && !isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      return String(val).trim() || '—';
+    };
+
+    const rawFirstDate = ov.date_added || ov.first_date || m.date_added || m.first_date || (m.created_at ? String(m.created_at).slice(0, 10) : '');
+    const firstDateObj = parseSafeDate(rawFirstDate);
+    const firstDateIso = firstDateObj ? firstDateObj.toISOString().split('T')[0] : (rawFirstDate || '—');
+    const firstDateDisplay = formatShortDate(rawFirstDate);
+
+    const rawLatestDate = ov.last_updated || ov.latest_date || m.last_updated || m.latest_date || rawFirstDate;
+    const storedLatestObj = parseSafeDate(rawLatestDate);
+
+    let effectiveLatestObj = newestTxDate;
+    if (storedLatestObj && (!effectiveLatestObj || storedLatestObj.getTime() > effectiveLatestObj.getTime())) {
+      effectiveLatestObj = storedLatestObj;
     }
-    if (!effectiveDateObj && ov.date_added) {
-      const testD = parseSafeDate(ov.date_added);
-      if (testD) effectiveDateObj = testD;
-    }
-    if (!effectiveDateObj && m.created_at) {
-      const testD = parseSafeDate(m.created_at);
-      if (testD) effectiveDateObj = testD;
+    if (!effectiveLatestObj && firstDateObj) {
+      effectiveLatestObj = firstDateObj;
     }
 
-    // If no transaction has been recorded yet, show '—' for Date and Time
-    let displayDate = '—';
+    let displayDate = firstDateDisplay;
     let displayTime = '—';
+    let latestDateDisplay = formatShortDate(rawLatestDate);
 
-    if (newestTxDate) {
-      // Real live transaction inputted by user
-      displayDate = newestTxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      displayTime = newestTxDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    if (effectiveLatestObj && !isNaN(effectiveLatestObj.getTime())) {
+      latestDateDisplay = effectiveLatestObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      displayDate = latestDateDisplay;
+      displayTime = effectiveLatestObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     }
 
-    const dateAdded = newestTxDate ? newestTxDate.toISOString().split('T')[0] : '—';
-    const lastUpdated = newestTxDate ? (displayDate + ' ' + displayTime) : '—';
-    const addedBy = ov.added_by || 'Store Manager';
+    const dateAdded = firstDateIso !== '—' ? firstDateIso : (firstDateDisplay !== '—' ? firstDateDisplay : '—');
+    const lastUpdated = latestDateDisplay !== '—' ? latestDateDisplay : dateAdded;
+    const addedBy = ov.added_by || m.added_by || 'Store Manager';
 
     const isArchived = archivedIds.has(id);
     const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((minStock / 7).toFixed(1))));
@@ -463,9 +474,13 @@ function loadMaterials() {
       supplier,
       description,
       date_added: dateAdded,
+      first_date: dateAdded,
+      first_date_display: firstDateDisplay,
       display_date: displayDate,
       display_time: displayTime,
       last_updated: lastUpdated,
+      latest_date: lastUpdated,
+      latest_date_display: latestDateDisplay,
       added_by: addedBy,
       status,
       isArchived,
@@ -793,11 +808,13 @@ function renderInventoryTable() {
   if (thead) {
     thead.innerHTML = `
       <tr style="background-color: #15803D !important;">
-        <th style="width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Material Code</th>
+        <th style="width: 120px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Material Code</th>
         <th style="background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Raw Material Name</th>
         <th style="text-align: right; width: 110px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Current Stock</th>
         <th style="text-align: right; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Min Stock</th>
-        <th style="width: 70px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
+        <th style="width: 65px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
+        <th style="width: 115px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">First Date</th>
+        <th style="width: 130px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Latest Date</th>
         <th style="text-align: center; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Status</th>
         <th style="text-align: center; width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-right-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Action</th>
       </tr>
@@ -833,10 +850,10 @@ function renderInventoryTable() {
   if (paginated.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align:center; padding: 48px 16px; color: #64748B;">
+        <td colspan="9" style="text-align:center; padding: 48px 16px; color: #64748B;">
           <div style="font-size: 28px; margin-bottom: 8px;">📦</div>
           <strong style="display:block; font-size: 14.5px; color: #0F2A1B; margin-bottom: 4px;">No materials found</strong>
-          <p style="font-size: 13px; margin: 0; color: #5C7A68;">Try adjusting your search query or status filter.</p>
+          <p style="font-size: 13px; margin: 0; color: #5C7A68;">Click "Import" or "Add Material" above to register your raw materials.</p>
         </td>
       </tr>
     `;
@@ -879,6 +896,9 @@ function renderInventoryTable() {
       ? m.current_stock.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
       : m.current_stock;
 
+    const firstDateStr = m.first_date_display || m.date_added || '—';
+    const latestDateStr = m.latest_date_display || m.last_updated || firstDateStr || '—';
+
     return `
       <tr data-id="${m.id}" class="${rowStatusClass}" style="background-color: ${rowBg} !important;">
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; border-left: 5px solid ${leftBorderColor} !important;">
@@ -895,6 +915,12 @@ function renderInventoryTable() {
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
           <span class="mgr-unit-text" style="color: #334155; font-weight: 600;">${m.unit}</span>
+        </td>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; font-size: 12px; color: #334155; font-weight: 600; white-space: nowrap;">
+          ${escapeHtml(firstDateStr)}
+        </td>
+        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; font-size: 12px; color: #0F766E; font-weight: 600; white-space: nowrap;">
+          ${escapeHtml(latestDateStr)}
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span class="mgr-status-pill ${statusPillClass}">${statusText}</span>
@@ -1371,33 +1397,16 @@ function getCustomFinishedProducts() {
       }
     });
 
-    // If no finished products exist yet, seed the default Scones formulation with full baseline recipe limits
-    if (cleaned.length === 0) {
-      const defaultRecipeDetails = {};
-      SCONES_ALL_19_MATERIALS.forEach(mat => {
-        defaultRecipeDetails[mat] = {
-          needPerUnit: getDefaultRecipeQtyForMaterial(mat),
-          minStock: getDefaultMinStockForMaterial(mat),
-          unit: getAuthoritativeMaterialUnit({ name: mat })
-        };
-      });
-
-      cleaned.push({
-        id: 'fp-scones-01',
-        name: 'Scones Formulation',
-        materialNames: [...SCONES_ALL_19_MATERIALS],
-        recipeDetails: defaultRecipeDetails,
-        category: 'Bakery & Breads',
-        batchUnits: 50,
-        created_at: new Date().toISOString()
-      });
+    // Remove any legacy auto-seeded Scones Formulation so only end-user created formulations exist
+    const userOnlyFinished = cleaned.filter(p => p && p.id !== 'fp-scones-01' && p.id !== 'fp-scones-formulation');
+    if (userOnlyFinished.length !== cleaned.length) {
       modified = true;
     }
 
     if (modified) {
-      saveCustomFinishedProducts(cleaned);
+      saveCustomFinishedProducts(userOnlyFinished);
     }
-    return cleaned;
+    return userOnlyFinished;
   } catch (e) {
     console.warn('Failed to parse custom finished products', e);
     return [];
@@ -1941,14 +1950,32 @@ function handleAddFinishedProductSubmit(e) {
   const custom = getCustomFinishedProducts();
 
   const recipeDetails = {};
+  const overrides = getStoredOverrides();
+  let overridesChanged = false;
+
   materialNames.forEach(matName => {
     const cfg = newFpRecipeConfig.get(matName) || {};
+    const minVal = Number(cfg.minStock);
     recipeDetails[matName] = {
       needPerUnit: Number(cfg.qtyPerUnit) > 0 ? Number(cfg.qtyPerUnit) : getDefaultRecipeQtyForMaterial(matName),
-      minStock: Number(cfg.minStock) >= 0 ? Number(cfg.minStock) : getDefaultMinStockForMaterial(matName),
+      minStock: !isNaN(minVal) && minVal >= 0 ? minVal : getDefaultMinStockForMaterial(matName),
       unit: cfg.unit || getAuthoritativeMaterialUnit({ name: matName })
     };
+
+    if (!isNaN(minVal) && minVal > 0) {
+      const matRec = findMaterialRecord(matName);
+      if (matRec && matRec.id) {
+        if (!overrides[matRec.id]) overrides[matRec.id] = {};
+        overrides[matRec.id].minimum_stock = minVal;
+        overrides[matRec.id].minimum_threshold = minVal;
+        overridesChanged = true;
+      }
+    }
   });
+
+  if (overridesChanged) {
+    saveStoredOverrides(overrides);
+  }
 
   if (originalName) {
     const existingIndex = custom.findIndex(p => p.name.toLowerCase() === originalName.toLowerCase());
@@ -2125,6 +2152,11 @@ function buildFinishedProductCardHtml(p) {
       <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding:6px 10px; background:#F8FAFC; border-radius:8px; font-size:11.5px; border:1px solid #E2E8F0;">
         <span style="color:#64748B;">Max Batch Limit:</span>
         <strong style="color:${minProducible > 0 ? '#15803D' : '#DC2626'};">${minProducible.toLocaleString()} units ${bottleneckMaterial ? `(${escapeHtml(bottleneckMaterial)})` : ''}</strong>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px; padding:5px 10px; background:#FFFBEB; border-radius:8px; font-size:11px; border:1px solid #FDE68A; color:#92400E;">
+        <span>First Date: <strong>${escapeHtml((p.date_added || p.created_at) ? new Date(p.date_added || p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}</strong></span>
+        <span>Latest: <strong>${escapeHtml((p.date_modified || p.last_updated || p.date_added || p.created_at) ? new Date(p.date_modified || p.last_updated || p.date_added || p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}</strong></span>
       </div>
 
       <div class="mgr-folder-footer" style="color: #D97706; margin-top: 12px; border-top: 1px dashed #FDE68A;">
@@ -2940,6 +2972,9 @@ function openAddMaterialModal() {
   const addedByInput = document.getElementById('addMatAddedBy');
   if (addedByInput) addedByInput.value = 'Store Manager';
 
+  const dateAddedInput = document.getElementById('addMatDateAdded');
+  if (dateAddedInput) dateAddedInput.value = new Date().toISOString().slice(0, 10);
+
   showModalBackdrop(modal);
 }
 
@@ -2997,7 +3032,11 @@ function handleAddMaterialSubmit(e) {
 
   const overrides = getStoredOverrides();
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const dateInputEl = document.getElementById('addMatDateAdded');
+  const userDateVal = (dateInputEl && dateInputEl.value) ? dateInputEl.value.trim() : '';
+  const parsedUserDate = userDateVal ? parseSafeDate(userDateVal) : now;
+  const effectiveFirstDate = (parsedUserDate && !isNaN(parsedUserDate.getTime())) ? parsedUserDate : now;
+  const dateStr = effectiveFirstDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   const timeStr = dateStr + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   overrides[id] = {
@@ -3012,9 +3051,12 @@ function handleAddMaterialSubmit(e) {
     storage_location: location,
     supplier,
     description,
-    date_added: dateStr,
+    date_added: userDateVal || dateStr,
+    first_date: userDateVal || dateStr,
     last_updated: timeStr,
-    added_by: 'Store Manager'
+    latest_date: timeStr,
+    added_by: 'Store Manager',
+    is_manual_override: true
   };
 
   saveStoredOverrides(overrides);
@@ -3035,7 +3077,12 @@ function handleAddMaterialSubmit(e) {
     reorder_quantity: maxStock / 2,
     lead_time_days: 3,
     description,
-    created_at: now.toISOString()
+    date_added: userDateVal || dateStr,
+    first_date: userDateVal || dateStr,
+    last_updated: timeStr,
+    latest_date: timeStr,
+    created_at: now.toISOString(),
+    is_manual_override: true
   });
 
   saveRawMaterialToSupabase({
@@ -3055,6 +3102,10 @@ function handleAddMaterialSubmit(e) {
     storage_location: location,
     supplier,
     description,
+    date_added: userDateVal || dateStr,
+    first_date: userDateVal || dateStr,
+    last_updated: timeStr,
+    latest_date: timeStr,
     created_at: now.toISOString()
   });
 
@@ -3158,6 +3209,11 @@ function openEditMaterialModal(id) {
   document.getElementById('editMatUnit').value = m.unit;
   document.getElementById('editMatCurrentStock').value = m.current_stock;
   document.getElementById('editMatMinStock').value = m.minimum_stock;
+  const editDateEl = document.getElementById('editMatDateAdded');
+  if (editDateEl) {
+    const parsedD = parseSafeDate(m.date_added || m.first_date);
+    editDateEl.value = (parsedD && !isNaN(parsedD.getTime())) ? parsedD.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+  }
   const editMax = document.getElementById('editMatMaxStock');
   if (editMax) editMax.value = m.maximum_stock || '';
   const editLoc = document.getElementById('editMatLocation');
@@ -3191,6 +3247,8 @@ function handleEditMaterialSubmit(e) {
   const unit = document.getElementById('editMatUnit').value;
   const currentStock = parseFloat(document.getElementById('editMatCurrentStock').value) || 0;
   const minStock = parseFloat(document.getElementById('editMatMinStock').value) || 0;
+  const editDateEl = document.getElementById('editMatDateAdded');
+  const userFirstDate = (editDateEl && editDateEl.value) ? editDateEl.value.trim() : (m.date_added && m.date_added !== '—' ? m.date_added : new Date().toISOString().slice(0, 10));
   const editMaxInput = document.getElementById('editMatMaxStock');
   const maxStock = (editMaxInput && parseFloat(editMaxInput.value)) || (m.maximum_stock !== undefined ? m.maximum_stock : (minStock * 5) || 100);
   const locInput = document.getElementById('editMatLocation');
@@ -3228,7 +3286,11 @@ function handleEditMaterialSubmit(e) {
     storage_location: location,
     supplier,
     description,
-    last_updated: timeStr
+    date_added: userFirstDate,
+    first_date: userFirstDate,
+    last_updated: timeStr,
+    latest_date: timeStr,
+    is_manual_override: true
   };
 
   saveStoredOverrides(overrides);
@@ -3248,7 +3310,11 @@ function handleEditMaterialSubmit(e) {
     reorder_quantity: maxStock / 2,
     lead_time_days: 3,
     description,
-    last_updated: timeStr
+    date_added: userFirstDate,
+    first_date: userFirstDate,
+    last_updated: timeStr,
+    latest_date: timeStr,
+    is_manual_override: true
   });
 
   saveRawMaterialToSupabase({
@@ -3268,7 +3334,10 @@ function handleEditMaterialSubmit(e) {
     storage_location: location,
     supplier,
     description,
-    last_updated: timeStr
+    date_added: userFirstDate,
+    first_date: userFirstDate,
+    last_updated: timeStr,
+    latest_date: timeStr
   });
 
   logMaterialHistory(id, 'Updated', diffs.join('. ') + '.');
@@ -3602,7 +3671,7 @@ function openFinishedProductModal(productName) {
     if (materialsList.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align:center; padding:32px 16px; color:#64748B;">
+          <td colspan="9" style="text-align:center; padding:32px 16px; color:#64748B;">
             No raw materials added to this formulation yet. Click "Edit Formulation" above to add materials.
           </td>
         </tr>
@@ -3655,6 +3724,9 @@ function openFinishedProductModal(productName) {
         const safeBadgeBg = safeProducible > 0 ? '#ECFDF5' : '#FEF2F2';
         const safeBadgeColor = safeProducible > 0 ? '#15803D' : '#DC2626';
 
+        const fpFirstDate = matched.first_date_display || matched.date_added || (product.date_added ? new Date(product.date_added).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+        const fpLatestDate = matched.latest_date_display || matched.last_updated || (product.date_modified ? new Date(product.date_modified).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : fpFirstDate);
+
         return `
           <tr data-fp-mat="${escapeHtml(matName)}">
             <td>
@@ -3682,6 +3754,12 @@ function openFinishedProductModal(productName) {
             </td>
             <td>
               <span style="font-weight:600; color:#334155; font-size:12.5px;">${escapeHtml(matched.unit)}</span>
+            </td>
+            <td style="font-size:12px; color:#334155; font-weight:600; white-space:nowrap;">
+              ${escapeHtml(fpFirstDate)}
+            </td>
+            <td style="font-size:12px; color:#0F766E; font-weight:600; white-space:nowrap;">
+              ${escapeHtml(fpLatestDate)}
             </td>
             <td>
               ${statusBadge}
@@ -3928,6 +4006,26 @@ let isImportCancelled = false;
 function openImportRawMaterialsModal() {
   const modal = document.getElementById('modalImportRawMaterials');
   if (!modal) return;
+  const dateInput = document.getElementById('importDefaultDateInput');
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().slice(0, 10);
+  }
+  if (dateInput && !dateInput.dataset.boundChange) {
+    dateInput.dataset.boundChange = 'true';
+    dateInput.addEventListener('change', () => {
+      if (pendingImportMaterials && pendingImportMaterials.length > 0) {
+        const defDate = dateInput.value || new Date().toISOString().slice(0, 10);
+        pendingImportMaterials.forEach(item => {
+          if (!item.hasExplicitRowDate) {
+            item.date_added = defDate;
+            item.first_date = defDate;
+            item.last_updated = defDate;
+          }
+        });
+        renderImportPreview(pendingImportMaterials, []);
+      }
+    });
+  }
   clearImportRawMaterialsFile();
   showModalBackdrop(modal);
 }
@@ -3980,14 +4078,12 @@ function clearImportRawMaterialsFile() {
 }
 
 function downloadImportRawMaterialsTemplate() {
+  const todayIso = new Date().toISOString().slice(0, 10);
   const csvContent = 
-`Raw Material Name,Current Stock,Unit,Minimum Stock
-Organic Cane Sugar,500,kg,100
-Refined Wheat Flour,750,kg,150
-Pure Vegetable Oil,200,L,50
-Iodized Table Salt,80,kg,20
-Cocoa Powder,120,kg,30
-Baking Soda,45,kg,15`;
+`Date,Raw Material Name,Current Stock,Unit,Minimum Stock
+${todayIso},Bread Flour,500,g,100
+${todayIso},White Sugar,750,g,150
+${todayIso},Pure Vegetable Oil,200,g,50`;
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -4000,6 +4096,7 @@ Baking Soda,45,kg,15`;
   URL.revokeObjectURL(url);
   showToast('Downloaded Raw Materials Import Template (CSV).', 'info');
 }
+window.downloadImportRawMaterialsTemplate = downloadImportRawMaterialsTemplate;
 
 /**
  * Generates an array of sequential Item Codes (e.g. RM-060, RM-061 or starting from RM-001)
@@ -4164,6 +4261,39 @@ async function handleImportFileSelected(e) {
   }
 }
 
+function parseImportedDateValue(rawVal, fallbackDateStr) {
+  if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') {
+    return { dateStr: fallbackDateStr, hasExplicit: false };
+  }
+  if (rawVal instanceof Date && !isNaN(rawVal.getTime())) {
+    return { dateStr: rawVal.toISOString().slice(0, 10), hasExplicit: true };
+  }
+  if (typeof rawVal === 'number' && rawVal > 20000 && rawVal < 80000) {
+    // Excel serial date conversion
+    const utcDays = Math.floor(rawVal - 25569);
+    const d = new Date(utcDays * 86400 * 1000);
+    if (!isNaN(d.getTime())) {
+      return { dateStr: d.toISOString().slice(0, 10), hasExplicit: true };
+    }
+  }
+  const str = String(rawVal).trim();
+  const parsed = parseSafeDate(str);
+  if (parsed && !isNaN(parsed.getTime())) {
+    return { dateStr: parsed.toISOString().slice(0, 10), hasExplicit: true };
+  }
+  return { dateStr: str || fallbackDateStr, hasExplicit: true };
+}
+
+function parseStockAndOptionalUnit(rawStockVal, explicitUnitVal, rawName) {
+  const s = String(rawStockVal ?? '').replace(/[$,]/g, '').trim();
+  const numMatch = s.match(/^([+-]?\d+(?:\.\d+)?)\s*([a-zA-Z]+)?$/);
+  const parsedStock = numMatch ? parseFloat(numMatch[1]) : parseFloat(s);
+  const inlineUnit = (numMatch && numMatch[2]) ? numMatch[2].trim() : '';
+  const cleanExplicitUnit = String(explicitUnitVal ?? '').trim();
+  const resolvedUnit = cleanExplicitUnit || inlineUnit || getAuthoritativeMaterialUnit({ name: rawName });
+  return { parsedStock, resolvedUnit };
+}
+
 function processParsedObjectRows(rows) {
   if (!rows || rows.length === 0) {
     showImportError('The uploaded spreadsheet contains no data rows.');
@@ -4171,63 +4301,98 @@ function processParsedObjectRows(rows) {
   }
 
   const firstKeys = Object.keys(rows[0] || {});
-  const getColKey = (keys, pattern) => keys.find(k => pattern.test(k));
+  const getColKey = (keys, pattern, excludeKeys = []) =>
+    keys.find(k => !excludeKeys.includes(k) && pattern.test(String(k).trim()));
 
-  // Check required columns using forgiving regex patterns
-  const nameKey = getColKey(firstKeys, /raw.*material.*name|material.*name|raw.*material|item.*name|\bname\b/i);
-  const stockKey = getColKey(firstKeys, /current.*stock|current.*qty|in.*stock|\bstock\b|\bqty\b|\bquantity\b/i);
-  const unitKey = getColKey(firstKeys, /unit.*of.*measure|unit.*measure|\bunit\b|\buom\b|\bmeasure\b/i);
-  const minKey = getColKey(firstKeys, /min.*stock|minimum.*stock|min.*threshold|minimum.*threshold|\bmin\b|\bminimum\b|\bthreshold\b/i);
+  // Match minKey BEFORE stockKey so "Min Stock" is never mistaken for "Current Stock"
+  const nameKey = getColKey(firstKeys, /raw.*material.*name|material.*name|raw.*materials?|item.*name|\bnames?\b|\bmaterials?\b|\bitems?\b/i);
+  const minKey = getColKey(firstKeys, /min.*stock|minimum.*stock|min.*threshold|minimum.*threshold|\bmin\b|\bminimum\b|\bthreshold\b/i, [nameKey]);
+  const stockKey = getColKey(firstKeys, /current.*stock|current.*qty|\bcurrent\b|in.*stock|\bstock\b|\bqty\b|\bquantity\b/i, [nameKey, minKey]);
+  const unitKey = getColKey(firstKeys, /unit.*of.*measure|unit.*measure|\bunits?\b|\buom\b|\bmeasure\b/i, [nameKey, minKey, stockKey]);
+  const dateKey = getColKey(firstKeys, /first.*date|date.*added|import.*date|\bdates?\b/i, [nameKey, minKey, stockKey]);
+  const latestDateKey = getColKey(firstKeys, /latest.*date|last.*updated|updated.*date|\blatest\b/i, [nameKey, minKey, stockKey, dateKey]);
+
+  // Optional corresponding fields
+  const codeKey = getColKey(firstKeys, /item.*code|material.*code|\bcodes?\b|\bsku\b/i, [nameKey, minKey, stockKey]);
+  const catKey = getColKey(firstKeys, /category|\bcat\b/i);
+  const safetyKey = getColKey(firstKeys, /safety.*stock|safety.*level|safety/i);
+  const reorderKey = getColKey(firstKeys, /reorder.*point|reorder.*qty|reorder.*level|reorder/i);
+  const supplierKey = getColKey(firstKeys, /supplier|vendor/i);
+  const costKey = getColKey(firstKeys, /unit.*cost|cost.*per|item.*cost|\bcost\b|\bprice\b/i);
+  const locationKey = getColKey(firstKeys, /storage.*location|shelf|warehouse.*location|\blocation\b/i);
+  const descKey = getColKey(firstKeys, /description|notes|remarks/i);
 
   const missing = [];
-  if (!nameKey) missing.push('Raw Material Name');
-  if (!stockKey) missing.push('Current Stock');
-  if (!unitKey) missing.push('Unit');
-  if (!minKey) missing.push('Minimum Stock');
+  if (!nameKey) missing.push('Names / Raw Material Name');
+  if (!stockKey) missing.push('Current / Current Stock');
+  if (!minKey) missing.push('Min Stock / Minimum Stock');
 
   if (missing.length > 0) {
-    showImportError(`Missing required column(s): <strong>${missing.join(', ')}</strong>.<br>Required fields: <code>Raw Material Name</code>, <code>Current Stock</code>, <code>Unit</code>, and <code>Minimum Stock</code>.<br><small style="color:#64748B;">Found columns: ${firstKeys.join(', ') || 'none'}</small>`);
+    showImportError(`Missing required column(s): <strong>${missing.join(', ')}</strong>.<br>Supported columns: <code>Date</code>, <code>Min Stock</code>, <code>Current</code> (or <code>Current Stock</code>), <code>Names</code> (or <code>Raw Material Name</code>), and optional <code>Unit</code>.<br><small style="color:#64748B;">Found columns: ${firstKeys.join(', ') || 'none'}</small>`);
     return;
   }
+
+  const defaultDateEl = document.getElementById('importDefaultDateInput');
+  const fallbackDate = (defaultDateEl && defaultDateEl.value) ? defaultDateEl.value : new Date().toISOString().slice(0, 10);
 
   const validRows = [];
   const errors = [];
 
   rows.forEach((r, idx) => {
     const rowNum = idx + 2;
-    const rawName = String(r[nameKey] || '').trim();
-    const rawStockStr = String(r[stockKey] || '').replace(/[$,]/g, '').trim();
-    const rawUnit = String(r[unitKey] || '').trim();
-    const rawMinStr = String(r[minKey] || '').replace(/[$,]/g, '').trim();
+    const rawName = String(r[nameKey] ?? '').trim();
+    const rawStockVal = r[stockKey];
+    const rawUnitVal = unitKey ? r[unitKey] : '';
+    const rawMinStr = String(r[minKey] ?? '').replace(/[$,]/g, '').trim();
 
-    if (!rawName && rawStockStr === '' && !rawUnit && rawMinStr === '') return; // Skip empty row
+    if (!rawName && String(rawStockVal ?? '').trim() === '' && rawMinStr === '') return; // Skip empty row
+
+    const { parsedStock, resolvedUnit } = parseStockAndOptionalUnit(rawStockVal, rawUnitVal, rawName);
+    const parsedMin = rawMinStr === '' ? 0 : parseFloat(rawMinStr);
 
     const rowErrors = [];
     if (!rawName) rowErrors.push('Missing raw material name');
-
-    const parsedStock = parseFloat(rawStockStr);
-    if (rawStockStr === '' || isNaN(parsedStock) || parsedStock < 0) {
-      rowErrors.push('Invalid current stock (must be a valid non-negative number)');
+    if (isNaN(parsedStock) || parsedStock < 0) {
+      rowErrors.push('Invalid current stock (must be a non-negative number)');
     }
-
-    if (!rawUnit) {
-      rowErrors.push('Missing unit of measure (e.g. kg, L, pcs)');
-    }
-
-    const parsedMin = parseFloat(rawMinStr);
-    if (rawMinStr === '' || isNaN(parsedMin) || parsedMin < 0) {
-      rowErrors.push('Invalid minimum stock (must be a valid non-negative number)');
+    if (isNaN(parsedMin) || parsedMin < 0) {
+      rowErrors.push('Invalid minimum stock (must be a non-negative number)');
     }
 
     if (rowErrors.length > 0) {
       errors.push(`Row ${rowNum} ("${rawName || 'Empty'}": ${rowErrors.join(', ')})`);
     } else {
+      const explicitCode = codeKey ? String(r[codeKey] || '').trim() : '';
+      const category = catKey ? String(r[catKey] || '').trim() : '';
+      const safetyStock = safetyKey ? parseFloat(String(r[safetyKey] || '').replace(/[$,]/g, '')) : NaN;
+      const reorderPoint = reorderKey ? parseFloat(String(r[reorderKey] || '').replace(/[$,]/g, '')) : NaN;
+      const supplier = supplierKey ? String(r[supplierKey] || '').trim() : '';
+      const unitCost = costKey ? parseFloat(String(r[costKey] || '').replace(/[$,]/g, '')) : NaN;
+      const location = locationKey ? String(r[locationKey] || '').trim() : '';
+      const desc = descKey ? String(r[descKey] || '').trim() : '';
+
+      const firstDateParsed = parseImportedDateValue(dateKey ? r[dateKey] : '', fallbackDate);
+      const latestDateParsed = latestDateKey ? parseImportedDateValue(r[latestDateKey], firstDateParsed.dateStr) : firstDateParsed;
+
       validRows.push({
         rowNum,
+        explicitCode,
         name: rawName,
         current_stock: parsedStock,
-        unit: rawUnit,
-        minimum_stock: parsedMin
+        unit: resolvedUnit,
+        minimum_stock: parsedMin,
+        date_added: firstDateParsed.dateStr,
+        first_date: firstDateParsed.dateStr,
+        last_updated: latestDateParsed.dateStr,
+        latest_date: latestDateParsed.dateStr,
+        hasExplicitRowDate: firstDateParsed.hasExplicit,
+        category: category || 'General Materials',
+        safety_stock: (!isNaN(safetyStock) && safetyStock >= 0) ? safetyStock : parsedMin,
+        reorder_point: (!isNaN(reorderPoint) && reorderPoint >= 0) ? reorderPoint : (parsedMin * 2),
+        supplier: supplier || 'Batch Imported via File',
+        unit_cost: (!isNaN(unitCost) && unitCost >= 0) ? unitCost : 0,
+        storage_location: location || 'Warehouse A - Main Rack',
+        description: desc || `Raw material ${rawName} imported into inventory.`
       });
     }
   });
@@ -4237,10 +4402,94 @@ function processParsedObjectRows(rows) {
     return;
   }
 
-  // Automatic sequential code generation based on system data history
-  const autoCodes = generateSequentialItemCodes(validRows.length, rawMaterials);
-  const preparedItems = validRows.map((row, i) => {
-    const code = autoCodes[i];
+  const preparedItems = prepareImportedMaterialsPreview(validRows);
+  pendingImportMaterials = preparedItems;
+  renderImportPreview(preparedItems, errors);
+}
+
+/**
+ * Resolves each imported row's registered forecasting code (e.g. "All Purpose Flour" -> NB-001, "Squash" -> NB-003)
+ * regardless of Excel row order, and calculates each material's First Date (earliest ever date) and Latest Date.
+ */
+function prepareImportedMaterialsPreview(validRows) {
+  let workingMaterialsList = [...(rawMaterials || [])];
+  const overrides = getStoredOverrides() || {};
+  const newCodeByNameMap = new Map();
+
+  // Pass 1: Resolve canonical Code for every row
+  const rowsWithCodes = validRows.map((row) => {
+    const normName = String(row.name || '').trim().toLowerCase();
+    const forecastingMatch = resolveForecastingMaterialByName(row.name);
+    const existingMatch = (rawMaterials || []).find(m =>
+      String(m.raw_material_name || m.name || '').trim().toLowerCase() === normName
+    );
+
+    let code = '';
+    if (forecastingMatch && forecastingMatch.code) {
+      code = forecastingMatch.code;
+    } else if (row.explicitCode) {
+      code = String(row.explicitCode).toUpperCase().trim();
+    } else if (existingMatch && (existingMatch.item_code || existingMatch.id)) {
+      code = String(existingMatch.item_code || existingMatch.id).toUpperCase().trim();
+    } else if (newCodeByNameMap.has(normName)) {
+      code = newCodeByNameMap.get(normName);
+    } else {
+      code = getSystemNextItemCode(workingMaterialsList);
+      newCodeByNameMap.set(normName, code);
+      workingMaterialsList.push({ id: code, item_code: code, name: row.name });
+    }
+
+    const resolvedUnit = row.unit || (forecastingMatch && forecastingMatch.unit) || getAuthoritativeMaterialUnit({ id: code, name: row.name });
+    const resolvedCategory = (row.category && row.category !== 'General Materials')
+      ? row.category
+      : ((forecastingMatch && forecastingMatch.category) || (existingMatch && existingMatch.category) || 'General Materials');
+
+    return {
+      ...row,
+      code,
+      unit: resolvedUnit,
+      category: resolvedCategory
+    };
+  });
+
+  // Pass 2: Calculate First Date (earliest ever date) and Latest Date per material code
+  const dateRangeByCode = new Map();
+  rowsWithCodes.forEach((r) => {
+    const code = r.code;
+    const rowFirst = r.first_date || r.date_added || '';
+    const rowLatest = r.latest_date || r.last_updated || rowFirst || '';
+
+    if (!dateRangeByCode.has(code)) {
+      const existingMat = (rawMaterials || []).find(m => String(m.item_code || m.id || '').toUpperCase().trim() === code);
+      const existingOv = overrides[code];
+      const sysFirst = (existingOv && (existingOv.first_date || existingOv.date_added)) ||
+        (existingMat && (existingMat.first_date || existingMat.date_added)) || '';
+      const sysLatest = (existingOv && (existingOv.latest_date || existingOv.last_updated)) ||
+        (existingMat && (existingMat.latest_date || existingMat.last_updated)) || '';
+
+      dateRangeByCode.set(code, {
+        minDate: (sysFirst && rowFirst) ? (sysFirst <= rowFirst ? sysFirst : rowFirst) : (rowFirst || sysFirst),
+        maxDate: (sysLatest && rowLatest) ? (rowLatest >= sysLatest ? rowLatest : sysLatest) : (rowLatest || sysLatest || rowFirst)
+      });
+    } else {
+      const range = dateRangeByCode.get(code);
+      if (rowFirst && (!range.minDate || rowFirst < range.minDate)) {
+        range.minDate = rowFirst;
+      }
+      if (rowLatest && (!range.maxDate || rowLatest > range.maxDate)) {
+        range.maxDate = rowLatest;
+      }
+    }
+  });
+
+  // Pass 3: Build final preview items with First Date & Latest Date
+  return rowsWithCodes.map((row) => {
+    const code = row.code;
+    const range = dateRangeByCode.get(code) || { minDate: row.first_date, maxDate: row.latest_date };
+    const firstDate = range.minDate || row.first_date || row.date_added;
+    const rowDate = row.latest_date || row.first_date || row.date_added;
+    const latestDate = rowDate || range.maxDate || firstDate;
+
     let status = 'Available';
     let statusClass = 'status-instock';
     if (row.current_stock <= 0) {
@@ -4259,13 +4508,25 @@ function processParsedObjectRows(rows) {
       current_stock: row.current_stock,
       unit: row.unit,
       minimum_stock: row.minimum_stock,
+      rowNum: row.rowNum,
+      row_date: rowDate,
+      date_added: firstDate,
+      first_date: firstDate,
+      last_updated: latestDate,
+      latest_date: latestDate,
+      material_max_date: range.maxDate || latestDate,
+      hasExplicitRowDate: row.hasExplicitRowDate,
+      category: row.category,
+      safety_stock: row.safety_stock,
+      reorder_point: row.reorder_point,
+      supplier: row.supplier,
+      unit_cost: row.unit_cost,
+      storage_location: row.storage_location,
+      description: row.description,
       status,
       statusClass
     };
   });
-
-  pendingImportMaterials = preparedItems;
-  renderImportPreview(preparedItems, errors);
 }
 
 function processParsedMatrix(matrix) {
@@ -4289,21 +4550,39 @@ function processParsedMatrix(matrix) {
   }
 
   const rawHeaders = matrix[headerRowIndex].map(h => String(h || '').trim());
-  const nameIdx = rawHeaders.findIndex(h => /raw.*material.*name|material.*name|raw.*material|item.*name|\bname\b/i.test(h));
-  const stockIdx = rawHeaders.findIndex(h => /current.*stock|current.*qty|in.*stock|\bstock\b|\bqty\b|\bquantity\b/i.test(h));
-  const unitIdx = rawHeaders.findIndex(h => /unit.*of.*measure|unit.*measure|\bunit\b|\buom\b|\bmeasure\b/i.test(h));
-  const minIdx = rawHeaders.findIndex(h => /min.*stock|minimum.*stock|min.*threshold|minimum.*threshold|\bmin\b|\bminimum\b|\bthreshold\b/i.test(h));
+  const findColIdx = (pattern, excludeIndices = []) =>
+    rawHeaders.findIndex((h, idx) => !excludeIndices.includes(idx) && pattern.test(h));
+
+  // Match minIdx BEFORE stockIdx so "Min Stock" is never mistaken for "Current Stock"
+  const nameIdx = findColIdx(/raw.*material.*name|material.*name|raw.*materials?|item.*name|\bnames?\b|\bmaterials?\b|\bitems?\b/i);
+  const minIdx = findColIdx(/min.*stock|minimum.*stock|min.*threshold|minimum.*threshold|\bmin\b|\bminimum\b|\bthreshold\b/i, [nameIdx]);
+  const stockIdx = findColIdx(/current.*stock|current.*qty|\bcurrent\b|in.*stock|\bstock\b|\bqty\b|\bquantity\b/i, [nameIdx, minIdx]);
+  const unitIdx = findColIdx(/unit.*of.*measure|unit.*measure|\bunits?\b|\buom\b|\bmeasure\b/i, [nameIdx, minIdx, stockIdx]);
+  const dateIdx = findColIdx(/first.*date|date.*added|import.*date|\bdates?\b/i, [nameIdx, minIdx, stockIdx]);
+  const latestDateIdx = findColIdx(/latest.*date|last.*updated|updated.*date|\blatest\b/i, [nameIdx, minIdx, stockIdx, dateIdx]);
+
+  // Optional indices
+  const codeIdx = findColIdx(/item.*code|material.*code|\bcodes?\b|\bsku\b/i, [nameIdx, minIdx, stockIdx]);
+  const catIdx = findColIdx(/category|\bcat\b/i);
+  const safetyIdx = findColIdx(/safety.*stock|safety.*level|safety/i);
+  const reorderIdx = findColIdx(/reorder.*point|reorder.*qty|reorder.*level|reorder/i);
+  const supplierIdx = findColIdx(/supplier|vendor/i);
+  const costIdx = findColIdx(/unit.*cost|cost.*per|item.*cost|\bcost\b|\bprice\b/i);
+  const locationIdx = findColIdx(/storage.*location|shelf|warehouse.*location|\blocation\b/i);
+  const descIdx = findColIdx(/description|notes|remarks/i);
 
   const missingCols = [];
-  if (nameIdx === -1) missingCols.push('Raw Material Name');
-  if (stockIdx === -1) missingCols.push('Current Stock');
-  if (unitIdx === -1) missingCols.push('Unit');
-  if (minIdx === -1) missingCols.push('Minimum Stock');
+  if (nameIdx === -1) missingCols.push('Names / Raw Material Name');
+  if (stockIdx === -1) missingCols.push('Current / Current Stock');
+  if (minIdx === -1) missingCols.push('Min Stock / Minimum Stock');
 
   if (missingCols.length > 0) {
-    showImportError(`Missing required column(s): <strong>${missingCols.join(', ')}</strong>.<br>Required format: <code>Raw Material Name</code>, <code>Current Stock</code>, <code>Unit</code>, and <code>Minimum Stock</code>.<br><small style="color:#64748B;">Found columns: ${rawHeaders.join(', ') || 'none'}</small>`);
+    showImportError(`Missing required column(s): <strong>${missingCols.join(', ')}</strong>.<br>Supported columns: <code>Date</code>, <code>Min Stock</code>, <code>Current</code> (or <code>Current Stock</code>), <code>Names</code> (or <code>Raw Material Name</code>), and optional <code>Unit</code>.<br><small style="color:#64748B;">Found columns: ${rawHeaders.join(', ') || 'none'}</small>`);
     return;
   }
+
+  const defaultDateEl = document.getElementById('importDefaultDateInput');
+  const fallbackDate = (defaultDateEl && defaultDateEl.value) ? defaultDateEl.value : new Date().toISOString().slice(0, 10);
 
   const rawDataRows = matrix.slice(headerRowIndex + 1);
   const validRows = [];
@@ -4311,40 +4590,59 @@ function processParsedMatrix(matrix) {
 
   rawDataRows.forEach((row, idx) => {
     const rowNum = headerRowIndex + 2 + idx;
-    // Skip completely empty rows
     if (!row || row.every(cell => String(cell).trim() === '')) return;
 
-    const rawName = String(row[nameIdx] || '').trim();
-    const rawStockStr = String(row[stockIdx] || '').replace(/[$,]/g, '').trim();
-    const rawUnit = String(row[unitIdx] || '').trim();
-    const rawMinStr = String(row[minIdx] || '').replace(/[$,]/g, '').trim();
+    const rawName = String(row[nameIdx] ?? '').trim();
+    const rawStockVal = row[stockIdx];
+    const rawUnitVal = unitIdx !== -1 ? row[unitIdx] : '';
+    const rawMinStr = String(row[minIdx] ?? '').replace(/[$,]/g, '').trim();
+
+    const { parsedStock, resolvedUnit } = parseStockAndOptionalUnit(rawStockVal, rawUnitVal, rawName);
+    const parsedMin = rawMinStr === '' ? 0 : parseFloat(rawMinStr);
 
     const rowErrors = [];
     if (!rawName) rowErrors.push('Missing raw material name');
-
-    const parsedStock = parseFloat(rawStockStr);
-    if (rawStockStr === '' || isNaN(parsedStock) || parsedStock < 0) {
-      rowErrors.push('Invalid current stock (must be a valid non-negative number)');
+    if (isNaN(parsedStock) || parsedStock < 0) {
+      rowErrors.push('Invalid current stock (must be a non-negative number)');
     }
-
-    if (!rawUnit) {
-      rowErrors.push('Missing unit of measure (e.g. kg, L, pcs)');
-    }
-
-    const parsedMin = parseFloat(rawMinStr);
-    if (rawMinStr === '' || isNaN(parsedMin) || parsedMin < 0) {
-      rowErrors.push('Invalid minimum stock (must be a valid non-negative number)');
+    if (isNaN(parsedMin) || parsedMin < 0) {
+      rowErrors.push('Invalid minimum stock (must be a non-negative number)');
     }
 
     if (rowErrors.length > 0) {
       errors.push(`Row ${rowNum} ("${rawName || 'Empty Name'}"): ${rowErrors.join(', ')}`);
     } else {
+      const explicitCode = codeIdx !== -1 ? String(row[codeIdx] || '').trim() : '';
+      const category = catIdx !== -1 ? String(row[catIdx] || '').trim() : '';
+      const safetyStock = safetyIdx !== -1 ? parseFloat(String(row[safetyIdx] || '').replace(/[$,]/g, '')) : NaN;
+      const reorderPoint = reorderIdx !== -1 ? parseFloat(String(row[reorderIdx] || '').replace(/[$,]/g, '')) : NaN;
+      const supplier = supplierIdx !== -1 ? String(row[supplierIdx] || '').trim() : '';
+      const unitCost = costIdx !== -1 ? parseFloat(String(row[costIdx] || '').replace(/[$,]/g, '')) : NaN;
+      const location = locationIdx !== -1 ? String(row[locationIdx] || '').trim() : '';
+      const desc = descIdx !== -1 ? String(row[descIdx] || '').trim() : '';
+
+      const firstDateParsed = parseImportedDateValue(dateIdx !== -1 ? row[dateIdx] : '', fallbackDate);
+      const latestDateParsed = latestDateIdx !== -1 ? parseImportedDateValue(row[latestDateIdx], firstDateParsed.dateStr) : firstDateParsed;
+
       validRows.push({
         rowNum,
+        explicitCode,
         name: rawName,
         current_stock: parsedStock,
-        unit: rawUnit,
-        minimum_stock: parsedMin
+        unit: resolvedUnit,
+        minimum_stock: parsedMin,
+        date_added: firstDateParsed.dateStr,
+        first_date: firstDateParsed.dateStr,
+        last_updated: latestDateParsed.dateStr,
+        latest_date: latestDateParsed.dateStr,
+        hasExplicitRowDate: firstDateParsed.hasExplicit,
+        category: category || 'General Materials',
+        safety_stock: (!isNaN(safetyStock) && safetyStock >= 0) ? safetyStock : parsedMin,
+        reorder_point: (!isNaN(reorderPoint) && reorderPoint >= 0) ? reorderPoint : (parsedMin * 2),
+        supplier: supplier || 'Batch Imported via File',
+        unit_cost: (!isNaN(unitCost) && unitCost >= 0) ? unitCost : 0,
+        storage_location: location || 'Warehouse A - Main Rack',
+        description: desc || `Raw material ${rawName} imported into inventory.`
       });
     }
   });
@@ -4354,33 +4652,7 @@ function processParsedMatrix(matrix) {
     return;
   }
 
-  // Automatic sequential code generation based on system data history
-  const autoCodes = generateSequentialItemCodes(validRows.length, rawMaterials);
-  const preparedItems = validRows.map((row, i) => {
-    const code = autoCodes[i];
-    let status = 'Available';
-    let statusClass = 'status-instock';
-    if (row.current_stock <= 0) {
-      status = 'Out of Stock';
-      statusClass = 'status-outofstock';
-    } else if (row.current_stock <= row.minimum_stock) {
-      status = 'Low Stock';
-      statusClass = 'status-lowstock';
-    }
-
-    return {
-      id: code,
-      item_code: code,
-      name: row.name,
-      raw_material_name: row.name,
-      current_stock: row.current_stock,
-      unit: row.unit,
-      minimum_stock: row.minimum_stock,
-      status,
-      statusClass
-    };
-  });
-
+  const preparedItems = prepareImportedMaterialsPreview(validRows);
   pendingImportMaterials = preparedItems;
   renderImportPreview(preparedItems, errors);
 }
@@ -4415,12 +4687,14 @@ function renderImportPreview(items, errors) {
   if (tbody) {
     tbody.innerHTML = items.map(item => `
       <tr>
-        <td><strong style="color:#059669; font-family:monospace; font-size:12px;">${item.id}</strong></td>
-        <td><strong>${item.name}</strong></td>
-        <td style="text-align:right;">${item.current_stock.toLocaleString()}</td>
-        <td>${item.unit}</td>
-        <td style="text-align:right;">${item.minimum_stock.toLocaleString()}</td>
-        <td><span class="mgr-status-badge ${item.statusClass}">${item.status}</span></td>
+        <td style="padding:6px 10px; white-space:nowrap;"><strong style="color:#059669; font-family:monospace; font-size:12px;">${escapeHtml(item.id)}</strong></td>
+        <td style="padding:6px 10px;"><strong>${escapeHtml(item.name)}</strong></td>
+        <td style="padding:6px 10px; white-space:nowrap; color:#475569; font-weight:600;">${escapeHtml(item.first_date || item.date_added || '—')}</td>
+        <td style="padding:6px 10px; white-space:nowrap; color:#0F172A; font-weight:700;">${escapeHtml(item.latest_date || item.last_updated || item.first_date || '—')}</td>
+        <td style="padding:6px 10px; text-align:right; font-weight:600;">${item.current_stock.toLocaleString()}</td>
+        <td style="padding:6px 10px;">${escapeHtml(item.unit)}</td>
+        <td style="padding:6px 10px; text-align:right;">${item.minimum_stock.toLocaleString()}</td>
+        <td style="padding:6px 10px; text-align:center;"><span class="mgr-status-badge ${item.statusClass}">${item.status}</span></td>
       </tr>
     `).join('');
   }
@@ -4437,7 +4711,8 @@ function renderImportPreview(items, errors) {
 
 /**
  * Saves confirmed raw materials into inventory with animated percentage loader (0% -> 100%),
- * updates overrides, logs history, and refreshes the manager inventory UI.
+ * consolidates multi-date rows by material Code (preserving First Date as earliest date and Latest Date as newest date),
+ * updates overrides, syncs to Supabase, logs history, and refreshes the manager inventory UI.
  */
 async function handleConfirmImportMaterials() {
   if (!pendingImportMaterials || pendingImportMaterials.length === 0) {
@@ -4447,8 +4722,6 @@ async function handleConfirmImportMaterials() {
 
   isImportCancelled = false;
   const confirmBtn = document.getElementById('importModalConfirmBtn');
-  const cancelBtn = document.getElementById('importModalCancelBtn');
-  const closeBtn = document.getElementById('importModalCloseBtn');
 
   if (confirmBtn) {
     confirmBtn.disabled = true;
@@ -4458,7 +4731,6 @@ async function handleConfirmImportMaterials() {
     `;
   }
 
-  // Show the animated circular progress & percentage box
   const progressBox = document.getElementById('importProgressContainer');
   const circleEl = document.getElementById('importCircleProgress');
   const barEl = document.getElementById('importProgressBar');
@@ -4475,82 +4747,176 @@ async function handleConfirmImportMaterials() {
 
   const overrides = getStoredOverrides();
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  const timeStr = dateStr + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const defaultDateEl = document.getElementById('importDefaultDateInput');
+  const fallbackDateStr = (defaultDateEl && defaultDateEl.value)
+    ? defaultDateEl.value
+    : now.toISOString().slice(0, 10);
 
-  let importedCount = 0;
-  const CHUNK_SIZE = Math.max(1, Math.ceil(totalRows / 10));
+  // Group imported rows by material Code so multi-date spreadsheets accurately track First Date -> Latest Date
+  const groupedByCode = new Map();
+  pendingImportMaterials.forEach((item, idx) => {
+    const code = item.id || item.item_code;
+    if (!groupedByCode.has(code)) {
+      groupedByCode.set(code, []);
+    }
+    groupedByCode.get(code).push({ ...item, _orderIdx: idx });
+  });
 
-  for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+  let processedRows = 0;
+  let uniqueMaterialCount = 0;
+  const groupEntries = Array.from(groupedByCode.entries());
+
+  for (let gIdx = 0; gIdx < groupEntries.length; gIdx++) {
     if (isImportCancelled) {
       console.log('Import cancelled by user.');
       break;
     }
 
-    const chunk = pendingImportMaterials.slice(i, i + CHUNK_SIZE);
-
-    chunk.forEach(item => {
-      overrides[item.id] = {
-        name: item.name,
-        raw_material_name: item.name,
-        specification_name: item.name,
-        category: 'General Materials',
-        unit: item.unit,
-        current_stock: item.current_stock,
-        minimum_stock: item.minimum_stock,
-        maximum_stock: (item.minimum_stock * 5) || 100,
-        storage_location: 'Warehouse A - Main Rack',
-        supplier: 'Batch Imported via File',
-        description: `Raw material ${item.name} batch imported by Store Manager.`,
-        date_added: dateStr,
-        last_updated: timeStr,
-        added_by: 'Store Manager'
-      };
-
-      saveCustomRawMaterial({
-        id: item.id,
-        item_code: item.id,
-        name: item.name,
-        raw_material_name: item.name,
-        specification_name: item.name,
-        category: 'General Materials',
-        unit_of_measure: item.unit,
-        unit: item.unit,
-        current_stock: item.current_stock,
-        minimum_threshold: item.minimum_stock,
-        minimum_stock: item.minimum_stock,
-        reorder_quantity: Math.max(10, item.minimum_stock * 2),
-        lead_time_days: 3,
-        description: `Batch imported raw material ${item.name}`,
-        created_at: now.toISOString()
-      });
-
-      logMaterialHistory(item.id, 'Imported', `Batch imported into inventory with initial stock of ${item.current_stock} ${item.unit} (Min: ${item.minimum_stock}).`);
-      importedCount++;
+    const [code, rowsForMat] = groupEntries[gIdx];
+    // Sort rows for this material chronologically by row date (preserving spreadsheet order on same date)
+    rowsForMat.sort((a, b) => {
+      const dA = String(a.row_date || a.latest_date || a.first_date || '');
+      const dB = String(b.row_date || b.latest_date || b.first_date || '');
+      if (dA !== dB) return dA.localeCompare(dB);
+      return (a._orderIdx || 0) - (b._orderIdx || 0);
     });
 
-    // Update circular ring, progress bar and percent display
-    const processedCount = Math.min(totalRows, i + CHUNK_SIZE);
-    const pct = Math.round((processedCount / totalRows) * 100);
+    const earliestRow = rowsForMat[0];
+    const latestRow = rowsForMat[rowsForMat.length - 1];
+    const prevOv = overrides[code] || {};
+    const prevFirst = prevOv.first_date || prevOv.date_added || '';
+    const rowMinDate = earliestRow.first_date || earliestRow.date_added || earliestRow.row_date || fallbackDateStr;
+    const itemFirstDate = (prevFirst && rowMinDate)
+      ? (prevFirst <= rowMinDate ? prevFirst : rowMinDate)
+      : (rowMinDate || prevFirst || fallbackDateStr);
+
+    const prevLatest = prevOv.latest_date || prevOv.last_updated ? String(prevOv.latest_date || prevOv.last_updated).slice(0, 10) : '';
+    const rowMaxDate = latestRow.row_date || latestRow.latest_date || latestRow.last_updated || itemFirstDate;
+    const itemLatestDate = (prevLatest && rowMaxDate)
+      ? (rowMaxDate >= prevLatest ? rowMaxDate : prevLatest)
+      : (rowMaxDate || prevLatest || itemFirstDate);
+
+    // Record chronological stock movements across dates for Analytics & Forecasting
+    let prevStockLevel = 0;
+    rowsForMat.forEach((r, rIdx) => {
+      const rDate = r.row_date || r.latest_date || r.first_date || itemFirstDate;
+      const curStock = Number(r.current_stock || 0);
+      const delta = rIdx === 0 ? curStock : (curStock - prevStockLevel);
+      prevStockLevel = curStock;
+      if (delta > 0) {
+        saveCustomReceipt({
+          id: `rec-import-${code}-${rDate}-${rIdx}`,
+          material_id: code,
+          material_name: latestRow.name,
+          received_quantity: delta,
+          unit: latestRow.unit,
+          receipt_date: rDate,
+          supplier_name: latestRow.supplier || 'Batch Imported via File',
+          received_by: 'Store Manager'
+        });
+      } else if (delta < 0) {
+        saveCustomDisbursement({
+          id: `disb-import-${code}-${rDate}-${rIdx}`,
+          material_id: code,
+          material_name: latestRow.name,
+          consumed_quantity: Math.abs(delta),
+          unit: latestRow.unit,
+          usage_date: rDate,
+          activity_type: 'Production Usage',
+          finished_product_name: 'Imported Operational Usage',
+          recorded_by: 'Store Manager'
+        });
+      }
+    });
+
+    overrides[code] = {
+      ...prevOv,
+      id: code,
+      item_code: code,
+      name: latestRow.name,
+      raw_material_name: latestRow.name,
+      specification_name: latestRow.name,
+      category: latestRow.category || 'General Materials',
+      unit: latestRow.unit,
+      current_stock: latestRow.current_stock,
+      minimum_stock: latestRow.minimum_stock,
+      safety_stock: latestRow.safety_stock || latestRow.minimum_stock,
+      reorder_point: latestRow.reorder_point || (latestRow.minimum_stock * 2),
+      maximum_stock: (latestRow.minimum_stock * 5) || 100,
+      storage_location: latestRow.storage_location || 'Warehouse A - Main Rack',
+      supplier: latestRow.supplier || 'Batch Imported via File',
+      unit_cost: latestRow.unit_cost || 0,
+      description: latestRow.description || `Raw material ${latestRow.name} batch imported by Store Manager.`,
+      date_added: itemFirstDate,
+      first_date: itemFirstDate,
+      display_date: itemFirstDate,
+      last_updated: itemLatestDate,
+      latest_date: itemLatestDate,
+      added_by: 'Store Manager',
+      is_imported: true,
+      is_manual_override: true
+    };
+
+    const recordPayload = {
+      id: code,
+      item_code: code,
+      name: latestRow.name,
+      raw_material_name: latestRow.name,
+      specification_name: latestRow.name,
+      category: latestRow.category || 'General Materials',
+      unit_of_measure: latestRow.unit,
+      unit: latestRow.unit,
+      current_stock: latestRow.current_stock,
+      minimum_threshold: latestRow.minimum_stock,
+      minimum_stock: latestRow.minimum_stock,
+      safety_stock: latestRow.safety_stock || latestRow.minimum_stock,
+      reorder_point: latestRow.reorder_point || (latestRow.minimum_stock * 2),
+      reorder_quantity: latestRow.reorder_point || Math.max(10, latestRow.minimum_stock * 2),
+      supplier: latestRow.supplier || 'Batch Imported via File',
+      unit_cost: latestRow.unit_cost || 0,
+      storage_location: latestRow.storage_location || 'Warehouse A - Main Rack',
+      lead_time_days: 3,
+      description: latestRow.description || `Batch imported raw material ${latestRow.name}`,
+      date_added: itemFirstDate,
+      first_date: itemFirstDate,
+      display_date: itemFirstDate,
+      last_updated: itemLatestDate,
+      latest_date: itemLatestDate,
+      created_at: now.toISOString(),
+      is_imported: true,
+      is_manual_override: true
+    };
+
+    saveCustomRawMaterial(recordPayload);
+    saveRawMaterialToSupabase(recordPayload).catch(() => {});
+
+    logMaterialHistory(
+      code,
+      'Imported',
+      `Batch imported (${rowsForMat.length} record${rowsForMat.length === 1 ? '' : 's'}, First Date: ${itemFirstDate}, Latest Date: ${itemLatestDate}) with stock of ${latestRow.current_stock} ${latestRow.unit} (Min: ${latestRow.minimum_stock}).`
+    );
+
+    uniqueMaterialCount++;
+    processedRows += rowsForMat.length;
+    const pct = Math.min(100, Math.round((processedRows / totalRows) * 100));
     const offset = 113.1 - (113.1 * pct) / 100;
 
     if (circleEl) circleEl.style.strokeDashoffset = String(offset);
     if (barEl) barEl.style.width = `${pct}%`;
     if (pctEl) pctEl.textContent = `${pct}%`;
-    if (statusEl) statusEl.textContent = `Importing data... (${processedCount} / ${totalRows} records)`;
+    if (statusEl) statusEl.textContent = `Importing data... (${processedRows} / ${totalRows} records)`;
 
-    // Brief smooth pause for visual feedback
-    await new Promise(r => setTimeout(r, 65));
+    await new Promise(r => setTimeout(r, 45));
   }
 
   if (!isImportCancelled) {
     if (circleEl) circleEl.style.strokeDashoffset = '0';
     if (barEl) barEl.style.width = '100%';
     if (pctEl) pctEl.textContent = '100%';
-    if (statusEl) statusEl.textContent = `Successfully imported ${totalRows} raw materials!`;
+    if (statusEl) statusEl.textContent = `Successfully imported ${totalRows} records (${uniqueMaterialCount} raw materials)!`;
 
     saveStoredOverrides(overrides);
-    broadcastManagerSync({ action: 'import_materials', count: importedCount });
+    broadcastManagerSync({ action: 'import_materials', count: uniqueMaterialCount, totalRows });
 
     // Wait briefly at 100% so user sees completion
     await new Promise(r => setTimeout(r, 650));
@@ -4558,7 +4924,7 @@ async function handleConfirmImportMaterials() {
     closeImportRawMaterialsModal();
     loadMaterials();
     renderUI();
-    showToast(`Successfully imported ${importedCount} raw materials into inventory!`, 'success');
+    showToast(`Successfully imported ${totalRows} records across ${uniqueMaterialCount} raw material${uniqueMaterialCount === 1 ? '' : 's'}!`, 'success');
   }
 
   if (confirmBtn) {

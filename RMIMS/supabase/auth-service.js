@@ -638,7 +638,8 @@ export async function loginUser(email, password, expectedRole) {
                 };
                 profileError = null;
                 try {
-                    await supabase.from("user_profiles").upsert(profile);
+                    const { dataset_folder, ...dbProfile } = profile;
+                    await supabase.from("user_profiles").upsert(dbProfile);
                 } catch (_) {}
             } catch (e) { }
         }

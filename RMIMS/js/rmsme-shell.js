@@ -958,7 +958,48 @@ import { supabase } from '../supabase/supabase-config.js';
     return (parts.slice(0, 2).map(x => x[0]).join('') || 'A').toUpperCase();
   }
 
+  function getCachedAvatar(uId, userEmail = '') {
+    try {
+      const cleanEm = String(userEmail || '').toLowerCase().trim();
+      const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
+                        (cleanEm && localStorage.getItem('rmims_avatar_removed_' + cleanEm) === 'true');
+      if (isRemoved) return '';
+
+      if (uId) {
+        const direct = localStorage.getItem(`rmims_avatar_${uId}`) || localStorage.getItem(`rmims_user_avatar_${uId}`);
+        if (direct) return direct;
+      }
+      const userObjKeys = ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'staffUser', 'adminUser'];
+      for (const k of userObjKeys) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const found = parsed?.avatarUrl || parsed?.avatar_url;
+            if (found) return found;
+          }
+        } catch (_) {}
+      }
+      return (isStrictManager ? localStorage.getItem('rmims_manager_avatar') : '') ||
+             localStorage.getItem('rmims_user_avatar') ||
+             localStorage.getItem('rmims_admin_avatar') || '';
+    } catch (_) { return ''; }
+  }
+
+  function applyShellAvatar(url, fallbackChar) {
+    document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(e => {
+      if (url) {
+        e.innerHTML = `<img src="${url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+        e.style.padding = '0';
+        e.style.overflow = 'hidden';
+      } else {
+        e.textContent = fallbackChar;
+      }
+    });
+  }
+
   function syncIdentity() {
+    let uid = localStorage.getItem('rmims_user_id') || '';
     let name = '', email = '';
     let roleTitle = isStrictManager ? 'Manager' : (isAnyAdmin ? 'Administrator' : 'Staff');
     let branchName = '', branchLocation = '';
@@ -990,6 +1031,7 @@ import { supabase } from '../supabase/supabase-config.js';
             else if (isAnyAdmin) rawName = 'Zeanna';
             else rawName = 'Staff_1';
           }
+          uid = o.id || o.uid || uid;
           name = rawName;
           email = o.email || '';
           branchName = o.branchName || o.branch_name || '';
@@ -1008,46 +1050,7 @@ import { supabase } from '../supabase/supabase-config.js';
       }
     } catch (e) { }
 
-    function getCachedAvatar(uId) {
-      try {
-        const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
-                          (email && localStorage.getItem('rmims_avatar_removed_' + String(email).toLowerCase()) === 'true');
-        if (isRemoved) return '';
-
-        if (uId) {
-          const direct = localStorage.getItem(`rmims_avatar_${uId}`) || localStorage.getItem(`rmims_user_avatar_${uId}`);
-          if (direct) return direct;
-        }
-        const userObjKeys = ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'staffUser', 'adminUser'];
-        for (const k of userObjKeys) {
-          try {
-            const raw = localStorage.getItem(k);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              const found = parsed?.avatarUrl || parsed?.avatar_url;
-              if (found) return found;
-            }
-          } catch (_) {}
-        }
-        return (isStrictManager ? localStorage.getItem('rmims_manager_avatar') : '') ||
-               localStorage.getItem('rmims_user_avatar') ||
-               localStorage.getItem('rmims_admin_avatar') || '';
-      } catch (_) { return ''; }
-    }
-
-    function applyShellAvatar(url, fallbackChar) {
-      document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(e => {
-        if (url) {
-          e.innerHTML = `<img src="${url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
-          e.style.padding = '0';
-          e.style.overflow = 'hidden';
-        } else {
-          e.textContent = fallbackChar;
-        }
-      });
-    }
-
-    const currentCachedAvatar = getCachedAvatar(uid);
+    const currentCachedAvatar = getCachedAvatar(uid, email);
     const authenticFallback = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
     if (!name || ['manager', 'user account', 'user', 'account', '—', '-'].includes(name.trim().toLowerCase())) {
       name = authenticFallback;
@@ -1133,15 +1136,17 @@ import { supabase } from '../supabase/supabase-config.js';
             .select('id, full_name, email, role, operational_role, branch_name, branch_location, status, avatar_url')
             .eq('id', authUser.id)
             .maybeSingle();
-          profile = data;
-        } catch (e) {
+          if (data) profile = data;
+        } catch (_) {}
+
+        if (!profile) {
           try {
             const { data } = await supabase
               .from('user_profiles')
-              .select('id, full_name, email, role, status, avatar_url')
+              .select('id, full_name, email, role, status')
               .eq('id', authUser.id)
               .maybeSingle();
-            profile = data;
+            if (data) profile = data;
           } catch (_) {}
         }
 
@@ -1156,55 +1161,61 @@ import { supabase } from '../supabase/supabase-config.js';
           return;
         }
 
+        // Read active local session authenticated by auth-service.js
+        let localSession = null;
+        try {
+          const localKeys = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser', 'adminUser'];
+          for (const k of localKeys) {
+            const raw = localStorage.getItem(k);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (parsed && (parsed.email || parsed.id)) {
+              localSession = parsed;
+              break;
+            }
+          }
+        } catch (_) {}
+
+        const meta = authUser.user_metadata || {};
         const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
-        if (isMasterAdmin) {
-          if (!profile) {
-            profile = {
-              id: authUser.id || authUser.uid,
-              email: authUser.email,
-              full_name: 'Zeanna',
-              role: 'admin',
-              operational_role: 'admin',
-              status: 'active'
-            };
-          } else if (!profile.operational_role || profile.operational_role === 'admin') {
-            profile.role = 'admin';
-            profile.operational_role = 'admin';
+        if (!profile) {
+          profile = {
+            id: authUser.id || authUser.uid || localSession?.id,
+            email: authUser.email || localSession?.email || '',
+            full_name: localSession?.fullName || localSession?.name || meta.full_name || (isMasterAdmin ? 'Zeanna' : ''),
+            role: localSession?.role || meta.role || (isMasterAdmin ? 'admin' : 'user'),
+            operational_role: localSession?.operationalRole || localSession?.operational_role || meta.operational_role || localSession?.role || meta.role || (isMasterAdmin ? 'admin' : (isStrictManager ? 'manager' : 'staff')),
+            branch_name: localSession?.branchName || localSession?.branch_name || meta.branch_name || '',
+            branch_location: localSession?.branchLocation || localSession?.branch_location || meta.branch_location || '',
+            status: localSession?.status || 'active',
+            avatar_url: localSession?.avatarUrl || localSession?.avatar_url || null
+          };
+        } else {
+          if (!profile.operational_role) {
+            profile.operational_role = localSession?.operationalRole || localSession?.operational_role || meta.operational_role || profile.role;
+          }
+          if (!profile.branch_name) {
+            profile.branch_name = localSession?.branchName || localSession?.branch_name || meta.branch_name || '';
+          }
+          if (!profile.branch_location) {
+            profile.branch_location = localSession?.branchLocation || localSession?.branch_location || meta.branch_location || '';
+          }
+          if (String(localSession?.status || '').toLowerCase() === 'active' && String(profile.status || '').toLowerCase() === 'pending') {
             profile.status = 'active';
           }
         }
 
-        if (!profile && isMasterAdmin) {
-          profile = {
-            id: authUser.id || authUser.uid,
-            email: authUser.email,
-            full_name: 'Zeanna',
-            role: 'admin',
-            operational_role: 'admin',
-            status: 'active',
-            branch_name: 'Admin HQ',
-            branch_location: 'Lucena'
-          };
-          try {
-            await supabase.from('user_profiles').upsert(profile);
-          } catch (_) {}
+        if (isMasterAdmin) {
+          profile.role = 'admin';
+          profile.operational_role = 'admin';
+          profile.status = 'active';
+          profile.full_name = profile.full_name || 'Zeanna';
         }
 
-        // STRICT REAL-DATA RULE: If user profile was deleted from Supabase, do NOT auto-create mock or resurrected profile
-        if (!profile) {
-          try {
-            await supabase.auth.signOut();
-          } catch (_) {}
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('rmimsCurrentUser');
-          localStorage.removeItem('userProfile');
-          window.location.href = '../login.html';
-          return;
-        }
-
-        // If account has been deactivated or rejected by Admin, respect Supabase state (do not resurrect status to active)
-        if (profile.status && profile.status !== 'active' && !isMasterAdmin) {
+        const pStatus = String(profile.status || '').toLowerCase();
+        const isExplicitlyRevoked = pStatus === 'deleted' || pStatus === 'rejected' || pStatus === 'locked' || pStatus === 'inactive' || pStatus === 'suspended';
+        if (isExplicitlyRevoked && !isMasterAdmin) {
           try {
             await supabase.auth.signOut();
           } catch (_) {}
@@ -1216,8 +1227,8 @@ import { supabase } from '../supabase/supabase-config.js';
         }
 
         if (profile) {
-          const rawOp = String(profile.operational_role || profile.operationalRole || '').trim().toLowerCase();
-          const rawBase = String(profile.role || '').trim().toLowerCase();
+          const rawOp = String(profile.operational_role || profile.operationalRole || localSession?.operationalRole || localSession?.operational_role || '').trim().toLowerCase();
+          const rawBase = String(profile.role || localSession?.role || '').trim().toLowerCase();
           const isUserAdmin = rawBase === 'admin' || rawBase === 'main_admin' || rawOp === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
           const isUserManager = !isUserAdmin && (rawOp === 'manager' || rawBase === 'manager');
           const isUserStaff = !isUserAdmin && !isUserManager;
@@ -1282,7 +1293,7 @@ import { supabase } from '../supabase/supabase-config.js';
               }
             } catch (_) {}
           }
-          const liveAvatar = isRemoved ? '' : (profile.avatar_url || getCachedAvatar(authUser?.id));
+          const liveAvatar = isRemoved ? '' : (profile.avatar_url || getCachedAvatar(authUser?.id, cleanEmail));
           const liveFallback = initials(liveName || (isStrictManager ? 'Manager' : (isUserAdmin ? 'Admin' : 'User')));
           applyShellAvatar(liveAvatar, liveFallback);
 
@@ -1364,6 +1375,206 @@ import { supabase } from '../supabase/supabase-config.js';
 
   // Shared Help Center Modal across Manager & User pages (100% Adopted Admin style)
   function setupHelpCenter() {
+    if (!document.getElementById('rmsmeHelpCenterInlineStyle')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'rmsmeHelpCenterInlineStyle';
+      styleEl.textContent = `
+        .help-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.45);
+          backdrop-filter: blur(4px);
+          z-index: 9999;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .help-modal-backdrop.show {
+          display: flex !important;
+        }
+        .help-modal-window {
+          width: 100%;
+          max-width: 560px;
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+          padding: 24px 26px;
+          position: relative;
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .help-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .help-modal-title-group h3 {
+          font-size: 18px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 4px 0;
+        }
+        .help-modal-title-group p {
+          font-size: 13px;
+          color: #64748B;
+          margin: 0;
+        }
+        .help-modal-close-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          background: transparent;
+          color: #64748B;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+        .help-modal-close-btn:hover {
+          background: #F1F5F9;
+          color: #0F172A;
+        }
+        .help-modal-close-btn svg {
+          width: 18px;
+          height: 18px;
+        }
+        .help-faq-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .help-faq-item {
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          background: #FFFFFF;
+          overflow: hidden;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .help-faq-item:hover {
+          border-color: #CBD5E1;
+        }
+        .help-faq-item.active {
+          border-color: #059669;
+          box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);
+        }
+        .help-faq-trigger {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          background: transparent;
+          border: none;
+          text-align: left;
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .help-faq-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: #ECFDF5;
+          color: #059669;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .help-faq-icon svg {
+          width: 16px;
+          height: 16px;
+          stroke-width: 2;
+        }
+        .help-faq-question {
+          flex: 1;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #0F172A;
+        }
+        .help-faq-chevron {
+          width: 16px;
+          height: 16px;
+          color: #64748B;
+          transition: transform 0.2s ease;
+          flex-shrink: 0;
+        }
+        .help-faq-item.active .help-faq-chevron {
+          transform: rotate(180deg);
+          color: #059669;
+        }
+        .help-faq-answer {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+          padding: 0 16px 0 60px;
+          font-size: 12.5px;
+          line-height: 1.6;
+          color: #475569;
+          opacity: 0;
+        }
+        .help-faq-item.active .help-faq-answer {
+          max-height: 240px !important;
+          padding: 0 16px 14px 60px !important;
+          opacity: 1 !important;
+        }
+        .help-guide-card {
+          background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%);
+          border: 1px solid #A7F3D0;
+          border-radius: 12px;
+          padding: 18px 20px;
+        }
+        .help-guide-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 6px;
+        }
+        .help-guide-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #065F46;
+          margin: 0;
+        }
+        .help-guide-text {
+          font-size: 12.5px;
+          color: #047857;
+          margin: 0 0 14px 0;
+          line-height: 1.5;
+        }
+        .btn-start-guide {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          height: 36px;
+          padding: 0 16px;
+          border-radius: 8px;
+          border: none;
+          background: #059669;
+          color: #FFFFFF;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .btn-start-guide:hover {
+          background: #047857;
+        }
+        .btn-start-guide svg {
+          width: 15px;
+          height: 15px;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
     let modalBackdrop = document.getElementById('helpCenterModal');
     if (!modalBackdrop) {
       modalBackdrop = document.createElement('div');
@@ -1386,7 +1597,7 @@ import { supabase } from '../supabase/supabase-config.js';
 
           <div class="help-faq-list">
             <div class="help-faq-item">
-              <button type="button" class="help-faq-trigger">
+              <button type="button" class="help-faq-trigger" aria-expanded="false">
                 <span class="help-faq-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <polyline points="7 10 12 15 17 10"/>
@@ -1405,7 +1616,7 @@ import { supabase } from '../supabase/supabase-config.js';
             </div>
 
             <div class="help-faq-item">
-              <button type="button" class="help-faq-trigger">
+              <button type="button" class="help-faq-trigger" aria-expanded="false">
                 <span class="help-faq-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <polyline points="17 8 12 3 7 8"/>
@@ -1424,7 +1635,7 @@ import { supabase } from '../supabase/supabase-config.js';
             </div>
 
             <div class="help-faq-item">
-              <button type="button" class="help-faq-trigger">
+              <button type="button" class="help-faq-trigger" aria-expanded="false">
                 <span class="help-faq-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path d="m3 17 6-6 4 4 8-8"/>
@@ -1442,7 +1653,7 @@ import { supabase } from '../supabase/supabase-config.js';
             </div>
 
             <div class="help-faq-item">
-              <button type="button" class="help-faq-trigger">
+              <button type="button" class="help-faq-trigger" aria-expanded="false">
                 <span class="help-faq-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1488,6 +1699,8 @@ import { supabase } from '../supabase/supabase-config.js';
     }
 
     document.querySelectorAll('#mgrSideHelp, #btnSidebarHelp, #rmsmeHelpBtn, #rmsmeSystemGuideBtn, [href="#helpCenter"]').forEach(btn => {
+      if (btn._helpOpenBound) return;
+      btn._helpOpenBound = true;
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         openHelp();
@@ -1495,20 +1708,27 @@ import { supabase } from '../supabase/supabase-config.js';
     });
 
     const closeBtn = document.getElementById('btnCloseHelpCenter');
-    if (closeBtn) closeBtn.addEventListener('click', closeHelp);
+    if (closeBtn && !closeBtn._helpCloseBound) {
+      closeBtn._helpCloseBound = true;
+      closeBtn.addEventListener('click', closeHelp);
+    }
 
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) closeHelp();
-    });
+    if (!modalBackdrop._helpBackdropBound) {
+      modalBackdrop._helpBackdropBound = true;
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) closeHelp();
+      });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modalBackdrop.classList.contains('show')) {
-        closeHelp();
-      }
-    });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalBackdrop.classList.contains('show')) {
+          closeHelp();
+        }
+      });
+    }
 
     const guideBtn = document.getElementById('btnStartOnboardingGuide');
-    if (guideBtn) {
+    if (guideBtn && !guideBtn._helpGuideBound) {
+      guideBtn._helpGuideBound = true;
       guideBtn.addEventListener('click', async () => {
         closeHelp();
         if (typeof window.startRmimsTour === 'function') {
@@ -1531,11 +1751,23 @@ import { supabase } from '../supabase/supabase-config.js';
     }
 
     modalBackdrop.querySelectorAll('.help-faq-trigger').forEach(trigger => {
-      trigger.addEventListener('click', () => {
+      if (trigger._faqBound) return;
+      trigger._faqBound = true;
+      trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const item = trigger.closest('.help-faq-item');
+        if (!item) return;
         const isActive = item.classList.contains('active');
-        modalBackdrop.querySelectorAll('.help-faq-item').forEach(other => other.classList.remove('active'));
-        if (!isActive) item.classList.add('active');
+        modalBackdrop.querySelectorAll('.help-faq-item').forEach(other => {
+          other.classList.remove('active');
+          const btn = other.querySelector('.help-faq-trigger');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+        if (!isActive) {
+          item.classList.add('active');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
       });
     });
   }
@@ -1886,6 +2118,23 @@ import { supabase } from '../supabase/supabase-config.js';
   const notif = document.getElementById('notificationDropdown') || document.getElementById('rmsmeNotifications');
   const helpBtn = document.getElementById('rmsmeHelpBtn'), help = document.getElementById('rmsmeHelp');
 
+  function getAllProfileDropdowns() {
+    const list = new Set();
+    if (profile) list.add(profile);
+    document.querySelectorAll('#mgrProfileDropdown, #profileDropdown, #rmsmeProfile, #adminProfileDropdown, .mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown').forEach(el => list.add(el));
+    return Array.from(list);
+  }
+
+  function resolveProfileDropdown(btn) {
+    return btn?.closest('.rmsme-popover-anchor, .popover-anchor')?.querySelector('.mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown') ||
+           document.getElementById('profileDropdown') ||
+           document.getElementById('mgrProfileDropdown') ||
+           document.getElementById('rmsmeProfile') ||
+           document.getElementById('adminProfileDropdown') ||
+           document.querySelector('.mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown') ||
+           profile;
+  }
+
   function closeMenus(except) {
     try {
       if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
@@ -1897,19 +2146,19 @@ import { supabase } from '../supabase/supabase-config.js';
         el.querySelector('.cal-combobox-dropdown, .rm-combobox-dropdown')?.classList.remove('open');
       });
     } catch (_) {}
-    [profile, notif, help].forEach(x => {
+    [...getAllProfileDropdowns(), notif, help].forEach(x => {
       if (x && x !== except) {
         x.setAttribute('hidden', '');
         x.hidden = true;
         x.classList.remove('open', 'active');
-        x.style.display = 'none';
-        x.style.visibility = 'hidden';
-        x.style.opacity = '0';
-        x.style.pointerEvents = 'none';
+        x.style.setProperty('display', 'none', 'important');
+        x.style.setProperty('visibility', 'hidden', 'important');
+        x.style.setProperty('opacity', '0', 'important');
+        x.style.setProperty('pointer-events', 'none', 'important');
       }
     });
     document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(b => {
-      if (except !== profile) b.setAttribute('aria-expanded', 'false');
+      if (!except || !getAllProfileDropdowns().includes(except)) b.setAttribute('aria-expanded', 'false');
     });
     if (notifBtn && except !== notif) notifBtn.setAttribute('aria-expanded', 'false');
     if (helpBtn && except !== help) helpBtn.setAttribute('aria-expanded', 'false');
@@ -1917,26 +2166,26 @@ import { supabase } from '../supabase/supabase-config.js';
 
   function toggleMenu(menu, btn) {
     if (!menu) return;
-    const isCurrentlyOpen = !menu.hidden && menu.classList.contains('open') && menu.style.display !== 'none';
+    const isCurrentlyOpen = !menu.hidden && !menu.hasAttribute('hidden') && menu.classList.contains('open') && menu.style.display !== 'none';
     const willOpen = !isCurrentlyOpen;
     closeMenus(menu);
     if (willOpen) {
       menu.removeAttribute('hidden');
       menu.hidden = false;
       menu.classList.add('open');
-      menu.style.display = 'flex';
-      menu.style.visibility = 'visible';
-      menu.style.opacity = '1';
-      menu.style.pointerEvents = 'auto';
+      menu.style.setProperty('display', 'flex', 'important');
+      menu.style.setProperty('visibility', 'visible', 'important');
+      menu.style.setProperty('opacity', '1', 'important');
+      menu.style.setProperty('pointer-events', 'auto', 'important');
       menu.style.zIndex = '10005';
     } else {
       menu.setAttribute('hidden', '');
       menu.hidden = true;
-      menu.classList.remove('open');
-      menu.style.display = 'none';
-      menu.style.visibility = 'hidden';
-      menu.style.opacity = '0';
-      menu.style.pointerEvents = 'none';
+      menu.classList.remove('open', 'active');
+      menu.style.setProperty('display', 'none', 'important');
+      menu.style.setProperty('visibility', 'hidden', 'important');
+      menu.style.setProperty('opacity', '0', 'important');
+      menu.style.setProperty('pointer-events', 'none', 'important');
     }
     if (btn) btn.setAttribute('aria-expanded', String(willOpen));
     if ((menu === notif || menu.id === 'notificationDropdown' || menu.id === 'rmsmeNotifications') && willOpen) {
@@ -1956,21 +2205,42 @@ import { supabase } from '../supabase/supabase-config.js';
     }
   });
 
-  document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(btn => {
-    if (btn._rmsmeProfileBound) return;
-    btn._rmsmeProfileBound = true;
-    btn.style.cursor = 'pointer';
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const currentDrop = btn.closest('.rmsme-popover-anchor')?.querySelector('.mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown') ||
-                          document.getElementById('profileDropdown') ||
-                          document.getElementById('mgrProfileDropdown') ||
-                          document.getElementById('adminProfileDropdown') ||
-                          profile;
-      toggleMenu(currentDrop, btn);
+  function bindProfileTriggerButtons() {
+    document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(btn => {
+      if (btn._rmsmeProfileBound) return;
+      btn._rmsmeProfileBound = true;
+      btn.style.cursor = 'pointer';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentDrop = resolveProfileDropdown(btn);
+        toggleMenu(currentDrop, btn);
+      });
     });
-  });
+  }
+
+  bindProfileTriggerButtons();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindProfileTriggerButtons);
+  }
+  setTimeout(bindProfileTriggerButtons, 300);
+
+  function bindLogoutTriggerButtons() {
+    document.querySelectorAll('#headerLogoutBtn, #mgrHeaderLogoutBtn, #rmsmeLogout, #rmsmeSideLogout, [data-action="logout"]').forEach(btn => {
+      if (btn._rmsmeLogoutBound) return;
+      btn._rmsmeLogoutBound = true;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        performSignOut();
+      });
+    });
+  }
+
+  bindLogoutTriggerButtons();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindLogoutTriggerButtons);
+  }
+  setTimeout(bindLogoutTriggerButtons, 300);
 
   helpBtn?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1978,8 +2248,18 @@ import { supabase } from '../supabase/supabase-config.js';
     toggleMenu(help, helpBtn);
   });
 
-  // Close menus when clicking anywhere outside
+  // Close menus when clicking anywhere outside (also handles delegated fallback if trigger wasn't directly bound)
   document.addEventListener('click', (e) => {
+    const clickedProfileBtn = e.target.closest('#profileBtn, #rmsmeProfileBtn, .topbar-profile');
+    if (clickedProfileBtn && !clickedProfileBtn._rmsmeProfileBound) {
+      e.preventDefault();
+      e.stopPropagation();
+      bindProfileTriggerButtons();
+      const currentDrop = resolveProfileDropdown(clickedProfileBtn);
+      toggleMenu(currentDrop, clickedProfileBtn);
+      return;
+    }
+
     if (!e.target.closest('.rmsme-header-actions') &&
         !e.target.closest('.header-actions') &&
         !e.target.closest('.profile-dropdown') &&
@@ -2018,13 +2298,6 @@ import { supabase } from '../supabase/supabase-config.js';
     }
     location.href = '../login.html';
   }
-
-  document.querySelectorAll('#headerLogoutBtn, #mgrHeaderLogoutBtn, #rmsmeLogout, #rmsmeSideLogout, [data-action="logout"]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      performSignOut();
-    });
-  });
 
   // Global search input handling
   const globalSearch = document.getElementById('rmsmeGlobalSearch');

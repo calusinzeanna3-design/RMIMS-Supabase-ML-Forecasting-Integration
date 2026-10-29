@@ -45,7 +45,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -841,8 +842,15 @@ html, body {
 }
 
 @keyframes popoverFadeIn {
-  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .rmsme-popover.mgr-profile-dropdown.open,
@@ -859,14 +867,7 @@ html, body {
   z-index: 10005 !important;
 }
 
-.rmsme-popover.mgr-profile-dropdown[hidden],
-.rmsme-popover.admin-profile-dropdown[hidden],
-.mgr-profile-dropdown[hidden],
-.admin-profile-dropdown[hidden],
-.profile-dropdown[hidden],
-.rmsme-popover[hidden] {
-  display: none !important;
-}
+
 
 .mgr-profile-head {
   padding: 8px 10px 8px !important;
@@ -1052,7 +1053,7 @@ html, body {
   line-height: 1.15;
   margin: 0;
   /* Carved letterpress depth aligned with the time/date */
-  text-shadow: 
+  text-shadow:
     1px 1px 0 rgba(255, 255, 255, 0.85),
     -1px -1px 0 rgba(15, 42, 27, 0.3),
     0 1px 2px rgba(15, 42, 27, 0.2);
@@ -1065,7 +1066,7 @@ html, body {
   font-weight: 600;
   line-height: 1.25;
   /* Carved engraved effect */
-  text-shadow: 
+  text-shadow:
     1px 1px 0 rgba(255, 255, 255, 0.8),
     -1px -1px 0 rgba(15, 42, 27, 0.15);
 }
@@ -1098,11 +1099,12 @@ html, body {
   font-size: clamp(20px, 2.4vw, 32px);
   font-weight: 900;
   letter-spacing: 0.06em;
-  color: #0F2A1B; /* Deep authentic RMIMS ink */
+  color: #0F2A1B;
+  /* Deep authentic RMIMS ink */
   font-variant-numeric: tabular-nums;
   line-height: 1;
   /* Carved letterpress effect: bottom-right highlight + top-left inner depth groove */
-  text-shadow: 
+  text-shadow:
     1px 1px 0 rgba(255, 255, 255, 0.85),
     -1px -1px 0 rgba(15, 42, 27, 0.3),
     0 1px 2px rgba(15, 42, 27, 0.25);
@@ -1114,10 +1116,11 @@ html, body {
   font-size: clamp(11px, 1.2vw, 13.5px);
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #15803D; /* RMIMS Primary Emerald */
+  color: #15803D;
+  /* RMIMS Primary Emerald */
   text-transform: uppercase;
   line-height: 1;
-  text-shadow: 
+  text-shadow:
     1px 1px 0 rgba(255, 255, 255, 0.8),
     -1px -1px 0 rgba(15, 42, 27, 0.2);
 }
@@ -1128,11 +1131,12 @@ html, body {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #2D523B; /* RMIMS Ink Dim / Forest Green */
+  color: #2D523B;
+  /* RMIMS Ink Dim / Forest Green */
   margin-top: 4px;
   line-height: 1.2;
   /* Carved engraved effect */
-  text-shadow: 
+  text-shadow:
     1px 1px 0 rgba(255, 255, 255, 0.8),
     -1px -1px 0 rgba(15, 42, 27, 0.18);
 }
@@ -2773,6 +2777,7 @@ canvas#usageChart {
   .usage-grid {
     grid-template-columns: 1fr;
   }
+
   .alert-metrics-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -3154,17 +3159,21 @@ canvas#usageChart {
     gap: 14px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
   }
+
   .date-picker-popover.dual-calendar {
     min-width: unset;
     width: 92vw;
     max-width: 380px;
   }
+
   .date-picker-popover.dual-calendar .calendar-dual-grid {
     grid-template-columns: 1fr;
   }
+
   .date-picker-popover.dual-calendar .calendar-month-col.second-month {
     display: none;
   }
+
   .date-picker-presets {
     width: 100%;
     border-right: none;
@@ -3175,6 +3184,7 @@ canvas#usageChart {
     flex-wrap: wrap;
     gap: 6px;
   }
+
   .preset-btn {
     padding: 6px 10px;
     font-size: 12px;
@@ -4645,9 +4655,11 @@ canvas#usageChart {
   .location-dividers-grid {
     grid-template-columns: 1fr;
   }
+
   .location-stores-grid {
     grid-template-columns: 1fr;
   }
+
   .store-modal-kpi-row {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -4665,34 +4677,40 @@ canvas#usageChart {
   letter-spacing: -0.01em;
   line-height: 1.25;
 }
+
 .role-badge.role-manager,
 .role-badge.manager {
   background: #DCFCE7;
   color: #15803D;
   border: 1px solid rgba(34, 197, 94, 0.35);
 }
+
 .role-badge.role-staff,
 .role-badge.staff {
   background: #F1F5F9;
   color: #334155;
   border: 1px solid #CBD5E1;
 }
+
 .role-badge.role-admin,
 .role-badge.admin {
   background: #F3E8FF;
   color: #6B21A8;
   border: 1px solid #D8B4FE;
 }
+
 .role-pill.admin {
   background: #F3E8FF;
   color: #6B21A8;
   border: 1px solid #D8B4FE;
 }
+
 .location-badge.system {
   background: #FEF3C7;
   color: #92400E;
   border: 1px solid #FDE68A;
 }
+
 .action-tag.received {
   background: #ECFDF5;
   color: #047857;
@@ -4712,11 +4730,14 @@ canvas#usageChart {
    ========================================================================== */
 
 /* --- 1. Global Box-Sizing & Viewport Standards --- */
-html, body {
+html,
+body {
   box-sizing: border-box;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: inherit;
 }
 
@@ -4961,13 +4982,15 @@ html, body {
     flex-direction: column !important;
   }
 
-  .profile-name, .mgr-name {
+  .profile-name,
+  .mgr-name {
     font-size: 13.5px !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
   }
 
-  .profile-role, .mgr-role {
+  .profile-role,
+  .mgr-role {
     font-size: 11px !important;
     font-weight: 600 !important;
     color: var(--rm-ink-dim, #5C7A68) !important;
@@ -5243,11 +5266,13 @@ html, body {
     padding: 3px 10px 3px 4px !important;
   }
 
-  .profile-name, .mgr-name {
+  .profile-name,
+  .mgr-name {
     font-size: 12.5px !important;
   }
 
-  .profile-role, .mgr-role {
+  .profile-role,
+  .mgr-role {
     font-size: 10px !important;
   }
 
@@ -5355,6 +5380,7 @@ html, body {
    clean wrapped controls, horizontal touch-scrolling tables.
    ========================================================================== */
 @media (max-width: 768px) {
+
   /* Show Hamburger Menu Button in Topbar */
   .mobile-sidebar-toggle {
     display: inline-flex !important;
@@ -5674,10 +5700,10 @@ html, body {
     gap: 12px !important;
   }
 
-  body.manager-page .mgr-grid-2col > *,
-  body.manager-page .fc-grid-row-1 > *,
-  body.manager-page .an-bottom-grid > *,
-  body.manager-page .an-grid-2col > * {
+  body.manager-page .mgr-grid-2col>*,
+  body.manager-page .fc-grid-row-1>*,
+  body.manager-page .an-bottom-grid>*,
+  body.manager-page .an-grid-2col>* {
     min-height: auto !important;
     height: auto !important;
     max-height: none !important;
@@ -6460,15 +6486,12 @@ select option:focus {
 }
 
 /* Prevent duplicate custom dropdowns when searchable combobox is present */
-.cal-combobox-wrap + .rm-custom-select,
-.rm-combobox-wrap + .rm-custom-select,
-.rm-custom-select + .cal-combobox-wrap,
-.rm-custom-select + .rm-combobox-wrap,
-[data-has-combobox="true"] ~ .rm-custom-select,
-select[data-has-combobox="true"] + .rm-custom-select,
-select[data-has-combobox="true"] ~ .rm-custom-select {
+.cal-combobox-wrap+.rm-custom-select,
+.rm-combobox-wrap+.rm-custom-select,
+.rm-custom-select+.cal-combobox-wrap,
+.rm-custom-select+.rm-combobox-wrap,
+[data-has-combobox="true"]~.rm-custom-select,
+select[data-has-combobox="true"]+.rm-custom-select,
+select[data-has-combobox="true"]~.rm-custom-select {
   display: none !important;
 }
-
-
-

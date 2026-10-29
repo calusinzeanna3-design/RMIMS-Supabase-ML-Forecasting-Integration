@@ -348,20 +348,25 @@ function getActiveStaffUser() {
 function loadAndRenderActivity() {
   const activeUser = getActiveStaffUser();
   const cleanEmail = String(activeUser?.email || '').trim().toLowerCase();
-  const cleanName = String(activeUser?.fullName || activeUser?.name || '').trim().toLowerCase();
+  let cleanName = String(activeUser?.fullName || activeUser?.name || '').trim().toLowerCase();
+  const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
+  if (!cleanName || BANNED_STAFF.includes(cleanName)) {
+    if (cleanEmail === 'scone2@gmail.com') cleanName = 'staff_2';
+    else if (cleanEmail) cleanName = 'staff_1';
+  }
 
-  const rawStaffList = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const rawStaffList = getStaffTransactions() || [];
 
-  // Strict user isolation for My Activity:
-  // If a new account logs in, their personal activity starts brand new (0 transactions).
+  // Filter for the active staff user while gracefully falling back if records were saved under generic/resolved staff names
   if (activeUser && (cleanEmail || cleanName)) {
-    allTransactions = rawStaffList.filter(t => {
+    const matched = rawStaffList.filter(t => {
       const tEmail = String(t.staffEmail || '').trim().toLowerCase();
       const tStaff = String(t.staff || '').trim().toLowerCase();
       if (cleanEmail && tEmail) return tEmail === cleanEmail;
-      if (cleanName && tStaff) return tStaff === cleanName;
-      return false;
+      if (cleanName && tStaff) return tStaff === cleanName || BANNED_STAFF.includes(tStaff);
+      return true;
     });
+    allTransactions = matched.length > 0 ? matched : rawStaffList;
   } else {
     allTransactions = rawStaffList;
   }

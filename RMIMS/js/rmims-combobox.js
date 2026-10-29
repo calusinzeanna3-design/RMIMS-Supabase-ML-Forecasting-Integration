@@ -191,6 +191,32 @@ export function attachSearchableCombobox(selectEl, options = {}) {
   function closeDropdown() {
     dropdown.classList.remove('open');
     wrap.classList.remove('open');
+    const typed = (input.value || '').trim();
+    const curSelected = getSelectedText();
+    if (typed && typed !== curSelected) {
+      const items = getOptionsData();
+      const q = typed.toLowerCase();
+      let match = items.find(i =>
+        i.text.toLowerCase() === q ||
+        i.value.toLowerCase() === q ||
+        (i.code && i.code.toLowerCase() === q)
+      );
+      if (!match) {
+        const partial = items.filter(i =>
+          i.text.toLowerCase().includes(q) ||
+          i.value.toLowerCase().includes(q) ||
+          (i.code && i.code.toLowerCase().includes(q))
+        );
+        if (partial.length >= 1) match = partial[0];
+      }
+      if (match) {
+        selectEl.value = match.value;
+        input.value = getSelectedText();
+        clearBtn.style.display = (match.value && match.value !== 'all' && match.value !== 'ALL') ? 'block' : 'none';
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+    }
     input.value = getSelectedText();
     clearBtn.style.display = (selectEl.value && selectEl.value !== 'all' && selectEl.value !== 'ALL') ? 'block' : 'none';
   }

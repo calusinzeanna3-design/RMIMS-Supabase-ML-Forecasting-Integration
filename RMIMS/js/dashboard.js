@@ -2915,6 +2915,23 @@ function openForecastDetailModal(itemOrMat) {
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
+    try {
+      const rawLocal = localStorage.getItem("managerUser") || localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (parsed && (parsed.email || parsed.id)) {
+          user = {
+            uid: parsed.id || parsed.uid || "local-manager-user",
+            id: parsed.id || parsed.uid || "local-manager-user",
+            email: parsed.email || "",
+            displayName: parsed.fullName || parsed.name || "Store Manager",
+            user_metadata: { full_name: parsed.fullName || parsed.name || "Store Manager", operational_role: parsed.operationalRole || parsed.role || "manager" }
+          };
+        }
+      }
+    } catch (_) {}
+  }
+  if (!user) {
     window.location.href = "../login.html";
     return;
   }
@@ -2924,11 +2941,50 @@ onAuthStateChanged(auth, async user => {
     const cleanEmail = (user.email || "").toLowerCase();
     const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
 
-    let { data: profile, error } = await supabase
-      .from("user_profiles")
-      .select("id, full_name, email, role, operational_role, status")
-      .eq("id", uid)
-      .maybeSingle();
+    let profile = null;
+    try {
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, email, role, operational_role, status")
+        .eq("id", uid)
+        .maybeSingle();
+      if (data) profile = data;
+    } catch (_) {}
+
+    if (!profile) {
+      try {
+        const { data } = await supabase
+          .from("user_profiles")
+          .select("id, full_name, email, role, status")
+          .eq("id", uid)
+          .maybeSingle();
+        if (data) profile = data;
+      } catch (_) {}
+    }
+
+    let cachedLocal = null;
+    try {
+      const raw = localStorage.getItem("managerUser") || localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+      if (raw) cachedLocal = JSON.parse(raw);
+    } catch (_) {}
+
+    if (!profile && cachedLocal) {
+      profile = {
+        id: uid,
+        full_name: cachedLocal.fullName || cachedLocal.name || "Store Manager",
+        email: user.email || cachedLocal.email,
+        role: cachedLocal.role || "manager",
+        operational_role: cachedLocal.operationalRole || cachedLocal.operational_role || cachedLocal.role || "manager",
+        status: cachedLocal.status || "active"
+      };
+    } else if (profile && cachedLocal) {
+      if (!profile.operational_role) {
+        profile.operational_role = cachedLocal.operationalRole || cachedLocal.operational_role || user.user_metadata?.operational_role || profile.role;
+      }
+      if (String(cachedLocal.status || "").toLowerCase() === "active" && String(profile.status || "").toLowerCase() === "pending") {
+        profile.status = "active";
+      }
+    }
 
     if (isMasterAdmin) {
       if (!profile) {
@@ -2945,50 +3001,17 @@ onAuthStateChanged(auth, async user => {
         profile.operational_role = "admin";
         profile.status = "active";
       }
-      error = null;
-
-      try {
-        supabase.from("user_profiles").upsert({
-          id: uid,
-          full_name: profile.full_name || "Zeanna Calusin",
-          email: profile.email || user.email,
-          role: "admin",
-          operational_role: "admin",
-          status: "active",
-          updated_at: new Date().toISOString()
-        }, { onConflict: "id" }).then(() => {}).catch(() => {});
-      } catch (e) {}
     }
 
-    if (!profile) {
-      try {
-        const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
-        if (raw) {
-          const cached = JSON.parse(raw);
-          const cachedOp = String(cached.operationalRole || cached.operational_role || '').toLowerCase();
-          const cachedBase = String(cached.role || '').toLowerCase();
-          if (cached.email && cached.email.toLowerCase() === cleanEmail && (cachedBase === "admin" || cachedBase === "manager" || cachedOp === "manager" || cachedOp === "admin")) {
-            profile = {
-              id: uid,
-              full_name: cached.fullName || cached.name || "Store Manager",
-              email: user.email,
-              role: cached.role || "manager",
-              operational_role: cached.operationalRole || cached.operational_role || "manager",
-              status: "active"
-            };
-            error = null;
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (error || !profile || profile.status !== "active") {
+    const pStatus = String(profile?.status || "").toLowerCase();
+    const isRevoked = pStatus === "deleted" || pStatus === "rejected" || pStatus === "locked" || pStatus === "inactive" || pStatus === "suspended";
+    if (!profile || (isRevoked && !isMasterAdmin)) {
       window.location.href = "../login.html";
       return;
     }
 
-    const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
-    const rawRole = String(profile.role || '').toLowerCase();
+    const rawOp = String(profile.operational_role || profile.operationalRole || cachedLocal?.operationalRole || cachedLocal?.operational_role || '').toLowerCase();
+    const rawRole = String(profile.role || cachedLocal?.role || '').toLowerCase();
     const isAdm = rawOp === 'admin' || rawRole === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
     const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
 

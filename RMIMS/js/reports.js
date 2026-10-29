@@ -78,6 +78,7 @@ export function getMaterialAiRequirement(material, tenantCtx) {
    ========================================================== */
 
 onAuthStateChanged(auth, async (user) => {
+    if (window.location.pathname.toLowerCase().includes("/user/")) return;
     if (!user) {
         try {
             const rawLocal = localStorage.getItem("managerUser") || localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile") || localStorage.getItem("adminUser");
@@ -98,15 +99,54 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "../login.html"; return; }
 
     try {
-        let { data: profile, error } = await supabase
-            .from("user_profiles")
-            .select("id, full_name, email, role, operational_role, status")
-            .eq("id", user.uid)
-            .maybeSingle();
-
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
         const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+
+        let profile = null;
+        try {
+            const { data } = await supabase
+                .from("user_profiles")
+                .select("id, full_name, email, role, operational_role, status")
+                .eq("id", uid)
+                .maybeSingle();
+            if (data) profile = data;
+        } catch (_) {}
+
+        if (!profile) {
+            try {
+                const { data } = await supabase
+                    .from("user_profiles")
+                    .select("id, full_name, email, role, status")
+                    .eq("id", uid)
+                    .maybeSingle();
+                if (data) profile = data;
+            } catch (_) {}
+        }
+
+        let cached = null;
+        try {
+            const raw = localStorage.getItem("managerUser") || localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
+            if (raw) cached = JSON.parse(raw);
+        } catch (e) {}
+
+        if (!profile && cached) {
+            profile = {
+                id: uid,
+                full_name: cached.fullName || cached.name || "Manager",
+                email: user.email || cached.email,
+                role: cached.role || "manager",
+                operational_role: cached.operationalRole || cached.operational_role || cached.role || "manager",
+                status: cached.status || "active"
+            };
+        } else if (profile && cached) {
+            if (!profile.operational_role) {
+                profile.operational_role = cached.operationalRole || cached.operational_role || user.user_metadata?.operational_role || profile.role;
+            }
+            if (String(cached.status || "").toLowerCase() === "active" && String(profile.status || "").toLowerCase() === "pending") {
+                profile.status = "active";
+            }
+        }
 
         if (isMasterAdmin) {
             if (!profile) {
@@ -123,38 +163,17 @@ onAuthStateChanged(auth, async (user) => {
                 profile.operational_role = "admin";
                 profile.status = "active";
             }
-            error = null;
         }
 
-        if (!profile) {
-            try {
-                const raw = localStorage.getItem("rmimsCurrentUser") || localStorage.getItem("currentUser") || localStorage.getItem("userProfile");
-                if (raw) {
-                    const cached = JSON.parse(raw);
-                    const cachedOp = String(cached.operationalRole || cached.operational_role || '').toLowerCase();
-                    const cachedBase = String(cached.role || '').toLowerCase();
-                    if (cached.email && cached.email.toLowerCase() === cleanEmail && (cachedBase === "admin" || cachedBase === "manager" || cachedOp === "manager" || cachedOp === "admin")) {
-                        profile = {
-                            id: uid,
-                            full_name: cached.fullName || cached.name || "Manager",
-                            email: user.email,
-                            role: cached.role || "manager",
-                            operational_role: cached.operationalRole || cached.operational_role || "manager",
-                            status: "active"
-                        };
-                        error = null;
-                    }
-                }
-            } catch (e) {}
-        }
-
-        if (error || !profile || profile.status !== "active") {
+        const pStatus = String(profile?.status || "").toLowerCase();
+        const isRevoked = pStatus === "deleted" || pStatus === "rejected" || pStatus === "locked" || pStatus === "inactive" || pStatus === "suspended";
+        if (!profile || (isRevoked && !isMasterAdmin)) {
             window.location.href = "../login.html";
             return;
         }
 
-        const rawOp = String(profile.operational_role || profile.operationalRole || '').toLowerCase();
-        const rawRole = String(profile.role || '').toLowerCase();
+        const rawOp = String(profile.operational_role || profile.operationalRole || cached?.operationalRole || cached?.operational_role || '').toLowerCase();
+        const rawRole = String(profile.role || cached?.role || '').toLowerCase();
         const isAdm = rawOp === 'admin' || rawRole === 'admin' || (isMasterAdmin && rawOp !== 'manager' && rawOp !== 'staff');
         const isMgr = !isAdm && (rawOp === 'manager' || rawRole === 'manager');
 
@@ -171,7 +190,7 @@ onAuthStateChanged(auth, async (user) => {
         const pBtn = document.getElementById("profileBtn") || document.getElementById("rmsmeProfileBtn");
         let mName = (profile?.full_name || '').trim();
         const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
-        if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
+        if (!mName || ['manager', 'user account', 'user', 'undefined', 'null', '—', '-'].includes(mName.toLowerCase())) {
             if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
             else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
             else mName = 'Aizel';
@@ -182,7 +201,7 @@ onAuthStateChanged(auth, async (user) => {
             const roleEl = pBtn.querySelector("[data-shell-role]") || pBtn.querySelector(".profile-role") || pBtn.querySelector(".mgr-role");
             if (roleEl) roleEl.textContent = "Manager";
             const pAv = pBtn.querySelector("[data-shell-avatar]") || pBtn.querySelector(".avatar") || pBtn.querySelector(".profile-avatar");
-            const avUrl = localStorage.getItem("rmims_user_avatar") || localStorage.getItem("rmims_manager_avatar") || (user?.uid ? localStorage.getItem(`rmims_avatar_${user.uid}`) : "") || profile.avatar_url;
+            const avUrl = localStorage.getItem("rmims_user_avatar") || localStorage.getItem("rmims_manager_avatar") || (user?.uid ? localStorage.getItem(`rmims_avatar_${user.uid}`) : "") || profile?.avatar_url || "";
             if (pAv) {
                 if (avUrl) {
                     pAv.innerHTML = `<img src="${avUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
@@ -206,8 +225,10 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function initials(name) {
-    if (!name) return "AU";
-    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "AU";
+    if (!name) return "A";
+    const cleaned = String(name).replace(/[^a-zA-Z0-9\s]/g, '').trim();
+    if (!cleaned) return "A";
+    return cleaned.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || "").join("") || "A";
 }
 
 /* ==========================================================
@@ -644,6 +665,17 @@ async function loadAuthoritativeData() {
                 if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
                 if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
                 if (m.lead_time_days !== undefined && m.lead_time_days !== null) existing.lead_time_days = Number(m.lead_time_days);
+            } else if (m.name) {
+                matBaseMap.set(k, {
+                    id: String(m.id || smCode),
+                    item_code: smCode,
+                    name: m.name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? 0),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
             }
         });
 
@@ -871,7 +903,26 @@ function loadAuthoritativeForecasts() {
     }
 
     if (cachedForecasts && typeof cachedForecasts === "object" && Object.keys(cachedForecasts).length > 0) {
-        state.materials.forEach(m => {
+        // Enforce strict ML forecasting isolation: 19 materials for Scones, 59 for KXC
+        let isScones = true;
+        try {
+            const tCtx = window.getActiveTenantContext ? window.getActiveTenantContext() : null;
+            if (tCtx && tCtx.isKxc) isScones = false;
+            else if (tCtx && tCtx.isScones) isScones = true;
+            else {
+                const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+                const email = (curUser.email || '').toLowerCase();
+                if (email === 'zeannapatricia@gmail.com') isScones = false;
+            }
+        } catch (_) {}
+
+        const maxCanonicalCount = isScones ? 19 : 59;
+        const canonicalMaterials = state.materials.filter(m => {
+            const num = parseInt(String(m.itemCode || m.id || '').replace(/\D/g, ''), 10);
+            return !isNaN(num) && num >= 1 && num <= maxCanonicalCount;
+        });
+
+        canonicalMaterials.forEach(m => {
             let cf = cachedForecasts[m.name] || cachedForecasts[m.name.trim()] || Object.entries(cachedForecasts).find(([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase())?.[1];
             if (cf) {
                 const f7Qty = Number(cf.forecast7Day?.quantity ?? cf.forecast7Day ?? 0);

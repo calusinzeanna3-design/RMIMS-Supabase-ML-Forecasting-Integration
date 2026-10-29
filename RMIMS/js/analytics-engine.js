@@ -626,10 +626,11 @@ function renderCard1() {
 // ============================================================================
 
 function getTopStockData(limit = 5) {
-  // Only include materials that have recorded warehouse on-hand stock (> 0)
+  // Include all end-user imported or added materials in state.rawMaterials
   const activeMaterials = state.rawMaterials.filter(m => {
     const cur = parseFloat(m.current_stock ?? m.currentStock ?? 0);
-    return cur > 0;
+    const min = parseFloat(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 0);
+    return cur > 0 || min > 0 || Boolean(m.name);
   });
 
   if (activeMaterials.length === 0) {
@@ -638,7 +639,7 @@ function getTopStockData(limit = 5) {
 
   const list = activeMaterials.map(m => {
     const cur = parseFloat(m.current_stock ?? m.currentStock ?? 0);
-    const min = parseFloat(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10);
+    const min = parseFloat(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 0);
     const diff = cur - min;
     let status = 'Healthy';
     if (cur <= 0) {

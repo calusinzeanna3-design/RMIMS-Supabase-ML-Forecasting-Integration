@@ -683,11 +683,13 @@
                         <table class="admin-table inv-main-table" id="overviewTable">
                             <thead id="overviewTableHead">
                                 <tr style="background-color: #15803D !important;">
-                                    <th style="width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Material Code</th>
+                                    <th style="width: 120px; background-color: #15803D !important; color: #FFFFFF !important; border-top-left-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Material Code</th>
                                     <th style="background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Raw Material Name</th>
                                     <th style="text-align: right; width: 110px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Current Stock</th>
                                     <th style="text-align: right; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Min Stock</th>
-                                    <th style="width: 70px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
+                                    <th style="width: 65px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
+                                    <th style="width: 115px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">First Date</th>
+                                    <th style="width: 130px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Latest Date</th>
                                     <th style="text-align: center; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Status</th>
                                     <th style="text-align: center; width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-right-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Action</th>
                                 </tr>
@@ -800,8 +802,8 @@
                         </div>
 
                         <div class="mgr-field-group">
-                            <label>Date Added</label>
-                            <input type="text" id="addMatDateAdded" value="Today (Auto-assigned)" readonly>
+                            <label for="addMatDateAdded">First Date (Date Added)</label>
+                            <input type="date" id="addMatDateAdded">
                         </div>
                     </div>
                 </div>
@@ -877,6 +879,11 @@
                         <div class="mgr-field-group">
                             <label for="editMatMinStock">Minimum Stock Threshold <span class="req">*</span></label>
                             <input type="number" id="editMatMinStock" min="0" step="any" required>
+                        </div>
+
+                        <div class="mgr-field-group">
+                            <label for="editMatDateAdded">First Date (Date Added)</label>
+                            <input type="date" id="editMatDateAdded">
                         </div>
                     </div>
                 </div>
@@ -1418,13 +1425,15 @@
                     <table class="inv-main-table">
                         <thead>
                             <tr>
-                                <th style="min-width:180px;">Raw Material</th>
-                                <th style="text-align: right; min-width:140px;">Need in Finished Product</th>
-                                <th style="text-align: right; min-width:100px;">Current Stock</th>
-                                <th style="text-align: right; min-width:150px;">Minimum Stock (Limit)</th>
-                                <th style="min-width:60px;">Unit</th>
-                                <th style="min-width:120px;">Limit Status</th>
-                                <th style="text-align: right; min-width:190px;">Production Capacity</th>
+                                <th style="min-width:160px;">Raw Material</th>
+                                <th style="text-align: right; min-width:130px;">Need in Finished Product</th>
+                                <th style="text-align: right; min-width:95px;">Current Stock</th>
+                                <th style="text-align: right; min-width:135px;">Minimum Stock (Limit)</th>
+                                <th style="min-width:55px;">Unit</th>
+                                <th style="min-width:105px;">First Date</th>
+                                <th style="min-width:120px;">Latest Date</th>
+                                <th style="min-width:115px;">Limit Status</th>
+                                <th style="text-align: right; min-width:170px;">Production Capacity</th>
                             </tr>
                         </thead>
                         <tbody id="fpPopupMaterialsBody">
@@ -1568,7 +1577,7 @@
 
     <!-- MODAL: IMPORT RAW MATERIALS -->
     <div class="mgr-modal-backdrop" id="modalImportRawMaterials" hidden>
-        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true" style="max-width: 680px;">
+        <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true" style="max-width: 860px;">
             <div class="mgr-modal-header">
                 <div class="mgr-modal-title-group">
                     <h3 style="display:flex; align-items:center; gap:8px;">
@@ -1588,6 +1597,20 @@
                 </button>
             </div>
             <div class="mgr-modal-body" style="padding: 20px 24px;">
+                <!-- Import Date Field & Template Helper -->
+                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; padding:12px 14px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;">
+                    <div style="flex:1; min-width:210px;">
+                        <label for="importDefaultDateInput" style="display:block; font-size:12px; font-weight:700; color:#0F172A; margin-bottom:4px;">
+                            Import Date (Applied if row has no Date column)
+                        </label>
+                        <input type="date" id="importDefaultDateInput" style="width:100%; height:36px; padding:6px 10px; border:1px solid #CBD5E1; border-radius:8px; font-size:12.5px; color:#0F172A; background:#FFFFFF;">
+                    </div>
+                    <button type="button" class="btn-secondary-sm" onclick="window.downloadImportRawMaterialsTemplate && window.downloadImportRawMaterialsTemplate()" style="height:36px; padding:0 12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px; border:1px solid #CBD5E1; border-radius:8px; background:#FFFFFF; color:#0F766E; cursor:pointer;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download CSV Template
+                    </button>
+                </div>
+
                 <!-- File Drag & Drop Zone -->
                 <div class="mgr-import-dropzone" id="importRawMaterialsDropzone" onclick="document.getElementById('rawMaterialsImportFileInput').click()" style="border:2px dashed #CBD5E1; border-radius:12px; padding:28px 20px; text-align:center; background:#F8FAFC; cursor:pointer; transition:all 0.2s ease; position:relative;">
                     <svg class="mgr-import-drop-icon" width="40" height="40" style="width:40px; height:40px; max-width:40px; max-height:40px; display:block; margin:0 auto 8px; color:#059669;" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2">
@@ -1596,7 +1619,7 @@
                         <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     <div class="mgr-import-drop-text" id="importDropzoneTitle" style="font-size:13.5px; font-weight:700; color:#0F172A; margin-bottom:3px;">Click to browse or drag &amp; drop file here</div>
-                    <div class="mgr-import-drop-sub" style="font-size:11.5px; color:#64748B;">Supports .CSV, .XLSX, and .XLS spreadsheets</div>
+                    <div class="mgr-import-drop-sub" style="font-size:11.5px; color:#64748B;">Supports .CSV, .XLSX, and .XLS spreadsheets (e.g. Date, Min Stock, Current, Names)</div>
                     <input type="file" id="rawMaterialsImportFileInput" accept=".csv, .xlsx, .xls, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="display:none;">
                 </div>
 
@@ -1633,16 +1656,18 @@
                         <span class="mgr-import-preview-title" id="importPreviewTitle" style="font-size:12.5px; font-weight:700; color:#0F172A;">Parsed Materials Preview</span>
                         <span id="importValidationBadge" style="font-size:11px; font-weight:700; color:#15803D; background:#DCFCE7; padding:2px 8px; border-radius:4px;">Ready to Import</span>
                     </div>
-                    <div class="mgr-import-table-wrap" style="max-height:220px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px;">
+                    <div class="mgr-import-table-wrap" style="max-height:240px; overflow-y:auto; overflow-x:auto; border:1px solid #E2E8F0; border-radius:8px;">
                         <table class="mgr-import-table" style="width:100%; border-collapse:collapse; font-size:12px;">
                             <thead>
                                 <tr style="background:#F8FAFC; border-bottom:1px solid #E2E8F0;">
-                                    <th style="padding:6px 10px; text-align:left; color:#475569; font-weight:700;">Auto Code</th>
-                                    <th style="padding:6px 10px; text-align:left; color:#475569; font-weight:700;">Raw Material Name</th>
-                                    <th style="padding:6px 10px; text-align:right; color:#475569; font-weight:700;">Current Stock</th>
-                                    <th style="padding:6px 10px; text-align:left; color:#475569; font-weight:700;">Unit</th>
-                                    <th style="padding:6px 10px; text-align:right; color:#475569; font-weight:700;">Min Stock</th>
-                                    <th style="padding:6px 10px; text-align:center; color:#475569; font-weight:700;">Status</th>
+                                    <th style="padding:7px 10px; text-align:left; color:#475569; font-weight:700; white-space:nowrap;">Code</th>
+                                    <th style="padding:7px 10px; text-align:left; color:#475569; font-weight:700; white-space:nowrap;">Raw Material Name</th>
+                                    <th style="padding:7px 10px; text-align:left; color:#475569; font-weight:700; white-space:nowrap;">First Date</th>
+                                    <th style="padding:7px 10px; text-align:left; color:#475569; font-weight:700; white-space:nowrap;">Latest Date</th>
+                                    <th style="padding:7px 10px; text-align:right; color:#475569; font-weight:700; white-space:nowrap;">Current Stock</th>
+                                    <th style="padding:7px 10px; text-align:left; color:#475569; font-weight:700; white-space:nowrap;">Unit</th>
+                                    <th style="padding:7px 10px; text-align:right; color:#475569; font-weight:700; white-space:nowrap;">Min Stock</th>
+                                    <th style="padding:7px 10px; text-align:center; color:#475569; font-weight:700; white-space:nowrap;">Status</th>
                                 </tr>
                             </thead>
                             <tbody id="importPreviewTableBody"></tbody>

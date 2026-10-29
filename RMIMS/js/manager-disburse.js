@@ -14,7 +14,8 @@ import {
   parseSafeDate,
   saveCustomDisbursement,
   saveCustomRawMaterial,
-  getSystemCustomDisbursements
+  getSystemCustomDisbursements,
+  updateMaterialActivityTimestamp
 } from './system-materials.js';
 
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
@@ -114,6 +115,7 @@ const INITIAL_MGR_DISBURSEMENTS = [];
 let rawMaterials = [];
 let managerDisbursements = [];
 let currentPendingDisburse = null;
+let isSavingDisburse = false;
 
 // Pagination state
 let currentLedgerPage = 1;
@@ -155,8 +157,10 @@ function loadDisbursements() {
       if (Array.isArray(staffTxList)) {
         let modified = false;
         staffTxList.forEach(t => {
+          const refStr = String(t.ref || '');
           const isDisb = (t.activity || t.type || '').toLowerCase().includes('disb') ||
-                         String(t.ref || '').toUpperCase().startsWith('DIS');
+                         refStr.toUpperCase().startsWith('DIS') ||
+                         /-D\d+/i.test(refStr);
           if (isDisb && t.status === 'Approved' && t.ref) {
             const rawQty = t.quantity != null ? t.quantity : (t.qtyNum != null ? t.qtyNum : t.qty);
             const numQty = parseFloat(rawQty) || 0;
@@ -217,6 +221,7 @@ function initManagerDisburse() {
 
   // Listen for storage events to refresh if stock or finished products changed elsewhere
   const handleLiveRefresh = () => {
+    if (isSavingDisburse) return;
     rawMaterials = getSystemRawMaterials();
     loadDisbursements();
     populateMaterialSelects();
@@ -388,6 +393,8 @@ function bindFormEvents() {
   if (btnReset) {
     btnReset.addEventListener('click', () => {
       setTimeout(() => {
+        const selectEl = document.getElementById('disbMaterialSelect');
+        if (selectEl && selectEl._rmimsCombobox) selectEl._rmimsCombobox.sync();
         const previewWrap = document.getElementById('disbStockPreviewWrap');
         const warning = document.getElementById('disbStockWarning');
         const unitBadge = document.getElementById('disbUnitBadge');
@@ -395,6 +402,7 @@ function bindFormEvents() {
         if (warning) warning.style.display = 'none';
         if (unitBadge) unitBadge.textContent = '--';
         hideBundleDisburseSection();
+        initDatePicker();
         initReferenceDisplay();
       }, 50);
     });
@@ -851,137 +859,150 @@ function bindReviewModalEvents() {
       if (!currentPendingDisburse) return;
 
       const p = currentPendingDisburse;
+      isSavingDisburse = true;
 
-      // 1. Update raw material stock in system-materials (DEDUCTS / LESSENS MATERIALS)
-      const mat = rawMaterials.find(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
-      if (mat) {
-        mat.current_stock = p.newStock;
-        mat.last_updated = new Date().toISOString();
-        saveCustomRawMaterial(mat);
-      }
-      updateMaterialActivityTimestamp(p.materialId || p.materialName, new Date().toISOString(), 'Disburse', p.quantity, p.unit);
-      saveRawMaterialToSupabase({
-        id: p.materialId,
-        item_code: p.materialId,
-        name: p.materialName,
-        raw_material_name: p.materialName,
-        current_stock: p.newStock,
-        unit: p.unit
-      }).catch(err => console.warn('[Disburse] Supabase stock upsert notice:', err));
-
-      // Also ensure custom raw materials list reflects the reduced stock
       try {
-        const customMats = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
-        const idx = customMats.findIndex(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
-        if (idx !== -1) {
-          customMats[idx].current_stock = p.newStock;
-          customMats[idx].last_updated = new Date().toISOString();
-          localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(customMats));
-        }
-      } catch (e) {}
+        // Resolve authentic manager identity first
+        let managerName = 'Aizel';
+        try {
+          const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
+          const e = (curUser.email || '').toLowerCase();
+          if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
+          else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
+          else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
+          else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+            managerName = curUser.fullName;
+          }
+        } catch (_) {}
 
-
-      // Resolve authentic manager identity
-      let managerName = 'Aizel';
-      try {
-        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
-        const e = (curUser.email || '').toLowerCase();
-        if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
-        else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
-        else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
-        else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
-          managerName = curUser.fullName;
-        }
-      } catch (_) {}
-
-      // 2. Persist to system disbursements ledger
-      saveCustomDisbursement({
-        id: p.ref,
-        material_id: p.materialId,
-        material_name: p.materialName,
-        consumed_quantity: p.quantity,
-        unit: p.unit,
-        usage_date: p.date,
-        activity_type: 'Production Usage',
-        finished_product_name: p.usedFor,
-        recorded_by: managerName
-      });
-
-      // 3. Persist to manager disbursements ledger with exact delivery time
-      const record = {
-        ref: p.ref,
-        date: p.date,
-        materialId: p.materialId,
-        materialName: p.materialName,
-        quantity: p.quantity,
-        unit: p.unit,
-        usedFor: p.usedFor,
-        recordedBy: managerName,
-        status: 'Approved',
-        notes: p.notes
-      };
-
-      managerDisbursements.unshift(record);
-      saveDisbursements();
-
-      // 4. Record into manager activities with full branch & user provenance
-      try {
-        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
-        const actRaw = localStorage.getItem('rmims_manager_activities');
-        const acts = actRaw ? JSON.parse(actRaw) : [];
-        acts.unshift({
-          datetime: p.date,
-          timestamp: new Date().toISOString(),
-          activity: `Disburse Raw Material: -${p.quantity} ${p.unit} ${p.materialName} (${p.usedFor})`,
-          reference: p.ref,
+        // 1. Persist to manager disbursements ledger FIRST so storage events never overwrite it
+        const record = {
+          ref: p.ref,
+          date: p.date,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          materialId: p.materialId,
+          materialName: p.materialName,
+          quantity: p.quantity,
+          unit: p.unit,
+          usedFor: p.usedFor,
+          recipient: p.usedFor,
+          recordedBy: managerName,
           status: 'Approved',
-          user: managerName,
-          role: 'Manager',
-          branchLoc: curUser.branchLoc || curUser.location || '',
-          branchName: curUser.branchName || curUser.branch || '',
-          action: 'Disbursed',
-          module: 'Inventory'
-        });
-        localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
-      } catch (e) {}
+          notes: p.notes
+        };
 
-      // Broadcast live notification across all roles (Admin, Manager, Staff)
-      try {
-        if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
-          window.pushRMIMSNotification({
-            title: `Raw Material Disbursed: ${p.materialName}`,
-            message: `Disbursement of ${p.quantity} ${p.unit} of ${p.materialName} for ${p.usedFor} recorded (${p.ref}).`,
-            category: 'Inventory',
-            badge: 'Disbursed',
-            role: 'manager',
-            targetRole: 'manager',
-            roleScope: 'manager',
-            priority: 'normal',
-            targetUrl: 'manager/disburse.html',
-            ref: p.ref,
-            material: p.materialName,
-            quantity: `${p.quantity} ${p.unit}`,
-            actor: managerName,
-            productName: p.usedFor
-          });
+        managerDisbursements = managerDisbursements.filter(d => d.ref !== p.ref);
+        managerDisbursements.unshift(record);
+        saveDisbursements();
+
+        // 2. Update raw material stock in system-materials (DEDUCTS / LESSENS MATERIALS)
+        const mat = rawMaterials.find(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
+        if (mat) {
+          mat.current_stock = p.newStock;
+          mat.last_updated = new Date().toISOString();
+          saveCustomRawMaterial(mat);
         }
-      } catch (e) {}
+        updateMaterialActivityTimestamp(p.materialId || p.materialName, new Date().toISOString(), 'Disburse', p.quantity, p.unit);
+        saveRawMaterialToSupabase({
+          id: p.materialId,
+          item_code: p.materialId,
+          name: p.materialName,
+          raw_material_name: p.materialName,
+          current_stock: p.newStock,
+          unit: p.unit
+        }).catch(err => console.warn('[Disburse] Supabase stock upsert notice:', err));
 
-      // 5. Commit directly to Supabase and broadcast cross-module sync
-      recordMaterialDisbursementToSupabase(p).catch(err => console.warn('[Disburse] Supabase sync notice:', err));
-      broadcastManagerSync({
-        action: 'disburse',
-        ref: p.ref,
-        material: p.materialName,
-        quantity: p.quantity,
-        unit: p.unit
-      });
+        // Also ensure custom raw materials list reflects the reduced stock
+        try {
+          const customMats = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]');
+          const idx = customMats.findIndex(m => String(m.id) === String(p.materialId) || String(m.item_code) === String(p.materialId));
+          if (idx !== -1) {
+            customMats[idx].current_stock = p.newStock;
+            customMats[idx].last_updated = new Date().toISOString();
+            localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(customMats));
+          }
+        } catch (e) {}
+
+        // 3. Persist to system disbursements ledger
+        saveCustomDisbursement({
+          id: p.ref,
+          material_id: p.materialId,
+          material_name: p.materialName,
+          consumed_quantity: p.quantity,
+          unit: p.unit,
+          usage_date: p.date,
+          activity_type: 'Production Usage',
+          finished_product_name: p.usedFor,
+          recorded_by: managerName
+        });
+
+        // 4. Record into manager activities with full branch & user provenance
+        try {
+          const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+          const actRaw = localStorage.getItem('rmims_manager_activities');
+          const acts = actRaw ? JSON.parse(actRaw) : [];
+          acts.unshift({
+            datetime: p.date,
+            timestamp: new Date().toISOString(),
+            activity: `Disburse Raw Material: -${p.quantity} ${p.unit} ${p.materialName} (${p.usedFor})`,
+            reference: p.ref,
+            status: 'Approved',
+            user: managerName,
+            role: 'Manager',
+            branchLoc: curUser.branchLoc || curUser.location || '',
+            branchName: curUser.branchName || curUser.branch || '',
+            action: 'Disbursed',
+            module: 'Inventory'
+          });
+          localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
+        } catch (e) {}
+
+        // Broadcast live notification across all roles (Admin, Manager, Staff)
+        try {
+          if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+            window.pushRMIMSNotification({
+              title: `Raw Material Disbursed: ${p.materialName}`,
+              message: `Disbursement of ${p.quantity} ${p.unit} of ${p.materialName} for ${p.usedFor} recorded (${p.ref}).`,
+              category: 'Inventory',
+              badge: 'Disbursed',
+              role: 'manager',
+              targetRole: 'manager',
+              roleScope: 'manager',
+              priority: 'normal',
+              targetUrl: 'manager/disburse.html',
+              ref: p.ref,
+              material: p.materialName,
+              quantity: `${p.quantity} ${p.unit}`,
+              actor: managerName,
+              productName: p.usedFor
+            });
+          }
+        } catch (e) {}
+
+        // 5. Commit directly to Supabase and broadcast cross-module sync
+        recordMaterialDisbursementToSupabase(p).catch(err => console.warn('[Disburse] Supabase sync notice:', err));
+        broadcastManagerSync({
+          action: 'disburse',
+          ref: p.ref,
+          material: p.materialName,
+          quantity: p.quantity,
+          unit: p.unit
+        });
+      } finally {
+        isSavingDisburse = false;
+      }
 
       // Close modal and show feedback
       closeModal();
 
       // Reset form & generate new reference number
-      document.getElementById('mgrDisburseForm').reset();
+      const formEl = document.getElementById('mgrDisburseForm');
+      if (formEl) formEl.reset();
+      const selectEl = document.getElementById('disbMaterialSelect');
+      if (selectEl) {
+        selectEl.value = '';
+        if (selectEl._rmimsCombobox) selectEl._rmimsCombobox.sync();
+      }
       const previewWrap = document.getElementById('disbStockPreviewWrap');
       const warning = document.getElementById('disbStockWarning');
       if (previewWrap) previewWrap.style.display = 'none';
@@ -990,6 +1011,7 @@ function bindReviewModalEvents() {
 
       rawMaterials = getSystemRawMaterials();
       populateMaterialSelects();
+      initDatePicker();
       initReferenceDisplay();
       renderKpis();
       currentLedgerPage = 1;

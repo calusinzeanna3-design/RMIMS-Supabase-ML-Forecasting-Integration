@@ -411,7 +411,7 @@ function getLiveStaffInfo() {
   return { name: 'Staff_1', email: 'sconesandmuffins@gmail.com', id: '' };
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initUserDisburse() {
   rawMaterials = getSystemRawMaterials();
   populateMaterialSelect();
   initDatePicker();
@@ -441,7 +441,22 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleDisbursePreview();
   });
-});
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const syncChannel = new BroadcastChannel('rmims_user_sync');
+      syncChannel.onmessage = () => {
+        refreshDisburseState();
+      };
+    }
+  } catch (_) {}
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initUserDisburse);
+} else {
+  initUserDisburse();
+}
 
 function initNewReference() {
   currentRef = generateNextReference('DIS', 'staff');
@@ -468,8 +483,9 @@ function populateMaterialSelect() {
   const select = document.getElementById('staffDisbMaterial');
   if (!select) return;
 
+  const prevVal = select.value;
   select.innerHTML = '<option value="">-- Choose Material to Disburse --</option>';
-  const safeMaterials = rawMaterials;
+  const safeMaterials = [...(rawMaterials || [])].sort((a, b) => (a.name || a.materialName || '').localeCompare(b.name || b.materialName || ''));
   safeMaterials.forEach(m => {
     const opt = document.createElement('option');
     const matName = m.name || m.materialName || m.raw_material_name || '';
@@ -483,18 +499,22 @@ function populateMaterialSelect() {
     select.appendChild(opt);
   });
 
-  // Pre-select via URL parameters if present
+  // Pre-select via URL parameters if present, otherwise preserve current selection
   try {
     const sp = new URLSearchParams(window.location.search);
     const targetMat = sp.get('material') || sp.get('id') || sp.get('item_code') || sp.get('code');
-    if (targetMat) {
+    if (prevVal && Array.from(select.options).some(o => o.value === prevVal)) {
+      select.value = prevVal;
+    } else if (targetMat) {
       const match = Array.from(select.options).find(o => 
         String(o.value).toUpperCase() === targetMat.toUpperCase() ||
         String(o.dataset.name || '').toLowerCase() === targetMat.toLowerCase()
       );
       if (match) select.value = match.value;
     }
-  } catch (_) {}
+  } catch (_) {
+    if (prevVal) select.value = prevVal;
+  }
 
   // Trigger change to sync unit badge and preview
   select.dispatchEvent(new Event('change'));
@@ -754,7 +774,13 @@ function handleConfirmSubmission() {
   }
 
   // Reset form and prepare fresh reference for next transaction
-  document.getElementById('staffDisburseForm').reset();
+  const formEl = document.getElementById('staffDisburseForm');
+  if (formEl) formEl.reset();
+  const matSelectEl = document.getElementById('staffDisbMaterial');
+  if (matSelectEl) {
+    matSelectEl.value = '';
+    if (matSelectEl._rmimsCombobox) matSelectEl._rmimsCombobox.sync();
+  }
   document.getElementById('staffDisbStockPreview').style.display = 'none';
   const unitBadge = document.getElementById('staffDisbUnitBadge');
   if (unitBadge) unitBadge.textContent = '--';
@@ -776,7 +802,7 @@ function renderMySubmissions() {
   const countEl = document.getElementById('myDisbSubCount');
   if (!tbody) return;
 
-  const allTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const allTx = getStaffTransactions() || [];
   if (allTx.length === 0) {
     try {
       if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
@@ -784,7 +810,11 @@ function renderMySubmissions() {
       }
     } catch (_) {}
   }
-  const staffTx = allTx.filter(t => t.activity === 'Disburse' || t.type === 'Disburse');
+  const staffTx = allTx.filter(t => {
+    const act = String(t.activity || t.type || '').toLowerCase();
+    const refStr = String(t.ref || '');
+    return act.includes('disb') || refStr.toUpperCase().startsWith('DIS') || /-D\d+/i.test(refStr);
+  });
   if (countEl) countEl.textContent = `${staffTx.length} submission${staffTx.length === 1 ? '' : 's'}`;
 
   if (staffTx.length === 0) {
@@ -837,12 +867,14 @@ function renderMySubmissions() {
       actionBtn = `<a href="my-activity.html?ref=${encodeURIComponent(t.ref)}" style="color:#15803D; text-decoration:none; font-weight:600; font-size:12px;">View</a>`;
     }
 
-    const createdFormatted = t.createdAt ? new Date(t.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : (t.date || '--');
+    const dateVal = t.date || (t.createdAt ? new Date(t.createdAt).toISOString().slice(0, 10) : '—');
+    const timeVal = t.time || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
 
     return `
       <tr style="${isCorrection ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B;">${escapeHtml(t.ref)}</td>
-        <td style="color:#64748B; font-size:12px;">${escapeHtml(createdFormatted)}</td>
+        <td><strong>${escapeHtml(dateVal)}</strong></td>
+        <td><small style="color:#64748B; font-weight:600;">${escapeHtml(timeVal)}</small></td>
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
         <td style="font-weight:700; color:#D97706;">-${escapeHtml(t.quantity)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</td>
         <td style="color:#334155; font-size:12px;">${escapeHtml(t.usedFor || 'General Batch')}</td>
