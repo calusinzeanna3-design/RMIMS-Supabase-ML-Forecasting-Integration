@@ -386,22 +386,29 @@ function escapeHtml(str) {
 }
 
 function getLiveStaffInfo() {
-  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'user', 'staffUser'];
+  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'staffUser'];
   for (const key of candidates) {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const o = JSON.parse(raw);
       if (o && (o.fullName || o.name || o.email || o.id)) {
+        let name = (o.fullName || o.name || '').trim();
+        const email = (o.email || '').toLowerCase().trim();
+        const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
+        if (!name || BANNED_STAFF.includes(name.toLowerCase())) {
+          if (email === 'scone2@gmail.com') name = 'Staff_2';
+          else name = 'Staff_1';
+        }
         return {
-          name: o.fullName || o.name || 'Staff Member',
-          email: o.email || '',
+          name,
+          email,
           id: o.id || ''
         };
       }
     } catch (_) {}
   }
-  return { name: 'Staff Member', email: '', id: '' };
+  return { name: 'Staff_1', email: 'sconesandmuffins@gmail.com', id: '' };
 }
 
 document.addEventListener('DOMContentLoaded', () => {

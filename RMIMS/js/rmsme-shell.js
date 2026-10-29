@@ -3,6 +3,13 @@ import './rmims-custom-select.js';
 import { supabase } from '../supabase/supabase-config.js';
 
 (function () {
+  const path = location.pathname.split('/').filter(Boolean);
+  const isAnyAdmin = path.includes('admin') || path.includes('main-admin');
+  const isStrictManager = path.includes('manager') && !isAnyAdmin;
+  const isManager = path.includes('manager') || isAnyAdmin;
+  const role = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'user');
+  const current = (path[path.length - 1] || '').toLowerCase();
+
   /* Cleanup Appearance Mode preference & attributes */
   try {
     localStorage.removeItem('rmims_theme_preference');
@@ -206,13 +213,6 @@ import { supabase } from '../supabase/supabase-config.js';
       } catch (_) {}
     }
   } catch (e) {}
-
-  const path = location.pathname.split('/').filter(Boolean);
-  const isAnyAdmin = path.includes('admin') || path.includes('main-admin');
-  const isStrictManager = path.includes('manager') && !isAnyAdmin;
-  const isManager = path.includes('manager') || isAnyAdmin;
-  const role = isAnyAdmin ? 'admin' : (isStrictManager ? 'manager' : 'user');
-  const current = (path[path.length - 1] || '').toLowerCase();
 
   // Instant pre-render role routing guard to prevent UI flicker and block unauthorized access
   try {
@@ -1899,8 +1899,13 @@ import { supabase } from '../supabase/supabase-config.js';
     } catch (_) {}
     [profile, notif, help].forEach(x => {
       if (x && x !== except) {
+        x.setAttribute('hidden', '');
         x.hidden = true;
         x.classList.remove('open', 'active');
+        x.style.display = 'none';
+        x.style.visibility = 'hidden';
+        x.style.opacity = '0';
+        x.style.pointerEvents = 'none';
       }
     });
     document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(b => {
@@ -1912,13 +1917,26 @@ import { supabase } from '../supabase/supabase-config.js';
 
   function toggleMenu(menu, btn) {
     if (!menu) return;
-    const willOpen = menu.hidden || !menu.classList.contains('open');
+    const isCurrentlyOpen = !menu.hidden && menu.classList.contains('open') && menu.style.display !== 'none';
+    const willOpen = !isCurrentlyOpen;
     closeMenus(menu);
-    menu.hidden = !willOpen;
     if (willOpen) {
+      menu.removeAttribute('hidden');
+      menu.hidden = false;
       menu.classList.add('open');
+      menu.style.display = 'flex';
+      menu.style.visibility = 'visible';
+      menu.style.opacity = '1';
+      menu.style.pointerEvents = 'auto';
+      menu.style.zIndex = '10005';
     } else {
+      menu.setAttribute('hidden', '');
+      menu.hidden = true;
       menu.classList.remove('open');
+      menu.style.display = 'none';
+      menu.style.visibility = 'hidden';
+      menu.style.opacity = '0';
+      menu.style.pointerEvents = 'none';
     }
     if (btn) btn.setAttribute('aria-expanded', String(willOpen));
     if ((menu === notif || menu.id === 'notificationDropdown' || menu.id === 'rmsmeNotifications') && willOpen) {
@@ -1939,11 +1957,17 @@ import { supabase } from '../supabase/supabase-config.js';
   });
 
   document.querySelectorAll('#profileBtn, #rmsmeProfileBtn, .topbar-profile').forEach(btn => {
+    if (btn._rmsmeProfileBound) return;
+    btn._rmsmeProfileBound = true;
     btn.style.cursor = 'pointer';
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const currentDrop = btn.closest('.rmsme-popover-anchor')?.querySelector('.mgr-profile-dropdown, .profile-dropdown') || profile;
+      const currentDrop = btn.closest('.rmsme-popover-anchor')?.querySelector('.mgr-profile-dropdown, .admin-profile-dropdown, .profile-dropdown') ||
+                          document.getElementById('profileDropdown') ||
+                          document.getElementById('mgrProfileDropdown') ||
+                          document.getElementById('adminProfileDropdown') ||
+                          profile;
       toggleMenu(currentDrop, btn);
     });
   });

@@ -172,8 +172,8 @@ function loadDisbursements() {
                 quantity: numQty,
                 unit: unitVal,
                 recipient: t.usedFor || t.recipient || 'Production Department',
-                recordedBy: t.staff || t.user || 'Staff Member',
-                approvedBy: t.approvedBy || 'Store Manager',
+                recordedBy: t.staff || 'Staff_1',
+                approvedBy: t.approvedBy || 'Aizel',
                 status: 'Approved',
                 notes: t.notes || (t.isUpdated ? 'Resubmitted & Approved' : 'Staff Submission Approved')
               });
@@ -880,7 +880,21 @@ function bindReviewModalEvents() {
         }
       } catch (e) {}
 
-      // 2. Persist to system disbursements
+
+      // Resolve authentic manager identity
+      let managerName = 'Aizel';
+      try {
+        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
+        const e = (curUser.email || '').toLowerCase();
+        if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
+        else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
+        else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
+        else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+          managerName = curUser.fullName;
+        }
+      } catch (_) {}
+
+      // 2. Persist to system disbursements ledger
       saveCustomDisbursement({
         id: p.ref,
         material_id: p.materialId,
@@ -890,7 +904,7 @@ function bindReviewModalEvents() {
         usage_date: p.date,
         activity_type: 'Production Usage',
         finished_product_name: p.usedFor,
-        recorded_by: 'Store Manager'
+        recorded_by: managerName
       });
 
       // 3. Persist to manager disbursements ledger with exact delivery time
@@ -902,7 +916,7 @@ function bindReviewModalEvents() {
         quantity: p.quantity,
         unit: p.unit,
         usedFor: p.usedFor,
-        recordedBy: 'Store Manager',
+        recordedBy: managerName,
         status: 'Approved',
         notes: p.notes
       };
@@ -921,8 +935,8 @@ function bindReviewModalEvents() {
           activity: `Disburse Raw Material: -${p.quantity} ${p.unit} ${p.materialName} (${p.usedFor})`,
           reference: p.ref,
           status: 'Approved',
-          user: curUser.name || curUser.fullName || curUser.username || 'Manager',
-          role: curUser.role || 'Manager',
+          user: managerName,
+          role: 'Manager',
           branchLoc: curUser.branchLoc || curUser.location || '',
           branchName: curUser.branchName || curUser.branch || '',
           action: 'Disbursed',
@@ -947,7 +961,7 @@ function bindReviewModalEvents() {
             ref: p.ref,
             material: p.materialName,
             quantity: `${p.quantity} ${p.unit}`,
-            actor: 'Store Manager',
+            actor: managerName,
             productName: p.usedFor
           });
         }
@@ -1172,7 +1186,7 @@ function renderHistoryTable() {
         <td><strong>${escapeHtml(d.materialName)}</strong></td>
         <td><span class="mgr-qty-delta disburse">-${d.quantity} ${escapeHtml(d.unit)}</span></td>
         <td style="color:#334155; font-weight:600;">${escapeHtml(d.usedFor || 'Production Batch')}</td>
-        <td style="font-size:12px; color:#475569;">${escapeHtml(d.recordedBy || 'Store Manager')}</td>
+        <td style="font-size:12px; color:#475569;">${escapeHtml(d.recordedBy || 'Aizel')}</td>
         <td><span class="mgr-status-pill status-approved">Approved</span></td>
         <td style="color:#64748B; font-size:12px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(d.notes || '')}">
           ${escapeHtml(d.notes || '-')}

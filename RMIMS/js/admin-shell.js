@@ -138,25 +138,36 @@ import './rmims-custom-select.js';
       anchor.appendChild(dropdown);
     }
 
+    if (profileBtn._rmsmeProfileBound) return;
+    profileBtn._rmsmeProfileBound = true;
     profileBtn.style.cursor = 'pointer';
 
     function closeAdminMenu() {
+      dropdown.setAttribute('hidden', '');
       dropdown.hidden = true;
       dropdown.classList.remove('open');
+      dropdown.style.display = 'none';
       profileBtn.setAttribute('aria-expanded', 'false');
     }
 
     function toggleAdminMenu() {
-      const willOpen = dropdown.hidden;
-      dropdown.hidden = !willOpen;
+      const willOpen = dropdown.hidden || dropdown.hasAttribute('hidden') || !dropdown.classList.contains('open');
       if (willOpen) {
+        dropdown.removeAttribute('hidden');
+        dropdown.hidden = false;
         dropdown.classList.add('open');
+        dropdown.style.display = 'flex';
+        dropdown.style.visibility = 'visible';
+        dropdown.style.opacity = '1';
         profileBtn.setAttribute('aria-expanded', 'true');
         const curName = document.querySelector('.profile-name')?.textContent || 'Admin';
         const nameSlot = dropdown.querySelector('#dropdownAdminName, [data-shell-name]');
         if (nameSlot) nameSlot.textContent = curName;
       } else {
+        dropdown.setAttribute('hidden', '');
+        dropdown.hidden = true;
         dropdown.classList.remove('open');
+        dropdown.style.display = 'none';
         profileBtn.setAttribute('aria-expanded', 'false');
       }
     }

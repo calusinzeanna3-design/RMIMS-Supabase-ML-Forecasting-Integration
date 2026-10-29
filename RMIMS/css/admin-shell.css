@@ -845,6 +845,20 @@ html, body {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+.rmsme-popover.mgr-profile-dropdown.open,
+.rmsme-popover.admin-profile-dropdown.open,
+.mgr-profile-dropdown.open,
+.admin-profile-dropdown.open,
+.profile-dropdown.open,
+.rmsme-popover.open,
+#profileDropdown.open {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 10005 !important;
+}
+
 .rmsme-popover.mgr-profile-dropdown[hidden],
 .rmsme-popover.admin-profile-dropdown[hidden],
 .mgr-profile-dropdown[hidden],

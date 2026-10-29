@@ -633,6 +633,29 @@ export function getStaffTransactions() {
     const raw = localStorage.getItem(STAFF_TX_KEY);
     let list = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(list)) list = [];
+    const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
+    let modified = false;
+    list.forEach(t => {
+      if (!t) return;
+      const lowerStaff = String(t.staff || '').toLowerCase().trim();
+      if (!t.staff || BANNED_STAFF.includes(lowerStaff)) {
+        let resolved = 'Staff_1';
+        if (t.staffEmail === 'scone2@gmail.com') resolved = 'Staff_2';
+        else if (t.staffEmail === 'zeannapatty@gmail.com') resolved = 'Aizel';
+        else if (t.staffEmail === 'zeannapatricia@gmail.com') resolved = 'Glazel';
+        t.staff = resolved;
+        modified = true;
+      }
+      if (t.approvedBy && BANNED_STAFF.includes(String(t.approvedBy).toLowerCase().trim())) {
+        t.approvedBy = 'Aizel';
+        modified = true;
+      }
+    });
+    if (modified) {
+      try {
+        localStorage.setItem(STAFF_TX_KEY, JSON.stringify(list));
+      } catch (_) {}
+    }
     return list.filter(t => !['tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005', 'st-001', 'st-002', 'st-003', 'st-004', 'st-005'].includes(t.id));
   } catch (e) {
     return [];

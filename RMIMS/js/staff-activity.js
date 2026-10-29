@@ -375,7 +375,7 @@ function openReviewModal(item) {
   const isReceive = (item.activity || '').toLowerCase().includes('rec');
 
   document.getElementById('reviewRefNum').textContent = item.ref || '--';
-  document.getElementById('reviewStaff').textContent = item.staff || 'Staff Member';
+  document.getElementById('reviewStaff').textContent = item.staff || 'Staff_1';
   document.getElementById('reviewActivity').textContent = item.activity || (isReceive ? 'Receive' : 'Disburse');
   document.getElementById('reviewActivity').style.color = isReceive ? '#15803D' : '#D97706';
   document.getElementById('reviewMaterial').textContent = item.material || '--';
@@ -466,8 +466,23 @@ function handleApproveTransaction() {
   const materialName = activeReviewItem.material;
 
   // Update transaction status
+  let approverName = 'Aizel';
+  try {
+    const rawMgr = localStorage.getItem('currentUser') || localStorage.getItem('managerUser') || localStorage.getItem('rmimsCurrentUser');
+    if (rawMgr) {
+      const parsed = JSON.parse(rawMgr);
+      const e = (parsed.email || '').toLowerCase();
+      if (e === 'zeannapatty@gmail.com') approverName = 'Aizel';
+      else if (e === 'zeannapatricia@gmail.com') approverName = 'Glazel';
+      else if (e === 'calusinzeanna3@gmail.com') approverName = 'Zeanna';
+      else if (parsed.fullName && !['manager', 'user account', 'user', 'store manager'].includes(parsed.fullName.toLowerCase())) {
+        approverName = parsed.fullName;
+      }
+    }
+  } catch (_) {}
+
   activeReviewItem.status = 'Approved';
-  activeReviewItem.approvedBy = 'Manager';
+  activeReviewItem.approvedBy = approverName;
   activeReviewItem.approvedAt = new Date().toISOString();
   activeReviewItem.quantity = qty;
   if (!activeReviewItem.unit) {

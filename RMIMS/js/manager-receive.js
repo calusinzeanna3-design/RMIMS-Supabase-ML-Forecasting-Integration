@@ -857,6 +857,19 @@ function bindReviewModalEvents() {
         }
       } catch (e) {}
 
+      // Resolve authentic manager identity
+      let managerName = 'Aizel';
+      try {
+        const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
+        const e = (curUser.email || '').toLowerCase();
+        if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
+        else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
+        else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
+        else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+          managerName = curUser.fullName;
+        }
+      } catch (_) {}
+
       // 2. Persist to system receipts ledger
       saveCustomReceipt({
         id: p.ref,
@@ -866,7 +879,7 @@ function bindReviewModalEvents() {
         unit: p.unit,
         receipt_date: p.date,
         supplier_name: p.supplier,
-        received_by: 'Store Manager'
+        received_by: managerName
       });
 
       // 3. Persist to manager receipts ledger with exact delivery time
@@ -878,7 +891,7 @@ function bindReviewModalEvents() {
         quantity: p.quantity,
         unit: p.unit,
         supplier: p.supplier,
-        recordedBy: 'Store Manager',
+        recordedBy: managerName,
         status: 'Approved',
         notes: p.notes
       };
@@ -897,8 +910,8 @@ function bindReviewModalEvents() {
           activity: `Receive Raw Material: +${p.quantity} ${p.unit} ${p.materialName}`,
           reference: p.ref,
           status: 'Approved',
-          user: curUser.name || curUser.fullName || curUser.username || 'Manager',
-          role: curUser.role || 'Manager',
+          user: managerName,
+          role: 'Manager',
           branchLoc: curUser.branchLoc || curUser.location || '',
           branchName: curUser.branchName || curUser.branch || '',
           action: 'Received',

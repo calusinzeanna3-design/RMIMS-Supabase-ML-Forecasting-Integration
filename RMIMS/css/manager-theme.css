@@ -50,7 +50,8 @@
 /* ==========================================================================
    PAGE BASE & BACKGROUND
    ========================================================================== */
-html, body {
+html,
+body {
   background-color: var(--rm-bg) !important;
   color: var(--rm-ink) !important;
   font-family: var(--rm-font-body) !important;
@@ -81,6 +82,7 @@ body.manager-page .admin-app {
    SIDEBAR (100% Adopted from Admin)
    ========================================================================== */
 @media (min-width: 769px) {
+
   body.manager-page .sidebar,
   body.manager-page .admin-sidebar {
     position: fixed !important;
@@ -108,6 +110,7 @@ body.manager-page .admin-app {
 }
 
 @media (max-width: 768px) {
+
   body.manager-page .sidebar,
   body.manager-page .admin-sidebar {
     position: fixed !important;
@@ -131,17 +134,20 @@ body.manager-page .admin-app {
     touch-action: pan-y !important;
     box-sizing: border-box !important;
   }
+
   body.rmsme-mobile-drawer-open.manager-page .sidebar,
   body.rmsme-mobile-drawer-open.manager-page .admin-sidebar,
   body.manager-page .admin-sidebar.mobile-open {
     transform: translateX(0) !important;
     box-shadow: 14px 0 45px rgba(0, 0, 0, 0.45) !important;
   }
+
   body.manager-page .sidebar .sidebar-nav,
   body.manager-page .admin-sidebar .sidebar-nav {
     overflow-y: visible !important;
     flex: 1 0 auto !important;
   }
+
   body.manager-page .sidebar .sidebar-bottom-nav,
   body.manager-page .admin-sidebar .sidebar-bottom-nav {
     flex-shrink: 0 !important;
@@ -241,7 +247,8 @@ body.manager-page .rmsme-brand-copy span {
   white-space: nowrap !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
-  color: var(--rm-light) !important; /* #86EFAC */
+  color: var(--rm-light) !important;
+  /* #86EFAC */
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   margin-top: 4px !important;
@@ -330,14 +337,17 @@ body.manager-page .nav-link:hover svg,
 body.manager-page .rmsme-nav-item:hover svg,
 body.manager-page .rmsme-nav-item:hover .rmsme-nav-icon svg {
   transform: translateX(2px) !important;
-  stroke: var(--rm-light) !important; /* #86EFAC */
+  stroke: var(--rm-light) !important;
+  /* #86EFAC */
 }
 
 /* Active Nav Pill matching Admin High-Contrast Style */
 body.manager-page .nav-link.active,
 body.manager-page .rmsme-nav-item.active {
-  background: var(--rm-light-2) !important; /* #BBF7D0 */
-  color: var(--rm-ink) !important; /* #0F2A1B */
+  background: var(--rm-light-2) !important;
+  /* #BBF7D0 */
+  color: var(--rm-ink) !important;
+  /* #0F2A1B */
   font-weight: 700 !important;
   box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25) !important;
 }
@@ -345,7 +355,8 @@ body.manager-page .rmsme-nav-item.active {
 body.manager-page .nav-link.active svg,
 body.manager-page .rmsme-nav-item.active svg,
 body.manager-page .rmsme-nav-item.active .rmsme-nav-icon svg {
-  stroke: var(--rm-ink) !important; /* #0F2A1B */
+  stroke: var(--rm-ink) !important;
+  /* #0F2A1B */
 }
 
 /* Sidebar Bottom Navigation */
@@ -384,6 +395,7 @@ body.manager-page .nav-btn-help {
    MAIN CONTENT WRAPPER
    ========================================================================== */
 @media (min-width: 769px) {
+
   body.manager-page .content,
   body.manager-page .manager-main,
   body.manager-page .admin-main {
@@ -403,6 +415,7 @@ body.manager-page .nav-btn-help {
 }
 
 @media (max-width: 768px) {
+
   body.manager-page .content,
   body.manager-page .manager-main,
   body.manager-page .admin-main {
@@ -573,6 +586,7 @@ body.manager-page .topbar-clock svg {
 }
 
 @media (max-width: 768px) {
+
   body.manager-page .topbar-profile .profile-meta,
   body.manager-page .profile-meta,
   body.manager-page .profile-text,
@@ -580,6 +594,7 @@ body.manager-page .topbar-clock svg {
   body.manager-page .mgr-user-copy {
     display: none !important;
   }
+
   body.manager-page .topbar-profile,
   body.manager-page .profile-btn,
   body.manager-page .mgr-profile-pill {
@@ -590,6 +605,7 @@ body.manager-page .topbar-clock svg {
     border-radius: 50% !important;
     justify-content: center !important;
   }
+
   body.manager-page .topbar-subtitle,
   body.manager-page .topbar-kicker {
     display: none !important;
@@ -903,8 +919,10 @@ body.manager-page .card-icon-badge.emerald,
 body.manager-page .mgr-badge-icon.badge-green,
 body.manager-page .badge-green,
 body.manager-page .icon-emerald {
-  background: var(--rm-soft) !important; /* #DCFCE7 */
-  color: var(--rm-primary) !important; /* #15803D */
+  background: var(--rm-soft) !important;
+  /* #DCFCE7 */
+  color: var(--rm-primary) !important;
+  /* #15803D */
 }
 
 body.manager-page .card-icon-badge.coral,
@@ -1604,10 +1622,13 @@ body.manager-page .tab-btn.active {
    ANIMATIONS & KEYFRAMES (Exact Admin Transitions)
    ========================================================================== */
 @keyframes rmGlowPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.6;
     transform: scale(1.15);
@@ -1619,6 +1640,7 @@ body.manager-page .tab-btn.active {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1629,6 +1651,7 @@ body.manager-page .tab-btn.active {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1766,13 +1789,19 @@ body.manager-page .rmsme-popover:not([hidden]) {
   box-sizing: border-box !important;
 }
 
-.mgr-profile-popover[hidden],
-.rmsme-popover.mgr-profile-dropdown[hidden],
-.rmsme-popover.admin-profile-dropdown[hidden],
-.rmsme-popover[hidden],
-[hidden] {
-  display: none !important;
+.mgr-profile-popover.open,
+.rmsme-popover.mgr-profile-dropdown.open,
+.rmsme-popover.admin-profile-dropdown.open,
+.rmsme-popover.open,
+#profileDropdown.open {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 10005 !important;
 }
+
+
 
 .mgr-profile-head {
   padding: 8px 10px 8px !important;
@@ -1845,6 +1874,7 @@ body.manager-page .rmsme-popover:not([hidden]) {
    and manager-page background fills, dedicating 100% full paper to the report.
    ========================================================================== */
 @media print {
+
   html,
   body,
   body.manager-page,
@@ -1965,14 +1995,14 @@ body.manager-page .an-grid-2col {
   align-items: stretch !important;
 }
 
-body.manager-page .mgr-grid-2col > .admin-card,
-body.manager-page .mgr-grid-2col > .card,
-body.manager-page .mgr-grid-2col > .mgr-dashboard-card,
-body.manager-page .mgr-grid-2col > .fc-card,
-body.manager-page .mgr-grid-2col > section,
-body.manager-page .fc-grid-row-1 > .fc-card,
-body.manager-page .fc-grid-row-1 > .admin-card,
-body.manager-page .fc-grid-row-1 > section {
+body.manager-page .mgr-grid-2col>.admin-card,
+body.manager-page .mgr-grid-2col>.card,
+body.manager-page .mgr-grid-2col>.mgr-dashboard-card,
+body.manager-page .mgr-grid-2col>.fc-card,
+body.manager-page .mgr-grid-2col>section,
+body.manager-page .fc-grid-row-1>.fc-card,
+body.manager-page .fc-grid-row-1>.admin-card,
+body.manager-page .fc-grid-row-1>section {
   width: 100% !important;
   min-width: 0 !important;
   min-height: 380px !important;
@@ -1991,9 +2021,9 @@ body.manager-page .fc-grid-row-1 > section {
 }
 
 /* Dedicated sizing for bottom cards and alert cards so content never clips */
-body.manager-page .an-bottom-grid > .an-card,
-body.manager-page .an-bottom-grid > section,
-body.manager-page .an-grid-2col > .an-card,
+body.manager-page .an-bottom-grid>.an-card,
+body.manager-page .an-bottom-grid>section,
+body.manager-page .an-grid-2col>.an-card,
 body.manager-page #lowStockAlertsCard {
   width: 100% !important;
   min-width: 0 !important;
@@ -2256,6 +2286,7 @@ body.manager-page #lowStockAlertsList::-webkit-scrollbar,
 body.manager-page .fc-grid-row-1 .forecast-support-grid::-webkit-scrollbar {
   width: 4px !important;
 }
+
 body.manager-page .smart-alerts-list::-webkit-scrollbar-thumb,
 body.manager-page #lowStockAlertsList::-webkit-scrollbar-thumb,
 body.manager-page .fc-grid-row-1 .forecast-support-grid::-webkit-scrollbar-thumb {
@@ -2294,6 +2325,7 @@ body.manager-page #matRequirementsCard div[style*="width: 190px"] {
 }
 
 @media (max-width: 992px) {
+
   body.manager-page .mgr-grid-2col,
   body.manager-page .fc-grid-row-1,
   body.manager-page .an-bottom-grid,
@@ -2301,17 +2333,17 @@ body.manager-page #matRequirementsCard div[style*="width: 190px"] {
     grid-template-columns: 1fr !important;
   }
 
-  body.manager-page .mgr-grid-2col > .admin-card,
-  body.manager-page .mgr-grid-2col > .card,
-  body.manager-page .mgr-grid-2col > .mgr-dashboard-card,
-  body.manager-page .mgr-grid-2col > .fc-card,
-  body.manager-page .mgr-grid-2col > section,
-  body.manager-page .fc-grid-row-1 > .fc-card,
-  body.manager-page .fc-grid-row-1 > .admin-card,
-  body.manager-page .fc-grid-row-1 > section,
-  body.manager-page .an-bottom-grid > .an-card,
-  body.manager-page .an-bottom-grid > section,
-  body.manager-page .an-grid-2col > .an-card {
+  body.manager-page .mgr-grid-2col>.admin-card,
+  body.manager-page .mgr-grid-2col>.card,
+  body.manager-page .mgr-grid-2col>.mgr-dashboard-card,
+  body.manager-page .mgr-grid-2col>.fc-card,
+  body.manager-page .mgr-grid-2col>section,
+  body.manager-page .fc-grid-row-1>.fc-card,
+  body.manager-page .fc-grid-row-1>.admin-card,
+  body.manager-page .fc-grid-row-1>section,
+  body.manager-page .an-bottom-grid>.an-card,
+  body.manager-page .an-bottom-grid>section,
+  body.manager-page .an-grid-2col>.an-card {
     height: auto !important;
     max-height: none !important;
     min-height: 320px !important;
@@ -2322,7 +2354,7 @@ body.manager-page #matRequirementsCard div[style*="width: 190px"] {
 body.manager-page section.admin-card:not(.mgr-grid-2col > *):not(.fc-grid-row-1 > *):not(.an-bottom-grid > *),
 body.manager-page .fc-calendar-chart-card,
 body.manager-page .fc-chart-card-main:not(.fc-grid-row-1 > *):not(.mgr-grid-2col > *),
-body.manager-page .fc-grid-row-full > *,
+body.manager-page .fc-grid-row-full>*,
 body.manager-page #fcTopMaterialsCard,
 body.manager-page .mgr-tx-card,
 body.manager-page .mgr-tx-table-card,
@@ -2362,10 +2394,11 @@ body.manager-page #fcTopMaterialsCard .fc-chart-canvas-wrap {
 }
 
 @media (max-width: 1024px) {
+
   body.manager-page section.admin-card:not(.mgr-grid-2col > *):not(.fc-grid-row-1 > *):not(.an-bottom-grid > *),
   body.manager-page .fc-calendar-chart-card,
   body.manager-page .fc-chart-card-main:not(.fc-grid-row-1 > *):not(.mgr-grid-2col > *),
-  body.manager-page .fc-grid-row-full > *,
+  body.manager-page .fc-grid-row-full>*,
   body.manager-page #fcTopMaterialsCard,
   body.manager-page .mgr-tx-card,
   body.manager-page .mgr-tx-table-card,
@@ -2384,10 +2417,11 @@ body.manager-page #fcTopMaterialsCard .fc-chart-canvas-wrap {
 }
 
 @media (max-width: 768px) {
+
   body.manager-page section.admin-card:not(.mgr-grid-2col > *):not(.fc-grid-row-1 > *):not(.an-bottom-grid > *),
   body.manager-page .fc-calendar-chart-card,
   body.manager-page .fc-chart-card-main:not(.fc-grid-row-1 > *):not(.mgr-grid-2col > *),
-  body.manager-page .fc-grid-row-full > *,
+  body.manager-page .fc-grid-row-full>*,
   body.manager-page #fcTopMaterialsCard,
   body.manager-page .mgr-tx-card,
   body.manager-page .mgr-tx-table-card,
@@ -2559,7 +2593,8 @@ body.manager-page .smart-alert-item .row-arrow {
 /* ==========================================================================
    UNIFIED STATUS PILLS & ROW STYLES (Manager & Staff Inventory)
    ========================================================================== */
-.mgr-status-pill, .status-pill {
+.mgr-status-pill,
+.status-pill {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2574,19 +2609,25 @@ body.manager-page .smart-alert-item .row-arrow {
   box-sizing: border-box !important;
 }
 
-.mgr-status-pill.status-pill-good, .status-pill.status-good, .status-pill-good {
+.mgr-status-pill.status-pill-good,
+.status-pill.status-good,
+.status-pill-good {
   background: #DCFCE7 !important;
   color: #15803D !important;
   border: 1px solid rgba(22, 163, 74, 0.25) !important;
 }
 
-.mgr-status-pill.status-pill-low, .status-pill.status-low, .status-pill-low {
+.mgr-status-pill.status-pill-low,
+.status-pill.status-low,
+.status-pill-low {
   background: #FEF3C7 !important;
   color: #D97706 !important;
   border: 1px solid rgba(217, 119, 6, 0.25) !important;
 }
 
-.mgr-status-pill.status-pill-out, .status-pill.status-out, .status-pill-out {
+.mgr-status-pill.status-pill-out,
+.status-pill.status-out,
+.status-pill-out {
   background: #FEE2E2 !important;
   color: #DC2626 !important;
   border: 1px solid rgba(220, 38, 38, 0.25) !important;
@@ -2608,13 +2649,18 @@ body.manager-page .smart-alert-item .row-arrow {
 }
 
 /* Row highlighting across Inventory Tables */
-tr.row-status-good, tr.row-good {
+tr.row-status-good,
+tr.row-good {
   background-color: #DCFCE7 !important;
 }
-tr.row-status-low, tr.row-low {
+
+tr.row-status-low,
+tr.row-low {
   background-color: #FEF3C7 !important;
 }
-tr.row-status-out, tr.row-out {
+
+tr.row-status-out,
+tr.row-out {
   background-color: #FEE2E2 !important;
 }
 

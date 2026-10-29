@@ -12,18 +12,22 @@ import { getSystemRawMaterials, getSystemCustomDisbursements } from './system-ma
 import { getStaffTransactions, getAllCompanyTransactions } from './rmims-transaction-engine.js';
 import { fetchUnifiedInventoryFromSupabase, fetchManagerDashboardData } from '../supabase/manager-supabase-service.js';
 
-// Get the current staff name from the live session (no hardcoded fallback)
 function getLiveStaffName() {
-  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'user'];
+  const candidates = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'staffUser'];
   for (const key of candidates) {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const o = JSON.parse(raw);
-      if (o && (o.fullName || o.name)) return o.fullName || o.name;
+      let n = (o.fullName || o.name || '').trim();
+      const e = (o.email || '').toLowerCase().trim();
+      const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
+      if (n && !BANNED_STAFF.includes(n.toLowerCase())) return n;
+      if (e === 'scone2@gmail.com') return 'Staff_2';
+      if (e === 'sconesandmuffins@gmail.com') return 'Staff_1';
     } catch (_) {}
   }
-  return '';
+  return 'Staff_1';
 }
 
 function escapeHtml(str) {

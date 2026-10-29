@@ -1259,7 +1259,18 @@ body.manager-page .forecast-summary-chart-box {
   }
 }
 
-/* Strict Popover and Dropdown Hidden State */
+/* Active and Hidden States for Popovers */
+body.manager-page .rmsme-popover.open,
+body.manager-page .mgr-profile-dropdown.open,
+body.manager-page #profileDropdown.open,
+body.manager-page #mgrProfileDropdown.open {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 10005 !important;
+}
+
 body.manager-page .rmsme-popover[hidden],
 body.manager-page .mgr-profile-dropdown[hidden],
 body.manager-page #mgrProfileDropdown[hidden],
