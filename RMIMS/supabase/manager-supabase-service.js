@@ -935,8 +935,39 @@ export async function fetchUnifiedInventoryFromSupabase() {
         existingCustom.forEach(c => {
           if (!c) return;
           const key = String(c.item_code || c.id || '').toUpperCase().trim();
-          if (key && !mergedMap.has(key) && !deletedSet.has(key.toLowerCase())) {
+          const isImportedOrManual = Boolean(c.is_imported || c.is_manual_override);
+          if (key && !mergedMap.has(key) && (isImportedOrManual || !deletedSet.has(key.toLowerCase()))) {
             mergedMap.set(key, c);
+          }
+        });
+      }
+
+      if (existingOverrides && typeof existingOverrides === 'object') {
+        Object.keys(existingOverrides).forEach(rawKey => {
+          const ov = existingOverrides[rawKey];
+          if (!ov || (!ov.name && !ov.raw_material_name)) return;
+          const key = String(ov.item_code || ov.id || rawKey || '').toUpperCase().trim();
+          const isImportedOrManual = Boolean(ov.is_imported || ov.is_manual_override);
+          if (key && !mergedMap.has(key) && (isImportedOrManual || !deletedSet.has(key.toLowerCase()))) {
+            mergedMap.set(key, {
+              ...ov,
+              id: key,
+              item_code: key,
+              name: ov.name || ov.raw_material_name,
+              raw_material_name: ov.raw_material_name || ov.name,
+              unit: ov.unit || ov.unit_of_measure || 'g',
+              unit_of_measure: ov.unit || ov.unit_of_measure || 'g',
+              current_stock: Number(ov.current_stock ?? 0),
+              currentStock: Number(ov.current_stock ?? 0),
+              minimum_threshold: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
+              minimum_stock: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
+              date_added: ov.date_added || ov.first_date || '',
+              first_date: ov.first_date || ov.date_added || '',
+              last_updated: ov.last_updated || ov.latest_date || '',
+              latest_date: ov.latest_date || ov.last_updated || '',
+              is_imported: true,
+              is_manual_override: true
+            });
           }
         });
       }

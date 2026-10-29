@@ -242,6 +242,7 @@ export function healForecastingMaterialCodes() {
         }
 
         // 2. Heal manager overrides
+        const activeCodesAndNamesLower = new Set();
         ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"].forEach(ovKey => {
             const ovRaw = localStorage.getItem(ovKey);
             if (!ovRaw) return;
@@ -261,6 +262,10 @@ export function healForecastingMaterialCodes() {
                 if (recognized && targetKey !== k) {
                     ovMutated = true;
                 }
+                if (targetKey) activeCodesAndNamesLower.add(String(targetKey).toLowerCase().trim());
+                if (name) activeCodesAndNamesLower.add(String(name).toLowerCase().trim());
+                if (recognized && recognized.canonicalName) activeCodesAndNamesLower.add(String(recognized.canonicalName).toLowerCase().trim());
+
                 if (!healedOvs[targetKey]) {
                     healedOvs[targetKey] = {
                         ...ov,
@@ -302,6 +307,36 @@ export function healForecastingMaterialCodes() {
                 localStorage.setItem(ovKey, JSON.stringify(healedOvs));
             }
         });
+
+        // Also collect active codes/names from rmims_custom_raw_materials
+        try {
+            const customAfter = JSON.parse(localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY) || "[]");
+            if (Array.isArray(customAfter)) {
+                customAfter.forEach(cm => {
+                    if (!cm) return;
+                    const c = String(cm.item_code || cm.id || "").toLowerCase().trim();
+                    const n = String(cm.name || cm.raw_material_name || "").toLowerCase().trim();
+                    if (c) activeCodesAndNamesLower.add(c);
+                    if (n) activeCodesAndNamesLower.add(n);
+                });
+            }
+        } catch (_) {}
+
+        // 3. Remove any active/imported material codes & names from rmims_deleted_material_ids (case-insensitive)
+        if (activeCodesAndNamesLower.size > 0) {
+            try {
+                const delRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
+                if (delRaw) {
+                    const delArr = JSON.parse(delRaw);
+                    if (Array.isArray(delArr) && delArr.length > 0) {
+                        const filteredDel = delArr.filter(d => !activeCodesAndNamesLower.has(String(d || "").toLowerCase().trim()));
+                        if (filteredDel.length !== delArr.length) {
+                            localStorage.setItem(RMIMS_DELETED_MATERIALS_KEY, JSON.stringify(filteredDel));
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
     } catch (e) {
         console.warn("[SystemMaterials] Code heal notice:", e);
     }
@@ -403,7 +438,7 @@ export function getSystemRawMaterials() {
                 customMats.forEach(cm => {
                     if (!cm || (!cm.name && !cm.raw_material_name)) return;
                     const code = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
-                    if (code.startsWith(otherPrefix)) return; // tenant isolation
+                    if (!cm.is_imported && !cm.is_manual_override && code.startsWith(otherPrefix)) return; // tenant isolation for non-imported items
 
                     const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
                     const catMatch = catalogRef.find(b =>
@@ -460,7 +495,7 @@ export function getSystemRawMaterials() {
                 const ov = ovs[key];
                 if (!ov || (!ov.name && !ov.raw_material_name)) return;
                 const code = String(ov.item_code || ov.id || key || "").toUpperCase().trim();
-                if (code.startsWith(otherPrefix)) return;
+                if (!ov.is_imported && !ov.is_manual_override && code.startsWith(otherPrefix)) return;
 
                 const normName = (ov.name || ov.raw_material_name || "").trim().toLowerCase();
                 const foundIndex = list.findIndex(m =>
@@ -543,7 +578,7 @@ export function getSystemRawMaterials() {
         console.warn("[SystemMaterials] Could not apply manager overrides:", e);
     }
 
-    // 3. Filter out deleted materials
+    // 3. Filter out deleted materials (never filter out newly imported materials)
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         if (deletedRaw) {
@@ -551,6 +586,7 @@ export function getSystemRawMaterials() {
             if (Array.isArray(deletedArr) && deletedArr.length > 0) {
                 const deletedSet = new Set(deletedArr.map(d => String(d).trim().toLowerCase()));
                 list = list.filter(m => {
+                    if (m.is_imported === true) return true;
                     const mId = String(m.id || "").trim().toLowerCase();
                     const mCode = String(m.item_code || m.itemCode || "").trim().toLowerCase();
                     const mName = String(m.name || m.raw_material_name || "").trim().toLowerCase();
@@ -677,13 +713,20 @@ export function saveCustomRawMaterial(mat) {
     custom.push(fullRecord);
     localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(custom));
 
-    // Also remove from deleted set if it was previously marked deleted
+    // Also remove from deleted set if it was previously marked deleted (case-insensitive)
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         if (deletedRaw) {
             let deletedIds = JSON.parse(deletedRaw);
             if (Array.isArray(deletedIds)) {
-                deletedIds = deletedIds.filter(id => id !== fullRecord.id && id !== normName && id !== code);
+                const toClear = new Set([
+                    String(fullRecord.id || "").toLowerCase().trim(),
+                    String(fullRecord.item_code || "").toLowerCase().trim(),
+                    String(code || "").toLowerCase().trim(),
+                    normName,
+                    recognized && recognized.canonicalName ? String(recognized.canonicalName).toLowerCase().trim() : ""
+                ].filter(Boolean));
+                deletedIds = deletedIds.filter(id => !toClear.has(String(id || "").toLowerCase().trim()));
                 localStorage.setItem(RMIMS_DELETED_MATERIALS_KEY, JSON.stringify(deletedIds));
             }
         }

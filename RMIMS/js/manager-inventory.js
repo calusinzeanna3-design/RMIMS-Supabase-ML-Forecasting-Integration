@@ -4765,6 +4765,9 @@ async function handleConfirmImportMaterials() {
   let processedRows = 0;
   let uniqueMaterialCount = 0;
   const groupEntries = Array.from(groupedByCode.entries());
+  const batchReceipts = [];
+  const batchDisbursements = [];
+  const importedCodesAndNamesLower = new Set();
 
   for (let gIdx = 0; gIdx < groupEntries.length; gIdx++) {
     if (isImportCancelled) {
@@ -4773,6 +4776,8 @@ async function handleConfirmImportMaterials() {
     }
 
     const [code, rowsForMat] = groupEntries[gIdx];
+    importedCodesAndNamesLower.add(String(code).toLowerCase().trim());
+
     // Sort rows for this material chronologically by row date (preserving spreadsheet order on same date)
     rowsForMat.sort((a, b) => {
       const dA = String(a.row_date || a.latest_date || a.first_date || '');
@@ -4783,6 +4788,8 @@ async function handleConfirmImportMaterials() {
 
     const earliestRow = rowsForMat[0];
     const latestRow = rowsForMat[rowsForMat.length - 1];
+    if (latestRow.name) importedCodesAndNamesLower.add(String(latestRow.name).toLowerCase().trim());
+
     const prevOv = overrides[code] || {};
     const prevFirst = prevOv.first_date || prevOv.date_added || '';
     const rowMinDate = earliestRow.first_date || earliestRow.date_added || earliestRow.row_date || fallbackDateStr;
@@ -4796,7 +4803,7 @@ async function handleConfirmImportMaterials() {
       ? (rowMaxDate >= prevLatest ? rowMaxDate : prevLatest)
       : (rowMaxDate || prevLatest || itemFirstDate);
 
-    // Record chronological stock movements across dates for Analytics & Forecasting
+    // Collect chronological stock movements across dates for Analytics & Forecasting
     let prevStockLevel = 0;
     rowsForMat.forEach((r, rIdx) => {
       const rDate = r.row_date || r.latest_date || r.first_date || itemFirstDate;
@@ -4804,27 +4811,42 @@ async function handleConfirmImportMaterials() {
       const delta = rIdx === 0 ? curStock : (curStock - prevStockLevel);
       prevStockLevel = curStock;
       if (delta > 0) {
-        saveCustomReceipt({
+        batchReceipts.push({
           id: `rec-import-${code}-${rDate}-${rIdx}`,
           material_id: code,
+          materialId: code,
           material_name: latestRow.name,
+          materialName: latestRow.name,
           received_quantity: delta,
+          receivedQuantity: delta,
+          quantity: delta,
           unit: latestRow.unit,
           receipt_date: rDate,
+          receiptDate: rDate,
           supplier_name: latestRow.supplier || 'Batch Imported via File',
-          received_by: 'Store Manager'
+          supplierName: latestRow.supplier || 'Batch Imported via File',
+          received_by: 'Store Manager',
+          created_at: now.toISOString()
         });
       } else if (delta < 0) {
-        saveCustomDisbursement({
+        batchDisbursements.push({
           id: `disb-import-${code}-${rDate}-${rIdx}`,
           material_id: code,
+          materialId: code,
           material_name: latestRow.name,
+          materialName: latestRow.name,
           consumed_quantity: Math.abs(delta),
+          consumedQuantity: Math.abs(delta),
+          quantity: Math.abs(delta),
           unit: latestRow.unit,
           usage_date: rDate,
+          usageDate: rDate,
           activity_type: 'Production Usage',
+          activityType: 'Production Usage',
           finished_product_name: 'Imported Operational Usage',
-          recorded_by: 'Store Manager'
+          finishedProductName: 'Imported Operational Usage',
+          recorded_by: 'Store Manager',
+          created_at: now.toISOString()
         });
       }
     });
@@ -4906,20 +4928,66 @@ async function handleConfirmImportMaterials() {
     if (pctEl) pctEl.textContent = `${pct}%`;
     if (statusEl) statusEl.textContent = `Importing data... (${processedRows} / ${totalRows} records)`;
 
-    await new Promise(r => setTimeout(r, 45));
+    await new Promise(r => setTimeout(r, 35));
   }
 
   if (!isImportCancelled) {
+    // Atomically persist batch receipts & disbursements
+    try {
+      if (batchReceipts.length > 0) {
+        const existingRecs = getSystemCustomReceipts();
+        const batchRecIds = new Set(batchReceipts.map(r => String(r.id)));
+        const mergedRecs = [...batchReceipts, ...existingRecs.filter(r => !batchRecIds.has(String(r.id)))];
+        localStorage.setItem('rmims_custom_receipts', JSON.stringify(mergedRecs));
+      }
+      if (batchDisbursements.length > 0) {
+        const existingDisbs = getSystemCustomDisbursements();
+        const batchDisbIds = new Set(batchDisbursements.map(d => String(d.id)));
+        const mergedDisbs = [...batchDisbursements, ...existingDisbs.filter(d => !batchDisbIds.has(String(d.id)))];
+        localStorage.setItem('rmims_custom_disbursements', JSON.stringify(mergedDisbs));
+      }
+    } catch (e) {
+      console.warn('Batch ledger save notice:', e);
+    }
+
+    // Ensure none of the imported materials remain in deleted materials list
+    try {
+      const delRaw = localStorage.getItem('rmims_deleted_material_ids');
+      if (delRaw) {
+        const delArr = JSON.parse(delRaw);
+        if (Array.isArray(delArr)) {
+          const cleanedDel = delArr.filter(d => !importedCodesAndNamesLower.has(String(d || '').toLowerCase().trim()));
+          localStorage.setItem('rmims_deleted_material_ids', JSON.stringify(cleanedDel));
+        }
+      }
+    } catch (_) {}
+
     if (circleEl) circleEl.style.strokeDashoffset = '0';
     if (barEl) barEl.style.width = '100%';
     if (pctEl) pctEl.textContent = '100%';
     if (statusEl) statusEl.textContent = `Successfully imported ${totalRows} records (${uniqueMaterialCount} raw materials)!`;
 
     saveStoredOverrides(overrides);
+    try {
+      localStorage.setItem('rmims_manager_inventory_overrides', JSON.stringify(overrides));
+    } catch (_) {}
+
+    // Reset active filters so all imported rows are immediately visible in the table
+    activeTab = 'all';
+    statusFilter = 'all';
+    searchQuery = '';
+    currentPage = 1;
+    const searchInputEl = document.getElementById('invSearchInput');
+    if (searchInputEl) searchInputEl.value = '';
+    const statusSelectEl = document.getElementById('invStatusFilter');
+    if (statusSelectEl) statusSelectEl.value = 'all';
+
+    loadMaterials();
+    renderUI();
     broadcastManagerSync({ action: 'import_materials', count: uniqueMaterialCount, totalRows });
 
     // Wait briefly at 100% so user sees completion
-    await new Promise(r => setTimeout(r, 650));
+    await new Promise(r => setTimeout(r, 450));
 
     closeImportRawMaterialsModal();
     loadMaterials();
