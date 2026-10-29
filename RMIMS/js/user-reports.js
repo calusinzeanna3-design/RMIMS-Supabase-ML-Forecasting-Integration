@@ -14,7 +14,7 @@ import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
-import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, resolveForecastingMaterialByName } from "./system-materials.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { getActiveTenantContext } from "./tenant-manager.js";
 function getMaterialAiRequirement(material, tenantCtx) {
@@ -457,22 +457,38 @@ async function loadAuthoritativeData() {
 
         const matBaseMap = new Map();
 
-        // Seed with authentic system raw materials for the current tenant (guarantees 19 for Scones, 59 for KXC)
-        getSystemRawMaterials().forEach(m => {
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            const code = String(m.item_code || m.id || "").toUpperCase().trim();
-            if (code.startsWith(expectedPrefix)) {
-                matBaseMap.set(k, {
-                    id: String(m.id || code),
-                    item_code: code,
-                    name: m.name || m.raw_material_name,
-                    unit_of_measure: m.unit_of_measure || m.unit || "",
-                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                    reorder_quantity: Number(m.reorder_quantity ?? 50),
-                    lead_time_days: Number(m.lead_time_days ?? 3)
-                });
+        // Helper to resolve canonical code for active tenant
+        const getCanonicalCode = (rawName, rawCode) => {
+            const cleanCode = String(rawCode || "").toUpperCase().trim();
+            const cleanName = String(rawName || "").trim();
+            const rec = resolveForecastingMaterialByName(cleanName, isScones);
+            if (rec && rec.code && rec.code.startsWith(expectedPrefix)) return rec.code;
+            if (cleanCode.startsWith(expectedPrefix)) {
+                if (isScones && !cleanCode.match(/^NB-0(0[1-9]|1[0-9])$/)) {
+                    const rec2 = resolveForecastingMaterialByName(cleanName, true);
+                    return rec2 ? rec2.code : null;
+                }
+                return cleanCode;
             }
+            return null;
+        };
+
+        // Seed with authentic system raw materials for the current tenant (guarantees strictly 19 for Scones, 59 for KXC)
+        getSystemRawMaterials().forEach(m => {
+            const code = getCanonicalCode(m.name || m.raw_material_name, m.item_code || m.id);
+            if (!code) return;
+            matBaseMap.set(code, {
+                id: code,
+                item_code: code,
+                itemCode: code,
+                name: m.name || m.raw_material_name,
+                raw_material_name: m.raw_material_name || m.name,
+                unit_of_measure: m.unit_of_measure || m.unit || (isScones ? "g" : "kg"),
+                current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                reorder_quantity: Number(m.reorder_quantity ?? 50),
+                lead_time_days: Number(m.lead_time_days ?? 3)
+            });
         });
 
         let localCustomMats = [];
@@ -483,16 +499,23 @@ async function loadAuthoritativeData() {
 
         if (Array.isArray(localCustomMats)) {
             localCustomMats.forEach(m => {
-                const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
-                if (!code.startsWith(expectedPrefix)) return; // Air-gap
-                const k = String(m.name || m.id || "").toLowerCase().trim();
-                if (!matBaseMap.has(k)) {
-                    matBaseMap.set(k, {
-                        id: String(m.id || code),
+                const code = getCanonicalCode(m.name || m.raw_material_name, m.item_code || m.itemCode || m.id);
+                if (!code) return;
+                const existing = matBaseMap.get(code);
+                const curStock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
+                if (existing) {
+                    if (curStock > 0 || m.is_zero_explicit === true || m.is_manual_override === true) {
+                        existing.current_stock = curStock;
+                    }
+                    if (m.unit || m.unit_of_measure) existing.unit_of_measure = m.unit || m.unit_of_measure;
+                    if (m.minimum_threshold || m.minimum_stock) existing.minimum_threshold = Number(m.minimum_threshold ?? m.minimum_stock);
+                } else if (!isScones) {
+                    matBaseMap.set(code, {
+                        id: code,
                         item_code: code,
                         name: m.name,
-                        unit_of_measure: m.unit_of_measure || m.unit || "",
-                        current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                        unit_of_measure: m.unit_of_measure || m.unit || "kg",
+                        current_stock: curStock,
                         minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
                         reorder_quantity: Number(m.reorder_quantity ?? 50),
                         lead_time_days: Number(m.lead_time_days ?? 3)
@@ -502,33 +525,42 @@ async function loadAuthoritativeData() {
         }
 
         (rawMats || []).forEach(m => {
-            const smCode = String(m.item_code || m.id || "").toUpperCase().trim();
-            if (smCode && !smCode.startsWith(expectedPrefix)) return; // Air-gap
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            const existing = matBaseMap.get(k);
+            const code = getCanonicalCode(m.name, m.item_code || m.id);
+            if (!code) return;
+            const existing = matBaseMap.get(code);
+            const curStock = Number(m.current_stock ?? 0);
             if (existing) {
-                existing.id = String(m.id || existing.id);
-                if (m.current_stock !== undefined && m.current_stock !== null) existing.current_stock = Number(m.current_stock);
-                if (m.item_code) existing.item_code = m.item_code;
-                if (m.unit_of_measure) existing.unit_of_measure = m.unit_of_measure;
-                if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
-                if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
-                if (m.lead_time_days !== undefined && m.lead_time_days !== null) existing.lead_time_days = Number(m.lead_time_days);
-            } else if (m.name) {
-                matBaseMap.set(k, {
-                    id: String(m.id || smCode),
-                    item_code: smCode,
+                if (curStock > 0) existing.current_stock = curStock;
+                if (m.minimum_threshold !== undefined && m.minimum_threshold !== null && Number(m.minimum_threshold) > 0) {
+                    existing.minimum_threshold = Number(m.minimum_threshold);
+                }
+            } else if (!isScones) {
+                matBaseMap.set(code, {
+                    id: code,
+                    item_code: code,
                     name: m.name,
-                    unit_of_measure: m.unit_of_measure || m.unit || "",
-                    current_stock: Number(m.current_stock ?? 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? 0),
+                    unit_of_measure: m.unit_of_measure || "kg",
+                    current_stock: curStock,
+                    minimum_threshold: Number(m.minimum_threshold ?? 10),
                     reorder_quantity: Number(m.reorder_quantity ?? 50),
                     lead_time_days: Number(m.lead_time_days ?? 3)
                 });
             }
         });
 
+        // Enforce strict sequential sort and strict 19-material limit for Scones & Muffins
         rawMats = Array.from(matBaseMap.values());
+        if (isScones) {
+            rawMats = rawMats.filter(m => {
+                const c = String(m.item_code || m.id).toUpperCase().trim();
+                return /^NB-0(0[1-9]|1[0-9])$/.test(c);
+            });
+            rawMats.sort((a, b) => {
+                const numA = parseInt(String(a.item_code || a.id).replace(/\D+/g, "") || "0", 10);
+                const numB = parseInt(String(b.item_code || b.id).replace(/\D+/g, "") || "0", 10);
+                return numA - numB;
+            });
+        }
 
         // 3. Receipts mapping (STRICTLY live: Supabase + local receipts, ZERO mock fallbacks)
         const recBaseMap = new Map();

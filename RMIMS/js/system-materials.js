@@ -30,7 +30,7 @@ export function cleanseMaterialBlacklists() {
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v21";
+        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v22";
         if (typeof window !== "undefined" && !localStorage.getItem(END_USER_CLEAN_FLAG)) {
             const isUserCreatedItem = (item) => {
                 if (!item || typeof item !== "object") return false;
@@ -995,7 +995,12 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
     const oldStock = Number(mat.current_stock || 0);
     const newStock = Math.max(0, oldStock + delta);
     mat.current_stock = newStock;
+    mat.currentStock = newStock;
+    mat.stock = newStock;
+    mat.is_zero_explicit = (newStock === 0);
+    mat.is_manual_override = true;
     mat.last_updated = new Date().toISOString();
+    mat.latest_date = mat.last_updated;
 
     saveCustomRawMaterial(mat);
 
@@ -1015,22 +1020,28 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
                     name: mat.name,
                     raw_material_name: mat.raw_material_name || mat.name,
                     current_stock: newStock,
+                    currentStock: newStock,
+                    stock: newStock,
                     unit: mat.unit || mat.unit_of_measure,
                     last_updated: mat.last_updated,
+                    latest_date: mat.last_updated,
+                    is_zero_explicit: (newStock === 0),
                     is_manual_override: true
                 };
                 if (idKey && nameKey && idKey !== nameKey) {
                     ovs[nameKey] = {
                         ...(ovs[nameKey] || {}),
                         current_stock: newStock,
-                        last_updated: mat.last_updated,
+                        currentStock: newStock,
+                        stock: newStock,
+                        is_zero_explicit: (newStock === 0),
                         is_manual_override: true
                     };
                 }
                 localStorage.setItem(ovKey, JSON.stringify(ovs));
             }
         });
-    } catch (e) {}
+    } catch (_) {}
 
     // Invalidate forecast cache and broadcast
     invalidateForecastCache();

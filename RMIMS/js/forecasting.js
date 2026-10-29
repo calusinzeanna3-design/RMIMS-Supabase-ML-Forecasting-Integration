@@ -18,7 +18,7 @@ import {
     SCONES_TENANT_ID,
     TENANT_CONFIGS 
 } from "./tenant-manager.js";
-import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache, getSconesMaterialImagePath, resolveForecastingMaterialByName } from "./system-materials.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache, getSconesMaterialImagePath, resolveForecastingMaterialByName, parseSafeDate } from "./system-materials.js";
 import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 
@@ -672,11 +672,21 @@ function isGenericOperational(name) {
    ========================================================== */
 
 function computeAuthoritativeForecastBaseline() {
+    const tCtx = getActiveTenantContext();
     const usageByMaterial = new Map();
+
     state.disbursements.forEach(d => {
-        const arr = usageByMaterial.get(d.materialId) || [];
-        arr.push(d);
-        usageByMaterial.set(d.materialId, arr);
+        const dMatId = String(d.materialId || d.itemCode || d.material_id || "").toLowerCase().trim();
+        const dMatName = String(d.materialName || d.material_name || "").toLowerCase().trim();
+        const resolved = resolveForecastingMaterialByName(dMatName || dMatId, tCtx.isScones);
+        const resolvedCode = resolved ? String(resolved.code).toLowerCase().trim() : "";
+
+        [dMatId, dMatName, resolvedCode].forEach(k => {
+            if (!k) return;
+            const arr = usageByMaterial.get(k) || [];
+            arr.push(d);
+            usageByMaterial.set(k, arr);
+        });
     });
 
     const now = new Date();
@@ -684,17 +694,33 @@ function computeAuthoritativeForecastBaseline() {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400000);
 
     state.materials.forEach(m => {
-        const recs = usageByMaterial.get(m.id) || [];
+        const keys = [
+            String(m.id || "").toLowerCase().trim(),
+            String(m.itemCode || "").toLowerCase().trim(),
+            String(m.name || "").toLowerCase().trim()
+        ];
+        const recsSet = new Set();
+        keys.forEach(k => {
+            if (usageByMaterial.has(k)) {
+                usageByMaterial.get(k).forEach(tx => recsSet.add(tx));
+            }
+        });
+        const recs = Array.from(recsSet);
         
-        // Sort chronologically
-        recs.sort((a, b) => new Date(a.usageDate || a.createdAt) - new Date(b.usageDate || b.createdAt));
+        // Sort chronologically using parseSafeDate
+        recs.sort((a, b) => {
+            const da = parseSafeDate(a.usageDate || a.createdAt) || new Date(0);
+            const db = parseSafeDate(b.usageDate || b.createdAt) || new Date(0);
+            return da - db;
+        });
 
         let last7DaysUsage = 0;
         let prev7DaysUsage = 0;
         let totalUsage = 0;
 
         recs.forEach(r => {
-            const uDate = new Date(r.usageDate || r.createdAt);
+            const uDate = parseSafeDate(r.usageDate || r.createdAt);
+            if (!uDate) return;
             const q = Number(r.consumedQuantity) || 0;
             totalUsage += q;
             if (uDate >= sevenDaysAgo && uDate <= now) {
@@ -704,33 +730,31 @@ function computeAuthoritativeForecastBaseline() {
             }
         });
 
-        // Dynamic Pattern & Trend Momentum Analysis
-        // If recent 7 days are high, momentum factor elevates the predicted requirement
+        // Dynamic Pattern & Trend Momentum Analysis incorporating latest disbursements
+        const trainedF7 = Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : 0));
         let weeklyRunRate = last7DaysUsage > 0
-            ? last7DaysUsage
+            ? Math.max(last7DaysUsage, trainedF7)
             : (recs.length > 0
-                ? (totalUsage / Math.max(1, recs.length / 7))
-                : Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : (m.currentStock > 0 ? m.currentStock * 0.25 : 0))));
+                ? Math.max(totalUsage / Math.max(1, recs.length / 7), trainedF7)
+                : trainedF7);
         
         // Momentum velocity: compare recent 7 days vs prior 7 days
         let momentumVelocity = 1.0;
         if (prev7DaysUsage > 0 && last7DaysUsage > 0) {
             const growthRate = (last7DaysUsage - prev7DaysUsage) / prev7DaysUsage;
-            // Bound velocity momentum to maintain realistic operational stability
             momentumVelocity = 1.0 + Math.max(-0.06, Math.min(0.075, growthRate * 0.4));
         }
 
         let f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
         let f1mQty = Number((m.forecast_monthly && recs.length === 0 ? Number(m.forecast_monthly) : (f7Qty * 4.15)).toFixed(1));
 
-        const tCtx = getActiveTenantContext();
         const curStock = m.currentStock;
         const diff = curStock - f7Qty;
         let decisionStatus = "Good";
         if (curStock <= 0) decisionStatus = "Out of Stock";
         else if (diff < 0 || curStock <= m.minStock) decisionStatus = "Low Stock";
 
-        state.forecasts.set(m.name, {
+        const forecastItem = {
             status: "success",
             material_id: m.itemCode,
             raw_material_name: m.name,
@@ -757,7 +781,10 @@ function computeAuthoritativeForecastBaseline() {
                         ? `Potential shortage of ${Math.abs(diff).toFixed(1)} ${m.unit}. Replenishment recommended.`
                         : (curStock <= m.minStock ? `Stock near minimum threshold. Monitor closely.` : `Sufficient stock for projected 7-day operations.`))
             }
-        });
+        };
+
+        state.forecasts.set(m.name, forecastItem);
+        state.forecasts.set(m.itemCode, forecastItem);
     });
 
     state.lastForecastTimestamp = new Date();
@@ -806,30 +833,33 @@ async function evaluateForecastState() {
         if (lastTime >= latestDataTime) {
             try {
                 const parsed = JSON.parse(cachedData);
-                if (parsed && typeof parsed === "object") {
-                    const matByName = new Map(state.materials.map(m => [m.name, m]));
-                    Object.entries(parsed).forEach(([k, v]) => {
-                        const liveMat = matByName.get(k);
-                        if (liveMat && v && typeof v === "object") {
-                            const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || liveMat.minStock * 0.85 || 0);
-                            const f1m = Number(v.forecast1Month?.quantity) || Number((f7 * 4.15).toFixed(1));
-                            const curStock = liveMat.currentStock;
-                            const diff = curStock - f7;
-                            const st = curStock <= 0 ? "Out of Stock" : (diff < 0 || curStock <= liveMat.minStock ? "Low Stock" : "Good");
-                            v.forecast7Day = { quantity: f7, unit: liveMat.unit };
-                            v.forecast1Month = { quantity: f1m, unit: liveMat.unit };
-                            v.current_inventory = { current_stock: curStock, minimum_threshold: liveMat.minStock, unit: liveMat.unit };
-                            v.decision_support = {
-                                ...(v.decision_support || {}),
-                                difference: diff,
-                                decision_status: st,
-                                status: st
-                            };
-                        }
-                        state.forecasts.set(k, v);
-                    });
-                    state.lastForecastTimestamp = new Date(lastTime);
-                    isCacheValid = true;
+                if (parsed && typeof parsed === "object" && Object.keys(parsed).length >= 19) {
+                    const hasValidValues = Object.values(parsed).some(v => Number(v?.forecast7Day?.quantity || 0) > 0);
+                    if (hasValidValues) {
+                        const matByName = new Map(state.materials.map(m => [m.name, m]));
+                        Object.entries(parsed).forEach(([k, v]) => {
+                            const liveMat = matByName.get(k);
+                            if (liveMat && v && typeof v === "object") {
+                                const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || liveMat.minStock * 0.85 || 0);
+                                const f1m = Number(v.forecast1Month?.quantity) || Number((f7 * 4.15).toFixed(1));
+                                const curStock = liveMat.currentStock;
+                                const diff = curStock - f7;
+                                const st = curStock <= 0 ? "Out of Stock" : (diff < 0 || curStock <= liveMat.minStock ? "Low Stock" : "Good");
+                                v.forecast7Day = { quantity: f7, unit: liveMat.unit };
+                                v.forecast1Month = { quantity: f1m, unit: liveMat.unit };
+                                v.current_inventory = { current_stock: curStock, minimum_threshold: liveMat.minStock, unit: liveMat.unit };
+                                v.decision_support = {
+                                    ...(v.decision_support || {}),
+                                    difference: diff,
+                                    decision_status: st,
+                                    status: st
+                                };
+                            }
+                            state.forecasts.set(k, v);
+                        });
+                        state.lastForecastTimestamp = new Date(lastTime);
+                        isCacheValid = true;
+                    }
                 }
             } catch (e) {
                 console.warn("Forecast cache parse notice:", e);
@@ -841,7 +871,7 @@ async function evaluateForecastState() {
         setServiceStatus("Forecast Ready", "ready");
         renderAll();
     } else {
-        await generateAllForecasts();
+        computeAuthoritativeForecastBaseline();
     }
 }
 

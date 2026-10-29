@@ -5,6 +5,7 @@
  */
 
 import { getActiveTenantContext } from './tenant-manager.js';
+import { parseSafeDate, resolveForecastingMaterialByName } from './system-materials.js';
 
 export function initForecastCalendarCard(containerId, options = {}) {
   const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
@@ -469,18 +470,32 @@ export function initForecastCalendarCard(containerId, options = {}) {
       const txStatus = String(tx.status || '').toLowerCase();
       if (txStatus === 'rejected') return;
 
-      const matId = tx.material_id ?? tx.materialId;
-      if (selectedMaterialId !== 'ALL' && String(matId) !== String(selectedMaterialId)) {
-        // Also check against code/itemCode match
-        const selMat = (materials || []).find(m => String(m.id) === String(selectedMaterialId));
-        const selCode = selMat?.item_code || selMat?.code || selMat?.itemCode;
-        if (!selCode || String(matId) !== String(selCode)) return;
+      const matId = String(tx.material_id ?? tx.materialId ?? tx.item_code ?? tx.itemCode ?? '').trim();
+      const matName = String(tx.material_name ?? tx.materialName ?? '').trim();
+
+      if (selectedMaterialId !== 'ALL') {
+        const selMat = (materials || []).find(m => 
+          String(m.id).toLowerCase() === String(selectedMaterialId).toLowerCase() ||
+          String(m.item_code || m.itemCode || '').toLowerCase() === String(selectedMaterialId).toLowerCase() ||
+          String(m.name || '').toLowerCase() === String(selectedMaterialId).toLowerCase()
+        );
+        const selCode = String(selMat?.item_code || selMat?.itemCode || selMat?.id || selectedMaterialId).toUpperCase().trim();
+        const selName = String(selMat?.name || selMat?.raw_material_name || '').toLowerCase().trim();
+        const txCode = matId.toUpperCase();
+        const txNameLower = matName.toLowerCase();
+        const rec = resolveForecastingMaterialByName(matName || matId);
+        const recCode = rec ? String(rec.code).toUpperCase().trim() : '';
+
+        const isMatch = (txCode && txCode === selCode) ||
+                        (txNameLower && (txNameLower === selName || txNameLower.includes(selName) || selName.includes(txNameLower))) ||
+                        (recCode && recCode === selCode);
+        if (!isMatch) return;
       }
 
       const txDateStr = tx.usage_date || tx.usageDate || tx.transaction_date || tx.date || tx.created_at;
       if (!txDateStr) return;
-      const d = new Date(txDateStr);
-      if (isNaN(d.getTime())) return;
+      const d = parseSafeDate(txDateStr);
+      if (!d || isNaN(d.getTime())) return;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const qty = parseFloat(tx.consumed_quantity ?? tx.consumedQuantity ?? tx.quantity ?? tx.qty ?? 0) || 0;
       disMap.set(key, (disMap.get(key) || 0) + qty);
