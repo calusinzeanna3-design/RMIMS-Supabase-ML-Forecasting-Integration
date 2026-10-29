@@ -525,7 +525,6 @@ async function loadAuthoritativeData() {
         rawDisbursements = Array.from(disbBaseMap.values());
 
         // Normalize Materials with Dynamic AI Forecast Requirement Integration
-        let tCtx = null;
         try { tCtx = getActiveTenantContext(); } catch (_) {}
 
         state.materials = rawMats.map(m => {
