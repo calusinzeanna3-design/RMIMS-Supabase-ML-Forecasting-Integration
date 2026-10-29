@@ -18,7 +18,7 @@ import {
     SCONES_TENANT_ID,
     TENANT_CONFIGS 
 } from "./tenant-manager.js";
-import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache, getSconesMaterialImagePath } from "./system-materials.js";
+import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache, getSconesMaterialImagePath, resolveForecastingMaterialByName } from "./system-materials.js";
 import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 
@@ -427,62 +427,67 @@ async function loadAuthoritativeData() {
             deletedRecIds = new Set(JSON.parse(localStorage.getItem("rmims_deleted_receipt_ids") || "[]").map(x => String(x)));
         } catch (e) {}
 
-        // 1. Authoritative Materials per Active Tenant
-        const matMap = new Map();
+        // 1. Authoritative Materials per Active Tenant (Strictly End-User Imported / Added Materials)
+        const expectedPrefix = tCtx.isScones ? "NB-" : "RM-";
         const tenantBaseMats = getTenantMaterials();
-        tenantBaseMats.forEach(m => {
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            matMap.set(k, {
-                id: String(m.id || m.item_code),
-                item_code: m.item_code || m.itemCode || m.id,
-                name: m.name,
-                unit_of_measure: m.unit_of_measure || m.unit || "kg",
+        const baseModelByCode = new Map();
+        const baseModelByName = new Map();
+        tenantBaseMats.forEach(bm => {
+            const c = String(bm.item_code || bm.itemCode || bm.id || "").toUpperCase().trim();
+            const n = String(bm.name || "").toLowerCase().trim();
+            if (c) baseModelByCode.set(c, bm);
+            if (n) baseModelByName.set(n, bm);
+        });
+
+        const matMap = new Map();
+        getSystemRawMaterials().forEach(m => {
+            const resolvedModel = resolveForecastingMaterialByName(m.name || m.raw_material_name);
+            let code = String(m.item_code || m.id || (resolvedModel ? resolvedModel.code : "")).toUpperCase().trim();
+            if (resolvedModel && resolvedModel.code && resolvedModel.code.startsWith(expectedPrefix)) {
+                code = resolvedModel.code;
+            }
+            if (!code.startsWith(expectedPrefix)) return; // Air-gap: strictly reject cross-tenant items!
+
+            const bm = baseModelByCode.get(code) || baseModelByName.get(String(m.name || "").toLowerCase().trim()) || {};
+            const key = code.toLowerCase();
+
+            matMap.set(key, {
+                id: code.toLowerCase(),
+                item_code: code,
+                name: (resolvedModel && resolvedModel.canonicalName) ? resolvedModel.canonicalName : (m.name || m.raw_material_name),
+                unit_of_measure: m.unit_of_measure || m.unit || bm.unit_of_measure || bm.unit || (tCtx.isScones ? "g" : "kg"),
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                description: m.description || "",
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? bm.minimum_threshold ?? 10),
+                date_added: m.first_date || m.date_added || "",
+                last_updated: m.latest_date || m.last_updated || m.first_date || "",
+                description: m.description || bm.description || "",
                 created_at: m.created_at || new Date().toISOString(),
-                forecast_daily: m.forecast_daily,
-                forecast_weekly: m.forecast_weekly,
-                forecast_monthly: m.forecast_monthly,
-                forecast_90d: m.forecast_90d,
-                daily_mape: m.daily_mape,
-                weekly_mape: m.weekly_mape,
-                p90_margin: m.p90_margin,
-                p95_margin: m.p95_margin
+                forecast_daily: m.forecast_daily ?? bm.forecast_daily,
+                forecast_weekly: m.forecast_weekly ?? bm.forecast_weekly,
+                forecast_monthly: m.forecast_monthly ?? bm.forecast_monthly,
+                forecast_90d: m.forecast_90d ?? bm.forecast_90d,
+                daily_mape: m.daily_mape ?? bm.daily_mape,
+                weekly_mape: m.weekly_mape ?? bm.weekly_mape,
+                p90_margin: m.p90_margin ?? bm.p90_margin,
+                p95_margin: m.p95_margin ?? bm.p95_margin
             });
         });
 
-        // Strict tenant prefix for air-gapping
-        const expectedPrefix = tCtx.isScones ? "NB-" : "RM-";
-
-        // Merge custom materials saved in system-materials ONLY if matching active tenant prefix
-        getSystemRawMaterials().forEach(m => {
-            const code = String(m.item_code || m.id || "").toUpperCase().trim();
-            if (!code.startsWith(expectedPrefix)) return; // Air-gap: strictly reject cross-tenant items!
-            const k = String(m.name || m.id || "").toLowerCase().trim();
-            if (!matMap.has(k)) {
-                matMap.set(k, {
-                    id: String(m.id || m.item_code),
-                    item_code: m.item_code || m.itemCode || m.id,
-                    name: m.name,
-                    unit_of_measure: m.unit_of_measure || m.unit || (tCtx.isScones ? "g" : "kg"),
-                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                    description: m.description || "",
-                    created_at: m.created_at || new Date().toISOString()
-                });
-            }
-        });
-
-        // If live Supabase returned raw_materials, merge stocks
+        // If live Supabase returned raw_materials and matMap was empty or had 0 stock, merge non-zero stocks
         rawMats.forEach(sm => {
-            const k = String(sm.name || sm.id || "").toLowerCase().trim();
-            const smCode = String(sm.item_code || sm.id || "").toUpperCase().trim();
-            if (smCode && !smCode.startsWith(expectedPrefix)) return; // Air-gap: strictly reject cross-tenant Supabase items
-            if (matMap.has(k)) {
-                const target = matMap.get(k);
-                target.current_stock = Number(sm.current_stock ?? target.current_stock);
-                if (sm.minimum_threshold) target.minimum_threshold = Number(sm.minimum_threshold);
+            const resolvedModel = resolveForecastingMaterialByName(sm.name || sm.raw_material_name);
+            let smCode = String(sm.item_code || sm.id || (resolvedModel ? resolvedModel.code : "")).toUpperCase().trim();
+            if (resolvedModel && resolvedModel.code && resolvedModel.code.startsWith(expectedPrefix)) {
+                smCode = resolvedModel.code;
+            }
+            if (!smCode || !smCode.startsWith(expectedPrefix)) return;
+            const key = smCode.toLowerCase();
+            const smStock = Number(sm.current_stock ?? 0);
+            if (matMap.has(key)) {
+                const target = matMap.get(key);
+                if (target.current_stock <= 0 && smStock > 0) {
+                    target.current_stock = smStock;
+                }
             }
         });
 
@@ -491,15 +496,7 @@ async function loadAuthoritativeData() {
             return code.startsWith(expectedPrefix);
         });
 
-        if (deletedMatIds.size > 0) {
-            masterMats = masterMats.filter(m => {
-                const code = String(m.item_code || m.id || "").toLowerCase().trim();
-                const name = String(m.name || "").toLowerCase().trim();
-                return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has(code) && !deletedMatIds.has(name);
-            });
-        }
-
-        // 2. Authoritative Disbursements (Strictly Live User Transactions - Zero Mock Historical Datasets)
+        // 2. Authoritative Disbursements (Strictly Live User Transactions)
         const disbMap = new Map();
         getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
         rawUsage.forEach(u => disbMap.set(String(u.id), { ...u }));
@@ -508,7 +505,7 @@ async function loadAuthoritativeData() {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
         }
 
-        // 3. Authoritative Receipts (Strictly Live User Transactions - Zero Mock Historical Datasets)
+        // 3. Authoritative Receipts (Strictly Live User Transactions)
         const recMap = new Map();
         getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
         rawReceipts.forEach(r => recMap.set(String(r.id), { ...r }));
@@ -517,25 +514,6 @@ async function loadAuthoritativeData() {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
         }
         state.receipts = masterReceipts;
-
-        // Compute dynamic live stock for each raw material based on transactions
-        masterMats.forEach(m => {
-            const mId = String(m.id).toLowerCase().trim();
-            const mCode = String(m.item_code || "").toLowerCase().trim();
-            const mName = String(m.name || "").toLowerCase().trim();
-
-            const isMatch = (tid, tmat) => {
-                const s = String(tid || tmat || "").toLowerCase().trim();
-                return s === mId || s === mCode || s === mName;
-            };
-
-            const totRec = masterReceipts.filter(r => isMatch(r.material_id, r.material_name)).reduce((s, r) => s + Number(r.received_quantity ?? r.receivedQuantity ?? r.quantity ?? 0), 0);
-            const totDisb = masterDisbursements.filter(d => isMatch(d.material_id, d.material_name)).reduce((s, d) => s + Number(d.consumed_quantity ?? d.consumedQuantity ?? d.quantity ?? 0), 0);
-
-            if (totRec > 0 || totDisb > 0) {
-                m.current_stock = Math.max(0, Number((totRec - totDisb).toFixed(2)));
-            }
-        });
 
         // Determine latest consumption timestamp
         let latestUsageTime = 0;
@@ -626,7 +604,18 @@ async function loadAuthoritativeData() {
 
         // Normalize Disbursements
         state.disbursements = masterDisbursements.map(d => {
-            const m = state.materials.find(mat => mat.id === d.material_id || mat.itemCode === d.material_id || (mat.name && d.finished_product_name && mat.name.toLowerCase() === d.finished_product_name.toLowerCase()));
+            const dRawId = String(d.material_id || d.materialId || "").toLowerCase().trim();
+            const dRawName = String(d.material_name || d.materialName || d.finished_product_name || "").toLowerCase().trim();
+            const resolvedD = resolveForecastingMaterialByName(dRawName || dRawId);
+            const resolvedCode = resolvedD ? String(resolvedD.code).toLowerCase() : "";
+            const m = state.materials.find(mat => {
+                const mId = String(mat.id || "").toLowerCase().trim();
+                const mCode = String(mat.itemCode || "").toLowerCase().trim();
+                const mName = String(mat.name || "").toLowerCase().trim();
+                return (dRawId && (mId === dRawId || mCode === dRawId || mName === dRawId)) ||
+                       (dRawName && mName === dRawName) ||
+                       (resolvedCode && (mId === resolvedCode || mCode === resolvedCode));
+            });
             const pName = d.finished_product_name || d.activity_type || null;
             let calibratedQty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
 
@@ -639,8 +628,9 @@ async function loadAuthoritativeData() {
 
             return {
                 id: d.id,
-                materialId: d.material_id,
-                materialName: m ? m.name : "Raw Material",
+                materialId: m ? m.id : d.material_id,
+                itemCode: m ? m.itemCode : (d.material_id || ""),
+                materialName: m ? m.name : (d.material_name || d.materialName || "Raw Material"),
                 consumedQuantity: calibratedQty,
                 usageDate: d.usage_date || (d.created_at ? d.created_at.split("T")[0] : null),
                 unit: (d.unit || (m ? m.unit : "kg")).trim(),
@@ -716,7 +706,11 @@ function computeAuthoritativeForecastBaseline() {
 
         // Dynamic Pattern & Trend Momentum Analysis
         // If recent 7 days are high, momentum factor elevates the predicted requirement
-        let weeklyRunRate = last7DaysUsage > 0 ? last7DaysUsage : (recs.length > 0 ? (totalUsage / Math.max(1, recs.length / 7)) : 0);
+        let weeklyRunRate = last7DaysUsage > 0
+            ? last7DaysUsage
+            : (recs.length > 0
+                ? (totalUsage / Math.max(1, recs.length / 7))
+                : Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : (m.currentStock > 0 ? m.currentStock * 0.25 : 0))));
         
         // Momentum velocity: compare recent 7 days vs prior 7 days
         let momentumVelocity = 1.0;
@@ -726,8 +720,8 @@ function computeAuthoritativeForecastBaseline() {
             momentumVelocity = 1.0 + Math.max(-0.06, Math.min(0.075, growthRate * 0.4));
         }
 
-        let f7Qty = recs.length > 0 ? Number((weeklyRunRate * momentumVelocity).toFixed(1)) : 0;
-        let f1mQty = recs.length > 0 ? Number((f7Qty * 4.15).toFixed(1)) : 0;
+        let f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
+        let f1mQty = Number((m.forecast_monthly && recs.length === 0 ? Number(m.forecast_monthly) : (f7Qty * 4.15)).toFixed(1));
 
         const tCtx = getActiveTenantContext();
         const curStock = m.currentStock;
@@ -813,7 +807,25 @@ async function evaluateForecastState() {
             try {
                 const parsed = JSON.parse(cachedData);
                 if (parsed && typeof parsed === "object") {
+                    const matByName = new Map(state.materials.map(m => [m.name, m]));
                     Object.entries(parsed).forEach(([k, v]) => {
+                        const liveMat = matByName.get(k);
+                        if (liveMat && v && typeof v === "object") {
+                            const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || liveMat.minStock * 0.85 || 0);
+                            const f1m = Number(v.forecast1Month?.quantity) || Number((f7 * 4.15).toFixed(1));
+                            const curStock = liveMat.currentStock;
+                            const diff = curStock - f7;
+                            const st = curStock <= 0 ? "Out of Stock" : (diff < 0 || curStock <= liveMat.minStock ? "Low Stock" : "Good");
+                            v.forecast7Day = { quantity: f7, unit: liveMat.unit };
+                            v.forecast1Month = { quantity: f1m, unit: liveMat.unit };
+                            v.current_inventory = { current_stock: curStock, minimum_threshold: liveMat.minStock, unit: liveMat.unit };
+                            v.decision_support = {
+                                ...(v.decision_support || {}),
+                                difference: diff,
+                                decision_status: st,
+                                status: st
+                            };
+                        }
                         state.forecasts.set(k, v);
                     });
                     state.lastForecastTimestamp = new Date(lastTime);
@@ -880,10 +892,12 @@ async function generateAllForecasts() {
                 if (res && res.ok) {
                     const data = await res.json();
                     if (data && (data.status === "success" || data.success === true)) {
-                        const f7 = Number(data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0);
-                        const f1m = Number(data.planning_28_day_requirement ?? data.forecast1Month?.quantity ?? 0);
-                        const curStock = Number(data.current_stock ?? m.currentStock ?? 0);
-                        const diff = Number(data.net_surplus_deficit_7d ?? (curStock - f7));
+                        const rawF7 = Number(data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0);
+                        const f7 = rawF7 > 0 ? rawF7 : Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : 0));
+                        const rawF1m = Number(data.planning_28_day_requirement ?? data.forecast1Month?.quantity ?? 0);
+                        const f1m = rawF1m > 0 ? rawF1m : Number((f7 * 4.15).toFixed(1));
+                        const curStock = Number(m.currentStock ?? data.current_stock ?? 0);
+                        const diff = Number((curStock - f7).toFixed(2));
                         const normalizedData = {
                             status: "success",
                             material_name: m.name,
@@ -3542,13 +3556,31 @@ function renderModalFunctionView() {
     }
 
     const isMonthly = state.selectedPeriod === "monthly";
+    const tCtxModal = getActiveTenantContext();
+    const defaultUnitLabel = tCtxModal.isScones ? "g" : "kg";
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const recentUsageMap = new Map();
     const consumedTotalMap = new Map();
     const recentReceiveMap = new Map();
 
+    const resolveMatKey = (rawId, rawName) => {
+        const sId = String(rawId || "").toLowerCase().trim();
+        const sName = String(rawName || "").toLowerCase().trim();
+        const resolved = resolveForecastingMaterialByName(sName || sId);
+        const rCode = resolved ? String(resolved.code).toLowerCase() : "";
+        const found = state.materials.find(m => {
+            const mId = String(m.id || "").toLowerCase().trim();
+            const mCode = String(m.itemCode || "").toLowerCase().trim();
+            const mName = String(m.name || "").toLowerCase().trim();
+            return (sId && (mId === sId || mCode === sId || mName === sId)) ||
+                   (sName && mName === sName) ||
+                   (rCode && (mId === rCode || mCode === rCode));
+        });
+        return found ? found.id : (rawId || rawName);
+    };
+
     (state.disbursements || []).forEach(d => {
-        const matId = d.materialId;
+        const matId = resolveMatKey(d.materialId || d.itemCode, d.materialName);
         const qty = Number(d.consumedQuantity || d.quantity || 0);
         if (!matId || isNaN(qty)) return;
         consumedTotalMap.set(matId, (consumedTotalMap.get(matId) || 0) + qty);
@@ -3558,13 +3590,26 @@ function renderModalFunctionView() {
         }
     });
 
+    // If recentUsageMap has no 7-day entries for a material that has historical/imported usage, fall back to consumedTotalMap
+    consumedTotalMap.forEach((totQty, matId) => {
+        if (!recentUsageMap.has(matId) && totQty > 0) {
+            recentUsageMap.set(matId, totQty);
+        }
+    });
+
     try {
         const customRecs = getSystemCustomReceipts ? getSystemCustomReceipts() : [];
         (customRecs || []).forEach(r => {
-            const mId = r.materialId || r.raw_material_id;
+            const mId = resolveMatKey(r.materialId || r.material_id || r.raw_material_id, r.materialName || r.material_name);
             const q = Number(r.quantity || r.received_quantity || 0);
             if (mId && !isNaN(q)) {
                 recentReceiveMap.set(mId, (recentReceiveMap.get(mId) || 0) + q);
+            }
+        });
+        // If no separate custom receipt records exist yet for an imported material, reflect its imported initial stock as inward supply
+        state.materials.forEach(m => {
+            if (!recentReceiveMap.has(m.id) && m.currentStock > 0) {
+                recentReceiveMap.set(m.id, m.currentStock);
             }
         });
     } catch (e) {}
@@ -3750,7 +3795,7 @@ function renderModalFunctionView() {
 
         if (summaryBanner) {
             summaryBanner.innerHTML = `
-                <span>Total 7-Day Projected Demand: <strong style="color:#15803D;">${totalDemand.toFixed(1)} kg</strong></span>
+                <span>Total 7-Day Projected Demand: <strong style="color:#15803D;">${totalDemand.toFixed(1)} ${defaultUnitLabel}</strong></span>
                 <span style="margin: 0 8px; color: #CBD5E1;">&bull;</span>
                 <span>Critical Run-Out Alerts (&le; 3d): <strong style="color:#DC2626;">${criticalDepletions} Materials</strong></span>
             `;
@@ -3867,9 +3912,9 @@ function renderModalFunctionView() {
 
         if (summaryBanner) {
             summaryBanner.innerHTML = `
-                <span>Total Recorded Usage: <strong style="color:#0F2A1B;">${sumRec.toFixed(1)} kg</strong></span>
+                <span>Total Recorded Usage: <strong style="color:#0F2A1B;">${sumRec.toFixed(1)} ${defaultUnitLabel}</strong></span>
                 <span style="margin: 0 8px; color: #CBD5E1;">&bull;</span>
-                <span>Total AI Projected Demand: <strong style="color:#15803D;">${sumFc.toFixed(1)} kg</strong></span>
+                <span>Total AI Projected Demand: <strong style="color:#15803D;">${sumFc.toFixed(1)} ${defaultUnitLabel}</strong></span>
             `;
         }
         return;
@@ -4167,9 +4212,9 @@ function renderModalFunctionView() {
 
         if (summaryBanner) {
             summaryBanner.innerHTML = `
-                <span>Total Received Inward: <strong style="color:#EA580C;">${sumInward.toFixed(1)} kg</strong></span>
+                <span>Total Received Inward: <strong style="color:#EA580C;">${sumInward.toFixed(1)} ${defaultUnitLabel}</strong></span>
                 <span style="margin: 0 8px; color: #CBD5E1;">&bull;</span>
-                <span>Total Future AI Demand: <strong style="color:#15803D;">${sumReq.toFixed(1)} kg</strong></span>
+                <span>Total Future AI Demand: <strong style="color:#15803D;">${sumReq.toFixed(1)} ${defaultUnitLabel}</strong></span>
             `;
         }
         return;
@@ -4235,16 +4280,44 @@ function renderModalFunctionView() {
 
     if (summaryBanner) {
         summaryBanner.innerHTML = `
-            <span>Total Demand: <strong style="color:#15803D;">${totalDemandSum.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg</strong></span>
+            <span>Total Demand: <strong style="color:#15803D;">${totalDemandSum.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${defaultUnitLabel}</strong></span>
             <span style="margin: 0 8px; color: #CBD5E1;">&bull;</span>
-            <span>Deficit Additional Needed: <strong style="color:#DC2626;">${totalDeficitSum.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg</strong></span>
+            <span>Deficit Additional Needed: <strong style="color:#DC2626;">${totalDeficitSum.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${defaultUnitLabel}</strong></span>
         `;
     }
+}
+
+function syncModalFilterSelectUI(filterSelect, val) {
+    if (!filterSelect) return;
+    filterSelect.value = val;
+    try {
+        if (filterSelect._rmimsCombobox && typeof filterSelect._rmimsCombobox.sync === "function") {
+            filterSelect._rmimsCombobox.sync();
+        }
+        const wrapper = filterSelect.closest(".custom-select-wrapper");
+        if (wrapper) {
+            const triggerSpan = wrapper.querySelector(".custom-select-trigger span");
+            const selectedOpt = filterSelect.options[filterSelect.selectedIndex];
+            if (triggerSpan && selectedOpt) {
+                triggerSpan.textContent = selectedOpt.textContent;
+            }
+            wrapper.querySelectorAll(".custom-option").forEach(opt => {
+                opt.classList.toggle("selected", opt.getAttribute("data-value") === val);
+            });
+        }
+    } catch (_) {}
 }
 
 function openTotalForecastModal(targetFunction = "total_breakdown", initialFilter = "all") {
     const overlay = document.getElementById("modalTotalForecastOverlay");
     if (!overlay) return;
+
+    // Refresh live materials & baseline if needed
+    if (state.materials.length === 0 && getSystemRawMaterials().length > 0) {
+        loadAuthoritativeData();
+    } else {
+        computeAuthoritativeForecastBaseline();
+    }
 
     if (typeof targetFunction === "string" && MODAL_FUNCTION_CONFIG[targetFunction]) {
         activeModalFunction = targetFunction;
@@ -4253,8 +4326,8 @@ function openTotalForecastModal(targetFunction = "total_breakdown", initialFilte
     }
 
     const filterSelect = document.getElementById("modalTotalForecastFilter");
-    if (filterSelect && initialFilter && typeof initialFilter === "string") {
-        filterSelect.value = initialFilter;
+    if (filterSelect) {
+        syncModalFilterSelectUI(filterSelect, (initialFilter && typeof initialFilter === "string") ? initialFilter : "all");
     }
 
     if (!modalTotalForecastBound) {
@@ -4269,6 +4342,10 @@ function openTotalForecastModal(targetFunction = "total_breakdown", initialFilte
                 const targetFn = tab.getAttribute("data-function");
                 if (targetFn && MODAL_FUNCTION_CONFIG[targetFn]) {
                     activeModalFunction = targetFn;
+                    // Reset restrictive filter (e.g. 'out_of_stock') when switching tabs so all materials show
+                    if (filterSelect && filterSelect.value !== "all") {
+                        syncModalFilterSelectUI(filterSelect, "all");
+                    }
                     renderModalFunctionView();
                 }
             });

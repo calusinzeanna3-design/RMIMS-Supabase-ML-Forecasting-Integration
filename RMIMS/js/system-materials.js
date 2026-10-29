@@ -30,7 +30,7 @@ export function cleanseMaterialBlacklists() {
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v19";
+        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v20";
         if (typeof window !== "undefined" && !localStorage.getItem(END_USER_CLEAN_FLAG)) {
             const isUserCreatedItem = (item) => {
                 if (!item || typeof item !== "object") return false;
@@ -41,6 +41,7 @@ export function permanentlyPurgeOldWeeklyInputs() {
                 if (item.added_by === "Store Manager" || item.added_by === "Staff") return true;
                 // Distinguish genuine user input from system-patched 2026-10-29 defaults
                 if (item.is_manual_override === true && item.date_added && item.date_added !== "2026-10-29") return true;
+                if (Number(item.current_stock ?? item.currentStock ?? 0) > 0) return true;
                 return false;
             };
 
@@ -49,7 +50,11 @@ export function permanentlyPurgeOldWeeklyInputs() {
                 if (customRaw) {
                     const arr = JSON.parse(customRaw);
                     if (Array.isArray(arr)) {
-                        const kept = arr.filter(isUserCreatedItem);
+                        const kept = arr.filter(isUserCreatedItem).map(it => ({
+                            ...it,
+                            is_imported: true,
+                            is_manual_override: true
+                        }));
                         localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(kept));
                     }
                 }
@@ -64,7 +69,11 @@ export function permanentlyPurgeOldWeeklyInputs() {
                             const cleanedOvs = {};
                             Object.keys(ovs).forEach(key => {
                                 if (isUserCreatedItem(ovs[key])) {
-                                    cleanedOvs[key] = ovs[key];
+                                    cleanedOvs[key] = {
+                                        ...ovs[key],
+                                        is_imported: true,
+                                        is_manual_override: true
+                                    };
                                 }
                             });
                             localStorage.setItem(k, JSON.stringify(cleanedOvs));
@@ -72,6 +81,9 @@ export function permanentlyPurgeOldWeeklyInputs() {
                     }
                 } catch (_) {}
             });
+
+            // Clear stale v18 blanket material blacklist so registered NB-001..NB-019 / RM-001..RM-059 codes are never blocked
+            localStorage.removeItem(RMIMS_DELETED_MATERIALS_KEY);
 
             // Remove auto-seeded Scones Formulation finished product if it was system-generated
             ["rmims_custom_finished_products", "RMSME_CUSTOM_FINISHED_PRODUCTS", "rmims_finished_products", "rmims_finished_product_context"].forEach(fpKey => {
@@ -200,7 +212,9 @@ export function healForecastingMaterialCodes() {
                     const updatedItem = {
                         ...item,
                         id: targetCode || item.id,
-                        item_code: targetCode || item.item_code
+                        item_code: targetCode || item.item_code,
+                        is_imported: true,
+                        is_manual_override: true
                     };
                     const key = targetCode || name.toLowerCase().trim();
                     if (!byCode.has(key)) {
@@ -231,7 +245,9 @@ export function healForecastingMaterialCodes() {
                             first_date: earliestDate,
                             display_date: earliestDate,
                             last_updated: latestDate,
-                            latest_date: latestDate
+                            latest_date: latestDate,
+                            is_imported: true,
+                            is_manual_override: true
                         });
                     }
                 });
@@ -270,7 +286,9 @@ export function healForecastingMaterialCodes() {
                     healedOvs[targetKey] = {
                         ...ov,
                         id: recognized ? recognized.code : (ov.id || k),
-                        item_code: recognized ? recognized.code : (ov.item_code || k)
+                        item_code: recognized ? recognized.code : (ov.item_code || k),
+                        is_imported: true,
+                        is_manual_override: true
                     };
                 } else {
                     ovMutated = true;
@@ -298,7 +316,9 @@ export function healForecastingMaterialCodes() {
                         first_date: earliestDate,
                         display_date: earliestDate,
                         last_updated: latestDate,
-                        latest_date: latestDate
+                        latest_date: latestDate,
+                        is_imported: true,
+                        is_manual_override: true
                     };
                 }
             });

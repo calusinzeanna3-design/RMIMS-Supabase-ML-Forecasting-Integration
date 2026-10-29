@@ -24,9 +24,19 @@ import {
   checkReferenceDuplicate,
   showDuplicateWarningModal,
   updateManagerDisbursement,
-  deleteManagerDisbursement
+  deleteManagerDisbursement,
+  getStaffTransactions
 } from './rmims-transaction-engine.js';
-import { recordMaterialDisbursementToSupabase, saveRawMaterialToSupabase, broadcastManagerSync, deleteMaterialDisbursementOnSupabase } from '../supabase/manager-supabase-service.js';
+import {
+  recordMaterialDisbursementToSupabase,
+  saveRawMaterialToSupabase,
+  fetchUnifiedInventoryFromSupabase,
+  fetchStaffTransactionsFromSupabase,
+  approveTransactionOnSupabase,
+  returnTransactionForCorrectionOnSupabase,
+  broadcastManagerSync,
+  deleteMaterialDisbursementOnSupabase
+} from '../supabase/manager-supabase-service.js';
 import { attachSearchableCombobox } from './rmims-combobox.js';
 
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
@@ -218,6 +228,20 @@ function initManagerDisburse() {
   bindDisbursementActionEvents();
   renderKpis();
   renderHistoryTable();
+
+  // Live Supabase Sync
+  try {
+    fetchUnifiedInventoryFromSupabase().then(() => {
+      rawMaterials = getSystemRawMaterials();
+      populateMaterialSelects();
+    }).catch(() => {});
+
+    fetchStaffTransactionsFromSupabase().then(() => {
+      loadDisbursements();
+      renderKpis();
+      renderHistoryTable();
+    }).catch(() => {});
+  } catch (_) {}
 
   // Listen for storage events to refresh if stock or finished products changed elsewhere
   const handleLiveRefresh = () => {
@@ -1070,7 +1094,90 @@ function renderKpis() {
 // HISTORY LEDGER WITH PAGINATION, SORTING & TIME DISPLAY
 // ============================================================================
 
+function renderStaffDisburseReviewBanner() {
+  const tbody = document.getElementById('mgrDisburseHistoryTbody');
+  if (!tbody) return;
+  const tableWrap = tbody.closest('.mgr-ledger-table-wrap') || tbody.closest('table')?.parentElement;
+  if (!tableWrap) return;
+
+  let banner = document.getElementById('mgrStaffDisburseQueueBanner');
+  const allStaff = getStaffTransactions() || [];
+  const staffDisbs = allStaff.filter(t => {
+    const act = String(t.activity || t.type || '').toLowerCase();
+    const refStr = String(t.ref || '');
+    const isDisb = act.includes('disb') || refStr.toUpperCase().startsWith('DIS') || /-D\d+/i.test(refStr);
+    return isDisb && (t.status === 'Pending' || t.status === 'Correction Needed');
+  });
+
+  if (staffDisbs.length === 0) {
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'mgrStaffDisburseQueueBanner';
+    banner.style.cssText = 'margin-bottom:14px; padding:12px 16px; border-radius:12px; background:#FFFBEB; border:1px solid #FDE68A; display:flex; flex-direction:column; gap:10px;';
+    tableWrap.parentNode.insertBefore(banner, tableWrap);
+  }
+
+  banner.style.display = 'flex';
+  banner.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div style="font-size:13px; font-weight:700; color:#92400E;">
+        📋 Staff Disburse Submissions & Corrections (${staffDisbs.length} awaiting action)
+      </div>
+      <a href="staff-activity.html" style="font-size:12px; font-weight:700; color:#B45309; text-decoration:none;">Open Full Staff Activity Review &rarr;</a>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      ${staffDisbs.slice(0, 5).map(t => `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#FFFFFF; border:1px solid #FEF3C7; border-radius:8px; padding:8px 12px; font-size:12.5px;">
+          <div>
+            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || 'Staff_1')}</strong>:
+            <span style="color:#D97706; font-weight:700;">-${escapeHtml(t.quantity)} ${escapeHtml(t.unit || '')}</span> of <strong>${escapeHtml(t.material)}</strong>
+            ${t.isUpdated ? `<span style="margin-left:6px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">🔵 Resubmitted</span>` : ''}
+            ${t.status === 'Correction Needed' ? `<span style="margin-left:6px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Correction Needed: "${escapeHtml(t.correctionMessage || '')}"</span>` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button type="button" class="btn-inline-approve-disb" data-ref="${escapeHtml(t.ref)}" style="padding:4px 10px; border-radius:6px; border:none; background:#15803D; color:#FFF; font-size:11.5px; font-weight:700; cursor:pointer;">Approve</button>
+            <button type="button" class="btn-inline-correct-disb" data-ref="${escapeHtml(t.ref)}" style="padding:4px 10px; border-radius:6px; border:1px solid #F59E0B; background:#FFFBEB; color:#B45309; font-size:11.5px; font-weight:700; cursor:pointer;">Return for Correction</button>
+            <a href="staff-activity.html?review=${encodeURIComponent(t.ref)}" style="padding:4px 10px; border-radius:6px; border:1px solid #CBD5E1; background:#FFF; color:#334155; font-size:11.5px; font-weight:600; text-decoration:none;">Review</a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  banner.querySelectorAll('.btn-inline-approve-disb').forEach(btn => {
+    btn.onclick = async () => {
+      const ref = btn.getAttribute('data-ref');
+      const tx = staffDisbs.find(x => x.ref === ref);
+      if (!tx) return;
+      await approveTransactionOnSupabase(tx);
+      rawMaterials = getSystemRawMaterials();
+      loadDisbursements();
+      populateMaterialSelects();
+      renderKpis();
+      renderHistoryTable();
+    };
+  });
+
+  banner.querySelectorAll('.btn-inline-correct-disb').forEach(btn => {
+    btn.onclick = async () => {
+      const ref = btn.getAttribute('data-ref');
+      const tx = staffDisbs.find(x => x.ref === ref);
+      if (!tx) return;
+      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || 'Staff_1'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and batch purpose details.');
+      if (!msg || !msg.trim()) return;
+      await returnTransactionForCorrectionOnSupabase(tx, msg.trim());
+      loadDisbursements();
+      renderHistoryTable();
+    };
+  });
+}
+
 function renderHistoryTable() {
+  renderStaffDisburseReviewBanner();
   const tbody = document.getElementById('mgrDisburseHistoryTbody');
   const countEl = document.getElementById('disbLedgerCount');
   const paginationControls = document.getElementById('disbPaginationBtns');

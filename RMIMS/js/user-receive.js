@@ -14,6 +14,7 @@ import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
 import {
   fetchUnifiedInventoryFromSupabase,
+  fetchStaffTransactionsFromSupabase,
   broadcastManagerSync
 } from '../supabase/manager-supabase-service.js';
 import {
@@ -410,7 +411,10 @@ function initUserReceive() {
 
   // Live Supabase sync
   try {
-    fetchUnifiedInventoryFromSupabase().then(() => {
+    Promise.allSettled([
+      fetchUnifiedInventoryFromSupabase(),
+      fetchStaffTransactionsFromSupabase()
+    ]).then(() => {
       rawMaterials = getSystemRawMaterials();
       populateMaterialSelect();
       renderMySubmissions();

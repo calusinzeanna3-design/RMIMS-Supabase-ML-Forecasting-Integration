@@ -24,13 +24,17 @@ import {
   checkReferenceDuplicate,
   showDuplicateWarningModal,
   updateManagerReceipt,
-  deleteManagerReceipt
+  deleteManagerReceipt,
+  getStaffTransactions
 } from './rmims-transaction-engine.js';
 import {
   recordStockReceiptToSupabase,
   saveRawMaterialToSupabase,
   fetchUnifiedInventoryFromSupabase,
   fetchLiveStockReceiptsFromSupabase,
+  fetchStaffTransactionsFromSupabase,
+  approveTransactionOnSupabase,
+  returnTransactionForCorrectionOnSupabase,
   deleteStockReceiptOnSupabase,
   broadcastManagerSync
 } from '../supabase/manager-supabase-service.js';
@@ -233,7 +237,10 @@ function initManagerReceive() {
       populateMaterialSelects();
     }).catch(() => {});
 
-    fetchLiveStockReceiptsFromSupabase().then(() => {
+    Promise.allSettled([
+      fetchLiveStockReceiptsFromSupabase(),
+      fetchStaffTransactionsFromSupabase()
+    ]).then(() => {
       loadReceipts();
       renderKpis();
       renderHistoryTable();
@@ -1078,7 +1085,90 @@ function renderKpis() {
 // HISTORY LEDGER WITH PAGINATION, SORTING & TIME DISPLAY
 // ============================================================================
 
+function renderStaffReceiveReviewBanner() {
+  const tbody = document.getElementById('mgrReceiveHistoryTbody');
+  if (!tbody) return;
+  const tableWrap = tbody.closest('.mgr-ledger-table-wrap') || tbody.closest('table')?.parentElement;
+  if (!tableWrap) return;
+
+  let banner = document.getElementById('mgrStaffReceiveQueueBanner');
+  const allStaff = getStaffTransactions() || [];
+  const staffRecs = allStaff.filter(t => {
+    const act = String(t.activity || t.type || '').toLowerCase();
+    const refStr = String(t.ref || '');
+    const isRec = act.includes('rec') || refStr.toUpperCase().startsWith('REC') || /-R\d+/i.test(refStr);
+    return isRec && (t.status === 'Pending' || t.status === 'Correction Needed');
+  });
+
+  if (staffRecs.length === 0) {
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'mgrStaffReceiveQueueBanner';
+    banner.style.cssText = 'margin-bottom:14px; padding:12px 16px; border-radius:12px; background:#F0FDF4; border:1px solid #BBF7D0; display:flex; flex-direction:column; gap:10px;';
+    tableWrap.parentNode.insertBefore(banner, tableWrap);
+  }
+
+  banner.style.display = 'flex';
+  banner.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div style="font-size:13px; font-weight:700; color:#14532D;">
+        📋 Staff Receive Submissions & Corrections (${staffRecs.length} awaiting action)
+      </div>
+      <a href="staff-activity.html" style="font-size:12px; font-weight:700; color:#15803D; text-decoration:none;">Open Full Staff Activity Review &rarr;</a>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      ${staffRecs.slice(0, 5).map(t => `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#FFFFFF; border:1px solid #DCFCE7; border-radius:8px; padding:8px 12px; font-size:12.5px;">
+          <div>
+            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || 'Staff_1')}</strong>:
+            <span style="color:#15803D; font-weight:700;">+${escapeHtml(t.quantity)} ${escapeHtml(t.unit || '')}</span> of <strong>${escapeHtml(t.material)}</strong>
+            ${t.isUpdated ? `<span style="margin-left:6px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">🔵 Resubmitted</span>` : ''}
+            ${t.status === 'Correction Needed' ? `<span style="margin-left:6px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Correction Needed: "${escapeHtml(t.correctionMessage || '')}"</span>` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button type="button" class="btn-inline-approve-rec" data-ref="${escapeHtml(t.ref)}" style="padding:4px 10px; border-radius:6px; border:none; background:#15803D; color:#FFF; font-size:11.5px; font-weight:700; cursor:pointer;">Approve</button>
+            <button type="button" class="btn-inline-correct-rec" data-ref="${escapeHtml(t.ref)}" style="padding:4px 10px; border-radius:6px; border:1px solid #F59E0B; background:#FFFBEB; color:#B45309; font-size:11.5px; font-weight:700; cursor:pointer;">Return for Correction</button>
+            <a href="staff-activity.html?review=${encodeURIComponent(t.ref)}" style="padding:4px 10px; border-radius:6px; border:1px solid #CBD5E1; background:#FFF; color:#334155; font-size:11.5px; font-weight:600; text-decoration:none;">Review</a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  banner.querySelectorAll('.btn-inline-approve-rec').forEach(btn => {
+    btn.onclick = async () => {
+      const ref = btn.getAttribute('data-ref');
+      const tx = staffRecs.find(x => x.ref === ref);
+      if (!tx) return;
+      await approveTransactionOnSupabase(tx);
+      rawMaterials = getSystemRawMaterials();
+      loadReceipts();
+      populateMaterialSelects();
+      renderKpis();
+      renderHistoryTable();
+    };
+  });
+
+  banner.querySelectorAll('.btn-inline-correct-rec').forEach(btn => {
+    btn.onclick = async () => {
+      const ref = btn.getAttribute('data-ref');
+      const tx = staffRecs.find(x => x.ref === ref);
+      if (!tx) return;
+      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || 'Staff_1'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and supplier details.');
+      if (!msg || !msg.trim()) return;
+      await returnTransactionForCorrectionOnSupabase(tx, msg.trim());
+      loadReceipts();
+      renderHistoryTable();
+    };
+  });
+}
+
 function renderHistoryTable() {
+  renderStaffReceiveReviewBanner();
   const tbody = document.getElementById('mgrReceiveHistoryTbody');
   const countEl = document.getElementById('recLedgerCount');
   const paginationControls = document.getElementById('recPaginationBtns');

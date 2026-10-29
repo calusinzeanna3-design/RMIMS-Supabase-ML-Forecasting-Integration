@@ -18,6 +18,10 @@ import {
   resubmitStaffCorrection,
   checkReferenceDuplicate
 } from './rmims-transaction-engine.js';
+import {
+  fetchStaffTransactionsFromSupabase,
+  fetchUnifiedInventoryFromSupabase
+} from '../supabase/manager-supabase-service.js';
 
 let rawMaterials = [];
 let allTransactions = [];
@@ -73,6 +77,15 @@ document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   loadAndRenderActivity();
 
+  Promise.allSettled([
+    fetchUnifiedInventoryFromSupabase(),
+    fetchStaffTransactionsFromSupabase()
+  ]).then(() => {
+    rawMaterials = getSystemRawMaterials();
+    populateMaterialSelects();
+    loadAndRenderActivity();
+  }).catch(() => {});
+
   // URL query check: e.g. ?correct=REC-2026-00125 or ?ref=REC-2026-00125 or ?view=REC-2026-00125
   const params = new URLSearchParams(window.location.search);
   const correctTarget = params.get('correct');
@@ -93,14 +106,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tx) {
         openCorrectionModal(tx);
       }
-    }, 200);
+    }, 250);
   } else if (viewTarget) {
     setTimeout(() => {
       const tx = findTx(viewTarget);
       if (tx) {
-        openViewModal(tx);
+        if (tx.status === 'Correction Needed') {
+          openCorrectionModal(tx);
+        } else {
+          openViewModal(tx);
+        }
       }
-    }, 200);
+    }, 250);
   }
 
   // Cross-tab and real-time sync
@@ -158,27 +175,35 @@ function populateMaterialSelects() {
   const corrMatSelect = document.getElementById('corrMaterialSelect');
   if (!corrMatSelect) return;
 
+  const prevVal = corrMatSelect.value;
+  corrMatSelect.innerHTML = '<option value="">-- Choose Raw Material --</option>';
+
   const safeMaterials = rawMaterials || [];
   safeMaterials.forEach(m => {
     const opt = document.createElement('option');
-    opt.value = m.name || m.materialName;
+    const mName = m.name || m.materialName || m.raw_material_name || '';
+    opt.value = mName;
     const unit = m.unit_of_measure || m.unit || '';
-    opt.textContent = unit ? `${m.name || m.materialName} (${m.category || 'General'} • ${unit})` : `${m.name || m.materialName} (${m.category || 'General'})`;
+    opt.textContent = unit ? `${mName} (${m.category || 'General'} • ${unit})` : `${mName} (${m.category || 'General'})`;
     opt.dataset.unit = unit;
     corrMatSelect.appendChild(opt);
   });
+  if (prevVal) corrMatSelect.value = prevVal;
 
-  // Material change updates stock preview badge and unit badge
-  corrMatSelect.addEventListener('change', () => {
-    updateStockPreview(corrMatSelect.value);
-  });
-
-  const corrUnitSelect = document.getElementById('corrUnitSelect');
-  if (corrUnitSelect) {
-    corrUnitSelect.addEventListener('change', () => {
-      const badge = document.getElementById('corrUnitBadge');
-      if (badge) badge.textContent = corrUnitSelect.value;
+  if (!corrMatSelect._boundChange) {
+    corrMatSelect._boundChange = true;
+    // Material change updates stock preview badge and unit badge
+    corrMatSelect.addEventListener('change', () => {
+      updateStockPreview(corrMatSelect.value);
     });
+
+    const corrUnitSelect = document.getElementById('corrUnitSelect');
+    if (corrUnitSelect) {
+      corrUnitSelect.addEventListener('change', () => {
+        const badge = document.getElementById('corrUnitBadge');
+        if (badge) badge.textContent = corrUnitSelect.value;
+      });
+    }
   }
 }
 
@@ -491,9 +516,12 @@ function applyFiltersAndRender() {
       }
     }
 
-    const createdFormatted = t.createdAt
-      ? new Date(t.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-      : (t.date || '--');
+    const dateFormatted = t.date || (t.createdAt
+      ? new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '--');
+    const timeFormatted = t.time || (t.createdAt
+      ? new Date(t.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : '--');
 
     const qtySign = isReceive ? '+' : '-';
     const qtyColor = isReceive ? '#15803D' : '#D97706';
@@ -538,7 +566,8 @@ function applyFiltersAndRender() {
 
     return `
       <tr style="${statusVal === 'Correction Needed' ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
-        <td style="color:#64748B; font-size:12px; white-space:nowrap;">${escapeHtml(createdFormatted)}</td>
+        <td style="font-weight:600; color:#334155; font-size:12px; white-space:nowrap;">${escapeHtml(dateFormatted)}</td>
+        <td style="color:#64748B; font-size:12px; white-space:nowrap;">${escapeHtml(timeFormatted)}</td>
         <td>${actBadge}</td>
         <td style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B; white-space:nowrap;">${escapeHtml(t.ref)}</td>
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
@@ -721,8 +750,17 @@ function openCorrectionModal(tx) {
   }
 
   // Pre-populate fields
+  rawMaterials = getSystemRawMaterials();
+  populateMaterialSelects();
   const matSelect = document.getElementById('corrMaterialSelect');
   if (matSelect) {
+    if (tx.material && !Array.from(matSelect.options).some(o => o.value === tx.material)) {
+      const opt = document.createElement('option');
+      opt.value = tx.material;
+      opt.textContent = tx.unit ? `${tx.material} (General • ${tx.unit})` : tx.material;
+      opt.dataset.unit = tx.unit || '';
+      matSelect.appendChild(opt);
+    }
     matSelect.value = tx.material || '';
     updateStockPreview(tx.material);
   }

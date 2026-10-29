@@ -17,7 +17,9 @@ import {
   saveCustomDisbursement,
   adjustSystemMaterialStock,
   updateMaterialActivityTimestamp,
-  invalidateForecastCache
+  invalidateForecastCache,
+  resolveForecastingMaterialByName,
+  healForecastingMaterialCodes
 } from '../js/system-materials.js';
 
 const STAFF_TX_KEY = 'rmims_staff_transactions';
@@ -549,6 +551,7 @@ export async function approveTransactionOnSupabase(tx) {
   }
 
   // 3. Update staff transaction status
+  let updatedStaffTx = null;
   try {
     const rawStaff = localStorage.getItem(STAFF_TX_KEY);
     if (rawStaff) {
@@ -559,13 +562,19 @@ export async function approveTransactionOnSupabase(tx) {
           staffList[idx].status = 'Approved';
           staffList[idx].approvedBy = 'Store Manager';
           staffList[idx].approvedAt = new Date().toISOString();
+          staffList[idx].updatedAt = new Date().toISOString();
           staffList[idx].quantity = qty;
           staffList[idx].unit = unit;
+          updatedStaffTx = staffList[idx];
           localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffList));
         }
       }
     }
   } catch (_) {}
+
+  if (updatedStaffTx) {
+    await syncStaffTransactionToSupabase(updatedStaffTx);
+  }
 
   // 4. Log Manager Activity
   try {
@@ -645,6 +654,7 @@ export async function rejectTransactionOnSupabase(tx, reason = 'Details require 
   if (!tx) return { success: false, message: 'Invalid transaction' };
 
   // 1. Update staff transaction status in local storage
+  let updatedStaffTx = null;
   try {
     const rawStaff = localStorage.getItem(STAFF_TX_KEY);
     if (rawStaff) {
@@ -656,11 +666,17 @@ export async function rejectTransactionOnSupabase(tx, reason = 'Details require 
           staffList[idx].rejectionReason = reason;
           staffList[idx].rejectedBy = 'Store Manager';
           staffList[idx].rejectedAt = new Date().toISOString();
+          staffList[idx].updatedAt = new Date().toISOString();
+          updatedStaffTx = staffList[idx];
           localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffList));
         }
       }
     }
   } catch (_) {}
+
+  if (updatedStaffTx) {
+    await syncStaffTransactionToSupabase(updatedStaffTx);
+  }
 
   // 2. Log manager activity in local storage
   try {
@@ -733,6 +749,7 @@ export async function returnTransactionForCorrectionOnSupabase(tx, message = 'Pl
   if (!tx) return { success: false, message: 'Invalid transaction' };
 
   // 1. Update staff transaction status in local storage
+  let updatedStaffTx = null;
   try {
     const rawStaff = localStorage.getItem(STAFF_TX_KEY);
     if (rawStaff) {
@@ -744,12 +761,30 @@ export async function returnTransactionForCorrectionOnSupabase(tx, message = 'Pl
           staffList[idx].correctionMessage = message;
           staffList[idx].returnedBy = 'Store Manager';
           staffList[idx].returnedAt = new Date().toISOString();
+          staffList[idx].updatedAt = new Date().toISOString();
           staffList[idx].isUpdated = false;
+          updatedStaffTx = staffList[idx];
           localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffList));
         }
       }
     }
   } catch (_) {}
+
+  if (!updatedStaffTx && tx.ref) {
+    updatedStaffTx = {
+      ...tx,
+      status: 'Correction Needed',
+      correctionMessage: message,
+      returnedBy: 'Store Manager',
+      returnedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isUpdated: false
+    };
+  }
+
+  if (updatedStaffTx) {
+    await syncStaffTransactionToSupabase(updatedStaffTx);
+  }
 
   // 2. Log manager activity in local storage
   try {
@@ -817,6 +852,133 @@ export async function returnTransactionForCorrectionOnSupabase(tx, message = 'Pl
 }
 
 /**
+ * Synchronize a Staff Transaction state object to Supabase activity_audit_logs
+ * so Staff and Manager portals always see the exact same transaction & correction state across tabs/sessions.
+ */
+export async function syncStaffTransactionToSupabase(tx) {
+  if (!supabase || !tx || !tx.ref) return;
+  try {
+    await logManagerActivityToSupabase({
+      action: 'STAFF_TX_STATE',
+      entityType: 'staff_transactions',
+      entityId: String(tx.ref),
+      details: tx
+    });
+  } catch (e) {
+    console.warn('[ManagerSupabase] Staff tx sync notice:', e);
+  }
+}
+
+/**
+ * Fetch and reconcile all Staff Transactions (Receive, Disburse, Corrections, Resubmissions) from Supabase
+ */
+export async function fetchStaffTransactionsFromSupabase() {
+  let localList = [];
+  try {
+    const raw = localStorage.getItem(STAFF_TX_KEY);
+    localList = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(localList)) localList = [];
+  } catch (_) {
+    localList = [];
+  }
+
+  if (!supabase) return localList;
+
+  try {
+    const { data, error } = await fetchWithTimeout(
+      supabase
+        .from('activity_audit_logs')
+        .select('*')
+        .eq('entity_type', 'staff_transactions')
+        .order('created_at', { ascending: false })
+        .limit(200),
+      4000
+    );
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const txMap = new Map();
+      const getTxTime = (t) => {
+        if (!t) return 0;
+        const ts = t.updatedAt || t.resubmittedAt || t.returnedAt || t.approvedAt || t.rejectedAt || t.createdAt || t.created_at || 0;
+        const parsed = new Date(ts).getTime();
+        return isNaN(parsed) ? 0 : parsed;
+      };
+
+      localList.forEach(item => {
+        if (item && item.ref) {
+          txMap.set(String(item.ref), item);
+        }
+      });
+
+      // Process remote logs from oldest to newest so newer actions naturally apply on top
+      const chronologicalLogs = [...data].reverse();
+      chronologicalLogs.forEach(row => {
+        if (!row) return;
+        let det = row.details;
+        if (typeof det === 'string') {
+          try { det = JSON.parse(det); } catch (_) { det = null; }
+        }
+        if (!det || typeof det !== 'object') return;
+        const ref = String(det.ref || row.entity_id || '').trim();
+        if (!ref) return;
+
+        const actionType = String(row.action_type || '').toUpperCase();
+        const rowTime = new Date(row.created_at || Date.now()).getTime() || 0;
+        const existing = txMap.get(ref);
+        const existingTime = getTxTime(existing);
+
+        if (actionType === 'STAFF_TX_STATE' && det.activity && det.material) {
+          if (!existing || getTxTime(det) >= existingTime || rowTime >= existingTime) {
+            txMap.set(ref, { ...existing, ...det });
+          }
+        } else if (actionType === 'RETURN_FOR_CORRECTION' && existing) {
+          if (rowTime >= existingTime) {
+            txMap.set(ref, {
+              ...existing,
+              status: 'Correction Needed',
+              correctionMessage: det.message || existing.correctionMessage || 'Please correct details and resubmit.',
+              returnedBy: 'Store Manager',
+              returnedAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.created_at || new Date().toISOString(),
+              isUpdated: false
+            });
+          }
+        } else if (actionType === 'APPROVE_TRANSACTION' && existing) {
+          if (rowTime >= existingTime) {
+            txMap.set(ref, {
+              ...existing,
+              status: 'Approved',
+              approvedBy: 'Store Manager',
+              approvedAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.created_at || new Date().toISOString()
+            });
+          }
+        } else if (actionType === 'REJECT_TRANSACTION' && existing) {
+          if (rowTime >= existingTime) {
+            txMap.set(ref, {
+              ...existing,
+              status: 'Rejected',
+              rejectionReason: det.reason || existing.rejectionReason || 'Rejected by Manager.',
+              rejectedBy: 'Store Manager',
+              rejectedAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.created_at || new Date().toISOString()
+            });
+          }
+        }
+      });
+
+      const merged = Array.from(txMap.values()).sort((a, b) => getTxTime(b) - getTxTime(a));
+      localStorage.setItem(STAFF_TX_KEY, JSON.stringify(merged));
+      return merged;
+    }
+  } catch (err) {
+    console.warn('[ManagerSupabase] Staff transactions fetch notice:', err);
+  }
+
+  return localList;
+}
+
+/**
  * Universal cross-module and cross-tab synchronization trigger
  */
 export function broadcastManagerSync(detail = {}) {
@@ -857,143 +1019,173 @@ export function broadcastManagerSync(detail = {}) {
  * Guarantees zero zombie materials and no resurrection of deleted items.
  */
 export async function fetchUnifiedInventoryFromSupabase() {
+  try {
+    healForecastingMaterialCodes();
+  } catch (_) {}
+
   if (!supabase) return getSystemRawMaterials();
 
   try {
-    const { data, error } = await fetchWithTimeout(supabase.from('raw_materials').select('*').order('name'), 4000);
-    if (!error && Array.isArray(data)) {
-      const deletedRaw = localStorage.getItem('rmims_deleted_material_ids');
-      const deletedArr = deletedRaw ? JSON.parse(deletedRaw) : [];
-      const deletedSet = new Set(Array.isArray(deletedArr) ? deletedArr.map(d => String(d).trim().toLowerCase()) : []);
+    const deletedRaw = localStorage.getItem('rmims_deleted_material_ids');
+    const deletedArr = deletedRaw ? JSON.parse(deletedRaw) : [];
+    const deletedSet = new Set(Array.isArray(deletedArr) ? deletedArr.map(d => String(d).trim().toLowerCase()) : []);
 
-      // EXACT authoritative sync: localCustom matches authoritative Supabase rows.
-      // If a material was deleted from Supabase, it is NOT preserved locally.
-      const reconciled = data.filter(sm => {
-        const codeLower = String(sm.item_code || sm.id || '').toLowerCase().trim();
-        const nameLower = (sm.name || '').trim().toLowerCase();
-        const idLower = String(sm.id || '').toLowerCase().trim();
-        return !deletedSet.has(codeLower) && !deletedSet.has(nameLower) && !deletedSet.has(idLower);
-      }).map(sm => {
-        const code = String(sm.item_code || sm.id || '').toUpperCase().trim();
-        return {
-          id: sm.id || code,
-          item_code: sm.item_code || code,
-          name: sm.name,
-          raw_material_name: sm.name,
-          unit_of_measure: sm.unit_of_measure,
-          unit: sm.unit_of_measure,
-          current_stock: Number(sm.current_stock ?? 0),
-          currentStock: Number(sm.current_stock ?? 0),
-          minimum_threshold: Number(sm.minimum_threshold ?? 10),
-          minimum_stock: Number(sm.minimum_threshold ?? 10),
-          reorder_quantity: Number(sm.reorder_quantity ?? 25),
-          lead_time_days: Number(sm.lead_time_days ?? 3),
-          description: sm.description || `Raw material ${sm.name}`,
-          created_at: sm.created_at || new Date().toISOString()
-        };
+    let existingCustom = [];
+    try { existingCustom = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]'); } catch (_) {}
+    let existingOverrides = {};
+    try { existingOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}'); } catch (_) {}
+
+    const mergedMap = new Map();
+
+    // 1. Always preserve local user-imported and user-added materials first
+    if (Array.isArray(existingCustom)) {
+      existingCustom.forEach(c => {
+        if (!c || (!c.name && !c.raw_material_name)) return;
+        const name = c.name || c.raw_material_name;
+        const rawCode = String(c.item_code || c.id || '').toUpperCase().trim();
+        const isSconesCode = rawCode.startsWith('NB-') || !rawCode.startsWith('RM-');
+        const recognized = resolveForecastingMaterialByName(name, isSconesCode);
+        const key = (recognized && recognized.code) ? recognized.code : rawCode;
+        if (!key) return;
+        const isImportedOrManual = Boolean(c.is_imported || c.is_manual_override || Number(c.current_stock ?? 0) > 0);
+        if (isImportedOrManual || !deletedSet.has(key.toLowerCase())) {
+          mergedMap.set(key, {
+            ...c,
+            id: key,
+            item_code: key,
+            is_imported: true,
+            is_manual_override: true
+          });
+        }
       });
+    }
 
-      // Merge with existing local custom materials and manager overrides so imported/updated stocks and dates are preserved
-      let existingCustom = [];
-      try { existingCustom = JSON.parse(localStorage.getItem('rmims_custom_raw_materials') || '[]'); } catch (_) {}
-      let existingOverrides = {};
-      try { existingOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}'); } catch (_) {}
-
-      const mergedMap = new Map();
-      reconciled.forEach(m => {
-        const key = String(m.item_code || m.id || '').toUpperCase().trim();
-        const locOv = existingOverrides[key] || {};
-        const locCust = Array.isArray(existingCustom) ? existingCustom.find(c => String(c.item_code || c.id || '').toUpperCase().trim() === key || (c.name || '').toLowerCase() === (m.name || '').toLowerCase()) : null;
-        const preserveLocal = (locOv && (locOv.is_imported || locOv.is_manual_override || (locOv.current_stock > 0 && m.current_stock === 0))) ||
-                              (locCust && (locCust.is_imported || locCust.is_manual_override || (locCust.current_stock > 0 && m.current_stock === 0)));
-        const finalStock = preserveLocal
-          ? Number(locOv.current_stock ?? locCust?.current_stock ?? m.current_stock ?? 0)
-          : (m.current_stock > 0 ? m.current_stock : Number(locOv.current_stock ?? locCust?.current_stock ?? 0));
-        const finalMin = Number(locOv.minimum_stock ?? locCust?.minimum_stock ?? m.minimum_threshold ?? 10);
-        const firstDate = locOv.date_added || locOv.first_date || locCust?.date_added || locCust?.first_date || m.date_added || (m.created_at ? String(m.created_at).slice(0, 10) : '');
-        const latestDate = locOv.last_updated || locOv.latest_date || locCust?.last_updated || locCust?.latest_date || m.updated_at || m.created_at || firstDate;
-        mergedMap.set(key, {
-          ...m,
-          ...(locCust || {}),
-          id: m.id || key,
-          item_code: key || m.id,
-          current_stock: finalStock,
-          currentStock: finalStock,
-          minimum_threshold: finalMin,
-          minimum_stock: finalMin,
-          date_added: firstDate,
-          first_date: firstDate,
-          display_date: locOv.display_date || locCust?.display_date || firstDate || '',
-          last_updated: latestDate,
-          latest_date: latestDate,
-          is_imported: Boolean(locOv.is_imported || locCust?.is_imported),
-          is_manual_override: Boolean(locOv.is_manual_override || locCust?.is_manual_override)
-        });
+    if (existingOverrides && typeof existingOverrides === 'object') {
+      Object.keys(existingOverrides).forEach(rawKey => {
+        const ov = existingOverrides[rawKey];
+        if (!ov || (!ov.name && !ov.raw_material_name)) return;
+        const name = ov.name || ov.raw_material_name;
+        const rawCode = String(ov.item_code || ov.id || rawKey || '').toUpperCase().trim();
+        const isSconesCode = rawCode.startsWith('NB-') || !rawCode.startsWith('RM-');
+        const recognized = resolveForecastingMaterialByName(name, isSconesCode);
+        const key = (recognized && recognized.code) ? recognized.code : rawCode;
+        if (!key) return;
+        const isImportedOrManual = Boolean(ov.is_imported || ov.is_manual_override || Number(ov.current_stock ?? 0) > 0);
+        if (isImportedOrManual || !deletedSet.has(key.toLowerCase())) {
+          const prev = mergedMap.get(key) || {};
+          mergedMap.set(key, {
+            ...prev,
+            ...ov,
+            id: key,
+            item_code: key,
+            name: ov.name || ov.raw_material_name || prev.name,
+            raw_material_name: ov.raw_material_name || ov.name || prev.raw_material_name,
+            unit: ov.unit || ov.unit_of_measure || prev.unit || (recognized && recognized.unit) || 'g',
+            unit_of_measure: ov.unit || ov.unit_of_measure || prev.unit_of_measure || (recognized && recognized.unit) || 'g',
+            current_stock: Number(ov.current_stock ?? prev.current_stock ?? 0),
+            currentStock: Number(ov.current_stock ?? prev.currentStock ?? 0),
+            minimum_threshold: Number(ov.minimum_stock ?? ov.minimum_threshold ?? prev.minimum_threshold ?? 10),
+            minimum_stock: Number(ov.minimum_stock ?? ov.minimum_threshold ?? prev.minimum_stock ?? 10),
+            date_added: ov.date_added || ov.first_date || prev.date_added || '',
+            first_date: ov.first_date || ov.date_added || prev.first_date || '',
+            last_updated: ov.last_updated || ov.latest_date || prev.last_updated || '',
+            latest_date: ov.latest_date || ov.last_updated || prev.latest_date || '',
+            is_imported: true,
+            is_manual_override: true
+          });
+        }
       });
+    }
 
-      if (Array.isArray(existingCustom)) {
-        existingCustom.forEach(c => {
-          if (!c) return;
-          const key = String(c.item_code || c.id || '').toUpperCase().trim();
-          const isImportedOrManual = Boolean(c.is_imported || c.is_manual_override);
-          if (key && !mergedMap.has(key) && (isImportedOrManual || !deletedSet.has(key.toLowerCase()))) {
-            mergedMap.set(key, c);
+    // 2. Also check Supabase activity_audit_logs for UPSERT_RAW_MATERIAL / CREATE_RAW_MATERIAL so imported items sync across tabs/sessions
+    try {
+      const { data: auditRows } = await fetchWithTimeout(
+        supabase
+          .from('activity_audit_logs')
+          .select('*')
+          .eq('entity_type', 'raw_materials')
+          .order('created_at', { ascending: true })
+          .limit(300),
+        4000
+      );
+      if (Array.isArray(auditRows) && auditRows.length > 0) {
+        auditRows.forEach(row => {
+          if (!row) return;
+          const act = String(row.action_type || '').toUpperCase();
+          let det = row.details;
+          if (typeof det === 'string') {
+            try { det = JSON.parse(det); } catch (_) { det = null; }
+          }
+          if (act === 'DELETE_RAW_MATERIAL') {
+            const delTarget = String((det && (det.target || det.id)) || row.entity_id || '').toUpperCase().trim();
+            if (delTarget) mergedMap.delete(delTarget);
+            return;
+          }
+          if ((act === 'UPSERT_RAW_MATERIAL' || act === 'CREATE_RAW_MATERIAL') && det && det.name) {
+            const rawCode = String(det.id || row.entity_id || '').toUpperCase().trim();
+            const isSconesCode = rawCode.startsWith('NB-') || !rawCode.startsWith('RM-');
+            const recognized = resolveForecastingMaterialByName(det.name, isSconesCode);
+            const key = (recognized && recognized.code) ? recognized.code : rawCode;
+            if (!key || deletedSet.has(key.toLowerCase()) || deletedSet.has(String(det.name).toLowerCase().trim())) return;
+
+            const rowDateStr = det.firstDate || det.date_added || (row.created_at ? String(row.created_at).slice(0, 10) : '');
+            const rowLatestStr = det.latestDate || det.last_updated || rowDateStr;
+            const existing = mergedMap.get(key);
+            if (!existing) {
+              mergedMap.set(key, {
+                id: key,
+                item_code: key,
+                name: det.name,
+                raw_material_name: det.name,
+                category: det.category || (recognized && recognized.category) || 'Baking Supplies',
+                unit: det.unit || (recognized && recognized.unit) || 'g',
+                unit_of_measure: det.unit || (recognized && recognized.unit) || 'g',
+                current_stock: Number(det.stock ?? det.current_stock ?? 0),
+                currentStock: Number(det.stock ?? det.current_stock ?? 0),
+                minimum_threshold: Number(det.minStock ?? det.minimum_stock ?? 10),
+                minimum_stock: Number(det.minStock ?? det.minimum_stock ?? 10),
+                date_added: rowDateStr,
+                first_date: rowDateStr,
+                display_date: rowDateStr,
+                last_updated: rowLatestStr,
+                latest_date: rowLatestStr,
+                created_at: row.created_at || new Date().toISOString(),
+                is_imported: true,
+                is_manual_override: true
+              });
+            }
           }
         });
       }
+    } catch (_) {}
 
-      if (existingOverrides && typeof existingOverrides === 'object') {
-        Object.keys(existingOverrides).forEach(rawKey => {
-          const ov = existingOverrides[rawKey];
-          if (!ov || (!ov.name && !ov.raw_material_name)) return;
-          const key = String(ov.item_code || ov.id || rawKey || '').toUpperCase().trim();
-          const isImportedOrManual = Boolean(ov.is_imported || ov.is_manual_override);
-          if (key && !mergedMap.has(key) && (isImportedOrManual || !deletedSet.has(key.toLowerCase()))) {
-            mergedMap.set(key, {
-              ...ov,
-              id: key,
-              item_code: key,
-              name: ov.name || ov.raw_material_name,
-              raw_material_name: ov.raw_material_name || ov.name,
-              unit: ov.unit || ov.unit_of_measure || 'g',
-              unit_of_measure: ov.unit || ov.unit_of_measure || 'g',
-              current_stock: Number(ov.current_stock ?? 0),
-              currentStock: Number(ov.current_stock ?? 0),
-              minimum_threshold: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
-              minimum_stock: Number(ov.minimum_stock ?? ov.minimum_threshold ?? 10),
-              date_added: ov.date_added || ov.first_date || '',
-              first_date: ov.first_date || ov.date_added || '',
-              last_updated: ov.last_updated || ov.latest_date || '',
-              latest_date: ov.latest_date || ov.last_updated || '',
-              is_imported: true,
-              is_manual_override: true
-            });
-          }
-        });
-      }
-
-      const finalReconciled = Array.from(mergedMap.values());
+    const finalReconciled = Array.from(mergedMap.values());
+    if (finalReconciled.length > 0) {
       localStorage.setItem('rmims_custom_raw_materials', JSON.stringify(finalReconciled));
 
-      const mgrOverrides = { ...existingOverrides };
+      const mgrOverrides = {};
       finalReconciled.forEach(m => {
         const key = String(m.item_code || m.id || '').toUpperCase().trim();
         const prev = existingOverrides[key] || {};
-        const firstDate = prev.date_added || prev.first_date || m.date_added || '';
-        const latestDate = prev.last_updated || prev.latest_date || m.last_updated || m.created_at || firstDate;
+        const firstDate = m.first_date || m.date_added || prev.date_added || prev.first_date || '';
+        const latestDate = m.latest_date || m.last_updated || prev.last_updated || prev.latest_date || firstDate;
         mgrOverrides[key] = {
           ...prev,
+          id: key,
+          item_code: key,
           name: m.name,
           raw_material_name: m.raw_material_name || m.name,
-          unit: prev.unit || m.unit,
-          current_stock: m.current_stock,
-          minimum_stock: m.minimum_threshold,
+          unit: m.unit || prev.unit,
+          current_stock: Number(m.current_stock ?? 0),
+          minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
           maximum_stock: prev.maximum_stock || (m.reorder_quantity ? m.reorder_quantity * 4 : 100),
           date_added: firstDate,
           first_date: firstDate,
-          display_date: prev.display_date || m.display_date || firstDate || '',
+          display_date: m.display_date || prev.display_date || firstDate || '',
           last_updated: latestDate,
-          latest_date: latestDate
+          latest_date: latestDate,
+          is_imported: true,
+          is_manual_override: true
         };
       });
       localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
@@ -1011,15 +1203,18 @@ export async function fetchUnifiedInventoryFromSupabase() {
 export async function saveRawMaterialToSupabase(material) {
   if (!material) return { success: false, message: 'Invalid material' };
 
-  const id = String(material.id || material.item_code || '').toUpperCase().trim();
+  const rawId = String(material.id || material.item_code || '').toUpperCase().trim();
   const name = (material.name || material.raw_material_name || '').trim();
-  const unit = material.unit || material.unit_of_measure || 'kg';
+  const isSconesCode = rawId.startsWith('NB-') || !rawId.startsWith('RM-');
+  const recognized = resolveForecastingMaterialByName(name, isSconesCode);
+  const id = (recognized && recognized.code) ? recognized.code : rawId;
+  const unit = material.unit || material.unit_of_measure || (recognized && recognized.unit) || 'kg';
   const stock = Number(material.current_stock ?? material.currentStock ?? material.stock ?? 0);
   const minStock = Number(material.minimum_threshold ?? material.minimum_stock ?? material.minimumStock ?? 10);
   const reorderQty = Number(material.reorder_quantity ?? (minStock * 2) ?? 25);
   const leadTime = Number(material.lead_time_days ?? 3);
   const desc = material.description || `Raw material ${name}`;
-  const cat = material.category || 'General Materials';
+  const cat = material.category || (recognized && recognized.category) || 'General Materials';
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   const timeStr = dateStr + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -1048,7 +1243,7 @@ export async function saveRawMaterialToSupabase(material) {
     last_updated: resolvedLatestDate,
     latest_date: resolvedLatestDate,
     created_at: material.created_at || now.toISOString(),
-    is_imported: Boolean(material.is_imported),
+    is_imported: Boolean(material.is_imported ?? true),
     is_manual_override: true
   });
 
@@ -1060,6 +1255,8 @@ export async function saveRawMaterialToSupabase(material) {
     const firstDateToKeep = material.date_added || prevOv.date_added || resolvedFirstDate;
     ovs[id] = {
       ...prevOv,
+      id,
+      item_code: id,
       name,
       raw_material_name: name,
       specification_name: material.specification_name || name,
@@ -1076,7 +1273,7 @@ export async function saveRawMaterialToSupabase(material) {
       display_date: material.display_date || prevOv.display_date || firstDateToKeep,
       last_updated: resolvedLatestDate,
       latest_date: resolvedLatestDate,
-      is_imported: Boolean(material.is_imported || prevOv.is_imported),
+      is_imported: Boolean(material.is_imported || prevOv.is_imported || true),
       is_manual_override: true
     };
     localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(ovs));
@@ -1121,7 +1318,17 @@ export async function saveRawMaterialToSupabase(material) {
         action: 'UPSERT_RAW_MATERIAL',
         entityType: 'raw_materials',
         entityId: id,
-        details: { id, name, unit, stock, minStock }
+        details: {
+          id,
+          name,
+          unit,
+          stock,
+          minStock,
+          category: cat,
+          firstDate: resolvedFirstDate,
+          latestDate: resolvedLatestDate,
+          is_imported: true
+        }
       });
     } catch (err) {
       console.warn('[ManagerSupabase] Error saving raw material to Supabase:', err);
@@ -1511,7 +1718,10 @@ if (supabase && typeof supabase.channel === 'function' && typeof window !== 'und
         });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_audit_logs' }, () => {
-        fetchLiveFinishedProductsFromSupabase().then(() => {
+        Promise.allSettled([
+          fetchLiveFinishedProductsFromSupabase(),
+          fetchStaffTransactionsFromSupabase()
+        ]).then(() => {
           broadcastManagerSync({ source: 'supabase_audit_logs' });
         });
       })

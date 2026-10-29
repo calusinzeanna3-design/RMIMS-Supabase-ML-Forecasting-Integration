@@ -24,7 +24,13 @@ import {
 import {
   getStaffTransactions
 } from './rmims-transaction-engine.js';
-import { approveTransactionOnSupabase, rejectTransactionOnSupabase, broadcastManagerSync } from '../supabase/manager-supabase-service.js';
+import {
+  approveTransactionOnSupabase,
+  rejectTransactionOnSupabase,
+  returnTransactionForCorrectionOnSupabase,
+  fetchStaffTransactionsFromSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
 
 const STAFF_TX_KEY = 'rmims_staff_transactions';
 
@@ -59,14 +65,23 @@ function initStaffActivity() {
   bindFilterEvents();
   bindReviewModalEvents();
 
+  fetchStaffTransactionsFromSupabase().then(() => {
+    loadTransactions();
+    populateStaffFilterOptions();
+    renderCounters();
+    renderTable();
+  }).catch(() => {});
+
   // Refresh button
   const btnRefresh = document.getElementById('btnRefreshStaffActivity');
   if (btnRefresh) {
     btnRefresh.addEventListener('click', () => {
-      loadTransactions();
-      populateStaffFilterOptions();
-      renderCounters();
-      renderTable();
+      fetchStaffTransactionsFromSupabase().finally(() => {
+        loadTransactions();
+        populateStaffFilterOptions();
+        renderCounters();
+        renderTable();
+      });
     });
   }
 
@@ -119,6 +134,19 @@ if (document.readyState === 'loading') {
 }
 
 function populateStaffFilterOptions() {
+  const statusSelect = document.getElementById('staffStatusFilter');
+  if (statusSelect && !Array.from(statusSelect.options).some(o => o.value === 'Correction Needed')) {
+    const corrOpt = document.createElement('option');
+    corrOpt.value = 'Correction Needed';
+    corrOpt.textContent = 'Correction Needed';
+    const pendingOpt = Array.from(statusSelect.options).find(o => o.value === 'Pending');
+    if (pendingOpt && pendingOpt.nextSibling) {
+      statusSelect.insertBefore(corrOpt, pendingOpt.nextSibling);
+    } else {
+      statusSelect.appendChild(corrOpt);
+    }
+  }
+
   const select = document.getElementById('staffMemberFilter');
   if (!select) return;
 
@@ -256,8 +284,8 @@ function renderTable() {
           ${statusPill} ${updatedTag}
         </td>
         <td style="text-align:right;">
-          ${isPending 
-            ? `<button type="button" class="btn-review-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 12px; font-size:12px; font-weight:700; border-radius:6px; background:#15803D; color:#FFF; border:none; cursor:pointer;">Review</button>`
+          ${(isPending || isCorrection)
+            ? `<button type="button" class="btn-review-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 12px; font-size:12px; font-weight:700; border-radius:6px; background:${isCorrection ? '#D97706' : '#15803D'}; color:#FFF; border:none; cursor:pointer;">${isCorrection ? 'Review / Update' : 'Review'}</button>`
             : `<button type="button" class="btn-view-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 10px; font-size:12px; font-weight:600; color:#5C7A68; background:transparent; border:none; cursor:pointer;">View</button>`
           }
         </td>
@@ -446,18 +474,23 @@ function openReviewModal(item) {
     if (actionButtons) actionButtons.style.display = 'none';
     showReviewResult(`✗ This transaction was rejected: "${item.rejectionReason || 'Declined'}".`, false);
   } else if (item.status === 'Correction Needed') {
-    if (actionButtons) actionButtons.style.display = 'none';
-    showReviewResult(`⚠ Awaiting staff revision. Sent message: "${item.correctionMessage || 'Please correct details.'}".`, false, '#FFFBEB', '#92400E');
+    showReviewResult(`⚠ Awaiting staff revision. Sent message: "${item.correctionMessage || 'Please correct details.'}". You can still approve, update the correction message, or reject below.`, false, '#FFFBEB', '#92400E');
+    if (actionButtons) actionButtons.style.display = 'flex';
   } else {
     if (actionButtons) actionButtons.style.display = 'flex';
   }
 
+  modal.classList.add('open', 'active');
+  modal.removeAttribute('hidden');
   modal.style.display = 'flex';
 }
 
 function closeReviewModal() {
   const modal = document.getElementById('mgrTxReviewModal');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.classList.remove('open', 'active');
+    modal.style.display = 'none';
+  }
   activeReviewItem = null;
 }
 
@@ -588,7 +621,15 @@ function handleConfirmReturnForCorrection() {
   activeReviewItem.returnedBy = 'Manager';
   activeReviewItem.returnedAt = new Date().toISOString();
 
+  const txIdx = transactions.findIndex(t => t.ref === activeReviewItem.ref || t.id === activeReviewItem.id);
+  if (txIdx !== -1) {
+    transactions[txIdx] = activeReviewItem;
+  }
   saveTransactions();
+
+  // Persist correction status to Supabase & broadcast across portals
+  returnTransactionForCorrectionOnSupabase(activeReviewItem, msg).catch(e => console.warn('[StaffActivity] Supabase notice:', e));
+
   renderCounters();
   renderTable();
 

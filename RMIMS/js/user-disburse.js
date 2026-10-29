@@ -12,7 +12,11 @@
 
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
-import { broadcastManagerSync } from '../supabase/manager-supabase-service.js';
+import {
+  fetchUnifiedInventoryFromSupabase,
+  fetchStaffTransactionsFromSupabase,
+  broadcastManagerSync
+} from '../supabase/manager-supabase-service.js';
 import {
   generateNextReference,
   checkReferenceDuplicate,
@@ -419,6 +423,19 @@ function initUserDisburse() {
   bindFormEvents();
   bindStaffDisbActionEvents();
   renderMySubmissions();
+
+  // Live Supabase sync
+  try {
+    Promise.allSettled([
+      fetchUnifiedInventoryFromSupabase(),
+      fetchStaffTransactionsFromSupabase()
+    ]).then(() => {
+      rawMaterials = getSystemRawMaterials();
+      populateMaterialSelect();
+      renderMySubmissions();
+      updateBundleDisbursePreview();
+    }).catch(() => {});
+  } catch (_) {}
 
   // Cross-tab real-time sync
   const refreshDisburseState = () => {
@@ -862,9 +879,9 @@ function renderMySubmissions() {
 
     let actionBtn = '';
     if (st === 'Correction Needed') {
-      actionBtn = `<a href="my-activity.html?ref=${encodeURIComponent(t.ref)}" class="btn-primary" style="padding:4px 10px; font-size:11px; text-decoration:none; background:#D97706; border-radius:6px; display:inline-block;">Correct</a>`;
+      actionBtn = `<a href="my-activity.html?correct=${encodeURIComponent(t.ref)}" class="btn-primary" style="padding:4px 10px; font-size:11px; text-decoration:none; background:#D97706; border-radius:6px; display:inline-block;">Correct</a>`;
     } else {
-      actionBtn = `<a href="my-activity.html?ref=${encodeURIComponent(t.ref)}" style="color:#15803D; text-decoration:none; font-weight:600; font-size:12px;">View</a>`;
+      actionBtn = `<a href="my-activity.html?view=${encodeURIComponent(t.ref)}" style="color:#15803D; text-decoration:none; font-weight:600; font-size:12px;">View</a>`;
     }
 
     const dateVal = t.date || (t.createdAt ? new Date(t.createdAt).toISOString().slice(0, 10) : '—');

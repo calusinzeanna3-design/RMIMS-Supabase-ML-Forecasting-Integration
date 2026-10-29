@@ -13,6 +13,19 @@
 
 import { adjustSystemMaterialStock, getSystemRawMaterials } from './system-materials.js';
 import { getCompanyAcronym, getRoleReferencePrefix } from './tenant-manager.js';
+import { supabase } from '../supabase/supabase-config.js';
+
+function persistStaffTxToSupabase(tx) {
+  if (!tx || !tx.ref || !supabase) return;
+  try {
+    supabase.from('activity_audit_logs').insert([{
+      action_type: 'STAFF_TX_STATE',
+      entity_type: 'staff_transactions',
+      entity_id: tx.ref,
+      details: tx
+    }]).then(() => {}).catch(() => {});
+  } catch (_) {}
+}
 
 export const STAFF_TX_KEY = 'rmims_staff_transactions';
 export const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
@@ -483,6 +496,7 @@ export function submitStaffTransaction(data) {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
     localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
+  persistStaffTxToSupabase(tx);
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
   let staffTxNotif = null;
@@ -588,6 +602,7 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
     localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
+  persistStaffTxToSupabase(updatedTx);
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
   let mgrResubmitNotif = null;
@@ -731,7 +746,8 @@ export function updateStaffTransaction(refOrId, updatedFields) {
     isUpdated: isCorrection ? true : (current.isUpdated || false),
     previousCorrectionMessage: isCorrection ? (current.correctionMessage || current.rejectionReason || 'Please verify details.') : (current.previousCorrectionMessage || null),
     previousValues: isCorrection ? previousValues : (current.previousValues || null),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    success: true
   };
 
   allStaff[idx] = updatedTx;
@@ -739,6 +755,7 @@ export function updateStaffTransaction(refOrId, updatedFields) {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
     localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
+  persistStaffTxToSupabase(updatedTx);
 
   // Broadcast live notifications to Manager and Staff
   try {
