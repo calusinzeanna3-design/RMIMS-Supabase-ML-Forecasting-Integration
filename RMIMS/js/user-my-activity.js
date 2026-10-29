@@ -158,12 +158,7 @@ function populateMaterialSelects() {
   const corrMatSelect = document.getElementById('corrMaterialSelect');
   if (!corrMatSelect) return;
 
-  corrMatSelect.innerHTML = '<option value="">-- Choose Raw Material --</option>';
-  const safeMaterials = (rawMaterials || []).filter(m => {
-    const n = String(m.name || m.materialName || m.raw_material_name || '').toLowerCase();
-    const c = String(m.item_code || m.id || '').toUpperCase();
-    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
-  });
+  const safeMaterials = rawMaterials || [];
   safeMaterials.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.name || m.materialName;

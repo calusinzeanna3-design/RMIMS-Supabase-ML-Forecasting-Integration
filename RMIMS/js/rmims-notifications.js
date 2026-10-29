@@ -613,10 +613,14 @@
     // Event listeners for close
     const closePopup = () => {
       backdrop.classList.remove('open');
+      document.body.classList.remove('rmims-notif-open', 'rmims-modal-open');
     };
 
     backdrop.querySelector('#rmimsNotifCloseBtn').addEventListener('click', closePopup);
     backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) closePopup();
+    });
+    backdrop.addEventListener('pointerdown', (e) => {
       if (e.target === backdrop) closePopup();
     });
 
@@ -957,6 +961,10 @@
 
     const closeDetail = () => {
       backdrop.classList.remove('open');
+      const mainBackdrop = document.getElementById('rmimsNotifBackdrop');
+      if (!mainBackdrop || !mainBackdrop.classList.contains('open')) {
+        document.body.classList.remove('rmims-notif-open', 'rmims-modal-open');
+      }
     };
 
     backdrop.querySelector('#rmimsDetailCloseBtn').addEventListener('click', closeDetail);
@@ -979,13 +987,37 @@
     }
   }
 
+  function closeAllPageDropdowns() {
+    try {
+      if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
+        window.RMIMS_CUSTOM_SELECT.closeAll();
+      }
+      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+      });
+      document.querySelectorAll('.cal-combobox-wrap.open, .rm-combobox-wrap.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.cal-combobox-dropdown, .rm-combobox-dropdown')?.classList.remove('open');
+      });
+      document.querySelectorAll('.rmsme-popover.open, #rmsmeUserPopover.open, #profileDropdown, #mgrProfileDropdown, .mgr-profile-dropdown, .profile-dropdown').forEach(el => {
+        el.classList.remove('open', 'active');
+        if (el.id === 'profileDropdown' || el.id === 'mgrProfileDropdown' || el.classList.contains('mgr-profile-dropdown')) {
+          el.hidden = true;
+        }
+      });
+    } catch (_) {}
+  }
+
   // Open notification popup
   function openNotificationsModal(role) {
+    closeAllPageDropdowns();
     const backdrop = ensureNotificationModal(role);
     renderTabs(role);
     renderList(role);
     updateTopbarBadges(role);
     backdrop.classList.add('open');
+    document.body.classList.add('rmims-notif-open', 'rmims-modal-open');
   }
 
   // Bind bell button click handlers
@@ -1009,6 +1041,7 @@
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        closeAllPageDropdowns();
         openNotificationsModal(role);
       });
     });

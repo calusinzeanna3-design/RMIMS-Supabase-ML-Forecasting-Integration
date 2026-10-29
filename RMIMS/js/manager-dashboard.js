@@ -18,12 +18,14 @@ import {
   saveCustomRawMaterial,
   saveCustomReceipt,
   saveCustomDisbursement,
-  invalidateForecastCache
+  invalidateForecastCache,
+  getSconesMaterialImagePath
 } from './system-materials.js';
 import {
   fetchManagerDashboardData,
   approveTransactionOnSupabase,
   rejectTransactionOnSupabase,
+  returnTransactionForCorrectionOnSupabase,
   broadcastManagerSync
 } from '../supabase/manager-supabase-service.js';
 
@@ -1153,12 +1155,11 @@ function renderSmartAlerts(materials) {
       msg = `May run low in ${days} day${days === 1 ? '' : 's'}`;
     }
 
-    // Resolve thumbnail
-    const n = (mat.name || '').toLowerCase();
-    let thumbSrc = '../assets/sugar-thumb.jpg';
-    if (n.includes('flour')) thumbSrc = '../assets/flour-thumb.jpg';
-    else if (n.includes('butter') || n.includes('margarine')) thumbSrc = '../assets/butter-thumb.jpg';
-    else if (n.includes('oil')) thumbSrc = '../assets/oil-thumb.jpg';
+    // Resolve authentic material thumbnail from 19 Raw materials of scones and muffins images
+    let thumbSrc = mat.image || mat.imageUrl || getSconesMaterialImagePath(mat.id || mat.item_code || mat.name, '../assets');
+    if (!thumbSrc) {
+      thumbSrc = getSconesMaterialImagePath(mat.name, '../assets') || '../assets/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-001%20All%20Purpose%20Flour.jpg';
+    }
 
     html += `
       <a href="forecasting.html" class="smart-alert-item" title="View forecast for ${escapeHtml(mat.name)}">
@@ -1496,6 +1497,16 @@ function initInteractions() {
   if (bellBtn) {
     bellBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      try {
+        if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
+          window.RMIMS_CUSTOM_SELECT.closeAll();
+        }
+        document.querySelectorAll('.rm-custom-select.open, .cal-combobox-wrap.open, .rm-combobox-wrap.open').forEach(el => {
+          el.classList.remove('open');
+          el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+          el.querySelector('.cal-combobox-dropdown, .rm-combobox-dropdown')?.classList.remove('open');
+        });
+      } catch (_) {}
       if (window.RMIMS_NOTIFICATIONS_POPUP) {
         window.RMIMS_NOTIFICATIONS_POPUP.open('manager');
       } else {
@@ -1524,46 +1535,79 @@ function initReviewModal() {
   const closeBtn = document.getElementById('closeTxReviewModal');
   const btnApprove = document.getElementById('btnApproveTx');
   const btnReject = document.getElementById('btnRejectTx');
+  const btnReturn = document.getElementById('btnReturnTx');
   const rejectReasonBox = document.getElementById('rejectReasonBox');
   const rejectReasonInput = document.getElementById('rejectReasonInput');
+  const btnConfirmRejectTx = document.getElementById('btnConfirmRejectTx');
+  const btnCancelRejectTx = document.getElementById('btnCancelRejectTx');
+  const correctionReasonBox = document.getElementById('correctionReasonBox');
+  const correctionReasonInput = document.getElementById('correctionReasonInput');
+  const btnConfirmReturnTx = document.getElementById('btnConfirmReturnTx');
+  const btnCancelReturnTx = document.getElementById('btnCancelReturnTx');
   const resultBanner = document.getElementById('reviewResultBanner');
   const actionButtons = document.getElementById('reviewActionButtons');
+  const updatedBadge = document.getElementById('reviewUpdatedBadge');
+  const diffBox = document.getElementById('reviewCorrectionDiffBox');
 
-  let activeTxRef = null;
+  let activeTx = null;
 
   window.openMgrReviewModal = function(data) {
-    activeTxRef = data.ref;
-    document.getElementById('reviewRefNum').textContent = data.ref;
-    document.getElementById('reviewStaff').textContent = data.staff;
-    document.getElementById('reviewActivity').textContent = data.activity;
-    document.getElementById('reviewActivity').style.color = (data.activity || '').toLowerCase().includes('rec') ? '#15803D' : '#DC2626';
-    document.getElementById('reviewMaterial').textContent = data.mat;
-    document.getElementById('reviewQuantity').textContent = data.qty;
-    document.getElementById('reviewDate').textContent = data.date;
-    document.getElementById('reviewNotes').textContent = data.notes || 'No extra notes provided.';
+    activeTx = data;
+    const ref = data.ref || data.id;
+    document.getElementById('reviewRefNum').textContent = ref;
+    document.getElementById('reviewStaff').textContent = data.staff || data.staffName || 'Staff Member';
+    document.getElementById('reviewActivity').textContent = data.activity || data.type || 'Movement';
+    document.getElementById('reviewActivity').style.color = (data.activity || data.type || '').toLowerCase().includes('rec') ? '#15803D' : '#DC2626';
+    document.getElementById('reviewMaterial').textContent = data.mat || data.material || data.rawMaterial || '--';
+    document.getElementById('reviewQuantity').textContent = data.qty || (data.quantity != null ? `${data.quantity} ${data.unit || 'kg'}` : '--');
+    document.getElementById('reviewDate').textContent = data.date || data.datetime || 'Today';
+    document.getElementById('reviewNotes').textContent = data.notes || data.reason || 'No extra notes provided.';
 
     const statusBadge = document.getElementById('reviewStatusBadge');
-    statusBadge.className = 'mgr-status-pill ' + (data.status === 'Approved' ? 'status-approved' : (data.status === 'Rejected' ? 'status-rejected' : 'status-pending'));
-    statusBadge.textContent = data.status || 'Pending';
+    const st = data.status || 'Pending';
+    statusBadge.className = 'mgr-status-pill ' + (st === 'Approved' ? 'status-approved' : (st === 'Rejected' ? 'status-rejected' : (st === 'Correction Needed' ? 'status-correction' : 'status-pending')));
+    statusBadge.textContent = st;
+
+    // Check if item was revised after correction
+    const isUpdated = Boolean(data.isUpdated || data.updatedAt);
+    if (updatedBadge) updatedBadge.style.display = isUpdated ? 'inline-block' : 'none';
+
+    if (diffBox) {
+      if (isUpdated && (data.previousCorrection || data.diffDetails || data.correctionMessage)) {
+        diffBox.style.display = 'flex';
+        const prevMsgEl = document.getElementById('revPrevCorrectionMsg');
+        if (prevMsgEl) prevMsgEl.textContent = `"${data.previousCorrection || data.correctionMessage || 'Please verify details'}"`;
+        const diffDetailsEl = document.getElementById('revDiffDetails');
+        if (diffDetailsEl) diffDetailsEl.textContent = data.diffDetails || `Quantity updated by ${data.staff || 'Staff'}.`;
+      } else {
+        diffBox.style.display = 'none';
+      }
+    }
 
     if (rejectReasonBox) rejectReasonBox.style.display = 'none';
+    if (correctionReasonBox) correctionReasonBox.style.display = 'none';
     if (resultBanner) resultBanner.style.display = 'none';
 
-    if (data.status === 'Approved') {
-      actionButtons.style.display = 'none';
+    if (st === 'Approved') {
+      if (actionButtons) actionButtons.style.display = 'none';
       resultBanner.style.display = 'block';
       resultBanner.style.background = '#DCFCE7';
       resultBanner.style.color = '#15803D';
-      resultBanner.textContent = '✓ This transaction has been approved.';
-    } else if (data.status === 'Rejected') {
-      actionButtons.style.display = 'none';
+      resultBanner.textContent = '✓ This transaction has been approved. Official stock is synchronized.';
+    } else if (st === 'Rejected') {
+      if (actionButtons) actionButtons.style.display = 'none';
       resultBanner.style.display = 'block';
       resultBanner.style.background = '#FEE2E2';
       resultBanner.style.color = '#DC2626';
-      resultBanner.textContent = `✗ This transaction was rejected.`;
+      resultBanner.textContent = `✗ This transaction was rejected: "${data.rejectionReason || 'Declined'}".`;
+    } else if (st === 'Correction Needed') {
+      if (actionButtons) actionButtons.style.display = 'none';
+      resultBanner.style.display = 'block';
+      resultBanner.style.background = '#FFFBEB';
+      resultBanner.style.color = '#92400E';
+      resultBanner.textContent = `⚠ Awaiting staff revision. Sent message: "${data.correctionMessage || 'Please correct details.'}".`;
     } else {
-      actionButtons.style.display = 'flex';
-      btnReject.textContent = 'Reject';
+      if (actionButtons) actionButtons.style.display = 'flex';
     }
 
     modal.style.display = 'flex';
@@ -1571,7 +1615,7 @@ function initReviewModal() {
 
   function closeReview() {
     modal.style.display = 'none';
-    activeTxRef = null;
+    activeTx = null;
   }
 
   if (closeBtn) closeBtn.addEventListener('click', closeReview);
@@ -1581,13 +1625,12 @@ function initReviewModal() {
     });
   }
 
-  // Approve action
+  // 1. Approve action
   if (btnApprove) {
     btnApprove.addEventListener('click', async () => {
-      if (!activeTxRef) return;
+      if (!activeTx) return;
       const staffTx = getStaffTransactions();
-      const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef));
-      if (!tx) return;
+      const tx = staffTx.find(t => (t.ref === activeTx.ref || t.id === activeTx.ref || t.ref === activeTx.id || t.id === activeTx.id)) || activeTx;
 
       btnApprove.disabled = true;
       btnApprove.textContent = 'Approving...';
@@ -1598,33 +1641,41 @@ function initReviewModal() {
       resultBanner.style.background = '#DCFCE7';
       resultBanner.style.color = '#15803D';
       resultBanner.textContent = '✓ Transaction approved successfully. Official stock synchronized on Supabase & all modules.';
-      actionButtons.style.display = 'none';
+      if (actionButtons) actionButtons.style.display = 'none';
 
       setTimeout(() => {
+        btnApprove.disabled = false;
+        btnApprove.textContent = 'Approve';
         closeReview();
         refreshDashboardData();
       }, 900);
     });
   }
 
-  // Reject action
+  // 2. Reject button toggles rejectReasonBox
   if (btnReject) {
-    btnReject.addEventListener('click', async () => {
-      if (!activeTxRef) return;
-
-      if (rejectReasonBox.style.display === 'none') {
+    btnReject.addEventListener('click', () => {
+      if (correctionReasonBox) correctionReasonBox.style.display = 'none';
+      if (rejectReasonBox) {
         rejectReasonBox.style.display = 'flex';
-        btnReject.textContent = 'Confirm Rejection';
         if (rejectReasonInput) rejectReasonInput.focus();
-        return;
       }
-
+    });
+  }
+  if (btnCancelRejectTx) {
+    btnCancelRejectTx.addEventListener('click', () => {
+      if (rejectReasonBox) rejectReasonBox.style.display = 'none';
+    });
+  }
+  if (btnConfirmRejectTx) {
+    btnConfirmRejectTx.addEventListener('click', async () => {
+      if (!activeTx) return;
       const reason = (rejectReasonInput && rejectReasonInput.value.trim()) || 'Details require correction.';
       const staffTx = getStaffTransactions();
-      const tx = staffTx.find(t => (t.ref === activeTxRef || t.id === activeTxRef)) || { ref: activeTxRef };
+      const tx = staffTx.find(t => (t.ref === activeTx.ref || t.id === activeTx.ref || t.ref === activeTx.id || t.id === activeTx.id)) || activeTx;
 
-      btnReject.disabled = true;
-      btnReject.textContent = 'Rejecting...';
+      btnConfirmRejectTx.disabled = true;
+      btnConfirmRejectTx.textContent = 'Rejecting...';
 
       await rejectTransactionOnSupabase(tx, reason);
 
@@ -1632,9 +1683,55 @@ function initReviewModal() {
       resultBanner.style.background = '#FEE2E2';
       resultBanner.style.color = '#DC2626';
       resultBanner.textContent = `✗ Transaction rejected and recorded. Reason: "${reason}"`;
-      actionButtons.style.display = 'none';
+      if (actionButtons) actionButtons.style.display = 'none';
+      if (rejectReasonBox) rejectReasonBox.style.display = 'none';
 
       setTimeout(() => {
+        btnConfirmRejectTx.disabled = false;
+        btnConfirmRejectTx.textContent = 'Confirm Rejection';
+        closeReview();
+        refreshDashboardData();
+      }, 1000);
+    });
+  }
+
+  // 3. Return for Correction button toggles correctionReasonBox
+  if (btnReturn) {
+    btnReturn.addEventListener('click', () => {
+      if (rejectReasonBox) rejectReasonBox.style.display = 'none';
+      if (correctionReasonBox) {
+        correctionReasonBox.style.display = 'flex';
+        if (correctionReasonInput) correctionReasonInput.focus();
+      }
+    });
+  }
+  if (btnCancelReturnTx) {
+    btnCancelReturnTx.addEventListener('click', () => {
+      if (correctionReasonBox) correctionReasonBox.style.display = 'none';
+    });
+  }
+  if (btnConfirmReturnTx) {
+    btnConfirmReturnTx.addEventListener('click', async () => {
+      if (!activeTx) return;
+      const msg = (correctionReasonInput && correctionReasonInput.value.trim()) || 'Please check and revise material or quantity.';
+      const staffTx = getStaffTransactions();
+      const tx = staffTx.find(t => (t.ref === activeTx.ref || t.id === activeTx.ref || t.ref === activeTx.id || t.id === activeTx.id)) || activeTx;
+
+      btnConfirmReturnTx.disabled = true;
+      btnConfirmReturnTx.textContent = 'Sending...';
+
+      await returnTransactionForCorrectionOnSupabase(tx, msg);
+
+      resultBanner.style.display = 'block';
+      resultBanner.style.background = '#FFFBEB';
+      resultBanner.style.color = '#92400E';
+      resultBanner.textContent = `⚠ Correction instructions sent to Staff: "${msg}"`;
+      if (actionButtons) actionButtons.style.display = 'none';
+      if (correctionReasonBox) correctionReasonBox.style.display = 'none';
+
+      setTimeout(() => {
+        btnConfirmReturnTx.disabled = false;
+        btnConfirmReturnTx.textContent = 'Send to Staff';
         closeReview();
         refreshDashboardData();
       }, 1000);

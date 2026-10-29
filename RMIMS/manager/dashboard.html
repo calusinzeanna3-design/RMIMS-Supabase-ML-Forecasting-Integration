@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../css/admin-shell.css">
   <link rel="stylesheet" href="../css/manager-theme.css">
   <link rel="stylesheet" href="../css/forecast-calendar-chart.css">
+  <link rel="stylesheet" href="../css/rmims-unified.css">
   <link rel="icon" type="image/png" href="../assets/favicon-32.png">
 </head>
 <body class="manager-page admin-page">
@@ -56,7 +57,7 @@
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Manager" style="cursor: pointer;">
-              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">M</div>
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">—</div>
               <div class="profile-meta">
                 <span class="profile-name" data-shell-name id="topbarProfileName">Manager</span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
@@ -146,7 +147,7 @@
                 </div>
                 <div class="legend-item">
                   <span class="legend-dot" style="background: #0284C7;"></span>
-                  <span>Production Disbursements</span>
+                  <span>Raw Material Disbursements</span>
                 </div>
               </div>
             </div>
@@ -422,19 +423,27 @@
 
   <!-- TRANSACTION REVIEW MODAL (Preserved for Manager validation actions) -->
   <div class="modal-overlay" id="mgrTxReviewModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:10050; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
-    <div class="modal-card" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:480px; overflow:hidden;">
+    <div class="modal-card" style="background:#FFFFFF; border-radius:18px; border:1px solid rgba(20,83,45,0.12); box-shadow:0 20px 45px -8px rgba(15,42,27,0.2); width:100%; max-width:520px; overflow:hidden;">
       <div style="padding:18px 24px; border-bottom:1px solid #E2E8F0; display:flex; align-items:center; justify-content:space-between;">
         <div>
-          <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:#0F2A1B;">Transaction Review</h3>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:#0F2A1B;">Transaction Review</h3>
+            <span id="reviewUpdatedBadge" style="display:none; background:#DBEAFE; color:#1D4ED8; border:1px solid #BFDBFE; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:9999px;">🔵 UPDATED</span>
+          </div>
           <p style="margin:2px 0 0; font-size:12px; color:#5C7A68;" id="reviewModalSub">Review Staff-submitted material movement.</p>
         </div>
-        <button type="button" class="mgr-modal-close" id="closeTxReviewModal" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748B;">&times;</button>
+        <button type="button" class="mgr-modal-close" id="closeTxReviewModal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
-      <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+      <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:calc(85vh - 120px); overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; background:#F8FCF9; border:1px solid #E2E8F0; padding:10px 14px; border-radius:10px;">
           <span style="font-size:12px; color:#64748B; font-weight:600;">Reference Number</span>
-          <span style="font-family:'Inter', sans-serif; font-size:13px; font-weight:600; color:#0F2A1B;" id="reviewRefNum">--</span>
+          <span style="font-family:'Sora',sans-serif; font-size:13px; font-weight:800; color:#0F2A1B;" id="reviewRefNum">--</span>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -469,24 +478,54 @@
           <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:10px 14px; border-radius:8px; font-size:13px; color:#334155;" id="reviewNotes">No extra notes provided.</div>
         </div>
 
-        <!-- Rejection Reason Input -->
-        <div id="rejectReasonBox" style="display:none; flex-direction:column; gap:6px;">
+        <!-- Previous Correction & Updated Information (Only shown when resubmitted/updated) -->
+        <div id="reviewCorrectionDiffBox" style="display:none; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:12px; padding:14px; flex-direction:column; gap:8px;">
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase;">Previous Correction</span>
+            <p style="margin:2px 0 0; font-size:13px; color:#14532D; font-style:italic;" id="revPrevCorrectionMsg">"Please verify the quantity entered."</p>
+          </div>
+          <div style="border-top:1px dashed #86EFAC; padding-top:8px; margin-top:2px;">
+            <span style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase;">Updated Information</span>
+            <div style="margin-top:4px; font-size:13px; color:#0F2A1B; font-weight:600;" id="revDiffDetails">--</div>
+          </div>
+        </div>
+
+        <!-- Rejection Reason Input Box -->
+        <div id="rejectReasonBox" style="display:none; flex-direction:column; gap:6px; background:#FEF2F2; border:1px solid #FECACA; padding:12px; border-radius:10px;">
           <label style="font-size:12px; font-weight:700; color:#DC2626;">Reason for Rejection *</label>
-          <textarea id="rejectReasonInput" rows="2" placeholder="Explain why this transaction was rejected so Staff can correct it..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCA5A5; font-size:12.5px; box-sizing:border-box;"></textarea>
+          <textarea id="rejectReasonInput" rows="2" placeholder="Explain why this transaction was rejected..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCA5A5; font-size:12.5px; box-sizing:border-box;"></textarea>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+            <button type="button" id="btnCancelRejectTx" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#FFF; border:1px solid #CBD5E1; cursor:pointer;">Cancel</button>
+            <button type="button" id="btnConfirmRejectTx" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:6px; background:#DC2626; color:#FFF; border:none; cursor:pointer;">Confirm Rejection</button>
+          </div>
+        </div>
+
+        <!-- Return for Correction Reason Box -->
+        <div id="correctionReasonBox" style="display:none; flex-direction:column; gap:6px; background:#FFFBEB; border:1px solid #FDE68A; padding:12px; border-radius:10px;">
+          <label style="font-size:12px; font-weight:700; color:#D97706;">Manager's Correction Instructions for Staff *</label>
+          <textarea id="correctionReasonInput" rows="2" placeholder="e.g. Please verify the quantity entered..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCD34D; font-size:12.5px; box-sizing:border-box;"></textarea>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+            <button type="button" id="btnCancelReturnTx" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#FFF; border:1px solid #CBD5E1; cursor:pointer;">Cancel</button>
+            <button type="button" id="btnConfirmReturnTx" style="padding:6px 14px; font-size:12px; font-weight:700; border-radius:6px; background:#D97706; color:#FFF; border:none; cursor:pointer;">Send to Staff</button>
+          </div>
         </div>
 
         <div id="reviewResultBanner" style="display:none; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:600;"></div>
       </div>
 
-      <div style="padding:14px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; gap:12px; background:#F8FAFC;" id="reviewActionButtons">
-        <button type="button" class="btn-clear-filters" id="btnRejectTx" style="padding:9px 18px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; color:#DC2626; font-weight:600; cursor:pointer;">Reject</button>
-        <button type="button" class="btn-primary-action" id="btnApproveTx" style="padding:9px 22px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:700; cursor:pointer;">Approve</button>
+      <!-- Action Buttons: Reject, Return for Correction, Approve -->
+      <div style="padding:14px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC;" id="reviewActionButtons">
+        <button type="button" id="btnRejectTx" style="padding:9px 16px; border-radius:8px; border:1px solid #CBD5E1; background:#FFFFFF; color:#DC2626; font-weight:600; cursor:pointer;">Reject</button>
+        <div style="display:flex; gap:10px;">
+          <button type="button" id="btnReturnTx" style="padding:9px 16px; border-radius:8px; border:1px solid #D97706; background:#FFFBEB; color:#D97706; font-weight:700; cursor:pointer;">Return for Correction</button>
+          <button type="button" class="btn-primary-action" id="btnApproveTx" style="padding:9px 22px; border-radius:8px; border:none; background:#15803D; color:#FFFFFF; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(21,128,61,0.25);">Approve</button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- SCRIPTS -->
-  <script type="module" src="../js/manager-dashboard.js"></script>
+  <script type="module" src="../js/manager-dashboard.js?v=20261029_img"></script>
   <script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 </html>

@@ -346,6 +346,30 @@ export const AUTHENTIC_19_SCONES_MATERIALS = [
     company_id: SCONES_TENANT_ID
   },
   {
+    id: "NB-015",
+    item_code: "NB-015",
+    itemCode: "NB-015",
+    name: "Desiccated Coconut",
+    raw_material_name: "Desiccated Coconut",
+    category: "Dry Goods",
+    unit: "g",
+    unit_of_measure: "g",
+    current_stock: 0.0,
+    currentStock: 0.0,
+    minimum_threshold: 10.0,
+    minimum_stock: 10.0,
+    daily_mape: 7.42,
+    weekly_mape: 2.48,
+    p90_margin: "±5.68%",
+    p95_margin: "±8.71%",
+    forecast_daily: 1.15,
+    forecast_weekly: 8.07,
+    forecast_monthly: 33.50,
+    forecast_90d: 103.75,
+    status: "LOCKED_INSIDE_BOUNDARIES",
+    company_id: SCONES_TENANT_ID
+  },
+  {
     id: "NB-016",
     item_code: "NB-016",
     itemCode: "NB-016",
@@ -443,10 +467,72 @@ export const AUTHENTIC_19_SCONES_MATERIALS = [
   }
 ];
 
+export const SCONES_MATERIAL_IMAGE_FILES = {
+  "NB-001": "NB-001 All Purpose Flour.jpg",
+  "NB-002": "NB-002 Refined Sugar.jpg",
+  "NB-003": "NB-003 Yellow Squash.jpg",
+  "NB-004": "NB-004 Skimmed Milk.jpg",
+  "NB-005": "NB-005 Condensed Mlik.jpg",
+  "NB-006": "NB-006 Fresh Whole Eggs.jpg",
+  "NB-007": "NB-007 Baking Shortening.jpg",
+  "NB-008": "NB-008 Margarine.jpg",
+  "NB-009": "NB-009 Instant Dry Yeast.jpg",
+  "NB-010": "NB-010 Baking Soda.jpg",
+  "NB-011": "NB-011-odized Salt.jpg",
+  "NB-012": "NB-012 Calcium Propionate Powder.jpg",
+  "NB-013": "NB-013 Potassium Sorbate.jpg",
+  "NB-014": "NB-014 Crushed Peanuts.jpg",
+  "NB-015": "NB-015 Dessicated coconut.jpg",
+  "NB-016": "NB-016 Black sesame seeds.jpg",
+  "NB-017": "NB-017 Malunggay flakes.jpg",
+  "NB-018": "NB-018 Vanilla Extract.jpg",
+  "NB-019": "NB-019 Plastic Pillow Packaging.jpg"
+};
+
+export function getSconesMaterialImagePath(idOrName, basePath = "../assets") {
+  if (!idOrName) return "";
+  const clean = String(idOrName).toUpperCase().trim();
+  for (const [code, file] of Object.entries(SCONES_MATERIAL_IMAGE_FILES)) {
+    if (clean.includes(code)) {
+      return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/${encodeURIComponent(file)}`;
+    }
+  }
+  const nameClean = String(idOrName).toLowerCase().trim();
+  if (nameClean.includes("flour")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-001%20All%20Purpose%20Flour.jpg`;
+  if (nameClean.includes("sugar")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-002%20Refined%20Sugar.jpg`;
+  if (nameClean.includes("squash") || nameClean.includes("kalabasa")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-003%20Yellow%20Squash.jpg`;
+  if (nameClean.includes("skimmed")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-004%20Skimmed%20Milk.jpg`;
+  if (nameClean.includes("condensed")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-005%20Condensed%20Mlik.jpg`;
+  if (nameClean.includes("egg")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-006%20Fresh%20Whole%20Eggs.jpg`;
+  if (nameClean.includes("shortening")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-007%20Baking%20Shortening.jpg`;
+  if (nameClean.includes("margarine")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-008%20Margarine.jpg`;
+  if (nameClean.includes("yeast")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-009%20Instant%20Dry%20Yeast.jpg`;
+  if (nameClean.includes("soda")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-010%20Baking%20Soda.jpg`;
+  if (nameClean.includes("salt")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-011-odized%20Salt.jpg`;
+  if (nameClean.includes("calcium") || nameClean.includes("propionate")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-012%20Calcium%20Propionate%20Powder.jpg`;
+  if (nameClean.includes("sorbate")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-013%20Potassium%20Sorbate.jpg`;
+  if (nameClean.includes("peanut") || nameClean.includes("nuts")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-014%20Crushed%20Peanuts.jpg`;
+  if (nameClean.includes("coconut") || nameClean.includes("desiccated")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-015%20Dessicated%20coconut.jpg`;
+  if (nameClean.includes("sesame")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-016%20Black%20sesame%20seeds.jpg`;
+  if (nameClean.includes("malunggay") || nameClean.includes("moringa")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-017%20Malunggay%20flakes.jpg`;
+  if (nameClean.includes("vanilla")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-018%20Vanilla%20Extract.jpg`;
+  if (nameClean.includes("pillow") || nameClean.includes("packaging") || nameClean.includes("plastic")) return `${basePath}/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-019%20Plastic%20Pillow%20Packaging.jpg`;
+  return "";
+}
+
+// Attach image paths to all authentic materials
+AUTHENTIC_19_SCONES_MATERIALS.forEach(m => {
+  m.image = getSconesMaterialImagePath(m.id);
+  m.imageUrl = m.image;
+});
+
 export function getSconesRawMaterials() {
   return AUTHENTIC_19_SCONES_MATERIALS.map(m => ({
     ...m,
+    image: m.image || getSconesMaterialImagePath(m.id),
+    imageUrl: m.imageUrl || getSconesMaterialImagePath(m.id),
     current_stock: Number(m.current_stock ?? 0),
     minimum_threshold: Number(m.minimum_threshold ?? 10)
   }));
 }
+

@@ -2406,11 +2406,24 @@ input[type="number"]:focus {
   max-width: 100% !important;
 }
 
-/* Native select options cannot be fully styled consistently across browsers;
-   keep the opened list readable and on-brand where supported. */
+/* Unified select options styling - Image 1 mint aesthetic */
 select option {
-  background: #fff;
-  color: #183d28;
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  color: #1E293B !important;
+  padding: 8px 12px !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 13px !important;
+}
+
+select option:checked,
+select option:hover,
+select option:focus,
+select option:active {
+  background-color: #F0FDF4 !important;
+  background: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 700 !important;
 }
 
 /* Smooth control state — no abrupt browser-style jumps. */
@@ -2905,7 +2918,7 @@ table {
   inset: 0 !important;
   background: rgba(15, 23, 42, 0.45) !important;
   backdrop-filter: blur(4px) !important;
-  z-index: 9999 !important;
+  z-index: 200000 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -3212,20 +3225,35 @@ table {
    choice popovers with icons, badges, and active checkmarks.
    ========================================================== */
 
-.rmims-native-select-hidden {
+.rmims-native-select-hidden,
+select.rmims-native-select-hidden,
+.dropdown-select.rmims-native-select-hidden,
+.mgr-form-select.rmims-native-select-hidden,
+.filter-select.rmims-native-select-hidden,
+select[data-custom-enhanced="true"] {
+  display: none !important;
   position: absolute !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  left: -99999px !important;
+  top: -99999px !important;
   width: 0 !important;
   height: 0 !important;
-  margin: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
   padding: 0 !important;
-  border: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: -9999 !important;
   clip: rect(0, 0, 0, 0) !important;
   clip-path: inset(50%) !important;
   overflow: hidden !important;
   white-space: nowrap !important;
-  z-index: -1 !important;
 }
 
 .rm-custom-select {
@@ -3234,6 +3262,25 @@ table {
   vertical-align: middle !important;
   font-family: inherit !important;
   user-select: none !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.rm-custom-select.rm-select-block {
+  display: flex !important;
+  width: 100% !important;
+}
+
+.rm-custom-select.rm-select-block .rm-select-trigger {
+  width: 100% !important;
+}
+
+.rm-custom-select.rm-select-block .rm-select-menu {
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .rm-select-trigger {
@@ -3243,24 +3290,60 @@ table {
   gap: 8px !important;
   height: 36px !important;
   min-height: 36px !important;
+  min-width: 120px !important;
+  flex-shrink: 0 !important;
   padding: 0 12px !important;
   background: #ffffff !important;
   border: 1px solid rgba(20, 83, 45, 0.16) !important;
   border-radius: 10px !important;
   font-size: 0.82rem !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   color: #183d28 !important;
   cursor: pointer !important;
   box-shadow: 0 1px 2px rgba(20, 83, 45, 0.03) !important;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, transform 0.18s ease !important;
   white-space: nowrap !important;
   text-align: left !important;
+  box-sizing: border-box !important;
+}
+
+/* Activity Filter Toolbar: NEVER scrollable, dropdowns pop out freely */
+.activity-filter-toolbar {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  position: relative !important;
+  z-index: 50 !important;
+}
+
+.activity-filter-toolbar .rm-custom-select {
+  position: relative !important;
+  z-index: 55 !important;
+}
+
+/* Compact variant for 1-row toolbars */
+.activity-filter-toolbar .rm-select-trigger,
+.rm-custom-select.mgr-filter-select-compact .rm-select-trigger {
+  height: 34px !important;
+  min-height: 34px !important;
+  min-width: 90px !important;
+  max-width: 155px !important;
+  padding: 0 8px !important;
+  font-size: 0.77rem !important;
+  gap: 4px !important;
+}
+
+.activity-filter-toolbar .rm-select-trigger .rm-select-chevron,
+.rm-custom-select.mgr-filter-select-compact .rm-select-trigger .rm-select-chevron {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
 }
 
 .rm-select-trigger:hover {
-  border-color: rgba(22, 128, 60, 0.35) !important;
+  border-color: #15803D !important;
   background-color: #fafdfb !important;
-  box-shadow: 0 2px 6px rgba(20, 83, 45, 0.06) !important;
+  box-shadow: 0 2px 6px rgba(20, 83, 45, 0.08) !important;
 }
 
 .rm-custom-select.open .rm-select-trigger,
@@ -3276,13 +3359,23 @@ table {
   align-items: center !important;
   gap: 7px !important;
   color: #183d28 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
-.rm-select-chevron {
+.rm-select-chevron,
+.rm-custom-select svg.rm-select-chevron {
   width: 14px !important;
   height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
   color: #5f7b69 !important;
   flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s ease !important;
 }
 
@@ -3294,34 +3387,39 @@ table {
 /* Floating Choices Menu */
 .rm-select-menu {
   position: absolute !important;
-  top: calc(100% + 6px) !important;
-  left: 0 !important;
-  min-width: 100% !important;
+  top: calc(100% + 5px) !important;
+  right: 0 !important;
+  left: auto !important;
+  min-width: 140px !important;
   width: max-content !important;
-  min-width: 175px !important;
-  max-width: 280px !important;
+  max-width: 300px !important;
   background: #ffffff !important;
-  border: 1px solid rgba(20, 83, 45, 0.12) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 14px 34px -4px rgba(20, 83, 45, 0.14), 0 6px 14px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(20, 83, 45, 0.04) !important;
-  padding: 6px !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px -4px rgba(20, 83, 45, 0.16), 0 4px 10px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(20, 83, 45, 0.05) !important;
+  padding: 5px !important;
   z-index: 1050 !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
-  transform: translateY(-6px) scale(0.97) !important;
-  transform-origin: top left !important;
-  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s !important;
+  transform: translateY(-4px) scale(0.98) !important;
+  transform-origin: top right !important;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s !important;
   max-height: 280px !important;
   overflow-y: auto !important;
+  box-sizing: border-box !important;
   scrollbar-width: thin !important;
   scrollbar-color: rgba(20, 83, 45, 0.2) transparent !important;
 }
 
-.rm-select-menu.align-right {
-  left: auto !important;
-  right: 0 !important;
-  transform-origin: top right !important;
+.rm-select-menu.align-left {
+  right: auto !important;
+  left: 0 !important;
+  transform-origin: top left !important;
+}
+
+.rm-custom-select.open {
+  z-index: 2500 !important;
 }
 
 .rm-custom-select.open .rm-select-menu {
@@ -3329,33 +3427,87 @@ table {
   visibility: visible !important;
   pointer-events: auto !important;
   transform: translateY(0) scale(1) !important;
+  z-index: 2500 !important;
 }
 
-/* Option Items */
+/* Dropdowns opened inside modals must sit above modal content */
+.modal-sheet .rm-custom-select.open,
+.modal-overlay .rm-custom-select.open,
+.admin-modal-backdrop .rm-custom-select.open,
+.mgr-modal-backdrop .rm-custom-select.open,
+.rmims-notif-card .rm-custom-select.open,
+.help-modal-window .rm-custom-select.open {
+  z-index: 200010 !important;
+}
+
+.modal-sheet .rm-custom-select.open .rm-select-menu,
+.modal-overlay .rm-custom-select.open .rm-select-menu,
+.admin-modal-backdrop .rm-custom-select.open .rm-select-menu,
+.mgr-modal-backdrop .rm-custom-select.open .rm-select-menu,
+.rmims-notif-card .rm-custom-select.open .rm-select-menu,
+.help-modal-window .rm-custom-select.open .rm-select-menu {
+  z-index: 200010 !important;
+}
+
+/* STRICT RULE: When notification or detail modal is open, ANY page filter or dropdown MUST BE BEHIND and CANNOT BLOCK IT */
+body.rmims-notif-open .rm-custom-select:not(.rmims-notif-card .rm-custom-select),
+body:has(.rmims-notif-backdrop.open) .rm-custom-select:not(.rmims-notif-card .rm-custom-select),
+body:has(.rmims-detail-backdrop.open) .rm-custom-select:not(.rmims-detail-card .rm-custom-select),
+body.rmims-modal-open .rm-custom-select:not(.modal-sheet .rm-custom-select):not(.modal-overlay .rm-custom-select):not(.admin-modal-backdrop .rm-custom-select):not(.rmims-notif-card .rm-custom-select) {
+  z-index: 1 !important;
+}
+
+body.rmims-notif-open .rm-custom-select:not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body:has(.rmims-notif-backdrop.open) .rm-custom-select:not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body:has(.rmims-detail-backdrop.open) .rm-custom-select:not(.rmims-detail-card .rm-custom-select) .rm-select-menu,
+body.rmims-modal-open .rm-custom-select:not(.modal-sheet .rm-custom-select):not(.modal-overlay .rm-custom-select):not(.admin-modal-backdrop .rm-custom-select):not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body.rmims-notif-open .cal-combobox-dropdown,
+body:has(.rmims-notif-backdrop.open) .cal-combobox-dropdown,
+body:has(.rmims-detail-backdrop.open) .cal-combobox-dropdown,
+body.rmims-modal-open .cal-combobox-dropdown,
+body.rmims-notif-open .rm-combobox-dropdown,
+body:has(.rmims-notif-backdrop.open) .rm-combobox-dropdown,
+body:has(.rmims-detail-backdrop.open) .rm-combobox-dropdown,
+body.rmims-modal-open .rm-combobox-dropdown,
+body.rmims-notif-open .flatpickr-calendar,
+body:has(.rmims-notif-backdrop.open) .flatpickr-calendar,
+body:has(.rmims-detail-backdrop.open) .flatpickr-calendar,
+body.rmims-modal-open .flatpickr-calendar,
+body.rmims-notif-open .mgr-profile-dropdown,
+body:has(.rmims-notif-backdrop.open) .mgr-profile-dropdown,
+body.rmims-notif-open .rmsme-popover,
+body:has(.rmims-notif-backdrop.open) .rmsme-popover {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Option Items - Unified Image 1 Design System */
 .rm-select-option {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   gap: 10px !important;
-  padding: 8px 10px !important;
+  padding: 9px 12px !important;
   border-radius: 8px !important;
   font-size: 0.82rem !important;
-  font-weight: 500 !important;
-  color: #334155 !important;
-  cursor: pointer !important;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease !important;
-}
-
-.rm-select-option:hover {
-  background: #f0fdf4 !important;
-  color: #15803d !important;
-  transform: translateX(2px) !important;
-}
-
-.rm-select-option.selected {
-  background: #ecfdf5 !important;
-  color: #15803d !important;
   font-weight: 600 !important;
+  color: #1E293B !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+
+.rm-select-option:hover,
+.rm-select-option.selected,
+.rm-select-option:focus {
+  background: #F0FDF4 !important;
+  background-color: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 700 !important;
+  transform: none !important;
 }
 
 .rm-opt-content {
@@ -3372,11 +3524,18 @@ table {
   text-overflow: ellipsis !important;
 }
 
-.rm-select-check {
+.rm-select-check,
+.rm-select-option svg.rm-select-check {
   width: 14px !important;
   height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
   color: #16803c !important;
   flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
   opacity: 0 !important;
   transform: scale(0.7) !important;
   transition: opacity 0.15s ease, transform 0.15s ease !important;
@@ -3816,14 +3975,18 @@ input.inv-input-date.flatpickr-input.active {
    MATERIAL ACTIVITY: RECEIVE & DISBURSE MODAL POLISHING
    ========================================================== */
 
-.modal-overlay {
-  display: none;
+.modal-overlay,
+.mgr-modal-backdrop {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 200000 !important;
   align-items: center;
   justify-content: center;
   padding: 16px;
@@ -3831,8 +3994,15 @@ input.inv-input-date.flatpickr-input.active {
 }
 
 .modal-overlay.open,
-.modal-overlay.active {
+.modal-overlay.active,
+.modal-overlay.show,
+.mgr-modal-backdrop.open,
+.mgr-modal-backdrop.active,
+.mgr-modal-backdrop.show {
   display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 .modal-sheet {
@@ -3842,10 +4012,22 @@ input.inv-input-date.flatpickr-input.active {
   border: 1px solid #E2E8F0 !important;
   width: 100% !important;
   max-width: 580px !important;
+  max-height: calc(100vh - 40px) !important;
+  max-height: calc(100dvh - 40px) !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
   animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-sheet form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  margin: 0 !important;
 }
 
 @keyframes modalPopIn {
@@ -4181,7 +4363,14 @@ input.inv-input-date.flatpickr-input.active {
   width: 318px !important;
   margin-top: 6px !important;
   animation: fpFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  z-index: 99999 !important;
+  z-index: 2500 !important;
+}
+
+.modal-sheet .flatpickr-calendar,
+.modal-overlay .flatpickr-calendar,
+.admin-modal-backdrop .flatpickr-calendar,
+.mgr-modal-backdrop .flatpickr-calendar {
+  z-index: 200010 !important;
 }
 
 .flatpickr-calendar.arrowTop:before,
@@ -4209,10 +4398,60 @@ input.inv-input-date.flatpickr-input.active {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 6px !important;
+  gap: 8px !important;
   padding: 0 !important;
   position: static !important;
   width: auto !important;
+}
+
+.flatpickr-calendar .flatpickr-monthDropdown-months {
+  display: inline-block !important;
+  min-width: 96px !important;
+  width: auto !important;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  color: #0F2A1B !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(21, 128, 61, 0.22) !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+
+.flatpickr-calendar .numInputWrapper {
+  min-width: 80px !important;
+  width: 84px !important;
+  max-width: 90px !important;
+  height: 30px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(21, 128, 61, 0.22) !important;
+  border-radius: 8px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.flatpickr-calendar .flatpickr-current-month input.cur-year {
+  width: 100% !important;
+  min-width: 52px !important;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  color: #15803D !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 2px 18px 2px 8px !important;
+  margin: 0 !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+}
+
+.flatpickr-calendar .numInputWrapper span.arrowUp,
+.flatpickr-calendar .numInputWrapper span.arrowDown {
+  opacity: 0.85 !important;
+  right: 4px !important;
 }
 
 .flatpickr-day.selected,
@@ -4429,7 +4668,7 @@ input.inv-input-date.flatpickr-input.active {
   box-shadow: 0 16px 36px rgba(15, 42, 27, 0.18);
   max-height: 220px;
   overflow-y: auto;
-  z-index: 99999;
+  z-index: 2500;
   padding: 6px;
   display: none;
   box-sizing: border-box;
@@ -4508,7 +4747,8 @@ select,
   padding-top: clamp(4px, 0.8vw, 7px) !important;
   padding-bottom: clamp(4px, 0.8vw, 7px) !important;
   padding-left: clamp(8px, 1vw, 12px) !important;
-  padding-right: clamp(22px, 2vw, 28px) !important;
+  padding-right: 38px !important;
+  background-position: right 14px center !important;
   min-height: clamp(32px, 3.8vw, 38px) !important;
   height: auto !important;
   border-radius: clamp(6px, 1vw, 10px) !important;
@@ -4527,7 +4767,7 @@ button,
   font-size: clamp(11.5px, 1.2vw, 13.5px) !important;
   padding: clamp(5px, 0.8vw, 8px) clamp(10px, 1.2vw, 16px) !important;
   border-radius: clamp(6px, 1vw, 10px) !important;
-  white-space: normal !important;
+  white-space: nowrap !important;
 }
 
 .panel,
@@ -4543,3 +4783,500 @@ button,
   font-size: clamp(13px, 1.5vw, 16px) !important;
   word-break: break-word !important;
 }
+
+/* ==========================================================================
+   UNIFIED MODAL / VIEWER EXIT 'X' BUTTON (IMAGE-MATCHED TRANSITION SPEC)
+   Matches the circular soft-green initial state transitioning to soft-red
+   hover state with 90deg rotation and scale.
+   ========================================================================== */
+
+button.fc-modal-close,
+.fc-modal-close,
+button.an-modal-close,
+.an-modal-close,
+button.mgr-modal-close,
+.mgr-modal-close,
+button.mgr-modal-close-btn,
+.mgr-modal-close-btn,
+button.rpt-modal-close,
+.rpt-modal-close,
+button.btn-close-modal,
+.btn-close-modal,
+button.store-modal-close-btn,
+.store-modal-close-btn,
+button.help-modal-close-btn,
+.help-modal-close-btn,
+button.rmsme-guide-close-btn,
+.rmsme-guide-close-btn,
+button.rmsme-modal-close-btn,
+.rmsme-modal-close-btn,
+button.rmims-notif-close-btn,
+.rmims-notif-close-btn,
+button.auth-modal-close,
+.auth-modal-close,
+button.modal-close,
+.modal-close,
+button.expansion-close-btn,
+.expansion-close-btn,
+button#btnCloseLocModal,
+button#btnCloseStoreModal,
+button#btnCloseAddBranch,
+button#btnCloseAddUser,
+button#btnCloseEditUser,
+button#btnCloseRoleBackupModal,
+button#btnCloseResetModal,
+button#staffEditCloseBtn,
+button#staffDeleteCloseBtn,
+button#anCloseMaximizeModal,
+button#modalTotalForecastClose,
+button#modalForecastStatusClose,
+button#modalMaterialDetailClose,
+button#saveModalCloseBtn,
+button#tabExportCloseBtn,
+button#btnCloseReceiveReview,
+button#btnCloseEditReceipt,
+button#btnCloseDeleteReceipt,
+button#btnCloseDisburseReview,
+button#btnCloseEditDisb,
+button#btnCloseDeleteDisb,
+button#btnCloseViewTx,
+button#btnCloseCorrectionModal,
+button#closeTxReviewModal,
+button#importModalCloseBtn,
+button#deleteConfirmCloseBtn,
+button#deleteFpConfirmCloseBtn,
+button#infoModalClose,
+button#addModalClose,
+button#editModalClose,
+button#deleteModalClose,
+button#bulkModalClose {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(15, 42, 27, 0.05) !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #3C5847 !important;
+  cursor: pointer !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  padding: 0 !important;
+  outline: none !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+/* Hover State: Soft red background, red border, bright red X, 90deg rotation & scale */
+button.fc-modal-close:hover,
+.fc-modal-close:hover,
+button.an-modal-close:hover,
+.an-modal-close:hover,
+button.mgr-modal-close:hover,
+.mgr-modal-close:hover,
+button.mgr-modal-close-btn:hover,
+.mgr-modal-close-btn:hover,
+button.rpt-modal-close:hover,
+.rpt-modal-close:hover,
+button.btn-close-modal:hover,
+.btn-close-modal:hover,
+button.store-modal-close-btn:hover,
+.store-modal-close-btn:hover,
+button.help-modal-close-btn:hover,
+.help-modal-close-btn:hover,
+button.rmsme-guide-close-btn:hover,
+.rmsme-guide-close-btn:hover,
+button.rmsme-modal-close-btn:hover,
+.rmsme-modal-close-btn:hover,
+button.rmims-notif-close-btn:hover,
+.rmims-notif-close-btn:hover,
+button.auth-modal-close:hover,
+.auth-modal-close:hover,
+button.modal-close:hover,
+.modal-close:hover,
+button.expansion-close-btn:hover,
+.expansion-close-btn:hover,
+button#btnCloseLocModal:hover,
+button#btnCloseStoreModal:hover,
+button#btnCloseAddBranch:hover,
+button#btnCloseAddUser:hover,
+button#btnCloseEditUser:hover,
+button#btnCloseRoleBackupModal:hover,
+button#btnCloseResetModal:hover,
+button#staffEditCloseBtn:hover,
+button#staffDeleteCloseBtn:hover,
+button#anCloseMaximizeModal:hover,
+button#modalTotalForecastClose:hover,
+button#modalForecastStatusClose:hover,
+button#modalMaterialDetailClose:hover,
+button#saveModalCloseBtn:hover,
+button#tabExportCloseBtn:hover,
+button#btnCloseReceiveReview:hover,
+button#btnCloseEditReceipt:hover,
+button#btnCloseDeleteReceipt:hover,
+button#btnCloseDisburseReview:hover,
+button#btnCloseEditDisb:hover,
+button#btnCloseDeleteDisb:hover,
+button#btnCloseViewTx:hover,
+button#btnCloseCorrectionModal:hover,
+button#closeTxReviewModal:hover,
+button#importModalCloseBtn:hover,
+button#deleteConfirmCloseBtn:hover,
+button#deleteFpConfirmCloseBtn:hover,
+button#infoModalClose:hover,
+button#addModalClose:hover,
+button#editModalClose:hover,
+button#deleteModalClose:hover,
+button#bulkModalClose:hover {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
+}
+
+/* Active / Pressed State */
+button.fc-modal-close:active,
+.fc-modal-close:active,
+button.an-modal-close:active,
+.an-modal-close:active,
+button.mgr-modal-close:active,
+.mgr-modal-close:active,
+button.mgr-modal-close-btn:active,
+.mgr-modal-close-btn:active,
+button.rpt-modal-close:active,
+.rpt-modal-close:active,
+button.btn-close-modal:active,
+.btn-close-modal:active,
+button.store-modal-close-btn:active,
+.store-modal-close-btn:active,
+button.help-modal-close-btn:active,
+.help-modal-close-btn:active,
+button.rmsme-guide-close-btn:active,
+.rmsme-guide-close-btn:active,
+button.rmsme-modal-close-btn:active,
+.rmsme-modal-close-btn:active,
+button.rmims-notif-close-btn:active,
+.rmims-notif-close-btn:active,
+button.auth-modal-close:active,
+.auth-modal-close:active,
+button.modal-close:active,
+.modal-close:active,
+button.expansion-close-btn:active,
+.expansion-close-btn:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  border-color: rgba(185, 28, 28, 0.45) !important;
+  transform: rotate(90deg) scale(0.96) !important;
+}
+
+/* SVG styling inside all exit buttons */
+button.fc-modal-close svg,
+.fc-modal-close svg,
+button.an-modal-close svg,
+.an-modal-close svg,
+button.mgr-modal-close svg,
+.mgr-modal-close svg,
+button.mgr-modal-close-btn svg,
+.mgr-modal-close-btn svg,
+button.rpt-modal-close svg,
+.rpt-modal-close svg,
+button.btn-close-modal svg,
+.btn-close-modal svg,
+button.store-modal-close-btn svg,
+.store-modal-close-btn svg,
+button.help-modal-close-btn svg,
+.help-modal-close-btn svg,
+button.rmsme-guide-close-btn svg,
+.rmsme-guide-close-btn svg,
+button.rmsme-modal-close-btn svg,
+.rmsme-modal-close-btn svg,
+button.rmims-notif-close-btn svg,
+.rmims-notif-close-btn svg,
+button.auth-modal-close svg,
+.auth-modal-close svg,
+button.modal-close svg,
+.modal-close svg,
+button.expansion-close-btn svg,
+.expansion-close-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
+}
+
+/* ==========================================================
+   UNIFIED OPTION BACKGROUND (IMAGE 1 UNIFICATION)
+   Applies Image 1 styling across all native select options
+   as well as custom dropdown choices:
+   - Light mint background: #F0FDF4
+   - Emerald green text: #15803D
+   - Bold weight: 700
+   ========================================================== */
+select option {
+  background-color: #FFFFFF;
+  color: #1E293B;
+  padding: 8px 12px;
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+  background: #F0FDF4 !important;
+  background-color: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 700 !important;
+}
+
+select.rmims-native-select-hidden,
+.dropdown-select.rmims-native-select-hidden,
+.mgr-form-select.rmims-native-select-hidden,
+.filter-select.rmims-native-select-hidden,
+select[data-custom-enhanced="true"] {
+  display: none !important;
+  position: absolute !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: -9999 !important;
+}
+
+/* ==========================================================================
+   UNIFIED FILTER SIZING, SEARCH ICON BALANCE & LEDGER TABLE (NORMAL / NON-SCROLLABLE)
+   ========================================================================== */
+
+/* 1. Prevent Search Icon and Placeholder text overlap (Image 1 Fix) */
+.topbar-search .search-input,
+.inv-filter-toolbar .search-input,
+.search-input {
+  padding-left: 38px !important;
+  padding-right: 14px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 13px !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+}
+
+.topbar-search svg,
+.search-wrap svg {
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  stroke: var(--rm-ink-dim, #64748B) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+/* Staff search box inside table cards */
+.staff-search-box {
+  height: 36px !important;
+  min-height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
+  box-sizing: border-box !important;
+  border: 1px solid var(--rm-line, #E2E8F0) !important;
+  border-radius: 10px !important;
+  background: #F8FAFC !important;
+}
+
+.staff-search-box svg {
+  flex-shrink: 0 !important;
+  width: 14px !important;
+  height: 14px !important;
+  stroke: #64748B !important;
+}
+
+.staff-search-box input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 0 0 4px !important;
+  height: 100% !important;
+  width: 100% !important;
+  font-size: 13px !important;
+  color: var(--rm-ink, #0F172A) !important;
+}
+
+/* 2. Balance all filter toolbar elements to uniform 36px height */
+.inv-filter-toolbar .topbar-search,
+.inv-filter-toolbar .search-input,
+.inv-filter-toolbar .dropdown-select,
+.inv-filter-toolbar .rm-select-trigger,
+.inv-filter-toolbar .btn-clear-filters,
+.staff-search-box,
+.mgr-tx-table-card .dropdown-select,
+.mgr-tx-table-card .rm-select-trigger {
+  height: 36px !important;
+  min-height: 36px !important;
+  box-sizing: border-box !important;
+  font-size: 13px !important;
+}
+
+.inv-filter-toolbar .btn-clear-filters {
+  line-height: 34px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border-radius: 10px !important;
+}
+
+/* 3. Non-Scrollable Normal Ledger Tables (Receive & Disburse) */
+.mgr-ledger-table-wrap {
+  width: 100% !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  box-sizing: border-box !important;
+}
+
+.mgr-tx-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  text-align: left !important;
+  font-size: 12.5px !important;
+  table-layout: auto !important;
+}
+
+.mgr-tx-table th {
+  padding: 10px 8px !important;
+  background: #15803D !important;
+  color: #FFFFFF !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  border-bottom: 2px solid #14532D !important;
+  white-space: normal !important;
+  line-height: 1.25 !important;
+  vertical-align: middle !important;
+}
+
+.mgr-tx-table td {
+  padding: 9px 8px !important;
+  border-bottom: 1px solid #F1F5F9 !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  vertical-align: middle !important;
+  font-size: 12px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+.mgr-tx-table tr:hover td {
+  background-color: #F8FCF9 !important;
+}
+
+.mgr-tx-table .mgr-ref-pill {
+  font-size: 11px !important;
+  padding: 3px 6px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  border-radius: 6px !important;
+}
+
+.mgr-tx-table .mgr-date-text,
+.mgr-tx-table .mgr-time-text {
+  font-size: 11.5px !important;
+  white-space: nowrap !important;
+}
+
+.mgr-tx-table .mgr-qty-delta {
+  font-size: 12px !important;
+  white-space: nowrap !important;
+}
+
+.mgr-tx-table .mgr-status-pill {
+  font-size: 11px !important;
+  padding: 3px 7px !important;
+  white-space: nowrap !important;
+}
+
+/* 4. Calendar Range & Date Filter Balance */
+.inv-date-range-wrap {
+  height: 38px !important;
+  min-height: 38px !important;
+  box-sizing: border-box !important;
+  padding: 2px 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.inv-date-range-wrap .inv-input-date,
+input.inv-input-date.flatpickr-input {
+  height: 100% !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.rpt-fe-select,
+.rpt-fe-clear-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  box-sizing: border-box !important;
+  font-size: 13px !important;
+}
+
+/* Prevent duplicate custom dropdowns when searchable combobox is present */
+.cal-combobox-wrap + .rm-custom-select,
+.rm-combobox-wrap + .rm-custom-select,
+.rm-custom-select + .cal-combobox-wrap,
+.rm-custom-select + .rm-combobox-wrap,
+[data-has-combobox="true"] ~ .rm-custom-select,
+select[data-has-combobox="true"] + .rm-custom-select,
+select[data-has-combobox="true"] ~ .rm-custom-select {
+  display: none !important;
+}
+
+/* Topbar popovers must float above report cards */
+.admin-topbar {
+  z-index: 1000 !important;
+}
+.rmsme-popover-anchor {
+  z-index: 1001 !important;
+}
+
+
+

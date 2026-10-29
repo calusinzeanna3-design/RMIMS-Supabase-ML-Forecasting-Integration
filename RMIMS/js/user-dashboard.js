@@ -91,11 +91,7 @@ async function initDashboard() {
     }
   } catch (_) {}
 
-  const materials = (getSystemRawMaterials() || []).filter(m => {
-    const n = String(m.name || m.raw_material_name || '').toLowerCase();
-    const c = String(m.item_code || m.id || '').toUpperCase();
-    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
-  });
+  const materials = getSystemRawMaterials() || [];
 
   const activeStaffName = getLiveStaffName().trim().toLowerCase();
   let staffUserEmail = '';
@@ -104,7 +100,7 @@ async function initDashboard() {
     if (raw) staffUserEmail = String(JSON.parse(raw)?.email || '').trim().toLowerCase();
   } catch (_) {}
 
-  const rawStaffTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const rawStaffTx = getStaffTransactions() || [];
 
   // Strict user isolation for staff member's personal activity on dashboard:
   // Brand new staff account starts with 0 personal submissions
@@ -118,7 +114,7 @@ async function initDashboard() {
       })
     : rawStaffTx;
 
-  const allCompanyTx = (getAllCompanyTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+  const allCompanyTx = getAllCompanyTransactions() || [];
 
   renderSummaryCards(materials, staffTx);
   renderInventoryStatus(materials);
@@ -154,7 +150,7 @@ function renderStaffChart(providedStaffTx = null) {
       if (raw) staffUserEmail = String(JSON.parse(raw)?.email || '').trim().toLowerCase();
     } catch (_) {}
 
-    const rawStaffTx = (getStaffTransactions() || []).filter(t => !String(t.material || t.rawMaterial || '').toLowerCase().includes('coconut'));
+    const rawStaffTx = getStaffTransactions() || [];
     txSource = (activeStaffName || staffUserEmail)
       ? rawStaffTx.filter(t => {
           const tEmail = String(t.staffEmail || '').trim().toLowerCase();

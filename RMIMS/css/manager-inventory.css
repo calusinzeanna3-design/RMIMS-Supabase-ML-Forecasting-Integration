@@ -428,8 +428,11 @@ body.manager-page .content {
   background: rgba(15, 23, 42, 0.65) !important;
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
-  z-index: 999999 !important;
-  display: flex;
+  z-index: 200000 !important;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
   align-items: center;
   justify-content: center;
   padding: 16px;
@@ -459,11 +462,21 @@ body.manager-page .content {
   box-shadow: 0 25px 50px -12px rgba(15, 42, 27, 0.25);
   width: 100%;
   max-width: 620px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  max-height: calc(100vh - 48px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
   animation: mgrModalIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mgr-modal-box form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  margin: 0 !important;
 }
 
 .mgr-modal-box.modal-lg {
@@ -509,41 +522,78 @@ body.manager-page .content {
 }
 
 .mgr-modal-close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: #64748B;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  background: rgba(15, 42, 27, 0.05) !important;
+  color: #3C5847 !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  outline: none !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
 }
 
 .mgr-modal-close-btn:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
 }
 
+.mgr-modal-close-btn:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  transform: rotate(90deg) scale(0.96) !important;
+}
+
+.mgr-modal-close-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
+}
+
+
 .mgr-modal-body {
-  padding: 22px 24px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 20px 24px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
 }
 
 .mgr-modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #E2E8F0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  background: #F8FAFC;
+  padding: 14px 24px !important;
+  border-top: 1px solid #E2E8F0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  background: #F8FAFC !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: 10 !important;
 }
 
 /* Form inputs in Modal */
@@ -1766,33 +1816,64 @@ body.manager-page #overviewTable thead th {
 /* Responsive Modals: Add Material, Specifications, Finished Food, Export */
 @media (max-width: 768px) {
   .mgr-modal-backdrop {
-    padding: 10px;
-    align-items: flex-end;
+    padding: 12px !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .mgr-modal-box {
     max-width: 100% !important;
-    max-height: 92vh !important;
-    border-radius: 16px 16px 0 0 !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .mgr-modal-box form {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+    margin: 0 !important;
   }
 
   .mgr-modal-header {
-    padding: 14px 18px;
+    padding: 14px 18px !important;
+    flex-shrink: 0 !important;
   }
 
   .mgr-modal-body {
-    padding: 14px 18px;
-    max-height: 75vh;
+    padding: 14px 18px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
   }
 
   .mgr-modal-footer {
-    padding: 12px 18px;
-    flex-direction: column-reverse;
+    padding: 12px 18px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    background: #F8FAFC !important;
+    border-top: 1px solid #E2E8F0 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 20 !important;
   }
 
   .mgr-modal-footer button {
-    width: 100%;
-    justify-content: center;
+    width: auto !important;
+    min-width: 110px !important;
+    height: 38px !important;
+    justify-content: center !important;
   }
 
   /* Form grids collapse to 1 column on mobile */

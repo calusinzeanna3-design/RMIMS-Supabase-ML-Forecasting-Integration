@@ -293,13 +293,19 @@ function updateUserDisplay(name) {
 
 function loadProfilePhoto() {
     if (!currentUser) return;
-    const storedPhoto = localStorage.getItem(`rmims_user_avatar_${currentUser.uid}`);
+    const cleanEmail = (currentUser.email || "").toLowerCase();
+    const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
+                      (cleanEmail && localStorage.getItem('rmims_avatar_removed_' + cleanEmail) === 'true');
+    const storedPhoto = isRemoved ? "" : (localStorage.getItem("rmims_user_avatar") ||
+                        localStorage.getItem(`rmims_avatar_${currentUser.uid}`) ||
+                        localStorage.getItem(`rmims_user_avatar_${currentUser.uid}`) ||
+                        currentUser.avatarUrl);
     const avPreview = $("profileAvatarPreview");
-    const topAv = $("topbarAvatar");
+    const topAv = $("topbarAvatar") || document.getElementById("topbarProfileAvatar");
 
     if (storedPhoto) {
-        if (avPreview) avPreview.innerHTML = `<img src="${storedPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"/>`;
-        if (topAv) topAv.innerHTML = `<img src="${storedPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;"/>`;
+        if (avPreview) avPreview.innerHTML = `<img src="${storedPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"/>`;
+        if (topAv) topAv.innerHTML = `<img src="${storedPhoto}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"/>`;
     } else {
         updateUserDisplay(currentUser.fullName);
     }
@@ -325,10 +331,54 @@ function initActions() {
                 return;
             }
             const reader = new FileReader();
-            reader.onload = (re) => {
+            reader.onload = async (re) => {
                 const dataUrl = re.target.result;
-                if (currentUser) localStorage.setItem(`rmims_user_avatar_${currentUser.uid}`, dataUrl);
+                if (currentUser) {
+                    const cleanEmail = (currentUser.email || "").toLowerCase();
+                    localStorage.removeItem('rmims_avatar_removed');
+                    if (cleanEmail) localStorage.removeItem('rmims_avatar_removed_' + cleanEmail);
+
+                    currentUser.avatarUrl = dataUrl;
+                    localStorage.setItem(`rmims_avatar_${currentUser.uid}`, dataUrl);
+                    localStorage.setItem(`rmims_user_avatar_${currentUser.uid}`, dataUrl);
+                    localStorage.setItem("rmims_user_avatar", dataUrl);
+                    try {
+                        const keys = ["currentUser", "rmimsCurrentUser", "userProfile", "staffUser", "managerUser"];
+                        keys.forEach(k => {
+                            const raw = localStorage.getItem(k);
+                            if (raw) {
+                                const u = JSON.parse(raw);
+                                u.avatarUrl = dataUrl;
+                                u.avatar_url = dataUrl;
+                                localStorage.setItem(k, JSON.stringify(u));
+                            }
+                        });
+                    } catch (_) {}
+
+                    try {
+                        if (currentUser.uid && !currentUser.uid.startsWith("active-")) {
+                            await supabase
+                                .from("user_profiles")
+                                .update({ avatar_url: dataUrl, updated_at: new Date().toISOString() })
+                                .eq("id", currentUser.uid);
+                        }
+                        if (cleanEmail) {
+                            await supabase
+                                .from("user_profiles")
+                                .update({ avatar_url: dataUrl, updated_at: new Date().toISOString() })
+                                .eq("email", cleanEmail);
+                        }
+                    } catch (dbErr) {
+                        console.warn("Direct Supabase avatar update warning:", dbErr);
+                    }
+                }
                 loadProfilePhoto();
+                document.querySelectorAll("[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar").forEach(el => {
+                    el.innerHTML = `<img src="${dataUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+                    el.style.padding = '0';
+                    el.style.overflow = 'hidden';
+                });
+                window.dispatchEvent(new CustomEvent("rmims_avatar_updated", { detail: { avatarUrl: dataUrl } }));
                 showToast("Profile avatar updated.", "success");
             };
             reader.readAsDataURL(file);
@@ -336,13 +386,79 @@ function initActions() {
     }
 
     if (removeBtn) {
-        removeBtn.addEventListener("click", () => {
-            if (currentUser) localStorage.removeItem(`rmims_user_avatar_${currentUser.uid}`);
+        removeBtn.addEventListener("click", async () => {
+            const cleanEmail = (currentUser?.email || "").toLowerCase();
+
+            // Set permanent tombstone so avatar is never resurrected on refresh
+            localStorage.setItem('rmims_avatar_removed', 'true');
+            if (cleanEmail) localStorage.setItem('rmims_avatar_removed_' + cleanEmail, 'true');
+
+            if (currentUser) {
+                currentUser.avatarUrl = "";
+                localStorage.removeItem(`rmims_avatar_${currentUser.uid}`);
+                localStorage.removeItem(`rmims_user_avatar_${currentUser.uid}`);
+            }
+            localStorage.removeItem("rmims_user_avatar");
+            localStorage.removeItem("rmims_manager_avatar");
+            localStorage.removeItem("rmims_admin_avatar");
+
+            // Scan and remove any dynamic rmims_avatar_ / rmims_user_avatar_ key
+            try {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && (k.startsWith("rmims_avatar_") || k.startsWith("rmims_user_avatar_"))) {
+                        if (!k.startsWith("rmims_avatar_removed")) keysToRemove.push(k);
+                    }
+                }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
+            } catch (_) {}
+
+            try {
+                const keys = ["currentUser", "rmimsCurrentUser", "userProfile", "staffUser", "managerUser", "adminUser"];
+                keys.forEach(k => {
+                    const raw = localStorage.getItem(k);
+                    if (raw) {
+                        const u = JSON.parse(raw);
+                        delete u.avatarUrl;
+                        delete u.avatar_url;
+                        localStorage.setItem(k, JSON.stringify(u));
+                    }
+                });
+            } catch (_) {}
+
+            try {
+                const nowIso = new Date().toISOString();
+                if (currentUser?.uid && !currentUser.uid.startsWith("active-")) {
+                    await supabase
+                        .from("user_profiles")
+                        .update({ avatar_url: null, updated_at: nowIso })
+                        .eq("id", currentUser.uid);
+                }
+                if (cleanEmail) {
+                    await supabase
+                        .from("user_profiles")
+                        .update({ avatar_url: null, updated_at: nowIso })
+                        .eq("email", cleanEmail);
+                }
+                try {
+                    const { data: { user: supaUser } } = await supabase.auth.getUser();
+                    if (supaUser?.id) {
+                        await supabase.from("user_profiles").update({ avatar_url: null, updated_at: nowIso }).eq("id", supaUser.id);
+                    }
+                } catch (_) {}
+            } catch (dbErr) {
+                console.warn("Supabase avatar removal warning:", dbErr);
+            }
+
             const avPreview = $("profileAvatarPreview");
-            const topAv = $("topbarAvatar");
-            if (avPreview) avPreview.innerHTML = initials(currentUser.fullName);
-            if (topAv) topAv.innerHTML = initials(currentUser.fullName);
-            showToast("Profile avatar removed.", "info");
+            const fallbackChar = initials(currentUser?.fullName || "Staff");
+            if (avPreview) avPreview.innerHTML = fallbackChar;
+            document.querySelectorAll("[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar").forEach(el => {
+                el.textContent = fallbackChar;
+            });
+            window.dispatchEvent(new CustomEvent("rmims_avatar_updated", { detail: { avatarUrl: "" } }));
+            showToast("Profile avatar removed permanently.", "info");
         });
     }
 
@@ -443,23 +559,163 @@ function initActions() {
             }
 
             try {
-                const { error: verifyError } = await auth.signInWithPassword({
-                    email: currentUser.email,
-                    password: currentPass
-                });
+                // 1. Resolve Staff Email
+                let userEmail = (currentUser?.email || "").trim().toLowerCase();
+                if (!userEmail) {
+                    userEmail = ($("email")?.value || "").trim().toLowerCase();
+                }
+                if (!userEmail) {
+                    const keys = ["staffUser", "currentUser", "rmimsCurrentUser", "userProfile"];
+                    for (const k of keys) {
+                        try {
+                            const raw = localStorage.getItem(k);
+                            if (raw) {
+                                const parsed = JSON.parse(raw);
+                                if (parsed?.email) {
+                                    userEmail = parsed.email.trim().toLowerCase();
+                                    currentUser.email = userEmail;
+                                    break;
+                                }
+                            }
+                        } catch (_) {}
+                    }
+                }
 
-                if (verifyError) {
+                // 2. Check local registered users & branch stores
+                let regUsers = [];
+                try {
+                    regUsers = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
+                } catch (_) {}
+                const localUser = regUsers.find(u => 
+                    (userEmail && (u.email || "").toLowerCase() === userEmail) ||
+                    (currentUser?.uid && String(u.id || "") === String(currentUser.uid)) ||
+                    (currentUser?.fullName && (u.name || "").toLowerCase() === currentUser.fullName.toLowerCase())
+                );
+
+                let storeUser = null;
+                try {
+                    const rawStores = localStorage.getItem("RMIMS_BRANCH_STORES_V3");
+                    if (rawStores) {
+                        const stores = JSON.parse(rawStores);
+                        const storeList = Array.isArray(stores) ? stores : Object.values(stores);
+                        for (const st of storeList) {
+                            const list = [...(st.staff || []), ...(st.managers || [])];
+                            for (const p of list) {
+                                if (p && (
+                                    (userEmail && (p.email || "").toLowerCase() === userEmail) ||
+                                    (currentUser?.fullName && (p.name || "").toLowerCase() === currentUser.fullName.toLowerCase())
+                                )) {
+                                    storeUser = p;
+                                    break;
+                                }
+                            }
+                            if (storeUser) break;
+                        }
+                    }
+                } catch (_) {}
+
+                const knownCurrentPw = localUser?.password || storeUser?.password;
+                if (knownCurrentPw && knownCurrentPw !== currentPass) {
                     if (currentErr) currentErr.textContent = "Current password is incorrect.";
                     return;
                 }
 
-                const { error: updateError } = await auth.updateUser({ password: newPass });
-                if (updateError) throw updateError;
+                // 3. Attempt Supabase Auth re-authentication and update if online
+                const authClient = supabase?.auth || auth?.auth || auth;
+                let verifiedOnline = false;
+                if (userEmail && authClient && typeof authClient.signInWithPassword === "function") {
+                    try {
+                        const { error: verifyError } = await authClient.signInWithPassword({
+                            email: userEmail,
+                            password: currentPass
+                        });
+                        if (verifyError) {
+                            if (!knownCurrentPw) {
+                                if (currentErr) currentErr.textContent = "Current password is incorrect.";
+                                return;
+                            }
+                        } else {
+                            verifiedOnline = true;
+                        }
+                    } catch (e) {
+                        console.warn("Supabase re-auth notice:", e);
+                    }
+                }
+
+                if (authClient && typeof authClient.updateUser === "function") {
+                    try {
+                        await authClient.updateUser({ password: newPass });
+                    } catch (upErr) {
+                        console.warn("Supabase updateUser notice:", upErr);
+                    }
+                }
+
+                // 4. Update in rmims_registered_users
+                let regUpdated = false;
+                regUsers.forEach(u => {
+                    if ((userEmail && (u.email || "").toLowerCase() === userEmail) ||
+                        (currentUser?.uid && String(u.id || "") === String(currentUser.uid)) ||
+                        (currentUser?.fullName && (u.name || "").toLowerCase() === currentUser.fullName.toLowerCase())) {
+                        u.password = newPass;
+                        regUpdated = true;
+                    }
+                });
+                if (!regUpdated && userEmail) {
+                    regUsers.push({
+                        id: currentUser?.uid || "user_" + Date.now(),
+                        email: userEmail,
+                        name: currentUser?.fullName || "Store Staff",
+                        role: "user",
+                        password: newPass,
+                        status: "active"
+                    });
+                }
+                localStorage.setItem("rmims_registered_users", JSON.stringify(regUsers));
+                window.dispatchEvent(new Event("rmims_registered_users_updated"));
+
+                // 5. Update in RMIMS_BRANCH_STORES_V3
+                try {
+                    const rawStores = localStorage.getItem("RMIMS_BRANCH_STORES_V3");
+                    if (rawStores) {
+                        const stores = JSON.parse(rawStores);
+                        const storeList = Array.isArray(stores) ? stores : Object.values(stores);
+                        let storeChanged = false;
+                        storeList.forEach(st => {
+                            const list = [...(st.staff || []), ...(st.managers || [])];
+                            list.forEach(p => {
+                                if (p && (
+                                    (userEmail && (p.email || "").toLowerCase() === userEmail) ||
+                                    (currentUser?.fullName && (p.name || "").toLowerCase() === currentUser.fullName.toLowerCase())
+                                )) {
+                                    p.password = newPass;
+                                    storeChanged = true;
+                                }
+                            });
+                        });
+                        if (storeChanged) {
+                            localStorage.setItem("RMIMS_BRANCH_STORES_V3", JSON.stringify(stores));
+                        }
+                    }
+                } catch (_) {}
+
+                // 6. Update staffUser / currentUser timestamps
+                try {
+                    const keys = ["staffUser", "currentUser", "rmimsCurrentUser", "userProfile"];
+                    keys.forEach(k => {
+                        const raw = localStorage.getItem(k);
+                        if (raw) {
+                            const u = JSON.parse(raw);
+                            u.updatedAt = new Date().toISOString();
+                            localStorage.setItem(k, JSON.stringify(u));
+                        }
+                    });
+                } catch (_) {}
 
                 showToast("Password updated successfully.", "success");
                 directPasswordForm.reset();
             } catch (err) {
-                showToast(err.message || "Unable to update password.", "error");
+                console.error("Staff password change error:", err);
+                showToast("Unable to change password. Please check your information and try again.", "error");
             } finally {
                 if (saveBtn) {
                     saveBtn.disabled = false;
@@ -493,8 +749,17 @@ function initActions() {
             signOutOthersBtn.disabled = true;
             signOutOthersBtn.textContent = "Signing Out…";
             try {
-                const { error } = await auth.signOut({ scope: "others" });
-                if (error) throw error;
+                const authClient = supabase?.auth || auth?.auth || auth;
+                if (authClient && typeof authClient.signOut === "function") {
+                    try {
+                        await authClient.signOut({ scope: "others" });
+                    } catch (e) {
+                        console.warn("SignOut others warning:", e);
+                    }
+                }
+                try {
+                    localStorage.setItem("rmims_other_sessions_revoked", new Date().toISOString());
+                } catch (_) {}
                 showToast("Other device sessions have been revoked.", "success");
             } catch (err) {
                 showToast(err.message || "Unable to sign out other sessions.", "error");

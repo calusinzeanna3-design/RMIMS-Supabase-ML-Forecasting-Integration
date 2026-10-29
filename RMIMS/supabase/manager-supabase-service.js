@@ -82,12 +82,7 @@ export async function fetchManagerDashboardData() {
     // Authoritatively synchronize Supabase raw_materials with local storage master cache
     if (matRes.status === 'fulfilled' && Array.isArray(matRes.value?.data)) {
       try {
-        const cleanMats = matRes.value.data.filter(sm => {
-          const nameLower = (sm.name || '').toLowerCase();
-          const code = String(sm.item_code || sm.id || '').toUpperCase();
-          return !nameLower.includes('coconut') && code !== 'NB-015' && code !== 'RM-033' && code !== 'RM-034';
-        });
-        const reconciled = cleanMats.map(sm => {
+        const reconciled = matRes.value.data.map(sm => {
           const code = String(sm.item_code || sm.id || '').toUpperCase().trim();
           return {
             id: sm.id || code,
@@ -129,7 +124,6 @@ export async function fetchManagerDashboardData() {
     if (rcvRes.status === 'fulfilled' && Array.isArray(rcvRes.value?.data)) {
       try {
         const reconciledRec = rcvRes.value.data
-          .filter(sr => !String(sr.supplier_name || '').toLowerCase().includes('coconut'))
           .map(sr => ({
             id: sr.id,
             ref: sr.id,
@@ -153,7 +147,6 @@ export async function fetchManagerDashboardData() {
     if (disbRes.status === 'fulfilled' && Array.isArray(disbRes.value?.data)) {
       try {
         const reconciledDisb = disbRes.value.data
-          .filter(sd => !String(sd.finished_product_name || '').toLowerCase().includes('coconut'))
           .map(sd => ({
             id: sd.id,
             ref: sd.id,
@@ -680,6 +673,96 @@ export async function rejectTransactionOnSupabase(tx, reason = 'Details require 
 }
 
 /**
+ * Return a transaction for staff correction on Supabase and unify across all manager modules
+ */
+export async function returnTransactionForCorrectionOnSupabase(tx, message = 'Please correct details and resubmit.') {
+  if (!tx) return { success: false, message: 'Invalid transaction' };
+
+  // 1. Update staff transaction status in local storage
+  try {
+    const rawStaff = localStorage.getItem(STAFF_TX_KEY);
+    if (rawStaff) {
+      const staffList = JSON.parse(rawStaff);
+      if (Array.isArray(staffList)) {
+        const idx = staffList.findIndex(t => t.ref === tx.ref || t.id === tx.id);
+        if (idx !== -1) {
+          staffList[idx].status = 'Correction Needed';
+          staffList[idx].correctionMessage = message;
+          staffList[idx].returnedBy = 'Store Manager';
+          staffList[idx].returnedAt = new Date().toISOString();
+          staffList[idx].isUpdated = false;
+          localStorage.setItem(STAFF_TX_KEY, JSON.stringify(staffList));
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 2. Log manager activity in local storage
+  try {
+    const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || '{}');
+    const actRaw = localStorage.getItem(MGR_ACTIVITIES_KEY);
+    const acts = actRaw ? JSON.parse(actRaw) : [];
+    acts.unshift({
+      datetime: 'Just now',
+      timestamp: new Date().toISOString(),
+      activity: `Requested Correction (${tx.ref})`,
+      reference: tx.ref,
+      status: 'Correction Needed',
+      user: curUser.name || curUser.fullName || curUser.username || 'Manager',
+      role: curUser.role || 'Manager',
+      action: 'Correction Needed',
+      module: 'Inventory'
+    });
+    localStorage.setItem(MGR_ACTIVITIES_KEY, JSON.stringify(acts));
+  } catch (_) {}
+
+  // 3. Audit log in Supabase
+  await logManagerActivityToSupabase({
+    action: 'RETURN_FOR_CORRECTION',
+    entityType: 'staff_transactions',
+    entityId: tx.ref || tx.id || '',
+    details: {
+      ref: tx.ref,
+      message: message,
+      material: tx.material || tx.materialName
+    }
+  });
+
+  // 4. Staff notification
+  const corrNotif = {
+    title: `Correction Requested: ${tx.ref}`,
+    message: `Transaction ${tx.ref} returned by Store Manager: "${message}". Action required from staff.`,
+    category: 'Inventory',
+    badge: 'Action Required',
+    role: 'staff',
+    targetRole: 'staff',
+    roleScope: 'staff',
+    priority: 'high',
+    targetUrl: `user/my-activity.html?correct=${encodeURIComponent(tx.ref)}`,
+    ref: tx.ref,
+    material: tx.material || tx.materialName || '',
+    quantity: tx.quantity != null ? String(tx.quantity) : (tx.qty || ''),
+    actor: 'Store Manager'
+  };
+
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification(corrNotif);
+    }
+  } catch (_) {}
+
+  // 5. Broadcast across tabs
+  broadcastManagerSync({
+    action: 'return_for_correction',
+    ref: tx.ref,
+    message: message,
+    notification: corrNotif
+  });
+
+  return { success: true };
+}
+
+/**
  * Universal cross-module and cross-tab synchronization trigger
  */
 export function broadcastManagerSync(detail = {}) {
@@ -729,18 +812,14 @@ export async function fetchUnifiedInventoryFromSupabase() {
       const deletedArr = deletedRaw ? JSON.parse(deletedRaw) : [];
       const deletedSet = new Set(Array.isArray(deletedArr) ? deletedArr.map(d => String(d).trim().toLowerCase()) : []);
 
-      // Filter out any coconut or explicitly deleted items
-      const cleanData = data.filter(sm => {
+      // EXACT authoritative sync: localCustom matches authoritative Supabase rows.
+      // If a material was deleted from Supabase, it is NOT preserved locally.
+      const reconciled = data.filter(sm => {
         const codeLower = String(sm.item_code || sm.id || '').toLowerCase().trim();
         const nameLower = (sm.name || '').trim().toLowerCase();
         const idLower = String(sm.id || '').toLowerCase().trim();
-        return !deletedSet.has(codeLower) && !deletedSet.has(nameLower) && !deletedSet.has(idLower) &&
-               !nameLower.includes('coconut') && codeLower !== 'nb-015' && codeLower !== 'rm-033' && codeLower !== 'rm-034';
-      });
-
-      // EXACT authoritative sync: localCustom matches authoritative Supabase rows.
-      // If a material was deleted from Supabase, it is NOT preserved locally.
-      const reconciled = cleanData.map(sm => {
+        return !deletedSet.has(codeLower) && !deletedSet.has(nameLower) && !deletedSet.has(idLower);
+      }).map(sm => {
         const code = String(sm.item_code || sm.id || '').toUpperCase().trim();
         return {
           id: sm.id || code,
@@ -984,7 +1063,7 @@ export async function fetchLiveStockReceiptsFromSupabase() {
 
       // EXACT authoritative sync: receipts match Supabase records
       const reconciled = data
-        .filter(sr => !deletedRecIds.has(String(sr.id)) && !String(sr.supplier_name || '').toLowerCase().includes('coconut'))
+        .filter(sr => !deletedRecIds.has(String(sr.id)))
         .map(sr => ({
           id: sr.id,
           ref: sr.id,
@@ -1214,26 +1293,8 @@ export async function fetchLiveFinishedProductsFromSupabase() {
  * Permanently purge all old test/mock data from Supabase tables
  */
 export async function purgeAllLegacyMockDataFromSupabase() {
-  if (!supabase) return;
-  try {
-    // 1. Delete coconut materials from raw_materials
-    await supabase.from('raw_materials').delete().or('item_code.in.(NB-015,RM-033,RM-034),name.ilike.%coconut%');
-    // 2. Delete coconut transactions from stock_receipts & material_disbursements
-    await supabase.from('stock_receipts').delete().or('supplier_name.ilike.%coconut%,unit.ilike.%coconut%');
-    await supabase.from('material_disbursements').delete().or('finished_product_name.ilike.%coconut%');
-  } catch (e) {
-    console.warn('[ManagerSupabase] Supabase mock cleanup notice:', e);
-  }
+  // Purge routine retained as safe no-op
 }
-
-// Auto-run cleanup on initialization
-try {
-  if (typeof window !== 'undefined' && !localStorage.getItem('rmims_supabase_mock_purged_v2')) {
-    purgeAllLegacyMockDataFromSupabase().then(() => {
-      localStorage.setItem('rmims_supabase_mock_purged_v2', 'true');
-    }).catch(() => {});
-  }
-} catch (_) {}
 
 /**
  * Universal Global Realtime Supabase Channel

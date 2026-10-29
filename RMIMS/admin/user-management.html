@@ -397,7 +397,12 @@
     <div class="admin-modal">
       <div class="modal-header">
         <h3 class="modal-title">Add Store User</h3>
-        <button type="button" class="btn-close-modal" id="btnCloseAddUser">&times;</button>
+        <button type="button" class="btn-close-modal" id="btnCloseAddUser" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <form id="addUserForm" onsubmit="event.preventDefault(); submitAddUser();">
         <div class="modal-form-group">
@@ -450,7 +455,12 @@
     <div class="admin-modal">
       <div class="modal-header">
         <h3 class="modal-title">Edit Store User</h3>
-        <button type="button" class="btn-close-modal" id="btnCloseEditUser">&times;</button>
+        <button type="button" class="btn-close-modal" id="btnCloseEditUser" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <form id="editUserForm" onsubmit="event.preventDefault(); submitEditUser();">
         <input type="hidden" id="editUserId">

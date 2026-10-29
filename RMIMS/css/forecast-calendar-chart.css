@@ -658,3 +658,160 @@
     font-size: 0.65rem !important;
   }
 }
+
+/* ==========================================================
+   HARDENED FIXES (scoped to the forecast card)
+   - Prevents Saturday column clipping (grid fits its column)
+   - Restores invisible nav / expand SVG icons that were being
+     overridden by the generic date-picker .cal-nav-btn rule
+   ========================================================== */
+.fc-calendar-chart-card .cal-calendar-column {
+  width: 268px !important;
+  min-width: 0 !important;
+  max-width: 280px !important;
+  padding: 0 2px 0 16px !important;
+  overflow: hidden !important;
+}
+
+.fc-calendar-chart-card .cal-widget-box,
+.fc-calendar-chart-card .cal-weekdays,
+.fc-calendar-chart-card .cal-days-grid {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.fc-calendar-chart-card .cal-weekdays,
+.fc-calendar-chart-card .cal-days-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  column-gap: 3px !important;
+}
+
+.fc-calendar-chart-card .cal-days-grid {
+  row-gap: 4px !important;
+}
+
+.fc-calendar-chart-card .cal-day-cell {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 32px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 32px !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+}
+
+/* Month nav buttons: own styling (overrides admin-shell date-picker rule) */
+.fc-calendar-chart-card .cal-nav-btn {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  padding: 0 !important;
+  background: #F1F5F9 !important;
+  border: 1px solid rgba(20, 83, 45, 0.10) !important;
+  border-radius: 7px !important;
+  color: #334155 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+.fc-calendar-chart-card .cal-nav-btn:hover {
+  background: #15803D !important;
+  border-color: #15803D !important;
+  color: #FFFFFF !important;
+}
+
+.fc-calendar-chart-card .cal-nav-btn svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.fc-calendar-chart-card .cal-nav-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke-width: 2.5 !important;
+}
+
+/* ==========================================================
+   UNIVERSAL EXPAND ICON BUTTON (all pages / all cards)
+   Icon is painted with a CSS mask so it is always visible,
+   independent of inline SVG rendering or inherited colors.
+   ========================================================== */
+.cal-expand-icon-btn {
+  position: relative !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(20, 83, 45, 0.16) !important;
+  background: #FFFFFF !important;
+  color: #334155 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 1px 3px rgba(15, 42, 27, 0.05) !important;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease !important;
+}
+
+.cal-expand-icon-btn svg {
+  display: block !important;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  pointer-events: none !important;
+}
+
+.cal-expand-icon-btn:hover {
+  background: #DCFCE7 !important;
+  color: #15803D !important;
+  border-color: #86EFAC !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Tablet: keep calendar compact but never clipped */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .fc-calendar-chart-card .cal-calendar-column {
+    width: clamp(210px, 28vw, 250px) !important;
+    padding: 0 2px 0 12px !important;
+  }
+
+  .fc-calendar-chart-card .cal-day-cell {
+    max-width: 28px !important;
+    max-height: 28px !important;
+    font-size: 0.7rem !important;
+  }
+}
+
+/* Phone: calendar below chart */
+@media (max-width: 640px) {
+  .fc-calendar-chart-card .cal-calendar-column {
+    width: 100% !important;
+    max-width: 280px !important;
+    padding: 8px 0 0 0 !important;
+  }
+
+  .fc-calendar-chart-card .cal-day-cell {
+    max-width: 28px !important;
+    max-height: 28px !important;
+  }
+}

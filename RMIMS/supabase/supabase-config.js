@@ -27,17 +27,35 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 });
 
-// The rest of the app imports { auth, db } (matching the old
-// The application imports the shared Supabase client and compatibility helpers.
-// need the Supabase client itself — collection()/doc() call `.from()`
-// on it, and onAuthStateChanged()/signIn()/etc. call `.auth.*` on it —
-// so both names point at the same client instance.
-export const auth = supabase;
+// The rest of the app imports { auth, db }.
+// To ensure 100% interoperability across all roles and pages whether code calls
+// auth.signInWithPassword(), auth.auth.signInWithPassword(), auth.getSession(),
+// auth.signOut(), or auth.from(), we wrap supabase.auth in a proxy that delegates
+// to auth methods directly, while falling back to supabase root properties.
+export const auth = (supabase && supabase.auth)
+    ? new Proxy(supabase.auth, {
+        get(target, prop, receiver) {
+            if (prop === 'auth') return target;
+            if (prop in target || typeof target[prop] !== 'undefined') {
+                const val = target[prop];
+                return typeof val === 'function' ? val.bind(target) : val;
+            }
+            if (prop in supabase || typeof supabase[prop] !== 'undefined') {
+                const val = supabase[prop];
+                return typeof val === 'function' ? val.bind(supabase) : val;
+            }
+            return Reflect.get(target, prop, receiver);
+        }
+    })
+    : supabase;
+
 export const db = supabase;
 
 if (typeof window !== 'undefined') {
     window.supabase = supabase;
     window.__rmimsSupabase = supabase;
+    window.__rmimsAuth = auth;
 }
 
 export default supabase;
+

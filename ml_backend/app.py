@@ -360,12 +360,16 @@ def resolve_tenant_context():
     raw_tenant = (
         request.headers.get("X-Company-Id") or
         request.headers.get("X-Tenant-Id") or
+        request.headers.get("X-Company") or
         request.args.get("company_id") or
-        request.args.get("tenant_id")
+        request.args.get("tenant_id") or
+        request.args.get("tenant") or
+        request.args.get("company") or
+        request.args.get("company_name")
     )
     if not raw_tenant and request.is_json:
         body = request.get_json(silent=True) or {}
-        raw_tenant = body.get("company_id") or body.get("tenant_id")
+        raw_tenant = body.get("company_id") or body.get("tenant_id") or body.get("tenant") or body.get("company")
 
     normalized_tenant = None
     if raw_tenant:
@@ -573,6 +577,7 @@ def list_tenants():
 # ----------------------------------------------------------------------
 # 6. Tenant-Aware Materials Catalog & Margin Endpoints
 # ----------------------------------------------------------------------
+@app.route("/api/ml/materials", methods=["GET"])
 @app.route("/api/materials", methods=["GET"])
 def get_materials_catalog():
     tenant, role, err_response = resolve_tenant_context()

@@ -294,7 +294,7 @@ html, body {
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 9999;
+  z-index: 200000 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -558,7 +558,7 @@ html, body {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--rm-line);
-  z-index: 40;
+  z-index: 1000 !important;
   gap: 20px;
 }
 
@@ -1342,15 +1342,35 @@ html, body {
 }
 
 .dropdown-select {
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: #F1FAF4;
-  border: 1px solid var(--rm-line);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--rm-ink-mid);
-  cursor: pointer;
-  outline: none;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  padding: 7px 38px 7px 14px !important;
+  border-radius: 10px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(20, 83, 45, 0.18) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #0F2A1B !important;
+  cursor: pointer !important;
+  outline: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233C5847' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 14px 14px !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.dropdown-select:hover {
+  border-color: #15803D !important;
+  box-shadow: 0 2px 6px rgba(21, 128, 61, 0.12) !important;
+}
+
+.dropdown-select:focus {
+  border-color: #15803D !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18) !important;
 }
 
 /* ==========================================================
@@ -2603,7 +2623,7 @@ canvas#usageChart {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100050 !important;
+  z-index: 200000 !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -4619,969 +4639,6 @@ canvas#usageChart {
   }
 }
 
-/* ==========================================================
-   UNIFIED RESPONSIVE DESIGN SYSTEM (ALL STANDARD WEBPAGE SIZES)
-   - 1920x1080 (FHD Desktop / Wide Displays)
-   - 1536x864 (Standard 15.6" Windows Laptop at 125% DPI)
-   - 1440x900 & 1366x768 (Standard Mac & Windows Laptops)
-   - 1280x800 & 1024x768 (Compact Laptops / iPad Landscape)
-   - 768px (Tablet Portrait)
-   - 640px, 480px, 375px (Mobile Phones)
-   Zero leftover clipping, fluid typography, responsive cards & tables
-   ========================================================== */
-
-/* 1. Global Box-Sizing & Viewport Constraints */
-html, body {
-  box-sizing: border-box;
-}
-
-*, *::before, *::after {
-  box-sizing: inherit;
-}
-
-.admin-app {
-  width: 100vw;
-  max-width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-}
-
-.admin-main {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.admin-scroll-body {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  padding: clamp(14px, 2vw, 28px);
-  gap: clamp(14px, 2vw, 24px);
-}
-
-/* 2. Unified Responsive KPI Grid System */
-.admin-kpi-grid,
-.mgr-kpi-grid,
-.overview-kpi-grid,
-.kpi-grid,
-.inv-kpi-grid,
-.alert-metrics-grid,
-.store-modal-kpi-row,
-.rpt-manager-kpi-grid,
-.staff-kpi-grid,
-.mgr-tx-kpi-grid,
-.tx-kpi-grid,
-.analytics-kpi-grid,
-[class*="-kpi-grid"],
-[data-responsive-kpi-grid] {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 16px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Fluid KPI Cards */
-.kpi-stat-card,
-.mgr-kpi-card,
-.alert-metric-box {
-  min-width: 0 !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  padding: clamp(12px, 1.4vw, 20px) !important;
-  border-radius: clamp(12px, 1.2vw, 16px) !important;
-}
-
-.kpi-stat-card .kpi-number,
-.mgr-kpi-card .kpi-number,
-.alert-metric-box .alert-metric-number {
-  font-size: clamp(20px, 2.1vw, 28px) !important;
-  line-height: 1.15 !important;
-  word-break: break-word !important;
-}
-
-.kpi-stat-card .kpi-label,
-.mgr-kpi-card .kpi-label,
-.alert-metric-box .alert-metric-title {
-  font-size: clamp(11.5px, 0.95vw, 13px) !important;
-  line-height: 1.25 !important;
-}
-
-.kpi-stat-card .kpi-subtext,
-.mgr-kpi-card .kpi-subtext {
-  font-size: clamp(10.5px, 0.85vw, 12px) !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-.kpi-stat-card .kpi-icon-box,
-.mgr-kpi-card .kpi-icon-box,
-.alert-metric-box .alert-metric-icon {
-  width: clamp(38px, 3.2vw, 46px) !important;
-  height: clamp(38px, 3.2vw, 46px) !important;
-  min-width: clamp(38px, 3.2vw, 46px) !important;
-  min-height: clamp(38px, 3.2vw, 46px) !important;
-  flex-shrink: 0 !important;
-}
-
-.kpi-stat-card .kpi-trend,
-.mgr-kpi-card .kpi-trend {
-  font-size: clamp(10px, 0.8vw, 11px) !important;
-  padding: 2px 7px !important;
-  white-space: nowrap !important;
-}
-
-/* 3. Cards & Sections */
-.admin-card {
-  padding: clamp(14px, 1.8vw, 24px) !important;
-  border-radius: clamp(12px, 1.2vw, 18px) !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.card-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  flex-wrap: wrap !important;
-  gap: 12px !important;
-}
-
-.card-title-group {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-}
-
-.card-title {
-  font-size: clamp(14px, 1.3vw, 17px) !important;
-  line-height: 1.25 !important;
-}
-
-.card-subtitle {
-  font-size: clamp(11.5px, 0.95vw, 12.5px) !important;
-}
-
-.card-actions {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
-}
-
-/* 4. Table Containers - Horizontal Scroll Inside Cards */
-.table-responsive,
-.mgr-table-container,
-.admin-table-card,
-.table-wrap,
-.rpt-table-wrap,
-.rpt-table-container,
-.mgr-tx-table-wrap,
-.mgr-tx-table-card,
-.staff-activity-table-card,
-.staff-table-wrap,
-.forecasting-table-wrap,
-.table-scroll,
-[class*="-table-container"],
-[class*="-table-wrap"] {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  box-sizing: border-box !important;
-  border-radius: 12px !important;
-}
-
-.admin-table,
-table.inv-main-table,
-#overviewTable,
-.staff-inv-table,
-.rpt-table,
-.mgr-tx-table,
-.staff-table,
-.forecasting-table,
-table[class*="table"] {
-  min-width: 640px !important;
-  width: 100% !important;
-  border-collapse: separate !important;
-}
-
-/* 5. Mobile Hamburger Button */
-.mobile-sidebar-toggle {
-  display: none;
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  border-radius: 10px;
-  background: #FFFFFF;
-  border: 1px solid var(--rm-line, #CBD5E1);
-  color: var(--rm-ink, #0F2A1B);
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 0;
-  margin: 0;
-}
-
-.mobile-sidebar-toggle:hover {
-  background: #F0FDF4;
-  border-color: #16A34A;
-  color: #15803D;
-}
-
-.mobile-sidebar-toggle svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 2.2;
-}
-
-/* 6. Breakpoint: Desktop look on Laptops, Small Monitors & Tablets (769px to 1280px)
-   The sidebar stays PERMANENT like desktop - only its size is adjusted. */
-@media (min-width: 769px) and (max-width: 1280px) {
-  :root {
-    --sidebar-w: clamp(200px, 19vw, 230px);
-  }
-
-  .admin-sidebar {
-    width: var(--sidebar-w) !important;
-    min-width: var(--sidebar-w) !important;
-    max-width: var(--sidebar-w) !important;
-  }
-
-  .sidebar-header {
-    padding: 18px 14px 16px !important;
-    gap: 8px !important;
-  }
-
-  .brand-logo-wrap {
-    width: 46px !important;
-    height: 46px !important;
-    border-radius: 12px !important;
-  }
-
-  .sidebar-nav .nav-link {
-    padding: 9px 12px !important;
-    font-size: 13px !important;
-    gap: 10px !important;
-  }
-
-  .mobile-sidebar-toggle {
-    display: none !important;
-  }
-
-  .admin-topbar {
-    padding: 0 24px !important;
-  }
-
-  .topbar-clock {
-    display: none !important;
-  }
-
-  .topbar-subtitle {
-    max-width: 440px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  .admin-kpi-grid,
-  .mgr-kpi-grid,
-  .overview-kpi-grid,
-  .kpi-grid,
-  .inv-kpi-grid,
-  .alert-metrics-grid,
-  .store-modal-kpi-row,
-  .rpt-manager-kpi-grid,
-  .staff-kpi-grid,
-  .mgr-tx-kpi-grid,
-  .tx-kpi-grid,
-  .analytics-kpi-grid,
-  [class*="-kpi-grid"],
-  div[style*="grid-template-columns: repeat(4"],
-  div[style*="grid-template-columns:repeat(4"],
-  [data-responsive-kpi-grid] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 14px !important;
-  }
-}
-
-/* 7. Breakpoint: Phones & Small Tablets (<= 768px) - Hamburger drawer */
-@media (max-width: 768px) {
-  /* Show Hamburger Menu Button in Topbar Header */
-  .mobile-sidebar-toggle {
-    display: inline-flex !important;
-    align-self: center !important;
-    margin: 0 !important;
-    flex-shrink: 0 !important;
-  }
-
-  .admin-app {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    overflow: hidden !important;
-  }
-
-  /* Expand screen space for content on iPad, Tablet & Phone */
-  .admin-main,
-  body.manager-page .manager-main,
-  body.manager-page .content,
-  body.manager-page .admin-main {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    margin-left: 0 !important;
-    flex: 1 1 100% !important;
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-  }
-
-  body.manager-page .manager-main,
-  body.manager-page .content {
-    padding: 14px 14px 40px !important;
-  }
-
-  /* Off-Canvas Navigation Drawer - SCROLLABLE ONLY ON NON-DESKTOP (iPad, Tablet, Phone) */
-  .admin-sidebar,
-  aside.admin-sidebar,
-  .sidebar.admin-sidebar,
-  body.manager-page .sidebar,
-  body.manager-page .admin-sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    bottom: 0 !important;
-    width: clamp(260px, 32vw, 300px) !important;
-    max-width: 84vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    z-index: 100050 !important;
-    transform: translateX(-100%) !important;
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
-    box-shadow: none !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    /* Ergonomic scrolling: only active on non-desktop devices */
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain !important;
-    touch-action: pan-y !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Inner navigation container scrolls naturally without cutting off */
-  .admin-sidebar .sidebar-nav,
-  .sidebar .sidebar-nav,
-  body.manager-page .sidebar .sidebar-nav,
-  body.manager-page .admin-sidebar .sidebar-nav {
-    overflow-y: visible !important;
-    flex: 1 0 auto !important;
-    min-height: 0 !important;
-  }
-
-  .admin-sidebar .sidebar-bottom-nav,
-  .sidebar .sidebar-bottom-nav,
-  body.manager-page .sidebar .sidebar-bottom-nav,
-  body.manager-page .admin-sidebar .sidebar-bottom-nav {
-    flex-shrink: 0 !important;
-    margin-top: auto !important;
-  }
-
-  /* Drawer Open State */
-  body.rmsme-mobile-drawer-open .admin-sidebar,
-  body.rmsme-mobile-drawer-open aside.admin-sidebar,
-  body.rmsme-mobile-drawer-open .sidebar.admin-sidebar,
-  body.rmsme-mobile-drawer-open.manager-page .sidebar,
-  body.rmsme-mobile-drawer-open.manager-page .admin-sidebar,
-  .admin-sidebar.mobile-open,
-  body.manager-page .admin-sidebar.mobile-open {
-    transform: translateX(0) !important;
-    box-shadow: 14px 0 45px rgba(0, 0, 0, 0.45) !important;
-  }
-
-  /* Drawer Backdrop */
-  .rmsme-mobile-drawer-backdrop {
-    position: fixed !important;
-    inset: 0 !important;
-    background: rgba(15, 23, 42, 0.6) !important;
-    backdrop-filter: blur(4px) !important;
-    -webkit-backdrop-filter: blur(4px) !important;
-    z-index: 100040 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    transition: opacity 0.25s ease !important;
-  }
-
-  body.rmsme-mobile-drawer-open .rmsme-mobile-drawer-backdrop {
-    opacity: 1 !important;
-    pointer-events: auto !important;
-  }
-
-  /* Topbar Header on Non-Desktop */
-  .admin-topbar,
-  body.manager-page .admin-topbar,
-  body.manager-page .topbar {
-    min-height: 58px !important;
-    height: auto !important;
-    padding: 10px 16px !important;
-    gap: 12px !important;
-  }
-
-  .topbar-left,
-  .admin-topbar .topbar-left,
-  .topbar .topbar-left {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    text-align: left !important;
-    gap: 12px !important;
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-  }
-
-  .topbar-text-group,
-  .topbar-left .topbar-text-group {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    justify-content: center !important;
-    text-align: left !important;
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-    gap: 1px !important;
-  }
-
-  .topbar-kicker {
-    display: block !important;
-    font-size: 10px !important;
-    font-weight: 800 !important;
-    letter-spacing: 0.08em !important;
-    text-transform: uppercase !important;
-    color: var(--rm-ink-dim, #5C7A68) !important;
-    margin-bottom: 2px !important;
-    line-height: 1 !important;
-    text-align: left !important;
-  }
-
-  .topbar-clock {
-    display: none !important;
-  }
-
-  .topbar-right {
-    gap: 8px !important;
-    flex-shrink: 0 !important;
-  }
-
-  .topbar-profile,
-  .mgr-profile-pill {
-    padding: 0 !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    border-radius: 50% !important;
-    justify-content: center !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-  }
-
-  .topbar-profile .profile-meta,
-  .mgr-profile-pill .mgr-profile-meta,
-  .profile-text {
-    display: none !important;
-  }
-
-  /* 2 Columns on Tablet / iPad for KPI grids */
-  .admin-kpi-grid,
-  .mgr-kpi-grid,
-  .overview-kpi-grid,
-  .kpi-grid,
-  .inv-kpi-grid,
-  .alert-metrics-grid,
-  .store-modal-kpi-row,
-  .rpt-manager-kpi-grid,
-  .staff-kpi-grid,
-  .mgr-tx-kpi-grid,
-  .tx-kpi-grid,
-  .analytics-kpi-grid,
-  [class*="-kpi-grid"],
-  div[style*="grid-template-columns: repeat(4"],
-  div[style*="grid-template-columns:repeat(4"],
-  [data-responsive-kpi-grid] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-  }
-
-  /* Overview Welcome Banner */
-  .overview-welcome-banner {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px 16px !important;
-    padding: 2px 0 6px 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .overview-welcome-group {
-    min-width: 0 !important;
-    flex: 1 1 200px !important;
-  }
-
-  .overview-welcome-title {
-    font-size: clamp(18px, 4vw, 24px) !important;
-    line-height: 1.15 !important;
-  }
-
-  .overview-welcome-sub {
-    font-size: clamp(11.5px, 2.5vw, 12.5px) !important;
-    margin-top: 2px !important;
-  }
-
-  .frontdesk-clock-card {
-    align-items: flex-end !important;
-    text-align: right !important;
-    flex-shrink: 0 !important;
-  }
-
-  .frontdesk-clock-time-group {
-    justify-content: flex-end !important;
-    gap: 4px !important;
-  }
-
-  .frontdesk-time {
-    font-size: clamp(18px, 3.8vw, 24px) !important;
-  }
-
-  .frontdesk-period {
-    font-size: clamp(10px, 2.2vw, 12px) !important;
-  }
-
-  .frontdesk-date {
-    font-size: clamp(9.5px, 2vw, 11px) !important;
-    margin-top: 2px !important;
-  }
-
-  .admin-card {
-    padding: clamp(12px, 2vw, 18px) clamp(10px, 1.8vw, 16px) !important;
-    border-radius: clamp(12px, 1.5vw, 16px) !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    overflow: visible !important;
-  }
-
-  .card-actions {
-    width: auto !important;
-    max-width: 100% !important;
-    justify-content: flex-start !important;
-    gap: 6px !important;
-    flex-wrap: wrap !important;
-  }
-
-  .card-actions button,
-  .card-actions a,
-  .card-actions .dropdown-select,
-  .card-actions select {
-    font-size: clamp(11px, 2.4vw, 12.5px) !important;
-    padding: 5px 10px !important;
-    border-radius: 8px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-}
-
-/* 8. Tablet & Small Laptop (641px to 1024px): Side-by-Side Design Preserved */
-@media (min-width: 641px) and (max-width: 1024px) {
-  /* Dashboard Usage Grid: Side-by-side like desktop design, responsive scaling */
-  .usage-grid {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1.35fr) minmax(210px, 1fr) !important;
-    gap: 14px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-
-  .usage-grid .chart-canvas-container {
-    height: clamp(180px, 24vw, 230px) !important;
-    max-height: 240px !important;
-    min-height: 170px !important;
-    width: 100% !important;
-  }
-
-  .usage-grid .kpi-column {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-}
-
-/* 9. Breakpoint: Phones (<= 640px) */
-@media (max-width: 640px) {
-  /* Phone Module & Navigation Font Sizes: Scaled small depending on device */
-  .sidebar-nav .nav-link {
-    font-size: clamp(11.5px, 3.2vw, 13px) !important;
-    padding: 7px 11px !important;
-    gap: 9px !important;
-    border-radius: 9px !important;
-  }
-
-  .sidebar-nav .nav-icon,
-  .sidebar-nav .nav-link svg {
-    width: 16px !important;
-    height: 16px !important;
-  }
-
-  .nav-section-title {
-    font-size: clamp(9px, 2.4vw, 10.5px) !important;
-    padding: 6px 11px 2px !important;
-  }
-
-  .sidebar-header {
-    padding: 16px 12px 12px !important;
-    gap: 6px !important;
-  }
-
-  .brand-logo-wrap {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 10px !important;
-  }
-
-  .sidebar-header .brand-name {
-    font-size: clamp(16px, 4.2vw, 19px) !important;
-  }
-
-  .sidebar-header .brand-sub {
-    font-size: clamp(9px, 2.2vw, 10px) !important;
-  }
-
-  .topbar-title {
-    font-size: clamp(13.5px, 3.4vw, 16.5px) !important;
-    font-weight: 800 !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    text-align: left !important;
-  }
-
-  .topbar-subtitle {
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    font-size: clamp(9.5px, 2.2vw, 11px) !important;
-    color: var(--rm-ink-dim, #5C7A68) !important;
-    line-height: 1.25 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: normal !important;
-    max-width: 100% !important;
-    margin-top: 2px !important;
-    margin-bottom: 0 !important;
-    text-align: left !important;
-  }
-
-  .card-title,
-  .mgr-card-title,
-  .fc-card-title {
-    font-size: clamp(12px, 2.8vw, 14px) !important;
-  }
-
-  .card-subtitle,
-  .mgr-card-subtitle,
-  .fc-card-subtitle {
-    font-size: clamp(9.5px, 2.2vw, 11px) !important;
-  }
-
-  .kpi-number,
-  .stat-number,
-  .ov-count {
-    font-size: clamp(17px, 4.2vw, 22px) !important;
-  }
-
-  .kpi-label,
-  .stat-label,
-  .ov-label {
-    font-size: clamp(9.5px, 2.2vw, 11px) !important;
-  }
-
-  /* All beside elements go BELOW on phone, styled small & compact to give space for subsequent cards */
-  .usage-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 10px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-
-  .usage-grid .chart-canvas-container {
-    height: clamp(150px, 38vw, 180px) !important;
-    max-height: 190px !important;
-    min-height: 140px !important;
-    width: 100% !important;
-  }
-
-  .usage-grid .kpi-column {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .kpi-stat-card {
-    padding: 8px 10px !important;
-    gap: 6px !important;
-    min-height: auto !important;
-    border-radius: 10px !important;
-  }
-
-  .kpi-stat-card .stat-icon {
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 7px !important;
-    flex-shrink: 0 !important;
-  }
-
-  .kpi-stat-card .stat-icon svg {
-    width: 14px !important;
-    height: 14px !important;
-  }
-
-  .kpi-stat-card .stat-info .stat-num {
-    font-size: 15px !important;
-    line-height: 1.1 !important;
-  }
-
-  .kpi-stat-card .stat-info .stat-lbl {
-    font-size: 9.5px !important;
-  }
-
-  /* Modals fit comfortably inside phone viewport */
-  .modal-card,
-  .mgr-modal,
-  div[class*="modal-card"] {
-    max-width: 96vw !important;
-    max-height: calc(100vh - 20px) !important;
-    max-height: calc(100dvh - 20px) !important;
-    border-radius: 14px !important;
-  }
-
-  .mgr-form-grid,
-  div[style*="grid-template-columns: repeat(4, 1fr)"],
-  div[style*="grid-template-columns:1fr 1fr"],
-  div[style*="grid-template-columns: 1fr 1fr"] {
-    grid-template-columns: 1fr !important;
-    gap: 10px !important;
-  }
-}
-
-/* 10. Breakpoint: Small Mobile Phones (<= 480px) */
-@media (max-width: 480px) {
-  .admin-scroll-body {
-    padding: 10px 8px 30px !important;
-    gap: 12px !important;
-  }
-
-  .admin-card {
-    padding: 12px 10px !important;
-  }
-
-  /* 1 Column on Mobile for Maximum Clarity */
-  .admin-kpi-grid,
-  .mgr-kpi-grid,
-  .overview-kpi-grid,
-  .kpi-grid,
-  .inv-kpi-grid,
-  .alert-metrics-grid,
-  .store-modal-kpi-row,
-  .rpt-manager-kpi-grid,
-  .staff-kpi-grid,
-  .mgr-tx-kpi-grid,
-  .tx-kpi-grid,
-  .analytics-kpi-grid,
-  [class*="-kpi-grid"],
-  div[style*="grid-template-columns: repeat(4"],
-  div[style*="grid-template-columns:repeat(4"],
-  [data-responsive-kpi-grid] {
-    grid-template-columns: 1fr !important;
-    gap: 9px !important;
-  }
-
-  .usage-grid .kpi-column {
-    grid-template-columns: 1fr !important;
-    gap: 6px !important;
-  }
-
-  /* Reset multi-column spans on 1-column mobile screens */
-  .rpt-kpi-box[style*="grid-column: span 2"],
-  div[style*="grid-column: span 2"],
-  div[style*="grid-column:span 2"],
-  div[style*="grid-column: span 3"],
-  div[style*="grid-column: span 4"] {
-    grid-column: span 1 !important;
-  }
-
-  /* Search & Toolbar full width on mobile */
-  .inv-filter-toolbar,
-  div[style*="background: #F8FCF9; padding: 14px 16px"] {
-    padding: 10px !important;
-  }
-
-  .topbar-search,
-  .topbar-search .search-input {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .dropdown-select {
-    width: 100% !important;
-    flex: 1 1 100% !important;
-  }
-
-  .btn-clear-filters {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-
-  .card-actions button,
-  .card-actions a {
-    flex: 1 1 100% !important;
-  }
-}
-
-
-/* ==========================================================================
-   ADMIN ZERO-FAILURE RESPONSIVE HARDENING SAFEGUARDS
-   Ensures flawless display across Mobile (<=480px), Tablet (481px-768px),
-   and Desktop without altering any locked design tokens or aesthetics.
-   ========================================================================== */
-
-.table-responsive {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  box-sizing: border-box !important;
-}
-
-.table-responsive::-webkit-scrollbar {
-  height: 6px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.25);
-  border-radius: 999px;
-}
-
-@media (max-width: 768px) {
-  /* Modals fit comfortably in viewport */
-  .modal-backdrop,
-  .store-modal-backdrop {
-    padding: 12px !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-sizing: border-box !important;
-  }
-
-  .modal-card,
-  .store-modal-card,
-  .mgr-modal-card {
-    max-width: 95vw !important;
-    width: 100% !important;
-    max-height: calc(100vh - 24px) !important;
-    max-height: calc(100dvh - 24px) !important;
-    overflow-y: auto !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Date Popover Centering on small devices */
-  #datePickerPopover,
-  .admin-date-picker-popover {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    max-width: 95vw !important;
-    width: auto !important;
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-    z-index: 10000 !important;
-  }
-
-  /* Table Action Buttons wrap without clipping */
-  .btn-table-action,
-  .action-btn-group {
-    display: inline-flex !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 4px !important;
-  }
-
-  /* Prevent text overflow in directory cells */
-  .admin-table td,
-  .admin-table th {
-    white-space: nowrap !important;
-  }
-
-  .admin-table td.cell-wrap,
-  .admin-table td:nth-child(8) {
-    white-space: normal !important;
-    min-width: 180px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .card-pagination {
-    flex-direction: column !important;
-    gap: 12px !important;
-    align-items: center !important;
-    text-align: center !important;
-  }
-
-  .card-pagination .pagination-controls {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-
-  .modal-footer {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-
-  .modal-footer button {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-}
-
-
 /* Role Badges for System Alerts and Activities */
 .role-badge {
   display: inline-flex;
@@ -5628,227 +4685,803 @@ table[class*="table"] {
 }
 
 /* ==========================================================================
-   MASTER RESPONSIVE OPERATIONS & ADAPTIVE COMPONENT SCALING SYSTEM
-   Guarantees all cards, dropdowns, buttons, text, and inner elements
-   scale adaptively across all device sizes without half-cuts, clipping,
-   or leaking outside card boundaries, while maintaining silky-smooth scroll.
+   UNIFIED DEVICE SIZE & CARDS RESPONSIVE ARCHITECTURE
+   Guarantees:
+   1. Pristine Desktop standard (>= 1025px) - permanent sidebar, 4-col KPI cards,
+      side-by-side cards, uncompromised typography and generous desktop padding.
+   2. Seamless return to Desktop - resizing back never leaves lingering mobile
+      states, squished clamps, or ruined layouts.
+   3. Fluid, robust Tablet scaling (769px to 1024px) - permanent compact sidebar,
+      2-col KPI grids, responsive side-by-side cards.
+   4. Flawless Mobile presentation (<= 768px) - off-canvas drawer, stacked cards,
+      avatar-only profile pill with no bell overlap, touch-scroll tables.
    ========================================================================== */
 
-/* 1. Global Responsive Scrolling & Touch Ergonomics */
-html, body,
-.admin-app,
-.admin-main,
-.admin-scroll-body,
-.content,
-body.manager-page .admin-scroll-body,
-body.manager-page .content,
-body.admin-page .admin-scroll-body,
-body.user-page .content,
-body.rmsme-landing {
-  -webkit-overflow-scrolling: touch !important;
-  overscroll-behavior-y: contain !important;
-  touch-action: pan-y !important;
+/* --- 1. Global Box-Sizing & Viewport Standards --- */
+html, body {
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+.admin-app {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.admin-main {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .admin-scroll-body {
-  min-height: 0 !important;
-  scroll-behavior: smooth !important;
-  will-change: scroll-position !important;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
-/* Charts and canvases never intercept or lock parent scrolling */
-canvas,
-.chart-canvas-container canvas,
-.chart-container canvas,
-.fc-chart-canvas-wrap canvas {
-  touch-action: pan-y !important;
-}
-
-/* 2. Fluid Adaptive Typography for Inside Operations */
-.card-title,
-.mgr-card-title,
-.fc-card-title,
-.panel-title {
-  font-size: clamp(13px, 1.5vw, 16px) !important;
-  font-weight: 700 !important;
-  line-height: 1.25 !important;
-  word-break: break-word !important;
-}
-
-.card-subtitle,
-.mgr-card-subtitle,
-.fc-card-subtitle,
-.panel-subtext {
-  font-size: clamp(10.5px, 1.2vw, 12.5px) !important;
-  line-height: 1.3 !important;
-}
-
-.kpi-number,
-.stat-number,
-.ov-count {
-  font-size: clamp(19px, 2.5vw, 28px) !important;
-  line-height: 1.1 !important;
-}
-
-.kpi-label,
-.stat-label,
-.ov-label {
-  font-size: clamp(10.5px, 1.2vw, 12px) !important;
-}
-
-/* 3. Dropdowns Never Protrude Outside White Card Layout */
-select,
-.dropdown-select,
-.filter-select,
-.mgr-form-select,
-.mgr-select-filter,
-.fc-chart-select,
-.fc-select,
-.fc-select-compact,
-.rpt-fe-select,
-.rpt-select,
-.modal-input select,
-.rmims-combobox {
-  max-width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
-  font-size: clamp(11.5px, 1.2vw, 13px) !important;
-  padding-top: clamp(4px, 0.8vw, 7px) !important;
-  padding-bottom: clamp(4px, 0.8vw, 7px) !important;
-  padding-left: clamp(8px, 1vw, 12px) !important;
-  padding-right: clamp(22px, 2vw, 28px) !important;
-  min-height: clamp(32px, 3.8vw, 38px) !important;
-  height: auto !important;
-  border-radius: clamp(6px, 1vw, 10px) !important;
-}
-
-/* 4. Adaptive Button Scaling in Card Headers, Toolbars, and Actions */
-button,
-.btn,
-.btn-primary-action,
-.btn-view-all,
-.btn-table-action,
-.card-action-btn-emerald,
-.card-action-btn-outline,
-.btn-clear-filters,
-.ff-btn-primary,
-.ff-btn-secondary {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  font-size: clamp(11.5px, 1.2vw, 13.5px) !important;
-  padding: clamp(5px, 0.8vw, 8px) clamp(10px, 1.2vw, 16px) !important;
-  border-radius: clamp(6px, 1vw, 10px) !important;
-  white-space: normal !important;
-}
-
-/* 5. Toolbars, Filters, and Actions Wrap Cleanly Inside Cards */
-.card-actions,
-.card-header,
-.inv-filter-toolbar,
-.filter-toolbar,
-.mgr-filters-wrap,
-.rpt-control-card,
-.rpt-control-right {
-  max-width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
-  flex-wrap: wrap !important;
-}
-
-/* 6. Card Containers Guarantee Full-Width & Never Clip Inner Layout */
-.admin-card,
-section.admin-card,
-.mgr-dashboard-card,
-.fc-card,
-.panel {
-  max-width: 100% !important;
-  min-width: 0 !important;
+/* Base table responsive wrapper (Wrappers only, NOT cards) */
+.table-responsive,
+.mgr-table-container,
+.table-wrap,
+.rpt-table-wrap,
+.rpt-table-container,
+.mgr-tx-table-wrap,
+.staff-table-wrap,
+.forecasting-table-wrap,
+.table-scroll,
+[class*="-table-container"],
+[class*="-table-wrap"] {
   width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
+  border-radius: 12px !important;
+}
+
+/* Ledger and Activity Cards: NEVER scrollable containers on desktop - Normal Card Table List */
+.admin-card,
+.admin-table-card,
+.mgr-tx-table-card,
+.staff-activity-table-card,
+.table-responsive,
+.admin-table-container,
+.inv-table-container {
+  overflow-y: visible !important;
+  max-height: none !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* Inner table wrappers: visible on desktop, horizontally scrollable ONLY on responsive viewport changes */
+.mgr-ledger-table-wrap {
+  width: 100% !important;
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
   box-sizing: border-box !important;
 }
 
-/* 7. Screen Height & Compact Fitting Safeguards (Laptops, Tablets, Split Viewports) */
-@media (max-height: 800px) {
-  .admin-scroll-body {
-    padding-top: 12px !important;
-    gap: 14px !important;
+@media (max-width: 992px) {
+  .mgr-ledger-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
-  .overview-welcome-banner {
-    padding: 2px 0 !important;
-    gap: 8px 14px !important;
-  }
-  .overview-welcome-title,
-  .frontdesk-time {
-    font-size: clamp(18px, 2.2vw, 24px) !important;
-  }
-  .usage-grid .chart-canvas-container {
-    height: clamp(160px, 22vw, 210px) !important;
-  }
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.25);
+  border-radius: 999px;
+}
+
+/* Base Mobile Toggle Button (hidden by default on desktop) */
+.mobile-sidebar-toggle {
+  display: none;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+  background: #FFFFFF;
+  border: 1px solid var(--rm-line, #CBD5E1);
+  color: var(--rm-ink, #0F2A1B);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  margin: 0;
+}
+
+.mobile-sidebar-toggle:hover {
+  background: #F0FDF4;
+  border-color: #16A34A;
+  color: #15803D;
+}
+
+.mobile-sidebar-toggle svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.2;
 }
 
 
 /* ==========================================================================
-   DESKTOP-PERMANENT FLUID SCALING (cards, summary cards, fonts, table, dropdowns)
-   Desktop look never changes layout - everything simply shrinks smoothly
-   as the screen gets smaller. Values cap at the original desktop sizes.
+   DESKTOP MASTER RESTORATION & PROTECTION (Viewport >= 1025px)
+   Guarantees the desktop view is 100% normal, uncompressed, and pristine.
    ========================================================================== */
+@media (min-width: 1025px) {
+  :root {
+    --sidebar-w: 260px;
+  }
 
-/* Profile pill & bell never overlap (fixes avatar covering the bell) */
-.topbar-right {
-  gap: clamp(8px, 1.1vw, 16px) !important;
-  flex-shrink: 0 !important;
-}
-.topbar-right > .rmsme-popover-anchor,
-.topbar-right > .popover-anchor,
-.topbar-right > .topbar-icon-btn {
-  flex-shrink: 0 !important;
-  position: relative !important;
-}
-@media (min-width: 769px) {
+  /* Permanent Fixed Sidebar */
+  .admin-sidebar,
+  aside.admin-sidebar,
+  .sidebar.admin-sidebar,
+  body.manager-page .sidebar,
+  body.manager-page .admin-sidebar {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: var(--sidebar-w, 260px) !important;
+    min-width: var(--sidebar-w, 260px) !important;
+    max-width: var(--sidebar-w, 260px) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    box-shadow: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    z-index: 10 !important;
+    overflow-y: auto !important;
+  }
+
+  /* Hide Mobile Drawer Triggers & Backdrops */
+  .mobile-sidebar-toggle {
+    display: none !important;
+  }
+
+  .rmsme-mobile-drawer-backdrop {
+    display: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Topbar Desktop Presentation */
+  .admin-topbar,
+  body.manager-page .admin-topbar,
+  body.manager-page .topbar {
+    height: 70px !important;
+    min-height: 70px !important;
+    padding: 0 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .topbar-left {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 2px !important;
+  }
+
+  .topbar-kicker {
+    font-size: 11px !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .topbar-title {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    color: var(--rm-ink, #0F2A1B) !important;
+  }
+
+  .topbar-subtitle {
+    font-size: 12.5px !important;
+    color: var(--rm-ink-dim, #5C7A68) !important;
+    display: block !important;
+    white-space: normal !important;
+    max-width: 500px !important;
+  }
+
+  .topbar-clock {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .topbar-right {
+    gap: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
   .topbar-profile,
   .profile-btn,
   .mgr-profile-pill,
   body.manager-page .topbar-profile,
   body.manager-page .profile-btn,
-  body.manager-page .mgr-profile-pill {
+  body.manager-page .mgr-profile-pill,
+  #profileBtn {
     width: auto !important;
     min-width: 0 !important;
-    height: clamp(36px, 3vw, 40px) !important;
-    padding: 3px clamp(10px, 1vw, 14px) 3px 4px !important;
+    max-width: none !important;
+    height: 40px !important;
+    padding: 4px 14px 4px 4px !important;
     border-radius: 9999px !important;
-    gap: clamp(7px, 0.8vw, 10px) !important;
+    gap: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: visible !important;
   }
+
+  .profile-meta,
   .topbar-profile .profile-meta,
+  .profile-btn .profile-meta,
+  .mgr-profile-pill .mgr-profile-meta,
   body.manager-page .topbar-profile .profile-meta,
+  body.manager-page .profile-meta,
   #profileBtn .profile-meta {
     display: flex !important;
+    flex-direction: column !important;
   }
-  .profile-name, .mgr-name { font-size: clamp(12px, 1vw, 13.5px) !important; }
-  .profile-role, .mgr-role { font-size: clamp(10px, 0.85vw, 11px) !important; }
-  .topbar-icon-btn {
-    width: clamp(34px, 3vw, 40px) !important;
-    height: clamp(34px, 3vw, 40px) !important;
-    min-width: clamp(34px, 3vw, 40px) !important;
-    max-width: clamp(34px, 3vw, 40px) !important;
+
+  .profile-name, .mgr-name {
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
   }
-  .topbar-title { font-size: clamp(17px, 1.6vw, 22px) !important; }
+
+  .profile-role, .mgr-role {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--rm-ink-dim, #5C7A68) !important;
+  }
+
+  /* Desktop Scroll Body */
+  .admin-scroll-body {
+    padding: 28px 32px 40px !important;
+    gap: 24px !important;
+  }
+
+  /* Desktop KPI Grid System (Pristine 4 Columns in 1 Row) */
+  .admin-kpi-grid,
+  .mgr-kpi-grid,
+  .overview-kpi-grid,
+  .kpi-grid,
+  .inv-kpi-grid,
+  .alert-metrics-grid,
+  .store-modal-kpi-row,
+  .rpt-manager-kpi-grid,
+  .staff-kpi-grid,
+  .mgr-tx-kpi-grid,
+  .tx-kpi-grid,
+  .analytics-kpi-grid,
+  .overview-cards,
+  [class*="-kpi-grid"],
+  div[style*="grid-template-columns: repeat(4"],
+  div[style*="grid-template-columns:repeat(4"],
+  [data-responsive-kpi-grid] {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Desktop KPI Cards */
+  .kpi-stat-card,
+  .mgr-kpi-card,
+  .alert-metric-box,
+  .ov-card {
+    padding: 18px 20px !important;
+    border-radius: 16px !important;
+    gap: 16px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .kpi-icon-box {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+  }
+
+  .kpi-icon-box svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .kpi-number,
+  .ov-count {
+    font-size: 28px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .kpi-label,
+  .ov-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+  }
+
+  .kpi-trend {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+  }
+
+  .kpi-subtext {
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Desktop Main Cards */
+  .admin-card,
+  section.admin-card,
+  .mgr-dashboard-card,
+  .fc-card,
+  .panel {
+    padding: 22px 26px !important;
+    border-radius: 18px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .card-header {
+    margin-bottom: 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  .card-title,
+  .mgr-card-title,
+  .fc-card-title,
+  .panel-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+  }
+
+  .card-subtitle,
+  .mgr-card-subtitle,
+  .fc-card-subtitle,
+  .panel-subtext {
+    font-size: 12.5px !important;
+  }
+
+  .card-actions button,
+  .card-actions a,
+  .btn-view-all,
+  .btn-primary-action,
+  .card-action-btn-emerald,
+  .card-action-btn-outline {
+    font-size: 13px !important;
+    padding: 6px 14px !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+  }
+
+  /* Desktop Usage Grid (Side-by-Side: Chart + 2 KPI Cards) */
+  .usage-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.4fr) minmax(240px, 280px) !important;
+    gap: 20px !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .usage-grid .chart-canvas-container {
+    height: 240px !important;
+  }
+
+  .usage-grid .kpi-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Desktop 2-Column Grid Cards (Side-by-Side) */
+  body.manager-page .mgr-grid-2col,
+  body.manager-page .fc-grid-row-1,
+  body.manager-page .an-bottom-grid,
+  body.manager-page .an-grid-2col,
+  .mgr-grid-2col {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 20px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Desktop Tables */
+  body .admin-card table thead th,
+  body .admin-card table.inv-main-table thead th,
+  body .admin-card #overviewTable thead th,
+  .admin-table th {
+    font-size: 11.5px !important;
+    padding: 13px 18px !important;
+    white-space: nowrap !important;
+  }
+
+  body .admin-card table tbody td,
+  body .admin-card table.inv-main-table tbody td,
+  body .admin-card #overviewTable tbody td,
+  .admin-table td {
+    font-size: 13px !important;
+    padding: 14px 16px !important;
+  }
+
+  /* Desktop Dropdowns & Toolbars */
+  select,
+  .dropdown-select,
+  .filter-select,
+  .mgr-select-filter,
+  .inv-filter-toolbar select {
+    font-size: 13px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 6px 28px 6px 12px !important;
+    white-space: nowrap !important;
+  }
+
+  .inv-filter-toolbar input[type="search"],
+  .inv-filter-toolbar input[type="text"],
+  .inv-filter-toolbar .search-input {
+    font-size: 13px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 6px 12px !important;
+  }
+}
+
+
+/* ==========================================================================
+   TABLET RESPONSIVENESS (Viewport 769px to 1024px)
+   Keeps permanent compact sidebar, scales cards smoothly to 2-column grids.
+   ========================================================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --sidebar-w: 220px;
+  }
+
+  .admin-sidebar,
+  aside.admin-sidebar,
+  .sidebar.admin-sidebar,
+  body.manager-page .sidebar,
+  body.manager-page .admin-sidebar {
+    position: relative !important;
+    transform: none !important;
+    width: var(--sidebar-w, 220px) !important;
+    min-width: var(--sidebar-w, 220px) !important;
+    max-width: var(--sidebar-w, 220px) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    display: flex !important;
+  }
+
+  .mobile-sidebar-toggle {
+    display: none !important;
+  }
+
+  .rmsme-mobile-drawer-backdrop {
+    display: none !important;
+  }
+
+  .admin-topbar,
+  body.manager-page .admin-topbar,
+  body.manager-page .topbar {
+    height: 62px !important;
+    min-height: 62px !important;
+    padding: 0 20px !important;
+    gap: 12px !important;
+  }
+
+  .topbar-title {
+    font-size: 18px !important;
+  }
+
   .topbar-subtitle {
-    font-size: clamp(11px, 0.95vw, 12.5px) !important;
+    font-size: 11.5px !important;
+    max-width: 340px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .topbar-clock {
+    display: none !important;
+  }
+
+  .topbar-profile,
+  .profile-btn,
+  .mgr-profile-pill {
+    height: 36px !important;
+    padding: 3px 10px 3px 4px !important;
+  }
+
+  .profile-name, .mgr-name {
+    font-size: 12.5px !important;
+  }
+
+  .profile-role, .mgr-role {
+    font-size: 10px !important;
+  }
+
+  .admin-scroll-body {
+    padding: 18px 20px 32px !important;
+    gap: 16px !important;
+  }
+
+  /* 2-Column KPI Cards on Tablet */
+  .admin-kpi-grid,
+  .mgr-kpi-grid,
+  .overview-kpi-grid,
+  .kpi-grid,
+  .inv-kpi-grid,
+  .alert-metrics-grid,
+  .store-modal-kpi-row,
+  .rpt-manager-kpi-grid,
+  .staff-kpi-grid,
+  .mgr-tx-kpi-grid,
+  .tx-kpi-grid,
+  .analytics-kpi-grid,
+  .overview-cards,
+  [class*="-kpi-grid"],
+  div[style*="grid-template-columns: repeat(4"],
+  div[style*="grid-template-columns:repeat(4"],
+  [data-responsive-kpi-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  .kpi-stat-card,
+  .mgr-kpi-card,
+  .alert-metric-box,
+  .ov-card {
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+    gap: 12px !important;
+  }
+
+  .kpi-icon-box {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+  }
+
+  .kpi-icon-box svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .kpi-number,
+  .ov-count {
+    font-size: 24px !important;
+  }
+
+  .admin-card,
+  section.admin-card,
+  .mgr-dashboard-card,
+  .fc-card,
+  .panel {
+    padding: 18px 20px !important;
+    border-radius: 16px !important;
+  }
+
+  .card-title {
+    font-size: 15px !important;
+  }
+
+  .card-subtitle {
+    font-size: 12px !important;
+  }
+
+  /* Usage Grid Side-by-Side on Tablet */
+  .usage-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.35fr) minmax(210px, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .usage-grid .chart-canvas-container {
+    height: 220px !important;
+  }
+
+  .usage-grid .kpi-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  /* 2-Column Sections Side-by-Side on Tablet */
+  body.manager-page .mgr-grid-2col,
+  body.manager-page .fc-grid-row-1,
+  body.manager-page .an-bottom-grid,
+  body.manager-page .an-grid-2col,
+  .mgr-grid-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
+}
+
+
+/* ==========================================================================
+   MOBILE & SMALL TABLET RESPONSIVENESS (Viewport <= 768px)
+   Off-canvas drawer, stacked cards, avatar-only pill (no bell overlap),
+   clean wrapped controls, horizontal touch-scrolling tables.
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Show Hamburger Menu Button in Topbar */
+  .mobile-sidebar-toggle {
+    display: inline-flex !important;
+    align-self: center !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .admin-app {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .admin-main,
+  body.manager-page .manager-main,
+  body.manager-page .content,
+  body.manager-page .admin-main {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  /* Off-Canvas Navigation Drawer */
+  .admin-sidebar,
+  aside.admin-sidebar,
+  .sidebar.admin-sidebar,
+  body.manager-page .sidebar,
+  body.manager-page .admin-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 82vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 100050 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
+    box-shadow: none !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Drawer Open State */
+  body.rmsme-mobile-drawer-open .admin-sidebar,
+  body.rmsme-mobile-drawer-open aside.admin-sidebar,
+  body.rmsme-mobile-drawer-open .sidebar.admin-sidebar,
+  body.rmsme-mobile-drawer-open.manager-page .sidebar,
+  body.rmsme-mobile-drawer-open.manager-page .admin-sidebar,
+  .admin-sidebar.mobile-open,
+  body.manager-page .admin-sidebar.mobile-open {
+    transform: translateX(0) !important;
+    box-shadow: 14px 0 45px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  /* Drawer Backdrop */
+  .rmsme-mobile-drawer-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 100040 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.25s ease !important;
+  }
+
+  body.rmsme-mobile-drawer-open .rmsme-mobile-drawer-backdrop {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Topbar Header on Mobile */
+  .admin-topbar,
+  body.manager-page .admin-topbar,
+  body.manager-page .topbar {
+    min-height: 56px !important;
+    height: auto !important;
+    padding: 8px 14px !important;
+    gap: 10px !important;
+  }
+
+  .topbar-left {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .topbar-title {
+    font-size: clamp(14px, 3.8vw, 16.5px) !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     max-width: 100% !important;
+    margin: 0 !important;
   }
-  .topbar-kicker { font-size: clamp(9.5px, 0.8vw, 11px) !important; }
-  .admin-topbar { padding: 0 clamp(16px, 2.2vw, 32px) !important; }
-  .admin-scroll-body {
-    padding: clamp(14px, 1.8vw, 28px) clamp(14px, 2vw, 32px) 40px !important;
-    gap: clamp(14px, 1.6vw, 24px) !important;
-  }
-}
 
-/* Phones: pill collapses to avatar only - text fully hidden (no overlap) */
-@media (max-width: 768px) {
+  .topbar-subtitle {
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    margin-top: 2px !important;
+  }
+
+  .topbar-clock {
+    display: none !important;
+  }
+
+  .topbar-right {
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Profile pill collapses to avatar only - NEVER overlaps notification bell */
   .topbar-profile,
   .profile-btn,
   .mgr-profile-pill,
@@ -5865,7 +5498,9 @@ section.admin-card,
     justify-content: center !important;
     overflow: hidden !important;
     border-radius: 50% !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
   }
+
   .topbar-profile .profile-meta,
   .profile-btn .profile-meta,
   .mgr-profile-pill .mgr-profile-meta,
@@ -5874,131 +5509,952 @@ section.admin-card,
   #profileBtn .profile-meta {
     display: none !important;
   }
+
   .topbar-icon-btn {
     width: 36px !important;
     height: 36px !important;
     min-width: 36px !important;
     max-width: 36px !important;
   }
-}
 
-/* Summary / KPI cards - same design, fluid size */
-.kpi-stat-card {
-  padding: clamp(10px, 1.3vw, 18px) clamp(12px, 1.4vw, 20px) !important;
-  gap: clamp(10px, 1.1vw, 16px) !important;
-  border-radius: clamp(12px, 1.2vw, 16px) !important;
-  min-width: 0 !important;
-}
-.kpi-icon-box {
-  width: clamp(36px, 3.4vw, 48px) !important;
-  height: clamp(36px, 3.4vw, 48px) !important;
-  border-radius: clamp(10px, 1vw, 14px) !important;
-}
-.kpi-icon-box svg {
-  width: clamp(18px, 1.7vw, 24px) !important;
-  height: clamp(18px, 1.7vw, 24px) !important;
-}
-.kpi-meta { min-width: 0 !important; }
-.kpi-label { font-size: clamp(11px, 0.9vw, 12px) !important; }
-.kpi-number { font-size: clamp(19px, 2vw, 28px) !important; }
-.kpi-trend { font-size: clamp(10px, 0.85vw, 11.5px) !important; }
-.kpi-subtext {
-  font-size: clamp(10px, 0.8vw, 11px) !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
+  /* Mobile Content Body */
+  .admin-scroll-body {
+    padding: 12px 10px 36px !important;
+    gap: 12px !important;
+  }
 
-/* Main cards */
-.admin-card {
-  padding: clamp(14px, 1.7vw, 24px) clamp(12px, 1.7vw, 24px) !important;
-  border-radius: clamp(12px, 1.3vw, 18px) !important;
-}
-.card-icon-badge {
-  width: clamp(30px, 2.7vw, 38px) !important;
-  height: clamp(30px, 2.7vw, 38px) !important;
-  border-radius: clamp(8px, 0.8vw, 10px) !important;
-}
-.card-icon-badge svg {
-  width: clamp(15px, 1.3vw, 20px) !important;
-  height: clamp(15px, 1.3vw, 20px) !important;
-}
-.card-title { font-size: clamp(13px, 1.25vw, 16px) !important; }
-.card-subtitle { font-size: clamp(10.5px, 0.9vw, 12.5px) !important; }
-.card-header { gap: clamp(8px, 1vw, 14px) !important; }
-.card-actions { gap: clamp(5px, 0.6vw, 10px) !important; }
-.card-actions button,
-.card-actions a,
-.card-action-btn-outline,
-.card-action-btn-emerald,
-.btn-primary-action {
-  font-size: clamp(11px, 0.95vw, 13.5px) !important;
-  padding: clamp(5px, 0.55vw, 8px) clamp(8px, 1vw, 16px) !important;
-  white-space: nowrap !important;
-}
-.card-actions button svg,
-.card-actions a svg {
-  width: clamp(12px, 1vw, 14px) !important;
-  height: clamp(12px, 1vw, 14px) !important;
-}
+  /* Mobile KPI Grid (2 Columns on 481px-768px) */
+  .admin-kpi-grid,
+  .mgr-kpi-grid,
+  .overview-kpi-grid,
+  .kpi-grid,
+  .inv-kpi-grid,
+  .alert-metrics-grid,
+  .store-modal-kpi-row,
+  .rpt-manager-kpi-grid,
+  .staff-kpi-grid,
+  .mgr-tx-kpi-grid,
+  .tx-kpi-grid,
+  .analytics-kpi-grid,
+  .overview-cards,
+  [class*="-kpi-grid"],
+  div[style*="grid-template-columns: repeat(4"],
+  div[style*="grid-template-columns:repeat(4"],
+  [data-responsive-kpi-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
 
-/* Dropdowns & search inside filter toolbars - fluid, never clipped */
-select,
-.dropdown-select,
-.filter-select,
-.mgr-select-filter,
-.inv-filter-toolbar select {
-  font-size: clamp(11px, 0.95vw, 13.5px) !important;
-  min-height: clamp(32px, 2.8vw, 40px) !important;
-  padding-left: clamp(8px, 0.9vw, 14px) !important;
-  padding-right: clamp(24px, 2vw, 32px) !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-}
-.inv-filter-toolbar input[type="search"],
-.inv-filter-toolbar input[type="text"],
-.inv-filter-toolbar .search-input {
-  font-size: clamp(11px, 0.95vw, 13.5px) !important;
-  min-height: clamp(32px, 2.8vw, 40px) !important;
-  min-width: 0 !important;
-}
-.inv-filter-toolbar {
-  gap: clamp(6px, 0.8vw, 12px) !important;
-  padding: clamp(8px, 1vw, 16px) !important;
-}
+  .kpi-stat-card,
+  .mgr-kpi-card,
+  .alert-metric-box,
+  .ov-card {
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    gap: 10px !important;
+    min-height: auto !important;
+  }
 
-/* Tables - fluid header/cell sizing (beats page-level fixed sizes) */
-body .admin-card table thead th,
-body .admin-card table.inv-main-table thead th,
-body .admin-card #overviewTable thead th {
-  font-size: clamp(10px, 0.82vw, 11.5px) !important;
-  padding: clamp(9px, 0.95vw, 14px) clamp(10px, 1.2vw, 18px) !important;
-}
-body .admin-card table tbody td,
-body .admin-card table.inv-main-table tbody td,
-body .admin-card #overviewTable tbody td {
-  font-size: clamp(11px, 0.9vw, 13px) !important;
-  padding: clamp(9px, 0.95vw, 14px) clamp(10px, 1.2vw, 18px) !important;
-}
+  .kpi-icon-box {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+    flex-shrink: 0 !important;
+  }
 
-/* Phones: smaller still */
-@media (max-width: 640px) {
-  .kpi-stat-card { padding: 9px 10px !important; gap: 9px !important; }
-  .kpi-icon-box { width: 32px !important; height: 32px !important; border-radius: 9px !important; }
-  .kpi-icon-box svg { width: 16px !important; height: 16px !important; }
-  .kpi-number { font-size: clamp(16px, 4.6vw, 20px) !important; }
-  .kpi-label { font-size: 10.5px !important; }
-  .kpi-subtext { font-size: 9.5px !important; }
-  .card-title { font-size: clamp(12.5px, 3.4vw, 14px) !important; }
-  .card-subtitle { font-size: 10.5px !important; }
+  .kpi-icon-box svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .kpi-number,
+  .ov-count {
+    font-size: 18px !important;
+    line-height: 1.15 !important;
+  }
+
+  .kpi-label,
+  .ov-label {
+    font-size: 10.5px !important;
+  }
+
+  .kpi-subtext {
+    font-size: 9.5px !important;
+  }
+
+  /* Mobile Main Cards */
+  .admin-card,
+  section.admin-card,
+  .mgr-dashboard-card,
+  .fc-card,
+  .panel {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+    width: 100% !important;
+  }
+
+  .card-header {
+    margin-bottom: 12px !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .card-title,
+  .mgr-card-title,
+  .fc-card-title,
+  .panel-title {
+    font-size: 14px !important;
+  }
+
+  .card-subtitle,
+  .mgr-card-subtitle,
+  .fc-card-subtitle,
+  .panel-subtext {
+    font-size: 11px !important;
+  }
+
+  .card-actions {
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+
   .card-actions button,
-  .card-actions a { font-size: 11px !important; padding: 5px 9px !important; }
+  .card-actions a,
+  .btn-view-all,
+  .btn-primary-action,
+  .card-action-btn-emerald,
+  .card-action-btn-outline {
+    font-size: 11.5px !important;
+    padding: 5px 10px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Usage Grid STACKS Vertically on Mobile */
+  .usage-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .usage-grid .chart-canvas-container {
+    height: 180px !important;
+    max-height: 200px !important;
+    min-height: 150px !important;
+    width: 100% !important;
+  }
+
+  .usage-grid .kpi-column {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  /* 2-Column Sections STACK Vertically on Mobile */
+  body.manager-page .mgr-grid-2col,
+  body.manager-page .fc-grid-row-1,
+  body.manager-page .an-bottom-grid,
+  body.manager-page .an-grid-2col,
+  .mgr-grid-2col {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  body.manager-page .mgr-grid-2col > *,
+  body.manager-page .fc-grid-row-1 > *,
+  body.manager-page .an-bottom-grid > *,
+  body.manager-page .an-grid-2col > * {
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Mobile Filter Toolbars & Dropdowns */
+  .inv-filter-toolbar,
+  .filter-toolbar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+
   select,
   .dropdown-select,
-  .filter-select { font-size: 11.5px !important; min-height: 32px !important; }
-  body .admin-card table thead th { font-size: 10px !important; padding: 8px 10px !important; }
-  body .admin-card table tbody td { font-size: 11px !important; padding: 8px 10px !important; }
+  .filter-select,
+  .mgr-select-filter,
+  .inv-filter-toolbar select {
+    font-size: 12px !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .inv-filter-toolbar input[type="search"],
+  .inv-filter-toolbar input[type="text"],
+  .inv-filter-toolbar .search-input {
+    font-size: 12px !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    min-width: 0 !important;
+  }
+
+  /* Mobile Tables */
+  body .admin-card table thead th,
+  body .admin-card table.inv-main-table thead th,
+  body .admin-card #overviewTable thead th,
+  .admin-table th {
+    font-size: 10.5px !important;
+    padding: 8px 10px !important;
+    white-space: nowrap !important;
+  }
+
+  body .admin-card table tbody td,
+  body .admin-card table.inv-main-table tbody td,
+  body .admin-card #overviewTable tbody td,
+  .admin-table td {
+    font-size: 11.5px !important;
+    padding: 8px 10px !important;
+  }
+
+  /* Mobile Modals */
+  .modal-card,
+  .store-modal-card,
+  .mgr-modal-card,
+  div[class*="modal-card"] {
+    max-width: 95vw !important;
+    width: 100% !important;
+    max-height: calc(100vh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    overflow-y: auto !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+  }
 }
+
+
+/* ==========================================================================
+   SMALL MOBILE PHONES (Viewport <= 480px)
+   1-column KPI cards, full width inputs, vertical pagination.
+   ========================================================================== */
+@media (max-width: 480px) {
+  .admin-scroll-body {
+    padding: 10px 8px 30px !important;
+    gap: 10px !important;
+  }
+
+  .admin-card,
+  section.admin-card {
+    padding: 12px 10px !important;
+  }
+
+  /* 1 Column for all KPI grids on small phones */
+  .admin-kpi-grid,
+  .mgr-kpi-grid,
+  .overview-kpi-grid,
+  .kpi-grid,
+  .inv-kpi-grid,
+  .alert-metrics-grid,
+  .store-modal-kpi-row,
+  .rpt-manager-kpi-grid,
+  .staff-kpi-grid,
+  .mgr-tx-kpi-grid,
+  .tx-kpi-grid,
+  .analytics-kpi-grid,
+  .overview-cards,
+  [class*="-kpi-grid"],
+  div[style*="grid-template-columns: repeat(4"],
+  div[style*="grid-template-columns:repeat(4"],
+  [data-responsive-kpi-grid] {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .usage-grid .kpi-column {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* Reset multi-column spans */
+  .rpt-kpi-box[style*="grid-column: span 2"],
+  div[style*="grid-column: span 2"],
+  div[style*="grid-column:span 2"],
+  div[style*="grid-column: span 3"],
+  div[style*="grid-column: span 4"] {
+    grid-column: span 1 !important;
+  }
+
+  .dropdown-select,
+  .filter-select,
+  .btn-clear-filters,
+  .card-actions button,
+  .card-actions a {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+  }
+
+  .card-pagination {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .card-pagination .pagination-controls {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .modal-footer {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .modal-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ==========================================================================
+   UNIFIED MODAL / VIEWER EXIT 'X' BUTTON (IMAGE-MATCHED TRANSITION SPEC)
+   Matches the circular soft-green initial state transitioning to soft-red
+   hover state with 90deg rotation and scale.
+   ========================================================================== */
+
+button.fc-modal-close,
+.fc-modal-close,
+button.an-modal-close,
+.an-modal-close,
+button.mgr-modal-close,
+.mgr-modal-close,
+button.mgr-modal-close-btn,
+.mgr-modal-close-btn,
+button.rpt-modal-close,
+.rpt-modal-close,
+button.btn-close-modal,
+.btn-close-modal,
+button.store-modal-close-btn,
+.store-modal-close-btn,
+button.help-modal-close-btn,
+.help-modal-close-btn,
+button.rmsme-guide-close-btn,
+.rmsme-guide-close-btn,
+button.rmsme-modal-close-btn,
+.rmsme-modal-close-btn,
+button.rmims-notif-close-btn,
+.rmims-notif-close-btn,
+button.auth-modal-close,
+.auth-modal-close,
+button.modal-close,
+.modal-close,
+button.expansion-close-btn,
+.expansion-close-btn,
+button#btnCloseLocModal,
+button#btnCloseStoreModal,
+button#btnCloseAddBranch,
+button#btnCloseAddUser,
+button#btnCloseEditUser,
+button#btnCloseRoleBackupModal,
+button#btnCloseResetModal,
+button#staffEditCloseBtn,
+button#staffDeleteCloseBtn,
+button#anCloseMaximizeModal,
+button#modalTotalForecastClose,
+button#modalForecastStatusClose,
+button#modalMaterialDetailClose,
+button#saveModalCloseBtn,
+button#tabExportCloseBtn,
+button#btnCloseReceiveReview,
+button#btnCloseEditReceipt,
+button#btnCloseDeleteReceipt,
+button#btnCloseDisburseReview,
+button#btnCloseEditDisb,
+button#btnCloseDeleteDisb,
+button#btnCloseViewTx,
+button#btnCloseCorrectionModal,
+button#closeTxReviewModal,
+button#importModalCloseBtn,
+button#deleteConfirmCloseBtn,
+button#deleteFpConfirmCloseBtn,
+button#infoModalClose,
+button#addModalClose,
+button#editModalClose,
+button#deleteModalClose,
+button#bulkModalClose {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(15, 42, 27, 0.05) !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #3C5847 !important;
+  cursor: pointer !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  padding: 0 !important;
+  outline: none !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+}
+
+/* Hover State: Soft red background, red border, bright red X, 90deg rotation & scale */
+button.fc-modal-close:hover,
+.fc-modal-close:hover,
+button.an-modal-close:hover,
+.an-modal-close:hover,
+button.mgr-modal-close:hover,
+.mgr-modal-close:hover,
+button.mgr-modal-close-btn:hover,
+.mgr-modal-close-btn:hover,
+button.rpt-modal-close:hover,
+.rpt-modal-close:hover,
+button.btn-close-modal:hover,
+.btn-close-modal:hover,
+button.store-modal-close-btn:hover,
+.store-modal-close-btn:hover,
+button.help-modal-close-btn:hover,
+.help-modal-close-btn:hover,
+button.rmsme-guide-close-btn:hover,
+.rmsme-guide-close-btn:hover,
+button.rmsme-modal-close-btn:hover,
+.rmsme-modal-close-btn:hover,
+button.rmims-notif-close-btn:hover,
+.rmims-notif-close-btn:hover,
+button.auth-modal-close:hover,
+.auth-modal-close:hover,
+button.modal-close:hover,
+.modal-close:hover,
+button.expansion-close-btn:hover,
+.expansion-close-btn:hover,
+button#btnCloseLocModal:hover,
+button#btnCloseStoreModal:hover,
+button#btnCloseAddBranch:hover,
+button#btnCloseAddUser:hover,
+button#btnCloseEditUser:hover,
+button#btnCloseRoleBackupModal:hover,
+button#btnCloseResetModal:hover,
+button#staffEditCloseBtn:hover,
+button#staffDeleteCloseBtn:hover,
+button#anCloseMaximizeModal:hover,
+button#modalTotalForecastClose:hover,
+button#modalForecastStatusClose:hover,
+button#modalMaterialDetailClose:hover,
+button#saveModalCloseBtn:hover,
+button#tabExportCloseBtn:hover,
+button#btnCloseReceiveReview:hover,
+button#btnCloseEditReceipt:hover,
+button#btnCloseDeleteReceipt:hover,
+button#btnCloseDisburseReview:hover,
+button#btnCloseEditDisb:hover,
+button#btnCloseDeleteDisb:hover,
+button#btnCloseViewTx:hover,
+button#btnCloseCorrectionModal:hover,
+button#closeTxReviewModal:hover,
+button#importModalCloseBtn:hover,
+button#deleteConfirmCloseBtn:hover,
+button#deleteFpConfirmCloseBtn:hover,
+button#infoModalClose:hover,
+button#addModalClose:hover,
+button#editModalClose:hover,
+button#deleteModalClose:hover,
+button#bulkModalClose:hover {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
+}
+
+/* Active / Pressed State */
+button.fc-modal-close:active,
+.fc-modal-close:active,
+button.an-modal-close:active,
+.an-modal-close:active,
+button.mgr-modal-close:active,
+.mgr-modal-close:active,
+button.mgr-modal-close-btn:active,
+.mgr-modal-close-btn:active,
+button.rpt-modal-close:active,
+.rpt-modal-close:active,
+button.btn-close-modal:active,
+.btn-close-modal:active,
+button.store-modal-close-btn:active,
+.store-modal-close-btn:active,
+button.help-modal-close-btn:active,
+.help-modal-close-btn:active,
+button.rmsme-guide-close-btn:active,
+.rmsme-guide-close-btn:active,
+button.rmsme-modal-close-btn:active,
+.rmsme-modal-close-btn:active,
+button.rmims-notif-close-btn:active,
+.rmims-notif-close-btn:active,
+button.auth-modal-close:active,
+.auth-modal-close:active,
+button.modal-close:active,
+.modal-close:active,
+button.expansion-close-btn:active,
+.expansion-close-btn:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  border-color: rgba(185, 28, 28, 0.45) !important;
+  transform: rotate(90deg) scale(0.96) !important;
+}
+
+/* SVG styling inside all exit buttons */
+button.fc-modal-close svg,
+.fc-modal-close svg,
+button.an-modal-close svg,
+.an-modal-close svg,
+button.mgr-modal-close svg,
+.mgr-modal-close svg,
+button.mgr-modal-close-btn svg,
+.mgr-modal-close-btn svg,
+button.rpt-modal-close svg,
+.rpt-modal-close svg,
+button.btn-close-modal svg,
+.btn-close-modal svg,
+button.store-modal-close-btn svg,
+.store-modal-close-btn svg,
+button.help-modal-close-btn svg,
+.help-modal-close-btn svg,
+button.rmsme-guide-close-btn svg,
+.rmsme-guide-close-btn svg,
+button.rmsme-modal-close-btn svg,
+.rmsme-modal-close-btn svg,
+button.rmims-notif-close-btn svg,
+.rmims-notif-close-btn svg,
+button.auth-modal-close svg,
+.auth-modal-close svg,
+button.modal-close svg,
+.modal-close svg,
+button.expansion-close-btn svg,
+.expansion-close-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
+}
+
+/* ==========================================================
+   RMIMS UNIFIED FILTER & DROPDOWN ENGINE (IMAGE 1 UNIFICATION)
+   Unified dropdown selection system matching Image 1:
+   - Light mint background: #F0FDF4
+   - Emerald green text: #15803D
+   - Bold font-weight: 700
+   - Rounded 8px items
+   ========================================================== */
+
+.rmims-native-select-hidden,
+select.rmims-native-select-hidden,
+.dropdown-select.rmims-native-select-hidden,
+.mgr-form-select.rmims-native-select-hidden,
+.filter-select.rmims-native-select-hidden,
+select[data-custom-enhanced="true"] {
+  display: none !important;
+  position: absolute !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: -9999 !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+.rm-custom-select {
+  position: relative !important;
+  display: inline-flex !important;
+  vertical-align: middle !important;
+  font-family: inherit !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.rm-custom-select.rm-select-block {
+  display: flex !important;
+  width: 100% !important;
+}
+
+.rm-custom-select.rm-select-block .rm-select-trigger {
+  width: 100% !important;
+}
+
+.rm-custom-select.rm-select-block .rm-select-menu {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.rm-select-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  min-width: 120px !important;
+  flex-shrink: 0 !important;
+  padding: 0 12px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(20, 83, 45, 0.16) !important;
+  border-radius: 10px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  color: #183d28 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(20, 83, 45, 0.04) !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, transform 0.18s ease !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+}
+
+/* Compact variant for 1-row toolbars */
+.activity-filter-toolbar .rm-select-trigger,
+.rm-custom-select.mgr-filter-select-compact .rm-select-trigger {
+  height: 34px !important;
+  min-height: 34px !important;
+  min-width: 90px !important;
+  max-width: 155px !important;
+  padding: 0 8px !important;
+  font-size: 0.77rem !important;
+  gap: 4px !important;
+}
+
+.activity-filter-toolbar .rm-select-trigger .rm-select-chevron,
+.rm-custom-select.mgr-filter-select-compact .rm-select-trigger .rm-select-chevron {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+}
+
+.rm-select-trigger:hover {
+  border-color: #15803D !important;
+  background-color: #fafdfb !important;
+  box-shadow: 0 2px 6px rgba(20, 83, 45, 0.08) !important;
+}
+
+.rm-custom-select.open .rm-select-trigger,
+.rm-select-trigger:focus-visible {
+  border-color: #16803c !important;
+  box-shadow: 0 0 0 3px rgba(22, 128, 60, 0.14) !important;
+  background-color: #ffffff !important;
+  outline: none !important;
+}
+
+.rm-select-value {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  color: #183d28 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.rm-select-chevron,
+.rm-custom-select svg.rm-select-chevron {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  color: #5f7b69 !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s ease !important;
+}
+
+.rm-custom-select.open .rm-select-chevron {
+  transform: rotate(180deg) !important;
+  color: #16803c !important;
+}
+
+/* Floating Choices Menu */
+.rm-select-menu {
+  position: absolute !important;
+  top: calc(100% + 5px) !important;
+  right: 0 !important;
+  left: auto !important;
+  min-width: 140px !important;
+  width: max-content !important;
+  max-width: 300px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px -4px rgba(20, 83, 45, 0.16), 0 4px 10px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(20, 83, 45, 0.05) !important;
+  padding: 5px !important;
+  z-index: 1050 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-4px) scale(0.98) !important;
+  transform-origin: top right !important;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(20, 83, 45, 0.2) transparent !important;
+}
+
+.rm-select-menu.align-left {
+  right: auto !important;
+  left: 0 !important;
+  transform-origin: top left !important;
+}
+
+.rm-custom-select.open {
+  z-index: 2500 !important;
+}
+
+.rm-custom-select.open .rm-select-menu {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) scale(1) !important;
+  z-index: 2500 !important;
+}
+
+/* Dropdowns opened inside modals must sit above modal content */
+.modal-sheet .rm-custom-select.open,
+.modal-overlay .rm-custom-select.open,
+.admin-modal-backdrop .rm-custom-select.open,
+.mgr-modal-backdrop .rm-custom-select.open,
+.rmims-notif-card .rm-custom-select.open,
+.help-modal-window .rm-custom-select.open {
+  z-index: 200010 !important;
+}
+
+.modal-sheet .rm-custom-select.open .rm-select-menu,
+.modal-overlay .rm-custom-select.open .rm-select-menu,
+.admin-modal-backdrop .rm-custom-select.open .rm-select-menu,
+.mgr-modal-backdrop .rm-custom-select.open .rm-select-menu,
+.rmims-notif-card .rm-custom-select.open .rm-select-menu,
+.help-modal-window .rm-custom-select.open .rm-select-menu {
+  z-index: 200010 !important;
+}
+
+/* STRICT RULE: When notification or detail modal is open, ANY page filter or dropdown MUST BE BEHIND and CANNOT BLOCK IT */
+body.rmims-notif-open .rm-custom-select:not(.rmims-notif-card .rm-custom-select),
+body:has(.rmims-notif-backdrop.open) .rm-custom-select:not(.rmims-notif-card .rm-custom-select),
+body:has(.rmims-detail-backdrop.open) .rm-custom-select:not(.rmims-detail-card .rm-custom-select),
+body.rmims-modal-open .rm-custom-select:not(.modal-sheet .rm-custom-select):not(.modal-overlay .rm-custom-select):not(.admin-modal-backdrop .rm-custom-select):not(.rmims-notif-card .rm-custom-select) {
+  z-index: 1 !important;
+}
+
+body.rmims-notif-open .rm-custom-select:not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body:has(.rmims-notif-backdrop.open) .rm-custom-select:not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body:has(.rmims-detail-backdrop.open) .rm-custom-select:not(.rmims-detail-card .rm-custom-select) .rm-select-menu,
+body.rmims-modal-open .rm-custom-select:not(.modal-sheet .rm-custom-select):not(.modal-overlay .rm-custom-select):not(.admin-modal-backdrop .rm-custom-select):not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body.rmims-notif-open .cal-combobox-dropdown,
+body:has(.rmims-notif-backdrop.open) .cal-combobox-dropdown,
+body:has(.rmims-detail-backdrop.open) .cal-combobox-dropdown,
+body.rmims-modal-open .cal-combobox-dropdown,
+body.rmims-notif-open .rm-combobox-dropdown,
+body:has(.rmims-notif-backdrop.open) .rm-combobox-dropdown,
+body:has(.rmims-detail-backdrop.open) .rm-combobox-dropdown,
+body.rmims-modal-open .rm-combobox-dropdown,
+body.rmims-notif-open .flatpickr-calendar,
+body:has(.rmims-notif-backdrop.open) .flatpickr-calendar,
+body:has(.rmims-detail-backdrop.open) .flatpickr-calendar,
+body.rmims-modal-open .flatpickr-calendar,
+body.rmims-notif-open .mgr-profile-dropdown,
+body:has(.rmims-notif-backdrop.open) .mgr-profile-dropdown,
+body.rmims-notif-open .rmsme-popover,
+body:has(.rmims-notif-backdrop.open) .rmsme-popover {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Option Items - Unified Image 1 Design System */
+.rm-select-option {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: #1E293B !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+}
+
+.rm-select-option:hover,
+.rm-select-option.selected,
+.rm-select-option:focus {
+  background: #F0FDF4 !important;
+  background-color: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 700 !important;
+}
+
+.rm-opt-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  white-space: nowrap !important;
+}
+
+.rm-opt-label {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.rm-select-check,
+.rm-select-option svg.rm-select-check {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  color: #16803c !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  opacity: 0 !important;
+  transform: scale(0.7) !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+
+.rm-select-option.selected .rm-select-check {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+/* Icon / Dot / Badge Decorators */
+.rm-opt-icon-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 5px !important;
+  flex-shrink: 0 !important;
+}
+
+.rm-opt-icon-wrap svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.rm-icon-all {
+  color: #64748b !important;
+}
+
+.rm-badge-receive {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+.rm-badge-disburse {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+.rm-status-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+}
+
+.rm-dot-green {
+  background: #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) !important;
+}
+
+.rm-dot-amber {
+  background: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+}
+
+.rm-dot-red {
+  background: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Native option styles */
+select option {
+  background-color: #FFFFFF;
+  color: #1E293B;
+  padding: 8px 12px;
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+  background: #F0FDF4 !important;
+  background-color: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 700 !important;
+}
+
+/* Prevent duplicate custom dropdowns when searchable combobox is present */
+.cal-combobox-wrap + .rm-custom-select,
+.rm-combobox-wrap + .rm-custom-select,
+.rm-custom-select + .cal-combobox-wrap,
+.rm-custom-select + .rm-combobox-wrap,
+[data-has-combobox="true"] ~ .rm-custom-select,
+select[data-has-combobox="true"] + .rm-custom-select,
+select[data-has-combobox="true"] ~ .rm-custom-select {
+  display: none !important;
+}
+
+
+

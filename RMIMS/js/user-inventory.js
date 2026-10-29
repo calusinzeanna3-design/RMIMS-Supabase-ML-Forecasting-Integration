@@ -80,12 +80,7 @@ if (document.readyState === 'loading') {
 }
 
 function loadInventory() {
-  rawMaterials = (getSystemRawMaterials() || []).filter(m => {
-    const n = String(m.name || m.raw_material_name || '').toLowerCase();
-    const c = String(m.item_code || m.id || '').toUpperCase();
-    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
-  });
-  populateCategoryFilter();
+  rawMaterials = getSystemRawMaterials() || [];
   updateKpiCards();
   renderTable();
 }
@@ -116,7 +111,6 @@ function updateKpiCards() {
 
 function bindEvents() {
   const searchInput = document.getElementById('staffInvSearch');
-  const catFilter = document.getElementById('staffInvCategoryFilter');
   const statusFilter = document.getElementById('staffInvStatusFilter');
   const sortSelect = document.getElementById('staffInvSort');
   const sizeSelect = document.getElementById('staffInvPageSize');
@@ -124,7 +118,6 @@ function bindEvents() {
   const clearBtn = document.getElementById('btnClearStaffInvFilters');
 
   if (searchInput) searchInput.addEventListener('input', () => { currentPage = 1; renderTable(); });
-  if (catFilter) catFilter.addEventListener('change', () => { currentPage = 1; renderTable(); });
   if (statusFilter) statusFilter.addEventListener('change', () => { currentPage = 1; renderTable(); });
   if (sortSelect) sortSelect.addEventListener('change', () => { currentPage = 1; renderTable(); });
   if (sizeSelect) sizeSelect.addEventListener('change', (e) => {
@@ -137,7 +130,6 @@ function bindEvents() {
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       if (searchInput) searchInput.value = '';
-      if (catFilter) catFilter.value = 'all';
       if (statusFilter) statusFilter.value = 'all';
       if (sortSelect) sortSelect.value = 'name_asc';
       currentPage = 1;
@@ -198,22 +190,6 @@ function bindEvents() {
   if (delSubmit) delSubmit.addEventListener('click', handleStaffDeleteSubmit);
 }
 
-function populateCategoryFilter() {
-  const select = document.getElementById('staffInvCategoryFilter');
-  if (!select) return;
-
-  const currentVal = select.value;
-  const categories = Array.from(new Set(rawMaterials.map(m => m.category).filter(Boolean))).sort();
-
-  select.innerHTML = '<option value="all">All Categories</option>';
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
-    if (cat === currentVal) opt.selected = true;
-    select.appendChild(opt);
-  });
-}
 
 function computeMetrics(m) {
   const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
@@ -271,19 +247,14 @@ function renderTable() {
   if (!tbody) return;
 
   const searchVal = (document.getElementById('staffInvSearch')?.value || '').toLowerCase().trim();
-  const catVal = document.getElementById('staffInvCategoryFilter')?.value || 'all';
   const statusVal = document.getElementById('staffInvStatusFilter')?.value || 'all';
   const sortVal = document.getElementById('staffInvSort')?.value || 'name_asc';
 
   // 1. Filter
   const filtered = rawMaterials.filter(m => {
     const name = (m.name || m.materialName || '').toLowerCase();
-    const cat = (m.category || '').toLowerCase();
 
-    if (searchVal && !name.includes(searchVal) && !cat.includes(searchVal)) {
-      return false;
-    }
-    if (catVal !== 'all' && m.category !== catVal) {
+    if (searchVal && !name.includes(searchVal)) {
       return false;
     }
 
@@ -342,10 +313,10 @@ function renderTable() {
   renderPaginationControls(totalPages, totalItems);
 
   if (pageItems.length === 0) {
-    const isFiltered = Boolean(searchVal || catVal !== 'all' || statusVal !== 'all');
+    const isFiltered = Boolean(searchVal || statusVal !== 'all');
     tbody.innerHTML = `
       <tr>
-        <td colspan="11" style="text-align: center; padding: 56px 20px; background: #FFFFFF; border-bottom: none;">
+        <td colspan="8" style="text-align: center; padding: 56px 20px; background: #FFFFFF; border-bottom: none;">
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
             <div style="width: 52px; height: 52px; border-radius: 14px; background: #F8FCF9; border: 1px solid var(--rm-line); color: #64748B; display: flex; align-items: center; justify-content: center; box-shadow: var(--rm-shadow-sm);">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -359,7 +330,7 @@ function renderTable() {
             </strong>
             <p style="margin: 0; font-size: 13px; color: var(--rm-ink-dim); max-width: 480px; line-height: 1.5;">
               ${isFiltered 
-                ? 'Try adjusting your search query or reset category and status filters.' 
+                ? 'Try adjusting your search query or reset status filters.' 
                 : 'Raw materials inventory stock levels, threshold status, and estimated run-out dates will appear here.'}
             </p>
           </div>
@@ -450,9 +421,6 @@ function renderTable() {
           <strong style="color:#0F2A1B; font-size:13.5px;">${escapeHtml(m.name || m.materialName)}</strong>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
-          <span style="color:#475569; font-weight:500;">${escapeHtml(m.category || 'General')}</span>
-        </td>
-        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
           <span style="background:rgba(255,255,255,0.7); color:#475569; padding:2px 7px; border-radius:6px; font-size:12px; font-weight:600;">${escapeHtml(unit || '--')}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: right;">
@@ -464,12 +432,6 @@ function renderTable() {
           <span style="color:#1E293B; font-weight:600;">
             ${formattedMin}${unit ? ' ' + unit : ''}
           </span>
-        </td>
-        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
-          <span class="mgr-date-text" style="color: #334155; font-size:12.5px; font-weight:600;">${escapeHtml(latestActDate)}</span>
-        </td>
-        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
-          <span class="mgr-time-text" style="color: #475569; font-size:12px; font-weight:500;">${escapeHtml(latestActTime || '—')}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span class="mgr-status-pill ${statusPillClass}">
@@ -602,14 +564,12 @@ function openStaffEditModal(id) {
 
   const idEl = document.getElementById('staffEditMatId');
   const nameEl = document.getElementById('staffEditMatName');
-  const catEl = document.getElementById('staffEditMatCategory');
   const unitEl = document.getElementById('staffEditMatUnit');
   const stockEl = document.getElementById('staffEditMatCurrentStock');
   const minEl = document.getElementById('staffEditMatMinStock');
 
   if (idEl) idEl.value = m.id || m.item_code;
   if (nameEl) nameEl.value = m.name || m.materialName || '';
-  if (catEl) catEl.value = m.category || 'General';
   if (unitEl) unitEl.value = m.unit_of_measure || m.unit || 'kg';
   if (stockEl) stockEl.value = m.current_stock ?? m.currentStock ?? 0;
   if (minEl) minEl.value = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10;
@@ -634,13 +594,12 @@ function handleStaffEditSubmit(e) {
   if (!m) return;
 
   const nameEl = document.getElementById('staffEditMatName');
-  const catEl = document.getElementById('staffEditMatCategory');
   const unitEl = document.getElementById('staffEditMatUnit');
   const stockEl = document.getElementById('staffEditMatCurrentStock');
   const minEl = document.getElementById('staffEditMatMinStock');
 
   const name = nameEl ? nameEl.value.trim() : (m.name || m.materialName);
-  const category = (catEl && catEl.value.trim()) || 'General';
+  const category = m.category || 'General';
   const unit = (unitEl && unitEl.value.trim()) || 'kg';
   const currentStock = stockEl ? (parseFloat(stockEl.value) || 0) : 0;
   const minStock = minEl ? (parseFloat(minEl.value) || 0) : 0;

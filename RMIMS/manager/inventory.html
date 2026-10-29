@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="../css/admin-shell.css">
     <link rel="stylesheet" href="../css/manager-theme.css">
     <!-- Manager Styles for modals and specific components -->
-    <link rel="stylesheet" href="../css/manager-inventory.css?v=20261015_v3">
+    <link rel="stylesheet" href="../css/manager-inventory.css?v=20261028_fix_modal_buttons">
     <!-- SheetJS for Excel (.xlsx/.xls) support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -294,6 +294,100 @@
             border-color: #94A3B8 !important;
             color: #0F172A !important;
         }
+
+        /* ==========================================================
+           MODAL SCROLL & BUTTON PINNING OVERRIDES
+           Ensures that modal body is strictly scrollable and modal footer
+           action buttons (Cancel & Save Material) are ALWAYS pinned,
+           fully visible, and never cut off regardless of screen height.
+           ========================================================== */
+        .mgr-modal-backdrop {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(15, 23, 42, 0.65) !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            z-index: 999999 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 16px !important;
+            box-sizing: border-box !important;
+            overflow-y: auto !important;
+        }
+
+        .mgr-modal-backdrop.active,
+        .mgr-modal-backdrop.open,
+        .mgr-modal-backdrop.show {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
+        .mgr-modal-box {
+            display: flex !important;
+            flex-direction: column !important;
+            max-height: calc(100vh - 32px) !important;
+            max-height: calc(100dvh - 32px) !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+        }
+
+        .mgr-modal-box form {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            max-height: 100% !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        .mgr-modal-header {
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+        }
+
+        .mgr-modal-body {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            box-sizing: border-box !important;
+        }
+
+        .mgr-modal-footer {
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            gap: 12px !important;
+            background: #F8FAFC !important;
+            border-top: 1px solid #E2E8F0 !important;
+            padding: 14px 24px !important;
+            box-sizing: border-box !important;
+            position: sticky !important;
+            bottom: 0 !important;
+            z-index: 20 !important;
+            box-shadow: 0 -4px 12px rgba(15, 42, 27, 0.05) !important;
+        }
+
+        .mgr-modal-footer button {
+            height: 40px !important;
+            min-height: 40px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+            box-sizing: border-box !important;
+        }
     </style>
 </head>
 
@@ -539,10 +633,10 @@
                     </div>
 
                     <!-- SEARCH, FILTERS & ACTIONS TOOLBAR -->
-                    <div class="inv-filter-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; background: #F8FCF9; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--rm-line);">
-                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+                    <div class="inv-filter-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: #F8FCF9; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--rm-line);">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;">
                             <!-- Search Box -->
-                            <div class="topbar-search" style="flex: 1 1 200px; min-width: 180px; max-width: 360px;">
+                            <div class="topbar-search" style="flex: 1 1 200px; min-width: 170px; max-width: 320px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                     <circle cx="11" cy="11" r="8" />
                                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -555,7 +649,7 @@
                             </div>
 
                             <!-- Status Filter -->
-                            <select id="invStatusFilter" class="dropdown-select" title="Filter by Stock Status">
+                            <select id="invStatusFilter" class="dropdown-select" title="Filter by Stock Status" style="min-width: 130px; flex-shrink: 0;">
                                 <option value="all">All Statuses</option>
                                 <option value="Good">Good</option>
                                 <option value="Low">Low</option>
@@ -563,7 +657,7 @@
                             </select>
 
                             <!-- Sort Filter -->
-                            <select id="invSortFilter" class="dropdown-select" title="Sort Order">
+                            <select id="invSortFilter" class="dropdown-select" title="Sort Order" style="min-width: 180px; flex-shrink: 0;">
                                 <option value="chronological" selected>Chronological (Item Code)</option>
                                 <option value="az">Name: A – Z</option>
                                 <option value="za">Name: Z – A</option>
@@ -594,8 +688,6 @@
                                     <th style="text-align: right; width: 110px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Current Stock</th>
                                     <th style="text-align: right; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Min Stock</th>
                                     <th style="width: 70px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
-                                    <th style="width: 120px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Date</th>
-                                    <th style="width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Time</th>
                                     <th style="text-align: center; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Status</th>
                                     <th style="text-align: center; width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-right-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Action</th>
                                 </tr>
@@ -651,7 +743,12 @@
                     <p>Register a new raw material record in the inventory catalog</p>
                 </div>
                 <button type="button" class="mgr-modal-close-btn" id="addModalClose"
-                    onclick="window.closeAddModal && window.closeAddModal()" aria-label="Close modal">&times;</button>
+                    onclick="window.closeAddModal && window.closeAddModal()" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <form id="addMaterialForm">
@@ -736,7 +833,12 @@
                     <p id="editModalSubtitle">Update material specifications and catalog settings</p>
                 </div>
                 <button type="button" class="mgr-modal-close-btn" id="editModalClose"
-                    aria-label="Close modal">&times;</button>
+                    aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <form id="editMaterialForm">
@@ -801,6 +903,7 @@
         <div class="mgr-modal-box modal-lg" role="dialog" aria-modal="true">
             <div class="mgr-modal-header">
                 <div class="mgr-modal-title-group" style="display:flex; align-items:center; gap:12px;">
+                    <img id="infoMatThumb" style="width: 46px; height: 46px; object-fit: cover; border-radius: 8px; border: 1.5px solid #E2E8F0; display: none;" alt="Material Photo">
                     <span class="mgr-mat-badge" id="infoMatId" style="font-size:13px; padding:4px 10px;">RM-001</span>
                     <div>
                         <h3 id="infoMatName" style="font-size:18px;">Sugar</h3>
@@ -809,7 +912,12 @@
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span class="mgr-status-badge status-instock" id="infoMatStatus">Available</span>
                     <button type="button" class="mgr-modal-close-btn" id="infoModalClose"
-                        aria-label="Close modal">&times;</button>
+                        aria-label="Close modal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -889,7 +997,12 @@
                     <p>Chronological record of registrations, stock updates, edits, and status changes</p>
                 </div>
                 <button type="button" class="mgr-modal-close-btn" id="historyModalClose"
-                    aria-label="Close modal">&times;</button>
+                    aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <div class="mgr-modal-body">
@@ -914,7 +1027,12 @@
                     <h3 id="confirmModalTitle">Confirm Action</h3>
                 </div>
                 <button type="button" class="mgr-modal-close-btn" id="confirmModalClose"
-                    aria-label="Close modal">&times;</button>
+                    aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <div class="mgr-modal-body">
@@ -959,7 +1077,12 @@
                         + Add Specification
                     </button>
                     <button type="button" class="mgr-modal-close-btn" id="specsPopupClose"
-                        aria-label="Close modal">&times;</button>
+                        aria-label="Close modal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -1116,7 +1239,12 @@
                     </button>
                     <button type="button" class="mgr-modal-close-btn" id="finishedFoodCatalogClose"
                         onclick="window.closeFinishedFoodCatalogModal && window.closeFinishedFoodCatalogModal()"
-                        aria-label="Close modal">&times;</button>
+                        aria-label="Close modal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -1259,7 +1387,12 @@
                         Delete
                     </button>
                     <button type="button" class="mgr-modal-close-btn" id="fpPopupClose"
-                        aria-label="Close modal">&times;</button>
+                        aria-label="Close modal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -1341,7 +1474,12 @@
                     <p>Select your export format and data scope</p>
                 </div>
                 <button type="button" class="mgr-modal-close-btn" id="exportModalClose"
-                    aria-label="Close modal">&times;</button>
+                    aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <div class="mgr-modal-body">
@@ -1442,7 +1580,12 @@
                     </h3>
                     <p>Upload a CSV or Excel spreadsheet to batch register raw materials into inventory.</p>
                 </div>
-                <button type="button" class="mgr-modal-close-btn" id="importModalCloseBtn" onclick="window.closeImportRawMaterialsModal && window.closeImportRawMaterialsModal()">&times;</button>
+                <button type="button" class="mgr-modal-close-btn" id="importModalCloseBtn" onclick="window.closeImportRawMaterialsModal && window.closeImportRawMaterialsModal()" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
             <div class="mgr-modal-body" style="padding: 20px 24px;">
                 <!-- File Drag & Drop Zone -->
@@ -1534,7 +1677,12 @@
                     </h3>
                     <p style="color: #64748B;">This action removes the material from the catalog.</p>
                 </div>
-                <button type="button" class="mgr-modal-close-btn" id="deleteConfirmCloseBtn">&times;</button>
+                <button type="button" class="mgr-modal-close-btn" id="deleteConfirmCloseBtn" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
             <div class="mgr-modal-body" style="padding: 20px 24px;">
                 <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -1564,7 +1712,12 @@
                     </h3>
                     <p style="color: #64748B;">This action removes the formulation from the catalog.</p>
                 </div>
-                <button type="button" class="mgr-modal-close-btn" id="deleteFpConfirmCloseBtn">&times;</button>
+                <button type="button" class="mgr-modal-close-btn" id="deleteFpConfirmCloseBtn" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
             <div class="mgr-modal-body" style="padding: 20px 24px;">
                 <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.5;">
@@ -1589,7 +1742,7 @@
     <!-- SCRIPTS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script type="module" src="../js/rmsme-shell.js"></script>
-    <script type="module" src="../js/manager-inventory.js"></script>
+    <script type="module" src="../js/manager-inventory.js?v=20261029_clean"></script>
 </body>
 
 </html>

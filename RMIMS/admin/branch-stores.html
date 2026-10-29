@@ -209,7 +209,12 @@
             <span class="store-modal-subtitle" id="locModalSubtitle">SELECT A STORE TO VIEW DETAILED PERSONNEL ROSTER &amp; ROLES</span>
           </div>
         </div>
-        <button type="button" class="store-modal-close-btn" id="btnCloseLocModal" aria-label="Close modal">&times;</button>
+        <button type="button" class="store-modal-close-btn" id="btnCloseLocModal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       <!-- Small Store Boxes Grid (NO revenue) -->
@@ -245,7 +250,12 @@
           </svg>
           <span>Back to Branches</span>
         </button>
-        <button type="button" class="store-modal-close-btn" id="btnCloseStoreModal" aria-label="Close modal">&times;</button>
+        <button type="button" class="store-modal-close-btn" id="btnCloseStoreModal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       <!-- Top Summary Metrics Row (Strictly Role Counts, ZERO Revenue) -->
@@ -381,7 +391,12 @@
     <div class="admin-modal">
       <div class="modal-header">
         <h3 class="modal-title">Register New Branch Store</h3>
-        <button class="btn-close-modal" id="btnCloseAddBranch">&times;</button>
+        <button type="button" class="btn-close-modal" id="btnCloseAddBranch" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <form id="addBranchForm" onsubmit="event.preventDefault(); submitAddBranch();">
         <div class="modal-form-group">

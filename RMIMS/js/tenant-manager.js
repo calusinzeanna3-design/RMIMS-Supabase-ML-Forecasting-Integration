@@ -51,20 +51,75 @@ export const TENANT_CONFIGS = {
 
 /**
  * Resolves tenant details from an arbitrary user object or session.
+ * Strictly binds non-admin users (Manager, Staff) to their authenticated company.
+ * Prevents stale localStorage keys from contaminating tenant assignment.
  */
-export function resolveTenantFromUser(user) {
+export function resolveTenantFromUser(user = null) {
+  // If in manager or user (staff) portal, strictly lock to Scones & Muffins Bakery
+  const isManagerPortalOrUser = typeof window !== 'undefined' && 
+    (window.location.pathname.includes('/manager/') || window.location.pathname.includes('/user/'));
+
   if (!user) {
-    // Check fallback active storage keys before defaulting
+    if (isManagerPortalOrUser) {
+      try {
+        localStorage.setItem("rmims_active_company_id", SCONES_TENANT_ID);
+        localStorage.setItem("rmims_active_company_name", TENANT_CONFIGS[SCONES_TENANT_ID].name);
+        localStorage.setItem("rmims_active_dataset_folder", TENANT_CONFIGS[SCONES_TENANT_ID].datasetFolder);
+      } catch (_) {}
+    }
+    return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
+  }
+
+  const cleanEmail = String(user.email || '').toLowerCase().trim();
+  const cleanUsername = String(user.username || user.user_metadata?.username || '').toLowerCase().trim();
+  const cleanName = String(user.name || user.fullName || user.user_metadata?.full_name || '').toLowerCase().trim();
+  const rawRole = String(user.role || user.operationalRole || user.operational_role || '').toLowerCase().trim();
+  const isAdmin = cleanEmail === "calusinzeanna3@gmail.com" || rawRole === "admin" || rawRole === "super_admin";
+
+  // If in manager or staff portal, or non-admin role, strictly enforce Scones & Muffins Bakery
+  if ((isManagerPortalOrUser || !isAdmin) && (
+    cleanName.includes("aizel") ||
+    cleanUsername.includes("aizel") ||
+    cleanEmail.includes("aizel") ||
+    rawRole === "manager" ||
+    rawRole === "staff" ||
+    rawRole === "user" ||
+    isManagerPortalOrUser
+  )) {
     try {
-      const activeFolder = localStorage.getItem("rmims_active_dataset_folder") || localStorage.getItem("rmims_active_company_id");
-      if (activeFolder && TENANT_CONFIGS[activeFolder]) {
-        return { ...TENANT_CONFIGS[activeFolder] };
-      }
+      localStorage.setItem("rmims_active_company_id", SCONES_TENANT_ID);
+      localStorage.setItem("rmims_active_company_name", TENANT_CONFIGS[SCONES_TENANT_ID].name);
+      localStorage.setItem("rmims_active_dataset_folder", TENANT_CONFIGS[SCONES_TENANT_ID].datasetFolder);
     } catch (_) {}
     return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
   }
 
-  const strToCheck = [
+  // 1. Explicit Scones & Muffins account matches (Aizel, Scones Manager, Scones Staff)
+  const isSconesExplicit = 
+    cleanName.includes("aizel") ||
+    cleanUsername.includes("aizel") ||
+    cleanEmail.includes("aizel") ||
+    cleanEmail === "zeannapatty@gmail.com" ||
+    cleanEmail === "sconesandmuffins@gmail.com" ||
+    cleanEmail === "scone2@gmail.com" ||
+    cleanEmail.includes("scones") ||
+    cleanUsername.includes("scones") ||
+    cleanUsername.includes("muffin") ||
+    cleanUsername.includes("nutribun") ||
+    cleanName.includes("scones") ||
+    cleanName.includes("muffin");
+
+  if (isSconesExplicit) {
+    try {
+      localStorage.setItem("rmims_active_company_id", SCONES_TENANT_ID);
+      localStorage.setItem("rmims_active_company_name", TENANT_CONFIGS[SCONES_TENANT_ID].name);
+      localStorage.setItem("rmims_active_dataset_folder", TENANT_CONFIGS[SCONES_TENANT_ID].datasetFolder);
+    } catch (_) {}
+    return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
+  }
+
+  // 2. Explicit company/branch fields on the user object
+  const userFields = [
     user.company_id,
     user.companyId,
     user.company_name,
@@ -80,25 +135,53 @@ export function resolveTenantFromUser(user) {
     user.branch_location,
     user.branchLocation,
     user.dataset_folder,
-    user.datasetFolder,
-    user.role,
-    user.operational_role,
-    user.operationalRole,
-    typeof localStorage !== 'undefined' ? localStorage.getItem("rmims_active_company_id") : '',
-    typeof localStorage !== 'undefined' ? localStorage.getItem("rmims_active_company_name") : '',
-    typeof localStorage !== 'undefined' ? localStorage.getItem("rmims_active_dataset_folder") : '',
-    typeof sessionStorage !== 'undefined' ? sessionStorage.getItem("rmims_selected_branch") : '',
-    typeof sessionStorage !== 'undefined' ? sessionStorage.getItem("rmims_selected_store") : ''
-  ].map(s => String(s || '').toLowerCase()).join(' ');
+    user.datasetFolder
+  ].map(s => String(s || '').toLowerCase().trim()).join(' ');
 
-  const isScones = strToCheck.includes(SCONES_TENANT_ID) ||
-    strToCheck.includes("scones") ||
-    strToCheck.includes("muffin") ||
-    strToCheck.includes("nutribun") ||
-    strToCheck.includes("bakery") ||
-    !strToCheck.includes("kxc");
+  if (
+    userFields.includes(SCONES_TENANT_ID) ||
+    userFields.includes("scones") ||
+    userFields.includes("muffin") ||
+    userFields.includes("nutribun") ||
+    userFields.includes("bakery")
+  ) {
+    try {
+      localStorage.setItem("rmims_active_company_id", SCONES_TENANT_ID);
+      localStorage.setItem("rmims_active_company_name", TENANT_CONFIGS[SCONES_TENANT_ID].name);
+      localStorage.setItem("rmims_active_dataset_folder", TENANT_CONFIGS[SCONES_TENANT_ID].datasetFolder);
+    } catch (_) {}
+    return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
+  }
 
-  return isScones ? { ...TENANT_CONFIGS[SCONES_TENANT_ID] } : { ...TENANT_CONFIGS[KXC_TENANT_ID] };
+  // Only allow KXC if explicitly KXC and user has admin permissions
+  if (
+    isAdmin && (
+      userFields.includes(KXC_TENANT_ID) ||
+      userFields.includes("kxc") ||
+      cleanUsername.includes("kxc") ||
+      cleanEmail.includes("kxc")
+    )
+  ) {
+    try {
+      localStorage.setItem("rmims_active_company_id", KXC_TENANT_ID);
+      localStorage.setItem("rmims_active_company_name", TENANT_CONFIGS[KXC_TENANT_ID].name);
+      localStorage.setItem("rmims_active_dataset_folder", TENANT_CONFIGS[KXC_TENANT_ID].datasetFolder);
+    } catch (_) {}
+    return { ...TENANT_CONFIGS[KXC_TENANT_ID] };
+  }
+
+  // 3. Fallback: check localStorage ONLY if user is admin
+  if (isAdmin) {
+    try {
+      const activeFolder = localStorage.getItem("rmims_active_dataset_folder") || localStorage.getItem("rmims_active_company_id");
+      if (activeFolder && TENANT_CONFIGS[activeFolder]) {
+        return { ...TENANT_CONFIGS[activeFolder] };
+      }
+    } catch (_) {}
+  }
+
+  // Safe default to Scones & Muffins Bakery
+  return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
 }
 
 /**
@@ -117,11 +200,30 @@ export function getActiveTenantContext() {
     if (raw) user = JSON.parse(raw);
   } catch (_) {}
 
-  const cleanEmail = (user?.email || '').toLowerCase();
+  const cleanEmail = (user?.email || '').toLowerCase().trim();
   const isAdmin = cleanEmail === "calusinzeanna3@gmail.com" || 
     user?.role === "admin" || 
     user?.operationalRole === "admin" || 
     user?.operationalRole === "SUPER_ADMIN";
+
+  const isManagerPortalOrUser = typeof window !== 'undefined' && 
+    (window.location.pathname.includes('/manager/') || window.location.pathname.includes('/user/'));
+
+  if (!isAdmin || isManagerPortalOrUser) {
+    // Non-admins and anyone on manager/user portals are permanently locked to Scones & Muffins Bakery
+    try {
+      localStorage.setItem("rmims_active_company_id", SCONES_TENANT_ID);
+      localStorage.setItem("rmims_active_company_name", TENANT_CONFIGS[SCONES_TENANT_ID].name);
+      localStorage.setItem("rmims_active_dataset_folder", TENANT_CONFIGS[SCONES_TENANT_ID].datasetFolder);
+    } catch (_) {}
+    return {
+      ...TENANT_CONFIGS[SCONES_TENANT_ID],
+      isAdmin: false,
+      userRole: user?.role || user?.operationalRole || "manager",
+      assignedUser: user,
+      canSwitchStore: false
+    };
+  }
 
   if (isAdmin) {
     const adminSelected = localStorage.getItem("rmims_admin_selected_store_id") || localStorage.getItem("rmims_active_company_id");
@@ -147,10 +249,10 @@ export function getActiveTenantContext() {
   const baseConfig = resolveTenantFromUser(user);
   return {
     ...baseConfig,
-    isAdmin: !!isAdmin,
-    userRole: user?.role || user?.operationalRole || (isAdmin ? "SUPER_ADMIN" : "manager"),
+    isAdmin: false,
+    userRole: user?.role || user?.operationalRole || "manager",
     assignedUser: user,
-    canSwitchStore: !!isAdmin // Only Admin can switch stores
+    canSwitchStore: false // Only Admin can switch stores
   };
 }
 
@@ -163,12 +265,32 @@ export function assertRbacFolderAccess(targetFolder) {
   if (ctx.isAdmin) return true; // Super Admin has dual-tenant audit rights
 
   if (ctx.datasetFolder !== targetFolder) {
-    const err = new Error(`[STRICT RBAC VIOLATION] Session role '${ctx.userRole}' assigned to store '${ctx.name}' is strictly prohibited from opening AI forecasting folder '${targetFolder}'!`);
+    // Self-correct active context back to authentic assigned store
+    try {
+      localStorage.setItem("rmims_active_company_id", ctx.id);
+      localStorage.setItem("rmims_active_company_name", ctx.name);
+      localStorage.setItem("rmims_active_dataset_folder", ctx.datasetFolder);
+    } catch (_) {}
+    const err = new Error(`[STRICT RBAC VIOLATION] Session role '${ctx.userRole}' assigned to store '${ctx.name}' is strictly prohibited from opening AI forecasting folder '${targetFolder}'! Access has been reverted.`);
     err.name = "RbacPermissionError";
     console.error(err);
     throw err;
   }
   return true;
+}
+
+/**
+ * Verifies whether a material code belongs to the specified tenant.
+ * Guarantees zero cross-tenant raw materials leakage.
+ */
+export function assertMaterialBelongsToTenant(itemCode, isScones) {
+  if (!itemCode) return false;
+  const upper = String(itemCode).trim().toUpperCase();
+  if (isScones) {
+    return upper.startsWith("NB-");
+  } else {
+    return upper.startsWith("RM-");
+  }
 }
 
 /**

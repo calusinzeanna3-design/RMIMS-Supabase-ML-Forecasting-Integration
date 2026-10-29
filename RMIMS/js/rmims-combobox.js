@@ -25,6 +25,22 @@ export function attachSearchableCombobox(selectEl, options = {}) {
   // Generate unique instance ID
   const instanceId = 'rm_combo_' + Math.random().toString(36).substring(2, 9);
 
+  // Mark select so custom-select knows not to attach
+  selectEl.dataset.hasCombobox = 'true';
+  selectEl.dataset.noCustom = 'true';
+  selectEl.dataset.customEnhanced = 'true';
+
+  // Remove any redundant .rm-custom-select element in parent
+  if (selectEl.parentNode) {
+    const parent = selectEl.parentNode;
+    const existingCustomSelects = parent.querySelectorAll('.rm-custom-select');
+    existingCustomSelects.forEach(cs => {
+      if (cs.dataset.selectId === selectEl.id || cs.previousElementSibling === selectEl || cs.nextElementSibling === selectEl || existingCustomSelects.length === 1) {
+        cs.remove();
+      }
+    });
+  }
+
   // Hide the native select but keep it in DOM for forms/validations
   selectEl.style.display = 'none';
 
@@ -149,7 +165,22 @@ export function attachSearchableCombobox(selectEl, options = {}) {
     }
   }
 
+  function isNotificationOrModalActive() {
+    const notif = document.getElementById('rmimsNotifBackdrop');
+    if (notif && notif.classList.contains('open')) return true;
+    if (document.body.classList.contains('rmims-notif-open') || document.body.classList.contains('rmims-modal-open')) return true;
+    if (document.querySelector('.rmsme-all-notifs-overlay.open, .rmims-detail-backdrop.open, .help-modal-backdrop.show')) return true;
+    return false;
+  }
+
+  function isInsideModalOrNotif() {
+    return Boolean(wrap.closest('.modal-sheet, .modal-overlay, .admin-modal-backdrop, .mgr-modal-backdrop, .rmims-notif-card, .rmims-detail-card, .help-modal-window'));
+  }
+
   function openDropdown() {
+    if (!isInsideModalOrNotif() && isNotificationOrModalActive()) {
+      return;
+    }
     dropdown.classList.add('open');
     wrap.classList.add('open');
     const curText = getSelectedText();
@@ -166,6 +197,14 @@ export function attachSearchableCombobox(selectEl, options = {}) {
 
   // Events
   input.addEventListener('focus', () => {
+    if (!isInsideModalOrNotif() && isNotificationOrModalActive()) {
+      input.blur();
+      const notif = document.getElementById('rmimsNotifBackdrop');
+      if (notif) notif.classList.remove('open');
+      document.body.classList.remove('rmims-notif-open', 'rmims-modal-open');
+      closeDropdown();
+      return;
+    }
     openDropdown();
     input.select();
   });
@@ -234,6 +273,15 @@ export function attachSearchableCombobox(selectEl, options = {}) {
   const arrowBtn = wrap.querySelector('.cal-combobox-arrow');
   if (arrowBtn) {
     arrowBtn.addEventListener('click', (e) => {
+      if (!isInsideModalOrNotif() && isNotificationOrModalActive()) {
+        e.preventDefault();
+        e.stopPropagation();
+        const notif = document.getElementById('rmimsNotifBackdrop');
+        if (notif) notif.classList.remove('open');
+        document.body.classList.remove('rmims-notif-open', 'rmims-modal-open');
+        closeDropdown();
+        return;
+      }
       e.stopPropagation();
       if (dropdown.classList.contains('open')) {
         closeDropdown();
@@ -244,12 +292,20 @@ export function attachSearchableCombobox(selectEl, options = {}) {
     });
   }
 
-  // Close when clicking outside
+  // Close when clicking outside (Capture phase guarantees execution even with stopPropagation)
   document.addEventListener('click', (e) => {
     if (!wrap.contains(e.target)) {
       closeDropdown();
     }
-  });
+  }, true);
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.topbar, header, .rmims-notif-backdrop, .modal-overlay, .admin-modal-backdrop, .mgr-modal-backdrop, .help-modal-backdrop, #rmsmeUserPopover, #notificationBtn, #rmsmeNotificationBtn, #adminNotificationBtn, .mgr-bell-btn')) {
+      if (!wrap.contains(e.target)) {
+        closeDropdown();
+      }
+    }
+  }, true);
 
   // Observe programmatic changes or option population on selectEl
   const observer = new MutationObserver(() => {
@@ -262,6 +318,14 @@ export function attachSearchableCombobox(selectEl, options = {}) {
     clearBtn.style.display = (selectEl.value && selectEl.value !== 'all' && selectEl.value !== 'ALL') ? 'block' : 'none';
     if (dropdown.classList.contains('open')) {
       renderDropdown(input.value === getSelectedText() ? '' : input.value);
+    }
+    if (selectEl.parentNode) {
+      const existingCustomSelects = selectEl.parentNode.querySelectorAll('.rm-custom-select');
+      existingCustomSelects.forEach(cs => {
+        if (cs.dataset.selectId === selectEl.id || cs.previousElementSibling === selectEl || cs.nextElementSibling === selectEl || existingCustomSelects.length === 1) {
+          cs.remove();
+        }
+      });
     }
   }
 

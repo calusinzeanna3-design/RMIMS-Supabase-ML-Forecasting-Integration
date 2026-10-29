@@ -18,6 +18,7 @@ import {
   createUserAccount as srvCreateUser,
   subscribeToAdminFeed
 } from '../supabase/admin-supabase-service.js';
+import { unlockUserAccount } from './system-alerts-service.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   let adminSrv = null;
@@ -438,12 +439,22 @@ document.addEventListener('DOMContentLoaded', () => {
     buildPaginationButtons(filtered.length, USERS_PER_PAGE);
 
     tbody.innerHTML = pageUsers.map(u => {
+      const email = u.email || '';
       const initials = getInitials(u.name);
       const loc = u.branchLoc || '';
       const bName = u.branchName || 'Unknown Branch';
       const role = u.role || 'Staff';
       const status = u.status || 'Active';
-      const email = u.email || `${u.username || 'user'}@store.ph`;
+      const isLocked = String(status).toLowerCase() === 'locked' || (() => {
+        try {
+          const telemetry = JSON.parse(localStorage.getItem('RMIMS_AUTH_TELEMETRY_V2') || '{"loginFailures":{}}');
+          return (telemetry.loginFailures?.[email.toLowerCase()]?.count || 0) >= 5;
+        } catch (_) { return false; }
+      })();
+
+      const statusPillHtml = isLocked
+        ? `<span class="status-pill status-locked" style="background:rgba(239, 68, 68, 0.12); color:#DC2626; border:1px solid rgba(239, 68, 68, 0.35); font-weight:600;"><span class="status-dot" style="background:#DC2626;"></span>Locked</span>`
+        : `<span class="status-pill status-approved"><span class="status-dot"></span>${escapeHtml(status)}</span>`;
 
       return `
         <tr data-branch="${escapeHtml(loc)}" data-branch-loc="${escapeHtml(loc)}" data-branch-name="${escapeHtml(bName)}" data-id="${escapeHtml(u.id)}">
@@ -460,13 +471,18 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${getLocationBadgeHtml(loc)}</td>
           <td>${escapeHtml(bName)}</td>
           <td>${escapeHtml(role)}</td>
-          <td>
-            <span class="status-pill status-approved">
-              <span class="status-dot"></span>${escapeHtml(status)}
-            </span>
-          </td>
+          <td>${statusPillHtml}</td>
           <td>
             <div class="action-btn-group">
+              ${isLocked ? `
+                <button type="button" class="btn-unlock" style="background:#059669; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:12px; transition: background 0.2s;" onclick="unlockUserAccountAction('${escapeJs(u.id)}', '${escapeJs(u.name)}', '${escapeJs(email)}')">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                  </svg>
+                  <span>Unlock</span>
+                </button>
+              ` : ''}
               <button type="button" class="btn-edit" onclick="openEditUser('${escapeJs(u.id)}', '${escapeJs(u.name)}', '${escapeJs(u.username || '')}', '${escapeJs(email)}', '${escapeJs(loc)}', '${escapeJs(bName)}', '${escapeJs(role)}')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -771,6 +787,77 @@ document.addEventListener('DOMContentLoaded', () => {
     populateBranchDropdowns();
     if (window.showAdminToast) {
       window.showAdminToast(`User ${name} has been removed from all branch stores and directories.`, 'danger');
+    }
+  };
+
+  // Unlock User Account Action (Admin Security Operation)
+  window.unlockUserAccountAction = async function (id, name, email) {
+    if (!confirm(`Unlock account for ${name} (${email})?\nThis will clear the failed login lock and restore full access.`)) {
+      return;
+    }
+
+    try {
+      // 1. Call unlockUserAccount from system-alerts-service
+      unlockUserAccount(email);
+
+      // 2. Update Supabase user_profiles if reachable
+      try {
+        if (window.supabase) {
+          await window.supabase.from('user_profiles').update({
+            status: 'active',
+            updated_at: new Date().toISOString()
+          }).eq('email', email);
+        }
+      } catch (e) {
+        console.warn('[AdminUserManagement] Supabase unlock notice:', e);
+      }
+
+      // 3. Update local caches
+      try {
+        const reg = getStoredRegisteredUsers();
+        reg.forEach(u => {
+          if ((u.email || '').toLowerCase().trim() === email.toLowerCase().trim() || String(u.id) === String(id)) {
+            u.status = 'Active';
+          }
+        });
+        saveStoredRegisteredUsers(reg);
+      } catch (_) {}
+
+      try {
+        const approved = getStoredApprovedUsers();
+        approved.forEach(u => {
+          if ((u.email || '').toLowerCase().trim() === email.toLowerCase().trim() || String(u.id) === String(id)) {
+            u.status = 'Active';
+          }
+        });
+        saveStoredApprovedUsers(approved);
+      } catch (_) {}
+
+      // 4. Broadcast live notification
+      try {
+        if (typeof window.pushRMIMSNotification === 'function') {
+          window.pushRMIMSNotification({
+            title: `Account Unlocked: ${name}`,
+            message: `Administrator Zeanna unlocked the account for ${name} (${email}). The user may now sign in.`,
+            category: 'Security',
+            badge: 'Unlocked',
+            role: 'all',
+            targetRole: 'all',
+            priority: 'normal'
+          });
+        }
+      } catch (_) {}
+
+      if (window.showAdminToast) {
+        window.showAdminToast(`Account for ${name} (${email}) has been unlocked successfully!`, 'success');
+      } else {
+        alert(`Account for ${name} has been unlocked successfully!`);
+      }
+
+      renderRegisteredUsers();
+      refreshCounters();
+    } catch (err) {
+      alert(`Failed to unlock account: ${err.message}`);
     }
   };
 

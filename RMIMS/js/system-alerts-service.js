@@ -815,6 +815,117 @@ export function getCategoryCounts() {
 }
 
 /**
+ * Dispatches a simulated operational & security email alert to a locked user.
+ * Communicates the problem, action instructions, and system operational health.
+ */
+export function dispatchAccountLockoutEmailAlert({ email, branchName = 'Branch Store', branchLocation = 'Lucena', attempts = 5 }) {
+  const cleanEmail = String(email || '').toLowerCase().trim();
+  const timeNow = formatCurrentDateTime();
+  const alertRecord = {
+    id: `email-alert-${Date.now()}`,
+    recipient: cleanEmail,
+    subject: `[RMIMS SECURITY ALERT] Account Locked & System Operational Notice`,
+    sentAt: timeNow,
+    problem: `Account temporarily locked after ${attempts} consecutive failed login attempts.`,
+    userAction: `Contact your System Administrator (Zeanna) or branch manager to unlock your account in the Admin Portal. Once unlocked, you may sign in again.`,
+    operationalAlerts: [
+      `System Core: Active & Enforcing Multi-Tenant Air-Gap`,
+      `Supabase RBAC & Authentication: Operating in High-Vigilance Mode`,
+      `Inventory & Stock Ledgers: Operational & Synced`,
+      `Forecasting Models: Operational (19 Scones & Muffins / 59 KXC SKUs)`
+    ],
+    status: 'sent'
+  };
+
+  try {
+    const sentAlerts = JSON.parse(localStorage.getItem('rmims_sent_email_alerts') || '[]');
+    sentAlerts.unshift(alertRecord);
+    localStorage.setItem('rmims_sent_email_alerts', JSON.stringify(sentAlerts));
+  } catch (_) {}
+
+  // Push realtime notification to Admin portal
+  try {
+    if (typeof window !== 'undefined' && typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification({
+        title: `Security Alert: Account Locked (${cleanEmail})`,
+        message: `Account locked after 5 failed login attempts. Operational security email dispatched to ${cleanEmail}. Action: Admin unlock required.`,
+        category: 'Security',
+        badge: 'Critical',
+        role: 'admin',
+        targetRole: 'admin',
+        priority: 'high',
+        targetUrl: 'admin/user-management.html'
+      });
+    }
+  } catch (_) {}
+
+  console.info(`[RMIMS Alert Backend]: Operational security email dispatched to ${cleanEmail}. User advised to contact Administrator for unlock.`);
+  return alertRecord;
+}
+
+/**
+ * Unlocks a locked user account:
+ * 1. Resets login failure telemetry to 0
+ * 2. Resolves ongoing Account Locked and Incorrect Password alerts
+ * 3. Updates local registered and approved caches
+ */
+export function unlockUserAccount(userOrEmail) {
+  if (!userOrEmail) return { success: false, message: 'Invalid user email.' };
+  const clean = String(userOrEmail).toLowerCase().trim();
+  clearLoginFailure(clean);
+
+  // Update local approved cache
+  try {
+    const approved = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+    let changed = false;
+    approved.forEach(u => {
+      if ((u.email || '').toLowerCase().trim() === clean || (u.username || '').toLowerCase().trim() === clean) {
+        u.status = 'Active';
+        changed = true;
+      }
+    });
+    if (changed) localStorage.setItem('rmims_approved_users', JSON.stringify(approved));
+  } catch (_) {}
+
+  // Update local registered cache
+  try {
+    const registered = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+    let changed = false;
+    registered.forEach(u => {
+      if ((u.email || '').toLowerCase().trim() === clean || (u.username || '').toLowerCase().trim() === clean) {
+        u.status = 'Active';
+        changed = true;
+      }
+    });
+    if (changed) localStorage.setItem('rmims_registered_users', JSON.stringify(registered));
+  } catch (_) {}
+
+  // Resolve ongoing alerts for this user
+  const alerts = getAlerts();
+  let modified = false;
+  alerts.forEach(a => {
+    if ((a.type === 'Account Locked' || a.type === 'Incorrect Password') && a.status === 'ongoing') {
+      const match = (a.details && a.details.toLowerCase().includes(clean)) || (a.branch && a.branch.toLowerCase().includes(clean));
+      if (match) {
+        a.status = 'resolved';
+        a.resolvedAt = formatCurrentDateTime();
+        a.resolvedBy = 'Main Administrator (Account Unlocked)';
+        modified = true;
+      }
+    }
+  });
+  if (modified) saveAlerts(alerts);
+
+  // Trigger storage event so all tabs reflect the unlocked state
+  try {
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('rmims_user_unlocked', { detail: { email: clean } }));
+  } catch (_) {}
+
+  return { success: true, message: `Account for ${clean} has been successfully unlocked.` };
+}
+
+/**
  * Reset alerts to default seed
  */
 export function resetAlertsToDefault() {

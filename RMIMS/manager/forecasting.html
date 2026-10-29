@@ -180,7 +180,7 @@
                         </div>
                     </div>
                     <div class="fc-card-body">
-                        <div class="fc-chart-canvas-wrap" style="position: relative; height: 200px; width: 100%;">
+                        <div class="fc-chart-canvas-wrap" style="position: relative; height: 240px; min-height: 220px; width: 100%;">
                             <canvas id="consumptionForecastChartCanvas"></canvas>
                         </div>
                         <div class="fc-chart-legend-custom">
@@ -213,9 +213,17 @@
                             </div>
                         </div>
                         <div>
-                            <button type="button" class="fc-btn-link" id="viewAllDecisionsBtn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#15803D;">
-                                <span>View All Forecasts</span>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            <button type="button" class="cal-expand-icon-btn" id="viewAllDecisionsBtn" title="View Full AI Forecasted Support" aria-label="Expand AI Forecasted Support">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                    <polyline points="21 15 21 21 15 21"/>
+                                    <line x1="21" y1="21" x2="14" y2="14"/>
+                                    <polyline points="3 9 3 3 9 3"/>
+                                    <line x1="3" y1="3" x2="10" y2="10"/>
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -246,7 +254,7 @@
                                 <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">AI-assisted depletion warnings and safety thresholds</p>
                             </div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
+                        <div>
                             <!-- View / Expand Table Modal Button (Matching Image 3) -->
                             <button type="button" class="cal-expand-icon-btn" id="openTableFromLowStockBtn" title="View Full Stock Status &amp; Forecast Table" aria-label="Expand stock status table">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
@@ -259,10 +267,6 @@
                                     <polyline points="3 9 3 3 9 3"/>
                                     <line x1="3" y1="3" x2="10" y2="10"/>
                                 </svg>
-                            </button>
-                            <button type="button" class="fc-btn-link" id="viewAllLowStockBtn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#15803D;">
-                                <span>View All</span>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                             </button>
                         </div>
                     </div>
@@ -291,11 +295,23 @@
                                 <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">Inventory reorder status breakdown across all catalog items</p>
                             </div>
                         </div>
-                        <div>
-                            <select class="fc-select" id="reqHorizonSelect" aria-label="Filter Requirements Horizon" style="font-size:12px; padding:4px 10px; height:32px; border-radius:8px; border:1px solid #CBD5E1; color:#334155;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <select class="fc-select" id="reqHorizonSelect" aria-label="Filter Requirements Horizon" style="font-size:12px; padding:4px 36px 4px 12px; height:32px; border-radius:8px; border:1px solid #CBD5E1; color:#334155;">
                                 <option value="7">Next 7 Days</option>
                                 <option value="30">Next 30 Days</option>
                             </select>
+                            <button type="button" class="cal-expand-icon-btn" id="openTableFromRequirementsBtn" title="View Full Requirements Breakdown Table" aria-label="Expand requirements table">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                    <polyline points="21 15 21 21 15 21"/>
+                                    <line x1="21" y1="21" x2="14" y2="14"/>
+                                    <polyline points="3 9 3 3 9 3"/>
+                                    <line x1="3" y1="3" x2="10" y2="10"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
 
@@ -405,18 +421,28 @@
 </div>
 
 <!-- ==========================================================
-     MODAL 1: TOTAL FORECASTED REQUIREMENT BREAKDOWN
+     MODAL 1: FORECAST FUNCTIONS DYNAMIC ENLARGED VIEW
+     Adapts dynamically depending on which card/function was clicked:
+     - timeline_calendar: Forecast Timeline & Projected Run-Out Schedule
+     - forecast_data: Material Requirement Planning & Consumption Forecast
+     - stock_alerts: Smart Stock Alerts & Critical Depletion Warnings
+     - forecast_support: AI Forecasted Operational Decision Support Matrix
+     - top_materials: Top Raw Materials — Future Requirement vs Inward Deliveries
+     - total_breakdown: Total Forecasted Requirement Breakdown Ledger
      ========================================================== -->
 <div class="fc-modal-overlay" id="modalTotalForecastOverlay" role="dialog" aria-modal="true">
     <div class="fc-modal-sheet fc-modal-sheet-xl">
         <div class="fc-modal-header">
             <div class="fc-modal-header-info">
-                <div class="fc-modal-icon-badge">
+                <div class="fc-modal-icon-badge" id="modalFunctionIconBadge">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
                 </div>
                 <div>
-                    <h3 class="fc-modal-title">Total Forecasted Requirement Breakdown</h3>
-                    <p class="fc-modal-subtitle">Full operational demand ledger &amp; inventory coverage for the selected forecast period</p>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <h3 class="fc-modal-title" id="modalTotalForecastTitle">Total Forecasted Requirement Breakdown</h3>
+                        <span id="modalFunctionTag" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #DCFCE7; color: #15803D; padding: 2px 8px; border-radius: 9999px;">Ledger View</span>
+                    </div>
+                    <p class="fc-modal-subtitle" id="modalTotalForecastSubtitle">Full operational demand ledger &amp; inventory coverage for the selected forecast period</p>
                 </div>
             </div>
             <button type="button" class="fc-modal-close" id="modalTotalForecastClose" aria-label="Close modal">
@@ -424,13 +450,23 @@
             </button>
         </div>
 
+        <!-- Function Navigation Switcher Tabs -->
+        <div class="fc-modal-tabs-bar" id="modalFuncTabsBar" style="display: flex; gap: 8px; padding: 10px 24px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; overflow-x: auto;">
+            <button type="button" class="fc-func-tab" data-function="timeline_calendar">Timeline &amp; Run-Out</button>
+            <button type="button" class="fc-func-tab" data-function="forecast_data">Forecast Data</button>
+            <button type="button" class="fc-func-tab" data-function="stock_alerts">Stock Alerts</button>
+            <button type="button" class="fc-func-tab" data-function="forecast_support">AI Decision Support</button>
+            <button type="button" class="fc-func-tab" data-function="top_materials">Top Materials</button>
+            <button type="button" class="fc-func-tab active" data-function="total_breakdown">Requirements Ledger</button>
+        </div>
+
         <!-- Interactive Search & Filter Toolbar -->
-        <div class="fc-modal-toolbar">
+        <div class="fc-modal-toolbar" id="modalFuncToolbar" style="padding: 12px 24px;">
             <div class="fc-modal-search-box">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21L16.65 16.65"/></svg>
-                <input type="search" id="modalTotalForecastSearch" placeholder="Search by raw material name, item code, or finished product..." aria-label="Search breakdown">
+                <input type="search" id="modalTotalForecastSearch" placeholder="Search by raw material name or item code..." aria-label="Search items">
             </div>
-            <div class="fc-modal-filter-group">
+            <div class="fc-modal-filter-group" id="modalFilterGroup">
                 <select id="modalTotalForecastFilter" class="fc-select-compact" aria-label="Filter status">
                     <option value="all">All Statuses</option>
                     <option value="good">Good</option>
@@ -441,10 +477,29 @@
             </div>
         </div>
 
-        <div class="fc-modal-body" style="padding: 0 24px 16px 24px; max-height: calc(88vh - 150px); overflow-y: auto;">
-            <div class="fc-table-container fc-table-modal-container" style="max-height: 52vh; overflow-y: auto; overflow-x: auto;">
+        <!-- Optional Enlarged Chart Container (for chart-centric functions) -->
+        <div id="modalCustomChartContainer" style="display: none; padding: 0 24px 16px 24px;">
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(15,23,42,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <span id="modalChartLabel" style="font-size: 13px; font-weight: 700; color: #0F2A1B;">Visualization</span>
+                    <div id="modalChartLegend" style="display: flex; align-items: center; gap: 14px; font-size: 12px; color: #475569;"></div>
+                </div>
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="modalForecastChartCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optional Cards Container (e.g. for AI Forecasted Support) -->
+        <div id="modalCustomCardsContainer" style="display: none; padding: 0 24px 16px 24px; max-height: 52vh; overflow-y: auto;">
+            <div class="forecast-support-grid" id="modalCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;"></div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="fc-modal-body" id="modalTableWrap" style="padding: 0 24px 16px 24px; max-height: calc(88vh - 150px); overflow-y: auto;">
+            <div class="fc-table-container fc-table-modal-container" style="max-height: 48vh; overflow-y: auto; overflow-x: auto;">
                 <table class="fc-table fc-modal-table">
-                    <thead>
+                    <thead id="modalTableHeaderRow">
                         <tr>
                             <th style="width: 20%;">Raw Material</th>
                             <th style="width: 14%;">Stock Status</th>
@@ -590,7 +645,7 @@
 </div>
 
 <!-- SCRIPTS -->
-<script type="module" src="../js/forecasting.js"></script>
+<script type="module" src="../js/forecasting.js?v=20261029_airgap"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 </html>

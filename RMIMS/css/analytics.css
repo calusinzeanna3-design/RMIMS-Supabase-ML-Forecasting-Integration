@@ -187,6 +187,20 @@ input[type="text"].an-top-input {
   transform: scale(1.05);
 }
 
+.an-max-btn svg {
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  pointer-events: none !important;
+}
+
 /* ==========================================================
    METRICS CHECKLIST BAR & PILLS
    ========================================================== */
@@ -402,18 +416,52 @@ input[type="text"].an-top-input {
 }
 
 .an-modal-close {
-  background: transparent;
-  border: none;
-  font-size: 26px;
-  color: #64748B;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(15, 42, 27, 0.05) !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  color: #3C5847 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  outline: none !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
 }
 
 .an-modal-close:hover {
-  color: #0F172A;
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
 }
+
+.an-modal-close:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  transform: rotate(90deg) scale(0.96) !important;
+}
+
+.an-modal-close svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
+}
+
 
 .an-modal-chart-wrap {
   width: 100%;

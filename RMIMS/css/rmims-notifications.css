@@ -10,7 +10,7 @@
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  z-index: 99998;
+  z-index: 200000 !important;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -18,18 +18,21 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
 
 .rmims-notif-backdrop.open {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 /* 2. Main Notification Card (Clean white floating card matching reference image) */
 .rmims-notif-card {
+  position: relative !important;
+  z-index: 200005 !important;
+  pointer-events: auto !important;
   width: 100%;
   max-width: 490px;
   max-height: calc(100vh - 100px);
@@ -47,6 +50,35 @@
 
 .rmims-notif-backdrop.open .rmims-notif-card {
   transform: translateY(0) scale(1);
+}
+
+/* STRICT RULE: When notification or detail modal is open, ANY page filter or dropdown MUST BE BEHIND and CANNOT BLOCK IT */
+body.rmims-notif-open .rm-custom-select:not(.rmims-notif-card .rm-custom-select),
+body:has(.rmims-notif-backdrop.open) .rm-custom-select:not(.rmims-notif-card .rm-custom-select),
+body:has(.rmims-detail-backdrop.open) .rm-custom-select:not(.rmims-detail-card .rm-custom-select) {
+  z-index: 1 !important;
+}
+
+body.rmims-notif-open .rm-custom-select:not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body:has(.rmims-notif-backdrop.open) .rm-custom-select:not(.rmims-notif-card .rm-custom-select) .rm-select-menu,
+body:has(.rmims-detail-backdrop.open) .rm-custom-select:not(.rmims-detail-card .rm-custom-select) .rm-select-menu,
+body.rmims-notif-open .cal-combobox-dropdown,
+body:has(.rmims-notif-backdrop.open) .cal-combobox-dropdown,
+body:has(.rmims-detail-backdrop.open) .cal-combobox-dropdown,
+body.rmims-notif-open .rm-combobox-dropdown,
+body:has(.rmims-notif-backdrop.open) .rm-combobox-dropdown,
+body:has(.rmims-detail-backdrop.open) .rm-combobox-dropdown,
+body.rmims-notif-open .flatpickr-calendar,
+body:has(.rmims-notif-backdrop.open) .flatpickr-calendar,
+body:has(.rmims-detail-backdrop.open) .flatpickr-calendar,
+body.rmims-notif-open .mgr-profile-dropdown,
+body:has(.rmims-notif-backdrop.open) .mgr-profile-dropdown,
+body.rmims-notif-open .rmsme-popover,
+body:has(.rmims-notif-backdrop.open) .rmsme-popover {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* 3. Card Header */
@@ -562,7 +594,7 @@
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 99999;
+  z-index: 200050 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -570,17 +602,20 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
 
 .rmims-detail-backdrop.open {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 .rmims-detail-card {
+  position: relative !important;
+  z-index: 200055 !important;
+  pointer-events: auto !important;
   width: 100%;
   max-width: 520px;
   background: #ffffff;

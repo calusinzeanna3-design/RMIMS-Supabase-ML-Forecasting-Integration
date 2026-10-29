@@ -159,35 +159,35 @@
             </p>
           </div>
 
-          <!-- Table Filters & Search matching Receive / Disburse -->
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <div class="staff-search-box" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:6px 12px; display:flex; align-items:center; gap:8px;">
+          <!-- Table Filters & Search: 1 single unified row -->
+          <div class="activity-filter-toolbar" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; overflow:visible;">
+            <div class="staff-search-box" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:4px 10px; display:flex; align-items:center; gap:6px; flex:1 1 180px; min-width:140px; max-width:220px; height:34px; box-sizing:border-box;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="staffSearchInput" placeholder="Search staff, reference, material..." autocomplete="off" style="border:none; background:transparent; font-size:13px; outline:none; width:210px;">
+              <input type="text" id="staffSearchInput" placeholder="Search staff, ref, mat..." autocomplete="off" style="border:none; background:transparent; font-size:12px; outline:none; width:100%;">
             </div>
 
-            <select class="mgr-form-select" id="staffMemberFilter" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Staff">
-              <option value="all" selected>All Staff Members</option>
+            <select class="mgr-filter-select-compact" id="staffMemberFilter" style="width:auto; height:34px; font-size:12px;" aria-label="Filter by Staff">
+              <option value="all" selected>All Staff</option>
             </select>
 
-            <select class="mgr-form-select" id="staffActivityFilter" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Activity Type">
+            <select class="mgr-filter-select-compact" id="staffActivityFilter" style="width:auto; height:34px; font-size:12px;" aria-label="Filter by Activity Type">
               <option value="all" selected>All Activities</option>
-              <option value="Receive">Receive (Incoming)</option>
-              <option value="Disburse">Disburse (Outgoing)</option>
+              <option value="Receive">Receive</option>
+              <option value="Disburse">Disburse</option>
             </select>
 
-            <select class="mgr-form-select" id="staffStatusFilter" style="width:auto; padding:7px 12px; font-size:13px;" aria-label="Filter by Status">
+            <select class="mgr-filter-select-compact" id="staffStatusFilter" style="width:auto; height:34px; font-size:12px;" aria-label="Filter by Status">
               <option value="all" selected>All Statuses</option>
-              <option value="Pending">Pending Review</option>
+              <option value="Pending">Pending</option>
               <option value="Approved">Approved</option>
               <option value="Rejected">Rejected</option>
             </select>
 
-            <button type="button" class="btn-secondary" id="btnResetFilters" style="padding:7px 14px; font-size:12.5px; border-radius:8px;">Reset Filters</button>
+            <button type="button" class="btn-secondary" id="btnResetFilters" style="padding:0 12px; height:34px; font-size:12px; border-radius:8px; white-space:nowrap; flex-shrink:0;">Reset</button>
           </div>
         </div>
 
-        <div style="overflow-x:auto; width:100%; margin-top:14px;">
+        <div class="mgr-ledger-table-wrap staff-table-wrap" style="width:100%; margin-top:14px;">
           <table class="mgr-tx-table">
             <thead>
               <tr>
@@ -241,7 +241,12 @@
         </div>
         <p style="margin:2px 0 0; font-size:12px; color:#5C7A68;" id="reviewModalSub">Review Staff-submitted material movement.</p>
       </div>
-      <button type="button" class="mgr-modal-close" id="closeTxReviewModal">&times;</button>
+      <button type="button" class="mgr-modal-close" id="closeTxReviewModal" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
     
     <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px; max-height:calc(85vh - 120px); overflow-y:auto;">

@@ -437,11 +437,17 @@ body.manager-page .topbar {
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
   border-bottom: 1px solid var(--rm-line) !important;
-  z-index: 40 !important;
+  z-index: 1000 !important;
   gap: 20px !important;
   box-sizing: border-box !important;
   width: 100% !important;
   box-shadow: none !important;
+}
+
+body.manager-page .topbar-right,
+body.manager-page .rmsme-popover-anchor {
+  position: relative !important;
+  z-index: 1001 !important;
 }
 
 body.manager-page .topbar-left,
@@ -1070,8 +1076,8 @@ body.manager-page .activity-table {
   overflow: hidden !important;
 }
 
-body.manager-page table thead th,
-body.manager-page .admin-table th,
+body.manager-page table:not(.mgr-tx-table) thead th,
+body.manager-page .admin-table:not(.mgr-tx-table) th,
 body.manager-page table.inv-main-table thead th,
 body.manager-page .inv-main-table thead th,
 body.manager-page #overviewTable thead th {
@@ -1086,24 +1092,62 @@ body.manager-page #overviewTable thead th {
   white-space: nowrap !important;
 }
 
-body.manager-page table thead tr th:first-child,
-body.manager-page .admin-table thead tr th:first-child,
+/* Normal Non-Scrollable Ledger Table (Receive & Disburse) */
+body.manager-page table.mgr-tx-table,
+body.manager-page .mgr-tx-table {
+  width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: collapse !important;
+}
+
+body.manager-page .mgr-tx-table thead th,
+body.manager-page table.mgr-tx-table thead th,
+body.manager-page .mgr-tx-table th {
+  padding: 10px 8px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  white-space: normal !important;
+  line-height: 1.25 !important;
+  vertical-align: middle !important;
+  background: #15803D !important;
+  color: #FFFFFF !important;
+  border-bottom: 2px solid #14532D !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+body.manager-page .mgr-tx-table tbody td,
+body.manager-page table.mgr-tx-table tbody td,
+body.manager-page .mgr-tx-table td {
+  padding: 9px 8px !important;
+  font-size: 12px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  color: var(--rm-ink, #0F2A1B) !important;
+  border-bottom: 1px solid #F1F5F9 !important;
+  vertical-align: middle !important;
+}
+
+body.manager-page table:not(.mgr-tx-table) thead tr th:first-child,
+body.manager-page .admin-table:not(.mgr-tx-table) thead tr th:first-child,
 body.manager-page table.inv-main-table thead tr th:first-child,
-body.manager-page #overviewTable thead tr th:first-child {
+body.manager-page #overviewTable thead tr th:first-child,
+body.manager-page .mgr-tx-table thead tr th:first-child {
   border-top-left-radius: 10px !important;
   border-bottom-left-radius: 0 !important;
 }
 
-body.manager-page table thead tr th:last-child,
-body.manager-page .admin-table thead tr th:last-child,
+body.manager-page table:not(.mgr-tx-table) thead tr th:last-child,
+body.manager-page .admin-table:not(.mgr-tx-table) thead tr th:last-child,
 body.manager-page table.inv-main-table thead tr th:last-child,
-body.manager-page #overviewTable thead tr th:last-child {
+body.manager-page #overviewTable thead tr th:last-child,
+body.manager-page .mgr-tx-table thead tr th:last-child {
   border-top-right-radius: 10px !important;
   border-bottom-right-radius: 0 !important;
 }
 
-body.manager-page table tbody td,
-body.manager-page .admin-table td {
+body.manager-page table:not(.mgr-tx-table) tbody td,
+body.manager-page .admin-table:not(.mgr-tx-table) td {
   padding: 14px 18px !important;
   font-size: 13.5px !important;
   color: var(--rm-ink) !important;
@@ -1129,12 +1173,11 @@ body.manager-page .admin-table tbody tr:last-child td {
 /* ==========================================================================
    INPUTS, FORMS & FILTER PILLS (100% Adopted from Admin)
    ========================================================================== */
-body.manager-page input[type="text"],
+body.manager-page input[type="text"]:not(.search-input):not(.staff-search-input):not(#recSearchInput):not(#disbSearchInput):not(.cal-combobox-input):not(.rpt-search-input),
 body.manager-page input[type="number"],
 body.manager-page input[type="date"],
 body.manager-page select,
-body.manager-page textarea,
-body.manager-page .search-input {
+body.manager-page textarea {
   border: 1px solid var(--rm-line) !important;
   border-radius: 12px !important;
   background-color: #FFFFFF !important;
@@ -1149,11 +1192,92 @@ body.manager-page .search-input {
 
 body.manager-page input:focus,
 body.manager-page select:focus,
-body.manager-page textarea:focus,
-body.manager-page .search-input:focus {
+body.manager-page textarea:focus {
   border-color: var(--rm-mid) !important;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
   background-color: #FFFFFF !important;
+}
+
+/* Explicit Search Input Styling - Ensure Search Icon & Placeholder never overlap (Image 1 fix) */
+body.manager-page .topbar-search .search-input,
+body.manager-page input.search-input,
+.topbar-search .search-input,
+.inv-filter-toolbar .search-input,
+.rpt-search-wrap .rpt-search-input,
+.rpt-search-input {
+  border: 1px solid var(--rm-line, #E2E8F0) !important;
+  border-radius: 10px !important;
+  background-color: #FFFFFF !important;
+  color: var(--rm-ink, #0F172A) !important;
+  font-family: var(--rm-font-body) !important;
+  font-size: 13px !important;
+  padding: 0 14px 0 38px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  transition: all 0.2s var(--rm-ease-smooth) !important;
+}
+
+body.manager-page .topbar-search .search-input:focus,
+.topbar-search .search-input:focus,
+.rpt-search-input:focus {
+  border-color: var(--rm-mid, #16A34A) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
+  background-color: #FFFFFF !important;
+}
+
+body.manager-page .topbar-search svg,
+.topbar-search svg,
+body.manager-page .rpt-search-wrap svg,
+.rpt-search-wrap svg {
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 15px !important;
+  height: 15px !important;
+  stroke: var(--rm-ink-dim, #64748B) !important;
+  color: var(--rm-ink-dim, #64748B) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+/* Staff Search Box (used in Receive, Disburse, and Activity tables) */
+body.manager-page .staff-search-box input,
+.staff-search-box input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 0 0 4px !important;
+  height: 100% !important;
+  width: 100% !important;
+  font-size: 13px !important;
+  color: var(--rm-ink, #0F172A) !important;
+}
+
+/* Filter Balance: ensure all toolbar filters, buttons, and custom selects have matching 36px height */
+.inv-filter-toolbar .topbar-search,
+.inv-filter-toolbar .search-input,
+.inv-filter-toolbar .dropdown-select,
+.inv-filter-toolbar .rm-select-trigger,
+.inv-filter-toolbar .btn-clear-filters,
+.staff-search-box,
+.mgr-tx-table-card .dropdown-select,
+.mgr-tx-table-card .rm-select-trigger {
+  height: 36px !important;
+  min-height: 36px !important;
+  box-sizing: border-box !important;
+  font-size: 13px !important;
+}
+
+.inv-filter-toolbar .btn-clear-filters {
+  line-height: 34px !important;
+  padding: 0 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
 /* Date Filter & Dropdown Pills */
@@ -1240,7 +1364,7 @@ body.manager-page .tab-btn.active {
   background: rgba(15, 23, 42, 0.6) !important;
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
-  z-index: 9999 !important;
+  z-index: 200000 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -1851,8 +1975,8 @@ body.manager-page .fc-grid-row-1 > .admin-card,
 body.manager-page .fc-grid-row-1 > section {
   width: 100% !important;
   min-width: 0 !important;
-  min-height: 340px !important;
-  max-height: 380px !important;
+  min-height: 380px !important;
+  max-height: none !important;
   height: auto !important;
   margin: 0 !important;
   padding: 22px 24px !important;
@@ -1863,7 +1987,7 @@ body.manager-page .fc-grid-row-1 > section {
   display: flex !important;
   flex-direction: column !important;
   box-sizing: border-box !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* Dedicated sizing for bottom cards and alert cards so content never clips */
@@ -1906,22 +2030,41 @@ body.manager-page .an-bottom-grid .an-card-header {
 body.manager-page .mgr-grid-2col .fc-card-body,
 body.manager-page .fc-grid-row-1 .fc-card-body {
   padding: 0 !important;
-  flex: 1 !important;
+  flex: 1 1 auto !important;
   min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
-/* Chart Canvas container inside Grid Cards (height 200px matching Dashboard Manager) */
+/* Chart Canvas container inside Grid Cards */
 body.manager-page .mgr-grid-2col .chart-canvas-container,
 body.manager-page .mgr-grid-2col div[style*="height: 220px"],
 body.manager-page .fc-grid-row-1 .fc-chart-canvas-wrap,
-body.manager-page .fc-grid-row-1 div[style*="height: 320px"] {
-  height: 200px !important;
-  max-height: 200px !important;
-  min-height: 180px !important;
+body.manager-page .fc-grid-row-1 div[style*="height: 320px"],
+body.manager-page .fc-chart-card-main .fc-chart-canvas-wrap {
+  height: 240px !important;
+  max-height: 260px !important;
+  min-height: 220px !important;
   width: 100% !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+
+body.manager-page .fc-chart-legend-custom {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 16px !important;
+  margin-top: 14px !important;
+  padding-top: 12px !important;
+  padding-bottom: 6px !important;
+  border-top: 1px dashed #e2e8f0 !important;
+  font-size: 0.78rem !important;
+  color: #5C7A68 !important;
+  font-weight: 600 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   flex-shrink: 0 !important;
 }
 
@@ -2188,34 +2331,56 @@ body.manager-page .rpt-filter-engine-card,
 body.manager-page .rpt-preview-section-card,
 body.manager-page .an-card:not(.an-bottom-grid > *) {
   width: 100% !important;
-  border-radius: clamp(12px, 1.5vw, 18px) !important;
+  border-radius: 18px !important;
   background: #FFFFFF !important;
   border: 1px solid rgba(20, 83, 45, 0.08) !important;
   box-shadow: 0 4px 20px -2px rgba(15, 42, 27, 0.06) !important;
-  padding: clamp(14px, 2vw, 22px) clamp(12px, 2.2vw, 26px) !important;
-  margin-bottom: clamp(14px, 2vw, 24px) !important;
+  padding: 22px 26px !important;
+  margin-bottom: 24px !important;
   box-sizing: border-box !important;
 }
 
 /* Standardized Canvas / Chart wrapper for Row Cards (Matching Dashboard Manager: ~200px - 250px) */
 body.manager-page .usage-grid .chart-canvas-container {
-  height: clamp(180px, 24vw, 250px) !important;
+  height: 240px !important;
   max-height: 250px !important;
   min-height: 170px !important;
 }
 
 body.manager-page .cal-chart-canvas-wrap {
-  height: clamp(170px, 22vw, 220px) !important;
+  height: 220px !important;
 }
 
 body.manager-page .an-card:not(.an-bottom-grid > *) .an-chart-wrap {
-  height: clamp(180px, 23vw, 240px) !important;
+  height: 240px !important;
   max-height: 250px !important;
 }
 
 body.manager-page #fcTopMaterialsCard .fc-chart-canvas-wrap {
-  height: clamp(170px, 22vw, 220px) !important;
+  height: 220px !important;
   max-height: 240px !important;
+}
+
+@media (max-width: 1024px) {
+  body.manager-page section.admin-card:not(.mgr-grid-2col > *):not(.fc-grid-row-1 > *):not(.an-bottom-grid > *),
+  body.manager-page .fc-calendar-chart-card,
+  body.manager-page .fc-chart-card-main:not(.fc-grid-row-1 > *):not(.mgr-grid-2col > *),
+  body.manager-page .fc-grid-row-full > *,
+  body.manager-page #fcTopMaterialsCard,
+  body.manager-page .mgr-tx-card,
+  body.manager-page .mgr-tx-table-card,
+  body.manager-page .inv-main-workspace,
+  body.manager-page .rpt-filter-engine-card,
+  body.manager-page .rpt-preview-section-card,
+  body.manager-page .an-card:not(.an-bottom-grid > *) {
+    padding: 18px 20px !important;
+    margin-bottom: 18px !important;
+    border-radius: 16px !important;
+  }
+
+  body.manager-page .usage-grid .chart-canvas-container {
+    height: 220px !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2230,23 +2395,27 @@ body.manager-page #fcTopMaterialsCard .fc-chart-canvas-wrap {
   body.manager-page .rpt-filter-engine-card,
   body.manager-page .rpt-preview-section-card,
   body.manager-page .an-card:not(.an-bottom-grid > *) {
-    padding: clamp(12px, 2.5vw, 16px) !important;
+    padding: 14px 12px !important;
     margin-bottom: 14px !important;
     border-radius: 14px !important;
   }
 
   body.manager-page .usage-grid .chart-canvas-container {
-    height: clamp(160px, 26vw, 210px) !important;
+    height: 180px !important;
   }
 }
 
-/* Standardized Table Container for Row Data Tables (Clean, controlled height ~360-380px) */
+/* Normal Card Table List (Non-scrollable vertically, natural card height list) */
 body.manager-page .table-responsive,
 body.manager-page .admin-table-container,
 body.manager-page .mgr-table-wrap,
-body.manager-page .inv-table-container {
-  max-height: 380px !important;
-  overflow-y: auto !important;
+body.manager-page .inv-table-container,
+body.manager-page .staff-table-wrap,
+body.manager-page .rpt-table-wrap,
+body.manager-page .mgr-ledger-table-wrap {
+  max-height: none !important;
+  height: auto !important;
+  overflow-y: visible !important;
   border-radius: 12px !important;
 }
 

@@ -1,4 +1,5 @@
 import './rmims-notifications.js';
+import './rmims-custom-select.js';
 
 (function () {
   'use strict';
@@ -212,6 +213,16 @@ import './rmims-notifications.js';
     bellBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      try {
+        if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
+          window.RMIMS_CUSTOM_SELECT.closeAll();
+        }
+        document.querySelectorAll('.rm-custom-select.open, .cal-combobox-wrap.open, .rm-combobox-wrap.open').forEach(el => {
+          el.classList.remove('open');
+          el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+          el.querySelector('.cal-combobox-dropdown, .rm-combobox-dropdown')?.classList.remove('open');
+        });
+      } catch (_) {}
       if (window.RMIMS_NOTIFICATIONS_POPUP) {
         window.RMIMS_NOTIFICATIONS_POPUP.open('admin');
       }
@@ -233,7 +244,12 @@ import './rmims-notifications.js';
               <h3 id="helpModalTitle">Help Center</h3>
               <p>Quick answers to common questions and onboarding resources.</p>
             </div>
-            <button type="button" class="help-modal-close-btn" id="btnCloseHelpCenter" aria-label="Close Help Center">&times;</button>
+            <button type="button" class="help-modal-close-btn" id="btnCloseHelpCenter" aria-label="Close Help Center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
           <!-- FAQ Accordion List (Image 3 Style) -->
@@ -345,6 +361,16 @@ import './rmims-notifications.js';
     const closeBtn = document.getElementById('btnCloseHelpCenter');
 
     function openHelp() {
+      try {
+        if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
+          window.RMIMS_CUSTOM_SELECT.closeAll();
+        }
+        document.querySelectorAll('.rm-custom-select.open, .cal-combobox-wrap.open, .rm-combobox-wrap.open').forEach(el => {
+          el.classList.remove('open');
+          el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+          el.querySelector('.cal-combobox-dropdown, .rm-combobox-dropdown')?.classList.remove('open');
+        });
+      } catch (_) {}
       modalBackdrop.classList.add('show');
     }
 
@@ -781,6 +807,18 @@ import './rmims-notifications.js';
     activeSidebar?.querySelectorAll('a, button').forEach(link => {
       if (link.id !== 'rmsmeMobileMenuBtn') {
         link.addEventListener('click', () => toggleDrawer(false));
+      }
+    });
+
+    // Automatically close drawer & clear mobile classes when resized back to desktop (> 768px)
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        toggleDrawer(false);
+        document.body.classList.remove('rmsme-mobile-drawer-open');
+        const sidebar = document.querySelector('.admin-sidebar, .sidebar');
+        if (sidebar) {
+          sidebar.classList.remove('mobile-open');
+        }
       }
     });
   }

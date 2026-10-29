@@ -13,8 +13,11 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
+import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
+import { getActiveTenantContext } from "./tenant-manager.js";
+import { getMaterialAiRequirement } from "./reports.js";
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -85,7 +88,16 @@ onAuthStateChanged(auth, async (user) => {
             const pText = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name");
             if (pText) pText.textContent = profile.full_name || "Staff User";
             const pAv = pBtn.querySelector("[data-shell-avatar]") || pBtn.querySelector(".profile-avatar");
-            if (pAv && profile.full_name) pAv.textContent = initials(profile.full_name);
+            const avUrl = localStorage.getItem("rmims_user_avatar") || (user?.uid ? localStorage.getItem(`rmims_avatar_${user.uid}`) : "") || profile.avatar_url;
+            if (pAv) {
+                if (avUrl) {
+                    pAv.innerHTML = `<img src="${avUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+                    pAv.style.padding = '0';
+                    pAv.style.overflow = 'hidden';
+                } else if (profile.full_name) {
+                    pAv.textContent = initials(profile.full_name);
+                }
+            }
         }
 
         init();
@@ -383,8 +395,32 @@ async function loadAuthoritativeData() {
             }
         }
 
-        // 2. Material mapping (STRICTLY live: Supabase + custom materials, ZERO mock/baseline fallbacks)
+        // 2. Material mapping (STRICTLY live & air-gapped per active company tenant)
+        let tCtx = null;
+        try { tCtx = getActiveTenantContext(); } catch (_) {}
+        const isScones = tCtx ? Boolean(tCtx.isScones) : true;
+        const expectedPrefix = isScones ? "NB-" : "RM-";
+
         const matBaseMap = new Map();
+
+        // Seed with authentic system raw materials for the current tenant (guarantees 19 for Scones, 59 for KXC)
+        getSystemRawMaterials().forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            const code = String(m.item_code || m.id || "").toUpperCase().trim();
+            if (code.startsWith(expectedPrefix)) {
+                matBaseMap.set(k, {
+                    id: String(m.id || code),
+                    item_code: code,
+                    name: m.name || m.raw_material_name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
+            }
+        });
+
         let localCustomMats = [];
         try {
             const stored = localStorage.getItem("rmims_custom_raw_materials");
@@ -393,21 +429,27 @@ async function loadAuthoritativeData() {
 
         if (Array.isArray(localCustomMats)) {
             localCustomMats.forEach(m => {
+                const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
+                if (!code.startsWith(expectedPrefix)) return; // Air-gap
                 const k = String(m.name || m.id || "").toLowerCase().trim();
-                matBaseMap.set(k, {
-                    id: String(m.id || m.item_code || m.itemCode || k),
-                    item_code: m.item_code || m.itemCode || m.id || "RM—",
-                    name: m.name,
-                    unit_of_measure: m.unit_of_measure || m.unit || "",
-                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                    reorder_quantity: Number(m.reorder_quantity ?? 50),
-                    lead_time_days: Number(m.lead_time_days ?? 3)
-                });
+                if (!matBaseMap.has(k)) {
+                    matBaseMap.set(k, {
+                        id: String(m.id || code),
+                        item_code: code,
+                        name: m.name,
+                        unit_of_measure: m.unit_of_measure || m.unit || "",
+                        current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                        reorder_quantity: Number(m.reorder_quantity ?? 50),
+                        lead_time_days: Number(m.lead_time_days ?? 3)
+                    });
+                }
             });
         }
 
         (rawMats || []).forEach(m => {
+            const smCode = String(m.item_code || m.id || "").toUpperCase().trim();
+            if (smCode && !smCode.startsWith(expectedPrefix)) return; // Air-gap
             const k = String(m.name || m.id || "").toLowerCase().trim();
             const existing = matBaseMap.get(k);
             if (existing) {
@@ -417,25 +459,11 @@ async function loadAuthoritativeData() {
                 if (m.unit_of_measure) existing.unit_of_measure = m.unit_of_measure;
                 if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
                 if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
-            } else {
-                matBaseMap.set(k, {
-                    id: String(m.id || k),
-                    item_code: m.item_code || "RM—",
-                    name: m.name,
-                    unit_of_measure: m.unit_of_measure || m.unit || "",
-                    current_stock: Number(m.current_stock || 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? 10),
-                    reorder_quantity: Number(m.reorder_quantity ?? 50),
-                    lead_time_days: Number(m.lead_time_days ?? 3)
-                });
+                if (m.lead_time_days !== undefined && m.lead_time_days !== null) existing.lead_time_days = Number(m.lead_time_days);
             }
         });
 
-        rawMats = Array.from(matBaseMap.values()).filter(m => {
-            const n = String(m.name || '').toLowerCase();
-            const c = String(m.item_code || m.id || '').toUpperCase();
-            return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
-        });
+        rawMats = Array.from(matBaseMap.values());
 
         // 3. Receipts mapping (STRICTLY live: Supabase + local receipts, ZERO mock fallbacks)
         const recBaseMap = new Map();
@@ -496,7 +524,10 @@ async function loadAuthoritativeData() {
         });
         rawDisbursements = Array.from(disbBaseMap.values());
 
-        // Normalize Materials
+        // Normalize Materials with Dynamic AI Forecast Requirement Integration
+        let tCtx = null;
+        try { tCtx = getActiveTenantContext(); } catch (_) {}
+
         state.materials = rawMats.map(m => {
             const stock = Number(m.current_stock || 0);
             const minThreshold = m.minimum_threshold !== null ? Number(m.minimum_threshold) : 0;
@@ -506,6 +537,8 @@ async function loadAuthoritativeData() {
             } else if (minThreshold > 0 && stock <= minThreshold) {
                 status = "Low";
             }
+            const aiReq = getMaterialAiRequirement(m, tCtx);
+            const reorderQuantity = (aiReq.reorderQty && aiReq.reorderQty > 0) ? aiReq.reorderQty : Number(m.reorder_quantity || 0);
             return {
                 id: m.id,
                 itemCode: m.item_code || "RM—",
@@ -513,7 +546,8 @@ async function loadAuthoritativeData() {
                 unit: (m.unit_of_measure || m.unit || "").trim(),
                 currentStock: stock,
                 minThreshold: minThreshold,
-                reorderQty: Number(m.reorder_quantity || 0),
+                reorderQty: reorderQuantity,
+                aiForecast7Day: aiReq.forecast7Day,
                 status
             };
         });

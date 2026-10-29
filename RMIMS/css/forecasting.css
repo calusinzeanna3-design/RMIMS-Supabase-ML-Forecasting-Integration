@@ -2143,35 +2143,63 @@ button.fc-modal-close,
   width: 36px !important;
   height: 36px !important;
   min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
   border-radius: 50% !important;
   background: rgba(15, 42, 27, 0.05) !important;
-  border: 1px solid rgba(20, 83, 45, 0.12) !important;
-  display: flex !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #5C7A68 !important;
+  color: #3C5847 !important;
   cursor: pointer !important;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
   padding: 0 !important;
   outline: none !important;
-  box-shadow: none !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
   appearance: none !important;
   -webkit-appearance: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+  box-sizing: border-box !important;
+  position: relative !important;
 }
 
 button.fc-modal-close:hover,
 .fc-modal-close:hover {
   background: #FEE2E2 !important;
   color: #DC2626 !important;
-  border-color: rgba(220, 38, 38, 0.3) !important;
-  transform: rotate(90deg) scale(1.05) !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
+}
+
+button.fc-modal-close:active,
+.fc-modal-close:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  transform: rotate(90deg) scale(0.96) !important;
 }
 
 button.fc-modal-close svg,
 .fc-modal-close svg {
   width: 18px !important;
   height: 18px !important;
-  display: block;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
 }
 
 /* Modal Toolbar */
@@ -3044,5 +3072,44 @@ input[type="number"].fc-top-input,
   appearance: none !important;
   margin: 0 !important;
   display: none !important;
+}
+
+/* ==========================================================
+   DYNAMIC FUNCTION MODAL TABS & VISUALIZATION STYLES
+   ========================================================== */
+.fc-modal-tabs-bar {
+  scrollbar-width: thin;
+}
+
+.fc-modal-tabs-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.fc-func-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #475569;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.fc-func-tab:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+  border-color: #CBD5E1;
+}
+
+.fc-func-tab.active {
+  background: #0F2A1B !important;
+  color: #FFFFFF !important;
+  border-color: #0F2A1B !important;
+  box-shadow: 0 2px 6px rgba(15, 42, 27, 0.15) !important;
 }
 

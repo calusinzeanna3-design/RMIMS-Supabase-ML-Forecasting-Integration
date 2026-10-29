@@ -282,7 +282,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
   if (expandBtn) {
     expandBtn.addEventListener('click', () => {
       if (typeof window.openTotalForecastModal === 'function') {
-        window.openTotalForecastModal();
+        window.openTotalForecastModal('timeline_calendar');
       } else {
         window.location.href = 'forecasting.html';
       }

@@ -8,8 +8,70 @@
 import { supabase, auth } from "../supabase/supabase-config.js";
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS, AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-59-dataset.js";
+import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
+import { getActiveTenantContext } from "./tenant-manager.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
+
+/* ==========================================================
+   AI FORECAST SUPPORT INTEGRATION HELPER
+   ========================================================== */
+
+export function getMaterialAiRequirement(material, tenantCtx) {
+    if (!material) return { forecast7Day: 0, reorderQty: 0, unit: "g" };
+    const mName = String(material.name || material.raw_material_name || "").toLowerCase().trim();
+    const mCode = String(material.itemCode || material.item_code || material.id || "").toUpperCase().trim();
+    const curStock = Number(material.currentStock ?? material.current_stock ?? 0);
+    const minThreshold = Number(material.minThreshold ?? material.minimum_threshold ?? material.minimum_stock ?? 0);
+    const unit = (material.unit || material.unit_of_measure || (mCode.startsWith("NB-") ? "g" : "kg")).trim();
+
+    let cachedFc = null;
+    try {
+        const rawCache = localStorage.getItem("rmims_forecast_cache");
+        if (rawCache) {
+            const cacheObj = JSON.parse(rawCache);
+            cachedFc = cacheObj[material.name] || cacheObj[mName] || Object.values(cacheObj).find(c => 
+                String(c.material_id || "").toUpperCase().trim() === mCode ||
+                String(c.raw_material_name || "").toLowerCase().trim() === mName
+            );
+        }
+    } catch (_) {}
+
+    const isScones = tenantCtx ? Boolean(tenantCtx.isScones) : mCode.startsWith("NB-");
+    const catalog = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
+    const baseMat = catalog.find(b => 
+        String(b.item_code || b.id).toUpperCase().trim() === mCode ||
+        String(b.name || b.raw_material_name || "").toLowerCase().trim() === mName
+    );
+
+    let f7Day = 0;
+    if (cachedFc && cachedFc.forecast7Day && Number(cachedFc.forecast7Day.quantity) > 0) {
+        f7Day = Number(cachedFc.forecast7Day.quantity);
+    } else if (baseMat && Number(baseMat.forecast_weekly) > 0) {
+        f7Day = Number(baseMat.forecast_weekly);
+    } else if (material.forecast_weekly && Number(material.forecast_weekly) > 0) {
+        f7Day = Number(material.forecast_weekly);
+    } else if (baseMat && Number(baseMat.forecast_daily) > 0) {
+        f7Day = Number((baseMat.forecast_daily * 7).toFixed(1));
+    }
+
+    let reorderNeeded = 0;
+    if (curStock <= 0) {
+        reorderNeeded = f7Day > 0 ? f7Day : (minThreshold > 0 ? minThreshold : 50);
+    } else if (curStock < (f7Day + minThreshold)) {
+        reorderNeeded = (f7Day + minThreshold) - curStock;
+    }
+
+    const isCountUnit = unit.toLowerCase() === "pcs" || unit.toLowerCase() === "pieces";
+    const roundedReorder = isCountUnit ? Math.ceil(reorderNeeded) : Number(reorderNeeded.toFixed(1));
+    const roundedFc = isCountUnit ? Math.ceil(f7Day) : Number(f7Day.toFixed(1));
+
+    return {
+        forecast7Day: roundedFc,
+        reorderQty: roundedReorder,
+        unit: unit
+    };
+}
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -114,7 +176,16 @@ onAuthStateChanged(auth, async (user) => {
             const roleEl = pBtn.querySelector("[data-shell-role]") || pBtn.querySelector(".profile-role") || pBtn.querySelector(".mgr-role");
             if (roleEl) roleEl.textContent = "Manager";
             const pAv = pBtn.querySelector("[data-shell-avatar]") || pBtn.querySelector(".avatar") || pBtn.querySelector(".profile-avatar");
-            if (pAv) pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+            const avUrl = localStorage.getItem("rmims_user_avatar") || localStorage.getItem("rmims_manager_avatar") || (user?.uid ? localStorage.getItem(`rmims_avatar_${user.uid}`) : "") || profile.avatar_url;
+            if (pAv) {
+                if (avUrl) {
+                    pAv.innerHTML = `<img src="${avUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+                    pAv.style.padding = '0';
+                    pAv.style.overflow = 'hidden';
+                } else {
+                    pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+                }
+            }
         }
         const dropUserName = document.getElementById("dropdownUserName");
         if (dropUserName) dropUserName.textContent = mName;
@@ -500,10 +571,33 @@ async function loadAuthoritativeData() {
             }
         }
 
-        // 2. Material mapping (STRICTLY live: Supabase + custom materials, ZERO mock/baseline fallbacks)
+        // 2. Material mapping (STRICTLY live & air-gapped per active company tenant)
+        let tCtx = null;
+        try { tCtx = getActiveTenantContext(); } catch (_) {}
+        const isScones = tCtx ? Boolean(tCtx.isScones) : true;
+        const expectedPrefix = isScones ? "NB-" : "RM-";
+
         const matBaseMap = new Map();
 
-        // Check local custom raw materials (persisted by Inventory module)
+        // Seed with authentic system raw materials for the current tenant (guarantees 19 for Scones, 59 for KXC)
+        getSystemRawMaterials().forEach(m => {
+            const k = String(m.name || m.id || "").toLowerCase().trim();
+            const code = String(m.item_code || m.id || "").toUpperCase().trim();
+            if (code.startsWith(expectedPrefix)) {
+                matBaseMap.set(k, {
+                    id: String(m.id || code),
+                    item_code: code,
+                    name: m.name || m.raw_material_name,
+                    unit_of_measure: m.unit_of_measure || m.unit || "",
+                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    lead_time_days: Number(m.lead_time_days ?? 3)
+                });
+            }
+        });
+
+        // Check local custom raw materials (persisted by Inventory module) matching active tenant
         let localCustomMats = [];
         try {
             const stored = localStorage.getItem("rmims_custom_raw_materials");
@@ -512,22 +606,28 @@ async function loadAuthoritativeData() {
 
         if (Array.isArray(localCustomMats)) {
             localCustomMats.forEach(m => {
+                const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
+                if (!code.startsWith(expectedPrefix)) return; // Air-gap: ignore materials belonging to different company
                 const k = String(m.name || m.id || "").toLowerCase().trim();
-                matBaseMap.set(k, {
-                    id: String(m.id || m.item_code || m.itemCode || k),
-                    item_code: m.item_code || m.itemCode || m.id || "RM—",
-                    name: m.name,
-                    unit_of_measure: m.unit_of_measure || m.unit || "",
-                    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
-                    reorder_quantity: Number(m.reorder_quantity ?? 50),
-                    lead_time_days: Number(m.lead_time_days ?? 3)
-                });
+                if (!matBaseMap.has(k)) {
+                    matBaseMap.set(k, {
+                        id: String(m.id || code),
+                        item_code: code,
+                        name: m.name || m.raw_material_name,
+                        unit_of_measure: m.unit_of_measure || m.unit || "",
+                        current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+                        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                        reorder_quantity: Number(m.reorder_quantity ?? 50),
+                        lead_time_days: Number(m.lead_time_days ?? 3)
+                    });
+                }
             });
         }
 
-        // Merge Supabase raw materials
+        // Merge Supabase raw materials matching active tenant
         (rawMats || []).forEach(m => {
+            const smCode = String(m.item_code || m.id || "").toUpperCase().trim();
+            if (smCode && !smCode.startsWith(expectedPrefix)) return; // Air-gap
             const k = String(m.name || m.id || "").toLowerCase().trim();
             const existing = matBaseMap.get(k);
             if (existing) {
@@ -538,17 +638,6 @@ async function loadAuthoritativeData() {
                 if (m.minimum_threshold !== undefined && m.minimum_threshold !== null) existing.minimum_threshold = Number(m.minimum_threshold);
                 if (m.reorder_quantity !== undefined && m.reorder_quantity !== null) existing.reorder_quantity = Number(m.reorder_quantity);
                 if (m.lead_time_days !== undefined && m.lead_time_days !== null) existing.lead_time_days = Number(m.lead_time_days);
-            } else {
-                matBaseMap.set(k, {
-                    id: String(m.id || k),
-                    item_code: m.item_code || "RM—",
-                    name: m.name,
-                    unit_of_measure: m.unit_of_measure || m.unit || "",
-                    current_stock: Number(m.current_stock || 0),
-                    minimum_threshold: Number(m.minimum_threshold ?? 10),
-                    reorder_quantity: Number(m.reorder_quantity ?? 50),
-                    lead_time_days: Number(m.lead_time_days ?? 3)
-                });
             }
         });
 
@@ -639,7 +728,7 @@ async function loadAuthoritativeData() {
             rawDisbursements = rawDisbursements.filter(d => !deletedDisbIds.has(String(d.id)));
         }
 
-        // Normalize Materials
+        // Normalize Materials with Dynamic AI Forecast Requirement Integration
         state.materials = rawMats.map(m => {
             const stock = Number(m.current_stock || 0);
             const minThreshold = m.minimum_threshold !== null ? Number(m.minimum_threshold) : 0;
@@ -649,6 +738,10 @@ async function loadAuthoritativeData() {
             } else if (minThreshold > 0 && stock <= minThreshold) {
                 status = "Low";
             }
+
+            const aiReq = getMaterialAiRequirement(m, tCtx);
+            const reorderQuantity = (aiReq.reorderQty && aiReq.reorderQty > 0) ? aiReq.reorderQty : Number(m.reorder_quantity || 0);
+
             return {
                 id: m.id,
                 itemCode: m.item_code || "RM—",
@@ -656,7 +749,8 @@ async function loadAuthoritativeData() {
                 unit: (m.unit_of_measure || m.unit || "").trim(),
                 currentStock: stock,
                 minThreshold: minThreshold,
-                reorderQty: Number(m.reorder_quantity || 0),
+                reorderQty: reorderQuantity,
+                aiForecast7Day: aiReq.forecast7Day,
                 status
             };
         });
@@ -980,8 +1074,15 @@ function renderRestockRecommendationsTab() {
         ? state.materials.filter(m => m.id === state.selectedMaterialId)
         : state.materials;
 
+    let tCtx = null;
+    try { tCtx = getActiveTenantContext(); } catch (_) {}
+
     const allDecisions = [];
     targetMaterials.forEach(m => {
+        const aiReq = getMaterialAiRequirement(m, tCtx);
+        const reqQty = (m.reorderQty && m.reorderQty > 0) ? m.reorderQty : (aiReq.reorderQty > 0 ? aiReq.reorderQty : 50);
+        const fcNotice = aiReq.forecast7Day > 0 ? ` (Exact 7-Day AI Forecast Requirement: ${aiReq.forecast7Day.toLocaleString()} ${m.unit})` : "";
+
         if (m.status === "Critical") {
             critCount++;
             const minText = m.minThreshold > 0 ? ` (below threshold of ${m.minThreshold} ${m.unit})` : '';
@@ -992,7 +1093,7 @@ function renderRestockRecommendationsTab() {
                 material: m.name,
                 stock: `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
                 finding: (m.currentStock || 0) <= 0 ? `Out of stock (0 ${m.unit} on hand).` : `Stock is critically low: ${m.currentStock} ${m.unit}${minText}.`,
-                action: `Order ${m.reorderQty || 50} ${m.unit} from supplier.`
+                action: `Order ${reqQty.toLocaleString()} ${m.unit} from supplier${fcNotice}.`
             });
         } else if (m.status === "Low") {
             medCount++;
@@ -1003,7 +1104,7 @@ function renderRestockRecommendationsTab() {
                 material: m.name,
                 stock: `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
                 finding: `Stock is getting low: ${m.currentStock} ${m.unit} (below threshold of ${m.minThreshold} ${m.unit}).`,
-                action: `Prepare next order with supplier.`
+                action: `Prepare order of ${reqQty.toLocaleString()} ${m.unit} with supplier${fcNotice}.`
             });
         } else {
             goodCount++;
@@ -1014,7 +1115,7 @@ function renderRestockRecommendationsTab() {
                 material: m.name,
                 stock: `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
                 finding: `Stock is healthy: ${m.currentStock} ${m.unit} (meets operational buffer).`,
-                action: `Stock sufficient. No restock needed.`
+                action: aiReq.forecast7Day > 0 ? `Stock sufficient for projected 7-day AI demand (${aiReq.forecast7Day.toLocaleString()} ${m.unit}). No restock needed.` : `Stock sufficient. No restock needed.`
             });
         }
     });

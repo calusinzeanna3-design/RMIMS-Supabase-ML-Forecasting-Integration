@@ -144,9 +144,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!userData) return;
     activeAdminUser = userData;
     const uid = userData.id || userData.uid || 'admin_root';
-    const savedAvatar = localStorage.getItem('rmims_admin_avatar') || 
+    const email = userData.email || 'calusinzeanna3@gmail.com';
+    const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
+                      (email && localStorage.getItem('rmims_avatar_removed_' + email.toLowerCase()) === 'true');
+    const savedAvatar = isRemoved ? '' : (localStorage.getItem('rmims_admin_avatar') || 
                         localStorage.getItem(`rmims_avatar_${uid}`) || 
-                        userData.avatarUrl || '';
+                        userData.avatarUrl || '');
 
     const nameInput = document.getElementById('adminSettingName');
     const emailInput = document.getElementById('adminSettingEmail');
@@ -159,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const topbarName = document.getElementById('topbarProfileName');
 
     const fullName = userData.fullName || userData.name || 'Zeanna Calusin';
-    const email = userData.email || 'calusinzeanna3@gmail.com';
     const role = 'Main Administrator';
 
     if (nameInput) nameInput.value = fullName;
@@ -218,13 +220,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const reader = new FileReader();
-        reader.onload = (loadEvt) => {
+        reader.onload = async (loadEvt) => {
           const dataUrl = loadEvt.target.result;
           const uid = activeAdminUser.id || activeAdminUser.uid || 'admin_root';
           localStorage.setItem('rmims_admin_avatar', dataUrl);
+          localStorage.setItem('rmims_user_avatar', dataUrl);
           if (uid) localStorage.setItem(`rmims_avatar_${uid}`, dataUrl);
-          if (previewAv) previewAv.innerHTML = `<img src="${dataUrl}" alt="Avatar Preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
-          if (topbarAv) topbarAv.innerHTML = `<img src="${dataUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+          try {
+            const keys = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'adminUser'];
+            keys.forEach(k => {
+              const raw = localStorage.getItem(k);
+              if (raw) {
+                const u = JSON.parse(raw);
+                u.avatarUrl = dataUrl;
+                u.avatar_url = dataUrl;
+                localStorage.setItem(k, JSON.stringify(u));
+              }
+            });
+          } catch (_) {}
+
+          try {
+            await supabase
+              .from('user_profiles')
+              .update({ avatar_url: dataUrl, updated_at: new Date().toISOString() })
+              .eq('id', uid);
+          } catch (_) {}
+
+          if (previewAv) previewAv.innerHTML = `<img src="${dataUrl}" alt="Avatar Preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+          document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(el => {
+            el.innerHTML = `<img src="${dataUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+            el.style.padding = '0';
+            el.style.overflow = 'hidden';
+          });
+          window.dispatchEvent(new CustomEvent('rmims_avatar_updated', { detail: { avatarUrl: dataUrl } }));
           if (window.showAdminToast) {
             window.showAdminToast('Profile image updated successfully.');
           }
@@ -234,16 +262,69 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (removeBtn) {
-      removeBtn.addEventListener('click', () => {
-        const uid = activeAdminUser.id || activeAdminUser.uid || 'admin_root';
+      removeBtn.addEventListener('click', async () => {
+        const uid = activeAdminUser?.id || activeAdminUser?.uid || 'admin_root';
+        const cleanEmail = (activeAdminUser?.email || 'calusinzeanna3@gmail.com').toLowerCase();
+
+        // Set permanent tombstone so avatar is never resurrected on refresh
+        localStorage.setItem('rmims_avatar_removed', 'true');
+        if (cleanEmail) localStorage.setItem('rmims_avatar_removed_' + cleanEmail, 'true');
+
         localStorage.removeItem('rmims_admin_avatar');
+        localStorage.removeItem('rmims_user_avatar');
+        localStorage.removeItem('rmims_manager_avatar');
         if (uid) localStorage.removeItem(`rmims_avatar_${uid}`);
+
+        // Scan and remove any dynamic rmims_avatar_ / rmims_user_avatar_ key
+        try {
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && (k.startsWith('rmims_avatar_') || k.startsWith('rmims_user_avatar_'))) {
+              if (!k.startsWith('rmims_avatar_removed')) keysToRemove.push(k);
+            }
+          }
+          keysToRemove.forEach(k => localStorage.removeItem(k));
+        } catch (_) {}
+
+        try {
+          const keys = ['currentUser', 'rmimsCurrentUser', 'userProfile', 'adminUser', 'rmimsAdminUser', 'managerUser', 'staffUser'];
+          keys.forEach(k => {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const u = JSON.parse(raw);
+              delete u.avatarUrl;
+              delete u.avatar_url;
+              localStorage.setItem(k, JSON.stringify(u));
+            }
+          });
+        } catch (_) {}
+
+        try {
+          const nowIso = new Date().toISOString();
+          if (uid && !uid.startsWith('admin_root')) {
+            await supabase.from('user_profiles').update({ avatar_url: null, updated_at: nowIso }).eq('id', uid);
+          }
+          if (cleanEmail) {
+            await supabase.from('user_profiles').update({ avatar_url: null, updated_at: nowIso }).eq('email', cleanEmail);
+          }
+          try {
+            const { data: { user: supaUser } } = await supabase.auth.getUser();
+            if (supaUser?.id) {
+              await supabase.from('user_profiles').update({ avatar_url: null, updated_at: nowIso }).eq('id', supaUser.id);
+            }
+          } catch (_) {}
+        } catch (_) {}
+
         if (photoInput) photoInput.value = '';
-        const init = initials(activeAdminUser.fullName || activeAdminUser.name || 'Zeanna Calusin');
+        const init = initials(activeAdminUser?.fullName || activeAdminUser?.name || 'Zeanna Calusin');
         if (previewAv) previewAv.textContent = init;
-        if (topbarAv) topbarAv.textContent = init;
+        document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(el => {
+          el.textContent = init;
+        });
+        window.dispatchEvent(new CustomEvent('rmims_avatar_updated', { detail: { avatarUrl: '' } }));
         if (window.showAdminToast) {
-          window.showAdminToast('Profile image removed.');
+          window.showAdminToast('Profile image removed permanently.');
         }
       });
     }
@@ -435,13 +516,108 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-          // Attempt Supabase password update if active session exists
-          try {
-            const { auth } = await import('../supabase/supabase-config.js');
-            if (auth && auth.updateUser) {
-              const { error } = await auth.updateUser({ password: nw });
-              if (error) console.warn('Supabase auth update warning:', error);
+          // 1. Resolve Admin Email
+          let adminEmail = (activeAdminUser?.email || '').trim().toLowerCase();
+          if (!adminEmail) {
+            adminEmail = (document.getElementById('adminSettingEmail')?.value || '').trim().toLowerCase();
+          }
+          if (!adminEmail) {
+            const keys = ['adminUser', 'rmimsAdminUser', 'currentUser', 'userProfile'];
+            for (const k of keys) {
+              try {
+                const raw = localStorage.getItem(k);
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  if (parsed?.email) {
+                    adminEmail = parsed.email.trim().toLowerCase();
+                    break;
+                  }
+                }
+              } catch (_) {}
             }
+          }
+
+          // 2. Check local registered users
+          let regUsers = [];
+          try {
+            regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+          } catch (_) {}
+          const localUser = regUsers.find(u => 
+            (adminEmail && (u.email || '').toLowerCase() === adminEmail) ||
+            (activeAdminUser?.id && String(u.id || '') === String(activeAdminUser.id)) ||
+            (activeAdminUser?.fullName && (u.name || '').toLowerCase() === activeAdminUser.fullName.toLowerCase())
+          );
+
+          const knownCurrentPw = localUser?.password;
+          if (knownCurrentPw && knownCurrentPw !== cur) {
+            if (curErr) curErr.textContent = 'Current password is incorrect.';
+            return;
+          }
+
+          // 3. Attempt Supabase Auth re-authentication and update if online
+          const authClient = supabase?.auth || auth?.auth || auth;
+          let verifiedOnline = false;
+          if (adminEmail && authClient && typeof authClient.signInWithPassword === 'function') {
+            try {
+              const { error: verifyError } = await authClient.signInWithPassword({
+                email: adminEmail,
+                password: cur
+              });
+              if (verifyError) {
+                if (!knownCurrentPw) {
+                  if (curErr) curErr.textContent = 'Current password is incorrect.';
+                  return;
+                }
+              } else {
+                verifiedOnline = true;
+              }
+            } catch (e) {
+              console.warn('Supabase re-auth notice:', e);
+            }
+          }
+
+          if (authClient && typeof authClient.updateUser === 'function') {
+            try {
+              await authClient.updateUser({ password: nw });
+            } catch (upErr) {
+              console.warn('Supabase updateUser notice:', upErr);
+            }
+          }
+
+          // 4. Update in rmims_registered_users
+          let regUpdated = false;
+          regUsers.forEach(u => {
+            if ((adminEmail && (u.email || '').toLowerCase() === adminEmail) ||
+                (activeAdminUser?.id && String(u.id || '') === String(activeAdminUser.id)) ||
+                (activeAdminUser?.fullName && (u.name || '').toLowerCase() === activeAdminUser.fullName.toLowerCase())) {
+              u.password = nw;
+              regUpdated = true;
+            }
+          });
+          if (!regUpdated && adminEmail) {
+            regUsers.push({
+              id: activeAdminUser?.id || 'admin_' + Date.now(),
+              email: adminEmail,
+              name: activeAdminUser?.fullName || 'Main Administrator',
+              role: 'admin',
+              password: nw,
+              status: 'active'
+            });
+          }
+          localStorage.setItem('rmims_registered_users', JSON.stringify(regUsers));
+          window.dispatchEvent(new Event('rmims_registered_users_updated'));
+
+          // 5. Update admin session objects timestamps
+          try {
+            const keys = ['adminUser', 'rmimsAdminUser', 'currentUser', 'userProfile', 'rmimsCurrentUser'];
+            keys.forEach(k => {
+              const raw = localStorage.getItem(k);
+              if (raw) {
+                const u = JSON.parse(raw);
+                u.updatedAt = new Date().toISOString();
+                localStorage.setItem(k, JSON.stringify(u));
+              }
+            });
           } catch (_) {}
 
           if (window.showAdminToast) {
@@ -451,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
           console.error(err);
           if (window.showAdminToast) {
-            window.showAdminToast('Unable to update password. Please try again.', 'danger');
+            window.showAdminToast('Unable to change password. Please check your information and try again.', 'danger');
           }
         } finally {
           if (passBtn) {
@@ -506,9 +682,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const signOutOthersBtn = document.getElementById('signOutOthersBtn');
     if (signOutOthersBtn) {
-      signOutOthersBtn.addEventListener('click', () => {
+      signOutOthersBtn.addEventListener('click', async () => {
         signOutOthersBtn.disabled = true;
         signOutOthersBtn.textContent = 'Revoking...';
+        try {
+          const { auth } = await import('../supabase/supabase-config.js');
+          if (auth && auth.signOut) {
+            try { await auth.signOut({ scope: 'others' }); } catch (_) {}
+          }
+        } catch (_) {}
+        try { localStorage.setItem('rmims_other_sessions_revoked', new Date().toISOString()); } catch (_) {}
         setTimeout(() => {
           signOutOthersBtn.disabled = false;
           signOutOthersBtn.textContent = 'Sign Out Other Sessions';

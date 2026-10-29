@@ -1664,80 +1664,9 @@ let dragStartY = 0;
 let dragInitialXShift = 0;
 let dragInitialShift = 0;
 
+// Precision crosshair guidelines disabled per user request (normal graph interaction)
 const precisionCrosshairPlugin = {
-  id: "precisionCrosshairPlugin",
-  afterEvent(chart, args) {
-    const { event } = args;
-    if (event.type === "mousemove") {
-      chart._crosshairPos = { x: event.x, y: event.y };
-      chart.draw();
-    } else if (event.type === "mouseout" || event.type === "mouseleave") {
-      chart._crosshairPos = null;
-      chart.draw();
-    }
-  },
-  afterDraw(chart) {
-    const pos = chart._crosshairPos;
-    if (!pos) return;
-    const { ctx, chartArea, scales } = chart;
-    if (!chartArea || !scales || !scales.y) return;
-
-    const { left, right, top, bottom } = chartArea;
-    const { x, y } = pos;
-    if (x < left || x > right || y < top || y > bottom) return;
-
-    const yScale = scales.y;
-    const val = yScale.getValueForPixel(y);
-    if (val === undefined || isNaN(val)) return;
-
-    ctx.save();
-
-    // 1. Horizontal movable cursor guideline (tracks pointer up & down)
-    ctx.beginPath();
-    ctx.setLineDash([4, 4]);
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = "rgba(16, 185, 129, 0.85)";
-    ctx.moveTo(left, y);
-    ctx.lineTo(right, y);
-    ctx.stroke();
-
-    // 2. Vertical timeline guideline
-    ctx.beginPath();
-    ctx.setLineDash([3, 3]);
-    ctx.lineWidth = 1.0;
-    ctx.strokeStyle = "rgba(14, 165, 233, 0.7)";
-    ctx.moveTo(x, top);
-    ctx.lineTo(x, bottom);
-    ctx.stroke();
-
-    // 3. Precision Y-Axis Floating Value Badge at pointer level
-    const unit = chart.config.options?._unitLabel || "kg";
-    const badgeText = `${Number(val.toFixed(1)).toLocaleString("en-US")} ${unit}`;
-    ctx.font = "bold 10px Inter, sans-serif";
-    const textWidth = ctx.measureText(badgeText).width;
-    const badgeW = Math.max(50, textWidth + 12);
-    const badgeH = 18;
-    const badgeX = Math.max(2, left - badgeW - 3);
-    const badgeY = Math.max(top, Math.min(bottom - badgeH, y - badgeH / 2));
-
-    ctx.fillStyle = "#0F172A";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-    ctx.fill();
-
-    ctx.strokeStyle = "#10B981";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = "#34D399";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2);
-
-    ctx.restore();
-  }
+  id: "precisionCrosshairPlugin"
 };
 
 function setupTrendChartControls() {
@@ -1804,7 +1733,7 @@ function setupTrendChartControls() {
   if (canvas && !canvas.dataset.dragPanAttached) {
     canvas.dataset.dragPanAttached = "true";
     canvas.style.cursor = "default";
-    canvas.title = "Move the pointer across the timeline to inspect values.";
+    canvas.removeAttribute("title");
   }
 
   trendControlsBound = true;
@@ -2075,7 +2004,7 @@ async function renderRawMaterialsTrendChart() {
         }
       ]
     },
-    plugins: [precisionCrosshairPlugin],
+    plugins: [],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -3101,8 +3030,15 @@ onAuthStateChanged(auth, async user => {
       const roleEl = profileBtn.querySelector("[data-shell-role]") || profileBtn.querySelector(".profile-role") || profileBtn.querySelector(".mgr-role");
       if (roleEl) roleEl.textContent = "Manager";
       const pAv = profileBtn.querySelector("[data-shell-avatar]") || profileBtn.querySelector(".avatar") || profileBtn.querySelector(".profile-avatar");
+      const avUrl = localStorage.getItem("rmims_user_avatar") || localStorage.getItem("rmims_manager_avatar") || (user?.uid ? localStorage.getItem(`rmims_avatar_${user.uid}`) : "") || profile?.avatar_url;
       if (pAv) {
-        pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+        if (avUrl) {
+          pAv.innerHTML = `<img src="${avUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+          pAv.style.padding = '0';
+          pAv.style.overflow = 'hidden';
+        } else {
+          pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+        }
       }
     }
     const dropUserName = $("dropdownUserName");

@@ -432,14 +432,13 @@ body.manager-page .admin-scroll-body {
 
 .rpt-tab-body {
   padding: 20px;
-  flex: 1;
   display: flex;
   flex-direction: column;
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
-  overflow-x: hidden !important;
+  overflow: visible !important;
 }
 
 .rpt-tab-panel {
@@ -612,31 +611,37 @@ body.manager-page .admin-scroll-body {
 }
 
 .rpt-search-wrap svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: var(--rpt-text-dim);
-  pointer-events: none;
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 15px !important;
+  height: 15px !important;
+  color: var(--rpt-text-dim, #64748B) !important;
+  stroke: var(--rpt-text-dim, #64748B) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
 }
 
 .rpt-search-input {
-  width: 100%;
-  padding: 8px 12px 8px 36px;
-  font-size: 0.82rem;
-  border: 1.5px solid var(--rpt-card-border);
-  border-radius: var(--rpt-radius-sm);
-  outline: none;
-  background: #ffffff;
-  color: var(--rpt-text-main);
-  transition: border-color 0.15s ease;
+  width: 100% !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 14px 0 38px !important;
+  font-size: 13px !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 10px !important;
+  outline: none !important;
+  background: #ffffff !important;
+  color: var(--rpt-text-main, #0F2A1B) !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .rpt-search-input:focus {
-  border-color: var(--rpt-green);
-  box-shadow: 0 0 0 3px rgba(22, 128, 60, 0.12);
+  border-color: var(--rpt-green, #16A34A) !important;
+  box-shadow: 0 0 0 3px rgba(22, 128, 60, 0.12) !important;
 }
 
 .rpt-toolbar-note {
@@ -1280,24 +1285,50 @@ body.manager-page .admin-scroll-body {
 }
 
 .rpt-modal-close {
-  background: transparent;
-  border: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  transition: all 0.15s ease;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(15, 42, 27, 0.05) !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  color: #3C5847 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  outline: none !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
 }
 
 .rpt-modal-close:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  transform: scale(1.05);
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
 }
+
+.rpt-modal-close:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  transform: rotate(90deg) scale(0.96) !important;
+}
+
+.rpt-modal-close svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
+}
+
 
 .rpt-modal-body {
   padding: 24px;
@@ -2406,13 +2437,16 @@ body.manager-page .admin-scroll-body {
 .flatpickr-monthDropdown-months {
   font-weight: 700 !important;
   color: #0F172A !important;
-  background: transparent !important;
-  border: none !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(21, 128, 61, 0.22) !important;
   cursor: pointer !important;
   border-radius: 8px !important;
-  padding: 4px 6px !important;
-  font-size: 0.95rem !important;
+  padding: 4px 8px !important;
+  font-size: 0.92rem !important;
   appearance: none !important;
+  min-width: 96px !important;
+  width: auto !important;
+  text-align: center !important;
   transition: background 0.15s ease !important;
 }
 .flatpickr-monthDropdown-months:hover {
@@ -2421,17 +2455,30 @@ body.manager-page .admin-scroll-body {
 }
 
 .numInputWrapper {
-  width: 58px !important;
-  border-radius: 6px !important;
+  min-width: 80px !important;
+  width: 84px !important;
+  max-width: 90px !important;
+  height: 30px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(21, 128, 61, 0.22) !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 .numInputWrapper:hover {
   background: rgba(16, 185, 129, 0.08) !important;
 }
 .flatpickr-current-month input.cur-year {
   font-weight: 700 !important;
-  font-size: 0.95rem !important;
-  color: #059669 !important;
-  padding: 2px 4px !important;
+  font-size: 0.92rem !important;
+  color: #15803D !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 2px 18px 2px 8px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  min-width: 52px !important;
   border-radius: 6px !important;
 }
 
@@ -2570,7 +2617,9 @@ span.flatpickr-weekday {
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(20, 83, 45, 0.05);
   margin-bottom: 24px;
-  overflow: hidden;
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 20 !important;
   width: 100%;
   box-sizing: border-box;
 }
@@ -2582,6 +2631,7 @@ span.flatpickr-weekday {
   padding: 16px 24px;
   background: linear-gradient(90deg, #F0FDF4 0%, #FFFFFF 100%);
   border-bottom: 1.5px solid rgba(20, 83, 45, 0.08);
+  border-radius: 14px 14px 0 0;
 }
 
 .rpt-fe-title-wrap {
@@ -2647,12 +2697,107 @@ span.flatpickr-weekday {
   gap: 16px;
   padding: 20px 24px;
   align-items: flex-end;
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 60 !important;
 }
 
 .rpt-fe-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+.rpt-filter-engine-card .cal-combobox-wrap.open,
+.rpt-filter-engine-card .rm-combobox-wrap.open {
+  z-index: 2500 !important;
+  position: relative !important;
+}
+
+.rpt-filter-engine-card .cal-combobox-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.rpt-filter-engine-card .cal-combobox-input-box {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 10px !important;
+  box-sizing: border-box !important;
+  padding: 0 12px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid rgba(20, 83, 45, 0.16) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.rpt-filter-engine-card .cal-combobox-input,
+body.manager-page .rpt-filter-engine-card .cal-combobox-input {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  color: #0F2A1B !important;
+  padding: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.rpt-filter-engine-card .rm-select-trigger,
+.rpt-fe-select,
+.rpt-fe-input {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid rgba(20, 83, 45, 0.16) !important;
+  border-radius: 10px !important;
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  color: #0F2A1B !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease;
+}
+
+.rpt-filter-engine-card .inv-date-range-wrap {
+  width: 100% !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid rgba(20, 83, 45, 0.16) !important;
+  background: #FFFFFF !important;
+  padding: 0 10px !important;
+  box-sizing: border-box !important;
+}
+
+.rpt-filter-engine-card .cal-combobox-dropdown {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 0 !important;
+  min-width: 100% !important;
+  max-width: 380px !important;
+  max-height: 260px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid rgba(20, 83, 45, 0.25) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 40px -6px rgba(15, 42, 27, 0.28), 0 8px 16px -4px rgba(0, 0, 0, 0.12) !important;
+  z-index: 2500 !important;
+  overflow-y: auto !important;
+  display: none;
+}
+
+.rpt-filter-engine-card .cal-combobox-dropdown.open {
+  display: block !important;
 }
 
 .rpt-fe-label {
@@ -2664,22 +2809,6 @@ span.flatpickr-weekday {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-
-.rpt-fe-select,
-.rpt-fe-input {
-  width: 100%;
-  height: 42px;
-  padding: 0 14px;
-  background: #F8FCF9;
-  border: 1.5px solid rgba(20, 83, 45, 0.16);
-  border-radius: 10px;
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: #0F2A1B;
-  outline: none;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
 }
 
 .rpt-fe-select:focus,
@@ -3255,4 +3384,32 @@ span.flatpickr-weekday {
 .rpt-specific-export-card:hover .rpt-sec-action {
   transform: translateX(3px);
 }
+
+/* Normal Card Table List (No inner vertical scrollbar; natural card height) */
+.rpt-preview-section-card,
+#rptCorporatePreviewCard,
+#rptDocumentContainer,
+.rpt-document-sheet,
+.rpt-tab-body,
+#rptActiveTabBody,
+.rpt-tab-panel,
+#tabPanelInventory,
+#tabPanelReceiving,
+#tabPanelDisbursement,
+#tabPanelActivity {
+  max-height: none !important;
+  height: auto !important;
+  flex: none !important;
+  overflow: visible !important;
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+}
+
+.rpt-table-wrap {
+  max-height: none !important;
+  height: auto !important;
+  overflow-y: visible !important;
+  overflow-x: auto !important;
+}
+
 

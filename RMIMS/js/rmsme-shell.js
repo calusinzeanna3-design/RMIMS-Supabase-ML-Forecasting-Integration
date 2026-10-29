@@ -1,4 +1,5 @@
 import './rmims-notifications.js';
+import './rmims-custom-select.js';
 import { supabase } from '../supabase/supabase-config.js';
 
 (function () {
@@ -871,6 +872,18 @@ import { supabase } from '../supabase/supabase-config.js';
         link.addEventListener('click', () => toggleMobileDrawer(false));
       }
     });
+
+    // Automatically close drawer & clear mobile classes when resized back to desktop (> 768px)
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        toggleMobileDrawer(false);
+        document.body.classList.remove('rmsme-mobile-drawer-open');
+        const sidebar = document.querySelector('.sidebar, .admin-sidebar');
+        if (sidebar) {
+          sidebar.classList.remove('mobile-open');
+        }
+      }
+    });
   }
 
   if (document.readyState === 'loading') {
@@ -923,17 +936,60 @@ import { supabase } from '../supabase/supabase-config.js';
       }
     } catch (e) { }
 
+    function getCachedAvatar(uId) {
+      try {
+        const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
+                          (email && localStorage.getItem('rmims_avatar_removed_' + String(email).toLowerCase()) === 'true');
+        if (isRemoved) return '';
+
+        if (uId) {
+          const direct = localStorage.getItem(`rmims_avatar_${uId}`) || localStorage.getItem(`rmims_user_avatar_${uId}`);
+          if (direct) return direct;
+        }
+        const userObjKeys = ['managerUser', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'staffUser', 'adminUser'];
+        for (const k of userObjKeys) {
+          try {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              const found = parsed?.avatarUrl || parsed?.avatar_url;
+              if (found) return found;
+            }
+          } catch (_) {}
+        }
+        return (isStrictManager ? localStorage.getItem('rmims_manager_avatar') : '') ||
+               localStorage.getItem('rmims_user_avatar') ||
+               localStorage.getItem('rmims_admin_avatar') || '';
+      } catch (_) { return ''; }
+    }
+
+    function applyShellAvatar(url, fallbackChar) {
+      document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(e => {
+        if (url) {
+          e.innerHTML = `<img src="${url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+          e.style.padding = '0';
+          e.style.overflow = 'hidden';
+        } else {
+          e.textContent = fallbackChar;
+        }
+      });
+    }
+
+    const currentCachedAvatar = getCachedAvatar(uid);
+
     if (!hasSession) {
       if (isStrictManager) {
         document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = 'Manager');
-        document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = 'M');
+        applyShellAvatar(currentCachedAvatar, initials(name || 'Manager'));
       }
       return;
     }
 
     document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name || (isStrictManager ? 'Manager' : 'User'));
     document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = email);
-    document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isStrictManager ? ((name && initials(name) !== 'A') ? initials(name) : 'M') : (isAnyAdmin ? 'A' : initials(name)));
+    
+    const fallbackLetter = initials(name || (isStrictManager ? 'Manager' : (isAnyAdmin ? 'Admin' : 'User')));
+    applyShellAvatar(currentCachedAvatar, fallbackLetter);
     document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = isStrictManager ? 'Manager' : roleTitle);
 
     const branchLabel = formatBranchLabel(branchName, branchLocation);
@@ -997,7 +1053,7 @@ import { supabase } from '../supabase/supabase-config.js';
         try {
           const { data } = await supabase
             .from('user_profiles')
-            .select('id, full_name, email, role, operational_role, branch_name, branch_location, status')
+            .select('id, full_name, email, role, operational_role, branch_name, branch_location, status, avatar_url')
             .eq('id', authUser.id)
             .maybeSingle();
           profile = data;
@@ -1005,7 +1061,7 @@ import { supabase } from '../supabase/supabase-config.js';
           try {
             const { data } = await supabase
               .from('user_profiles')
-              .select('id, full_name, email, role, status')
+              .select('id, full_name, email, role, status, avatar_url')
               .eq('id', authUser.id)
               .maybeSingle();
             profile = data;
@@ -1108,10 +1164,34 @@ import { supabase } from '../supabase/supabase-config.js';
 
           let liveName = profile.full_name || profile.email;
           document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = liveName);
-          if (profile.email) {
-            document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = profile.email);
+
+          const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
+                            (cleanEmail && localStorage.getItem('rmims_avatar_removed_' + cleanEmail) === 'true');
+
+          if (isRemoved) {
+            profile.avatar_url = null;
+            try {
+              if (authUser?.id) {
+                await supabase.from('user_profiles').update({ avatar_url: null }).eq('id', authUser.id);
+              }
+              if (cleanEmail) {
+                await supabase.from('user_profiles').update({ avatar_url: null }).eq('email', cleanEmail);
+              }
+            } catch (_) {}
+          } else if (profile.avatar_url) {
+            try {
+              localStorage.setItem('rmims_user_avatar', profile.avatar_url);
+              if (isStrictManager || isUserManager) {
+                localStorage.setItem('rmims_manager_avatar', profile.avatar_url);
+              }
+              if (authUser?.id) {
+                localStorage.setItem(`rmims_avatar_${authUser.id}`, profile.avatar_url);
+              }
+            } catch (_) {}
           }
-          document.querySelectorAll('[data-shell-avatar]').forEach(e => e.textContent = isStrictManager ? ((liveName && initials(liveName) !== 'A') ? initials(liveName) : 'M') : (isUserAdmin ? 'A' : (isUserManager ? 'M' : initials(liveName))));
+          const liveAvatar = isRemoved ? '' : (profile.avatar_url || getCachedAvatar(authUser?.id));
+          const liveFallback = initials(liveName || (isStrictManager ? 'Manager' : (isUserAdmin ? 'Admin' : 'User')));
+          applyShellAvatar(liveAvatar, liveFallback);
 
           const pBranchName = profile.branch_name || profile.branchName || '';
           const pBranchLoc = profile.branch_location || profile.branchLocation || '';
@@ -1203,7 +1283,12 @@ import { supabase } from '../supabase/supabase-config.js';
               <h3 id="helpModalTitle">Help Center</h3>
               <p>Quick answers to common questions and store operational guidelines.</p>
             </div>
-            <button type="button" class="help-modal-close-btn" id="btnCloseHelpCenter" aria-label="Close Help Center">&times;</button>
+            <button type="button" class="help-modal-close-btn" id="btnCloseHelpCenter" aria-label="Close Help Center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
           <div class="help-faq-list">
@@ -1374,6 +1459,23 @@ import { supabase } from '../supabase/supabase-config.js';
   syncLiveSession();
   setTimeout(syncLiveSession, 1200);
 
+  window.addEventListener('rmims_avatar_updated', (e) => {
+    const uid = localStorage.getItem('rmims_user_id') || '';
+    const url = e.detail?.avatarUrl !== undefined ? e.detail.avatarUrl : (getCachedAvatar(uid) || '');
+    const nameEl = document.querySelector('[data-shell-name]');
+    const liveName = nameEl?.textContent || (isStrictManager ? 'Manager' : 'User');
+    const fb = initials(liveName);
+    document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(el => {
+      if (url) {
+        el.innerHTML = `<img src="${url}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"/>`;
+        el.style.padding = '0';
+        el.style.overflow = 'hidden';
+      } else {
+        el.textContent = fb;
+      }
+    });
+  });
+
   // Auto-check interactive spotlight tour for first-time session
   setTimeout(async () => {
     try {
@@ -1492,7 +1594,12 @@ import { supabase } from '../supabase/supabase-config.js';
                 <h3 class="mgr-modal-title">My Activity</h3>
                 <p class="mgr-modal-sub">Overview of your manager operations and approvals.</p>
               </div>
-              <button type="button" class="mgr-modal-close" id="closeMyActivityBackdrop">&times;</button>
+              <button type="button" class="mgr-modal-close" id="closeMyActivityBackdrop" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
             <div class="mgr-modal-body">
               <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
@@ -1522,7 +1629,12 @@ import { supabase } from '../supabase/supabase-config.js';
                 <h3 class="mgr-modal-title">Change Password</h3>
                 <p class="mgr-modal-sub">Keep your manager account safe with a strong password.</p>
               </div>
-              <button type="button" class="mgr-modal-close" id="closeChangePasswordBackdrop">&times;</button>
+              <button type="button" class="mgr-modal-close" id="closeChangePasswordBackdrop" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
             <form id="mgrChangePasswordModalForm" style="margin:0;">
               <div class="mgr-modal-body" style="display:flex; flex-direction:column; gap:14px;">
@@ -1682,6 +1794,16 @@ import { supabase } from '../supabase/supabase-config.js';
   const helpBtn = document.getElementById('rmsmeHelpBtn'), help = document.getElementById('rmsmeHelp');
 
   function closeMenus(except) {
+    try {
+      if (window.RMIMS_CUSTOM_SELECT && typeof window.RMIMS_CUSTOM_SELECT.closeAll === 'function') {
+        window.RMIMS_CUSTOM_SELECT.closeAll();
+      }
+      document.querySelectorAll('.rm-custom-select.open, .cal-combobox-wrap.open, .rm-combobox-wrap.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
+        el.querySelector('.cal-combobox-dropdown, .rm-combobox-dropdown')?.classList.remove('open');
+      });
+    } catch (_) {}
     [profile, notif, help].forEach(x => {
       if (x && x !== except) {
         x.hidden = true;
@@ -1988,7 +2110,12 @@ import { supabase } from '../supabase/supabase-config.js';
         <div class="modal-card rmsme-guide-card">
           <div class="rmsme-guide-head">
             <h3 id="rmsmeGuideModalTitle" class="rmsme-guide-title"></h3>
-            <button type="button" id="rmsmeGuideModalClose" class="rmsme-guide-close-btn" aria-label="Close user guide" title="Exit User Guide">&times;</button>
+            <button type="button" id="rmsmeGuideModalClose" class="rmsme-guide-close-btn" aria-label="Close user guide" title="Exit User Guide">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
           <div id="rmsmeGuideModalBody" class="rmsme-guide-body"></div>
           <div class="rmsme-guide-foot">
@@ -3347,265 +3474,8 @@ import { supabase } from '../supabase/supabase-config.js';
   window.RMSME.pushNotification = window.RMIMS_NOTIFICATIONS.push;
 
   // ==========================================================
-  // RMIMS MODERN CUSTOM SELECT / DROPDOWN ENGINE
+  // RMIMS MODERN CUSTOM SELECT ENGINE (Modularized)
+  // See rmims-custom-select.js for unified filter & dropdown implementation
   // ==========================================================
-  function getOptionDecorator(val, text) {
-    const v = (val || '').toLowerCase().trim();
-    const t = (text || '').toLowerCase().trim();
-
-    // Activity filter
-    if (v === 'all' && (t.includes('activity') || t.includes('status: all') || t === 'all')) {
-      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>`;
-    }
-    if (v === 'receive' || t.includes('receive')) {
-      return `<span class="rm-opt-icon-wrap rm-badge-receive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg></span>`;
-    }
-    if (v === 'disbursement' || v === 'disburse' || t.includes('disburse')) {
-      return `<span class="rm-opt-icon-wrap rm-badge-disburse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V8m0 0l-4 4m4-4l4 4M4 4h16"/></svg></span>`;
-    }
-
-    // Stock status dots
-    if (v === 'in_stock' || (t.includes('in stock') && !t.includes('out') && !t.includes('low'))) {
-      return `<span class="rm-status-dot rm-dot-green"></span>`;
-    }
-    if (v === 'low_stock' || t.includes('low stock')) {
-      return `<span class="rm-status-dot rm-dot-amber"></span>`;
-    }
-    if (v === 'out_of_stock' || t.includes('out of stock')) {
-      return `<span class="rm-status-dot rm-dot-red"></span>`;
-    }
-
-    // Sort icons
-    if (v === 'latest' || t.includes('latest')) {
-      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>`;
-    }
-    if (v === 'oldest' || t.includes('oldest')) {
-      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>`;
-    }
-    if (v === 'az' || t.includes('a–z') || t.includes('a-z') || t.includes('a to z')) {
-      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h4l-4 8h4M7 4l4 4-4 4M14 4h7M14 9h5M14 14h3M14 19h1"/></svg></span>`;
-    }
-    if (v === 'za' || t.includes('z–a') || t.includes('z-a') || t.includes('z to a')) {
-      return `<span class="rm-opt-icon-wrap rm-icon-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16H3l4-8H3M7 20l4-4-4-4M14 4h1M14 9h3M14 14h5M14 19h7"/></svg></span>`;
-    }
-
-    return '';
-  }
-
-  function enhanceCustomSelect(select) {
-    if (!select || select.dataset.customEnhanced === 'true') return;
-    if (select.classList.contains('inv-select-sm') && !select.classList.contains('enhance-sm')) {
-      return;
-    }
-
-    select.dataset.customEnhanced = 'true';
-    select.classList.add('rmims-native-select-hidden');
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'rm-custom-select';
-    if (select.id) wrapper.dataset.selectId = select.id;
-    if (select.className) {
-      const customClasses = select.className
-        .split(' ')
-        .filter(c => c !== 'inv-select' && c !== 'rmims-native-select-hidden')
-        .join(' ');
-      if (customClasses) wrapper.className += ' ' + customClasses;
-    }
-
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'rm-select-trigger';
-    trigger.setAttribute('aria-haspopup', 'listbox');
-    trigger.setAttribute('aria-expanded', 'false');
-    if (select.title) trigger.title = select.title;
-
-    const valueSpan = document.createElement('span');
-    valueSpan.className = 'rm-select-value';
-
-    const chevronSvg = `
-      <svg class="rm-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 9l6 6 6-6"/>
-      </svg>`;
-
-    trigger.appendChild(valueSpan);
-    trigger.insertAdjacentHTML('beforeend', chevronSvg);
-
-    const menu = document.createElement('div');
-    menu.className = 'rm-select-menu';
-    menu.setAttribute('role', 'listbox');
-
-    wrapper.appendChild(trigger);
-    wrapper.appendChild(menu);
-
-    select.parentNode.insertBefore(wrapper, select.nextSibling);
-
-    let isUpdating = false;
-
-    function renderOptions() {
-      menu.innerHTML = '';
-      const options = Array.from(select.options);
-      let selectedOption = options.find(o => o.value === select.value) || options[0];
-
-      options.forEach(opt => {
-        const isSelected = opt === selectedOption;
-        const optEl = document.createElement('div');
-        optEl.className = `rm-select-option ${isSelected ? 'selected' : ''}`;
-        optEl.setAttribute('role', 'option');
-        optEl.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-        optEl.dataset.value = opt.value;
-
-        const decorator = getOptionDecorator(opt.value, opt.textContent);
-        optEl.innerHTML = `
-          <div class="rm-opt-content">
-            ${decorator}
-            <span class="rm-opt-label">${opt.textContent}</span>
-          </div>
-          <svg class="rm-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        `;
-
-        optEl.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (select.value !== opt.value) {
-            select.value = opt.value;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-            select.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-          syncUI();
-          closeMenu();
-        });
-
-        menu.appendChild(optEl);
-      });
-
-      syncUI();
-    }
-
-    function syncUI() {
-      if (isUpdating) return;
-      isUpdating = true;
-      try {
-        const options = Array.from(select.options);
-        const selectedOption = options.find(o => o.value === select.value) || options[0];
-        if (selectedOption) {
-          const dec = getOptionDecorator(selectedOption.value, selectedOption.textContent);
-          valueSpan.innerHTML = `${dec}<span>${selectedOption.textContent}</span>`;
-
-          const allOptEls = menu.querySelectorAll('.rm-select-option');
-          allOptEls.forEach(el => {
-            const isMatch = el.dataset.value === selectedOption.value;
-            el.classList.toggle('selected', isMatch);
-            el.setAttribute('aria-selected', isMatch ? 'true' : 'false');
-          });
-        }
-      } finally {
-        isUpdating = false;
-      }
-    }
-
-    function openMenu() {
-      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
-        if (el !== wrapper) {
-          el.classList.remove('open');
-          el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
-        }
-      });
-
-      wrapper.classList.add('open');
-      trigger.setAttribute('aria-expanded', 'true');
-
-      const rect = menu.getBoundingClientRect();
-      if (rect.right > window.innerWidth - 12) {
-        menu.classList.add('align-right');
-      } else {
-        menu.classList.remove('align-right');
-      }
-    }
-
-    function closeMenu() {
-      wrapper.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
-    }
-
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (wrapper.classList.contains('open')) {
-        closeMenu();
-      } else {
-        openMenu();
-      }
-    });
-
-    try {
-      const proto = HTMLSelectElement.prototype;
-      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
-      if (desc && desc.set) {
-        Object.defineProperty(select, 'value', {
-          get() {
-            return desc.get.call(this);
-          },
-          set(v) {
-            desc.set.call(this, v);
-            syncUI();
-          },
-          configurable: true
-        });
-      }
-    } catch (err) {}
-
-    select.addEventListener('change', syncUI);
-    select.addEventListener('input', syncUI);
-
-    const observer = new MutationObserver(() => {
-      renderOptions();
-    });
-    observer.observe(select, { childList: true, subtree: true, attributes: true });
-
-    renderOptions();
-  }
-
-  function initAllCustomSelects() {
-    const targetSelects = document.querySelectorAll(
-      'select[data-custom-select="true"]'
-    );
-    targetSelects.forEach(sel => {
-      enhanceCustomSelect(sel);
-    });
-  }
-
-  // Global listeners for closing dropdowns
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.rm-custom-select')) {
-      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
-        el.classList.remove('open');
-        el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
-      });
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.rm-custom-select.open').forEach(el => {
-        el.classList.remove('open');
-        el.querySelector('.rm-select-trigger')?.setAttribute('aria-expanded', 'false');
-      });
-    }
-  });
-
-  // Auto initialize on load and DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAllCustomSelects);
-  } else {
-    initAllCustomSelects();
-  }
-  window.addEventListener('load', initAllCustomSelects);
-  setTimeout(initAllCustomSelects, 300);
-
-  window.RMIMS_CUSTOM_SELECT = {
-    init: initAllCustomSelects,
-    enhance: enhanceCustomSelect
-  };
-
 })();
 

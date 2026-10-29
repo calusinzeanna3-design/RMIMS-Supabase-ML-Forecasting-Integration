@@ -1,5 +1,5 @@
 import { supabase } from "./supabase-config.js";
-import { recordLoginFailure, clearLoginFailure, resolveUserAccountContext } from "../js/system-alerts-service.js";
+import { recordLoginFailure, clearLoginFailure, resolveUserAccountContext, dispatchAccountLockoutEmailAlert } from "../js/system-alerts-service.js";
 
 /**
  * Format auth errors into clean, user-friendly messages without exposing sensitive details.
@@ -279,6 +279,30 @@ export function isUserAccountRejected(email, uid, username = '') {
     return false;
 }
 
+export function isUserAccountLocked(email) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail || cleanEmail === 'calusinzeanna3@gmail.com') return false;
+
+    try {
+        const telemetry = JSON.parse(localStorage.getItem('RMIMS_AUTH_TELEMETRY_V2') || '{"loginFailures":{}}');
+        if ((telemetry.loginFailures?.[cleanEmail]?.count || 0) >= 5) return true;
+    } catch (_) {}
+
+    try {
+        const reg = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+        const u = reg.find(x => (x.email || '').toLowerCase().trim() === cleanEmail);
+        if (u && String(u.status || '').toLowerCase() === 'locked') return true;
+    } catch (_) {}
+
+    try {
+        const app = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+        const u = app.find(x => (x.email || '').toLowerCase().trim() === cleanEmail);
+        if (u && String(u.status || '').toLowerCase() === 'locked') return true;
+    } catch (_) {}
+
+    return false;
+}
+
 export function isUserPendingApproval(email, uid, profileStatus, username = '', fullName = '') {
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanUid = (uid || '').trim();
@@ -470,6 +494,12 @@ export async function loginUser(email, password, expectedRole) {
             }
         }
 
+        // Security Pre-Check: Block locked accounts before attempting sign in
+        if (isUserAccountLocked(cleanEmailInput)) {
+            hideAuthTransition(transDOM);
+            throw new Error(`Your account is locked due to 5 consecutive failed login attempts. An operational security alert has been dispatched to ${cleanEmailInput}. Please contact your System Administrator to unlock your account.`);
+        }
+
         // Step 1: Sign in with Supabase Auth
         const authPromise = supabase.auth.signInWithPassword({
             email: cleanEmailInput,
@@ -487,7 +517,40 @@ export async function loginUser(email, password, expectedRole) {
             const msg = (error.message || "").toLowerCase();
             if (msg.includes("invalid") || msg.includes("credential") || msg.includes("password")) {
                 const userCtx = resolveUserAccountContext(cleanEmailInput);
-                recordLoginFailure(cleanEmailInput, `${userCtx.branchName} (${userCtx.branchLocation})`);
+                const failRes = recordLoginFailure(cleanEmailInput, `${userCtx.branchName} (${userCtx.branchLocation})`);
+                if (failRes && failRes.accountLocked) {
+                    dispatchAccountLockoutEmailAlert({
+                        email: cleanEmailInput,
+                        branchName: userCtx.branchName,
+                        branchLocation: userCtx.branchLocation,
+                        attempts: failRes.attempts
+                    });
+
+                    // Update local caches to status 'Locked'
+                    try {
+                        const reg = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+                        reg.forEach(u => {
+                            if ((u.email || '').toLowerCase().trim() === cleanEmailInput) u.status = 'Locked';
+                        });
+                        localStorage.setItem('rmims_registered_users', JSON.stringify(reg));
+                    } catch (_) {}
+                    try {
+                        const app = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
+                        app.forEach(u => {
+                            if ((u.email || '').toLowerCase().trim() === cleanEmailInput) u.status = 'Locked';
+                        });
+                        localStorage.setItem('rmims_approved_users', JSON.stringify(app));
+                    } catch (_) {}
+
+                    // Update Supabase user_profiles if reachable
+                    try {
+                        supabase.from("user_profiles").update({ status: "locked", updated_at: new Date().toISOString() }).eq("email", cleanEmailInput);
+                    } catch (_) {}
+
+                    throw new Error(`Account Locked: 5 failed login attempts reached. An operational security alert has been dispatched to ${cleanEmailInput}. Please contact the Administrator to unlock your account.`);
+                } else if (failRes && failRes.attempts >= 3) {
+                    throw new Error(`Invalid credentials. Security Warning: Failed attempt ${failRes.attempts} of 5. After 5 failed attempts, your account will be locked.`);
+                }
             }
             throw new Error(friendlyAuthError(error));
         }
@@ -647,7 +710,20 @@ export async function loginUser(email, password, expectedRole) {
                 throw new Error("Your account application was declined by the Administrator. Access denied.");
             }
 
-            // Unified Admin Security Check 3: Block inactive/suspended accounts
+            // Unified Admin Security Check 3: Block locked, inactive, or suspended accounts
+            const isLocked = (profile.status === "locked" || isUserAccountLocked(cleanEmail)) && !isMasterAdmin;
+            if (isLocked) {
+                hideAuthTransition(transDOM);
+                await supabase.auth.signOut();
+                try {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('rmimsCurrentUser');
+                    localStorage.removeItem('userProfile');
+                    sessionStorage.clear();
+                } catch (_) {}
+                throw new Error(`Your account has been locked due to 5 consecutive failed login attempts. An operational security alert was dispatched to ${cleanEmail}. Please contact your Administrator to unlock your account.`);
+            }
+
             const isInactive = (profile.status === "inactive" || profile.status === "suspended") && !isMasterAdmin;
             if (isInactive) {
                 hideAuthTransition(transDOM);
@@ -754,6 +830,7 @@ export async function loginUser(email, password, expectedRole) {
         };
 
         try {
+            clearLoginFailure(cleanEmail);
             localStorage.setItem("currentUser", JSON.stringify(sessionUser));
             localStorage.setItem("rmimsCurrentUser", JSON.stringify(sessionUser));
             localStorage.setItem("userProfile", JSON.stringify(sessionUser));

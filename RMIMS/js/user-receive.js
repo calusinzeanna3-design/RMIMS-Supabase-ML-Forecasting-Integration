@@ -468,12 +468,7 @@ function populateMaterialSelect() {
   const select = document.getElementById('staffRecMaterial');
   if (!select) return;
 
-  select.innerHTML = '<option value="">-- Choose Material to Receive --</option>';
-  const safeMaterials = rawMaterials.filter(m => {
-    const n = String(m.name || m.materialName || m.raw_material_name || '').toLowerCase();
-    const c = String(m.item_code || m.id || '').toUpperCase();
-    return !n.includes('coconut') && c !== 'NB-015' && c !== 'RM-033' && c !== 'RM-034';
-  });
+  const safeMaterials = rawMaterials;
   safeMaterials.forEach(m => {
     const opt = document.createElement('option');
     const matName = m.name || m.materialName || m.raw_material_name || '';

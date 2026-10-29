@@ -53,13 +53,18 @@ export function getSystemRawMaterials() {
         console.warn("Could not load custom raw materials from storage:", e);
     }
 
-    // Filter out deleted materials
+    // Filter out deleted materials (safeguarding all 59 authentic baseline materials)
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         if (deletedRaw) {
             const deletedIds = new Set(JSON.parse(deletedRaw));
             if (deletedIds.size > 0) {
-                list = list.filter(m => !deletedIds.has(String(m.id)) && !deletedIds.has((m.name || "").toLowerCase().trim()));
+                list = list.filter(m => {
+                    const code = String(m.item_code || m.id || '').toUpperCase();
+                    const num = parseInt(code.replace(/^RM-?0*/i, ''), 10);
+                    if (code.startsWith('RM-') && num >= 1 && num <= 59) return true; // protected authentic
+                    return !deletedIds.has(String(m.id)) && !deletedIds.has((m.name || "").toLowerCase().trim());
+                });
             }
         }
     } catch (e) {}

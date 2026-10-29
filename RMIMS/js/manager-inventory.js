@@ -9,7 +9,7 @@
  *   Last Updated, Added By, Status.
  */
 
-import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit } from './system-materials.js';
+import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit, getSconesMaterialImagePath } from './system-materials.js';
 import {
   fetchUnifiedInventoryFromSupabase,
   saveRawMaterialToSupabase,
@@ -132,6 +132,28 @@ const BASELINE_BOM_RATIOS = {
 
 // Authentic Default Specifications Map (Form, type, or grade only - no quantity, stock, supplier, or price)
 const MATERIAL_SPECS_MAP = {
+  // Authoritative Scones & Muffins Bakery Raw Materials Specifications (NB-001 through NB-019)
+  'NB-001': { raw_material_name: 'All-Purpose / Bread Flour', specification_name: 'Hard Wheat High-Gluten Bakery Flour' },
+  'NB-002': { raw_material_name: 'Refined White Sugar', specification_name: 'Premium Refined Cane Granulated Sugar' },
+  'NB-003': { raw_material_name: 'Fresh Yellow Squash (Kalabasa)', specification_name: 'Fresh Native Yellow Kalabasa Mash' },
+  'NB-004': { raw_material_name: 'Skimmed Milk Powder', specification_name: 'Fortified Non-Fat Bakery Milk Powder' },
+  'NB-005': { raw_material_name: 'Condensed Milk', specification_name: 'Sweetened Condensed Filled Milk' },
+  'NB-006': { raw_material_name: 'Fresh Whole Eggs', specification_name: 'Fresh Farm Grade-A Clean Whole Eggs' },
+  'NB-007': { raw_material_name: 'Baking Shortening', specification_name: 'Emulsified Vegetable Bakery Shortening' },
+  'NB-008': { raw_material_name: 'Margarine', specification_name: 'Fortified Yellow Table & Baking Margarine' },
+  'NB-009': { raw_material_name: 'Instant Dry Yeast', specification_name: 'Active Fast-Acting Dried Baking Yeast' },
+  'NB-010': { raw_material_name: 'Baking Soda', specification_name: 'Pure Sodium Bicarbonate Food Grade' },
+  'NB-011': { raw_material_name: 'Iodized Salt', specification_name: 'Refined Vacuum Evaporated Iodized Salt' },
+  'NB-012': { raw_material_name: 'Calcium Propionate', specification_name: 'Commercial Anti-Mold Bread Preservative' },
+  'NB-013': { raw_material_name: 'Potassium Sorbate', specification_name: 'Food Grade Anti-Microbial Inhibitor' },
+  'NB-014': { raw_material_name: 'Crushed Peanuts / Nuts', specification_name: 'Roasted Chopped Kernel Red Peanuts' },
+  'NB-015': { raw_material_name: 'Desiccated Coconut', specification_name: 'Unsweetened Fine Grated Coconut Flakes' },
+  'NB-016': { raw_material_name: 'Black Sesame Seeds', specification_name: 'Natural Cleaned Black Sesame Seeds' },
+  'NB-017': { raw_material_name: 'Malunggay (Moringa) Flakes', specification_name: 'Dehydrated Pure Moringa Oleifera Leaf Flakes' },
+  'NB-018': { raw_material_name: 'Vanilla Extract', specification_name: 'Pure Natural Liquid Vanilla Flavor Extract' },
+  'NB-019': { raw_material_name: 'Plastic Pillow Packaging', specification_name: 'BOPP Heat-Sealable Nutribun Pillow Film' },
+
+  // Authoritative KXC 5-Year Enterprise Raw Materials Specifications (RM-001 through RM-059)
   'RM-001': { raw_material_name: 'Food Colorant', specification_name: 'Sunset Yellow / Orange Powder Dye' },
   'RM-002': { raw_material_name: 'Baking Powder', specification_name: 'Double-Acting Leavening Powder' },
   'RM-003': { raw_material_name: 'Cream of Tartar', specification_name: 'Purified Potassium Bitartrate 99.5%' },
@@ -474,7 +496,20 @@ function saveStoredOverrides(overrides) {
 function getArchivedIds() {
   try {
     const raw = localStorage.getItem(MGR_ARCHIVED_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
+    const set = raw ? new Set(JSON.parse(raw)) : new Set();
+    // Authentic baseline materials (NB-001..NB-019 and RM-001..RM-059) can never be archived
+    for (let i = 1; i <= 19; i++) {
+      set.delete(`NB-${String(i).padStart(3, '0')}`);
+      set.delete(`nb-${String(i).padStart(3, '0')}`);
+    }
+    for (let i = 1; i <= 59; i++) {
+      set.delete(`RM-${String(i).padStart(3, '0')}`);
+      set.delete(`rm-${String(i).padStart(3, '0')}`);
+    }
+    set.delete('NB-015');
+    set.delete('RM-033');
+    set.delete('RM-034');
+    return set;
   } catch (e) {
     return new Set();
   }
@@ -763,8 +798,6 @@ function renderInventoryTable() {
         <th style="text-align: right; width: 110px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Current Stock</th>
         <th style="text-align: right; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Min Stock</th>
         <th style="width: 70px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Unit</th>
-        <th style="width: 120px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Date</th>
-        <th style="width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Time</th>
         <th style="text-align: center; width: 100px; background-color: #15803D !important; color: #FFFFFF !important; border-bottom: 2px solid #14532D !important;">Status</th>
         <th style="text-align: center; width: 140px; background-color: #15803D !important; color: #FFFFFF !important; border-top-right-radius: 12px !important; border-bottom: 2px solid #14532D !important;">Action</th>
       </tr>
@@ -800,7 +833,7 @@ function renderInventoryTable() {
   if (paginated.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center; padding: 48px 16px; color: #64748B;">
+        <td colspan="7" style="text-align:center; padding: 48px 16px; color: #64748B;">
           <div style="font-size: 28px; margin-bottom: 8px;">📦</div>
           <strong style="display:block; font-size: 14.5px; color: #0F2A1B; margin-bottom: 4px;">No materials found</strong>
           <p style="font-size: 13px; margin: 0; color: #5C7A68;">Try adjusting your search query or status filter.</p>
@@ -862,12 +895,6 @@ function renderInventoryTable() {
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
           <span class="mgr-unit-text" style="color: #334155; font-weight: 600;">${m.unit}</span>
-        </td>
-        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
-          <span class="mgr-date-text" style="color: #334155;">${m.display_date}</span>
-        </td>
-        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
-          <span class="mgr-time-text" style="color: #475569;">${m.display_time}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span class="mgr-status-pill ${statusPillClass}">${statusText}</span>
@@ -3266,6 +3293,17 @@ function openMaterialInfoModal(id) {
 
   document.getElementById('infoMatId').textContent = m.id;
   document.getElementById('infoMatName').textContent = m.raw_material_name || m.name;
+
+  const thumbEl = document.getElementById('infoMatThumb');
+  if (thumbEl) {
+    const imgSrc = m.image || m.imageUrl || getSconesMaterialImagePath(m.id || m.name, '../assets');
+    if (imgSrc) {
+      thumbEl.src = imgSrc;
+      thumbEl.style.display = 'block';
+    } else {
+      thumbEl.style.display = 'none';
+    }
+  }
 
   const specSub = document.getElementById('infoMatSpecSubtitle');
   if (specSub) specSub.textContent = `Specification: ${m.specification_name || 'Standard Grade'}`;
