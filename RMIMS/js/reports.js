@@ -169,7 +169,13 @@ onAuthStateChanged(auth, async (user) => {
         }
 
         const pBtn = document.getElementById("profileBtn") || document.getElementById("rmsmeProfileBtn");
-        const mName = profile.full_name || "Manager";
+        let mName = (profile?.full_name || '').trim();
+        const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
+        if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
+            if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
+            else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
+            else mName = 'Aizel';
+        }
         if (pBtn) {
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
             if (nameEl) nameEl.textContent = mName;
@@ -183,7 +189,7 @@ onAuthStateChanged(auth, async (user) => {
                     pAv.style.padding = '0';
                     pAv.style.overflow = 'hidden';
                 } else {
-                    pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+                    pAv.textContent = initials(mName) || "A";
                 }
             }
         }
@@ -4583,7 +4589,10 @@ function updateCorporatePreviewDetails(target) {
     if (scopeEl) scopeEl.textContent = state.selectedMaterialName || "All Catalog Raw Materials";
     if (mgrEl) {
         const pBtn = document.getElementById("profileBtn");
-        const pName = pBtn?.querySelector("[data-shell-name]")?.textContent || "Manager_01";
+        let pName = pBtn?.querySelector("[data-shell-name]")?.textContent?.trim();
+        if (!pName || ['manager', 'manager_01', 'user account', 'user'].includes(pName.toLowerCase())) {
+            pName = "Aizel";
+        }
         mgrEl.textContent = pName;
     }
     if (timeEl) {

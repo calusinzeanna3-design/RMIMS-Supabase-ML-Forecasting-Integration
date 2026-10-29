@@ -263,7 +263,13 @@ async function bootstrapForecastApp(user) {
         }
 
         const pBtn = document.getElementById("profileBtn") || document.getElementById("rmsmeProfileBtn");
-        const mName = profile?.full_name || "Manager";
+        let mName = (profile?.full_name || '').trim();
+        const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
+        if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
+            if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
+            else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
+            else mName = 'Aizel';
+        }
         if (pBtn) {
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
             if (nameEl) nameEl.textContent = mName;
@@ -277,7 +283,7 @@ async function bootstrapForecastApp(user) {
                     pAv.style.padding = '0';
                     pAv.style.overflow = 'hidden';
                 } else {
-                    pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+                    pAv.textContent = initials(mName) || "A";
                 }
             }
         }

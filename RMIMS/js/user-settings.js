@@ -479,6 +479,41 @@ function initActions() {
                 return;
             }
 
+            // Security Gate 1: Verify legitimate registered email
+            const cleanEmail = (currentUser.email || "").toLowerCase().trim();
+            const LEGIT_EMAILS = [
+                "zeannapatty@gmail.com",
+                "zeannapatricia@gmail.com",
+                "calusinzeanna3@gmail.com",
+                "sconesandmuffins@gmail.com",
+                "scone2@gmail.com"
+            ];
+            let isLegitEmail = LEGIT_EMAILS.includes(cleanEmail);
+            if (!isLegitEmail && cleanEmail) {
+                try {
+                    const reg = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
+                    isLegitEmail = reg.some(u => u && (u.email || "").toLowerCase().trim() === cleanEmail && String(u.status || "").toLowerCase() === "active");
+                } catch (_) {}
+            }
+
+            if (!cleanEmail || !isLegitEmail) {
+                console.error("[Security] Blocked unauthorized profile alteration attempt from non-legit account:", cleanEmail);
+                const userObjKeys = ["currentUser", "rmimsCurrentUser", "userProfile", "managerUser", "staffUser", "adminUser", "rmimsAdminUser"];
+                userObjKeys.forEach(k => localStorage.removeItem(k));
+                sessionStorage.clear();
+                try { await supabase.auth.signOut(); } catch (_) {}
+                alert("Security Alert: Unauthorized account session. Profile modification blocked.");
+                window.location.replace("../login.html");
+                return;
+            }
+
+            // Security Gate 2: Block unauthorized / zombie placeholder names
+            const BANNED_INPUT_NAMES = ["manager", "user account", "user", "account", "unauthorized", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
+            if (BANNED_INPUT_NAMES.includes(newName.toLowerCase())) {
+                if (nameErr) nameErr.textContent = "Unauthorized name. Please enter your authentic registered name.";
+                return;
+            }
+
             const saveBtn = $("saveProfileChangesBtn");
             const orig = saveBtn.textContent;
             saveBtn.disabled = true;
@@ -650,13 +685,13 @@ function initActions() {
                     }
                 }
 
-                // 4. Update in rmims_registered_users
+                // 4. Update in rmims_registered_users (CONFIDENTIALITY: NEVER store plaintext password in localStorage)
                 let regUpdated = false;
                 regUsers.forEach(u => {
+                    if (u && u.password !== undefined) delete u.password;
                     if ((userEmail && (u.email || "").toLowerCase() === userEmail) ||
                         (currentUser?.uid && String(u.id || "") === String(currentUser.uid)) ||
                         (currentUser?.fullName && (u.name || "").toLowerCase() === currentUser.fullName.toLowerCase())) {
-                        u.password = newPass;
                         regUpdated = true;
                     }
                 });
@@ -664,39 +699,37 @@ function initActions() {
                     regUsers.push({
                         id: currentUser?.uid || "user_" + Date.now(),
                         email: userEmail,
-                        name: currentUser?.fullName || "Store Staff",
+                        name: currentUser?.fullName || "Staff_1",
                         role: "user",
-                        password: newPass,
                         status: "active"
                     });
                 }
                 localStorage.setItem("rmims_registered_users", JSON.stringify(regUsers));
                 window.dispatchEvent(new Event("rmims_registered_users_updated"));
 
-                // 5. Update in RMIMS_BRANCH_STORES_V3
+                // 5. Update in RMIMS_BRANCH_STORES_V3 (CONFIDENTIALITY: Scrub passwords from local store records)
                 try {
                     const rawStores = localStorage.getItem("RMIMS_BRANCH_STORES_V3");
                     if (rawStores) {
                         const stores = JSON.parse(rawStores);
                         const storeList = Array.isArray(stores) ? stores : Object.values(stores);
-                        let storeChanged = false;
                         storeList.forEach(st => {
                             const list = [...(st.staff || []), ...(st.managers || [])];
                             list.forEach(p => {
-                                if (p && (
-                                    (userEmail && (p.email || "").toLowerCase() === userEmail) ||
-                                    (currentUser?.fullName && (p.name || "").toLowerCase() === currentUser.fullName.toLowerCase())
-                                )) {
-                                    p.password = newPass;
-                                    storeChanged = true;
-                                }
+                                if (p && p.password !== undefined) delete p.password;
                             });
                         });
-                        if (storeChanged) {
-                            localStorage.setItem("RMIMS_BRANCH_STORES_V3", JSON.stringify(stores));
-                        }
+                        localStorage.setItem("RMIMS_BRANCH_STORES_V3", JSON.stringify(stores));
                     }
                 } catch (_) {}
+
+                // Clear password input fields immediately from DOM
+                const curPwEl = $("currentPassword");
+                const newPwEl = $("newPassword");
+                const confPwEl = $("confirmPassword");
+                if (curPwEl) curPwEl.value = "";
+                if (newPwEl) newPwEl.value = "";
+                if (confPwEl) confPwEl.value = "";
 
                 // 6. Update staffUser / currentUser timestamps
                 try {

@@ -347,6 +347,35 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        // BANNED ZOMBIE NAMES CHECK
+        const bannedPlaceholders = ['manager', 'user account', 'user', 'undefined', 'null', 'admin', 'administrator'];
+        if (bannedPlaceholders.includes(newName.toLowerCase())) {
+          if (fullNameError) fullNameError.textContent = 'Generic role placeholder names are not permitted. Please use your authentic registered name.';
+          if (nameInput) nameInput.focus();
+          return;
+        }
+
+        // VERIFY LEGITIMATE ADMIN EMAIL
+        const legitAdminEmails = ['calusinzeanna3@gmail.com'];
+        const currentEmail = (activeAdminUser?.email || '').trim().toLowerCase();
+        let isLegit = legitAdminEmails.includes(currentEmail);
+        if (!isLegit) {
+          try {
+            const regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
+            isLegit = regUsers.some(u => (u.email || '').toLowerCase() === currentEmail && (u.role === 'admin' || (u.email || '').toLowerCase() === 'calusinzeanna3@gmail.com'));
+          } catch (_) {}
+        }
+
+        if (!isLegit && currentEmail) {
+          if (window.showAdminToast) {
+            window.showAdminToast('Unauthorized session detected. Profile modification blocked.', 'danger');
+          }
+          ['adminUser', 'rmimsAdminUser', 'currentUser', 'userProfile', 'rmimsCurrentUser'].forEach(k => localStorage.removeItem(k));
+          try { if (supabase?.auth) await supabase.auth.signOut(); } catch (_) {}
+          setTimeout(() => { window.location.href = '../login.html'; }, 1000);
+          return;
+        }
+
         const origText = saveBtn ? saveBtn.textContent : 'Save Changes';
         if (saveBtn) {
           saveBtn.disabled = true;
@@ -584,13 +613,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
 
-          // 4. Update in rmims_registered_users
+          // 4. Update in rmims_registered_users (DO NOT STORE PLAINTEXT PASSWORDS)
           let regUpdated = false;
           regUsers.forEach(u => {
             if ((adminEmail && (u.email || '').toLowerCase() === adminEmail) ||
                 (activeAdminUser?.id && String(u.id || '') === String(activeAdminUser.id)) ||
                 (activeAdminUser?.fullName && (u.name || '').toLowerCase() === activeAdminUser.fullName.toLowerCase())) {
-              u.password = nw;
+              delete u.password;
+              u.updated_at = new Date().toISOString();
               regUpdated = true;
             }
           });
@@ -598,27 +628,34 @@ document.addEventListener('DOMContentLoaded', () => {
             regUsers.push({
               id: activeAdminUser?.id || 'admin_' + Date.now(),
               email: adminEmail,
-              name: activeAdminUser?.fullName || 'Main Administrator',
+              name: activeAdminUser?.fullName || 'Zeanna Calusin',
               role: 'admin',
-              password: nw,
               status: 'active'
             });
           }
+          // Strip password from all records for maximum confidentiality
+          regUsers.forEach(u => { delete u.password; });
           localStorage.setItem('rmims_registered_users', JSON.stringify(regUsers));
           window.dispatchEvent(new Event('rmims_registered_users_updated'));
 
-          // 5. Update admin session objects timestamps
+          // 5. Update admin session objects timestamps (scrubbing password)
           try {
             const keys = ['adminUser', 'rmimsAdminUser', 'currentUser', 'userProfile', 'rmimsCurrentUser'];
             keys.forEach(k => {
               const raw = localStorage.getItem(k);
               if (raw) {
                 const u = JSON.parse(raw);
+                delete u.password;
                 u.updatedAt = new Date().toISOString();
                 localStorage.setItem(k, JSON.stringify(u));
               }
             });
           } catch (_) {}
+
+          // Wipe password inputs from DOM immediately
+          if (curPass) curPass.value = '';
+          if (newPass) newPass.value = '';
+          if (confPass) confPass.value = '';
 
           if (window.showAdminToast) {
             window.showAdminToast('Password updated successfully.');

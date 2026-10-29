@@ -3006,7 +3006,13 @@ onAuthStateChanged(auth, async user => {
       window.checkAndShowOnboarding(profile, supabase);
     }
 
-    const mName = profile.full_name || "Manager";
+    let mName = (profile?.full_name || '').trim();
+    const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
+    if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
+      if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
+      else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
+      else mName = 'Aizel';
+    }
     const greet = greetingWord();
     const greetingText = `${greet}, ${mName}! Overview of your raw materials and inventory activity.`;
 
@@ -3019,7 +3025,7 @@ onAuthStateChanged(auth, async user => {
     }
 
     if (sessionStorage.getItem("rmims_just_logged_in") === "true") {
-      toast(`${greet}, Manager! Welcome to your RMIMS Manager Dashboard.`, "success");
+      toast(`${greet}, ${mName}! Welcome to your RMIMS Manager Dashboard.`, "success");
       sessionStorage.removeItem("rmims_just_logged_in");
     }
 
@@ -3037,7 +3043,7 @@ onAuthStateChanged(auth, async user => {
           pAv.style.padding = '0';
           pAv.style.overflow = 'hidden';
         } else {
-          pAv.textContent = (mName && mName !== "Manager" && initials(mName) !== 'A') ? initials(mName) : "M";
+          pAv.textContent = initials(mName) || "A";
         }
       }
     }

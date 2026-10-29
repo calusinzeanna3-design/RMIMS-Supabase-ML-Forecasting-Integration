@@ -10,6 +10,49 @@ import { supabase } from '../supabase/supabase-config.js';
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-theme-preference');
 
+  /* Strict DevTools Password Confidentiality Scrubber: Ensure NO passwords ever exist in localStorage */
+  try {
+    const keysToCheck = ['rmims_registered_users', 'RMIMS_BRANCH_STORES_V3', 'currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser', 'adminUser', 'rmimsAdminUser', 'rmims_approved_users'];
+    keysToCheck.forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        let modified = false;
+        if (Array.isArray(parsed)) {
+          parsed.forEach(item => {
+            if (item && item.password !== undefined) {
+              delete item.password;
+              modified = true;
+            }
+          });
+        } else if (parsed && typeof parsed === 'object') {
+          if (parsed.password !== undefined) {
+            delete parsed.password;
+            modified = true;
+          }
+          Object.values(parsed).forEach(sub => {
+            if (sub && typeof sub === 'object') {
+              ['managers', 'staff'].forEach(roleKey => {
+                if (Array.isArray(sub[roleKey])) {
+                  sub[roleKey].forEach(p => {
+                    if (p && p.password !== undefined) {
+                      delete p.password;
+                      modified = true;
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+        if (modified) {
+          localStorage.setItem(k, JSON.stringify(parsed));
+        }
+      } catch (_) {}
+    });
+  } catch (_) {}
+
   /* Cleanse all mock accounts and dummy personnel across manager & staff */
   try {
     const BANNED_MOCK_NAMES = [
@@ -30,6 +73,24 @@ import { supabase } from '../supabase/supabase-config.js';
           const e = (p.email || '').toLowerCase();
           if (BANNED_MOCK_NAMES.some(b => n.includes(b)) || DUMP_EMAILS.some(d => e.includes(d))) {
             localStorage.removeItem(key);
+            return;
+          }
+          // Remove zombie / hardcoded placeholder names and heal to authentic registered identity
+          const isZombie = !p.fullName || ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', '—', '-'].includes(n.trim());
+          if (isZombie) {
+            let authenticName = 'Aizel';
+            if (e === 'zeannapatty@gmail.com') authenticName = 'Aizel';
+            else if (e === 'zeannapatricia@gmail.com') authenticName = 'Glazel';
+            else if (e === 'calusinzeanna3@gmail.com') authenticName = 'Zeanna';
+            else if (e === 'sconesandmuffins@gmail.com') authenticName = 'Staff_1';
+            else if (e === 'scone2@gmail.com') authenticName = 'Staff_2';
+            else if (isStrictManager) authenticName = 'Aizel';
+            else if (isAnyAdmin) authenticName = 'Zeanna';
+            else authenticName = 'Staff_1';
+
+            p.fullName = authenticName;
+            p.name = authenticName;
+            localStorage.setItem(key, JSON.stringify(p));
           }
         } catch (_) {}
       }
@@ -583,9 +644,9 @@ import { supabase } from '../supabase/supabase-config.js';
             <!-- Profile Dropdown Anchor -->
             <div class="rmsme-popover-anchor" id="rmsmeProfileAnchor">
               <button class="mgr-profile-pill" id="rmsmeProfileBtn" aria-expanded="false" title="Manager Menu">
-                <span class="mgr-avatar" data-shell-avatar>M</span>
+                <span class="mgr-avatar" data-shell-avatar>A</span>
                 <span class="mgr-user-copy">
-                  <strong class="mgr-name" data-shell-name>Manager</strong>
+                  <strong class="mgr-name" data-shell-name>Aizel</strong>
                   <small class="mgr-role" data-shell-role>Manager</small>
                 </span>
                 <span class="mgr-chev">▾</span>
@@ -595,7 +656,7 @@ import { supabase } from '../supabase/supabase-config.js';
                   <div class="mgr-online-badge">
                     <span class="mgr-status-indicator"></span>
                     <div>
-                      <strong data-shell-name>Manager</strong>
+                      <strong data-shell-name>Aizel</strong>
                       <small data-shell-role style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                     </div>
                   </div>
@@ -912,11 +973,22 @@ import { supabase } from '../supabase/supabase-config.js';
         const raw = localStorage.getItem(k); if (!raw) continue;
         const o = JSON.parse(raw);
         if (o?.fullName || o?.name || o?.email) {
-          const rawName = o.fullName || o.name || '';
-          const candidateEmail = (o.email || '').toLowerCase();
+          let rawName = (o.fullName || o.name || '').trim();
+          const candidateEmail = (o.email || '').toLowerCase().trim();
           const lowerName = rawName.toLowerCase();
           if (candidateEmail.includes('@rmims.ph') || lowerName.includes('maria santos') || lowerName.includes('rafael cruz')) {
             continue;
+          }
+          const BANNED_PLACEHOLDERS = ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', 'administrator', '—', '-'];
+          if (!rawName || BANNED_PLACEHOLDERS.includes(lowerName)) {
+            if (candidateEmail === 'zeannapatty@gmail.com') rawName = 'Aizel';
+            else if (candidateEmail === 'zeannapatricia@gmail.com') rawName = 'Glazel';
+            else if (candidateEmail === 'calusinzeanna3@gmail.com') rawName = 'Zeanna';
+            else if (candidateEmail === 'sconesandmuffins@gmail.com') rawName = 'Staff_1';
+            else if (candidateEmail === 'scone2@gmail.com') rawName = 'Staff_2';
+            else if (isStrictManager) rawName = 'Aizel';
+            else if (isAnyAdmin) rawName = 'Zeanna';
+            else rawName = 'Staff_1';
           }
           name = rawName;
           email = o.email || '';
@@ -976,19 +1048,24 @@ import { supabase } from '../supabase/supabase-config.js';
     }
 
     const currentCachedAvatar = getCachedAvatar(uid);
+    const authenticFallback = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
+    if (!name || ['manager', 'user account', 'user', 'account', '—', '-'].includes(name.trim().toLowerCase())) {
+      name = authenticFallback;
+    }
 
     if (!hasSession) {
       if (isStrictManager) {
         document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = 'Manager');
-        applyShellAvatar(currentCachedAvatar, initials(name || 'Manager'));
+        document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = 'Aizel');
+        applyShellAvatar(currentCachedAvatar, 'A');
       }
       return;
     }
 
-    document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name || (isStrictManager ? 'Manager' : 'User'));
+    document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = name || authenticFallback);
     document.querySelectorAll('[data-shell-email]').forEach(e => e.textContent = email);
     
-    const fallbackLetter = initials(name || (isStrictManager ? 'Manager' : (isAnyAdmin ? 'Admin' : 'User')));
+    const fallbackLetter = initials(name || authenticFallback);
     applyShellAvatar(currentCachedAvatar, fallbackLetter);
     document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = isStrictManager ? 'Manager' : roleTitle);
 
@@ -1162,7 +1239,23 @@ import { supabase } from '../supabase/supabase-config.js';
             return;
           }
 
-          let liveName = profile.full_name || profile.email;
+          let liveName = (profile.full_name || '').trim();
+          const BANNED_PLACEHOLDERS = ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', 'administrator', '—', '-'];
+          if (!liveName || BANNED_PLACEHOLDERS.includes(liveName.toLowerCase())) {
+            if (cleanEmail === 'zeannapatty@gmail.com') liveName = 'Aizel';
+            else if (cleanEmail === 'zeannapatricia@gmail.com') liveName = 'Glazel';
+            else if (cleanEmail === 'calusinzeanna3@gmail.com') liveName = 'Zeanna';
+            else if (cleanEmail === 'sconesandmuffins@gmail.com') liveName = 'Staff_1';
+            else if (cleanEmail === 'scone2@gmail.com') liveName = 'Staff_2';
+            else liveName = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
+
+            profile.full_name = liveName;
+            try {
+              if (authUser?.id) {
+                supabase.from('user_profiles').update({ full_name: liveName }).eq('id', authUser.id);
+              }
+            } catch (_) {}
+          }
           document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = liveName);
 
           const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||

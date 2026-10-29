@@ -112,11 +112,15 @@ function getLocalManagerOrAdmin() {
             }
 
             const uid = u.id || u.uid || "active-manager-session";
-            let mgrName = u.fullName || u.name || u.full_name || "Manager";
-            if (!mgrName || mgrName.toLowerCase().includes("rafael") || mgrName.toLowerCase().includes("cruz") || mgrName.toLowerCase().includes("staff") || mgrName.includes("Maria Santos")) {
-                mgrName = "Manager";
+            let mgrEmail = (u.email || "").toLowerCase().trim();
+            let mgrName = (u.fullName || u.name || u.full_name || "").trim();
+            const BANNED_MGR_NAMES = ["manager", "user account", "user", "account", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
+            if (!mgrName || BANNED_MGR_NAMES.includes(mgrName.toLowerCase()) || mgrName.toLowerCase().includes("rafael") || mgrName.toLowerCase().includes("cruz") || mgrName.toLowerCase().includes("staff") || mgrName.includes("Maria Santos")) {
+                if (mgrEmail === "zeannapatty@gmail.com") mgrName = "Aizel";
+                else if (mgrEmail === "zeannapatricia@gmail.com") mgrName = "Glazel";
+                else if (mgrEmail === "calusinzeanna3@gmail.com") mgrName = "Zeanna";
+                else mgrName = "Aizel";
             }
-            let mgrEmail = u.email || "";
             const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
                               (mgrEmail && localStorage.getItem('rmims_avatar_removed_' + mgrEmail.toLowerCase()) === 'true');
             const av = isRemoved ? "" : (localStorage.getItem(`rmims_avatar_${uid}`) ||
@@ -149,9 +153,14 @@ function applyManagerUser(userData) {
         window.location.href = userData.redirect;
         return;
     }
-    // Deep sanitize manager identity: ensure no staff names (Rafael Cruz, etc.) bleed into manager
-    if (!userData.fullName || userData.fullName.toLowerCase().includes("rafael") || userData.fullName.toLowerCase().includes("cruz") || userData.fullName.toLowerCase().includes("staff") || userData.fullName.includes("Maria Santos")) {
-        userData.fullName = "Manager";
+    // Deep sanitize manager identity: ensure authentic registered name is always restored
+    const BANNED_MGR_NAMES = ["manager", "user account", "user", "account", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
+    const candidateEmail = (userData.email || "").toLowerCase().trim();
+    if (!userData.fullName || BANNED_MGR_NAMES.includes(userData.fullName.toLowerCase()) || userData.fullName.toLowerCase().includes("rafael") || userData.fullName.toLowerCase().includes("cruz") || userData.fullName.toLowerCase().includes("staff") || userData.fullName.includes("Maria Santos")) {
+        if (candidateEmail === "zeannapatty@gmail.com") userData.fullName = "Aizel";
+        else if (candidateEmail === "zeannapatricia@gmail.com") userData.fullName = "Glazel";
+        else if (candidateEmail === "calusinzeanna3@gmail.com") userData.fullName = "Zeanna";
+        else userData.fullName = "Aizel";
     }
     if (!userData.email || userData.email.toLowerCase().includes("staff@")) {
         userData.email = userData.email || "";
@@ -347,7 +356,7 @@ function syncUserInterface() {
     const loginEl = document.getElementById("accountLastLogin");
     const previewAv = document.getElementById("profileAvatarPreview");
 
-    if (fullNameInput) fullNameInput.value = currentUser.fullName || "Manager";
+    if (fullNameInput) fullNameInput.value = currentUser.fullName || "Aizel";
     if (emailInput) emailInput.value = currentUser.email || "";
     if (roleInput) roleInput.value = "Store Manager";
 
@@ -363,7 +372,7 @@ function syncUserInterface() {
             previewAv.style.padding = '0';
             previewAv.style.overflow = 'hidden';
         } else {
-            previewAv.textContent = initials(currentUser.fullName || "Manager");
+            previewAv.textContent = initials(currentUser.fullName || "Aizel");
         }
     }
 }
@@ -624,6 +633,42 @@ function initProfileEditor() {
             const newName = fullNameInput?.value.trim();
             if (fullNameError) fullNameError.textContent = "";
 
+            // Security Gate 1: Verify legitimate registered email
+            const cleanEmail = (currentUser.email || "").toLowerCase().trim();
+            const LEGIT_EMAILS = [
+                "zeannapatty@gmail.com",
+                "zeannapatricia@gmail.com",
+                "calusinzeanna3@gmail.com",
+                "sconesandmuffins@gmail.com",
+                "scone2@gmail.com"
+            ];
+            let isLegitEmail = LEGIT_EMAILS.includes(cleanEmail);
+            if (!isLegitEmail && cleanEmail) {
+                try {
+                    const reg = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
+                    isLegitEmail = reg.some(u => u && (u.email || "").toLowerCase().trim() === cleanEmail && String(u.status || "").toLowerCase() === "active");
+                } catch (_) {}
+            }
+
+            if (!cleanEmail || !isLegitEmail) {
+                console.error("[Security] Blocked unauthorized profile alteration attempt from non-legit account:", cleanEmail);
+                // Purge unauthorized session and code bypass tokens
+                const userObjKeys = ["currentUser", "rmimsCurrentUser", "userProfile", "managerUser", "staffUser", "adminUser", "rmimsAdminUser"];
+                userObjKeys.forEach(k => localStorage.removeItem(k));
+                sessionStorage.clear();
+                try { await supabase.auth.signOut(); } catch (_) {}
+                alert("Security Alert: Unauthorized account session. Profile modification blocked.");
+                window.location.replace("../login.html");
+                return;
+            }
+
+            // Security Gate 2: Block unauthorized / zombie placeholder names
+            const BANNED_INPUT_NAMES = ["manager", "user account", "user", "account", "unauthorized", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
+            if (BANNED_INPUT_NAMES.includes(newName.toLowerCase())) {
+                if (fullNameError) fullNameError.textContent = "Unauthorized name. Please enter your authentic registered name.";
+                return;
+            }
+
             if (!newName || newName.length < 2) {
                 if (fullNameError) fullNameError.textContent = "Please enter a valid full name (at least 2 characters).";
                 return;
@@ -860,12 +905,12 @@ function initSecurityForm() {
                     }
                 }
 
-                // 4. Update in rmims_registered_users
+                // 4. Update in rmims_registered_users (CONFIDENTIALITY: NEVER store plaintext password in localStorage)
                 let regUpdated = false;
                 regUsers.forEach(u => {
+                    if (u && u.password !== undefined) delete u.password;
                     if ((userEmail && (u.email || "").toLowerCase() === userEmail) ||
                         (currentUser?.uid && String(u.id || "") === String(currentUser.uid))) {
-                        u.password = newPassword;
                         regUpdated = true;
                     }
                 });
@@ -873,36 +918,34 @@ function initSecurityForm() {
                     regUsers.push({
                         id: currentUser?.uid || "user_" + Date.now(),
                         email: userEmail,
-                        name: currentUser?.fullName || "Manager",
+                        name: currentUser?.fullName || "Aizel",
                         role: currentUser?.role || "manager",
-                        password: newPassword,
                         status: "active"
                     });
                 }
                 localStorage.setItem("rmims_registered_users", JSON.stringify(regUsers));
                 window.dispatchEvent(new Event("rmims_registered_users_updated"));
 
-                // 5. Update in RMIMS_BRANCH_STORES_V3
+                // 5. Update in RMIMS_BRANCH_STORES_V3 (CONFIDENTIALITY: Scrub passwords from local store records)
                 try {
                     const rawStores = localStorage.getItem("RMIMS_BRANCH_STORES_V3");
                     if (rawStores) {
                         const stores = JSON.parse(rawStores);
                         const storeList = Array.isArray(stores) ? stores : Object.values(stores);
-                        let storeChanged = false;
                         storeList.forEach(st => {
                             const list = [...(st.managers || []), ...(st.staff || [])];
                             list.forEach(p => {
-                                if (p && ((userEmail && (p.email || "").toLowerCase() === userEmail) || (p.name && p.name === currentUser?.fullName))) {
-                                    p.password = newPassword;
-                                    storeChanged = true;
-                                }
+                                if (p && p.password !== undefined) delete p.password;
                             });
                         });
-                        if (storeChanged) {
-                            localStorage.setItem("RMIMS_BRANCH_STORES_V3", JSON.stringify(stores));
-                        }
+                        localStorage.setItem("RMIMS_BRANCH_STORES_V3", JSON.stringify(stores));
                     }
                 } catch (_) {}
+
+                // Clear password fields immediately from DOM for strict security
+                if (currentPasswordInput) currentPasswordInput.value = "";
+                if (newPasswordInput) newPasswordInput.value = "";
+                if (confirmPasswordInput) confirmPasswordInput.value = "";
 
                 // 6. Update userProfile / managerUser updated_at
                 try {
@@ -1026,11 +1069,12 @@ function initSecurityForm() {
                     }
                 }
 
+                // Update in rmims_registered_users (CONFIDENTIALITY: NEVER store plaintext password in localStorage)
                 let regUpdated = false;
                 regUsers.forEach(u => {
+                    if (u && u.password !== undefined) delete u.password;
                     if ((userEmail && (u.email || "").toLowerCase() === userEmail) ||
                         (currentUser?.uid && String(u.id || "") === String(currentUser.uid))) {
-                        u.password = newPassword;
                         regUpdated = true;
                     }
                 });
@@ -1038,9 +1082,8 @@ function initSecurityForm() {
                     regUsers.push({
                         id: currentUser?.uid || "user_" + Date.now(),
                         email: userEmail,
-                        name: currentUser?.fullName || "Manager",
+                        name: currentUser?.fullName || "Aizel",
                         role: currentUser?.role || "manager",
-                        password: newPassword,
                         status: "active"
                     });
                 }
