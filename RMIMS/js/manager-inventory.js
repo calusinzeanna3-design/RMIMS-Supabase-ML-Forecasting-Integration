@@ -363,7 +363,9 @@ function loadMaterials() {
 
     const category = ov.category || m.category || 'Baking Supplies';
     const unit = ov.unit || m.unit_of_measure || m.unit || '';
-    const currentStock = Number(ov.current_stock !== undefined ? ov.current_stock : (m.current_stock ?? 0));
+    const ovStock = ov.current_stock !== undefined ? Number(ov.current_stock) : undefined;
+    const mStock = Number(m.current_stock ?? m.currentStock ?? 0);
+    const currentStock = (ovStock !== undefined && (ovStock > 0 || ov.is_zero_explicit === true)) ? ovStock : mStock;
     const minStock = Number(ov.minimum_stock !== undefined ? ov.minimum_stock : (m.minimum_threshold ?? m.minimum_stock ?? 10));
     const maxStock = Number(ov.maximum_stock !== undefined ? ov.maximum_stock : (m.reorder_quantity ? m.reorder_quantity * 4 : 100));
     const location = ov.storage_location || m.storage_location || DEFAULT_LOCATIONS[category] || 'Warehouse A - Shelf 1';

@@ -326,7 +326,8 @@ export function getTenantMaterials() {
       id: m.item_code,
       itemCode: m.item_code,
       unit_of_measure: m.unit,
-      current_stock: Number(m.current_stock || 0),
+      current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+      currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
       minimum_threshold: Number(m.minimum_threshold || 10)
     }));
   }
@@ -336,7 +337,8 @@ export function getTenantMaterials() {
     id: m.item_code || m.id,
     itemCode: m.item_code || m.id,
     unit_of_measure: m.unit || m.unit_of_measure || "kg",
-    current_stock: Number(m.current_stock || 0),
+    current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
+    currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
     minimum_threshold: Number(m.minimum_threshold || 10)
   }));
 }

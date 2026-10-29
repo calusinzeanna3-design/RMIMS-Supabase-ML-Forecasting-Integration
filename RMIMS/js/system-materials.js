@@ -30,18 +30,13 @@ export function cleanseMaterialBlacklists() {
  */
 export function permanentlyPurgeOldWeeklyInputs() {
     try {
-        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v20";
+        const END_USER_CLEAN_FLAG = "rmims_end_user_clean_v21";
         if (typeof window !== "undefined" && !localStorage.getItem(END_USER_CLEAN_FLAG)) {
             const isUserCreatedItem = (item) => {
                 if (!item || typeof item !== "object") return false;
-                if (item.is_imported === true) return true;
-                const sup = String(item.supplier || "").toLowerCase();
-                const desc = String(item.description || "").toLowerCase();
-                if (sup.includes("imported") || desc.includes("imported")) return true;
-                if (item.added_by === "Store Manager" || item.added_by === "Staff") return true;
-                // Distinguish genuine user input from system-patched 2026-10-29 defaults
-                if (item.is_manual_override === true && item.date_added && item.date_added !== "2026-10-29") return true;
-                if (Number(item.current_stock ?? item.currentStock ?? 0) > 0) return true;
+                const stk = Number(item.current_stock ?? item.currentStock ?? item.stock ?? 0);
+                if (stk > 0) return true;
+                if (item.is_zero_explicit === true) return true;
                 return false;
             };
 
@@ -447,9 +442,39 @@ export function getSystemRawMaterials() {
     const otherPrefix = isScones ? "RM-" : "NB-";
     const catalogRef = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
 
-    let list = [];
+    let list = catalogRef.map(b => {
+        const bCode = String(b.item_code || b.itemCode || b.id || "").toUpperCase().trim();
+        const bUnit = (b.unit || b.unit_of_measure || getAuthoritativeMaterialUnit(b, isScones)).trim();
+        const bStock = Number((b.current_stock !== undefined && Number(b.current_stock) > 0) ? b.current_stock : (b.currentStock ?? b.current_stock ?? 0));
+        const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 10);
+        const bFirst = b.date_added || b.first_date || "";
+        const bLatest = b.last_updated || b.latest_date || bFirst || "";
+        return {
+            ...b,
+            id: bCode,
+            item_code: bCode,
+            itemCode: bCode,
+            name: b.name || b.raw_material_name,
+            raw_material_name: b.raw_material_name || b.name,
+            category: b.category || (isScones ? "Baking Supplies" : "General Materials"),
+            unit: bUnit,
+            unit_of_measure: bUnit,
+            current_stock: bStock,
+            currentStock: bStock,
+            stock: bStock,
+            minimum_threshold: bMin,
+            minimum_stock: bMin,
+            minimumStock: bMin,
+            minStock: bMin,
+            date_added: bFirst,
+            first_date: bFirst,
+            display_date: b.display_date || bFirst || "",
+            last_updated: bLatest,
+            latest_date: bLatest
+        };
+    });
 
-    // 1. Load user-imported / user-added materials from rmims_custom_raw_materials
+    // 1. Merge user-imported / user-added materials from rmims_custom_raw_materials
     try {
         const stored = localStorage.getItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY);
         if (stored) {
@@ -457,44 +482,92 @@ export function getSystemRawMaterials() {
             if (Array.isArray(customMats)) {
                 customMats.forEach(cm => {
                     if (!cm || (!cm.name && !cm.raw_material_name)) return;
-                    const code = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
-                    if (!cm.is_imported && !cm.is_manual_override && code.startsWith(otherPrefix)) return; // tenant isolation for non-imported items
+                    const rawCode = String(cm.item_code || cm.itemCode || cm.id || "").toUpperCase().trim();
+                    if (!cm.is_imported && !cm.is_manual_override && rawCode.startsWith(otherPrefix)) return; // tenant isolation for non-imported items
 
+                    const recognized = resolveForecastingMaterialByName(cm.name || cm.raw_material_name, isScones);
+                    const code = (recognized && recognized.code && recognized.code.startsWith(prefix))
+                        ? recognized.code
+                        : rawCode;
                     const normName = (cm.name || cm.raw_material_name || "").trim().toLowerCase();
-                    const catMatch = catalogRef.find(b =>
-                        (b.name || b.raw_material_name || "").trim().toLowerCase() === normName ||
-                        (code && String(b.item_code || b.id || "").toUpperCase().trim() === code)
+
+                    const foundIndex = list.findIndex(m =>
+                        (code && String(m.item_code || m.id || "").toUpperCase().trim() === code) ||
+                        (normName && (m.name || m.raw_material_name || "").trim().toLowerCase() === normName)
                     );
 
-                    const resolvedUnit = (cm.unit || cm.unit_of_measure || (catMatch && (catMatch.unit || catMatch.unit_of_measure)) || getAuthoritativeMaterialUnit(cm, isScones));
-                    const resolvedStock = Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0);
+                    const rawCmStock = Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0);
                     const resolvedMin = Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? cm.minStock ?? 10);
                     const firstDate = cm.date_added || cm.first_date || (cm.created_at ? String(cm.created_at).slice(0, 10) : "");
                     const latestDate = cm.last_updated || cm.latest_date || cm.updated_at || firstDate || "";
 
-                    list.push({
-                        ...(catMatch ? { image_url: catMatch.image_url, category: catMatch.category } : {}),
-                        ...cm,
-                        id: String(cm.id || code || (catMatch && catMatch.id) || `${prefix}${String(list.length + 1).padStart(3, "0")}`),
-                        item_code: code || (catMatch && catMatch.item_code) || String(cm.id || `${prefix}${String(list.length + 1).padStart(3, "0")}`),
-                        name: cm.name || cm.raw_material_name,
-                        raw_material_name: cm.raw_material_name || cm.name,
-                        category: cm.category || (catMatch && catMatch.category) || (isScones ? "Baking Supplies" : "General Materials"),
-                        unit_of_measure: resolvedUnit,
-                        unit: resolvedUnit,
-                        current_stock: resolvedStock,
-                        currentStock: resolvedStock,
-                        stock: resolvedStock,
-                        minimum_threshold: resolvedMin,
-                        minimum_stock: resolvedMin,
-                        minimumStock: resolvedMin,
-                        minStock: resolvedMin,
-                        date_added: firstDate,
-                        first_date: firstDate,
-                        display_date: cm.display_date || firstDate || "",
-                        last_updated: latestDate,
-                        latest_date: latestDate
-                    });
+                    if (foundIndex !== -1) {
+                        const existing = list[foundIndex];
+                        const resolvedUnit = (cm.unit || cm.unit_of_measure || existing.unit || getAuthoritativeMaterialUnit(existing, isScones));
+                        const finalStock = (rawCmStock > 0 || cm.is_zero_explicit === true) ? rawCmStock : existing.current_stock;
+                        const finalMin = resolvedMin > 0 ? resolvedMin : existing.minimum_threshold;
+                        const mergedFirst = firstDate || existing.date_added || "";
+                        const mergedLatest = latestDate || existing.last_updated || mergedFirst || "";
+
+                        list[foundIndex] = {
+                            ...existing,
+                            ...cm,
+                            id: existing.id,
+                            item_code: existing.item_code,
+                            itemCode: existing.item_code,
+                            name: existing.name || cm.name || cm.raw_material_name,
+                            raw_material_name: existing.raw_material_name || cm.raw_material_name || cm.name,
+                            category: cm.category || existing.category,
+                            unit_of_measure: resolvedUnit,
+                            unit: resolvedUnit,
+                            current_stock: finalStock,
+                            currentStock: finalStock,
+                            stock: finalStock,
+                            minimum_threshold: finalMin,
+                            minimum_stock: finalMin,
+                            minimumStock: finalMin,
+                            minStock: finalMin,
+                            date_added: mergedFirst,
+                            first_date: mergedFirst,
+                            display_date: cm.display_date || mergedFirst || existing.display_date || "",
+                            last_updated: mergedLatest,
+                            latest_date: mergedLatest,
+                            forecast_daily: existing.forecast_daily,
+                            forecast_weekly: existing.forecast_weekly,
+                            forecast_monthly: existing.forecast_monthly,
+                            forecast_90d: existing.forecast_90d,
+                            daily_mape: existing.daily_mape,
+                            weekly_mape: existing.weekly_mape,
+                            p90_margin: existing.p90_margin,
+                            p95_margin: existing.p95_margin
+                        };
+                    } else if (code.startsWith(prefix) || cm.is_imported) {
+                        const resolvedCode = code.startsWith(prefix) ? code : `${prefix}${String(list.length + 1).padStart(3, "0")}`;
+                        const resolvedUnit = (cm.unit || cm.unit_of_measure || getAuthoritativeMaterialUnit(cm, isScones));
+                        list.push({
+                            ...cm,
+                            id: resolvedCode,
+                            item_code: resolvedCode,
+                            itemCode: resolvedCode,
+                            name: cm.name || cm.raw_material_name,
+                            raw_material_name: cm.raw_material_name || cm.name,
+                            category: cm.category || (isScones ? "Baking Supplies" : "General Materials"),
+                            unit_of_measure: resolvedUnit,
+                            unit: resolvedUnit,
+                            current_stock: rawCmStock,
+                            currentStock: rawCmStock,
+                            stock: rawCmStock,
+                            minimum_threshold: resolvedMin,
+                            minimum_stock: resolvedMin,
+                            minimumStock: resolvedMin,
+                            minStock: resolvedMin,
+                            date_added: firstDate,
+                            first_date: firstDate,
+                            display_date: cm.display_date || firstDate || "",
+                            last_updated: latestDate,
+                            latest_date: latestDate
+                        });
+                    }
                 });
             }
         }
@@ -514,9 +587,13 @@ export function getSystemRawMaterials() {
             Object.keys(ovs).forEach(key => {
                 const ov = ovs[key];
                 if (!ov || (!ov.name && !ov.raw_material_name)) return;
-                const code = String(ov.item_code || ov.id || key || "").toUpperCase().trim();
-                if (!ov.is_imported && !ov.is_manual_override && code.startsWith(otherPrefix)) return;
+                const rawCode = String(ov.item_code || ov.id || key || "").toUpperCase().trim();
+                if (!ov.is_imported && !ov.is_manual_override && rawCode.startsWith(otherPrefix)) return;
 
+                const recognized = resolveForecastingMaterialByName(ov.name || ov.raw_material_name, isScones);
+                const code = (recognized && recognized.code && recognized.code.startsWith(prefix))
+                    ? recognized.code
+                    : rawCode;
                 const normName = (ov.name || ov.raw_material_name || "").trim().toLowerCase();
                 const foundIndex = list.findIndex(m =>
                     (code && String(m.item_code || m.id || "").toUpperCase().trim() === code) ||
@@ -531,8 +608,10 @@ export function getSystemRawMaterials() {
                 if (foundIndex !== -1) {
                     const existing = list[foundIndex];
                     const resolvedUnit = ov.unit || ov.unit_of_measure || existing.unit || getAuthoritativeMaterialUnit(existing, isScones);
-                    const finalStock = curStock !== undefined ? curStock : existing.current_stock;
-                    const finalMin = minStock !== undefined ? minStock : existing.minimum_threshold;
+                    const finalStock = (curStock !== undefined && (curStock > 0 || ov.is_zero_explicit === true))
+                        ? curStock
+                        : existing.current_stock;
+                    const finalMin = (minStock !== undefined && minStock > 0) ? minStock : existing.minimum_threshold;
                     const firstDate = ov.date_added || ov.first_date || existing.date_added || "";
                     const latestDate = ov.last_updated || ov.latest_date || existing.last_updated || firstDate || "";
 
@@ -541,6 +620,9 @@ export function getSystemRawMaterials() {
                         ...ov,
                         id: existing.id,
                         item_code: existing.item_code || existing.id,
+                        itemCode: existing.item_code || existing.id,
+                        name: existing.name || ov.name || ov.raw_material_name,
+                        raw_material_name: existing.raw_material_name || ov.raw_material_name || ov.name,
                         unit: resolvedUnit,
                         unit_of_measure: resolvedUnit,
                         current_stock: finalStock,
@@ -554,28 +636,32 @@ export function getSystemRawMaterials() {
                         first_date: firstDate,
                         display_date: ov.display_date || firstDate || existing.display_date || "",
                         last_updated: latestDate,
-                        latest_date: latestDate
+                        latest_date: latestDate,
+                        forecast_daily: existing.forecast_daily,
+                        forecast_weekly: existing.forecast_weekly,
+                        forecast_monthly: existing.forecast_monthly,
+                        forecast_90d: existing.forecast_90d,
+                        daily_mape: existing.daily_mape,
+                        weekly_mape: existing.weekly_mape,
+                        p90_margin: existing.p90_margin,
+                        p95_margin: existing.p95_margin
                     };
-                } else {
-                    const catMatch = catalogRef.find(b =>
-                        (b.name || b.raw_material_name || "").trim().toLowerCase() === normName ||
-                        (code && String(b.item_code || b.id || "").toUpperCase().trim() === code)
-                    );
-                    const resolvedCode = (code.startsWith(prefix) ? code : (catMatch && catMatch.item_code)) || `${prefix}${String(list.length + 1).padStart(3, "0")}`;
-                    const resolvedUnit = ov.unit || ov.unit_of_measure || (catMatch && (catMatch.unit || catMatch.unit_of_measure)) || getAuthoritativeMaterialUnit(ov, isScones);
+                } else if (code.startsWith(prefix) || ov.is_imported) {
+                    const resolvedCode = code.startsWith(prefix) ? code : `${prefix}${String(list.length + 1).padStart(3, "0")}`;
+                    const resolvedUnit = ov.unit || ov.unit_of_measure || getAuthoritativeMaterialUnit(ov, isScones);
                     const finalStock = curStock !== undefined ? curStock : 0;
                     const finalMin = minStock !== undefined ? minStock : 10;
                     const firstDate = ov.date_added || ov.first_date || "";
                     const latestDate = ov.last_updated || ov.latest_date || firstDate || "";
 
                     list.push({
-                        ...(catMatch ? { image_url: catMatch.image_url, category: catMatch.category } : {}),
                         ...ov,
                         id: resolvedCode,
                         item_code: resolvedCode,
+                        itemCode: resolvedCode,
                         name: ov.name || ov.raw_material_name,
                         raw_material_name: ov.raw_material_name || ov.name,
-                        category: ov.category || (catMatch && catMatch.category) || (isScones ? "Baking Supplies" : "General Materials"),
+                        category: ov.category || (isScones ? "Baking Supplies" : "General Materials"),
                         unit: resolvedUnit,
                         unit_of_measure: resolvedUnit,
                         current_stock: finalStock,

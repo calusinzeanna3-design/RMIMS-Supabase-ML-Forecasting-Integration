@@ -110,7 +110,9 @@ export async function fetchManagerDashboardData() {
         const mgrOverrides = { ...existingOverrides };
         reconciled.forEach(m => {
           const prev = existingOverrides[m.item_code] || {};
-          const usePrev = prev.is_imported || prev.is_manual_override || Boolean(prev.last_updated) || (prev.current_stock > 0 && m.current_stock === 0);
+          const prevStock = Number(prev.current_stock ?? prev.currentStock ?? 0);
+          const remoteStock = Number(m.current_stock ?? 0);
+          const finalStock = remoteStock > 0 ? remoteStock : (prevStock > 0 ? prevStock : (prev.is_zero_explicit ? 0 : undefined));
           const firstDate = prev.date_added || prev.first_date || m.date_added || (m.created_at ? String(m.created_at).slice(0, 10) : '');
           const latestDate = prev.last_updated || prev.latest_date || m.updated_at || m.created_at || firstDate;
           mgrOverrides[m.item_code] = {
@@ -118,7 +120,7 @@ export async function fetchManagerDashboardData() {
             name: m.name,
             raw_material_name: m.name,
             unit: prev.unit || m.unit,
-            current_stock: usePrev ? prev.current_stock : m.current_stock,
+            ...(finalStock !== undefined ? { current_stock: finalStock, currentStock: finalStock, stock: finalStock } : {}),
             minimum_stock: prev.minimum_stock ?? m.minimum_threshold,
             maximum_stock: prev.maximum_stock || (m.reorder_quantity * 4),
             date_added: firstDate,
