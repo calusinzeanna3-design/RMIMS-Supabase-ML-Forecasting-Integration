@@ -1,0 +1,20 @@
+material_id,raw_material_name,category,unit,90_day_total_forecast,daily_average_forecast,recommended_weekly_reorder
+NB-001,All-Purpose / Bread Flour,Grains & Flours,kg,9226.97,102.52,717.65
+NB-002,Refined White Sugar,Sweeteners,kg,2337.65,25.97,181.82
+NB-003,Fresh Yellow Squash (Kalabasa),Produce / Agricultural,kg,7231.49,80.35,562.45
+NB-004,Skimmed Milk Powder,Dairy,kg,2505.47,27.84,194.87
+NB-005,Condensed Milk,Dairy,kg,1131.65,12.57,88.02
+NB-006,Fresh Whole Eggs,Dairy & Eggs,kg,866.18,9.62,67.37
+NB-007,Baking Shortening,Fats & Oils,kg,698.53,7.76,54.33
+NB-008,Margarine,Fats & Oils,kg,887.28,9.86,69.01
+NB-009,Instant Dry Yeast,Baking Supplies,kg,100.8,1.12,7.84
+NB-010,Baking Soda,Baking Supplies,kg,32.32,0.36,2.51
+NB-011,Iodized Salt,Seasonings / Salts,kg,116.03,1.29,9.02
+NB-012,Calcium Propionate,Preservatives,kg,51.98,0.58,4.04
+NB-013,Potassium Sorbate,Preservatives,kg,6.58,0.07,0.51
+NB-014,Crushed Peanuts / Nuts,Nuts & Seeds,kg,529.79,5.89,41.21
+NB-015,Desiccated Coconut,Produce / Agricultural,kg,103.72,1.15,8.07
+NB-016,Black Sesame Seeds,Nuts & Seeds,kg,102.52,1.14,7.97
+NB-017,Malunggay (Moringa) Flakes,Produce / Agricultural,kg,66.7,0.74,5.19
+NB-018,Vanilla Extract,Flavorings & Extracts,L,5.84,0.06,0.45
+NB-019,Plastic Pillow Packaging,Packaging Supplies,pcs,392402.56,4360.03,30520.2

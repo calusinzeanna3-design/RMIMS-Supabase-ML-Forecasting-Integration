@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - User Management</title>
+  <!-- Google Fonts: Inter & Sora -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Admin Stylesheet -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+</head>
+<body>
+  <div class="admin-app">
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div>
+        <a href="overview.html" class="sidebar-header" title="RMIMS Main Administration">
+          <div class="brand-logo-wrap">
+            <img src="../assets/logo-icon.png" alt="RMSME Logo" class="brand-logo-img">
+          </div>
+          <div class="brand-titles">
+            <span class="brand-name">RMSME</span>
+            <span class="brand-sub">Administration</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav">
+          <a href="overview.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Overview</span>
+          </a>
+
+          <a href="activity-logs.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+            <span>Activity Logs</span>
+          </a>
+
+          <a href="user-management.html" class="nav-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>User Management</span>
+          </a>
+
+          <a href="branch-stores.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 21h18"/>
+              <path d="M3 7v14"/>
+              <path d="M21 7v14"/>
+              <path d="M6 21V11"/>
+              <path d="M10 21V11"/>
+              <path d="M14 21V11"/>
+              <path d="M18 21V11"/>
+              <path d="M2 7l10-4 10 4"/>
+            </svg>
+            <span>Branch Stores</span>
+          </a>
+
+          <a href="system-alerts.html" class="nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>System Alerts</span>
+          </a>
+
+        </nav>
+      </div>
+
+      <div class="sidebar-bottom-nav">
+        <button type="button" class="nav-link nav-btn-help" id="btnSidebarHelp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Help Center</span>
+        </button>
+
+        <a href="settings.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0 1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+
+        <div class="sidebar-version">v2.0.0 &bull; RMSME</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <span class="topbar-kicker">USER MANAGEMENT</span>
+          <h1 class="topbar-title">User Management &amp; Approvals</h1>
+          <p class="topbar-subtitle">Manage user accounts, roles, and access across all branch stores.</p>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill (Moved in exchange of search bar) -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">Z</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Zeanna</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Zeanna</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                        </div>
+      </header>
+
+      <main class="admin-scroll-body">
+        
+        <!-- TOP 4 METRIC STAT CARDS (From Reference Image) -->
+        <div class="admin-kpi-grid">
+          <!-- Card 1: Total Users -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Total Users</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statTotalUsers">0</span>
+                <span class="kpi-trend up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                  Live
+                </span>
+              </div>
+              <span class="kpi-subtext">Active &amp; pending accounts</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Active Users -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <line x1="20" y1="8" x2="20" y2="14"/>
+                <line x1="23" y1="11" x2="17" y2="11"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Active Users</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statActiveUsers">0</span>
+                <span class="kpi-trend up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                  Live
+                </span>
+              </div>
+              <span class="kpi-subtext">Verified branch personnel</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Pending Approval -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Pending Approval</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statPendingUsers">0</span>
+                <span class="kpi-trend neutral" id="statPendingTrend">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Live
+                </span>
+              </div>
+              <span class="kpi-subtext">Awaiting admin validation</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Inactive Users -->
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-box coral">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+              </svg>
+            </div>
+            <div class="kpi-meta">
+              <span class="kpi-label">Inactive Users</span>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="statInactiveUsers">0</span>
+                <span class="kpi-trend neutral">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                  0%
+                </span>
+              </div>
+              <span class="kpi-subtext">Disabled or archived</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: AWAITING APPROVAL (From Reference Image) -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <line x1="20" y1="8" x2="20" y2="14"/>
+                  <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Awaiting Approval for Accounts</h2>
+                <span class="card-subtitle">New store personnel requests requiring Main Admin validation.</span>
+              </div>
+            </div>
+            <span class="status-pill status-pending" id="pendingCount">0 Requests Pending</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="pendingTable">
+              <thead>
+                <tr>
+                  <th>NAME</th>
+                  <th>BRANCH LOCATION</th>
+                  <th>BRANCH NAME</th>
+                  <th>ROLE</th>
+                  <th>REQUESTED ON</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTableBody">
+                <!-- Dynamically populated by admin-user-management.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION 2: REGISTERED USERS DIRECTORY -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Registered Store Users</h2>
+                <span class="card-subtitle">Active accounts assigned across registered branch locations.</span>
+              </div>
+            </div>
+
+            <!-- SEARCH, FILTER, AND ADD USER ACTION -->
+            <div class="card-actions directory-toolbar">
+              <div class="topbar-search" style="min-width: 250px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" class="search-input" id="dirSearchInput" placeholder="Search user, email, or branch..." style="width: 100%;">
+              </div>
+
+              <select class="dropdown-select filter-select" id="branchDirectoryFilter">
+                <option value="all">All Branches</option>
+                <!-- Branch location options dynamically injected by admin-user-management.js -->
+              </select>
+
+              <button type="button" class="btn-primary-action" id="btnOpenAddUser">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Add User</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="usersDirectoryTable">
+              <thead>
+                <tr>
+                  <th>USER</th>
+                  <th>EMAIL</th>
+                  <th>BRANCH LOCATION</th>
+                  <th>BRANCH NAME</th>
+                  <th>ROLE</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="usersDirectoryTableBody">
+                <!-- Dynamically populated by admin-user-management.js with live data or clean empty state -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-pagination-footer">
+            <span class="pagination-counter" id="userPaginationCounter">Showing 0 users</span>
+            <div class="pagination-controls" id="userPaginationControls">
+              <button type="button" class="pagination-btn disabled" id="btnUserPrevPage" disabled aria-label="Previous Page">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button type="button" class="pagination-btn pg-num disabled" disabled>1</button>
+              <button type="button" class="pagination-btn disabled" id="btnUserNextPage" disabled aria-label="Next Page">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ADD USER MODAL -->
+  <div class="admin-modal-backdrop" id="addUserModal">
+    <div class="admin-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Store User</h3>
+        <button type="button" class="btn-close-modal" id="btnCloseAddUser" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="addUserForm" onsubmit="event.preventDefault(); submitAddUser();">
+        <div class="modal-form-group">
+          <label class="modal-form-label">Full Name</label>
+          <input type="text" class="modal-input" id="newUserName" placeholder="Enter user full name" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Username</label>
+          <input type="text" class="modal-input" id="newUserUsername" placeholder="Enter username" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Location</label>
+          <select class="modal-input" id="newUserBranchLoc" required>
+            <option value="">Select Location</option>
+            <!-- Options dynamically injected by admin-user-management.js -->
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Name</label>
+          <input type="text" class="modal-input" id="newUserBranchName" placeholder="Enter branch store name" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Assigned Role</label>
+          <select class="modal-input" id="newUserRole" required>
+            <option value="Manager">Manager</option>
+            <option value="Staff">Staff</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Email Address</label>
+          <input type="email" class="modal-input" id="newUserEmail" placeholder="user@example.com" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-view-all" id="btnCancelAddUser">Cancel</button>
+          <button type="submit" class="btn-primary-action">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT USER MODAL -->
+  <div class="admin-modal-backdrop" id="editUserModal">
+    <div class="admin-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Store User</h3>
+        <button type="button" class="btn-close-modal" id="btnCloseEditUser" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="editUserForm" onsubmit="event.preventDefault(); submitEditUser();">
+        <input type="hidden" id="editUserId">
+        <div class="modal-form-group">
+          <label class="modal-form-label">Full Name</label>
+          <input type="text" class="modal-input" id="editUserName" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Username</label>
+          <input type="text" class="modal-input" id="editUserUsername" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Location</label>
+          <select class="modal-input" id="editUserBranchLoc" required>
+            <option value="">Select Location</option>
+            <!-- Options dynamically injected by admin-user-management.js -->
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Branch Name</label>
+          <input type="text" class="modal-input" id="editUserBranchName" required>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Assigned Role</label>
+          <select class="modal-input" id="editUserRole" required>
+            <option value="Manager">Manager</option>
+            <option value="Staff">Staff</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label">Email Address</label>
+          <input type="email" class="modal-input" id="editUserEmail" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-view-all" id="btnCancelEditUser">Cancel</button>
+          <button type="submit" class="btn-primary-action">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../js/admin-shell.js"></script>
+  <script type="module" src="../js/admin-user-management.js"></script>
+</body>
+</html>

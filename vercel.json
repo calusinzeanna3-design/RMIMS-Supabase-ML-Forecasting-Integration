@@ -1,0 +1,19 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://rmims-ml-model.web.app/api/:match*"
+    },
+    {
+      "source": "/RMIMS",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/RMIMS/:path*",
+      "destination": "/:path*"
+    }
+  ]
+}

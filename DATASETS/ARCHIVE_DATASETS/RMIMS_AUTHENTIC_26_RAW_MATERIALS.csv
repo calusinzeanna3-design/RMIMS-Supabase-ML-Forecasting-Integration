@@ -1,0 +1,27 @@
+item_code,name,unit_of_measure,minimum_threshold,reorder_quantity,lead_time_days,current_stock
+RM031,"Bell Pepper",g,1000,5000,3,2500
+RM032,"Butter/Margarine",g,3000,15000,3,8500
+RM033,"Cabbage",g,2000,10000,3,4800
+RM034,"Carrots",g,1500,8000,3,3600
+RM035,"Chicken",g,5000,25000,3,12000
+RM036,"Chiton",g,8000,40000,3,18500
+RM037,"Cooking Oil",L,50,250,3,140
+RM038,"Garlic",g,1000,6000,3,3200
+RM039,"Ground Pepper",g,500,2500,3,1400
+RM040,"Honey",ml,2000,10000,3,6200
+RM041,"Loaf Bread",pcs,20,100,3,45
+RM042,"Onion",g,1500,8000,3,4200
+RM043,"Oyster Sauce",ml,1000,5000,3,2800
+RM044,"Peanuts",g,10000,50000,3,24000
+RM045,"Pork",g,5000,25000,3,11500
+RM061,"Pork Skin",g,8000,40000,3,19000
+RM062,"Raw Bananas",g,12000,60000,3,28000
+RM063,"Salt",g,2000,10000,3,5500
+RM064,"Sea Salt",g,1000,5000,3,2800
+RM065,"Sesame Oil",ml,800,4000,3,2100
+RM066,"Small Shrimp",g,10000,50000,3,22500
+RM067,"Soy Sauce",ml,1500,8000,3,4200
+RM068,"Spring Onion",g,800,4000,3,1900
+RM069,"Sugar",g,3000,15000,3,7800
+RM070,"Turmeric Powder",g,500,2500,3,1300
+RM071,"Water",L,100,500,3,320

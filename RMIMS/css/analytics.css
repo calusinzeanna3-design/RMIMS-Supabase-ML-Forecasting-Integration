@@ -1,0 +1,514 @@
+/* ==========================================================
+   RMIMS CONSUMPTION & INVENTORY ANALYTICS — MODERN DESIGN SYSTEM
+   Clean, Authoritative Stylesheet for RMIMS Analytics
+   Strictly Light Mode. Emerald & Slate Palette.
+   ========================================================== */
+
+:root {
+  --an-bg: #F8FAFC;
+  --an-card-bg: #FFFFFF;
+  --an-card-border: #E2E8F0;
+  --an-ink: #0F172A;
+  --an-ink-mid: #334155;
+  --an-ink-dim: #64748B;
+  --an-green: #16A34A;
+  --an-green-hover: #15803D;
+  --an-green-light: #F0FDF4;
+  --an-amber: #F59E0B;
+  --an-amber-hover: #D97706;
+  --an-orange: #EA580C;
+  --an-orange-light: #FFF7ED;
+  --an-blue: #2563EB;
+  --an-purple: #8B5CF6;
+  --an-radius: 14px;
+}
+
+/* ==========================================================
+   ANALYTICS CONTAINER & CARD LAYOUT
+   ========================================================== */
+
+.an-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.an-card {
+  background: var(--an-card-bg, #FFFFFF);
+  border: 1px solid var(--an-card-border, #E2E8F0);
+  border-radius: var(--an-radius, 14px);
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.an-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid #F1F5F9;
+  padding-bottom: 12px;
+}
+
+.an-card-title {
+  font-family: var(--rm-font-display, 'Sora', sans-serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--an-ink, #0F172A);
+  margin: 0;
+}
+
+.an-card-sub {
+  font-size: 12.5px;
+  color: var(--an-ink-dim, #64748B);
+  margin: 3px 0 0;
+}
+
+.an-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================
+   TOP NUMBER INPUT BOX (NO SPINNERS, 100% VISIBLE & BOLD)
+   ========================================================== */
+
+.an-top-box {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  border-radius: 8px !important;
+  padding: 3px 8px !important;
+  height: 36px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+.an-top-label {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #334155 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  user-select: none !important;
+}
+
+/* Completely remove Chrome/Edge/Safari inner & outer number spinners */
+.an-top-input::-webkit-outer-spin-button,
+.an-top-input::-webkit-inner-spin-button,
+input.an-top-input::-webkit-outer-spin-button,
+input.an-top-input::-webkit-inner-spin-button,
+input[type="number"].an-top-input::-webkit-outer-spin-button,
+input[type="number"].an-top-input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+.an-top-input,
+input.an-top-input,
+input[type="number"].an-top-input,
+input[type="text"].an-top-input {
+  width: 44px !important;
+  min-height: 26px !important;
+  height: 26px !important;
+  max-height: 26px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 1.5px solid #94A3B8 !important;
+  background: #F8FAFC !important;
+  border-radius: 6px !important;
+  font-family: inherit !important;
+  font-weight: 800 !important;
+  font-size: 14.5px !important;
+  color: #0F172A !important;
+  text-align: center !important;
+  outline: none !important;
+  line-height: 26px !important;
+  box-sizing: border-box !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  appearance: textfield !important;
+  -moz-appearance: textfield !important;
+}
+
+.an-top-input:hover {
+  border-color: #475569 !important;
+  background: #FFFFFF !important;
+}
+
+.an-top-input:focus {
+  border-color: #16A34A !important;
+  background: #FFFFFF !important;
+  color: #0F172A !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2) !important;
+}
+
+/* ==========================================================
+   MAXIMIZE BUTTON
+   ========================================================== */
+
+.an-max-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.an-max-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+  border-color: #94A3B8;
+  transform: scale(1.05);
+}
+
+.an-max-btn svg {
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  pointer-events: none !important;
+}
+
+/* ==========================================================
+   METRICS CHECKLIST BAR & PILLS
+   ========================================================== */
+
+.an-metrics-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: #F8FAFC;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  box-sizing: border-box;
+}
+
+.an-metrics-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748B;
+}
+
+.an-check-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #CBD5E1;
+  background: #FFFFFF;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.an-check-pill:hover {
+  border-color: #94A3B8;
+}
+
+.an-check-pill input[type="checkbox"] {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: #16A34A;
+  margin: 0;
+}
+
+.an-check-pill.active-received,
+.an-check-pill.active-stock-cur {
+  border-color: #16A34A;
+  background: #F0FDF4;
+  color: #15803D;
+}
+
+.an-check-pill.active-disburse,
+.an-check-pill.active-stock-min {
+  border-color: #EA580C;
+  background: #FFF7ED;
+  color: #C2410C;
+}
+
+.an-check-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dot-rec { background: #16A34A; }
+.dot-disb { background: #D97706; }
+.dot-prod { background: #2563EB; }
+.dot-stock-cur { background: #16A34A; }
+.dot-stock-min { background: #EA580C; }
+
+/* ==========================================================
+   CHART CONTAINERS
+   ========================================================== */
+
+.an-chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+  box-sizing: border-box;
+}
+
+.an-chart-empty {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #64748B;
+  font-size: 14px;
+  gap: 8px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px dashed #CBD5E1;
+  box-sizing: border-box;
+  z-index: 2;
+}
+
+/* ==========================================================
+   BOTTOM ROW 2-CARD GRID
+   ========================================================== */
+
+.an-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.an-bottom-grid .an-chart-wrap {
+  min-height: 160px;
+  height: 180px;
+}
+
+.an-bottom-grid .an-chart-empty {
+  padding: 12px 18px;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .an-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Timeframe buttons */
+.an-timeframe-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.an-timeframe-btn:hover {
+  background: #F1F5F9;
+}
+
+.an-timeframe-btn.active {
+  background: #16A34A;
+  color: #FFFFFF;
+  border-color: #15803D;
+}
+
+/* ==========================================================
+   MAXIMIZE SCREEN POPUP MODAL (REFERENCE IMAGE 4)
+   ========================================================== */
+
+.an-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.an-modal-backdrop.open {
+  display: flex;
+}
+
+.an-modal-window {
+  background: #FFFFFF;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1280px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: anModalScaleIn 0.2s ease-out;
+  box-sizing: border-box;
+}
+
+@keyframes anModalScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.an-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #F1F5F9;
+  padding-bottom: 14px;
+}
+
+.an-modal-close {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(15, 42, 27, 0.05) !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important;
+  color: #3C5847 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  outline: none !important;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 27, 0.04) !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+}
+
+.an-modal-close:hover {
+  background: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  transform: rotate(90deg) scale(1.06) !important;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.16) !important;
+}
+
+.an-modal-close:active {
+  background: #FCD8D8 !important;
+  color: #B91C1C !important;
+  transform: rotate(90deg) scale(0.96) !important;
+}
+
+.an-modal-close svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  display: block !important;
+  pointer-events: none !important;
+  transition: stroke 0.22s ease !important;
+}
+
+
+.an-modal-chart-wrap {
+  width: 100%;
+  height: 440px;
+  position: relative;
+}
+
+.an-modal-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #FFFFFF;
+}
+
+.an-modal-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* ==========================================================
+   UNIVERSAL TOPBAR LIVE CLOCK STYLING (SAFE BOUNDS)
+   ========================================================== */
+
+.topbar-clock {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  border: 1.5px solid rgba(22, 163, 74, 0.35) !important;
+  color: var(--rm-ink, #0F172A) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+.topbar-clock svg {
+  width: 15px !important;
+  height: 15px !important;
+  max-width: 15px !important;
+  max-height: 15px !important;
+  stroke: var(--rm-mid-2, #16A34A) !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+}

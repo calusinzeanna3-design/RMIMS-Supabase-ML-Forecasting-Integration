@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for Multi-Tenant Role-Based Access Control (RBAC)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Super Admin: Zeanna / calusinzeanna3@gmail.com has global unrestricted visibility
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'calusinzeanna3@gmail.com' ||
+        request.auth.token.role == 'admin' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         getUserData().role in ['admin', 'SUPER_ADMIN'])
+      );
+    }
+
+    // Strict Tenant Isolation: User can only access their assigned company
+    function isCompanyMember(companyId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        (request.auth.token.company_id == companyId) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         getUserData().company_id == companyId)
+      );
+    }
+
+    // Company Manager: Management actions restricted strictly to their assigned company
+    function isCompanyManager(companyId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        (isCompanyMember(companyId) && (
+          request.auth.token.role in ['manager', 'admin'] ||
+          getUserData().role in ['manager', 'KXC_MANAGER', 'SCONES_MUFFINS_MANAGER']
+        ))
+      );
+    }
+
+    // User Directory: Users can view their own profile; Super Admin manages all
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isSuperAdmin() || (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'company_id']));
+    }
+
+    // Multi-Tenant Company Datasets: Air-gapped separation between KXC and Scones & Muffins
+    match /companies/{companyId} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyManager(companyId);
+
+      // Raw Materials Catalog (KXC: RM-001..RM-059 vs Scones: NB-001..NB-019)
+      match /materials/{materialId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isCompanyManager(companyId);
+      }
+
+      // Forecast Projections & Calculations (Isolated per company)
+      match /forecasts/{forecastId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update: if isCompanyMember(companyId);
+        allow delete: if isCompanyManager(companyId);
+      }
+
+      // ML Model Specs, Margins of Error, and Metrics
+      match /models/{modelId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isSuperAdmin();
+      }
+    }
+  }
+}

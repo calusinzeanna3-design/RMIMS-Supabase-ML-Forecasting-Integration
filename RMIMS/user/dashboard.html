@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMIMS - Store Operations Overview</title>
+  <!-- Google Fonts: Inter, Sora, Orbitron & Share Tech Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>window.Chart||document.write('<script src="../js/chart.js"><\/script>')</script>
+  <!-- Admin Shell Stylesheet (100% Shared Theme & Components) -->
+  <link rel="stylesheet" href="../css/admin-shell.css">
+  <link rel="stylesheet" href="../css/manager-theme.css">
+  <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+  <style>
+    .btn-dash-action {
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .btn-dash-correct:hover {
+      background: #B45309 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(217, 119, 6, 0.35) !important;
+    }
+    .btn-dash-view:hover {
+      background: #F1F5F9 !important;
+      border-color: #94A3B8 !important;
+      color: #0F172A !important;
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body class="staff-page admin-page">
+  <div class="admin-app">
+    <!-- SIDEBAR (Auto-rendered by rmsme-shell.js with 100% Admin styling for Staff) -->
+    <aside class="admin-sidebar sidebar" aria-label="Primary navigation"></aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="admin-main">
+      <!-- TOPBAR -->
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <div class="topbar-text-group">
+            <span class="topbar-kicker">STORE OPERATIONS</span>
+            <h1 class="topbar-title">Staff Dashboard</h1>
+            <p class="topbar-subtitle">Real-time daily operations overview and live store inventory monitoring.</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Live Date & Time Pill -->
+          <div class="topbar-clock" id="topbarClock" title="System Date &amp; Time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="topbar-clock-text" id="topbarClockText">Loading...</span>
+          </div>
+          <!-- Notification Bell -->
+          <div class="rmsme-popover-anchor" id="notifAnchor">
+            <button class="topbar-icon-btn" id="notificationBtn" aria-label="Notifications" title="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="bell-badge" id="notifBadge" hidden></span>
+            </button>
+          </div>
+
+          <!-- Profile Pill & Dropdown -->
+          <div class="rmsme-popover-anchor" id="profileAnchor">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
+              <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">S</div>
+              <div class="profile-meta">
+                <span class="profile-name" data-shell-name id="topbarProfileName">Staff_1</span>
+                <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
+              </div>
+            </div>
+            <div class="rmsme-popover mgr-profile-dropdown" id="profileDropdown" hidden>
+              <div class="mgr-profile-head">
+                <div class="mgr-online-badge">
+                  <span class="mgr-status-indicator"></span>
+                  <div>
+                    <strong data-shell-name id="dropdownUserName">Staff_1</strong>
+                    <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mgr-popover-divider"></div>
+              <a href="settings.html" class="mgr-popover-item" id="headerAccountLink">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Account
+              </a>
+              <div class="mgr-popover-divider"></div>
+              <button type="button" class="mgr-popover-item text-danger" id="headerLogoutBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+                        </div>
+      </header>
+
+      <!-- SCROLLABLE CONTENT BODY -->
+      <main class="admin-scroll-body">
+
+        <!-- WELCOME & FRONTDESK LIVE MONITORING CLOCK BAR -->
+        <div class="overview-welcome-banner">
+          <div class="overview-welcome-group">
+            <h1 class="overview-welcome-title" id="welcomeGreeting">Welcome back!</h1>
+            <p class="overview-welcome-sub" id="welcomeSub">Here's what's happening across your store operations today.</p>
+          </div>
+
+          <!-- Frontdesk Monitoring Clock Card (Exact Image 1 Style) -->
+          <div class="frontdesk-clock-card" id="frontdeskClockCard" title="Live Frontdesk Monitoring Clock (Philippine Standard Time)">
+            <div class="frontdesk-clock-time-group">
+              <span class="frontdesk-time" id="frontdeskTime">--:--:--</span>
+              <span class="frontdesk-period" id="frontdeskPeriod">AM</span>
+            </div>
+            <div class="frontdesk-date" id="frontdeskDate">Loading...</div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: DAILY OPERATIONS & ACTIVITY OVERVIEW (Chart + 2 Stat Cards) -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M18 20V10"/>
+                  <path d="M12 20V4"/>
+                  <path d="M6 20v-6"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">Daily Operations &amp; Activity Overview</h2>
+                <span class="card-subtitle">Daily inward receipts and disbursements logged across operations</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <select class="dropdown-select" id="chartRangeSelect">
+                <option value="7">Last 7 Days</option>
+                <option value="14" selected>Last 14 Days</option>
+                <option value="30">Last 30 Days</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="usage-grid">
+            <!-- Left: Interactive Dual Line Chart (RMIMS Emerald Aesthetic) -->
+            <div class="chart-card-content">
+              <div class="chart-canvas-container" style="height: 250px;">
+                <canvas id="staffActivityChart"></canvas>
+              </div>
+              <div class="chart-legend-custom" id="staffChartLegend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #16A34A;"></span>
+                  <span>Inward Receipts</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #0284C7;"></span>
+                  <span>Production Disbursements</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: 2 KPI Stat Cards -->
+            <div class="kpi-column">
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box emerald">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Today's Material Submissions</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiTodayTx">0</span>
+                    <span class="kpi-trend up" id="kpiTodayTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
+                    </span>
+                  </div>
+                  <span class="kpi-subtext" id="kpiTodayTxSub">Receipts &amp; disbursements today</span>
+                </div>
+              </div>
+
+              <div class="kpi-stat-card">
+                <div class="kpi-icon-box blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <div class="kpi-meta">
+                  <span class="kpi-label">Pending Approval Reviews</span>
+                  <div class="kpi-value-row">
+                    <span class="kpi-number" id="kpiPendingTx">0</span>
+                    <span class="kpi-trend up" id="kpiPendingTrend">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="19" x2="12" y2="5"/>
+                        <polyline points="5 12 12 5 19 12"/>
+                      </svg>
+                      Live
+                    </span>
+                  </div>
+                  <span class="kpi-subtext">Awaiting manager validation</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: MY RECENT OPERATIONS & SUBMISSIONS -->
+        <section class="admin-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon-badge emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <div class="card-headings">
+                <h2 class="card-title">My Recent Operations &amp; Submissions</h2>
+                <span class="card-subtitle">Recent receipt and disbursement entries logged and verification status</span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <a href="my-activity.html" class="btn-view-all">
+                <span>View All</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table" id="staffDashboardActivityTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Activity</th>
+                  <th>Raw Material Name</th>
+                  <th>Quantity</th>
+                  <th>Reference No.</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="staffDashboardActivityTbody">
+                <!-- Dynamically populated by user-dashboard.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="../js/user-dashboard.js"></script>
+  <script type="module" src="../js/rmsme-shell.js"></script>
+</body>
+</html>
