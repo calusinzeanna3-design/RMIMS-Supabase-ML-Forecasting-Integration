@@ -2512,7 +2512,7 @@ function updateExportSummary() {
     let recordCount = state.materials.length;
 
     if (currentExportDataset === "receive") {
-        datasetName = "Receive Records";
+        datasetName = "Received Records";
         recordCount = state.receipts.length;
     } else if (currentExportDataset === "disbursement") {
         datasetName = "Disbursement Logs";

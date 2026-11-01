@@ -10,12 +10,14 @@
  * - Official inventory is NOT updated yet
  */
 
+import { getLinkedFinishedProducts, notSetBundleCard } from './rmims-bundle.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
 import {
   fetchUnifiedInventoryFromSupabase,
   fetchStaffTransactionsFromSupabase,
-  broadcastManagerSync
+  broadcastManagerSync,
+  fetchLiveFinishedProductsFromSupabase
 } from '../supabase/manager-supabase-service.js';
 import {
   generateNextReference,
@@ -25,85 +27,13 @@ import {
   getStaffTransactions,
   burnReference,
   updateStaffTransaction,
-  deleteStaffTransaction
+  deleteStaffTransaction,
+  reserveReference,
+  isReferenceUsed
 } from './rmims-transaction-engine.js';
 import { attachSearchableCombobox } from './rmims-combobox.js';
 
 // Authentic Bill of Materials (BOM) standard ratios (g/pcs/kl for Scones; kg/L for KXC)
-const BASELINE_BOM_RATIOS = {
-  // Authoritative Scones & Muffins Bakery (19 Nutribun Raw Materials) Ratios
-  "All-Purpose / Bread Flour": 250,
-  "Refined White Sugar": 100,
-  "Fresh Yellow Squash (Kalabasa)": 350,
-  "Skimmed Milk Powder": 80,
-  "Condensed Milk": 100,
-  "Fresh Whole Eggs": 1, // 1 pc
-  "Baking Shortening": 80,
-  "Margarine": 80,
-  "Instant Dry Yeast": 15,
-  "Baking Soda": 10,
-  "Iodized Salt": 15,
-  "Calcium Propionate": 5,
-  "Potassium Sorbate": 5,
-  "Crushed Peanuts / Nuts": 50,
-  "Black Sesame Seeds": 20,
-  "Malunggay (Moringa) Flakes": 20,
-  "Vanilla Extract": 5,
-  "Plastic Pillow Packaging": 0.02, // 0.02 kl film roll per batch
-
-  "Panutsa Cane Sugar": 0.15,
-  "Muscovado Brown Sugar": 0.12,
-  "Pandan Leaves": 0.02,
-  "Fresh Garlic": 0.10,
-  "Red Chili Peppers (Siling Labuyo)": 0.05,
-  "Palm Cooking Oil": 0.08,
-  "Cane Vinegar": 0.06,
-  "Iodized Salt": 0.015,
-  "Refined White Sugar": 0.10,
-  "Dried Red Chili Flakes": 0.03,
-  "Cornstarch": 0.04,
-  "Fresh Cassava Tubers": 0.35,
-  "Cheese Seasoning Powder": 0.03,
-  "All-Purpose Wheat Flour": 0.25,
-  "Purified Water": 0.15,
-  "Food Grade Sunset Yellow / Orange Dye": 0.005,
-  "Garlic Powder": 0.02,
-  "Unripe Green Saba Bananas": 0.30,
-  "Vanilla Extract": 0.005,
-  "Fresh Sweet Potato": 0.35,
-  "Hard Wheat Bread Flour": 0.25,
-  "Salted Creamery Butter": 0.08,
-  "Condensed Milk": 0.10,
-  "Fresh Chiton Mollusk (Kibit)": 0.25,
-  "Ground Black Pepper": 0.01,
-  "Pork Skin with Back Fat": 0.40,
-  "Pure Pork Lard": 0.10,
-  "Coarse Rock Salt": 0.03,
-  "Fresh Kabasi Fish": 0.50,
-  "Fresh Bangus (Milkfish) Skin": 0.30,
-  "White Pepper Powder": 0.01,
-  "Glutinous Rice (Malagkit for Pinipig)": 0.20,
-  "Raw Shelled Peanuts": 0.15,
-  "Fresh Whole Egg Whites": 0.15,
-  "Cream of Tartar": 0.005,
-  "Fresh Sapsap Fish": 0.50,
-  "Fresh Purple Yam Tubers": 0.45,
-  "Evaporated Milk": 0.10,
-  "Green Raw Papaya": 0.40,
-  "Fresh Carrots": 0.10,
-  "Red Bell Peppers": 0.05,
-  "Fresh Ginger": 0.03,
-  "Red Onions": 0.06,
-  "Seedless Raisins": 0.04,
-  "Whole Black Peppercorns": 0.01,
-  "Powdered Milk": 0.08,
-  "Fresh Whole Eggs": 0.12,
-  "Baking Powder": 0.01,
-  "Toasted Sesame Seeds": 0.02,
-  "Refined Peanut Oil": 0.08,
-  "Fresh Acetes Shrimp (Alamang)": 0.45,
-  "Cleaned Chicken Crop (Butse)": 0.35
-};
 
 let rawMaterials = [];
 let currentRef = '';
@@ -180,69 +110,8 @@ function isLegacyKxcProduct(name) {
 }
 
 function getFinishedProductsForMaterial(materialName) {
-  if (!materialName) return [];
-
-  // Exclude legacy KXC products; recognize all user-created formulations across storage keys
-  let catalog = [];
-  const storageKeys = ['rmims_custom_finished_products', 'RMSME_CUSTOM_FINISHED_PRODUCTS', 'rmims_finished_product_context'];
-  storageKeys.forEach(k => {
-    try {
-      const raw = localStorage.getItem(k);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          parsed.forEach(cp => {
-            const isCustom = Boolean(cp.recipeDetails || cp.id || cp.date_added || cp.date_modified);
-            if (cp && cp.name && (isCustom || !isLegacyKxcProduct(cp.name)) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
-              const materialNames = Array.isArray(cp.materialNames)
-                ? cp.materialNames
-                : (Array.isArray(cp.raw_materials)
-                    ? cp.raw_materials.map(r => (typeof r === 'object' && r ? (r.name || r.raw_material_name || r.materialName || '') : r))
-                    : (Array.isArray(cp.materials)
-                        ? cp.materials.map(m => (typeof m === 'object' && m ? (m.name || m.raw_material_name || m.materialName || '') : m))
-                        : (Array.isArray(cp.ingredients)
-                            ? cp.ingredients.map(i => (typeof i === 'object' && i ? (i.name || i.raw_material_name || i.materialName || '') : i))
-                            : [])));
-              catalog.push({
-                name: cp.name,
-                materialNames: materialNames.filter(Boolean),
-                recipeDetails: cp.recipeDetails || {}
-              });
-            }
-          });
-        }
-      }
-    } catch (e) {}
-  });
-
-  const results = [];
-  catalog.forEach(product => {
-    const matchedIng = (product.materialNames || []).find(ing => matchProductIngredient(ing, materialName));
-    if (matchedIng) {
-      // Find ratio for this ingredient: check customized recipe input first
-      const customNeed = product.recipeDetails && product.recipeDetails[matchedIng]?.needPerUnit !== undefined
-        ? Number(product.recipeDetails[matchedIng].needPerUnit)
-        : null;
-
-      const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matchedIng) && BASELINE_BOM_RATIOS[matchedIng] > 1;
-      const ratio = (customNeed && customNeed > 0) ? customNeed : (BASELINE_BOM_RATIOS[matchedIng] || (
-        isSconesRatio ? 100 :
-        materialName.toLowerCase().includes('sugar') || materialName.toLowerCase().includes('flour') ? 0.25 :
-        materialName.toLowerCase().includes('oil') ? 0.08 :
-        materialName.toLowerCase().includes('salt') ? 0.015 : 0.15
-      ));
-      const standardBatchUnits = 50;
-      const neededStock = Math.max(0.1, Math.round(ratio * standardBatchUnits * 10) / 10);
-      results.push({
-        productName: product.name,
-        ingredientName: matchedIng,
-        ratio,
-        neededStock
-      });
-    }
-  });
-
-  return results;
+  // Shared with Manager & Staff (rmims-bundle.js): the manager's own formulations, no built-in ratios
+  return getLinkedFinishedProducts(materialName);
 }
 
 function updateBundleReceivePreview() {
@@ -295,6 +164,7 @@ function updateBundleReceivePreview() {
   let remainingQty = qty;
 
   const cardsHtml = matchedProducts.map(p => {
+    if (p.neededStock == null) return notSetBundleCard(p, escapeHtml);
     const needed = p.neededStock;
     const allocated = Math.min(Math.max(0, remainingQty), needed);
     remainingQty = Math.max(0, remainingQty - allocated);
@@ -336,7 +206,7 @@ function updateBundleReceivePreview() {
           <span class="rec-badge-tag ${tagClass}">${statusText}</span>
         </div>
         <div class="rec-product-stats">
-          <span class="rec-req-label">Batch Requirement:</span>
+          <span class="rec-req-label">Requirement per Unit:</span>
           <span class="rec-req-val">${needed}${unit ? ' ' + unit : ''}</span>
         </div>
         <div class="rec-product-stats" style="margin-top:-2px;">
@@ -413,17 +283,20 @@ function initUserReceive() {
   try {
     Promise.allSettled([
       fetchUnifiedInventoryFromSupabase(),
-      fetchStaffTransactionsFromSupabase()
+      fetchStaffTransactionsFromSupabase(),
+      fetchLiveFinishedProductsFromSupabase() // manager's finished-product formulations (bundle guide)
     ]).then(() => {
       rawMaterials = getSystemRawMaterials();
       populateMaterialSelect();
       renderMySubmissions();
       updateBundleReceivePreview();
+      if (!isReviewOpen('staffReceiveReviewModal') && isReferenceUsed(currentRef)) initNewReference();
     }).catch(() => {});
   } catch (_) {}
 
   // Cross-tab real-time sync
   const refreshReceiveState = () => {
+    if (!isReviewOpen('staffReceiveReviewModal') && isReferenceUsed(currentRef)) initNewReference();
     rawMaterials = getSystemRawMaterials();
     populateMaterialSelect();
     renderMySubmissions();
@@ -458,6 +331,13 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initUserReceive);
 } else {
   initUserReceive();
+}
+
+// The number shown on the form was generated before this device finished syncing; replace it when another device or
+// a deleted record already uses it (otherwise the user first gets "reference already exists", or the save vanishes).
+function isReviewOpen(id) {
+  const m = document.getElementById(id);
+  return Boolean(m && (m.classList.contains('open') || m.style.display === 'flex'));
 }
 
 function initNewReference() {
@@ -498,7 +378,7 @@ function populateMaterialSelect() {
     opt.textContent = unit ? `${matName} (${m.category || 'General'} • ${unit})` : `${matName} (${m.category || 'General'})`;
     opt.dataset.unit = unit;
     opt.dataset.stock = m.current_stock ?? m.currentStock ?? m.stock ?? 0;
-    opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10;
+    opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 0;
     select.appendChild(opt);
   });
 
@@ -703,7 +583,29 @@ function handleOpenReview() {
   }
 }
 
-function handleConfirmSubmission() {
+let staffRecSubmitting = false;
+async function handleConfirmSubmission() {
+  if (!currentReviewData || staffRecSubmitting) return;
+  staffRecSubmitting = true;
+  const confirmBtn = document.getElementById('btnConfirmStaffRecSubmit');
+  if (confirmBtn) confirmBtn.disabled = true;
+  try {
+    // Make sure no other device / deleted record already uses this number (it would make this submission vanish)
+    const freeRef = await reserveReference(currentReviewData.ref, 'REC', 'staff');
+    if (freeRef && freeRef !== currentReviewData.ref) {
+      currentReviewData.ref = freeRef;
+      currentRef = freeRef;
+      const displayEl = document.getElementById('staffRecRefDisplay');
+      if (displayEl) displayEl.textContent = freeRef;
+    }
+    submitReceiveNow();
+  } finally {
+    staffRecSubmitting = false;
+    if (confirmBtn) confirmBtn.disabled = false;
+  }
+}
+
+function submitReceiveNow() {
   if (!currentReviewData) return;
 
   // Final duplicate safety check
@@ -842,6 +744,7 @@ function renderMySubmissions() {
     if (t.status === 'Approved') statusPill = '<span class="status-pill pill-approved">Approved</span>';
     else if (t.status === 'Rejected') statusPill = '<span class="status-pill pill-rejected">Rejected</span>';
     else if (t.status === 'Correction Needed') statusPill = '<span class="status-pill pill-correction">Correction Needed</span>';
+    else if (t.status === 'Deleted') statusPill = '<span class="status-pill pill-rejected" style="background:#F1F5F9;color:#64748B;">Deleted by Manager</span>';
 
     const isCorrection = t.status === 'Correction Needed';
 
@@ -855,7 +758,7 @@ function renderMySubmissions() {
         <td>${escapeHtml(t.supplier || '--')}</td>
         <td>${statusPill}</td>
         <td style="text-align:right; white-space:nowrap;">
-          ${t.status === 'Approved'
+          ${(t.status === 'Approved' || t.status === 'Deleted')
             ? `<span style="color:#94A3B8; font-size:13px; font-weight:600;">—</span>`
             : `
               <button type="button" class="btn-staff-rec-edit" data-ref="${escapeHtml(t.ref)}" title="Edit submission" style="background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; padding:4px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; margin-right:4px;">

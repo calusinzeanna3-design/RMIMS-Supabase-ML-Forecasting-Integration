@@ -1,4 +1,5 @@
 import './rmims-notifications.js';
+import './rmims-notification-feed.js';
 import './rmims-custom-select.js';
 
 (function () {

@@ -2,6 +2,7 @@
 // Initializes the Branch Stores Usage Chart using authentic RMIMS Emerald styling,
 // handles chart timeframes, interactive account approvals, real-time system alerts, and overview search.
 
+import { maskOperationalDetails } from './admin-privacy.js';
 import { getAlerts, getCategoryCounts, getDiagnosticRecipient, formatCleanBranchLocation } from './system-alerts-service.js';
 import { initAdminCalendarPicker, MONTH_NAMES_SHORT, getLiveTodayISO, getDaysAgoISO, formatDisplayDate } from './admin-calendar-picker.js';
 import { getStoresData } from './admin-branch-stores.js';
@@ -455,7 +456,7 @@ function renderOverviewLatestActivities() {
         <td><span class="action-tag ${actionTagClass}">${escapeHtml(act.action)}</span></td>
         <td><span class="location-badge ${locClass}">${escapeHtml(locBadgeText)}</span></td>
         <td>${escapeHtml(act.branchName)}</td>
-        <td>${escapeHtml(act.details)}</td>
+        <td>${escapeHtml(maskOperationalDetails(act.details))}</td>
         <td>${escapeHtml(formatLogTime(act.timestamp))}</td>
       </tr>
     `;
@@ -953,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${escapeHtml(occurrenceText)}</td>
               <td>${escapeHtml(a.lastDetected)}</td>
               <td><span class="status-pill status-${escapeHtml(a.status)}">${escapeHtml(a.status.charAt(0).toUpperCase() + a.status.slice(1))}</span></td>
-              <td>${escapeHtml(a.details)}</td>
+              <td>${escapeHtml(maskOperationalDetails(a.details))}</td>
             </tr>
           `;
         }).join('');

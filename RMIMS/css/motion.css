@@ -1,0 +1,26 @@
+html, body { background-color: #D8EEDC; }
+/* RMSME motion: cards fade in on open / scroll, fade out when scrolled past the top,
+   pop-ups fade in, pages fade between clicks. Disabled for people who prefer reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  /* only the page content fades (never the whole body), so the sidebar and background never flash white */
+  html.rm-js .admin-scroll-body { animation: rmPageIn .32s ease backwards; }
+  html.rm-js body.rm-leave .admin-scroll-body { opacity: 0; transition: opacity .16s ease; }
+
+  html.rm-js .rm-card.rm-pre { opacity: 0; transform: translateY(16px) scale(.97); }
+  html.rm-js .rm-card.rm-in { will-change: opacity, transform; animation: rmBeat .45s cubic-bezier(.22,.9,.3,1) backwards; animation-delay: calc(var(--rm-i, 0) * 28ms); }
+  html.rm-js .rm-card.rm-seen { animation: none; opacity: 1; transform: none; transition: opacity .35s ease, transform .35s ease; }
+  html.rm-js .rm-card.rm-seen.rm-out { opacity: 0; transform: translateY(-14px) scale(.985); }
+
+  .rm-pop-in { animation: rmPop .24s cubic-bezier(.2,.8,.3,1) both; }
+  .rm-pop-in > .rm-pop-child, .rm-pop-in > [class*="modal-card"], .rm-pop-in > [class*="modal-content"], .rm-pop-in > [class*="dialog"] {
+    animation: rmPopChild .3s cubic-bezier(.2,.8,.3,1) both;
+  }
+}
+@keyframes rmPageIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rmBeat {
+  0%   { opacity: 0; transform: translateY(16px) scale(.96); }
+  55%  { opacity: 1; transform: translateY(-2px) scale(1.018); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes rmPop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rmPopChild { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }

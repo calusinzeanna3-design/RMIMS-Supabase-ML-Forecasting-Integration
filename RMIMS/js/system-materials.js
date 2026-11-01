@@ -465,7 +465,7 @@ export function getSystemRawMaterials() {
         const bCode = String(b.item_code || b.itemCode || b.id || "").toUpperCase().trim();
         const bUnit = (b.unit || b.unit_of_measure || getAuthoritativeMaterialUnit(b, isScones)).trim();
         const bStock = Number((b.current_stock !== undefined && Number(b.current_stock) > 0) ? b.current_stock : (b.currentStock ?? b.current_stock ?? 0));
-        const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 10);
+        const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 0);
         const bFirst = b.date_added || b.first_date || "";
         const bLatest = b.last_updated || b.latest_date || bFirst || "";
         return {
@@ -516,7 +516,7 @@ export function getSystemRawMaterials() {
                     );
 
                     const rawCmStock = Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0);
-                    const resolvedMin = Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? cm.minStock ?? 10);
+                    const resolvedMin = Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? cm.minStock ?? 0);
                     const firstDate = cm.date_added || cm.first_date || (cm.created_at ? String(cm.created_at).slice(0, 10) : "");
                     const latestDate = cm.last_updated || cm.latest_date || cm.updated_at || firstDate || "";
 
@@ -762,7 +762,7 @@ export function getSystemRawMaterials() {
             if (!existingCodes.has(bCode)) {
                 const bUnit = (b.unit || b.unit_of_measure || getAuthoritativeMaterialUnit(b, true)).trim();
                 const bStock = Number((b.current_stock !== undefined && Number(b.current_stock) > 0) ? b.current_stock : (b.currentStock ?? 0));
-                const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 10);
+                const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 0);
                 dedupedList.push({
                     ...b,
                     id: bCode,
@@ -823,7 +823,7 @@ export function getSystemRawMaterials() {
 
     return dedupedList.map(m => {
         const s = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-        const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+        const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 0);
         const u = m.unit || m.unit_of_measure || getAuthoritativeMaterialUnit(m, isScones);
         return {
             ...m,
@@ -931,11 +931,11 @@ export function saveCustomRawMaterial(mat) {
         unit: mat.unit_of_measure || mat.unit || (recognized && recognized.unit) || "kg",
         current_stock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
         currentStock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
-        minimum_threshold: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
-        minimum_stock: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
+        minimum_threshold: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 0),
+        minimum_stock: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 0),
         reorder_quantity: Number(mat.reorder_quantity ?? 25),
         lead_time_days: Number(mat.lead_time_days ?? 3),
-        storage_location: mat.storage_location || "Warehouse A - Shelf 1",
+        storage_location: mat.storage_location || "",
         supplier: mat.supplier || "General Supply Co.",
         description: mat.description || `Raw material ${mat.name || mat.raw_material_name}`,
         date_added: resolvedFirstDate,
@@ -980,29 +980,8 @@ export function saveCustomRawMaterial(mat) {
     localStorage.setItem("rmims_inventory_updated", String(Date.now()));
     window.dispatchEvent(new Event("storage"));
 
-    // 5. Asynchronously persist real input to Supabase raw_materials table
-    if (typeof window !== "undefined" && window.supabase && fullRecord.name) {
-        (async () => {
-            try {
-                const payload = {
-                    item_code: fullRecord.item_code,
-                    name: fullRecord.name,
-                    description: fullRecord.description || `Raw material ${fullRecord.name}`,
-                    unit_of_measure: fullRecord.unit_of_measure || "kg",
-                    minimum_threshold: fullRecord.minimum_threshold,
-                    reorder_quantity: fullRecord.reorder_quantity,
-                    lead_time_days: fullRecord.lead_time_days,
-                    current_stock: fullRecord.current_stock
-                };
-                if (fullRecord.id && fullRecord.id.length === 36) {
-                    payload.id = fullRecord.id;
-                }
-                await window.supabase.from("raw_materials").upsert([payload], {
-                    onConflict: payload.id ? "id" : "item_code"
-                });
-            } catch (_) {}
-        })();
-    }
+    // 5. Database persistence is done by saveRawMaterialToSupabase (manager-supabase-service.js), which is company-aware and
+    //    never pushes an absolute stock figure that could double count. A second direct upsert here is intentionally gone.
 
     return fullRecord;
 }
@@ -1159,7 +1138,9 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
                     last_updated: mat.last_updated,
                     latest_date: mat.last_updated,
                     is_zero_explicit: (newStock === 0),
-                    is_manual_override: true
+                    is_manual_override: true,
+                    // marks this device's stock as newer than the server until the server confirms it (live sync)
+                    stock_local_ts: Date.now()
                 };
                 if (idKey && nameKey && idKey !== nameKey) {
                     ovs[nameKey] = {
@@ -1313,8 +1294,8 @@ export function getSystemCustomReceipts() {
                             quantity: Number(r.quantity ?? r.received_quantity ?? 0),
                             unit: r.unit || '',
                             receipt_date: r.date || r.receipt_date || new Date().toISOString().slice(0, 10),
-                            supplier_name: r.supplier || r.supplier_name || 'Inward Delivery',
-                            supplierName: r.supplier || r.supplier_name || 'Inward Delivery',
+                            supplier_name: r.supplier || r.supplier_name || '',
+                            supplierName: r.supplier || r.supplier_name || '',
                             status: r.status || 'Approved',
                             created_at: r.createdAt || r.created_at || new Date().toISOString()
                         };
@@ -1346,9 +1327,9 @@ export function saveCustomReceipt(receipt) {
         unit: receipt.unit || getAuthoritativeMaterialUnit({ id: receipt.material_id || receipt.materialId, name: receipt.material_name || receipt.materialName }),
         receipt_date: receipt.receipt_date || receipt.receiptDate || receipt.date || new Date().toISOString().slice(0, 10),
         receiptDate: receipt.receipt_date || receipt.receiptDate || receipt.date || new Date().toISOString().slice(0, 10),
-        supplier_name: receipt.supplier_name || receipt.supplierName || receipt.supplier || "Inward Delivery",
-        supplierName: receipt.supplier_name || receipt.supplierName || receipt.supplier || "Inward Delivery",
-        received_by: receipt.received_by || receipt.receivedBy || "System User",
+        supplier_name: receipt.supplier_name || receipt.supplierName || receipt.supplier || "",
+        supplierName: receipt.supplier_name || receipt.supplierName || receipt.supplier || "",
+        received_by: receipt.received_by || receipt.receivedBy || "",
         created_at: receipt.created_at || receipt.createdAt || new Date().toISOString()
     };
 
@@ -1437,9 +1418,9 @@ export function saveCustomDisbursement(disbursement) {
         usageDate: disbursement.usage_date || disbursement.usageDate || disbursement.date || new Date().toISOString().slice(0, 10),
         activity_type: disbursement.activity_type || disbursement.activityType || disbursement.context || "Production Usage",
         activityType: disbursement.activity_type || disbursement.activityType || disbursement.context || "Production Usage",
-        finished_product_name: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "Operational Batch",
-        finishedProductName: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "Operational Batch",
-        recorded_by: disbursement.recorded_by || disbursement.recordedBy || "System User",
+        finished_product_name: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "",
+        finishedProductName: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "",
+        recorded_by: disbursement.recorded_by || disbursement.recordedBy || "",
         created_at: disbursement.created_at || disbursement.createdAt || new Date().toISOString()
     };
 

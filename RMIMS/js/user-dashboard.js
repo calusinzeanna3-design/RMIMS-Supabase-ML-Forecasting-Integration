@@ -8,6 +8,7 @@
  * - Recent Activity: Staff member's own recent activity
  */
 
+import { getMaterialCoverage } from './rmims-reorder-engine.js';
 import { getSystemRawMaterials, getSystemCustomDisbursements } from './system-materials.js';
 import { getStaffTransactions, getAllCompanyTransactions } from './rmims-transaction-engine.js';
 import { fetchUnifiedInventoryFromSupabase, fetchManagerDashboardData } from '../supabase/manager-supabase-service.js';
@@ -40,10 +41,17 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+// Modules that await the Supabase CDN load finish AFTER DOMContentLoaded has already fired, so a bare
+// DOMContentLoaded listener never runs and the page stays on its HTML default of 0. Run immediately if ready.
+function onDomReady(fn) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+  else fn();
+}
+
 let staffChartInstance = null;
 let currentStaffDays = 14;
 
-document.addEventListener('DOMContentLoaded', () => {
+onDomReady(() => {
   initDashboard();
   initStaffChart();
 
@@ -58,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshStaffDashboard();
     }
   });
+  window.addEventListener('rmims_live_data_updated', refreshStaffDashboard);
   window.addEventListener('rmims_staff_transactions_updated', refreshStaffDashboard);
   window.addEventListener('rmims_staff_activity_updated', refreshStaffDashboard);
   window.addEventListener('rmims_inventory_updated', refreshStaffDashboard);
@@ -172,19 +181,38 @@ function renderStaffChart(providedStaffTx = null) {
   const recData = [];
   const disbData = [];
 
+  // Only what the user actually entered: one entry per reference, rejected / deleted submissions excluded,
+  // local calendar day (not UTC).
+  const localKey = (v) => {
+    if (!v) return '';
+    const str = String(v).split(' • ')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const dt = new Date(str);
+    if (isNaN(dt.getTime())) return str.slice(0, 10);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  };
+  const seenRefs = new Set();
+  txSource = (txSource || []).filter(t => {
+    if (!t || /^(rejected|deleted|cancelled)/i.test(String(t.status || ''))) return false;
+    const r = String(t.ref || t.id || '').toUpperCase();
+    if (!r) return true;
+    if (seenRefs.has(r)) return false;
+    seenRefs.add(r);
+    return true;
+  });
+
   const now = new Date();
   for (let i = currentStaffDays - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const isoDate = d.toISOString().slice(0, 10);
+    const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
 
     let rSum = 0;
     let dSum = 0;
 
     txSource.forEach(t => {
-      const td = t.date || t.createdAt || '';
-      if (td.startsWith(isoDate)) {
+      if (localKey(t.date || t.createdAt || t.created_at) === isoDate) {
         const act = (t.activity || t.type || '').toLowerCase();
         const qty = parseFloat(t.qtyNum || t.quantity || 0) || 0;
         if (act.includes('rec')) rSum += qty;
@@ -266,16 +294,18 @@ function renderStaffChart(providedStaffTx = null) {
 
 function getMaterialMetrics(m) {
   const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-  const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
-  const daysRemaining = (dailyBurn > 0 && stock > 0) ? Math.max(0, Math.round(stock / dailyBurn)) : 0;
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 0);
+  // Days left come ONLY from recorded usage (shared engine); no usage recorded -> unknown (null)
+  const _cov = getMaterialCoverage(m);
+  const dailyBurn = _cov.dailyRequirement;
+  const daysRemaining = stock > 0 ? _cov.daysOfCover : (_cov.hasData ? 0 : null);
 
   let statusKey = 'good';
   let statusText = 'Good';
   if (stock <= 0 || stock < min) {
     statusKey = 'out';
     statusText = 'Out of Stock';
-  } else if (daysRemaining <= 3) {
+  } else if (daysRemaining !== null && daysRemaining <= 3) {
     statusKey = 'low';
     statusText = 'Low';
   } else {
@@ -408,7 +438,7 @@ function renderSmartAlerts(materials) {
   });
 
   // Sort: Critical first, then lowest days
-  alertItems.sort((a, b) => a.days - b.days);
+  alertItems.sort((a, b) => (a.days ?? Infinity) - (b.days ?? Infinity));
 
   const badgeEl = document.getElementById('alertCountBadge');
   if (badgeEl) badgeEl.textContent = `${alertItems.length} alerts detected`;
@@ -519,6 +549,7 @@ function renderRecentActivity(staffTx) {
     if (t.status === 'Approved') statusClass = 'pill-approved';
     else if (t.status === 'Rejected') statusClass = 'pill-rejected';
     else if (t.status === 'Correction Needed') statusClass = 'pill-correction';
+    else if (t.status === 'Deleted') statusClass = 'pill-deleted';
 
     const isCorrection = t.status === 'Correction Needed';
 

@@ -1385,7 +1385,20 @@ let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
 async function getFlaskApiBase() {
   if (resolvedApiBase !== null) return resolvedApiBase;
 
-  if (typeof window !== "undefined" && window.location.port !== "5000") {
+  let mlProbed = false;
+  try { mlProbed = sessionStorage.getItem("rmims_ml_probe_failed") === "1"; } catch (_) {}
+  let mlSaved = "";
+  try { mlSaved = localStorage.getItem("rmims_ml_api_base") || ""; } catch (_) {}
+  if (mlSaved) { resolvedApiBase = mlSaved; return resolvedApiBase; }
+  const localDev = typeof window !== "undefined" && ["127.0.0.1", "localhost", ""].includes(window.location.hostname);
+  if (typeof window !== "undefined" && !localDev && !mlProbed) {
+    // deployed site: ML service lives on the same origin
+    try {
+      const res = await fetch("/api/ml/status", { method: "GET" }).catch(() => null);
+      if (res && res.ok) { resolvedApiBase = window.location.origin; return resolvedApiBase; }
+    } catch (e) {}
+  }
+  if (false) {
     // When served on dev ports like 5500, check Flask ML backend at 5000
     try {
       const controller = new AbortController();
@@ -1400,6 +1413,7 @@ async function getFlaskApiBase() {
   }
 
   resolvedApiBase = "";
+  try { sessionStorage.setItem("rmims_ml_probe_failed", "1"); } catch (_) {}
   return "";
 }
 
@@ -1513,11 +1527,11 @@ async function fetchForecastDataForMaterial(matNameOrId) {
       const encoded = encodeURIComponent(matNameOrId);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
+      const res = apiBase ? await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
         method: "GET",
         headers,
         signal: controller.signal
-      }).catch(() => null);
+      }).catch(() => null) : null;   // no ML server found: use the built-in forecast, no failing request
       clearTimeout(timeoutId);
       if (res && res.ok) {
         const data = await res.json();

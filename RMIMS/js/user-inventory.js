@@ -7,17 +7,21 @@
  * - Strictly View-Only: No Add, Edit, Delete, Stock Adjustment, or Direct Updates
  */
 
-import { getSystemRawMaterials, saveCustomRawMaterial, deleteSystemRawMaterial } from './system-materials.js';
-import {
-  fetchUnifiedInventoryFromSupabase,
-  saveRawMaterialToSupabase,
-  deleteRawMaterialOnSupabase,
-  broadcastManagerSync
-} from '../supabase/manager-supabase-service.js';
+import { getMaterialCoverage } from './rmims-reorder-engine.js';
+import { getSystemRawMaterials } from './system-materials.js';
+import { fetchUnifiedInventoryFromSupabase, pullLiveData } from '../supabase/manager-supabase-service.js';
+
 
 let rawMaterials = [];
 let currentPage = 1;
 let pageSize = 10;
+
+function fmtDate(v) {
+  if (!v || v === '—') return '—';
+  const str = String(v);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T00:00:00') : new Date(str);
+  return isNaN(d.getTime()) ? str : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -48,6 +52,9 @@ function initStaffInventory() {
   });
 
   window.addEventListener('rmims_inventory_updated', () => {
+    loadInventory();
+  });
+  window.addEventListener('rmims_live_data_updated', () => {
     loadInventory();
   });
   window.addEventListener('rmims_manager_receipts_updated', () => {
@@ -125,7 +132,7 @@ function bindEvents() {
     currentPage = 1;
     renderTable();
   });
-  if (refreshBtn) refreshBtn.addEventListener('click', loadInventory);
+  if (refreshBtn) refreshBtn.addEventListener('click', () => { loadInventory(); pullLiveData('manual-refresh').then(loadInventory).catch(() => {}); });
 
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
@@ -136,67 +143,17 @@ function bindEvents() {
       renderTable();
     });
   }
-
-  // Document-level delegation for Edit and Delete
-  document.addEventListener('click', (e) => {
-    const editBtn = e.target.closest('.btn-staff-edit');
-    if (editBtn) {
-      e.preventDefault();
-      const id = editBtn.dataset.id || editBtn.getAttribute('data-id');
-      if (id) openStaffEditModal(id);
-      return;
-    }
-    const delBtn = e.target.closest('.btn-staff-delete');
-    if (delBtn) {
-      e.preventDefault();
-      const id = delBtn.dataset.id || delBtn.getAttribute('data-id');
-      const name = delBtn.dataset.name || delBtn.getAttribute('data-name');
-      if (id) openStaffDeleteModal(id, name);
-      return;
-    }
-  });
-
-  // Action column delegation (Edit and Delete)
-  const table = document.getElementById('staffInventoryTable');
-  if (table) {
-    table.addEventListener('click', (e) => {
-      const editBtn = e.target.closest('.btn-staff-edit');
-      if (editBtn) {
-        openStaffEditModal(editBtn.dataset.id);
-        return;
-      }
-      const delBtn = e.target.closest('.btn-staff-delete');
-      if (delBtn) {
-        openStaffDeleteModal(delBtn.dataset.id, delBtn.dataset.name);
-        return;
-      }
-    });
-  }
-
-  // Edit modal buttons
-  const editForm = document.getElementById('staffEditMaterialForm');
-  const editClose = document.getElementById('staffEditCloseBtn');
-  const editCancel = document.getElementById('staffEditCancelBtn');
-  if (editClose) editClose.addEventListener('click', closeStaffEditModal);
-  if (editCancel) editCancel.addEventListener('click', closeStaffEditModal);
-  if (editForm) editForm.addEventListener('submit', handleStaffEditSubmit);
-
-  // Delete modal buttons
-  const delClose = document.getElementById('staffDeleteCloseBtn');
-  const delCancel = document.getElementById('staffDeleteCancelBtn');
-  const delSubmit = document.getElementById('staffDeleteSubmitBtn');
-  if (delClose) delClose.addEventListener('click', closeStaffDeleteModal);
-  if (delCancel) delCancel.addEventListener('click', closeStaffDeleteModal);
-  if (delSubmit) delSubmit.addEventListener('click', handleStaffDeleteSubmit);
 }
 
 
 function computeMetrics(m) {
   const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-  const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 0);
+  // Days left come ONLY from recorded usage (shared engine); no usage recorded -> unknown (null)
+  const _cov = getMaterialCoverage(m);
+  const dailyBurn = _cov.dailyRequirement;
 
-  const daysRemaining = (dailyBurn > 0 && stock > 0) ? Math.max(0, Math.round(stock / dailyBurn)) : 0;
+  const daysRemaining = stock > 0 ? _cov.daysOfCover : (_cov.hasData ? 0 : null);
 
   let statusKey = 'good';
   let statusText = 'Good';
@@ -208,7 +165,7 @@ function computeMetrics(m) {
     statusText = 'Out of Stock';
     tagClass = 'tag-out';
     rowClass = 'row-out';
-  } else if (daysRemaining <= 3) {
+  } else if (daysRemaining !== null && daysRemaining <= 3) {
     statusKey = 'low';
     statusText = 'Low';
     tagClass = 'tag-low';
@@ -224,7 +181,7 @@ function computeMetrics(m) {
   let runOutText = 'Sufficient';
   if (stock <= 0 || stock < min) {
     runOutText = stock <= 0 ? 'Depleted' : 'Below Minimum';
-  } else if (daysRemaining < 90) {
+  } else if (daysRemaining !== null && daysRemaining < 90) {
     const target = new Date();
     target.setDate(target.getDate() + daysRemaining);
     runOutText = target.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -284,7 +241,7 @@ function renderTable() {
     if (sortVal === 'name_desc') return nameB.localeCompare(nameA);
     if (sortVal === 'stock_desc') return mB.stock - mA.stock;
     if (sortVal === 'stock_asc') return mA.stock - mB.stock;
-    if (sortVal === 'days_asc') return mA.daysRemaining - mB.daysRemaining;
+    if (sortVal === 'days_asc') return (mA.daysRemaining ?? Infinity) - (mB.daysRemaining ?? Infinity);
     return 0;
   });
 
@@ -316,7 +273,7 @@ function renderTable() {
     const isFiltered = Boolean(searchVal || statusVal !== 'all');
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" style="text-align: center; padding: 56px 20px; background: #FFFFFF; border-bottom: none;">
+        <td colspan="9" style="text-align: center; padding: 56px 20px; background: #FFFFFF; border-bottom: none;">
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
             <div style="width: 52px; height: 52px; border-radius: 14px; background: #F8FCF9; border: 1px solid var(--rm-line); color: #64748B; display: flex; align-items: center; justify-content: center; box-shadow: var(--rm-shadow-sm);">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -375,7 +332,7 @@ function renderTable() {
     ];
     if (allMovements.length > 0) {
       allMovements.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
-      if (allMovements[0].date) latestActDate = allMovements[0].date;
+      if (allMovements[0].date && !(m.last_updated && new Date(m.last_updated) > new Date(allMovements[0].date))) latestActDate = allMovements[0].date;
     }
 
     let statusText = 'Good';
@@ -392,7 +349,7 @@ function renderTable() {
       rowBg = '#FEE2E2';        // Red for Out of Stock
       rowBorder = '#FECACA';
       leftBorderColor = '#DC2626';
-    } else if (met.statusKey === 'low' || met.daysRemaining <= 3) {
+    } else if (met.statusKey === 'low' || (met.daysRemaining !== null && met.daysRemaining <= 3)) {
       statusText = 'Low';
       statusPillClass = 'status-pill-low';
       rowStatusClass = 'row-status-low';
@@ -430,10 +387,10 @@ function renderTable() {
           </span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; font-size:12px; color:#334155; font-weight:600; white-space:nowrap;">
-          ${escapeHtml(firstDateStr)}
+          ${escapeHtml(fmtDate(firstDateStr))}
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; font-size:12px; color:#0F766E; font-weight:600; white-space:nowrap;">
-          ${escapeHtml(latestActDate)}
+          ${escapeHtml(fmtDate(latestActDate))}
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span class="mgr-status-pill ${statusPillClass}">
@@ -441,24 +398,12 @@ function renderTable() {
           </span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
-          <span style="font-weight:700; color:${met.daysRemaining <= 3 ? '#DC2626' : '#334155'};">
-            ${met.daysRemaining === 0 ? '0 days' : `${met.daysRemaining} ${met.daysRemaining === 1 ? 'day' : 'days'}`}
+          <span style="font-weight:700; color:${met.daysRemaining !== null && met.daysRemaining <= 3 ? '#DC2626' : '#334155'};">
+            ${met.daysRemaining === null ? '—' : (met.daysRemaining === 0 ? '0 days' : `${met.daysRemaining} ${met.daysRemaining === 1 ? 'day' : 'days'}`)}
           </span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important;">
           <span class="runout-date" style="color:#334155; font-size:12px; font-weight:500;">${escapeHtml(met.runOutText)}</span>
-        </td>
-        <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
-          <div style="display:inline-flex; align-items:center; gap:6px; justify-content:center;">
-            <button type="button" class="btn-staff-edit" data-id="${m.id || m.item_code}" data-name="${escapeHtml(m.name || m.materialName)}" title="Edit Material" style="padding:4px 8px; border-radius:6px; border:1px solid #0F766E; background:#FFFFFF; color:#0F766E; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span>Edit</span>
-            </button>
-            <button type="button" class="btn-staff-delete" data-id="${m.id || m.item_code}" data-name="${escapeHtml(m.name || m.materialName)}" title="Delete Material" style="padding:4px 8px; border-radius:6px; border:1px solid #FECACA; background:#FEF2F2; color:#DC2626; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              <span>Delete</span>
-            </button>
-          </div>
         </td>
       </tr>
     `;
@@ -541,118 +486,3 @@ function renderPaginationControls(totalPages, totalItems) {
   };
   container.appendChild(nextBtn);
 }
-
-/**
- * ==========================================================
- * STAFF EDIT & DELETE MODAL HANDLERS
- * ==========================================================
- */
-let pendingDeleteStaffMatId = null;
-
-function openStaffEditModal(id) {
-  const cleanId = String(id || '').trim().toUpperCase();
-  const m = rawMaterials.find(x => 
-    String(x.id || '').trim().toUpperCase() === cleanId || 
-    String(x.item_code || '').trim().toUpperCase() === cleanId ||
-    (x.name && x.name.toLowerCase() === String(id).toLowerCase())
-  );
-  if (!m) {
-    alert(`Material "${id}" could not be located.`);
-    return;
-  }
-
-  const modal = document.getElementById('modalStaffEditMaterial');
-  if (!modal) return;
-
-  const idEl = document.getElementById('staffEditMatId');
-  const nameEl = document.getElementById('staffEditMatName');
-  const unitEl = document.getElementById('staffEditMatUnit');
-  const stockEl = document.getElementById('staffEditMatCurrentStock');
-  const minEl = document.getElementById('staffEditMatMinStock');
-
-  if (idEl) idEl.value = m.id || m.item_code;
-  if (nameEl) nameEl.value = m.name || m.materialName || '';
-  if (unitEl) unitEl.value = m.unit_of_measure || m.unit || 'kg';
-  if (stockEl) stockEl.value = m.current_stock ?? m.currentStock ?? 0;
-  if (minEl) minEl.value = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 10;
-  
-  const sub = document.getElementById('staffEditModalSubtitle');
-  if (sub) sub.textContent = `Editing specifications for ${m.name || m.materialName} (${m.id || m.item_code})`;
-
-  modal.style.display = 'flex';
-}
-
-function closeStaffEditModal() {
-  const modal = document.getElementById('modalStaffEditMaterial');
-  if (modal) modal.style.display = 'none';
-}
-
-function handleStaffEditSubmit(e) {
-  e.preventDefault();
-  const idEl = document.getElementById('staffEditMatId');
-  if (!idEl) return;
-  const id = idEl.value;
-  const m = rawMaterials.find(x => String(x.id) === String(id) || String(x.item_code) === String(id));
-  if (!m) return;
-
-  const nameEl = document.getElementById('staffEditMatName');
-  const unitEl = document.getElementById('staffEditMatUnit');
-  const stockEl = document.getElementById('staffEditMatCurrentStock');
-  const minEl = document.getElementById('staffEditMatMinStock');
-
-  const name = nameEl ? nameEl.value.trim() : (m.name || m.materialName);
-  const category = m.category || 'General';
-  const unit = (unitEl && unitEl.value.trim()) || 'kg';
-  const currentStock = stockEl ? (parseFloat(stockEl.value) || 0) : 0;
-  const minStock = minEl ? (parseFloat(minEl.value) || 0) : 0;
-
-  const updatedMat = {
-    ...m,
-    id: m.id || id,
-    item_code: m.item_code || id,
-    name: name,
-    category: category,
-    unit: unit,
-    unit_of_measure: unit,
-    current_stock: currentStock,
-    currentStock: currentStock,
-    minimum_threshold: minStock,
-    minimum_stock: minStock,
-    minimumStock: minStock,
-    last_updated: new Date().toISOString()
-  };
-
-  saveRawMaterialToSupabase(updatedMat);
-  closeStaffEditModal();
-  loadInventory();
-  alert(`✓ Raw material "${name}" updated successfully.`);
-}
-
-function openStaffDeleteModal(id, name) {
-  pendingDeleteStaffMatId = id;
-  const modal = document.getElementById('modalStaffDeleteConfirm');
-  const nameEl = document.getElementById('staffDeleteTargetName');
-  const codeEl = document.getElementById('staffDeleteTargetCode');
-  if (nameEl) nameEl.textContent = name || id;
-  if (codeEl) codeEl.textContent = id;
-  if (modal) modal.style.display = 'flex';
-}
-
-function closeStaffDeleteModal() {
-  pendingDeleteStaffMatId = null;
-  const modal = document.getElementById('modalStaffDeleteConfirm');
-  if (modal) modal.style.display = 'none';
-}
-
-function handleStaffDeleteSubmit() {
-  if (!pendingDeleteStaffMatId) return;
-  const id = pendingDeleteStaffMatId;
-  const m = rawMaterials.find(x => String(x.id) === String(id) || String(x.item_code) === String(id));
-  const name = m ? (m.name || m.materialName) : id;
-
-  deleteRawMaterialOnSupabase(id);
-  closeStaffDeleteModal();
-  loadInventory();
-  alert(`✓ Raw material "${name}" deleted from catalog.`);
-}
-

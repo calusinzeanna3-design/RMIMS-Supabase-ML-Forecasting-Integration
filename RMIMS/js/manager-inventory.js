@@ -9,9 +9,11 @@
  *   Last Updated, Added By, Status.
  */
 
+import { getMaterialCoverage } from './rmims-reorder-engine.js';
 import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, saveCustomReceipt, saveCustomDisbursement, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit, getSconesMaterialImagePath, resolveForecastingMaterialByName, parseSafeDate } from './system-materials.js';
 import {
   fetchUnifiedInventoryFromSupabase,
+  fetchLiveFinishedProductsFromSupabase,
   saveRawMaterialToSupabase,
   deleteRawMaterialOnSupabase,
   broadcastManagerSync
@@ -52,83 +54,6 @@ const DEFAULT_LOCATIONS = {
 };
 
 // Authoritative Baseline Formulation Ratios (g/pcs/kl for Scones; kg/L for KXC)
-const BASELINE_BOM_RATIOS = {
-  // Authoritative Scones & Muffins Bakery (Strict 19 Nutribun Raw Materials) Ratios
-  "All-Purpose / Bread Flour": 250,
-  "Refined White Sugar": 100,
-  "Fresh Yellow Squash (Kalabasa)": 350,
-  "Skimmed Milk Powder": 80,
-  "Condensed Milk": 100,
-  "Fresh Whole Eggs": 1, // 1 pc
-  "Baking Shortening": 80,
-  "Margarine": 80,
-  "Instant Dry Yeast": 15,
-  "Baking Soda": 10,
-  "Iodized Salt": 15,
-  "Calcium Propionate": 5,
-  "Potassium Sorbate": 5,
-  "Crushed Peanuts / Nuts": 50,
-  "Desiccated Coconut": 50,
-  "Black Sesame Seeds": 20,
-  "Malunggay (Moringa) Flakes": 20,
-  "Vanilla Extract": 5,
-  "Plastic Pillow Packaging": 0.02, // 0.02 kl film roll per batch
-
-  "Fresh Mature Coconut Meat": 0.40,
-  "Panutsa Cane Sugar": 0.15,
-  "Muscovado Brown Sugar": 0.12,
-  "Pandan Leaves": 0.02,
-  "Fresh Garlic": 0.10,
-  "Red Chili Peppers (Siling Labuyo)": 0.05,
-  "Palm Cooking Oil": 0.08,
-  "Cane Vinegar": 0.06,
-  "Iodized Salt": 0.015,
-  "Refined White Sugar": 0.10,
-  "Dried Red Chili Flakes": 0.03,
-  "Cornstarch": 0.04,
-  "Fresh Cassava Tubers": 0.35,
-  "Cheese Seasoning Powder": 0.03,
-  "All-Purpose Wheat Flour": 0.25,
-  "Purified Water": 0.15,
-  "Food Grade Sunset Yellow / Orange Dye": 0.005,
-  "Garlic Powder": 0.02,
-  "Unripe Green Saba Bananas": 0.30,
-  "Vanilla Extract": 0.005,
-  "Fresh Sweet Potato": 0.35,
-  "Hard Wheat Bread Flour": 0.25,
-  "Salted Creamery Butter": 0.08,
-  "Condensed Milk": 0.10,
-  "Fresh Chiton Mollusk (Kibit)": 0.25,
-  "Ground Black Pepper": 0.01,
-  "Pork Skin with Back Fat": 0.40,
-  "Pure Pork Lard": 0.10,
-  "Coarse Rock Salt": 0.03,
-  "Fresh Kabasi Fish": 0.50,
-  "Fresh Bangus (Milkfish) Skin": 0.30,
-  "White Pepper Powder": 0.01,
-  "Glutinous Rice (Malagkit for Pinipig)": 0.20,
-  "Raw Shelled Peanuts": 0.15,
-  "Fresh Whole Egg Whites": 0.15,
-  "Cream of Tartar": 0.005,
-  "Fresh Sapsap Fish": 0.50,
-  "Fresh Purple Yam Tubers": 0.45,
-  "Evaporated Milk": 0.10,
-  "Green Raw Papaya": 0.40,
-  "Fresh Carrots": 0.10,
-  "Red Bell Peppers": 0.05,
-  "Fresh Ginger": 0.03,
-  "Red Onions": 0.06,
-  "Seedless Raisins": 0.04,
-  "Whole Black Peppercorns": 0.01,
-  "Fresh Grated Coconut Meat": 0.40,
-  "Powdered Milk": 0.08,
-  "Fresh Whole Eggs": 0.12,
-  "Baking Powder": 0.01,
-  "Toasted Sesame Seeds": 0.02,
-  "Refined Peanut Oil": 0.08,
-  "Fresh Acetes Shrimp (Alamang)": 0.45,
-  "Cleaned Chicken Crop (Butse)": 0.35
-};
 
 // Authentic Default Specifications Map (Form, type, or grade only - no quantity, stock, supplier, or price)
 const MATERIAL_SPECS_MAP = {
@@ -366,9 +291,9 @@ function loadMaterials() {
     const ovStock = ov.current_stock !== undefined ? Number(ov.current_stock) : undefined;
     const mStock = Number(m.current_stock ?? m.currentStock ?? 0);
     const currentStock = (ovStock !== undefined && (ovStock > 0 || ov.is_zero_explicit === true)) ? ovStock : mStock;
-    const minStock = Number(ov.minimum_stock !== undefined ? ov.minimum_stock : (m.minimum_threshold ?? m.minimum_stock ?? 10));
+    const minStock = Number(ov.minimum_stock !== undefined ? ov.minimum_stock : (m.minimum_threshold ?? m.minimum_stock ?? 0));
     const maxStock = Number(ov.maximum_stock !== undefined ? ov.maximum_stock : (m.reorder_quantity ? m.reorder_quantity * 4 : 100));
-    const location = ov.storage_location || m.storage_location || DEFAULT_LOCATIONS[category] || 'Warehouse A - Shelf 1';
+    const location = ov.storage_location || m.storage_location || '';
     const supplier = ov.supplier || m.supplier || DEFAULT_SUPPLIERS[category] || 'General Supply Co.';
     const description = ov.description || m.description || `Food grade ${specificationName} suitable for food processing operations.`;
 
@@ -447,15 +372,17 @@ function loadMaterials() {
     const addedBy = ov.added_by || m.added_by || 'Store Manager';
 
     const isArchived = archivedIds.has(id);
-    const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((minStock / 7).toFixed(1))));
-    const daysRemaining = (dailyBurn > 0 && currentStock > 0) ? Math.max(0, Math.round(currentStock / dailyBurn)) : 0;
+    // Days left come ONLY from recorded usage (shared engine); no usage recorded -> unknown (null)
+    const _cov = getMaterialCoverage(m);
+    const dailyBurn = _cov.dailyRequirement;
+    const daysRemaining = currentStock > 0 ? _cov.daysOfCover : (_cov.hasData ? 0 : null);
 
     let status = 'Good';
     if (isArchived) {
       status = 'Archived';
     } else if (currentStock <= 0 || currentStock < minStock) {
       status = 'Out of Stock';
-    } else if (daysRemaining <= 3) {
+    } else if (daysRemaining !== null && daysRemaining <= 3) {
       status = 'Low';
     } else {
       status = 'Good';
@@ -564,7 +491,7 @@ function getMaterialHistory(id) {
           timestamp: dStr,
           rawTime: dObj.getTime(),
           type: 'Stock Inward',
-          user: r.recordedBy || 'Store Manager',
+          user: r.recordedBy || '—',
           detail: `Received ${r.received_quantity || r.quantity || 0} ${r.unit || ''} from ${r.supplier_name || r.supplier || 'Vendor'} (Ref: ${r.ref || r.id})`
         });
       }
@@ -581,8 +508,8 @@ function getMaterialHistory(id) {
           timestamp: dStr,
           rawTime: dObj.getTime(),
           type: 'Disbursement',
-          user: d.recordedBy || 'Store Operations',
-          detail: `Disbursed ${d.consumed_quantity || d.quantity || 0} ${d.unit || ''} for ${d.finished_product_name || 'Production Batch'} (Ref: ${d.ref || d.id})`
+          user: d.recordedBy || '—',
+          detail: `Disbursed ${d.consumed_quantity || d.quantity || 0} ${d.unit || ''} for ${d.finished_product_name || '—'} (Ref: ${d.ref || d.id})`
         });
       }
     });
@@ -878,7 +805,7 @@ function renderInventoryTable() {
       rowBg = '#FEE2E2';        // Red for Out of Stock
       rowBorder = '#FECACA';
       leftBorderColor = '#DC2626';
-    } else if (m.status === 'Low' || (m.daysRemaining !== undefined && m.daysRemaining <= 3)) {
+    } else if (m.status === 'Low' || (m.daysRemaining !== undefined && m.daysRemaining !== null && m.daysRemaining <= 3)) {
       statusText = 'Low';
       statusPillClass = 'status-pill-low';
       rowStatusClass = 'row-status-low';
@@ -1489,7 +1416,7 @@ function findMaterialRecord(matName) {
         ...sconeMatch,
         specification_name: `${sconeMatch.name} Standard Formulation Grade`,
         storage_location: 'Bakery Store - Tier 1',
-        minimum_stock: Number(sconeMatch.minimum_threshold || 10)
+        minimum_stock: Number(sconeMatch.minimum_threshold || 0)
       };
     }
   }
@@ -1503,26 +1430,20 @@ function findMaterialRecord(matName) {
       minimum_stock: 10,
       unit: getAuthoritativeMaterialUnit({ name: matName }),
       status: 'Available',
-      storage_location: 'Warehouse A - Shelf 1'
+      storage_location: ''
     };
   }
   return matched;
 }
 
 function getDefaultRecipeQtyForMaterial(matName) {
-  if (!matName) return 1;
-  const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matName) && BASELINE_BOM_RATIOS[matName] > 1;
-  return BASELINE_BOM_RATIOS[matName] || (
-    isSconesRatio ? 100 :
-    matName.toLowerCase().includes('sugar') || matName.toLowerCase().includes('flour') ? 0.25 :
-    matName.toLowerCase().includes('oil') ? 0.08 :
-    matName.toLowerCase().includes('salt') ? 0.015 : 0.15
-  );
+  // No built-in recipe ratio: the requirement per unit is whatever the manager enters (blank until entered)
+  return '';
 }
 
 function getDefaultMinStockForMaterial(matName) {
   const matched = findMaterialRecord(matName);
-  return Number(matched?.minimum_stock ?? matched?.minimum_threshold ?? 10) || 10;
+  return Number(matched?.minimum_stock ?? matched?.minimum_threshold ?? 0) || 0;
 }
 
 function openAddFinishedProductPanel() {
@@ -1668,7 +1589,7 @@ function populateAvailableRawMaterialsDropdown() {
           category: sconeMat.category,
           unit: sconeMat.unit || sconeMat.unit_of_measure || 'kg',
           current_stock: Number(sconeMat.current_stock || 0),
-          minimum_stock: Number(sconeMat.minimum_threshold || 10),
+          minimum_stock: Number(sconeMat.minimum_threshold || 0),
           status: sconeMat.current_stock < sconeMat.minimum_threshold ? 'Out of Stock' : 'Good'
         });
       }
@@ -2219,7 +2140,24 @@ function openFinishedFoodCatalogPopup() {
   populateAvailableRawMaterialsDropdown();
   renderFinishedFoodModalContent('');
   showModalBackdrop(modal);
+
+  // Pull the saved formulations from the database every time the catalog opens
+  try {
+    fetchLiveFinishedProductsFromSupabase().then(() => {
+      const m = document.getElementById('modalFinishedFoodCatalogPopup');
+      const q = document.getElementById('finishedFoodPopupSearchInput');
+      if (m && m.offsetParent !== null) renderFinishedFoodModalContent(q ? q.value : '');
+    }).catch(() => {});
+  } catch (_) {}
 }
+
+window.addEventListener('rmims_finished_products_updated', () => {
+  const m = document.getElementById('modalFinishedFoodCatalogPopup');
+  if (m && m.offsetParent !== null) {
+    const q = document.getElementById('finishedFoodPopupSearchInput');
+    renderFinishedFoodModalContent(q ? q.value : '');
+  }
+});
 
 function closeFinishedFoodCatalogModal() {
   const modal = document.getElementById('modalFinishedFoodCatalogPopup');
@@ -2297,7 +2235,7 @@ function openSpecsUpdatePanel(id, mode = 'edit') {
     if (currentStockInput) currentStockInput.value = 0;
     if (minStockInput) minStockInput.value = 10;
     if (maxStockInput) maxStockInput.value = 100;
-    if (locationInput) locationInput.value = 'Warehouse A - Shelf 1';
+    if (locationInput) locationInput.value = '';
     if (supplierInput) supplierInput.value = 'General Mills';
   } else {
     const m = rawMaterials.find(x => x.id === id);
@@ -3000,7 +2938,7 @@ function handleAddMaterialSubmit(e) {
   const maxStockInput = document.getElementById('addMatMaxStock');
   const maxStock = (maxStockInput && parseFloat(maxStockInput.value)) || (minStock * 5) || 100;
   const locEl = document.getElementById('addMatLocation');
-  const location = (locEl && locEl.value.trim()) || DEFAULT_LOCATIONS[category] || 'Warehouse A - Shelf 1';
+  const location = (locEl && locEl.value.trim()) || '';
   const supEl = document.getElementById('addMatSupplier');
   const supplier = (supEl && supEl.value.trim()) || DEFAULT_SUPPLIERS[category] || 'General Supply Co.';
   const descEl = document.getElementById('addMatDescription');
@@ -3100,7 +3038,6 @@ function handleAddMaterialSubmit(e) {
     minimum_threshold: minStock,
     minimum_stock: minStock,
     reorder_quantity: maxStock / 2,
-    lead_time_days: 3,
     storage_location: location,
     supplier,
     description,
@@ -3254,7 +3191,7 @@ function handleEditMaterialSubmit(e) {
   const editMaxInput = document.getElementById('editMatMaxStock');
   const maxStock = (editMaxInput && parseFloat(editMaxInput.value)) || (m.maximum_stock !== undefined ? m.maximum_stock : (minStock * 5) || 100);
   const locInput = document.getElementById('editMatLocation');
-  const location = (locInput && locInput.value.trim()) || (m.storage_location || 'Warehouse A - Shelf 1');
+  const location = (locInput && locInput.value.trim()) || (m.storage_location || '');
   const supInput = document.getElementById('editMatSupplier');
   const supplier = (supInput && supInput.value.trim()) || (m.supplier || 'General Supply Co.');
   const descInput = document.getElementById('editMatDescription');
@@ -3332,7 +3269,6 @@ function handleEditMaterialSubmit(e) {
     minimum_threshold: minStock,
     minimum_stock: minStock,
     reorder_quantity: maxStock / 2,
-    lead_time_days: 3,
     storage_location: location,
     supplier,
     description,
@@ -4168,6 +4104,7 @@ async function ensureXLSX() {
     return window.XLSX;
   }
   const urls = [
+    new URL('../vendor/xlsx/xlsx.full.min.js', import.meta.url).href,
     'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
     'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
     'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
@@ -4830,27 +4767,9 @@ async function handleConfirmImportMaterials() {
           received_by: 'Store Manager',
           created_at: now.toISOString()
         });
-      } else if (delta < 0) {
-        batchDisbursements.push({
-          id: `disb-import-${code}-${rDate}-${rIdx}`,
-          material_id: code,
-          materialId: code,
-          material_name: latestRow.name,
-          materialName: latestRow.name,
-          consumed_quantity: Math.abs(delta),
-          consumedQuantity: Math.abs(delta),
-          quantity: Math.abs(delta),
-          unit: latestRow.unit,
-          usage_date: rDate,
-          usageDate: rDate,
-          activity_type: 'Production Usage',
-          activityType: 'Production Usage',
-          finished_product_name: 'Imported Operational Usage',
-          finishedProductName: 'Imported Operational Usage',
-          recorded_by: 'Store Manager',
-          created_at: now.toISOString()
-        });
       }
+      // A lower stock figure in an imported file is NOT a disbursement: nobody recorded one, so none is invented.
+      // Real disbursements only come from the Disburse page (manager) or an approved staff request.
     });
 
     overrides[code] = {

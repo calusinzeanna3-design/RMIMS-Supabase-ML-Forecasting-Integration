@@ -518,31 +518,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
     // Helper to calculate a material's authentic daily forecast requirement without hardcoding
     function getMaterialDailyForecast(mat) {
       if (!mat) return 0;
-      // 1. Direct daily forecast from ML model or Supabase column
-      if (mat.forecast_daily != null && !isNaN(Number(mat.forecast_daily)) && Number(mat.forecast_daily) > 0) {
-        return Number(mat.forecast_daily);
-      }
-      // 2. From forecasts array if passed
-      const fMatch = (forecasts || []).find(f => 
-        String(f.material_id) === String(mat.id) || 
-        String(f.material_id) === String(mat.item_code) ||
-        String(f.material_id) === String(mat.itemCode) ||
-        (f.raw_material_name && mat.name && f.raw_material_name.toLowerCase() === mat.name.toLowerCase())
-      );
-      if (fMatch) {
-        if (fMatch.forecast_daily != null && Number(fMatch.forecast_daily) > 0) return Number(fMatch.forecast_daily);
-        if (fMatch.forecast7Day?.quantity != null && Number(fMatch.forecast7Day.quantity) > 0) {
-          return Number((Number(fMatch.forecast7Day.quantity) / 7).toFixed(2));
-        }
-        if (fMatch.forecast1Month?.quantity != null && Number(fMatch.forecast1Month.quantity) > 0) {
-          return Number((Number(fMatch.forecast1Month.quantity) / 30).toFixed(2));
-        }
-      }
-      // 3. Weekly forecast divided by 7
-      if (mat.forecast_weekly != null && Number(mat.forecast_weekly) > 0) {
-        return Number((Number(mat.forecast_weekly) / 7).toFixed(2));
-      }
-      // 4. Actual daily disbursement historical run-rate
+      // Recorded usage only: average quantity per day that has a recorded disbursement (no built-in forecasts,
+      // no requirement invented from the minimum stock).
       const matDisbs = (disbursements || []).filter(tx => {
         const id = tx.material_id ?? tx.materialId;
         return String(id) === String(mat.id) || String(id) === String(mat.item_code || mat.itemCode);
@@ -554,9 +531,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
           return Number((totalQ / dayCount).toFixed(2));
         }
       }
-      // 5. Default from minimum threshold / reorder level
-      const minThresh = Number(mat.minimum_threshold ?? mat.reorder_level ?? mat.minStock ?? 0);
-      return minThresh > 0 ? Number((minThresh / 7).toFixed(2)) : 0;
+      return 0;
     }
 
     // Authentic daily requirement: sum for ALL, or single material
@@ -641,7 +616,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
     const nowRef = new Date();
     let anyEvidence = trainedTargets.some(t => buildLiveForecaster(t.code, t.actuals, { asOf: nowRef, coldStart: 'zero' }).hasEvidence);
     trainedTargets.forEach(t => {
-      t.fc = buildLiveForecaster(t.code, t.actuals, { asOf: nowRef, coldStart: anyEvidence ? 'zero' : 'baseline' });
+      t.fc = buildLiveForecaster(t.code, t.actuals, { asOf: nowRef, coldStart: 'zero' });
     });
     const useTrained = trainedTargets.length > 0;
     let liveMarginRatioSum = 0, liveMarginRatioN = 0;

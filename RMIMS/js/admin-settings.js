@@ -4,6 +4,7 @@
 // Branch Sync Policies, Database Backup, and Root Factory System Reset.
 
 import { supabase, auth } from '../supabase/supabase-config.js';
+import { changeAccountPassword } from '../supabase/password-service.js';
 import { onAuthStateChanged } from '../supabase/auth-compat.js';
 import { isMockUser, syncRestoredRolePayload, logAdminActivity } from '../supabase/admin-supabase-service.js';
 
@@ -545,6 +546,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+          const pw = await changeAccountPassword(cur, nw);
+          if (!pw.ok) {
+            const t = pw.field === 'current' ? curErr : pw.field === 'new' ? newErr : null;
+            if (t) t.textContent = pw.message; else if (window.showAdminToast) window.showAdminToast(pw.message, 'danger');
+            return;
+          }
+          if (window.showAdminToast) window.showAdminToast('Password updated successfully.');
+          passwordForm.reset();
+          return;
           // 1. Resolve Admin Email
           let adminEmail = (activeAdminUser?.email || '').trim().toLowerCase();
           if (!adminEmail) {

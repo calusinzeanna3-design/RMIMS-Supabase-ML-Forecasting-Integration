@@ -222,6 +222,13 @@ export function startRmimsTour(options = {}) {
         return;
       }
 
+      // Sidebar spotlight: the card ALWAYS sits beside the menu (never on top of it)
+      if (step && step.id === 'navigation' && spot.right + gap + Math.min(cardRect.width, 380) <= vw - 8) {
+        cardEl.style.left = `${Math.round(spot.right + gap)}px`;
+        cardEl.style.top = `${Math.round(Math.max(16, Math.min(spot.top + 8, vh - cardRect.height - 16)))}px`;
+        return;
+      }
+
       // 1. Try placing to the Right (ideal for sidebar navigation)
       if (spot.right + gap + cardRect.width <= vw - 16) {
         cardLeft = spot.right + gap;
@@ -297,6 +304,8 @@ export function startRmimsTour(options = {}) {
       requestAnimationFrame(() => {
         updateHighlightAndPosition();
       });
+      // The sidebar / fonts can still be settling right after load; re-measure so the card never ends up on top of the menu.
+      [120, 350, 800, 1500].forEach(ms => setTimeout(() => { if (activeTourInstance) updateHighlightAndPosition(); }, ms));
 
       // Bind button events
       const skipBtn = card.querySelector('#rmimsTourSkipBtn');

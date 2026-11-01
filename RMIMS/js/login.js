@@ -1,5 +1,6 @@
 import { loginUser, signUpUser } from "../supabase/auth-service.js";
 import { supabase } from "../supabase/supabase-config.js";
+import { enhanceSystemSelect, enhanceCompanyInput, loadCompanyNames, matchRegisteredCompany, COMPANY_NOT_FOUND_MSG } from "./signup-fields.js";
 
 /* =========================================================
    DOM ELEMENTS: SIGN IN
@@ -32,6 +33,12 @@ const regUsername = document.getElementById("regUsername");
 const regBranchName = document.getElementById("regBranchName");
 const regBranchLocation = document.getElementById("regBranchLocation");
 const regRole = document.getElementById("regRole");
+
+// System-styled dropdowns + typable company with ghost completion (registered companies only)
+enhanceSystemSelect(regBranchLocation);
+enhanceSystemSelect(regRole);
+enhanceCompanyInput(regBranchName);
+loadCompanyNames(supabase).catch(() => {});
 const regSection1Error = document.getElementById("regSection1Error");
 const toSection2Btn = document.getElementById("toSection2Btn");
 
@@ -75,7 +82,7 @@ function setLoginError(message) {
     }
 }
 
-function setLoginSuccess(message) {
+function setLoginSuccess(message, label = "Account Ready") {
     if (!loginErrorEl) return;
     loginErrorEl.style.color = "";
     if (!message) {
@@ -84,7 +91,7 @@ function setLoginSuccess(message) {
         return;
     }
     loginErrorEl.className = "form-note success";
-    loginErrorEl.innerHTML = `<strong>✓ Account Ready:</strong> ${message}`;
+    loginErrorEl.innerHTML = `<strong>✓ ${label}:</strong> ${message}`;
 }
 
 function setRegSection1Error(message) {
@@ -281,6 +288,12 @@ if (toSection2Btn) {
             return;
         }
 
+        if (!matchRegisteredCompany(branchName)) {
+            setRegSection1Error(COMPANY_NOT_FOUND_MSG);
+            regBranchName?.focus();
+            return;
+        }
+
         if (!branchLocation) {
             setRegSection1Error("Please select your branch location.");
             regBranchLocation?.focus();
@@ -354,6 +367,12 @@ if (createAccountForm) {
         if (!fullName || !email || !username || !branchName || !branchLocation) {
             returnToSection1();
             setRegSection1Error("Please complete your profile and branch assignment details.");
+            return;
+        }
+
+        if (!matchRegisteredCompany(branchName)) {
+            returnToSection1();
+            setRegSection1Error(COMPANY_NOT_FOUND_MSG);
             return;
         }
 
@@ -511,6 +530,29 @@ if (forgotModal) {
     });
 }
 
+/**
+ * The Main Admin is the gatekeeper: only accounts the admin has APPROVED may reset a password.
+ * returns "active" | "pending" | "none"
+ */
+async function accountApprovalState(email) {
+    const clean = String(email || "").trim().toLowerCase();
+    try {
+        const { data, error } = await supabase.rpc("rmims_email_registered", { p_email: clean });
+        if (!error && typeof data === "string") return data;
+        if (!error && typeof data === "boolean") return data ? "active" : "none";
+    } catch (_) {}
+    // Fallback (database check not installed): only accounts this browser knows as admin-approved
+    try {
+        const approved = JSON.parse(localStorage.getItem("rmims_approved_users") || "[]");
+        if (Array.isArray(approved) && approved.some(u => u && String(u.email || "").toLowerCase() === clean)) return "active";
+        const reg = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
+        if (Array.isArray(reg) && reg.some(u => u && String(u.email || "").toLowerCase() === clean && String(u.status || "").toLowerCase() === "active")) return "active";
+        const pend = JSON.parse(localStorage.getItem("rmims_pending_users") || "[]");
+        if (Array.isArray(pend) && pend.some(u => u && String(u.email || "").toLowerCase() === clean)) return "pending";
+    } catch (_) {}
+    return "none";
+}
+
 if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -524,6 +566,14 @@ if (forgotForm) {
         sendForgotBtn.innerHTML = `<span class="auth-spinner"></span> Sending...`;
 
         try {
+            // 1. The email must belong to a registered RMIMS account
+            const state = await accountApprovalState(email);
+            if (state !== "active") {
+                forgotMsg.className = "auth-modal-msg error";
+                forgotMsg.textContent = state === "pending" ? "This account is still waiting for approval by the Main Administrator, so a reset link cannot be sent yet." : "This email is not registered, or its account has not been approved by the Main Administrator.";
+                return;
+            }
+
             const redirectUrl = window.location.href.split("#")[0];
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: redirectUrl
@@ -534,7 +584,7 @@ if (forgotForm) {
             forgotMsg.textContent = "Recovery link sent! Please check your email inbox.";
             setTimeout(() => {
                 closeForgotModal();
-                setLoginSuccess("Password reset email sent! Check your inbox.");
+                setLoginSuccess("Password reset email sent! Check your inbox.", "Password Reset");
             }, 3000);
 
         } catch (err) {

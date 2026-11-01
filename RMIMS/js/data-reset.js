@@ -34,9 +34,9 @@ const RESET_OPTIONS = [
     {
         key: "stock_receipts",
         scopes: ["stock_receipts"],
-        title: "Clear Material Activity (Receive)",
+        title: "Clear Material Activity (Received)",
         confirmWord: "RESET",
-        deleted: ["Recorded Receive activity"],
+        deleted: ["Recorded receipt activity"],
         kept: ["User accounts", "Raw Materials", "Finished Products", "Consumption Records (Used activity)"]
     },
     {
@@ -62,7 +62,7 @@ const FULL_RESET_OPTION = {
     scopes: ["raw_materials", "finished_products", "stock_receipts", "material_disbursements"],
     title: "Reset All System Data",
     confirmWord: "RESET ALL DATA",
-    deleted: ["Raw Materials", "Finished Products", "Material Activity (Receive)", "Consumption Records", ],
+    deleted: ["Raw Materials", "Finished Products", "Material Activity (Received)", "Consumption Records", ],
     kept: ["User accounts", "Admin accounts", "System Activity / audit log", "Backup History"]
 };
 

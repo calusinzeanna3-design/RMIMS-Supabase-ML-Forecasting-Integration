@@ -43,6 +43,10 @@ const copyRmimsAssetsPlugin = () => ({
     copyDirSync(sbSrc, sbDest1);
     copyDirSync(sbSrc, sbDest2);
 
+    const vendorSrc = resolve(__dirname, 'RMIMS/vendor');
+    copyDirSync(vendorSrc, resolve(__dirname, 'dist/RMIMS/vendor'));
+    copyDirSync(vendorSrc, resolve(__dirname, 'dist/vendor'));
+
     const dataSrc = resolve(__dirname, 'DATASETS');
     const dataDest1 = resolve(__dirname, 'dist/DATASETS');
     const dataDest2 = resolve(__dirname, 'dist/RMIMS/DATASETS');

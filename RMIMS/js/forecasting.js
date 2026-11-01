@@ -22,6 +22,9 @@ import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisburse
 import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
 import { forecastNextDays, planRestock, REQUIREMENT_BUFFER_Z, buildLiveForecaster, dateKey as trainedDateKey, getTrainedProfile, trainedDailyForecast, TRAINED_OVERALL_DAILY_MAPE } from "./trained-forecast-engine.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
+import { extractRefFromText } from "./rmims-deleted-ledger.js";
+import { renderForecastGauges } from "./rmims-forecast-gauges.js";
+import { computeDataDrivenReorder } from "./rmims-reorder-engine.js";
 
 /* ==========================================================
    GLOBAL STATE
@@ -75,11 +78,12 @@ async function checkMlServiceAvailable() {
 
     const candidates = [];
     if (window.ENV_FLASK_API_BASE) candidates.push(window.ENV_FLASK_API_BASE);
-    candidates.push("");
-    candidates.push("https://rmims-ml-model.web.app");
-    if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
-        candidates.push("http://127.0.0.1:5000");
-    }
+    try { const saved = localStorage.getItem("rmims_ml_api_base"); if (saved) candidates.push(saved); } catch (_) {}
+    const isLocalDev = ["127.0.0.1", "localhost", ""].includes(window.location.hostname);
+    // Deployed (Firebase): the ML service answers on the same site, so it is checked there.
+    // Local development: no ML server is contacted unless one is configured (window.ENV_FLASK_API_BASE or
+    // localStorage "rmims_ml_api_base"), so the console stays free of connection errors.
+    if (!isLocalDev) candidates.push("");
 
     for (const base of candidates) {
         try {
@@ -88,7 +92,7 @@ async function checkMlServiceAvailable() {
             const res = await fetch(`${base}/api/ml/status`, { method: "GET", signal: controller.signal }).catch(() => null);
             clearTimeout(timer);
             if (res && res.ok) {
-                resolvedApiBase = base;
+                resolvedApiBase = base || window.location.origin;
                 mlIsAvailable = true;
                 return true;
             }
@@ -325,6 +329,18 @@ async function init() {
     initEventListeners();
     renderTenantBanner();
     await loadAuthoritativeData();
+
+    // Live database updates (new receipts, disbursements = new consumption, edited minimum stock) refresh the forecast
+    let liveForecastTimer = null;
+    const onLive = () => {
+        clearTimeout(liveForecastTimer);
+        liveForecastTimer = setTimeout(() => {
+            try { invalidateForecastCache(); } catch (_) {}
+            loadAuthoritativeData();
+        }, 1200);
+    };
+    ['rmims_live_data_updated', 'rmims_inventory_updated', 'rmims_manager_receipts_updated', 'rmims_manager_disbursements_updated']
+        .forEach(name => window.addEventListener(name, onLive));
 }
 
 /* ==========================================================
@@ -464,7 +480,7 @@ async function loadAuthoritativeData() {
                 name: (resolvedModel && resolvedModel.canonicalName) ? resolvedModel.canonicalName : (m.name || m.raw_material_name),
                 unit_of_measure: m.unit_of_measure || m.unit || bm.unit_of_measure || bm.unit || (tCtx.isScones ? "g" : "kg"),
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? bm.minimum_threshold ?? 10),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? bm.minimum_threshold ?? 0),
                 date_added: m.first_date || m.date_added || "",
                 last_updated: m.latest_date || m.last_updated || m.first_date || "",
                 description: m.description || bm.description || "",
@@ -517,7 +533,7 @@ async function loadAuthoritativeData() {
                     name: bm.name || bm.raw_material_name,
                     unit_of_measure: bm.unit || bm.unit_of_measure || "kg",
                     current_stock: Number(bm.current_stock ?? 0),
-                    minimum_threshold: Number(bm.minimum_threshold ?? bm.minimum_stock ?? 10),
+                    minimum_threshold: Number(bm.minimum_threshold ?? bm.minimum_stock ?? 0),
                     date_added: bm.date_added || "",
                     last_updated: bm.last_updated || bm.date_added || "",
                     description: bm.description || "",
@@ -535,9 +551,25 @@ async function loadAuthoritativeData() {
         }
 
         // 2. Authoritative Disbursements (Strictly Live User Transactions)
+        // One record per real movement: the local copy and the Supabase copy of the same disbursement share the
+        // system reference ("[Ref: X]" in the database text), so key both by it. Rows without a reference are
+        // matched on material + date + quantity so they are not counted twice either.
         const disbMap = new Map();
-        getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
-        rawUsage.forEach(u => disbMap.set(String(u.id), { ...u }));
+        const sigOf = (d) => [String(d.material_id || d.materialId || d.material_name || d.materialName || "").toLowerCase().trim(),
+            String(d.usage_date || d.usageDate || d.date || "").slice(0, 10),
+            Number(d.consumed_quantity ?? d.consumedQuantity ?? d.quantity ?? 0)].join("|");
+        const refKeyOf = (d) => String(d.ref || extractRefFromText(d.activity_type || d.activityType || "") || (/^(\d{4}SM[A-Za-z]*-|REC-|DIS-)/i.test(String(d.id || "")) ? d.id : "") || "").trim().toUpperCase();
+        const seenSig = new Set();
+        const addDisb = (d, preferNew) => {
+            const rk = refKeyOf(d);
+            const key = rk ? "ref:" + rk : "id:" + String(d.id);
+            if (!rk && seenSig.has(sigOf(d))) return;
+            if (disbMap.has(key) && !preferNew) return;
+            disbMap.set(key, { ...d });
+            seenSig.add(sigOf(d));
+        };
+        getSystemCustomDisbursements().forEach(d => addDisb(d, false));
+        rawUsage.forEach(u => addDisb(u, true));
         let masterDisbursements = Array.from(disbMap.values());
         if (deletedDisbIds.size > 0) {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
@@ -571,9 +603,12 @@ async function loadAuthoritativeData() {
                 "X-User-Role": userRole, 
                 "X-Tenant-Folder": datasetFolder 
             };
-            let mlRes = await fetch(`${apiBase}/api/ml/materials`, { headers: reqHeaders }).catch(() => null);
-            if (!mlRes || !mlRes.ok) {
-                mlRes = await fetch(`${apiBase}/api/materials`, { headers: reqHeaders }).catch(() => null);
+            let mlRes = null;
+            if (mlIsAvailable && apiBase) {   // only call the ML server when one was actually found
+                mlRes = await fetch(`${apiBase}/api/ml/materials`, { headers: reqHeaders }).catch(() => null);
+                if (!mlRes || !mlRes.ok) {
+                    mlRes = await fetch(`${apiBase}/api/materials`, { headers: reqHeaders }).catch(() => null);
+                }
             }
             if (mlRes && mlRes.ok) {
                 const mlData = await mlRes.json().catch(() => ({}));
@@ -656,14 +691,8 @@ async function loadAuthoritativeData() {
                        (resolvedCode && (mId === resolvedCode || mCode === resolvedCode));
             });
             const pName = d.finished_product_name || d.activity_type || null;
-            let calibratedQty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
-
-            if (pName && isGenericOperational(pName)) {
-                const unitLower = (d.unit || (m ? m.unit : "kg")).toLowerCase().trim();
-                if ((unitLower === "kg" || unitLower === "l") && calibratedQty > 10) {
-                    calibratedQty = Number((calibratedQty / 10).toFixed(2));
-                }
-            }
+            // Exactly what the user recorded - never rescaled.
+            const calibratedQty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
 
             return {
                 id: d.id,
@@ -769,57 +798,38 @@ function computeAuthoritativeForecastBaseline() {
             }
         });
 
-        // Dynamic Pattern & Trend Momentum Analysis incorporating latest disbursements
-        const trainedF7 = Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : 0));
-        let weeklyRunRate = last7DaysUsage > 0
-            ? Math.max(last7DaysUsage, trainedF7)
-            : (recs.length > 0
-                ? Math.max(totalUsage / Math.max(1, recs.length / 7), trainedF7)
-                : trainedF7);
-        
-        // Momentum velocity: compare recent 7 days vs prior 7 days
-        let momentumVelocity = 1.0;
-        if (prev7DaysUsage > 0 && last7DaysUsage > 0) {
-            const growthRate = (last7DaysUsage - prev7DaysUsage) / prev7DaysUsage;
-            momentumVelocity = 1.0 + Math.max(-0.06, Math.min(0.075, growthRate * 0.4));
-        }
-
-        let f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
-        let f1mQty = Number((m.forecast_monthly && recs.length === 0 ? Number(m.forecast_monthly) : (f7Qty * 4.15)).toFixed(1));
-        let restockPlan = null, bufferApplied = false;
-
-        // Trained-dataset override: same model as the chart (dow x month x trend), adapted to real disbursements
-        try {
-            const actualsMap = new Map();
-            recs.forEach(r => {
-                const ud = parseSafeDate(r.usageDate || r.createdAt);
-                if (!ud) return;
-                const k = trainedDateKey(ud);
-                actualsMap.set(k, (actualsMap.get(k) || 0) + (Number(r.consumedQuantity) || 0));
-            });
-            // A material with no usage shows the trained baseline ONLY when the whole store has no usage yet
-            const storeHasUsage = (state.disbursements || []).some(d => (Number(d.consumedQuantity ?? d.quantity) || 0) > 0);
-            const fcOpts = { coldStart: storeHasUsage ? 'zero' : 'baseline' };
-            // REQUIREMENT = expected consumption + safety buffer (2.06 x MAPE ~ 95% service level),
-            // so the reorder figure sits ABOVE what is expected to be consumed and prevents shortage.
-            const t7 = forecastNextDays(m.itemCode, 7, actualsMap, new Date(), { ...fcOpts, requirement: true });
-            const t30 = forecastNextDays(m.itemCode, 30, actualsMap, new Date(), { ...fcOpts, requirement: true });
-            if (t7 != null && t30 != null) {
-                f7Qty = Number(t7.toFixed(1));
-                f1mQty = Number(t30.toFixed(1));
-                restockPlan = planRestock(m.itemCode, m.currentStock, actualsMap, {
-                    leadTimeDays: Number(m.leadTimeDays ?? m.lead_time_days ?? 3),
-                    minStock: Number(m.minStock) || 0,
-                    coldStart: fcOpts.coldStart
-                });
-                bufferApplied = true;
-            }
-        } catch (_) {}
-        if (!bufferApplied) {
-            // Materials the trained model does not cover still get the safety buffer
-            const bf = 1 + REQUIREMENT_BUFFER_Z * (TRAINED_OVERALL_DAILY_MAPE / 100);
-            f7Qty = Number((f7Qty * bf).toFixed(1));
-            f1mQty = Number((f1mQty * bf).toFixed(1));
+        // Same engine as Reports, Dashboards and the gauges (rmims-reorder-engine): recorded usage only,
+        // trained model shape + MAPE, 7 / 30-day requirement, reorder = requirement + minimum - stock.
+        const actualsMap = new Map();
+        recs.forEach(r => {
+            const ud = parseSafeDate(r.usageDate || r.createdAt);
+            if (!ud) return;
+            const k = trainedDateKey(ud);
+            actualsMap.set(k, (actualsMap.get(k) || 0) + (Number(r.consumedQuantity) || 0));
+        });
+        const plan = computeDataDrivenReorder(
+            { id: m.id, itemCode: m.itemCode, name: m.name, unit: m.unit, currentStock: m.currentStock, minThreshold: m.minStock },
+            actualsMap
+        );
+        let f7Qty = plan.hasData ? Number(plan.requirement7) : 0;
+        let f1mQty = plan.hasData ? Number(plan.requirement30) : 0;
+        let restockPlan = null;
+        if (plan.hasData) {
+            const capped = plan.daysOfCover == null || plan.daysOfCover > 90;
+            const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+            const stockoutDate = capped ? null : new Date(today0.getTime() + plan.daysOfCover * 86400000);
+            restockPlan = {
+                hasEvidence: true,
+                evidenceDays: plan.evidenceDays,
+                lowConfidence: plan.lowConfidence,
+                suggestedQty: plan.reorderQty,
+                requirement7: plan.requirement7,
+                daysOfCover: capped ? 90 : plan.daysOfCover,
+                capped,
+                stockoutDate,
+                orderByDate: stockoutDate,
+                status: m.currentStock <= 0 ? 'out' : (plan.reorderQty > 0 ? 'order-now' : 'ok')
+            };
         }
 
         const curStock = m.currentStock;
@@ -921,7 +931,7 @@ async function evaluateForecastState() {
                         Object.entries(parsed).forEach(([k, v]) => {
                             const liveMat = matByName.get(k);
                             if (liveMat && v && typeof v === "object") {
-                                const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || liveMat.minStock * 0.85 || 0);
+                                const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || 0);
                                 const f1m = Number(v.forecast1Month?.quantity) || Number((f7 * 4.15).toFixed(1));
                                 const curStock = liveMat.currentStock;
                                 const diff = curStock - f7;
@@ -993,18 +1003,18 @@ async function generateAllForecasts() {
                 const encoded = encodeURIComponent(m.name);
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1800);
-                const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
+                const res = (mlIsAvailable && apiBase) ? await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
                     method: "GET",
                     headers,
                     signal: controller.signal
-                }).catch(() => null);
+                }).catch(() => null) : null;
                 clearTimeout(timeoutId);
 
                 if (res && res.ok) {
                     const data = await res.json();
                     if (data && (data.status === "success" || data.success === true)) {
                         const rawF7 = Number(data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0);
-                        const f7 = rawF7 > 0 ? rawF7 : Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : 0));
+                        const f7 = rawF7 > 0 ? rawF7 : Number(m.forecast_weekly || 0);
                         const rawF1m = Number(data.planning_28_day_requirement ?? data.forecast1Month?.quantity ?? 0);
                         const f1m = rawF1m > 0 ? rawF1m : Number((f7 * 4.15).toFixed(1));
                         const curStock = Number(m.currentStock ?? data.current_stock ?? 0);
@@ -1173,7 +1183,7 @@ function updateMarginComplianceBanner() {
 
     state.materials.forEach(m => {
         const fc = state.forecasts.get(m.name);
-        const req7 = fc ? (Number(fc.forecast7Day?.quantity) || 0) : (m.minStock * 0.5);
+        const req7 = fc ? (Number(fc.forecast7Day?.quantity) || 0) : 0;
         if (req7 <= 0) return;
 
         let mat7DayUsage = 0;
@@ -1526,9 +1536,9 @@ function renderProductDemandConnection() {
                     return {
                         id: mId,
                         name: String(mId),
-                        unit: "kg",
+                        unit: "",
                         currentStock: 0,
-                        req7Day: loggedQty || 10,
+                        req7Day: loggedQty || 0,
                         loggedQty: loggedQty,
                         deficit: 0,
                         isShortage: false
@@ -1701,6 +1711,17 @@ let dragFcInitialXShift = 0;
 let dragFcInitialShift = 0;
 
 function renderPrimaryChart() {
+    // Forecast data card = two arc gauges (usage & future reorder). Same filters, same data.
+    const gaugeHost = document.getElementById("fcGaugeContainer");
+    if (gaugeHost) {
+        renderForecastGauges(gaugeHost, {
+            materials: state.materials,
+            disbursements: state.disbursements,
+            selectedId: state.selectedMaterialId || "ALL",
+            horizon: state.chartHorizon || "daily"
+        });
+        return;
+    }
     const canvas = document.getElementById("consumptionForecastChartCanvas");
     if (!canvas) return;
 
@@ -1752,7 +1773,7 @@ function renderPrimaryChart() {
     });
     const anyLiveUsage = trainedTargets.some(t => buildLiveForecaster(t.code, t.actuals, { asOf: now, coldStart: 'zero' }).hasEvidence);
     trainedTargets.forEach(t => {
-        t.fc = buildLiveForecaster(t.code, t.actuals, { asOf: now, coldStart: anyLiveUsage ? 'zero' : 'baseline' });
+        t.fc = buildLiveForecaster(t.code, t.actuals, { asOf: now, coldStart: 'zero' });
     });
     const useTrained = trainedTargets.length > 0;
     if (useTrained) {
@@ -2139,12 +2160,12 @@ function renderProjectionChart() {
         if (isAll) {
             state.materials.forEach(m => {
                 const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 dailyForecastRate += (req7 / 7);
             });
         } else if (selectedMat) {
             const fc = state.forecasts.get(selectedMat.name);
-            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (selectedMat.minStock * 0.5);
+            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
             dailyForecastRate = (req7 / 7);
         }
 
@@ -2200,12 +2221,12 @@ function renderProjectionChart() {
         if (isAll) {
             state.materials.forEach(m => {
                 const fc = state.forecasts.get(m.name);
-                weeklyForecastRate += fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                weeklyForecastRate += fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 monthlyForecastRate += fc ? Number(fc.forecast1Month?.quantity) || 0 : (m.minStock * 2);
             });
         } else if (selectedMat) {
             const fc = state.forecasts.get(selectedMat.name);
-            weeklyForecastRate = fc ? Number(fc.forecast7Day?.quantity) || 0 : (selectedMat.minStock * 0.5);
+            weeklyForecastRate = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
             monthlyForecastRate = fc ? Number(fc.forecast1Month?.quantity) || 0 : (selectedMat.minStock * 2);
         }
 
@@ -2559,7 +2580,7 @@ function renderDecisionSupport() {
                     name: m.name,
                     unit: m.unit_of_measure || m.unit || "kg",
                     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 0)
                 }));
             }
         } catch (e) {}
@@ -2749,7 +2770,7 @@ function renderLowStockAlerts() {
                     name: m.name,
                     unit: m.unit_of_measure || m.unit || "kg",
                     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 0)
                 }));
             }
         } catch (e) {}
@@ -2820,7 +2841,7 @@ function renderLowStockAlerts() {
         if (!hasRecentUpdate) return false;
 
         const curStock = Number(m.currentStock ?? m.current_stock ?? 0);
-        const minStock = Number(m.minStock ?? m.minimum_threshold ?? 10);
+        const minStock = Number(m.minStock ?? m.minimum_threshold ?? 0);
         const fc = state.forecasts?.get(m.name);
         const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
         return curStock <= minStock || (fQty > 0 && curStock < fQty);
@@ -2855,20 +2876,21 @@ function renderLowStockAlerts() {
 
     container.innerHTML = lowStockMaterials.slice(0, 6).map(mat => {
         const stock = Number(mat.currentStock || 0);
-        const min = Number(mat.minStock || 10);
+        const min = Number(mat.minStock || 0);
         const unit = mat.unit || 'kg';
         const thumbSrc = getThumb(mat.name, mat.id || mat.itemCode);
 
         const fc = state.forecasts?.get(mat.name);
         const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
-        const dailyBurn = fQty > 0 ? (fQty / 7) : (min > 0 ? min / 7 : 1);
-        let days = dailyBurn > 0 ? Math.round(stock / dailyBurn) : (stock <= min ? 2 : 7);
+        // no recorded usage = no burn rate (nothing is invented); judge by stock vs minimum only
+        const dailyBurn = fQty > 0 ? (fQty / 7) : 0;
+        let days = dailyBurn > 0 ? Math.round(stock / dailyBurn) : (stock <= 0 ? 0 : 9999);
 
         let indClass = 'ind-amber';
         let msgClass = 'msg-amber';
         let badgeClass = 'badge-watch';
         let badgeText = 'Watch Stock';
-        let msg = `May run low in ${days > 0 ? days : 1} days`;
+        let msg = days >= 9999 ? 'Watch stock level (no usage recorded yet)' : `May run low in ${days > 0 ? days : 1} days`;
 
         if (stock <= 0) {
             indClass = 'ind-red';
@@ -2881,7 +2903,7 @@ function renderLowStockAlerts() {
             msgClass = 'msg-red';
             badgeClass = 'badge-low';
             badgeText = 'Low Stock';
-            msg = `May run low in ${Math.max(1, days)} day${days === 1 ? '' : 's'}`;
+            msg = days >= 9999 ? 'Below minimum stock level' : `May run low in ${Math.max(1, days)} day${days === 1 ? '' : 's'}`;
         }
 
         return `
@@ -2948,7 +2970,7 @@ function renderMaterialRequirementsDonut() {
 
     materials.forEach(m => {
         const curStock = Number(m.currentStock || 0);
-        const minStock = Number(m.minStock || 10);
+        const minStock = Number(m.minStock || 0);
         const fc = state.forecasts.get(m.name);
         const fQty = fc ? (horizonDays === 30 ? Number(fc.forecast30Day?.quantity || 0) : Number(fc.forecast7Day?.quantity || 0)) : 0;
 
@@ -3065,7 +3087,7 @@ function renderTopMaterialsRequirementChart() {
                     name: m.name,
                     unit: m.unit_of_measure || m.unit || "kg",
                     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 0)
                 }));
             }
         } catch (e) {}
@@ -3708,7 +3730,7 @@ function renderModalFunctionView() {
             let dailyDemand = 0;
             state.materials.forEach(m => {
                 const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 dailyDemand += (req7 / 7);
             });
 
@@ -3790,15 +3812,18 @@ function renderModalFunctionView() {
 
         tbody.innerHTML = filtered.map(m => {
             const fc = state.forecasts.get(m.name);
-            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
-            const req30 = fc ? Number(fc.forecast1Month?.quantity) || (req7 * 4.2) : (req7 * 4.2);
+            // Only the trained model + real recorded usage produce numbers. No usage yet = no figures (nothing invented).
+            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
+            const req30 = fc ? Number(fc.forecast1Month?.quantity) || 0 : 0;
             totalDemand += req7;
 
-            const dailyBurn = Math.max(0.2, Number((req7 / 7).toFixed(1)));
+            const dailyBurn = req7 / 7;
             const plan = fc && fc.restock_plan;
-            const daysLeft = plan ? plan.daysOfCover : (m.currentStock > 0 ? Math.floor(m.currentStock / dailyBurn) : 0);
-            const depDate = plan && plan.stockoutDate ? plan.stockoutDate : new Date(Date.now() + daysLeft * 86400000);
-            const depStr = depDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+            const hasData = !!(plan && plan.hasEvidence) || dailyBurn > 0;
+            const daysLeft = hasData ? (plan ? plan.daysOfCover : Math.floor(m.currentStock / dailyBurn)) : null;
+            const depDate = hasData ? ((plan && plan.stockoutDate) ? plan.stockoutDate : new Date(Date.now() + daysLeft * 86400000)) : null;
+            const depStr = depDate ? depDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+            const dash = '<span class="fc-num-muted">&mdash;</span>';
 
             let badgeHtml = "";
             let depLabel = "";
@@ -3806,6 +3831,9 @@ function renderModalFunctionView() {
                 criticalDepletions++;
                 depLabel = "Immediate";
                 badgeHtml = `<span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">DEPLETED</span>`;
+            } else if (daysLeft === null) {
+                depLabel = "No usage recorded yet";
+                badgeHtml = `<span style="background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">Awaiting usage data</span>`;
             } else if (daysLeft <= 3) {
                 criticalDepletions++;
                 depLabel = `In ${daysLeft}d (${depStr})`;
@@ -3827,9 +3855,9 @@ function renderModalFunctionView() {
                         </div>
                     </td>
                     <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-muted">${dailyBurn.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small></td>
-                    <td style="text-align: right;"><span class="fc-num-demand">${req7.toFixed(1)}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-muted">${req30.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${dailyBurn.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small>` : dash}</td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-demand">${req7.toFixed(1)}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small>` : dash}</td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${req30.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>` : dash}</td>
                     <td><strong>${depLabel}</strong></td>
                     <td>${badgeHtml}</td>
                 </tr>
@@ -3882,7 +3910,7 @@ function renderModalFunctionView() {
                             label: "AI Requirement",
                             data: topSlice.map(m => {
                                 const fc = state.forecasts.get(m.name);
-                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                             }),
                             backgroundColor: "#22C55E",
                             borderRadius: 6
@@ -3991,10 +4019,11 @@ function renderModalFunctionView() {
 
         tbody.innerHTML = filtered.map(m => {
             const fc = state.forecasts.get(m.name);
-            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
-            const dailyBurn = Math.max(0.2, Number((req / 7).toFixed(1)));
+            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
+            const dailyBurn = req / 7;
             const plan = fc && fc.restock_plan;
-            const daysLeft = plan ? plan.daysOfCover : (m.currentStock > 0 ? Math.floor(m.currentStock / dailyBurn) : 0);
+            const hasData = !!(plan && plan.hasEvidence) || dailyBurn > 0;
+            const daysLeft = hasData ? (plan ? plan.daysOfCover : Math.floor(m.currentStock / dailyBurn)) : null;
             const reorderQty = plan
                 ? Number(plan.suggestedQty.toFixed(1))
                 : Math.max(0, Number((req + m.minStock - m.currentStock).toFixed(1)));
@@ -4007,10 +4036,10 @@ function renderModalFunctionView() {
                 outCount++;
                 alertBadge = `<span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">CRITICAL STOCKOUT</span>`;
                 actionText = `<span style="color:#DC2626;font-weight:700;">Immediate Reorder Required</span>`;
-            } else if (statusInfo.label === "Low Stock" || daysLeft <= 7) {
+            } else if (statusInfo.label === "Low Stock" || (daysLeft !== null && daysLeft <= 7)) {
                 lowCount++;
                 alertBadge = `<span style="background:#FEF3C7;color:#D97706;border:1px solid #FED7AA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">URGENT WARNING</span>`;
-                actionText = `<span style="color:#D97706;font-weight:700;">Replenish within ${daysLeft} days</span>`;
+                actionText = `<span style="color:#D97706;font-weight:700;">${daysLeft !== null ? `Replenish within ${daysLeft} days` : 'Below minimum stock: replenish'}</span>`;
             } else {
                 alertBadge = `<span style="background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;">BUFFER ADEQUATE</span>`;
                 actionText = `<span style="color:#15803D;font-weight:600;">Monitor normal usage</span>`;
@@ -4027,8 +4056,8 @@ function renderModalFunctionView() {
                     <td>${alertBadge}</td>
                     <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
                     <td style="text-align: right;"><span class="fc-num-muted">${m.minStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-muted">${dailyBurn.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small></td>
-                    <td style="text-align: right;"><strong>${daysLeft}d</strong></td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${dailyBurn.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small>` : '&mdash;'}</td>
+                    <td style="text-align: right;"><strong>${daysLeft !== null ? daysLeft + 'd' : '&mdash;'}</strong></td>
                     <td style="text-align: right;">${reorderQty > 0 ? `<strong style="color:#DC2626;">+${reorderQty.toLocaleString()} ${escapeHtml(m.unit)}</strong>` : `<span style="color:#15803D;">0 ${escapeHtml(m.unit)}</span>`}</td>
                     <td>${actionText}</td>
                 </tr>
@@ -4061,7 +4090,7 @@ function renderModalFunctionView() {
 
             grid.innerHTML = filtered.map(m => {
                 const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 const rec7 = recentReceiveMap.get(m.id) || 0;
                 const use7 = recentUsageMap.get(m.id) || 0;
                 const unit = m.unit || "kg";
@@ -4175,7 +4204,7 @@ function renderModalFunctionView() {
                             label: "Future Requirement",
                             data: topSlice.map(m => {
                                 const fc = state.forecasts.get(m.name);
-                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                             }),
                             backgroundColor: "#22C55E",
                             borderRadius: 6
@@ -4219,7 +4248,7 @@ function renderModalFunctionView() {
 
         tbody.innerHTML = filtered.map(m => {
             const fc = state.forecasts.get(m.name);
-            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
             const inQty = recentReceiveMap.get(m.id) || 0;
             const netBalance = inQty - req;
             sumInward += inQty;

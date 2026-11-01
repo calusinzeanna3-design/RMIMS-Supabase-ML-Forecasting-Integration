@@ -1,6 +1,18 @@
 import './rmims-notifications.js';
+import './rmims-notification-feed.js';
 import './rmims-custom-select.js';
 import { supabase } from '../supabase/supabase-config.js';
+import { mergeStaffTransactionLists } from './rmims-tx-merge.js';
+import { startFormA11y } from './form-a11y.js';
+import { startDateEnhance } from './date-enhance.js';
+startFormA11y();
+startDateEnhance();
+
+// Every manager / staff page shares ONE live data engine (materials, receipts, disbursements, staff transactions).
+// Pages that never imported it (analytics, usage, forecasting, reports) were stuck on stale local copies.
+if (/\/(manager|user)\//.test(location.pathname)) {
+  import('../supabase/manager-supabase-service.js').catch((e) => console.warn('[LiveSync] could not start:', e && e.message));
+}
 
 (function () {
   const path = location.pathname.split('/').filter(Boolean);
@@ -1964,16 +1976,16 @@ import { supabase } from '../supabase/supabase-config.js';
             <form id="mgrChangePasswordModalForm" style="margin:0;">
               <div class="mgr-modal-body" style="display:flex; flex-direction:column; gap:14px;">
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Current Password</label>
-                  <input type="password" id="mgrInputCurrentPwd" required placeholder="Enter current password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                  <label for="mgrInputCurrentPwd" style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Current Password</label>
+                  <input type="password" name="mgrInputCurrentPwd" autocomplete="current-password" id="mgrInputCurrentPwd" required placeholder="Enter current password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
                 </div>
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">New Password</label>
-                  <input type="password" id="mgrInputNewPwd" required minlength="6" placeholder="At least 6 characters" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                  <label for="mgrInputNewPwd" style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">New Password</label>
+                  <input type="password" name="mgrInputNewPwd" autocomplete="new-password" id="mgrInputNewPwd" required minlength="6" placeholder="At least 6 characters" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
                 </div>
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Confirm New Password</label>
-                  <input type="password" id="mgrInputConfirmPwd" required minlength="6" placeholder="Repeat new password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                  <label for="mgrInputConfirmPwd" style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Confirm New Password</label>
+                  <input type="password" name="mgrInputConfirmPwd" autocomplete="new-password" id="mgrInputConfirmPwd" required minlength="6" placeholder="Repeat new password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
                 </div>
                 <div id="mgrPwdAlert" style="display:none; font-size:12px; padding:8px 12px; border-radius:6px;"></div>
               </div>
@@ -1990,6 +2002,19 @@ import { supabase } from '../supabase/supabase-config.js';
 
     const activityBackdrop = document.getElementById('mgrMyActivityBackdrop');
     const pwdBackdrop = document.getElementById('mgrChangePasswordBackdrop');
+
+
+  // Transaction references are confidential: hide the running sequence number.
+  // "2026SMSt-D0002" -> "2026SMSt-D****"
+  function maskConfidentialRef(ref) {
+    const s = String(ref || '').trim();
+    if (!s || s === '—') return s || '—';
+    return s.replace(/(\d+)$/, m => '*'.repeat(Math.max(4, m.length)));
+  }
+  function maskRefsInText(text) {
+    return String(text || '').replace(/\b(\d{4}SM[A-Za-z]*-[A-Za-z]?)(\d{2,})\b/g, (_, pre, num) => pre + '*'.repeat(Math.max(4, num.length)))
+                              .replace(/\b((?:REC|DIS|RCV|DSB)-[A-Za-z0-9]*?)(\d{3,})\b/g, (_, pre, num) => pre + '*'.repeat(Math.max(4, num.length)));
+  }
 
     function openActivityModal() {
       closeMenus(null);
@@ -2032,8 +2057,8 @@ import { supabase } from '../supabase/supabase-config.js';
             <tr style="border-bottom:1px solid #F1F5F9;">
               <td style="padding:10px 8px; font-weight:600; color:#334155;">${escapeHtml(dPart)}</td>
               <td style="padding:10px 8px; font-size:12px; font-weight:600; color:#64748B;">${escapeHtml(tPart)}</td>
-              <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(row.activity || row.details || '')}</td>
-              <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(row.reference || '—')}</td>
+              <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(maskRefsInText(row.activity || row.details || ''))}</td>
+              <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(maskConfidentialRef(row.reference))}</td>
               <td style="padding:10px 8px;">
                 <span style="display:inline-block; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:${(row.status || '').toLowerCase() === 'approved' ? '#DCFCE7; color:#15803D;' : '#FEE2E2; color:#DC2626;'}">${escapeHtml(row.status || 'Success')}</span>
               </td>
@@ -2085,31 +2110,33 @@ import { supabase } from '../supabase/supabase-config.js';
     document.getElementById('btnCancelChangePwd')?.addEventListener('click', closePwdModal);
     pwdBackdrop?.addEventListener('click', (e) => { if (e.target === pwdBackdrop) closePwdModal(); });
 
-    document.getElementById('mgrChangePasswordModalForm')?.addEventListener('submit', (e) => {
+    document.getElementById('mgrChangePasswordModalForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const newPEl = document.getElementById('mgrInputNewPwd');
-      const confPEl = document.getElementById('mgrInputConfirmPwd');
-      const newP = newPEl ? newPEl.value : '';
-      const confP = confPEl ? confPEl.value : '';
+      const curP = document.getElementById('mgrInputCurrentPwd')?.value || '';
+      const newP = document.getElementById('mgrInputNewPwd')?.value || '';
+      const confP = document.getElementById('mgrInputConfirmPwd')?.value || '';
       const alertBox = document.getElementById('mgrPwdAlert');
-      if (newP !== confP) {
-        if (alertBox) {
-          alertBox.textContent = 'New password and confirmation do not match.';
-          alertBox.style.background = '#FEE2E2';
-          alertBox.style.color = '#DC2626';
-          alertBox.style.display = 'block';
-        }
-        return;
-      }
-      if (alertBox) {
-        alertBox.textContent = 'Password updated successfully!';
-        alertBox.style.background = '#DCFCE7';
-        alertBox.style.color = '#15803D';
+      const say = (msg, ok) => {
+        if (!alertBox) return;
+        alertBox.textContent = msg;
+        alertBox.style.background = ok ? '#DCFCE7' : '#FEE2E2';
+        alertBox.style.color = ok ? '#15803D' : '#DC2626';
         alertBox.style.display = 'block';
+      };
+      if (newP.length < 8) return say('New password must be at least 8 characters.', false);
+      if (newP !== confP) return say('New password and confirmation do not match.', false);
+      if (newP === curP) return say('New password must be different from your current password.', false);
+      const submit = e.target.querySelector('button[type="submit"]');
+      if (submit) { submit.disabled = true; submit.textContent = 'Updating…'; }
+      try {
+        const { changeAccountPassword } = await import('../supabase/password-service.js');
+        const r = await changeAccountPassword(curP, newP);
+        if (!r.ok) return say(r.message, false);
+        say('Password updated successfully!', true);
+        setTimeout(closePwdModal, 1200);
+      } finally {
+        if (submit) { submit.disabled = false; submit.textContent = 'Update Password'; }
       }
-      setTimeout(() => {
-        closePwdModal();
-      }, 1000);
     });
   }
 
@@ -2683,6 +2710,12 @@ import { supabase } from '../supabase/supabase-config.js';
 
   function isNotificationInScope(n, portalRole, currentUserId) {
     if (!n || !n.id) return false;
+
+    // Shared feed (rmims-notification-feed.js): role & company scope already enforced by the database
+    if (n.sharedFeed && Array.isArray(n.targetRoles)) {
+      const pr = String(portalRole || '').toLowerCase();
+      return n.targetRoles.includes(pr === 'user' ? 'staff' : pr);
+    }
 
     const targetRole = String(n.targetRole || n.role || n.roleScope || '').toLowerCase();
     const title = String(n.title || '').toLowerCase();
@@ -3370,29 +3403,14 @@ import { supabase } from '../supabase/supabase-config.js';
         modified = true;
       }
 
-      if (transaction && transaction.ref) {
-        const searchRef = String(transaction.ref).trim().toLowerCase();
-        const idx = localList.findIndex(t => String(t.ref || '').trim().toLowerCase() === searchRef);
-        if (idx !== -1) {
-          localList[idx] = { ...localList[idx], ...transaction };
-        } else {
-          localList.unshift(transaction);
-        }
-        modified = true;
-      }
-
-      if (Array.isArray(allTransactions) && allTransactions.length > 0) {
-        allTransactions.forEach(remoteTx => {
-          if (!remoteTx || !remoteTx.ref) return;
-          const searchRef = String(remoteTx.ref).trim().toLowerCase();
-          const idx = localList.findIndex(t => String(t.ref || '').trim().toLowerCase() === searchRef);
-          if (idx !== -1) {
-            localList[idx] = { ...localList[idx], ...remoteTx };
-          } else {
-            localList.push(remoteTx);
-            modified = true;
-          }
-        });
+      // Copies from other tabs / devices can be OLDER than ours (they send their whole list every time).
+      // Only take a copy when it is at least as new as ours, and never revive a permanently deleted record.
+      const incoming = [];
+      if (transaction && transaction.ref) incoming.push(transaction);
+      if (Array.isArray(allTransactions)) allTransactions.forEach(t => { if (t && t.ref) incoming.push(t); });
+      if (incoming.length) {
+        const res = mergeStaffTransactionLists(localList, incoming);
+        if (res.changed) { localList = res.list; modified = true; }
       }
 
       if (modified) {

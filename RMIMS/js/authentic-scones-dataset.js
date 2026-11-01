@@ -558,6 +558,18 @@ export function getSconesMaterialImagePath(idOrName, basePath = "../assets") {
   return "";
 }
 
+
+// ---------------------------------------------------------------------------------------------------------------
+// ACTUAL DATA ONLY: this catalog identifies the company's registered raw materials (code, name, unit, image) and
+// keeps the trained model's accuracy figures (MAPE / margins). Operational numbers are NOT built in: stock,
+// minimum stock, reorder quantity, lead time and forecasts come only from what the end users record.
+// ---------------------------------------------------------------------------------------------------------------
+AUTHENTIC_19_SCONES_MATERIALS.forEach(m => {
+  ['current_stock', 'currentStock', 'minimum_threshold', 'minimum_stock', 'minimumStock'].forEach(k => { if (k in m) m[k] = 0; });
+  ['reorder_quantity', 'lead_time_days', 'forecast_daily', 'forecast_weekly', 'forecast_monthly', 'forecast_90d', 'status']
+    .forEach(k => { delete m[k]; });
+});
+
 // Attach image paths to all authentic materials
 AUTHENTIC_19_SCONES_MATERIALS.forEach(m => {
   m.image = getSconesMaterialImagePath(m.id);
@@ -570,6 +582,6 @@ export function getSconesRawMaterials() {
     image: m.image || getSconesMaterialImagePath(m.id),
     imageUrl: m.imageUrl || getSconesMaterialImagePath(m.id),
     current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-    minimum_threshold: Number(m.minimum_threshold ?? 10)
+    minimum_threshold: Number(m.minimum_threshold ?? 0)
   }));
 }

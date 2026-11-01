@@ -150,65 +150,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const MASTER_ADMIN_RECORD = {
-    id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-    name: 'Zeanna',
-    username: 'zeanna',
-    email: 'calusinzeanna3@gmail.com',
-    branchLoc: 'Headquarters',
-    branchName: 'Headquarters',
-    role: 'Administrator',
-    status: 'Active',
-    created_at: new Date().toISOString()
+  // The signed-in admin, built from the live session (nothing hardcoded).
+  function buildAdminRecord() {
+    try {
+      const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const email = String(me.email || '').trim();
+      if (!email) return null;
+      return {
+        id: me.id || me.uid || email,
+        name: me.name || me.fullName || email.split('@')[0],
+        username: me.username || email.split('@')[0],
+        email,
+        branchLoc: 'Headquarters',
+        branchName: 'Headquarters',
+        role: 'Administrator',
+        status: 'Active',
+        created_at: me.created_at || new Date().toISOString()
+      };
+    } catch (_) { return null; }
+  }
+  const isAdminLike = (u) => {
+    const role = String(u && u.role || '').toLowerCase();
+    return role === 'administrator' || role === 'admin';
   };
-
-  const AUTHENTIC_INITIAL_REGISTERED_USERS = [
-    MASTER_ADMIN_RECORD,
-    {
-      id: '8436c433-268c-4d72-9e8c-f4dfdb1692f3',
-      name: 'Aizel',
-      username: 'Scones_manager',
-      email: 'zeannapatty@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Store Manager',
-      status: 'Active',
-      created_at: '2026-10-16T02:28:41.885691+00:00'
-    },
-    {
-      id: 'c99c9757-de31-4dbc-89da-005fdd9eed35',
-      name: 'Staff_1',
-      username: 'Scones_Staff_1',
-      email: 'Sconesandmuffins@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Staff Personnel',
-      status: 'Active',
-      created_at: '2026-10-16T04:59:34.011697+00:00'
-    },
-    {
-      id: '1cc2347e-8f3b-4553-b22e-f3048314991c',
-      name: 'Staff_2',
-      username: 'Staff_Scones_2',
-      email: 'scone2@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Staff Personnel',
-      status: 'Active',
-      created_at: '2026-10-25T05:35:44.348261+00:00'
-    },
-    {
-      id: 'b7173051-b383-4b51-be77-4f4f3e79a900',
-      name: 'Glazel',
-      username: 'Glazel_Kxc',
-      email: 'zeannapatricia@gmail.com',
-      branchLoc: 'Tiaong',
-      branchName: 'KXC 5-Year Enterprise',
-      role: 'Store Manager',
-      status: 'Active',
-      created_at: '2026-10-16T03:38:10.858827+00:00'
-    }
-  ];
+  const AUTHENTIC_INITIAL_REGISTERED_USERS = [];
 
   function getStoredRegisteredUsers() {
     try {
@@ -236,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = String(u.email || '').toLowerCase();
         const name = String(u.name || '').toLowerCase();
         const user = String(u.username || '').toLowerCase();
-        if (role === 'administrator' || role === 'admin' || email === 'calusinzeanna3@gmail.com' || name === 'zeanna' || user === 'zeanna' || user === 'calusinzeanna3') {
+        if (role === 'administrator' || role === 'admin') {
           return {
             ...u,
             branchLoc: 'Headquarters',
@@ -247,12 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return u;
       });
 
-      const hasAdmin = list.some(u => 
-        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-        (u.name && u.name.toLowerCase() === 'zeanna')
-      );
-      if (!hasAdmin) {
-        list.unshift(MASTER_ADMIN_RECORD);
+      const adminRec = buildAdminRecord();
+      if (adminRec && !list.some(u => u.email && u.email.toLowerCase() === adminRec.email.toLowerCase())) {
+        list.unshift(adminRec);
       }
 
       return list;
@@ -271,13 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      const hasRealAdmin = list.some(u => 
-        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-        (u.username && u.username.toLowerCase() === 'zeanna') ||
-        (u.name && u.name.toLowerCase() === 'zeanna')
-      );
-      if (!hasRealAdmin) {
-        list.unshift({ ...MASTER_ADMIN_RECORD });
+      const adminRec = buildAdminRecord();
+      if (adminRec && !list.some(u => u.email && u.email.toLowerCase() === adminRec.email.toLowerCase())) {
+        list.unshift(adminRec);
       }
       localStorage.setItem('rmims_registered_users', JSON.stringify(list));
       window.dispatchEvent(new Event('rmims_registered_users_updated'));
@@ -490,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </svg>
                 <span>Edit</span>
               </button>
-              ${(u.role === 'Administrator' || u.role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.username && u.username.toLowerCase() === 'zeanna')) ? `
+              ${isAdminLike(u) ? `
                 <button type="button" class="btn-delete" style="opacity:0.45; cursor:not-allowed;" title="Main Admin account is permanently protected" disabled>Protected</button>
               ` : `
                 <button type="button" class="btn-delete" onclick="deleteUser('${escapeJs(u.id)}', '${escapeJs(u.name)}')">Delete</button>

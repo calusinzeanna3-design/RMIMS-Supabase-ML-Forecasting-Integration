@@ -8,6 +8,7 @@
 // module (this was why Raw Materials sat at 0 forever). If every CDN fails we fall
 // back to an inert offline client and the app keeps working from local data.
 const SUPABASE_CDNS = [
+    new URL("../vendor/supabase/supabase.esm.js", import.meta.url).href,
     "https://esm.sh/@supabase/supabase-js@2",
     "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"
 ];
@@ -22,7 +23,7 @@ function withTimeout(promise, ms) {
 async function loadCreateClient() {
     for (const url of SUPABASE_CDNS) {
         try {
-            const mod = await withTimeout(import(/* @vite-ignore */ url), 3500);
+            const mod = await withTimeout(import(/* @vite-ignore */ url), url.includes("/vendor/") ? 8000 : 3500);
             if (mod && typeof mod.createClient === "function") return mod.createClient;
         } catch (e) {
             console.warn("[Supabase] CDN unavailable, trying next:", url);

@@ -328,7 +328,7 @@ export function getTenantMaterials() {
       unit_of_measure: m.unit,
       current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
       currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-      minimum_threshold: Number(m.minimum_threshold || 10)
+      minimum_threshold: Number(m.minimum_threshold || 0)
     }));
   }
 
@@ -339,7 +339,7 @@ export function getTenantMaterials() {
     unit_of_measure: m.unit || m.unit_of_measure || "kg",
     current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-    minimum_threshold: Number(m.minimum_threshold || 10)
+    minimum_threshold: Number(m.minimum_threshold || 0)
   }));
 }
 

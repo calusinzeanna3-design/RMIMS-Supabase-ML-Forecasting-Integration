@@ -858,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Asynchronously query Supabase for registered branch stores
   import('../supabase/admin-supabase-service.js')
     .then(srv => {
-      srv.fetchBranchStores().then(remoteStores => {
+      Promise.resolve(srv.fetchRegisteredUsers ? srv.fetchRegisteredUsers() : null).catch(() => null).then(() => srv.fetchBranchStores()).then(remoteStores => {
         if (remoteStores && typeof remoteStores === 'object') {
           const clean = {};
           Object.entries(remoteStores).forEach(([id, st]) => {
@@ -872,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof srv.subscribeToAdminFeed === 'function') {
         srv.subscribeToAdminFeed(({ table }) => {
           if (table === 'branch_stores' || table === 'branch_store_personnel') {
-            srv.fetchBranchStores().then(remoteStores => {
+            Promise.resolve(srv.fetchRegisteredUsers ? srv.fetchRegisteredUsers() : null).catch(() => null).then(() => srv.fetchBranchStores()).then(remoteStores => {
               if (remoteStores && typeof remoteStores === 'object') {
                 const clean = {};
                 Object.entries(remoteStores).forEach(([id, st]) => {

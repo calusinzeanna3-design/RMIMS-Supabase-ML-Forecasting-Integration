@@ -17,61 +17,14 @@ import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, resolveForecastingMaterialByName } from "./system-materials.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { getActiveTenantContext } from "./tenant-manager.js";
-function getMaterialAiRequirement(material, tenantCtx) {
-    if (!material) return { forecast7Day: 0, reorderQty: 0, unit: "g" };
-    const mName = String(material.name || material.raw_material_name || "").toLowerCase().trim();
-    const mCode = String(material.itemCode || material.item_code || material.id || "").toUpperCase().trim();
-    const curStock = Number(material.currentStock ?? material.current_stock ?? 0);
-    const minThreshold = Number(material.minThreshold ?? material.minimum_threshold ?? material.minimum_stock ?? 0);
-    const unit = (material.unit || material.unit_of_measure || (mCode.startsWith("NB-") ? "g" : "kg")).trim();
+import { loadRecorderDirectory, resolveRecorderName, extractRef } from "./rmims-recorder-resolver.js";
+import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, fmtQtyOrDash } from "./rmims-reorder-engine.js";
 
-    let cachedFc = null;
-    try {
-        const rawCache = localStorage.getItem("rmims_forecast_cache");
-        if (rawCache) {
-            const cacheObj = JSON.parse(rawCache);
-            cachedFc = cacheObj[material.name] || cacheObj[mName] || Object.values(cacheObj).find(c => 
-                String(c.material_id || "").toUpperCase().trim() === mCode ||
-                String(c.raw_material_name || "").toLowerCase().trim() === mName
-            );
-        }
-    } catch (_) {}
-
-    const isScones = tenantCtx ? Boolean(tenantCtx.isScones) : mCode.startsWith("NB-");
-    const catalog = isScones ? AUTHENTIC_19_SCONES_MATERIALS : AUTHENTIC_59_RAW_MATERIALS;
-    const baseMat = catalog.find(b => 
-        String(b.item_code || b.id).toUpperCase().trim() === mCode ||
-        String(b.name || b.raw_material_name || "").toLowerCase().trim() === mName
-    );
-
-    let f7Day = 0;
-    if (cachedFc && cachedFc.forecast7Day && Number(cachedFc.forecast7Day.quantity) > 0) {
-        f7Day = Number(cachedFc.forecast7Day.quantity);
-    } else if (baseMat && Number(baseMat.forecast_weekly) > 0) {
-        f7Day = Number(baseMat.forecast_weekly);
-    } else if (material.forecast_weekly && Number(material.forecast_weekly) > 0) {
-        f7Day = Number(material.forecast_weekly);
-    } else if (baseMat && Number(baseMat.forecast_daily) > 0) {
-        f7Day = Number((baseMat.forecast_daily * 7).toFixed(1));
-    }
-
-    let reorderNeeded = 0;
-    if (curStock <= 0) {
-        reorderNeeded = f7Day > 0 ? f7Day : (minThreshold > 0 ? minThreshold : 50);
-    } else if (curStock < (f7Day + minThreshold)) {
-        reorderNeeded = (f7Day + minThreshold) - curStock;
-    }
-
-    const isCountUnit = unit.toLowerCase() === "pcs" || unit.toLowerCase() === "pieces";
-    const roundedReorder = isCountUnit ? Math.ceil(reorderNeeded) : Number(reorderNeeded.toFixed(1));
-    const roundedFc = isCountUnit ? Math.ceil(f7Day) : Number(f7Day.toFixed(1));
-
-    return {
-        forecast7Day: roundedFc,
-        reorderQty: roundedReorder,
-        unit: unit
-    };
+/** Reorder quantity for display: only data-driven values, "—" when there is no recorded consumption. */
+function reorderText(m, withUnit = true) {
+    return fmtQtyOrDash(m && m.reorderQty, withUnit ? (m && m.unit) : "");
 }
+// (Built-in catalog forecast helper removed: forecasts and reorder come only from recorded usage.)
 
 /* ==========================================================
    ROLE & AUTH GUARD
@@ -449,6 +402,14 @@ async function loadAuthoritativeData() {
             }
         }
 
+        // remote ledger rows only carry the material UUID: remember uuid -> item code so names resolve
+        const uuidToCode = new Map();
+        (rawMats || []).forEach(m => { if (m && m.id && m.item_code) uuidToCode.set(String(m.id), String(m.item_code).toUpperCase().trim()); });
+        const canonMatId = (id) => uuidToCode.get(String(id || "")) || id;
+        // Remote rows carry the system reference inside text ("[Ref: X]")
+        rawReceipts = (rawReceipts || []).map(r => ({ ...r, material_id: canonMatId(r.material_id), reference_no: r.reference_no || extractRef(r.supplier_name) || undefined }));
+        rawDisbursements = (rawDisbursements || []).map(d => ({ ...d, material_id: canonMatId(d.material_id), reference_no: d.reference_no || extractRef(d.activity_type) || undefined }));
+
         // 2. Material mapping (STRICTLY live & air-gapped per active company tenant)
         let tCtx = null;
         try { tCtx = getActiveTenantContext(); } catch (_) {}
@@ -485,7 +446,7 @@ async function loadAuthoritativeData() {
                 raw_material_name: m.raw_material_name || m.name,
                 unit_of_measure: m.unit_of_measure || m.unit || (isScones ? "g" : "kg"),
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 0),
                 reorder_quantity: Number(m.reorder_quantity ?? 50),
                 lead_time_days: Number(m.lead_time_days ?? 3)
             });
@@ -516,7 +477,7 @@ async function loadAuthoritativeData() {
                         name: m.name,
                         unit_of_measure: m.unit_of_measure || m.unit || "kg",
                         current_stock: curStock,
-                        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 10),
+                        minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 0),
                         reorder_quantity: Number(m.reorder_quantity ?? 50),
                         lead_time_days: Number(m.lead_time_days ?? 3)
                     });
@@ -541,7 +502,7 @@ async function loadAuthoritativeData() {
                     name: m.name,
                     unit_of_measure: m.unit_of_measure || "kg",
                     current_stock: curStock,
-                    minimum_threshold: Number(m.minimum_threshold ?? 10),
+                    minimum_threshold: Number(m.minimum_threshold ?? 0),
                     reorder_quantity: Number(m.reorder_quantity ?? 50),
                     lead_time_days: Number(m.lead_time_days ?? 3)
                 });
@@ -580,7 +541,7 @@ async function loadAuthoritativeData() {
                 receipt_date: r.date || r.receipt_date,
                 unit: r.unit,
                 supplier_name: r.supplier || r.supplier_name,
-                received_by: r.recordedBy || r.received_by || "Staff Member",
+                received_by: r.recordedBy || r.received_by || "",
                 created_at: r.createdAt || r.created_at
             });
         });
@@ -609,8 +570,8 @@ async function loadAuthoritativeData() {
                 usage_date: d.date || d.usage_date,
                 unit: d.unit,
                 finished_product_name: d.recipient || d.finished_product_name,
-                activity_type: d.activity_type || "Production Issue",
-                recorded_by: d.recordedBy || d.recorded_by || "Staff Member",
+                activity_type: d.activity_type || "",
+                recorded_by: d.recordedBy || d.recorded_by || "",
                 created_at: d.createdAt || d.created_at
             });
         });
@@ -633,8 +594,8 @@ async function loadAuthoritativeData() {
             } else if (minThreshold > 0 && stock <= minThreshold) {
                 status = "Low";
             }
-            const aiReq = getMaterialAiRequirement(m, tCtx);
-            const reorderQuantity = (aiReq.reorderQty && aiReq.reorderQty > 0) ? aiReq.reorderQty : Number(m.reorder_quantity || 0);
+            // Reorder / forecast are computed below from RECORDED consumption only.
+            const reorderQuantity = null;
             return {
                 id: m.id,
                 itemCode: m.item_code || "RM—",
@@ -643,7 +604,7 @@ async function loadAuthoritativeData() {
                 currentStock: stock,
                 minThreshold: minThreshold,
                 reorderQty: reorderQuantity,
-                aiForecast7Day: aiReq.forecast7Day,
+                aiForecast7Day: null,
                 status
             };
         });
@@ -654,6 +615,9 @@ async function loadAuthoritativeData() {
             matMap.set(m.id, m);
             matMap.set(m.name.toLowerCase().trim(), m);
         });
+
+        await loadRecorderDirectory(supabase);
+        const userFinishedProducts = getUserFinishedProducts();
 
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
@@ -676,8 +640,8 @@ async function loadAuthoritativeData() {
                 materialName: rMat ? rMat.name : (r.raw_material_name || "Unknown Material"),
                 receivedQuantity: Number(r.received_quantity || 0),
                 unit: r.unit || (rMat ? rMat.unit : ""),
-                supplierName: r.supplier_name || "Primary Supplier",
-                receivedBy: r.received_by || "Staff Receiver"
+                supplierName: String(r.supplier_name || "").replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() || "—",
+                receivedBy: resolveRecorderName({ recordedBy: r.received_by, ref: refNo })
             };
         });
 
@@ -702,10 +666,18 @@ async function loadAuthoritativeData() {
                 materialName: dMat ? dMat.name : (d.raw_material_name || "Unknown Material"),
                 disbursedQuantity: Number(d.consumed_quantity || 0),
                 unit: d.unit || (dMat ? dMat.unit : ""),
-                activityType: d.activity_type || "Production Run",
-                finishedProduct: d.finished_product_name || "Production Line",
-                recordedBy: d.recorded_by || "Staff Operator"
+                activityType: String(d.activity_type || "").replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() || "—",
+                finishedProduct: resolveFinishedProductName(dMat ? dMat.name : "", d.finished_product_name, userFinishedProducts),
+                recordedBy: resolveRecorderName({ recordedBy: d.recorded_by, ref: refNo })
             };
+        });
+
+        // Data-driven reorder from RECORDED consumption (no built-in numbers)
+        state.materials.forEach(m => {
+            const plan = computeDataDrivenReorder(m, buildActualsForMaterial(m, state.disbursements));
+            m.reorderPlan = plan;
+            m.reorderQty = plan.reorderQty;
+            m.aiForecast7Day = plan.forecast7;
         });
 
         // Determine anchor date
@@ -804,7 +776,7 @@ function renderInventoryRecordsTab() {
                 <td>${escapeHtml(m.unit)}</td>
                 <td><strong>${m.currentStock.toLocaleString()}</strong></td>
                 <td>${m.minThreshold.toLocaleString()}</td>
-                <td>${m.reorderQty.toLocaleString()}</td>
+                <td>${escapeHtml(reorderText(m, false))}</td>
                 <td>
                     <span class="rpt-badge ${m.status === 'Good' ? 'rpt-badge-good' : (m.status === 'Low' ? 'rpt-badge-low' : 'rpt-badge-critical')}">
                         ${escapeHtml(m.status)}
@@ -1195,7 +1167,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "invent
                                     <td><span style="font-family:'Inter', sans-serif; font-weight:600; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
                                     <td><strong>${(m.currentStock || 0).toLocaleString()}</strong> ${escapeHtml(m.unit)}</td>
                                     <td>${(m.minThreshold || 0).toLocaleString()} ${escapeHtml(m.unit)}</td>
-                                    <td>${(m.reorderQty || 0).toLocaleString()} ${escapeHtml(m.unit)}</td>
+                                    <td>${escapeHtml(reorderText(m))}</td>
                                     <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `).join("")
@@ -1305,7 +1277,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "invent
                                         <td><strong>${escapeHtml(a.material)}</strong></td>
                                         <td><strong style="color:${isRcv ? '#059669' : '#DC2626'};">${isRcv ? '+' : ''}${(a.netQty || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(a.unit)}</td>
                                         <td>${escapeHtml(a.context || "—")}</td>
-                                        <td>${escapeHtml(a.operator || "Staff")}</td>
+                                        <td>${escapeHtml(a.operator || "—")}</td>
                                     </tr>
                                 `;
                             }).join("")
@@ -1879,7 +1851,7 @@ async function generateStaffSingleTabPdf(fileName, tabKey = (state.activeTab || 
                 m.itemCode,
                 `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
                 `${(m.minThreshold || 0).toLocaleString()} ${m.unit}`,
-                `${(m.reorderQty || 0).toLocaleString()} ${m.unit}`,
+                reorderText(m),
                 m.status
             ]);
         doc.autoTable({
@@ -1940,7 +1912,7 @@ async function generateStaffSingleTabPdf(fileName, tabKey = (state.activeTab || 
                 a.material,
                 a.type === "Received" ? `+${(a.netQty || 0).toLocaleString()} ${a.unit}` : `${(a.netQty || 0).toLocaleString()} ${a.unit}`,
                 a.context || "—",
-                a.operator || "Staff"
+                a.operator || "—"
             ]);
         doc.autoTable({
             startY: y,
@@ -2013,7 +1985,7 @@ async function generateStaffSingleTabExcel(fileName, tabKey = "inventory") {
             "Unit": m.unit,
             "Current Stock": m.currentStock,
             "Minimum Threshold": m.minThreshold,
-            "Reorder Quantity": m.reorderQty,
+            "Reorder Quantity": m.reorderQty == null ? "—" : m.reorderQty,
             "Status": m.status
         }));
     } else if (tabKey === "receiving") {
@@ -2074,7 +2046,7 @@ async function generateStaffExcel(baseName, sections) {
             "Unit": m.unit,
             "Current Stock": m.currentStock,
             "Minimum Threshold": m.minThreshold,
-            "Reorder Quantity": m.reorderQty,
+            "Reorder Quantity": m.reorderQty == null ? "—" : m.reorderQty,
             "Status": m.status
         }));
         const ws = XLSX.utils.json_to_sheet(invRows);
@@ -2272,7 +2244,7 @@ async function generateStaffPdf(baseName, sections) {
                 m.itemCode,
                 `${(m.currentStock || 0).toLocaleString()} ${m.unit}`,
                 `${(m.minThreshold || 0).toLocaleString()} ${m.unit}`,
-                `${(m.reorderQty || 0).toLocaleString()} ${m.unit}`,
+                reorderText(m),
                 m.status
             ]);
 

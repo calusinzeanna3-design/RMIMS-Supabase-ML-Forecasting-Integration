@@ -5,6 +5,7 @@
 // Strictly User Scope & Permissions. Live Supabase Account Data. Pure Light UI.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { changeAccountPassword } from "../supabase/password-service.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 import "./rmsme-shell.js";
 
@@ -594,6 +595,15 @@ function initActions() {
             }
 
             try {
+                const pw = await changeAccountPassword(currentPass, newPass);
+                if (!pw.ok) {
+                    const t = pw.field === 'current' ? currentErr : pw.field === 'new' ? newErr : null;
+                    if (t) t.textContent = pw.message; else showToast(pw.message, "error");
+                    return;
+                }
+                showToast("Password updated successfully.", "success");
+                directPasswordForm.reset();
+                return;
                 // 1. Resolve Staff Email
                 let userEmail = (currentUser?.email || "").trim().toLowerCase();
                 if (!userEmail) {

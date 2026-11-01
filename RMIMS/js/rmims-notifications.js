@@ -64,6 +64,12 @@
   function isNotificationInScope(n, portalRole, currentUserId) {
     if (!n || !n.id) return false;
 
+    // Shared feed (rmims-notification-feed.js): role & company scope already enforced by the database
+    if (n.sharedFeed && Array.isArray(n.targetRoles)) {
+      const pr = String(portalRole || '').toLowerCase();
+      return n.targetRoles.includes(pr === 'user' ? 'staff' : pr);
+    }
+
     const targetRole = String(n.targetRole || n.role || n.roleScope || '').toLowerCase();
     const title = String(n.title || '').toLowerCase();
     const message = String(n.message || '').toLowerCase();

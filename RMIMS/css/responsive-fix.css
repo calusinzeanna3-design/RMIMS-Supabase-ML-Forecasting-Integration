@@ -1,0 +1,259 @@
+/* RMSME responsive hardening — loaded last on every manager / staff / admin page.
+   Only adds shrink/wrap/scroll behaviour; no colors, data or features change. */
+
+*, *::before, *::after { box-sizing: border-box; }
+img, svg, canvas, video { max-width: 100%; }
+
+/* grid / flex children may shrink instead of pushing past their card */
+[class*="grid"] > *, [class*="-row"] > *, [class*="cards"] > *, [class*="kpi"] > *,
+.form-grid > *, .settings-grid > *, .input-group, .rpt-fe-field, .mgr-field-group {
+  min-width: 0;
+}
+.input-group input, .input-group select, .input-group textarea,
+.mgr-field-group input, .mgr-field-group select, .mgr-field-group textarea {
+  min-width: 0; max-width: 100%; width: 100%;
+}
+
+/* Settings: columns wrap by available width instead of a fixed 3 */
+.settings-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+
+/* cards: long text wraps inside the card */
+.kpi-card, [class*="kpi-card"], [class*="stat-card"], [class*="-card"] {
+  min-width: 0; overflow-wrap: anywhere;
+}
+.kpi-card, [class*="kpi-card"] { overflow: hidden; }
+.kpi-subtext, .fc-kpi-subtext, .kpi-card span, .kpi-card p { white-space: normal !important; text-overflow: clip !important; overflow: visible !important; overflow-wrap: break-word; line-height: 1.3; }
+
+/* tables always scroll inside their own card, never get cut off */
+.table-responsive, .table-scroll, .mgr-import-table-wrap, [class*="table-wrap"], [class*="table-container"] {
+  max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.table-responsive > table, .table-scroll > table { min-width: max-content; }
+table td, table th { overflow-wrap: normal; word-break: normal; }
+table th { white-space: nowrap; }
+.fc-table { max-width: 100%; }
+
+/* page titles / headers wrap rather than overflow */
+h1, h2, h3, .page-title, [class*="-title"] { overflow-wrap: anywhere; }
+.rpt-sec-action { white-space: normal; }
+.mgr-modal-body, .mgr-modal-head, .mgr-modal-foot { min-width: 0; }
+.mgr-modal-body input { max-width: 100%; }
+
+/* laptop widths: slightly tighter type & spacing so cards fit */
+@media (max-width: 1280px) {
+  html { font-size: 15px; }
+  .kpi-card, [class*="kpi-card"] { padding: 14px; }
+}
+@media (max-width: 1100px) {
+  html { font-size: 14.5px; }
+  [class*="kpi-grid"], .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 768px) {
+  html { font-size: 14px; }
+  [class*="kpi-grid"], .kpi-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .form-grid, .settings-grid, [class*="grid-2"], [class*="grid-3"] { grid-template-columns: minmax(0, 1fr) !important; }
+  .rpt-sec-action { display: block; margin-top: 4px; }
+  main, .main-content, [class*="content"] { max-width: 100%; }
+}
+@media (max-width: 480px) {
+  html { font-size: 13.5px; }
+  .table-pagination-footer { flex-wrap: wrap; gap: 8px; }
+}
+
+/* top header: title may wrap instead of being cut with an ellipsis */
+@media (max-width: 768px) {
+header h1, .topbar h1, .page-header h1, [class*="header-title"], [class*="topbar"] h1 {
+  white-space: normal !important; text-overflow: clip !important; overflow: visible !important; overflow-wrap: break-word; line-height: 1.15;
+}
+}
+@media (max-width: 480px) { header h1, .topbar h1 { font-size: 1.1rem; } }
+
+/* main data tables: compress columns on laptop screens so nothing is cut off; scroll only on small screens */
+@media (max-width: 1500px) {
+  .table-responsive > table.inv-main-table, .admin-table.inv-main-table { min-width: 0; width: 100%; }
+  .inv-main-table th, .inv-main-table td { padding-left: 8px !important; padding-right: 8px !important; font-size: 0.82rem; letter-spacing: 0; }
+  .inv-main-table th { white-space: normal; line-height: 1.2; }
+}
+@media (max-width: 900px) {
+  .table-responsive > table.inv-main-table, .admin-table.inv-main-table { min-width: 760px; }
+}
+
+/* ---- consistent top bar on every page: same 76px height, same spacing, one-line subtitle ---- */
+body .admin-topbar { box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
+.admin-topbar .topbar-left { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 1px; overflow: hidden; }
+.admin-topbar .topbar-kicker { line-height: 1.1; margin: 0; }
+.admin-topbar .topbar-title { margin: 0 !important; line-height: 1.15 !important; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; }
+.admin-topbar .topbar-subtitle { margin: 0 !important; line-height: 1.3 !important; font-size: 0.82rem !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; display: block !important; -webkit-line-clamp: unset !important; max-width: 100% !important; }
+.admin-topbar .topbar-right { flex-shrink: 0; }
+@media (max-width: 768px) {
+  .admin-topbar .topbar-subtitle { display: none !important; }
+  .admin-topbar .topbar-title { white-space: normal !important; }
+}
+
+/* ---- forecast cards: label + value on one line, bar underneath (nothing can run out of the card) ---- */
+body .forecast-support-card .fsc-bar-row, body.manager-page .fc-grid-row-1 .forecast-support-card .fsc-bar-row {
+  display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "label val" "track track" !important;
+  column-gap: 14px !important; row-gap: 5px !important; align-items: center !important;
+}
+.forecast-support-card .fsc-bar-label { grid-area: label; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.forecast-support-card .fsc-bar-val { grid-area: val; text-align: right; white-space: nowrap; padding-left: 4px; }
+.forecast-support-card .fsc-bar-track { grid-area: track; width: 100%; }
+.forecast-support-card .fsc-bargraph-container { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; min-width: 0; }
+.forecast-support-card .fsc-mat-name { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: break-word; }
+.forecast-support-card .fsc-duration-banner { white-space: normal; overflow-wrap: anywhere; }
+body .forecast-support-card { overflow: visible !important; min-height: max-content !important; flex-shrink: 0; }
+body .forecast-support-grid, body.manager-page .fc-grid-row-1 .forecast-support-grid, .fc-grid-row-1 .forecast-support-grid {
+  grid-auto-rows: max-content !important; align-content: start !important; align-items: start !important;
+  height: auto !important; max-height: 460px !important; min-height: 0 !important;
+}
+
+/* ---- custom dropdown buttons: the arrow always sits clearly away from the text (all roles) ---- */
+.rm-select-trigger { gap: 14px !important; padding-right: 14px !important; }
+.rm-select-trigger .rm-select-value { flex: 1 1 auto; min-width: 0; }
+.rm-select-trigger .rm-select-chevron { margin-left: auto; flex: 0 0 auto; }
+.activity-filter-toolbar .rm-select-trigger, .rm-custom-select.mgr-filter-select-compact .rm-select-trigger { gap: 12px !important; padding: 0 12px !important; max-width: none !important; }
+select { padding-right: 34px; background-position: right 12px center; text-overflow: ellipsis; }
+
+/* ---- system calendar (flatpickr): nothing is cut at the sides, month / year / weekdays fully visible ---- */
+.flatpickr-calendar { width: auto !important; min-width: 320px; max-width: calc(100vw - 16px); box-sizing: border-box !important; }
+.flatpickr-calendar .flatpickr-innerContainer, .flatpickr-calendar .flatpickr-rContainer, .flatpickr-calendar .flatpickr-days,
+.flatpickr-calendar .dayContainer, .flatpickr-calendar .flatpickr-weekdaycontainer, .flatpickr-calendar .flatpickr-weekdays {
+  width: 100% !important; min-width: 0 !important; max-width: none !important; box-sizing: border-box !important;
+}
+.flatpickr-calendar .flatpickr-weekday { flex: 1 1 14.2857%; max-width: none; }
+.flatpickr-calendar .flatpickr-day { max-width: none !important; width: 14.2857% !important; flex: 0 0 14.2857% !important; }
+.flatpickr-calendar .flatpickr-months { gap: 6px; padding-left: 6px !important; padding-right: 6px !important; }
+.flatpickr-calendar .flatpickr-current-month { flex: 1 1 auto; justify-content: center !important; min-width: 0; overflow: visible !important; }
+.flatpickr-calendar .flatpickr-monthDropdown-months { min-width: 104px !important; padding-right: 12px !important; }
+.flatpickr-calendar .numInputWrapper { flex: 0 0 auto; }
+/* the calendar must stay visible inside pop-up forms */
+body.rmims-modal-open .flatpickr-calendar.open { display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; z-index: 2147483000 !important; }
+
+/* ---- forecast detail pop-up: every category tab visible at once (no scrolling strip) ---- */
+#modalFuncTabsBar, .fc-modal-tabs-bar {
+  overflow: visible !important; flex-wrap: wrap !important; flex: 0 0 auto !important; height: auto !important; min-height: 0 !important;
+  row-gap: 8px;
+}
+.fc-func-tab { flex: 0 0 auto; line-height: 1.3; padding: 8px 14px; }
+
+/* KPI cards with an icon on the right: text keeps a clear gap and wraps instead of running under the icon */
+.fc-kpi-card { gap: 14px; }
+.fc-kpi-card .fc-kpi-content { flex: 1 1 auto; min-width: 0; }
+.fc-kpi-card .fc-kpi-label { display: block; white-space: normal !important; line-height: 1.25; }
+.fc-kpi-card > *:last-child:not(.fc-kpi-content) { flex-shrink: 0; }
+
+/* date fields inside forms / pop-ups: full width like the other inputs */
+.input-group input.inv-input-date.flatpickr-input, .mgr-field-group input.inv-input-date.flatpickr-input, .form-grid input.inv-input-date.flatpickr-input {
+  width: 100% !important; height: 42px !important; padding: 0 12px !important; font-size: 0.92rem !important; border-radius: 10px !important; background: #fff !important;
+}
+
+/* ---- dropdown: keep the arrow clearly away from the label ---- */
+.rm-select-trigger { min-width: 150px; }
+.rm-custom-select.rm-select-block .rm-select-trigger { min-width: 0; }
+.rm-select-trigger .rm-select-value { padding-right: 8px; }
+.rm-select-trigger .rm-select-chevron { margin-left: auto; padding-left: 4px; }
+
+.pill-deleted{background:#F1F5F9!important;color:#64748B!important;}
+
+/* ---- admin tables: keep the Action column fully visible ---- */
+.admin-table th, .admin-table td { padding-left: 12px !important; padding-right: 12px !important; }
+.admin-table th:first-child, .admin-table td:first-child { padding-left: 18px !important; }
+.admin-table th:last-child, .admin-table td:last-child { padding-right: 18px !important; }
+.action-btn-group { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; white-space: nowrap; }
+.action-btn-group .btn-edit, .action-btn-group .btn-delete, .action-btn-group .btn-unlock { padding: 6px 10px !important; font-size: 12px !important; }
+
+/* ---- admin system alerts: responsive cards + readable table ---- */
+.alert-metrics-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important; gap: 14px !important; }
+.alert-metric-box { min-width: 0; }
+.alert-metric-body { min-width: 0; flex: 1 1 auto; }
+.alert-metric-title { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+.alert-metric-val-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.alert-metric-trend { font-size: 11.5px; font-weight: 700; }
+.admin-table td { white-space: normal; overflow-wrap: break-word; word-break: normal; }
+.admin-table td .status-pill, .admin-table td .location-badge { white-space: nowrap; }
+@media (max-width: 640px) { .alert-metrics-grid { grid-template-columns: 1fr 1fr !important; } }
+
+/* ---- buttons never split letter-by-letter ("Ed it" / "Dele te") ---- */
+td button, th button, .admin-table button, .btn-table-edit, .btn-table-delete, [class*="btn-table"] {
+  white-space: nowrap !important; overflow-wrap: normal !important; word-break: normal !important; flex-shrink: 0;
+}
+td:last-child:has(button) { white-space: nowrap; min-width: max-content; }
+td:last-child:has(button) > div, td:last-child:has(button) .action-btn-group { display: inline-flex; flex-wrap: nowrap; gap: 6px; }
+
+/* ---- action buttons must never wrap letter by letter ("Ed it" / "Dele te") ---- */
+.admin-table td button, .admin-table td .btn-edit, .admin-table td .btn-delete, .admin-table td .btn-unlock,
+table td button, table td a.btn, .action-btn-group button, .action-btn-group .btn-edit, .action-btn-group .btn-delete {
+  white-space: nowrap !important; overflow-wrap: normal !important; word-break: keep-all !important; flex-shrink: 0;
+}
+.admin-table td:last-child, .action-btn-group { min-width: max-content; }
+
+/* ---- admin calendar popover: never clip the Saturday column ---- */
+.date-picker-popover { width: max-content !important; min-width: 0 !important; max-width: min(95vw, 720px) !important; overflow: visible !important; }
+.date-picker-popover:not(.dual-calendar) .date-picker-calendar-section { min-width: 300px; }
+.date-picker-popover .calendar-days-grid { grid-template-columns: repeat(7, 40px) !important; justify-content: center; gap: 2px 2px !important; }
+.date-picker-popover .cal-day-header { width: 40px; text-align: center; }
+.date-picker-popover .cal-day { margin: 0 auto; }
+.date-picker-presets { flex: 0 0 130px; }
+.date-picker-calendar-section { flex: 0 0 auto !important; }
+
+/* ---- admin modals: dropdowns look and size exactly like the other form fields ---- */
+.modal-form-group .rm-custom-select, .auth-modal .rm-custom-select { display: block !important; width: 100% !important; position: relative; }
+.modal-form-group .rm-select-trigger, .rm-custom-select.rm-select-block .rm-select-trigger {
+  width: 100% !important; min-width: 0 !important; max-width: none !important; height: 48px !important; min-height: 48px !important;
+  padding: 0 16px !important; border-radius: 14px !important; background: #F6FBF8 !important;
+  border: 1px solid rgba(20, 83, 45, 0.14) !important; font-size: 0.95rem !important; font-weight: 500 !important;
+}
+.modal-form-group .rm-select-trigger .rm-select-value { color: #1f3b2b !important; }
+.modal-form-group .rm-select-menu, .rm-custom-select.rm-select-block .rm-select-menu { left: 0 !important; right: auto !important; width: 100% !important; max-width: 100% !important; z-index: 400000 !important; }
+
+/* ---- admin modal buttons = system buttons ---- */
+.modal-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+.modal-footer .btn-view-all {
+  height: 42px; padding: 0 22px; border-radius: 12px; background: #FFFFFF; color: #334155;
+  border: 1px solid #CBD5E1 !important; font-weight: 700; font-size: 0.9rem; box-shadow: none; outline: none;
+}
+.modal-footer .btn-view-all:hover { background: #F1F5F9; border-color: #94A3B8 !important; }
+.modal-footer .btn-primary-action { height: 42px; padding: 0 24px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; }
+
+/* Modal dropdowns: same width/height/radius as the neighbouring inputs */
+.modal-form-group .rm-custom-select .rm-select-trigger,
+.auth-modal .rm-custom-select .rm-select-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  border-radius: 10px !important;
+  background: #F8FCF9 !important;
+  padding: 0 14px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  margin: 0 !important;
+}
+.modal-form-group .rm-custom-select .rm-select-menu,
+.auth-modal .rm-custom-select .rm-select-menu { left: 0 !important; right: 0 !important; width: 100% !important; }
+
+/* the custom-select wrapper copies the select's .modal-input class: neutralise the box styling on the wrapper only */
+.rm-custom-select.modal-input {
+  padding: 0 !important; border: 0 !important; background: transparent !important;
+  height: auto !important; box-shadow: none !important; border-radius: 0 !important;
+}
+
+/* two-month (Custom Range) calendar: smaller cells so both months + presets fit inside the card */
+.date-picker-popover.dual-calendar { max-width: min(96vw, 800px) !important; }
+.date-picker-popover.dual-calendar .calendar-days-grid { grid-template-columns: repeat(7, 34px) !important; }
+.date-picker-popover.dual-calendar .cal-day-header { width: 34px; }
+.date-picker-popover.dual-calendar .cal-day { width: 34px; height: 34px; }
+.date-picker-popover.dual-calendar .calendar-dual-grid { gap: 20px; }
+
+/* floating dropdown lists (used when a modal/card would clip them): show the full label, wrap instead of "..." */
+.rm-select-menu.rm-menu-floating { z-index: 400000 !important; }
+.rm-select-menu.rm-menu-floating .rm-opt-content { white-space: normal !important; }
+.rm-select-menu.rm-menu-floating .rm-opt-label { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.3; }
+
+/* selects that sit in a flex row (e.g. Add Finished Product > raw material chooser): fill the row, never overflow it */
+div[style*="display:flex"] > .rm-custom-select:has(+ button), .mgr-field-group > div > .rm-custom-select {
+  flex: 1 1 200px !important; min-width: 0 !important; max-width: 100% !important;
+}
+.mgr-field-group > div > .rm-custom-select .rm-select-trigger { width: 100% !important; min-width: 0 !important; }
+.mgr-field-group > div > .rm-custom-select .rm-select-trigger .rm-trigger-label,
+.mgr-field-group > div > .rm-custom-select .rm-select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }

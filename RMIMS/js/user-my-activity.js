@@ -70,7 +70,13 @@ function closeCorrectionModal() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Modules that await the Supabase CDN finish AFTER DOMContentLoaded, so run immediately when already ready.
+function onDomReady(fn) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+  else fn();
+}
+
+onDomReady(() => {
   rawMaterials = getSystemRawMaterials();
   populateMaterialSelects();
   initDatePickers();
@@ -85,6 +91,15 @@ document.addEventListener('DOMContentLoaded', () => {
     populateMaterialSelects();
     loadAndRenderActivity();
   }).catch(() => {});
+
+  window.addEventListener('rmims_live_data_updated', () => {
+    try {
+      rawMaterials = getSystemRawMaterials();
+      populateMaterialSelects();
+      const open = document.getElementById('staffCorrectionModal');
+      if (!open || open.style.display === 'none' || !open.classList.contains('open')) loadAndRenderActivity();
+    } catch (_) {}
+  });
 
   // URL query check: e.g. ?correct=REC-2026-00125 or ?ref=REC-2026-00125 or ?view=REC-2026-00125
   const params = new URLSearchParams(window.location.search);
@@ -501,6 +516,8 @@ function applyFiltersAndRender() {
       statusPill = `<span class="badge" style="background:#DCFCE7; color:#15803D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Approved</span>`;
     } else if (statusVal === 'Rejected') {
       statusPill = `<span class="badge" style="background:#FEE2E2; color:#DC2626; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Rejected</span>`;
+    } else if (statusVal === 'Deleted') {
+      statusPill = `<span class="badge" style="background:#F1F5F9; color:#64748B; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Deleted</span>`;
     } else if (statusVal === 'Correction Needed') {
       statusPill = `<span class="badge" style="background:#FEF3C7; color:#D97706; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -702,6 +719,10 @@ function openViewModal(tx) {
         statusBadge.style.color = '#15803D';
         statusBanner.style.background = '#DCFCE7';
         statusBanner.style.borderColor = '#BBF7D0';
+      } else if (st === 'Deleted') {
+        statusBadge.style.color = '#64748B';
+        statusBanner.style.background = '#F1F5F9';
+        statusBanner.style.borderColor = '#E2E8F0';
       } else if (st === 'Rejected') {
         statusBadge.style.color = '#DC2626';
         statusBanner.style.background = '#FEE2E2';

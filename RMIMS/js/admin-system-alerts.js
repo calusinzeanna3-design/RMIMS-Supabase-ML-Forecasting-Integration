@@ -56,10 +56,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateMetricBoxes() {
     const counts = getCategoryCounts();
-    if (statLogin) statLogin.textContent = counts.login;
-    if (statPerf) statPerf.textContent = counts.performance;
-    if (statData) statData.textContent = counts.data;
-    if (statFunc) statFunc.textContent = counts.functional;
+    const all = getAlerts();
+    const totals = { login: 0, performance: 0, data: 0, functional: 0 };
+    const solved = { login: 0, performance: 0, data: 0, functional: 0 };
+    all.forEach(a => {
+      const cat = totals[a.category] !== undefined ? a.category : 'functional';
+      totals[cat] += 1;
+      if (a.status === 'resolved') solved[cat] += 1;
+    });
+    const put = (el, key) => {
+      if (!el) return;
+      el.textContent = totals[key];
+      const trend = el.closest('.alert-metric-box')?.querySelector('.alert-metric-trend');
+      if (trend) {
+        trend.textContent = totals[key] ? `${counts[key]} open \u2022 ${solved[key]} resolved` : 'No issues';
+        trend.style.color = counts[key] ? '#DC2626' : '#64748B';
+      }
+    };
+    put(statLogin, 'login');
+    put(statPerf, 'performance');
+    put(statData, 'data');
+    put(statFunc, 'functional');
   }
 
   function renderAlertRows() {

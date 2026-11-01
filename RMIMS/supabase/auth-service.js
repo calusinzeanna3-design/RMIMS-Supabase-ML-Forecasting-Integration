@@ -824,8 +824,9 @@ export async function loginUser(email, password, expectedRole) {
             branchStore: isAdmin ? "Headquarters" : (profile.branch_store || (isScones ? "Scones & Muffins Bakery (Lucena)" : "Branch Store")),
             companyId: assignedCompanyId,
             company_id: assignedCompanyId,
-            companyName: assignedCompanyName,
-            company_name: assignedCompanyName,
+            // The main administrator oversees every company, so it is never labelled with one company's name.
+            companyName: isAdmin ? "All Companies (Main Administrator)" : assignedCompanyName,
+            company_name: isAdmin ? "All Companies (Main Administrator)" : assignedCompanyName,
             datasetFolder: assignedDatasetFolder,
             dataset_folder: assignedDatasetFolder
         };

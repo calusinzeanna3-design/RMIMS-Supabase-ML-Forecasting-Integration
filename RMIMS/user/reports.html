@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Reports | RMSME Staff</title>
@@ -8,11 +10,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
+    <link rel="stylesheet" href="../vendor/flatpickr/flatpickr.min.css"/>
     <link rel="stylesheet" href="../css/admin-shell.css"/>
     <link href="../css/rmims-unified.css" rel="stylesheet"/>
     <link href="../css/reports.css" rel="stylesheet"/>
     <link href="../css/manager-theme.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 <body class="manager-page admin-page">
 <div class="admin-app">
@@ -466,7 +471,7 @@
             </div>
 
             <div class="rpt-modal-field">
-                <label class="rpt-modal-label">Save Location</label>
+                <label class="rpt-modal-label" for="saveModalLocation">Save Location</label>
                 <div class="rpt-location-row">
                     <input type="text" class="rpt-input" id="saveModalLocation" readonly value="Downloads (Browser Default)"/>
                     <button type="button" class="rpt-btn-outline" id="browseLocationBtn">Browse</button>
@@ -475,7 +480,7 @@
             </div>
 
             <div class="rpt-modal-field">
-                <label class="rpt-modal-label">File Format</label>
+                <div class="rpt-modal-label">File Format</div>
                 <div class="rpt-format-options">
                     <label class="rpt-format-radio">
                         <input type="radio" name="saveFileFormat" value="pdf" checked/>
@@ -504,7 +509,7 @@
             <!-- REPORTS TO INCLUDE: ONLY 4 STAFF OPERATIONAL REPORTS -->
             <div class="rpt-modal-field">
                 <div class="rpt-sections-header">
-                    <label class="rpt-modal-label" style="margin-bottom:0;">Reports to Include</label>
+                    <div class="rpt-modal-label" style="margin-bottom:0;">Reports to Include</div>
                     <div class="rpt-section-btns">
                         <button type="button" class="rpt-btn-link-sm" id="saveSelectAllBtn">Select All</button>
                         <button type="button" class="rpt-btn-link-sm" id="saveClearAllBtn">Clear</button>
@@ -512,19 +517,19 @@
                 </div>
                 <div class="rpt-section-checklist" id="saveSectionsChecklist">
                     <label class="rpt-check-item">
-                        <input type="checkbox" value="inventory" checked/>
+                        <input type="checkbox" value="inventory" checked id="fld_1" name="fld_1"/>
                         <span><strong>1. Inventory Records</strong> (Current stock catalog)</span>
                     </label>
                     <label class="rpt-check-item">
-                        <input type="checkbox" value="receiving" checked/>
+                        <input type="checkbox" value="receiving" checked id="fld_2" name="fld_2"/>
                         <span><strong>2. Material Receiving</strong> (Stock receipt records)</span>
                     </label>
                     <label class="rpt-check-item">
-                        <input type="checkbox" value="disbursement" checked/>
+                        <input type="checkbox" value="disbursement" checked id="fld_3" name="fld_3"/>
                         <span><strong>3. Material Disbursement</strong> (Production issues)</span>
                     </label>
                     <label class="rpt-check-item">
-                        <input type="checkbox" value="activity" checked/>
+                        <input type="checkbox" value="activity" checked id="fld_4" name="fld_4"/>
                         <span><strong>4. Material Activity</strong> (Chronological log)</span>
                     </label>
                 </div>
@@ -602,11 +607,11 @@
 <div class="toast-stack" id="toastStack"></div>
 
 <!-- LIBRARIES -->
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../vendor/flatpickr/flatpickr.min.js"></script>
+<script src="../vendor/jspdf/jspdf.umd.min.js"></script>
+<script src="../vendor/jspdf/jspdf.plugin.autotable.min.js"></script>
+<script src="../vendor/xlsx/xlsx.full.min.js"></script>
+<script src="../vendor/jszip/jszip.min.js"></script>
 <script src="../js/user-reports.js" type="module"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 </body>

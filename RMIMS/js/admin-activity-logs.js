@@ -3,6 +3,7 @@
 // (manager activity audit log, stock receipts, material disbursements, and staff submissions).
 // Supports dynamic KPI calculations, multi-filter toolbar, date range selection, and CSV export.
 
+import { maskOperationalDetails } from './admin-privacy.js';
 import { initAdminCalendarPicker, getLiveTodayISO, getDaysAgoISO, formatDisplayDate } from './admin-calendar-picker.js';
 
 function escapeHtml(str) {
@@ -496,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(act.branchName)}</td>
           <td><span class="action-tag ${actionTagClass}">${escapeHtml(act.action)}</span></td>
           <td><strong>${escapeHtml(act.module)}</strong></td>
-          <td>${escapeHtml(act.details)}</td>
+          <td>${escapeHtml(maskOperationalDetails(act.details))}</td>
           <td><span class="status-pill ${statusPillClass}">${statusText}</span></td>
         </tr>
       `;
@@ -541,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const actStatus = (act.status || '').toLowerCase();
       const statusMatch = sVal === 'all' || actStatus === sVal;
 
-      const fullText = `${act.user || ''} ${act.action || ''} ${act.details || ''} ${act.module || ''} ${act.branchName || ''} ${act.branchLoc || ''}`.toLowerCase();
+      const fullText = `${act.user || ''} ${act.action || ''} ${maskOperationalDetails(act.details || '')} ${act.module || ''} ${act.branchName || ''} ${act.branchLoc || ''}`.toLowerCase();
       const queryMatch = !query || fullText.includes(query);
 
       let dateMatch = true;

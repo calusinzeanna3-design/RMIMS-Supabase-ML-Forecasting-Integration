@@ -17,14 +17,23 @@
 // itself before touching any table.
 
 import { auth, db } from "../supabase/supabase-config.js";
-import JSZip from "https://esm.sh/jszip@3.10.1";
+// JSZip is bundled with the system (vendor/jszip) so no outside website is contacted.
+let JSZip = (typeof window !== "undefined" && window.JSZip) || null;
+const jszipReady = new Promise(resolve => {
+    if (JSZip || typeof document === "undefined") return resolve(JSZip);
+    const el = document.createElement("script");
+    el.src = new URL("../vendor/jszip/jszip.min.js", import.meta.url).href;
+    el.onload = () => { JSZip = window.JSZip; resolve(JSZip); };
+    el.onerror = () => resolve(null);
+    document.head.appendChild(el);
+});
 
 const BUCKET = "rmims-backups";
 const BACKUP_VERSION = 1;
 
 const CATEGORIES = [
     { key: "raw_materials", label: "Raw Materials", table: "raw_materials" },
-    { key: "stock_receipts", label: "Material Activity — Receive", table: "stock_receipts" },
+    { key: "stock_receipts", label: "Material Activity — Received", table: "stock_receipts" },
     { key: "material_disbursements", label: "Material Activity — Used / Consumption Records", table: "material_disbursements" }
 ];
 
@@ -202,6 +211,7 @@ async function createBackup(isComplete) {
             record_counts: recordCounts
         };
 
+        await jszipReady;
         const zip = new JSZip();
         zip.file("manifest.json", JSON.stringify(manifest, null, 2));
         for (const cat of categories) {
@@ -404,6 +414,7 @@ async function verifyRestoreFile() {
     try {
         let zip;
         try {
+            await jszipReady;
             zip = await JSZip.loadAsync(pendingRestoreFile);
         } catch {
             throw { code: "invalid" };

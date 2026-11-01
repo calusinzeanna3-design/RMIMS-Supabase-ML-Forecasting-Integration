@@ -10,6 +10,7 @@
  * - System Light Theme colors (Emerald #16A34A, Amber #D97706, Blue #2563EB)
  */
 
+import { resolveFinishedProductName } from './rmims-reorder-engine.js';
 import {
   getSystemRawMaterials,
   getSystemCustomReceipts,
@@ -94,6 +95,20 @@ export function initAnalytics() {
   renderAllCharts();
   bindModalEvents();
 
+  // Live database updates (receipts / disbursements / materials from the manager or staff) re-draw every chart
+  let liveTimer = null;
+  const onLive = () => {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => {
+      loadAuthoritativeData();
+      populateMaterialDropdown();
+      renderAllCharts();
+      if (state.modal.activeTarget) renderModalChart(state.modal.activeTarget);
+    }, 300);
+  };
+  ['rmims_live_data_updated', 'rmims_inventory_updated', 'rmims_manager_receipts_updated', 'rmims_manager_disbursements_updated']
+    .forEach(name => window.addEventListener(name, onLive));
+
   // Listen to live inventory updates from Receive and Disburse modules
   window.addEventListener('storage', (e) => {
     if (!e || e.key === 'rmims_inventory_updated' || e.key === 'rmims_manager_receipts' || e.key === 'rmims_manager_disbursements') {
@@ -146,7 +161,7 @@ function loadAuthoritativeData() {
     const ref = item.ref || item.id || `rcv-${receiptMap.size + 1}`;
     receiptMap.set(ref, {
       ref: ref,
-      date: item.date || item.receipt_date || item.receiptDate || 'Recent',
+      date: item.date || item.receipt_date || item.receiptDate || item.created_at || '',
       materialId: matched ? (matched.id || matched.item_code) : rawId,
       materialName: finalName,
       quantity: qty,
@@ -182,12 +197,12 @@ function loadAuthoritativeData() {
     const ref = item.ref || item.id || `disb-${disbMap.size + 1}`;
     disbMap.set(ref, {
       ref: ref,
-      date: item.date || item.usage_date || item.disbursement_date || 'Recent',
+      date: item.date || item.usage_date || item.disbursement_date || item.created_at || '',
       materialId: matched ? (matched.id || matched.item_code) : rawId,
       materialName: finalName,
       quantity: qty,
       unit: matched ? (matched.unit_of_measure || matched.unit || '') : (item.unit || ''),
-      usedFor: item.usedFor || item.finished_product_name || item.product || 'Production Batch'
+      usedFor: resolveFinishedProductName(finalName, item.usedFor || item.finished_product_name || item.product)
     });
   });
   state.disbursements = Array.from(disbMap.values());
@@ -529,7 +544,7 @@ function renderCard1() {
 
   if (state.card1.showDisburse) {
     datasets.push({
-      label: 'Disburse',
+      label: 'Disbursed',
       data: dataItems.map(d => Math.round(d.disbursed * 10) / 10),
       backgroundColor: '#F59E0B',
       hoverBackgroundColor: '#D97706',
@@ -612,7 +627,7 @@ function renderCard1() {
             font: { family: 'Inter, sans-serif', size: 11 },
             color: '#64748B',
             callback: function (val) {
-              return val + ' kg';
+              return Number(val).toLocaleString();
             }
           }
         }
@@ -822,7 +837,7 @@ function renderCardStock() {
             font: { family: 'Inter, sans-serif', size: 11 },
             color: '#64748B',
             callback: function (val) {
-              return val + ' kg';
+              return Number(val).toLocaleString();
             }
           }
         }
@@ -918,7 +933,7 @@ function renderCard2() {
 
   if (state.card2.showConsumed) {
     datasets.push({
-      label: 'Consumed (kg/L)',
+      label: 'Consumed',
       data: dataItems.map(d => Math.round(d.consumed * 10) / 10),
       backgroundColor: '#2563EB',
       hoverBackgroundColor: '#1D4ED8',
@@ -1162,7 +1177,7 @@ function renderCard3() {
     data: {
       labels: trendData.labels,
       datasets: [{
-        label: `${matLabel} Consumed (kg)`,
+        label: `${matLabel} Consumed`,
         data: trendData.values,
         borderColor: '#16A34A',
         borderWidth: 2.5,
@@ -1200,7 +1215,7 @@ function renderCard3() {
           cornerRadius: 8,
           callbacks: {
             label: function (context) {
-              return ` Consumed: ${context.raw} kg`;
+              return ` Consumed: ${Number(context.raw).toLocaleString()}`;
             }
           }
         }
@@ -1220,7 +1235,7 @@ function renderCard3() {
             font: { family: 'Inter, sans-serif', size: 11 },
             color: '#64748B',
             callback: function (val) {
-              return val + ' kg';
+              return Number(val).toLocaleString();
             }
           }
         }
@@ -1425,7 +1440,7 @@ function renderModalChart(targetType) {
           y: {
             beginAtZero: true,
             ticks: {
-              callback: function(val) { return val + ' kg'; }
+              callback: function(val) { return Number(val).toLocaleString(); }
             }
           }
         }
@@ -1479,7 +1494,7 @@ function renderModalChart(targetType) {
         labels: labels,
         datasets: [
           {
-            label: 'Consumed (kg/L)',
+            label: 'Consumed',
             data: dataItems.map(d => Math.round(d.consumed * 10) / 10),
             backgroundColor: '#2563EB',
             borderRadius: 6
@@ -1521,7 +1536,7 @@ function renderModalChart(targetType) {
             ${dataItems.map(p => `
               <tr style="border-bottom:1px solid #F1F5F9;">
                 <td style="padding:10px 14px; font-weight:700;">${p.name}</td>
-                <td style="padding:10px 14px; color:#2563EB; font-weight:700;">${p.consumed.toFixed(1)} kg/L</td>
+                <td style="padding:10px 14px; color:#2563EB; font-weight:700;">${p.consumed.toFixed(1)}</td>
                 <td style="padding:10px 14px; color:#7C3AED; font-weight:700;">${p.batches} batches</td>
               </tr>
             `).join('')}

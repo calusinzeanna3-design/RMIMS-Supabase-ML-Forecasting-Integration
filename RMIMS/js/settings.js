@@ -5,6 +5,7 @@
 // Light UI Only. No Mock Data.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { changeAccountPassword } from "../supabase/password-service.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 import { initBackupRestore, loadDataSummary as reloadDataSummary } from "./backup-restore.js";
 import { initDataReset } from "./data-reset.js";
@@ -833,6 +834,15 @@ function initSecurityForm() {
             btn.textContent = "Updating…";
 
             try {
+                const pw = await changeAccountPassword(currentPassword, newPassword);
+                if (!pw.ok) {
+                    const t = pw.field === 'current' ? currentErr : pw.field === 'new' ? newErr : null;
+                    if (t) t.textContent = pw.message; else showToast(pw.message, "error");
+                    return;
+                }
+                showToast("Password updated successfully.", "success");
+                directForm.reset();
+                return;
                 // 1. Resolve email
                 let userEmail = (currentUser?.email || "").trim().toLowerCase();
                 if (!userEmail) {
@@ -1029,6 +1039,16 @@ function initSecurityForm() {
             }
 
             try {
+                const pw = await changeAccountPassword(currentPassword, newPassword);
+                if (!pw.ok) {
+                    const t = pw.field === 'current' ? currentErr : pw.field === 'new' ? newErr : null;
+                    if (t) t.textContent = pw.message; else showToast(pw.message, "error");
+                    return;
+                }
+                showToast("Password changed successfully.", "success");
+                closeModal("changePasswordModal");
+                modalForm.reset();
+                return;
                 let userEmail = (currentUser?.email || "").trim().toLowerCase();
                 if (!userEmail) {
                     const keys = ["managerUser", "currentUser", "rmimsCurrentUser", "userProfile"];

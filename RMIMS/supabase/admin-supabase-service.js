@@ -865,6 +865,28 @@ export async function fetchLiveSystemActivities(options = {}) {
   const combined = [];
   const seenIds = new Set();
 
+  // company -> branch / personnel map built from the live profiles (no hardcoded branches)
+  const companyInfo = {};
+  if (supabase) {
+    try {
+      const { data: profs } = await supabase.from('user_profiles').select('*');
+      (profs || []).forEach(u => {
+        if (!u || !u.company_id) return;
+        const r = String(u.operational_role || u.role || '').toLowerCase();
+        if (r === 'admin' || r === 'administrator') return;
+        const info = companyInfo[u.company_id] || (companyInfo[u.company_id] = { loc: '', name: '', manager: '', staff: '' });
+        if (!info.loc && u.branch_location) info.loc = u.branch_location;
+        if (!info.name && (u.branch_name || u.company_name)) info.name = u.branch_name || u.company_name;
+        if (r.includes('manager') && !info.manager) info.manager = u.full_name || u.username || '';
+        if (!r.includes('manager') && !info.staff) info.staff = u.full_name || u.username || '';
+      });
+    } catch (_) {}
+  }
+  const branchOf = (row) => {
+    const i = companyInfo[row.company_id] || {};
+    return { loc: i.loc || row.branch_location || 'Unassigned', name: i.name || row.company_name || row.branch_name || 'Branch Store', manager: i.manager, staff: i.staff };
+  };
+
   if (supabase) {
     try {
       // 1. Fetch from admin_activity_logs
@@ -910,10 +932,10 @@ export async function fetchLiveSystemActivities(options = {}) {
           seenIds.add(id);
           const matName = r.raw_materials?.name || 'Raw Material';
           const rDate = r.receipt_date || (r.created_at ? String(r.created_at).slice(0, 10) : '');
-          const isTiaong = String(r.company_id || '').includes('a72a7971') || String(r.company_name || '').toLowerCase().includes('kxc');
-          const branchLoc = isTiaong ? 'Tiaong' : 'Lucena';
-          const branchName = isTiaong ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery';
-          const managerName = r.received_by || (isTiaong ? 'Glazel' : 'Aizel');
+          const bi = branchOf(r);
+          const branchLoc = bi.loc;
+          const branchName = bi.name;
+          const managerName = r.received_by || bi.manager || 'Store Manager';
 
           combined.push({
             id,
@@ -948,10 +970,10 @@ export async function fetchLiveSystemActivities(options = {}) {
           const matName = d.raw_materials?.name || 'Raw Material';
           const dDate = d.usage_date || (d.created_at ? String(d.created_at).slice(0, 10) : '');
           const reason = d.finished_product_name || d.activity_type || 'Operations';
-          const isTiaong = String(d.company_id || '').includes('a72a7971') || String(d.company_name || '').toLowerCase().includes('kxc');
-          const branchLoc = isTiaong ? 'Tiaong' : 'Lucena';
-          const branchName = isTiaong ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery';
-          const staffName = d.disbursed_by || (isTiaong ? 'Staff_2' : 'Staff_1');
+          const bi = branchOf(d);
+          const branchLoc = bi.loc;
+          const branchName = bi.name;
+          const staffName = d.disbursed_by || bi.staff || 'Store Staff';
 
           combined.push({
             id,
@@ -1028,8 +1050,8 @@ export async function fetchRegisteredUsers() {
         name: u.full_name || u.username || 'User',
         username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
         email: u.email || '',
-        branchLoc: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.name && u.name.toLowerCase() === 'zeanna')) ? 'Headquarters' : (u.branch_location || 'Unassigned'),
-        branchName: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.name && u.name.toLowerCase() === 'zeanna')) ? 'Headquarters' : (u.branch_name || 'Branch Store'),
+        branchLoc: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || false) ? 'Headquarters' : (u.branch_location || 'Unassigned'),
+        branchName: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || false) ? 'Headquarters' : (u.branch_name || 'Branch Store'),
         role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
           ? 'Administrator' 
           : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),
@@ -1037,24 +1059,25 @@ export async function fetchRegisteredUsers() {
         created_at: u.created_at || new Date().toISOString()
       }));
 
-    // Ensure Zeanna real admin is present
-    const hasAdmin = users.some(u => 
-      (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-      (u.name && u.name.toLowerCase() === 'zeanna')
-    );
-    if (!hasAdmin) {
-      users.unshift({
-        id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-        name: 'Zeanna',
-        username: 'zeanna',
-        email: 'calusinzeanna3@gmail.com',
-        branchLoc: 'Headquarters',
-        branchName: 'Main Administration',
-        role: 'Administrator',
-        status: 'Active',
-        created_at: new Date().toISOString()
-      });
-    }
+    // The signed-in admin always appears in the directory (taken from the live session, never hardcoded).
+    try {
+      const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const myEmail = String(me.email || '').toLowerCase();
+      const isAdminSession = /^(admin|administrator|superadmin|main_admin)$/i.test(String(me.role || ''));
+      if (isAdminSession && myEmail && !users.some(u => u.email && u.email.toLowerCase() === myEmail)) {
+        users.unshift({
+          id: me.id || me.uid || myEmail,
+          name: me.name || me.fullName || myEmail.split('@')[0],
+          username: (me.username || myEmail.split('@')[0]),
+          email: me.email,
+          branchLoc: 'Headquarters',
+          branchName: 'Headquarters',
+          role: 'Administrator',
+          status: 'Active',
+          created_at: me.created_at || new Date().toISOString()
+        });
+      }
+    } catch (_) {}
 
     // Realtime Supabase synchronization: Supabase user_profiles is the authoritative source.
     // Sync local mirror with real Supabase records to prevent zombie / orphaned accounts.

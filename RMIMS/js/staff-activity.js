@@ -28,6 +28,7 @@ import {
   approveTransactionOnSupabase,
   rejectTransactionOnSupabase,
   returnTransactionForCorrectionOnSupabase,
+  deleteStaffTransactionOnSupabase,
   fetchStaffTransactionsFromSupabase,
   broadcastManagerSync
 } from '../supabase/manager-supabase-service.js';
@@ -230,6 +231,8 @@ function renderTable() {
       statusPill = `<span class="badge" style="background:#DCFCE7; color:#15803D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Approved</span>`;
     } else if (t.status === 'Rejected') {
       statusPill = `<span class="badge" style="background:#FEE2E2; color:#DC2626; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Rejected</span>`;
+    } else if (t.status === 'Deleted') {
+      statusPill = `<span class="badge" style="background:#F1F5F9; color:#64748B; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Deleted</span>`;
     } else if (isCorrection) {
       statusPill = `<span class="badge" style="background:#FEF3C7; color:#D97706; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Correction Needed</span>`;
     } else {
@@ -283,15 +286,24 @@ function renderTable() {
         <td>
           ${statusPill} ${updatedTag}
         </td>
-        <td style="text-align:right;">
+        <td style="text-align:right; white-space:nowrap;">
           ${(isPending || isCorrection)
             ? `<button type="button" class="btn-review-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 12px; font-size:12px; font-weight:700; border-radius:6px; background:${isCorrection ? '#D97706' : '#15803D'}; color:#FFF; border:none; cursor:pointer;">${isCorrection ? 'Review / Update' : 'Review'}</button>`
             : `<button type="button" class="btn-view-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 10px; font-size:12px; font-weight:600; color:#5C7A68; background:transparent; border:none; cursor:pointer;">View</button>`
           }
+          ${t.status === 'Deleted' ? '' : `<button type="button" class="btn-delete-tx" data-ref="${escapeHtml(t.ref)}" title="Delete this transaction" aria-label="Delete transaction ${escapeHtml(t.ref)}" style="margin-left:6px; padding:5px 10px; font-size:12px; font-weight:700; color:#DC2626; background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; cursor:pointer;">Delete</button>`}
         </td>
       </tr>
     `;
   }).join('');
+
+  tbody.querySelectorAll('.btn-delete-tx').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = transactions.find(t => t.ref === btn.getAttribute('data-ref'));
+      if (item) confirmDeleteTransaction(item);
+    });
+  });
 
   // Wire buttons in table
   tbody.querySelectorAll('.btn-review-tx, .btn-view-tx').forEach(btn => {
@@ -303,6 +315,46 @@ function renderTable() {
         openReviewModal(item);
       }
     });
+  });
+}
+
+function confirmDeleteTransaction(item) {
+  const old = document.getElementById('rmDeleteTxModal');
+  if (old) old.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'rmDeleteTxModal';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:300000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+  wrap.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.25);">
+      <h3 style="margin:0 0 8px;font-size:18px;color:#0F2A1B;">Delete this transaction?</h3>
+      <p style="margin:0 0 6px;font-size:13.5px;color:#475569;line-height:1.5;">
+        <strong>${escapeHtml(item.ref)}</strong> &middot; ${escapeHtml(item.material || '')} (${escapeHtml(item.staff || 'Staff')}).
+        The staff member will see it marked as <strong>Deleted</strong>. Stock levels are not changed.
+      </p>
+      <label for="rmDeleteTxReason" style="display:block;font-size:12px;font-weight:700;color:#334155;margin:12px 0 4px;">Reason (optional)</label>
+      <input id="rmDeleteTxReason" name="deleteReason" autocomplete="off" type="text" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #CBD5E1;border-radius:8px;font-size:13px;">
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+        <button type="button" id="rmDeleteTxCancel" style="padding:9px 16px;border-radius:8px;border:1px solid #CBD5E1;background:#fff;font-weight:700;cursor:pointer;">Cancel</button>
+        <button type="button" id="rmDeleteTxOk" style="padding:9px 16px;border-radius:8px;border:none;background:#DC2626;color:#fff;font-weight:700;cursor:pointer;">Delete</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  wrap.querySelector('#rmDeleteTxCancel').addEventListener('click', close);
+  wrap.querySelector('#rmDeleteTxOk').addEventListener('click', async () => {
+    const reason = wrap.querySelector('#rmDeleteTxReason').value.trim();
+    close();
+    try { await deleteStaffTransactionOnSupabase(item, reason); } catch (e) { console.warn('[StaffActivity] delete notice:', e); }
+    loadTransactions();
+    renderCounters();
+    renderTable();
+    try {
+      localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
+      window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: item }));
+    } catch (_) {}
   });
 }
 
@@ -793,8 +845,8 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
       quantity: quantity,
       unit: unit,
       receipt_date: tx.date || new Date().toISOString().slice(0, 10),
-      supplier_name: tx.supplier || 'Staff Inward Delivery',
-      supplierName: tx.supplier || 'Staff Inward Delivery',
+      supplier_name: tx.supplier || '',
+      supplierName: tx.supplier || '',
       received_by: tx.staff || 'Staff Member',
       created_at: new Date().toISOString()
     });
@@ -813,7 +865,7 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
         materialName: resolvedMatName,
         quantity: quantity,
         unit: unit,
-        supplier: tx.supplier || 'Staff Inward Delivery',
+        supplier: tx.supplier || '',
         recordedBy: tx.staff || 'Staff Member',
         approvedBy: 'Store Manager',
         status: 'Approved',
@@ -834,8 +886,8 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
       unit: unit,
       usage_date: tx.date || new Date().toISOString().slice(0, 10),
       activity_type: 'Production Usage',
-      finished_product_name: tx.usedFor || 'Production Batch',
-      context: tx.usedFor || 'Production Batch',
+      finished_product_name: tx.usedFor || '—',
+      context: tx.usedFor || '—',
       recorded_by: tx.staff || 'Staff Member',
       created_at: new Date().toISOString()
     });
@@ -854,7 +906,7 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
         materialName: resolvedMatName,
         quantity: quantity,
         unit: unit,
-        usedFor: tx.usedFor || 'Production Batch',
+        usedFor: tx.usedFor || '—',
         recordedBy: tx.staff || 'Staff Member',
         approvedBy: 'Store Manager',
         status: 'Approved',
@@ -873,15 +925,15 @@ function updateSystemInventory(materialName, quantity, isReceive, tx) {
       datetime: tx.date || new Date().toISOString().slice(0, 10),
       timestamp: new Date().toISOString(),
       activity: isReceive
-        ? `Approved Staff Receive: +${quantity} ${unit} ${resolvedMatName} (${tx.ref})`
-        : `Approved Staff Disburse: -${quantity} ${unit} ${resolvedMatName} (${tx.ref})`,
+        ? `Approved Staff Receipt: +${quantity} ${unit} ${resolvedMatName} (${tx.ref})`
+        : `Approved Staff Disbursement: -${quantity} ${unit} ${resolvedMatName} (${tx.ref})`,
       reference: tx.ref,
       status: 'Approved',
       user: curUser.name || curUser.fullName || curUser.username || 'Store Manager',
       role: 'Manager',
       branchLoc: curUser.branchLoc || curUser.location || '',
       branchName: curUser.branchName || curUser.branch || '',
-      action: isReceive ? 'Approved Receive' : 'Approved Disburse',
+      action: isReceive ? 'Approved Receipt' : 'Approved Disbursement',
       module: 'Staff Activity'
     });
     localStorage.setItem('rmims_manager_activities', JSON.stringify(acts));
