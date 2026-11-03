@@ -4,6 +4,7 @@
 // Strictly READ-ONLY. Zero direct stock mutations. Zero mock data.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
@@ -374,24 +375,21 @@ async function loadDashboard() {
 
     try {
       const [matRes, recRes, disbRes] = await Promise.allSettled([
-        fetchWithTimeout(
+        fetchWithTimeout(allRows(
           supabase
             .from("raw_materials")
             .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
-            .order("name")
-        ),
-        fetchWithTimeout(
+            .order("name")), 30000),
+        fetchWithTimeout(allRows(
           supabase
             .from("stock_receipts")
             .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-            .order("receipt_date", { ascending: false })
-        ),
-        fetchWithTimeout(
+            .order("receipt_date", { ascending: false })), 30000),
+        fetchWithTimeout(allRows(
           supabase
             .from("material_disbursements")
             .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-            .order("usage_date", { ascending: false })
-        )
+            .order("usage_date", { ascending: false })), 30000)
       ]);
 
       // Additive merge: start with system raw materials matching active tenant
@@ -1948,7 +1946,7 @@ async function renderRawMaterialsTrendChart() {
     } else if (currentTrendGranularity === "weekly") {
       metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 16-Week Historical Wave</span> <span style="color:#64748B; margin-left:8px;">(4-Week Cycles • Locked Margin: ±7.51%${shiftNotice})</span>`;
     } else if (currentTrendGranularity === "yearly") {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Production Expansion</span> <span style="color:#64748B; margin-left:8px;">(Projected: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit}${shiftNotice})</span>`;
+      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Usage Trend</span> <span style="color:#64748B; margin-left:8px;">(Projected: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit}${shiftNotice})</span>`;
     } else {
       metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 8-Month Operational Evaluation: Jan to Aug 2026</span> <span style="color:#64748B; margin-left:8px;">(Actual vs. Learned Seasonal Forecast • Margin: ±7.51%${shiftNotice})</span>`;
     }
@@ -2534,7 +2532,7 @@ async function renderAiForecastedSupportCard() {
         if (curStock < fQty) {
           plainInsight = `${mat.materialName} requires ~${fQty.toLocaleString()} ${unit} next week. Stock (${curStock.toLocaleString()} ${unit}) is below the projected demand.`;
         } else {
-          plainInsight = `${mat.materialName} requires ~${fQty.toLocaleString()} ${unit} next week. Active stock is sufficient to maintain production operations.`;
+          plainInsight = `${mat.materialName} requires ~${fQty.toLocaleString()} ${unit} next week. Active stock is sufficient to cover daily operations.`;
         }
       }
 
@@ -2963,7 +2961,7 @@ onAuthStateChanged(auth, async user => {
   try {
     const uid = user.id || user.uid;
     const cleanEmail = (user.email || "").toLowerCase();
-    const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+    const isMasterAdmin = false;
 
     let profile = null;
     try {
@@ -3014,7 +3012,7 @@ onAuthStateChanged(auth, async user => {
       if (!profile) {
         profile = {
           id: uid,
-          full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+          full_name: user.displayName || user.user_metadata?.full_name || "",
           email: user.email,
           role: "admin",
           operational_role: "admin",
@@ -3056,9 +3054,7 @@ onAuthStateChanged(auth, async user => {
     let mName = (profile?.full_name || '').trim();
     const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
     if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
-      if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
-      else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
-      else mName = 'Aizel';
+      mName = (profile?.username || userEmail.split('@')[0] || '').trim();
     }
     const greet = greetingWord();
     const greetingText = `${greet}, ${mName}! Overview of your raw materials and inventory activity.`;

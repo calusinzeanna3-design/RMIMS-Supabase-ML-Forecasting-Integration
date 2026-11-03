@@ -6,7 +6,7 @@ export function resolveUserAccountContext(userOrEmail) {
   if (!clean) return { role: 'Staff', roleLabel: 'Store Staff', branchName: 'Branch Store', branchLocation: 'Lucena', actionLabel: 'Send to Staff' };
 
   // 1. Check if user is Main Administrator
-  if (clean === 'calusinzeanna3@gmail.com' || clean === 'admin' || clean === 'main_admin' || clean.includes('zeanna')) {
+  if (clean === 'admin' || clean === 'main_admin') {
     return {
       role: 'Admin',
       roleLabel: 'Main Administrator',
@@ -229,7 +229,7 @@ export function getDiagnosticRecipient(alert = {}) {
       roleLabel: 'Main Administrator',
       team: 'Main Administration & Maintenance',
       actionLabel: 'Send to Admin',
-      defaultContact: 'calusinzeanna3@gmail.com',
+      defaultContact: '',
       suggestedNote: `Infrastructure incident: System performance degradation or connection anomaly detected at ${branchName}. Main Administrator review required.`
     };
   }
@@ -240,12 +240,12 @@ export function getDiagnosticRecipient(alert = {}) {
     roleLabel: 'Main Administrator',
     team: 'Main Administration',
     actionLabel: 'Send to Admin',
-    defaultContact: 'calusinzeanna3@gmail.com',
+    defaultContact: '',
     suggestedNote: `System diagnostic incident: ${alert.type || 'Diagnostic Incident'} recorded at ${branchName}. Admin attention requested.`
   };
 }
 
-// Default Initial Alerts Seed (Empty by default for production & Supabase integration)
+// Default Initial Alerts Seed (empty: alerts come only from real events)
 const DEFAULT_ALERTS = [];
 
 // Helper to identify and purge legacy mock/demo alerts
@@ -260,7 +260,6 @@ function isLegacyMockAlert(alert) {
     str.includes('slow response time (avg. 6.2s') ||
     str.includes('oct 18, 2026') ||
     str.includes('all branches') ||
-    str.includes('calusinzeanna3@gmail.com') ||
     alert.branchLocation === 'All Branches'
   );
 }
@@ -779,12 +778,43 @@ export function dispatchAlert(alertId, { role, recipientEmail, message, status =
 /**
  * Resolve an active alert by ID
  */
+
+/** Send a System-tab notification to a portal role (manager / staff). Goes through the shared feed when the
+ *  caller is signed in; on the sign-in page it is kept on this device for that role. */
+function notifyRoleSystemAlert(roleLike, { title, message, priority = 'warning', badge = 'Alert' }) {
+  const r = String(roleLike || '').toLowerCase();
+  const target = r.includes('manager') ? 'manager' : (r.includes('staff') ? 'staff' : '');
+  if (!target || typeof window === 'undefined') return;
+  const notif = {
+    id: `notif-alert-${target}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title, message, category: 'alert', badge, priority,
+    role: target, targetRole: target, roleScope: target,
+    targetUrl: target === 'manager' ? 'manager/dashboard.html' : 'user/dashboard.html',
+    actor: 'Main Administrator',
+    timestamp: new Date().toISOString()
+  };
+  try {
+    if (typeof window.pushRMIMSNotification === 'function') { window.pushRMIMSNotification(notif); return; }
+    const k = 'rmims_notifications_live_v2';
+    const list = JSON.parse(localStorage.getItem(k) || '[]');
+    list.unshift(notif);
+    localStorage.setItem(k, JSON.stringify(list));
+  } catch (_) {}
+}
+
 export function resolveAlertById(alertId) {
   const alerts = getAlerts();
   const alert = alerts.find(a => a.id === alertId);
   if (alert) {
     alert.status = 'resolved';
     saveAlerts(alerts);
+    // Tell the affected role that the alert is resolved (System tab)
+    notifyRoleSystemAlert(alert.targetRole || alert.targetRoleLabel, {
+      title: `Alert Resolved: ${alert.type || 'System Alert'}`,
+      message: `The Administrator resolved this alert${alert.branch ? ` for ${alert.branch}` : ''}.`,
+      priority: 'success',
+      badge: 'Resolved'
+    });
     return true;
   }
   return false;
@@ -827,7 +857,7 @@ export function dispatchAccountLockoutEmailAlert({ email, branchName = 'Branch S
     subject: `[RMIMS SECURITY ALERT] Account Locked & System Operational Notice`,
     sentAt: timeNow,
     problem: `Account temporarily locked after ${attempts} consecutive failed login attempts.`,
-    userAction: `Contact your System Administrator (Zeanna) or branch manager to unlock your account in the Admin Portal. Once unlocked, you may sign in again.`,
+    userAction: `Contact your System Administrator or branch manager to unlock your account in the Admin Portal. Once unlocked, you may sign in again.`,
     operationalAlerts: [
       `System Core: Active & Enforcing Multi-Tenant Air-Gap`,
       `Supabase RBAC & Authentication: Operating in High-Vigilance Mode`,
@@ -857,6 +887,17 @@ export function dispatchAccountLockoutEmailAlert({ email, branchName = 'Branch S
         targetUrl: 'admin/user-management.html'
       });
     }
+  } catch (_) {}
+
+  // The locked account's role is alerted too (System tab)
+  try {
+    const ctx = resolveUserAccountContext(cleanEmail);
+    notifyRoleSystemAlert(ctx && ctx.role, {
+      title: `Account Locked: ${attempts} incorrect password attempts`,
+      message: `${cleanEmail} was locked after ${attempts} consecutive incorrect password attempts. Contact the Administrator to unlock it.`,
+      priority: 'critical',
+      badge: 'Locked'
+    });
   } catch (_) {}
 
   console.info(`[RMIMS Alert Backend]: Operational security email dispatched to ${cleanEmail}. User advised to contact Administrator for unlock.`);

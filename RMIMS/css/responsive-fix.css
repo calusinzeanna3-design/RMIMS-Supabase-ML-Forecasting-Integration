@@ -257,3 +257,42 @@ div[style*="display:flex"] > .rm-custom-select:has(+ button), .mgr-field-group >
 .mgr-field-group > div > .rm-custom-select .rm-select-trigger { width: 100% !important; min-width: 0 !important; }
 .mgr-field-group > div > .rm-custom-select .rm-select-trigger .rm-trigger-label,
 .mgr-field-group > div > .rm-custom-select .rm-select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* ---- AI Forecasted Support bars: full label always visible (label + value on one line, bar underneath) ---- */
+html body .forecast-support-card .fsc-bargraph-container .fsc-bar-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas: "label val" "track track" !important;
+  column-gap: 10px !important; row-gap: 4px !important; align-items: center !important;
+}
+html body .forecast-support-card .fsc-bargraph-container .fsc-bar-label {
+  grid-area: label !important; min-width: 0 !important; width: auto !important;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.25 !important;
+}
+html body .forecast-support-card .fsc-bargraph-container .fsc-bar-val { grid-area: val !important; min-width: 0 !important; white-space: nowrap !important; }
+html body .forecast-support-card .fsc-bargraph-container .fsc-bar-track { grid-area: track !important; width: 100% !important; }
+html body .forecast-support-card .fsc-mat-name,
+html body .forecast-support-card .fsc-card-title,
+html body .forecast-support-card h4 {
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+  overflow-wrap: anywhere !important; min-width: 0 !important; max-width: none !important;
+}
+html body.manager-page .fc-grid-row-1 .forecast-support-card .fsc-main .fsc-mat-name,
+html body .forecast-support-card .fsc-main .fsc-mat-name {
+  max-width: none !important; white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+}
+html body .forecast-support-card .fsc-main { align-items: flex-start !important; gap: 8px !important; }
+
+/* ---- Forecast function modal: header + tabs fixed, everything else in ONE scroll (no scroll inside the table) ---- */
+#modalTotalForecastOverlay .fc-modal-sheet { display: flex !important; flex-direction: column !important; max-height: 92vh !important; overflow: hidden !important; }
+#modalTotalForecastOverlay .fc-modal-header,
+#modalTotalForecastOverlay #modalFuncTabsBar,
+#modalTotalForecastOverlay .fc-modal-footer { flex: 0 0 auto !important; }
+#modalTotalForecastOverlay .fc-modal-scroll { flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overscroll-behavior: contain; }
+#modalTotalForecastOverlay .fc-modal-scroll .fc-modal-body,
+#modalTotalForecastOverlay .fc-modal-scroll .fc-table-modal-container,
+#modalTotalForecastOverlay .fc-modal-scroll #modalCustomCardsContainer,
+#modalTotalForecastOverlay .fc-modal-scroll .forecast-support-grid {
+  max-height: none !important; overflow-y: visible !important; height: auto !important;
+}
+#modalTotalForecastOverlay .fc-modal-scroll .fc-modal-table thead th { position: sticky; top: 0; z-index: 2; }

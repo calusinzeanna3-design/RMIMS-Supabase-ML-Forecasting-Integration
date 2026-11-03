@@ -12,6 +12,7 @@
  * - Resubmission stores change diff so Manager sees '🔵 UPDATED' in Review popup
  */
 
+import { autoPaginate } from './rmims-table-pager.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import {
   getStaffTransactions,
@@ -391,8 +392,7 @@ function loadAndRenderActivity() {
   let cleanName = String(activeUser?.fullName || activeUser?.name || '').trim().toLowerCase();
   const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
   if (!cleanName || BANNED_STAFF.includes(cleanName)) {
-    if (cleanEmail === 'scone2@gmail.com') cleanName = 'staff_2';
-    else if (cleanEmail) cleanName = 'staff_1';
+    cleanName = String(activeUser?.username || cleanEmail.split('@')[0] || '').trim().toLowerCase();
   }
 
   const rawStaffList = getStaffTransactions() || [];
@@ -889,3 +889,7 @@ if (typeof window !== 'undefined') {
   window.closeViewModal = closeViewModal;
   window.closeCorrectionModal = closeCorrectionModal;
 }
+
+
+// 10 records per page
+autoPaginate('myActivityTbody', { pageSize: 10, label: 'records' });

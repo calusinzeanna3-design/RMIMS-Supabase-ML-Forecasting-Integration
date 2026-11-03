@@ -1,4 +1,4 @@
-import { loginUser, signUpUser } from "../supabase/auth-service.js";
+import { loginUser, signUpUser, callAuthGate, authGateMessage } from "../supabase/auth-service.js";
 import { supabase } from "../supabase/supabase-config.js";
 import { enhanceSystemSelect, enhanceCompanyInput, loadCompanyNames, matchRegisteredCompany, COMPANY_NOT_FOUND_MSG } from "./signup-fields.js";
 
@@ -376,8 +376,8 @@ if (createAccountForm) {
             return;
         }
 
-        if (password.length < 6) {
-            setRegSection2Error("Password must be at least 6 characters long.");
+        if (password.length < 8) {
+            setRegSection2Error("The password must have at least 8 characters.");
             regPassword?.focus();
             return;
         }
@@ -398,6 +398,7 @@ if (createAccountForm) {
                 email,
                 username,
                 password,
+                confirmPassword,
                 branchName,
                 branchLocation,
                 role
@@ -530,28 +531,6 @@ if (forgotModal) {
     });
 }
 
-/**
- * The Main Admin is the gatekeeper: only accounts the admin has APPROVED may reset a password.
- * returns "active" | "pending" | "none"
- */
-async function accountApprovalState(email) {
-    const clean = String(email || "").trim().toLowerCase();
-    try {
-        const { data, error } = await supabase.rpc("rmims_email_registered", { p_email: clean });
-        if (!error && typeof data === "string") return data;
-        if (!error && typeof data === "boolean") return data ? "active" : "none";
-    } catch (_) {}
-    // Fallback (database check not installed): only accounts this browser knows as admin-approved
-    try {
-        const approved = JSON.parse(localStorage.getItem("rmims_approved_users") || "[]");
-        if (Array.isArray(approved) && approved.some(u => u && String(u.email || "").toLowerCase() === clean)) return "active";
-        const reg = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
-        if (Array.isArray(reg) && reg.some(u => u && String(u.email || "").toLowerCase() === clean && String(u.status || "").toLowerCase() === "active")) return "active";
-        const pend = JSON.parse(localStorage.getItem("rmims_pending_users") || "[]");
-        if (Array.isArray(pend) && pend.some(u => u && String(u.email || "").toLowerCase() === clean)) return "pending";
-    } catch (_) {}
-    return "none";
-}
 
 if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
@@ -567,18 +546,14 @@ if (forgotForm) {
 
         try {
             // 1. The email must belong to a registered RMIMS account
-            const state = await accountApprovalState(email);
-            if (state !== "active") {
+            // registered, approved and not locked is checked on the server (auth-gate), which also sends the e-mail
+            const redirectUrl = window.location.href.split("#")[0];
+            const res = await callAuthGate({ action: "reset_password", email, redirect_to: redirectUrl });
+            if (!res.ok) {
                 forgotMsg.className = "auth-modal-msg error";
-                forgotMsg.textContent = state === "pending" ? "This account is still waiting for approval by the Main Administrator, so a reset link cannot be sent yet." : "This email is not registered, or its account has not been approved by the Main Administrator.";
+                forgotMsg.textContent = authGateMessage(res);
                 return;
             }
-
-            const redirectUrl = window.location.href.split("#")[0];
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl
-            });
-            if (error) throw error;
 
             forgotMsg.className = "auth-modal-msg success";
             forgotMsg.textContent = "Recovery link sent! Please check your email inbox.";

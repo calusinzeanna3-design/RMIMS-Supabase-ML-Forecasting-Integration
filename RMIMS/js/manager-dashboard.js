@@ -392,7 +392,7 @@ function renderManagerUsageChartData() {
           pointHoverRadius: 5
         },
         {
-          label: 'Production Disbursements',
+          label: 'Material Disbursements',
           data: disbData,
           borderColor: '#0284C7',
           backgroundColor: 'rgba(2, 132, 199, 0.08)',
@@ -1430,10 +1430,11 @@ function renderPendingTransactions(staffTx) {
         </tr>
       `;
     } else {
-      tbody.innerHTML = pending.map(t => {
+      // Dashboard shows the 5 latest; View All opens Staff Activity
+      tbody.innerHTML = pending.slice(0, 5).map(t => {
         const isRec = (t.type || t.activity || '').toLowerCase().includes('rec');
         const actLabel = isRec ? 'Receive' : 'Disburse';
-        const actPillCls = isRec ? 'pill-inward' : 'pill-production';
+        const actPillCls = isRec ? 'pill-inward' : 'pill-outward';
         return `
           <tr>
             <td><strong>${escapeHtml(t.date || '—')}</strong></td>

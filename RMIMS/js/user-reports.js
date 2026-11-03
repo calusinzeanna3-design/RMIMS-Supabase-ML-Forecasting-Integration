@@ -5,12 +5,14 @@
 // Permitted reports for Staff:
 //   1. Inventory Records (Stock catalog, levels & status)
 //   2. Material Receiving (Delivery receipts)
-//   3. Material Disbursement (Production usage issues)
+//   3. Material Disbursement (usage records)
 //   4. Material Activity (Chronological audit ledger)
 // Intrusive locked badges or "restricted" labels are omitted; the view is clean and operational.
 // Supports: Screen Tabs, Date Range Filters, Multi-Sheet Excel, Formatted PDF, and High-Definition Print.
 
+import { canonicalTxRef, txKey } from './rmims-tx-key.js';
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
@@ -18,10 +20,24 @@ import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisburse
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { getActiveTenantContext } from "./tenant-manager.js";
 import { loadRecorderDirectory, resolveRecorderName, extractRef } from "./rmims-recorder-resolver.js";
-import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, fmtQtyOrDash } from "./rmims-reorder-engine.js";
+import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, displayFinishedProduct, fmtQtyOrDash } from "./rmims-reorder-engine.js";
 
 /** Reorder quantity for display: only data-driven values, "—" when there is no recorded consumption. */
+/** Reorder cell: the reorder quantity, plus tomorrow's estimated need (from recorded usage) underneath. */
+function reorderCellHtml(m, withUnit = false) {
+    if (reorderShowsTomorrow(m)) {
+        return `${escapeHtml(fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit))}<div style="font-size:11px; color:#64748B; font-weight:500; margin-top:2px;" title="No 7-day reorder needed yet; estimated need for tomorrow from recorded usage">Est. for tomorrow</div>`;
+    }
+    return escapeHtml(reorderText(m, withUnit));
+}
+/** Reorder figure shown to users: the 7-day reorder quantity when one is needed; when none is needed yet
+ *  (0), tomorrow's estimated need from recorded usage is shown instead of a bare 0. */
+function reorderShowsTomorrow(m) {
+    const plan = m && m.reorderPlan;
+    return Boolean(m && m.reorderQty === 0 && plan && plan.hasData && plan.requirementTomorrow != null);
+}
 function reorderText(m, withUnit = true) {
+    if (reorderShowsTomorrow(m)) return `${fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit)} (est. tomorrow)`;
     return fmtQtyOrDash(m && m.reorderQty, withUnit ? (m && m.unit) : "");
 }
 // (Built-in catalog forecast helper removed: forecasts and reorder come only from recorded usage.)
@@ -380,18 +396,18 @@ async function loadAuthoritativeData() {
                     ]);
 
                 const [matRes, rcvRes, disbRes] = await Promise.allSettled([
-                    fetchWithTimeout(supabase
+                    fetchWithTimeout(allRows(supabase
                         .from("raw_materials")
                         .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days")
-                        .order("name")),
-                    fetchWithTimeout(supabase
+                        .order("name")), 30000),
+                    fetchWithTimeout(allRows(supabase
                         .from("stock_receipts")
                         .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at, reference_no")
-                        .order("receipt_date", { ascending: false })),
-                    fetchWithTimeout(supabase
+                        .order("receipt_date", { ascending: false })), 30000),
+                    fetchWithTimeout(allRows(supabase
                         .from("material_disbursements")
                         .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at, reference_no")
-                        .order("usage_date", { ascending: false }))
+                        .order("usage_date", { ascending: false })), 30000)
                 ]);
 
                 if (matRes.status === "fulfilled" && Array.isArray(matRes.value?.data)) rawMats = matRes.value.data;
@@ -533,10 +549,14 @@ async function loadAuthoritativeData() {
         } catch (_) {}
 
         localReceipts.forEach(r => {
-            const rId = String(r.id || r.ref || "");
+            const rId = txKey(r);
+            const prev = recBaseMap.get(rId) || {};
             if (rId) recBaseMap.set(rId, {
-                id: rId,
-                material_id: r.materialId || r.material_id,
+                ...prev,
+                id: canonicalTxRef(r) || r.id,
+                reference_no: canonicalTxRef(r) || prev.reference_no,
+                raw_material_name: r.materialName || r.material_name || prev.raw_material_name,
+                material_id: r.materialId || r.material_id || prev.material_id,
                 received_quantity: Number(r.quantity || r.received_quantity || 0),
                 receipt_date: r.date || r.receipt_date,
                 unit: r.unit,
@@ -547,8 +567,9 @@ async function loadAuthoritativeData() {
         });
 
         (rawReceipts || []).forEach(r => {
-            const rId = String(r.id || "");
-            if (rId) recBaseMap.set(rId, { ...(recBaseMap.get(rId) || {}), ...r });
+            const rId = txKey({ ...r, ref: r.reference_no });
+            const prev = recBaseMap.get(rId) || {};
+            if (rId) recBaseMap.set(rId, { ...prev, ...r, received_by: r.received_by || prev.received_by, raw_material_name: prev.raw_material_name || r.raw_material_name });
         });
         rawReceipts = Array.from(recBaseMap.values());
 
@@ -562,14 +583,18 @@ async function loadAuthoritativeData() {
         } catch (_) {}
 
         localDisb.forEach(d => {
-            const dId = String(d.id || d.ref || "");
+            const dId = txKey(d);
+            const prev = disbBaseMap.get(dId) || {};
             if (dId) disbBaseMap.set(dId, {
-                id: dId,
-                material_id: d.materialId || d.material_id,
+                ...prev,
+                id: canonicalTxRef(d) || d.id,
+                reference_no: canonicalTxRef(d) || prev.reference_no,
+                raw_material_name: d.materialName || d.material_name || prev.raw_material_name,
+                material_id: d.materialId || d.material_id || prev.material_id,
                 consumed_quantity: Number(d.quantity || d.consumed_quantity || 0),
                 usage_date: d.date || d.usage_date,
                 unit: d.unit,
-                finished_product_name: d.recipient || d.finished_product_name,
+                finished_product_name: d.recipient || d.usedFor || d.finished_product_name || prev.finished_product_name,
                 activity_type: d.activity_type || "",
                 recorded_by: d.recordedBy || d.recorded_by || "",
                 created_at: d.createdAt || d.created_at
@@ -577,8 +602,9 @@ async function loadAuthoritativeData() {
         });
 
         (rawDisbursements || []).forEach(d => {
-            const dId = String(d.id || "");
-            if (dId) disbBaseMap.set(dId, { ...(disbBaseMap.get(dId) || {}), ...d });
+            const dId = txKey({ ...d, ref: d.reference_no });
+            const prev = disbBaseMap.get(dId) || {};
+            if (dId) disbBaseMap.set(dId, { ...prev, ...d, recorded_by: d.recorded_by || prev.recorded_by, raw_material_name: prev.raw_material_name || d.raw_material_name, finished_product_name: d.finished_product_name || prev.finished_product_name });
         });
         rawDisbursements = Array.from(disbBaseMap.values());
 
@@ -621,7 +647,7 @@ async function loadAuthoritativeData() {
 
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
-            const rMat = matMap.get(r.material_id) || matMap.get((r.raw_material_name || "").toLowerCase().trim());
+            const rMat = matMap.get(r.material_id) || matMap.get(String(r.material_id || "").toUpperCase()) || matMap.get(String(r.material_id || "").toLowerCase()) || matMap.get((r.raw_material_name || "").toLowerCase().trim());
             const refNo = r.reference_no || r.ref || r.id || "—";
             const matCode = rMat ? (rMat.itemCode || rMat.item_code || rMat.id || "—") : (r.item_code || r.material_id || "—");
             let rTime = r.time || r.receipt_time || "";
@@ -647,7 +673,7 @@ async function loadAuthoritativeData() {
 
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
-            const dMat = matMap.get(d.material_id) || matMap.get((d.raw_material_name || "").toLowerCase().trim());
+            const dMat = matMap.get(d.material_id) || matMap.get(String(d.material_id || "").toUpperCase()) || matMap.get(String(d.material_id || "").toLowerCase()) || matMap.get((d.raw_material_name || "").toLowerCase().trim());
             const refNo = d.reference_no || d.ref || d.id || "—";
             const matCode = dMat ? (dMat.itemCode || dMat.item_code || dMat.id || "—") : (d.item_code || d.material_id || "—");
             let dTime = d.time || d.usage_time || "";
@@ -666,8 +692,8 @@ async function loadAuthoritativeData() {
                 materialName: dMat ? dMat.name : (d.raw_material_name || "Unknown Material"),
                 disbursedQuantity: Number(d.consumed_quantity || 0),
                 unit: d.unit || (dMat ? dMat.unit : ""),
-                activityType: String(d.activity_type || "").replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() || "—",
-                finishedProduct: resolveFinishedProductName(dMat ? dMat.name : "", d.finished_product_name, userFinishedProducts),
+                activityType: String(d.activity_type || "").replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim().replace(/^pro\u0064uction usage$/i, "Material Usage") || "—",
+                finishedProduct: displayFinishedProduct(dMat ? dMat.name : "", d.finished_product_name, userFinishedProducts),
                 recordedBy: resolveRecorderName({ recordedBy: d.recorded_by, ref: refNo })
             };
         });
@@ -776,7 +802,7 @@ function renderInventoryRecordsTab() {
                 <td>${escapeHtml(m.unit)}</td>
                 <td><strong>${m.currentStock.toLocaleString()}</strong></td>
                 <td>${m.minThreshold.toLocaleString()}</td>
-                <td>${escapeHtml(reorderText(m, false))}</td>
+                <td>${reorderCellHtml(m, false)}</td>
                 <td>
                     <span class="rpt-badge ${m.status === 'Good' ? 'rpt-badge-good' : (m.status === 'Low' ? 'rpt-badge-low' : 'rpt-badge-critical')}">
                         ${escapeHtml(m.status)}
@@ -873,7 +899,7 @@ function renderMaterialDisbursementTab() {
     else list.sort((a, b) => b.usageDate.localeCompare(a.usageDate));
 
     const total = list.length;
-    if (countNote) countNote.textContent = `${total} production disbursement${total === 1 ? '' : 's'} recorded`;
+    if (countNote) countNote.textContent = `${total} disbursement${total === 1 ? '' : 's'} recorded`;
 
     const totalPages = Math.max(1, Math.ceil(total / state.disbPageSize));
     if (state.disbPage > totalPages) state.disbPage = totalPages;
@@ -882,7 +908,7 @@ function renderMaterialDisbursementTab() {
     const pageItems = list.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748b;">No production disbursement records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748b;">No disbursement records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
@@ -1167,7 +1193,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "invent
                                     <td><span style="font-family:'Inter', sans-serif; font-weight:600; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
                                     <td><strong>${(m.currentStock || 0).toLocaleString()}</strong> ${escapeHtml(m.unit)}</td>
                                     <td>${(m.minThreshold || 0).toLocaleString()} ${escapeHtml(m.unit)}</td>
-                                    <td>${escapeHtml(reorderText(m))}</td>
+                                    <td>${reorderCellHtml(m, true)}</td>
                                     <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `).join("")
@@ -1219,7 +1245,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "invent
         const disbRecords = isSingleTab ? disbData.records : disbData.records.slice(0, 25);
         sectionsHtml += `
             <div class="print-section">
-                <h3 class="print-section-title">Production Material Disbursement Log</h3>
+                <h3 class="print-section-title">Material Disbursement Log</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -1231,7 +1257,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "invent
                         </tr>
                     </thead>
                     <tbody>
-                        ${disbRecords.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No production disbursements for this period.</td></tr>` :
+                        ${disbRecords.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No disbursements for this period.</td></tr>` :
                             disbRecords.map(d => `
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
@@ -1985,7 +2011,7 @@ async function generateStaffSingleTabExcel(fileName, tabKey = "inventory") {
             "Unit": m.unit,
             "Current Stock": m.currentStock,
             "Minimum Threshold": m.minThreshold,
-            "Reorder Quantity": m.reorderQty == null ? "—" : m.reorderQty,
+            "Reorder Quantity": reorderText(m),
             "Status": m.status
         }));
     } else if (tabKey === "receiving") {
@@ -2046,7 +2072,7 @@ async function generateStaffExcel(baseName, sections) {
             "Unit": m.unit,
             "Current Stock": m.currentStock,
             "Minimum Threshold": m.minThreshold,
-            "Reorder Quantity": m.reorderQty == null ? "—" : m.reorderQty,
+            "Reorder Quantity": reorderText(m),
             "Status": m.status
         }));
         const ws = XLSX.utils.json_to_sheet(invRows);
@@ -2304,7 +2330,7 @@ async function generateStaffPdf(baseName, sections) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.setTextColor(...RM_GREEN);
-        doc.text("3. Production Material Disbursements", 40, y);
+        doc.text("3. Material Disbursements", 40, y);
         y += 10;
 
         const disbFiltered = state.disbursements.filter(d => 
@@ -2718,7 +2744,7 @@ function updateCorporatePreviewDetails(target) {
     const titles = {
         inventory: { title: "Inventory Records", ref: "SRV-2026-INV", desc: "Stock catalog, quantities on hand, units, and replenishment states." },
         receiving: { title: "Material Receiving", ref: "SRV-2026-RCV", desc: "Supplier deliveries, inbound shipments, lots, and dates." },
-        disbursement: { title: "Material Disbursement", ref: "SRV-2026-DSB", desc: "Disbursed raw materials released for production batches." },
+        disbursement: { title: "Material Disbursement", ref: "SRV-2026-DSB", desc: "Disbursed raw materials released for finished products." },
         activity: { title: "Material Activity", ref: "SRV-2026-ACT", desc: "Chronological audit ledger combining all inbound and outbound stock." }
     };
 

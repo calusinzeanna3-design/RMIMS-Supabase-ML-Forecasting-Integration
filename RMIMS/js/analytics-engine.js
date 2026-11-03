@@ -10,7 +10,8 @@
  * - System Light Theme colors (Emerald #16A34A, Amber #D97706, Blue #2563EB)
  */
 
-import { resolveFinishedProductName } from './rmims-reorder-engine.js';
+import { canonicalTxRef } from './rmims-tx-key.js';
+import { resolveFinishedProductName, displayFinishedProduct } from './rmims-reorder-engine.js';
 import {
   getSystemRawMaterials,
   getSystemCustomReceipts,
@@ -158,7 +159,8 @@ function loadAuthoritativeData() {
     const qty = parseFloat(item.quantity) || parseFloat(item.received_quantity) || parseFloat(item.receivedQuantity) || 0;
     if (qty <= 0) return;
 
-    const ref = item.ref || item.id || `rcv-${receiptMap.size + 1}`;
+    const ref = canonicalTxRef(item) || item.id || `rcv-${receiptMap.size + 1}`;
+    if (receiptMap.has(ref)) return; // the same movement saved in two ledgers
     receiptMap.set(ref, {
       ref: ref,
       date: item.date || item.receipt_date || item.receiptDate || item.created_at || '',
@@ -194,7 +196,8 @@ function loadAuthoritativeData() {
     const qty = parseFloat(item.quantity) || parseFloat(item.consumed_quantity) || parseFloat(item.consumedQuantity) || 0;
     if (qty <= 0) return;
 
-    const ref = item.ref || item.id || `disb-${disbMap.size + 1}`;
+    const ref = canonicalTxRef(item) || item.id || `disb-${disbMap.size + 1}`;
+    if (disbMap.has(ref)) return; // the same movement saved in two ledgers
     disbMap.set(ref, {
       ref: ref,
       date: item.date || item.usage_date || item.disbursement_date || item.created_at || '',
@@ -202,7 +205,7 @@ function loadAuthoritativeData() {
       materialName: finalName,
       quantity: qty,
       unit: matched ? (matched.unit_of_measure || matched.unit || '') : (item.unit || ''),
-      usedFor: resolveFinishedProductName(finalName, item.usedFor || item.finished_product_name || item.product)
+      usedFor: displayFinishedProduct(finalName, item.usedFor || item.finished_product_name || item.product)
     });
   });
   state.disbursements = Array.from(disbMap.values());
@@ -855,10 +858,8 @@ function getTopFinishedProductsData(limit = 5) {
 
   // Aggregate disbursements by finished product
   state.disbursements.forEach(d => {
-    let name = (d.usedFor || 'General Batch').trim();
-    // Normalize trailing batch names
-    name = name.replace(/\s+batch\s*(#\d+)?$/i, '').trim();
-    if (!name) name = 'Unspecified Product';
+    let name = String(d.usedFor || '').trim();
+    if (!name || name === '—') return; // only the Manager's finished products (no "General Batch" placeholder)
 
     if (!productTotals.has(name)) {
       productTotals.set(name, {
@@ -913,8 +914,8 @@ function renderCard2() {
       emptyBox.innerHTML = `
         <div style="text-align: center; color: var(--text-muted, #64748b); padding: 32px 16px;">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
-          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Finished Products Production Logged</p>
-          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Finished product production batches will appear here as materials are disbursed.</p>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Finished Product Usage Logged</p>
+          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Finished product usage will appear here as materials are disbursed.</p>
         </div>
       `;
     }
@@ -1290,7 +1291,7 @@ function openMaximizeModal(targetType) {
     if (titleEl) titleEl.textContent = 'Enlarged View: Raw Materials Stock Levels & Inventory Health';
     if (subEl) subEl.textContent = 'Authoritative stock ledger of on-hand physical stock vs minimum replenishment buffer.';
   } else if (targetType === 'finished_products') {
-    if (titleEl) titleEl.textContent = 'Enlarged View: Top Finished Products Production Usage';
+    if (titleEl) titleEl.textContent = 'Enlarged View: Top Finished Products Material Usage';
     if (subEl) subEl.textContent = 'Comprehensive product ranking across all recorded manufacturing batches.';
   } else {
     if (titleEl) titleEl.textContent = 'Enlarged View: Disbursed Raw Materials Trend';

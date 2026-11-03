@@ -10,7 +10,8 @@
  * - Official inventory is NOT updated yet
  */
 
-import { getLinkedFinishedProducts, notSetBundleCard } from './rmims-bundle.js';
+import { autoPaginate } from './rmims-table-pager.js';
+import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
 import {
@@ -200,7 +201,7 @@ function updateBundleReceivePreview() {
     }
 
     return `
-      <div class="rec-product-card ${statusClass}">
+      <div class="rec-product-card ${statusClass}" data-product="${escapeHtml(p.productName)}" style="cursor:pointer;">
         <div class="rec-product-card-top">
           <span class="rec-product-name">${escapeHtml(p.productName)}</span>
           <span class="rec-badge-tag ${tagClass}">${statusText}</span>
@@ -224,6 +225,7 @@ function updateBundleReceivePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+  bindBundleSelection(productsGrid, matName, matchedProducts);
 }
 
 function hideBundleReceiveSection() {
@@ -256,8 +258,7 @@ function getLiveStaffInfo() {
         const email = (o.email || '').toLowerCase().trim();
         const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
         if (!name || BANNED_STAFF.includes(name.toLowerCase())) {
-          if (email === 'scone2@gmail.com') name = 'Staff_2';
-          else name = 'Staff_1';
+          name = (o.username || email.split('@')[0] || '').trim();
         }
         return {
           name,
@@ -267,7 +268,7 @@ function getLiveStaffInfo() {
       }
     } catch (_) {}
   }
-  return { name: 'Staff_1', email: 'sconesandmuffins@gmail.com', id: '' };
+  return { name: '', email: '', id: '' };
 }
 
 function initUserReceive() {
@@ -531,6 +532,10 @@ function handleOpenReview() {
     return;
   }
 
+  // One finished product per receipt (same rule as Disburse)
+  const pick = getSelectedFinishedProduct(material);
+  if (!pick.ok) { alert(pick.message); return; }
+
   // =========================================================================
   // RULE #8, 9, 10: REFERENCE NUMBER CHECK (ONLY BASIS FOR DUPLICATE DETECTION)
   // =========================================================================
@@ -564,6 +569,7 @@ function handleOpenReview() {
     date,
     supplier,
     notes,
+    usedFor: pick.product,
     activity: 'Receive',
     staff: getLiveStaffInfo().name
   };
@@ -649,6 +655,7 @@ function submitReceiveNow() {
     quantity: currentReviewData.quantity,
     unit: currentReviewData.unit,
     supplier: currentReviewData.supplier,
+    usedFor: currentReviewData.usedFor || '',
     notes: currentReviewData.notes
   });
 
@@ -739,7 +746,7 @@ function renderMySubmissions() {
     }
   }
 
-  tbody.innerHTML = myReceives.slice(0, 10).map(t => {
+  tbody.innerHTML = myReceives.map(t => {
     let statusPill = '<span class="status-pill pill-pending">Pending Review</span>';
     if (t.status === 'Approved') statusPill = '<span class="status-pill pill-approved">Approved</span>';
     else if (t.status === 'Rejected') statusPill = '<span class="status-pill pill-rejected">Rejected</span>';
@@ -925,3 +932,7 @@ function openStaffDeleteRecModal(ref) {
   if (modal) modal.style.display = 'flex';
 }
 
+
+
+// 10 records per page
+autoPaginate('myReceiveSubmissionsTbody', { pageSize: 10, label: 'submissions' });
