@@ -9,6 +9,10 @@
  * - Exact time tracking for all outward disbursements
  */
 
+import { displayFinishedProduct } from './rmims-reorder-engine.js';
+import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
+import { checkDisburseLimit, applyDisburseGuardUI } from './disburse-guard.js';
+import { isDeleted } from './rmims-deleted-ledger.js';
 import {
   getSystemRawMaterials,
   parseSafeDate,
@@ -25,7 +29,9 @@ import {
   showDuplicateWarningModal,
   updateManagerDisbursement,
   deleteManagerDisbursement,
-  getStaffTransactions
+  getStaffTransactions,
+  reserveReference,
+  isReferenceUsed
 } from './rmims-transaction-engine.js';
 import {
   recordMaterialDisbursementToSupabase,
@@ -42,83 +48,6 @@ import { attachSearchableCombobox } from './rmims-combobox.js';
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
 
 // Authentic Bill of Materials (BOM) standard ratios (g/pcs/kl for Scones; kg/L for KXC)
-const BASELINE_BOM_RATIOS = {
-  // Authoritative Scones & Muffins Bakery (Strict 19 Nutribun Raw Materials) Ratios
-  "All-Purpose / Bread Flour": 250,
-  "Refined White Sugar": 100,
-  "Fresh Yellow Squash (Kalabasa)": 350,
-  "Skimmed Milk Powder": 80,
-  "Condensed Milk": 100,
-  "Fresh Whole Eggs": 1, // 1 pc
-  "Baking Shortening": 80,
-  "Margarine": 80,
-  "Instant Dry Yeast": 15,
-  "Baking Soda": 10,
-  "Iodized Salt": 15,
-  "Calcium Propionate": 5,
-  "Potassium Sorbate": 5,
-  "Crushed Peanuts / Nuts": 50,
-  "Desiccated Coconut": 50,
-  "Black Sesame Seeds": 20,
-  "Malunggay (Moringa) Flakes": 20,
-  "Vanilla Extract": 5,
-  "Plastic Pillow Packaging": 0.02, // 0.02 kl film roll per batch
-
-  "Fresh Mature Coconut Meat": 0.40,
-  "Panutsa Cane Sugar": 0.15,
-  "Muscovado Brown Sugar": 0.12,
-  "Pandan Leaves": 0.02,
-  "Fresh Garlic": 0.10,
-  "Red Chili Peppers (Siling Labuyo)": 0.05,
-  "Palm Cooking Oil": 0.08,
-  "Cane Vinegar": 0.06,
-  "Iodized Salt": 0.015,
-  "Refined White Sugar": 0.10,
-  "Dried Red Chili Flakes": 0.03,
-  "Cornstarch": 0.04,
-  "Fresh Cassava Tubers": 0.35,
-  "Cheese Seasoning Powder": 0.03,
-  "All-Purpose Wheat Flour": 0.25,
-  "Purified Water": 0.15,
-  "Food Grade Sunset Yellow / Orange Dye": 0.005,
-  "Garlic Powder": 0.02,
-  "Unripe Green Saba Bananas": 0.30,
-  "Vanilla Extract": 0.005,
-  "Fresh Sweet Potato": 0.35,
-  "Hard Wheat Bread Flour": 0.25,
-  "Salted Creamery Butter": 0.08,
-  "Condensed Milk": 0.10,
-  "Fresh Chiton Mollusk (Kibit)": 0.25,
-  "Ground Black Pepper": 0.01,
-  "Pork Skin with Back Fat": 0.40,
-  "Pure Pork Lard": 0.10,
-  "Coarse Rock Salt": 0.03,
-  "Fresh Kabasi Fish": 0.50,
-  "Fresh Bangus (Milkfish) Skin": 0.30,
-  "White Pepper Powder": 0.01,
-  "Glutinous Rice (Malagkit for Pinipig)": 0.20,
-  "Raw Shelled Peanuts": 0.15,
-  "Fresh Whole Egg Whites": 0.15,
-  "Cream of Tartar": 0.005,
-  "Fresh Sapsap Fish": 0.50,
-  "Fresh Purple Yam Tubers": 0.45,
-  "Evaporated Milk": 0.10,
-  "Green Raw Papaya": 0.40,
-  "Fresh Carrots": 0.10,
-  "Red Bell Peppers": 0.05,
-  "Fresh Ginger": 0.03,
-  "Red Onions": 0.06,
-  "Seedless Raisins": 0.04,
-  "Whole Black Peppercorns": 0.01,
-  "Fresh Grated Coconut Meat": 0.40,
-  "Powdered Milk": 0.08,
-  "Fresh Whole Eggs": 0.12,
-  "Baking Powder": 0.01,
-  "Toasted Sesame Seeds": 0.02,
-  "Refined Peanut Oil": 0.08,
-  "Fresh Acetes Shrimp (Alamang)": 0.45,
-  "Cleaned Chicken Crop (Butse)": 0.35
-};
 
 const INITIAL_MGR_DISBURSEMENTS = [];
 
@@ -129,7 +58,7 @@ let isSavingDisburse = false;
 
 // Pagination state
 let currentLedgerPage = 1;
-let ledgerPageSize = 5;
+let ledgerPageSize = 10;
 
 // Generate next sequential reference number
 function generateNextReferenceLocal() {
@@ -168,6 +97,7 @@ function loadDisbursements() {
         let modified = false;
         staffTxList.forEach(t => {
           const refStr = String(t.ref || '');
+          if (isDeleted('disbursement', refStr)) return; // permanently deleted by the manager
           const isDisb = (t.activity || t.type || '').toLowerCase().includes('disb') ||
                          refStr.toUpperCase().startsWith('DIS') ||
                          /-D\d+/i.test(refStr);
@@ -180,14 +110,14 @@ function loadDisbursements() {
               managerDisbursements.unshift({
                 ref: t.ref,
                 date: t.date || (t.approvedAt ? new Date(t.approvedAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)),
-                time: t.time || (t.approvedAt ? new Date(t.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM'),
+                time: t.time || (t.approvedAt ? new Date(t.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
                 materialId: t.materialId || t.item_code || '',
                 materialName: t.material || t.materialName || '',
                 quantity: numQty,
                 unit: unitVal,
-                recipient: t.usedFor || t.recipient || 'Production Department',
-                recordedBy: t.staff || 'Staff_1',
-                approvedBy: t.approvedBy || 'Aizel',
+                recipient: t.usedFor || t.recipient || '—',
+                recordedBy: t.staff || t.staffName || '—',
+                approvedBy: t.approvedBy || '',
                 status: 'Approved',
                 notes: t.notes || (t.isUpdated ? 'Resubmitted & Approved' : 'Staff Submission Approved')
               });
@@ -240,11 +170,13 @@ function initManagerDisburse() {
       loadDisbursements();
       renderKpis();
       renderHistoryTable();
+      refreshRefIfStale();
     }).catch(() => {});
   } catch (_) {}
 
   // Listen for storage events to refresh if stock or finished products changed elsewhere
   const handleLiveRefresh = () => {
+    refreshRefIfStale();
     if (isSavingDisburse) return;
     rawMaterials = getSystemRawMaterials();
     loadDisbursements();
@@ -261,6 +193,7 @@ function initManagerDisburse() {
   window.addEventListener('rmims_inventory_updated', handleLiveRefresh);
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleDisbursePreview();
+    try { renderHistoryTable(); } catch (_) {} // finished product column follows the current products
   });
 }
 
@@ -281,6 +214,15 @@ function initDatePicker() {
   } else if (dateInput) {
     dateInput.value = new Date().toISOString().slice(0, 10);
   }
+}
+
+// The number shown on the form was generated before this device finished syncing; replace it when another device or
+// a deleted record already uses it (otherwise the user first gets "reference already exists", or the save vanishes).
+function refreshRefIfStale() {
+  const modal = document.getElementById('mgrDisburseReviewModal');
+  if (modal && modal.classList.contains('open')) return;
+  const el = document.getElementById('mgrDisbRefDisplay');
+  if (el && isReferenceUsed(el.textContent.trim())) initReferenceDisplay();
 }
 
 function initReferenceDisplay() {
@@ -315,7 +257,7 @@ function populateMaterialSelects() {
     const u = m.unit_of_measure || m.unit || '';
     opt.dataset.unit = u;
     opt.dataset.stock = m.current_stock ?? 0;
-    opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? 10;
+    opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? 0;
     opt.dataset.name = m.name;
     opt.textContent = `${m.name} (${m.item_code || m.id}) - In Stock: ${m.current_stock ?? 0}${u ? ' ' + u : ''}`;
     select.appendChild(opt);
@@ -467,11 +409,17 @@ function bindFormEvents() {
 
   if (pageSizeSelect) {
     pageSizeSelect.addEventListener('change', () => {
-      ledgerPageSize = parseInt(pageSizeSelect.value, 10) || 5;
+      ledgerPageSize = parseInt(pageSizeSelect.value, 10) || 10;
       currentLedgerPage = 1;
       renderHistoryTable();
     });
   }
+
+  // Choosing another material (or clearing the form) re-checks the quantity against that material's minimum stock
+  const guardSelect = document.getElementById('disbMaterialSelect');
+  if (guardSelect) guardSelect.addEventListener('change', () => setTimeout(refreshDisburseGuard, 0));
+  const guardReset = document.getElementById('btnResetDisburseForm');
+  if (guardReset) guardReset.addEventListener('click', () => setTimeout(refreshDisburseGuard, 60));
 
   // Real-time calculation of Bundle Disburse allocation as user enters quantity
   if (qtyInput) {
@@ -480,13 +428,9 @@ function bindFormEvents() {
       const warning = document.getElementById('disbStockWarning');
       const selOpt = select.options[select.selectedIndex];
       if (selOpt && selOpt.value && warning) {
-        const curStock = parseFloat(selOpt.dataset.stock || 0);
-        const val = parseFloat(qtyInput.value || 0);
-        if (val > curStock) {
-          warning.style.display = 'block';
-        } else {
-          warning.style.display = 'none';
-        }
+        refreshDisburseGuard();
+      } else if (warning) {
+        warning.style.display = 'none';
       }
       updateBundleDisbursePreview();
     });
@@ -494,7 +438,7 @@ function bindFormEvents() {
 }
 
 // ============================================================================
-// BUNDLE DISBURSE LOGIC: RECOGNIZE FINISHED PRODUCTS & PRODUCTION IMPACT
+// BUNDLE DISBURSE LOGIC: RECOGNIZE FINISHED PRODUCTS & STOCK IMPACT
 // ============================================================================
 
 function matchProductIngredient(ingredientName, selectedMaterialName) {
@@ -569,70 +513,8 @@ function isLegacyKxcProduct(name) {
 }
 
 function getFinishedProductsForMaterial(materialName) {
-  if (!materialName) return [];
-
-  // Exclude legacy KXC products; recognize all user-created formulations across storage keys
-  let catalog = [];
-  const storageKeys = ['rmims_custom_finished_products', 'RMSME_CUSTOM_FINISHED_PRODUCTS', 'rmims_finished_product_context'];
-  storageKeys.forEach(k => {
-    try {
-      const raw = localStorage.getItem(k);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          parsed.forEach(cp => {
-            const isCustom = Boolean(cp.recipeDetails || cp.id || cp.date_added || cp.date_modified);
-            if (cp && cp.name && (isCustom || !isLegacyKxcProduct(cp.name)) && !catalog.some(p => p.name.toLowerCase() === cp.name.toLowerCase())) {
-              const materialNames = Array.isArray(cp.materialNames)
-                ? cp.materialNames
-                : (Array.isArray(cp.raw_materials)
-                    ? cp.raw_materials.map(r => (typeof r === 'object' && r ? (r.name || r.raw_material_name || r.materialName || '') : r))
-                    : (Array.isArray(cp.materials)
-                        ? cp.materials.map(m => (typeof m === 'object' && m ? (m.name || m.raw_material_name || m.materialName || '') : m))
-                        : (Array.isArray(cp.ingredients)
-                            ? cp.ingredients.map(i => (typeof i === 'object' && i ? (i.name || i.raw_material_name || i.materialName || '') : i))
-                            : [])));
-              catalog.push({
-                name: cp.name,
-                materialNames: materialNames.filter(Boolean),
-                recipeDetails: cp.recipeDetails || {}
-              });
-            }
-          });
-        }
-      }
-    } catch (e) {}
-  });
-
-  const results = [];
-  catalog.forEach(product => {
-    const matchedIng = (product.materialNames || []).find(ing => matchProductIngredient(ing, materialName));
-    if (matchedIng) {
-      // Find ratio for this ingredient: check customized recipe input first
-      const customNeed = product.recipeDetails && product.recipeDetails[matchedIng]?.needPerUnit !== undefined
-        ? Number(product.recipeDetails[matchedIng].needPerUnit)
-        : null;
-
-      const isSconesRatio = Object.prototype.hasOwnProperty.call(BASELINE_BOM_RATIOS, matchedIng) && BASELINE_BOM_RATIOS[matchedIng] > 1;
-      const ratio = (customNeed && customNeed > 0) ? customNeed : (BASELINE_BOM_RATIOS[matchedIng] || (
-        isSconesRatio ? 100 :
-        materialName.toLowerCase().includes('sugar') || materialName.toLowerCase().includes('flour') ? 0.25 :
-        materialName.toLowerCase().includes('oil') ? 0.08 :
-        materialName.toLowerCase().includes('salt') ? 0.015 : 0.15
-      ));
-      // Standard batch target is 50 finished product units
-      const standardBatchUnits = 50;
-      const neededStock = Math.max(0.1, Math.round(ratio * standardBatchUnits * 10) / 10);
-      results.push({
-        productName: product.name,
-        ingredientName: matchedIng,
-        ratio,
-        neededStock
-      });
-    }
-  });
-
-  return results;
+  // Shared with Manager & Staff (rmims-bundle.js): the manager's own formulations, no built-in ratios
+  return getLinkedFinishedProducts(materialName);
 }
 
 function updateBundleDisbursePreview() {
@@ -687,6 +569,7 @@ function updateBundleDisbursePreview() {
   let remainingQty = qty;
 
   const cardsHtml = matchedProducts.map(p => {
+    if (p.neededStock == null) return notSetBundleCard(p, escapeHtml);
     const needed = p.neededStock;
     const allocated = Math.min(Math.max(0, remainingQty), needed);
     remainingQty = Math.max(0, remainingQty - allocated);
@@ -728,7 +611,7 @@ function updateBundleDisbursePreview() {
           <span class="rec-badge-tag ${tagClass}">${statusText}</span>
         </div>
         <div class="rec-product-stats">
-          <span class="rec-req-label">Batch Requirement:</span>
+          <span class="rec-req-label">Requirement per Unit:</span>
           <span class="rec-req-val">${needed}${unit ? ' ' + unit : ''}</span>
         </div>
         <div class="rec-product-stats" style="margin-top:-2px;">
@@ -743,6 +626,7 @@ function updateBundleDisbursePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+  bindBundleSelection(productsGrid, matName, matchedProducts);
 
   // Add click to fill notes / purpose
   productsGrid.querySelectorAll('.rec-product-card').forEach(card => {
@@ -767,6 +651,25 @@ function hideBundleDisburseSection() {
 // REVIEW MODAL & STOCK DEDUCTION (LESSENS MATERIALS)
 // ============================================================================
 
+
+/** Re-evaluates the quantity against (current stock - minimum stock). Returns true when the quantity is allowed. */
+function refreshDisburseGuard() {
+  const select = document.getElementById('disbMaterialSelect');
+  const qtyInput = document.getElementById('disbQuantityInput');
+  if (!select || !qtyInput) return true;
+  const opt = select.options[select.selectedIndex];
+  const btn = document.getElementById('btnOpenDisburseReview');
+  if (!opt || !opt.value) {
+    applyDisburseGuardUI({ result: { ok: true }, warningEl: document.getElementById('disbStockWarning'), inputEl: qtyInput, buttonEl: btn });
+    return true;
+  }
+  const result = checkDisburseLimit({
+    current: opt.dataset.stock, minimum: opt.dataset.min, quantity: qtyInput.value, unit: opt.dataset.unit || ''
+  });
+  applyDisburseGuardUI({ result, warningEl: document.getElementById('disbStockWarning'), inputEl: qtyInput, buttonEl: btn });
+  return result.ok;
+}
+
 function handleOpenReviewModal() {
   const select = document.getElementById('disbMaterialSelect');
   const qtyInput = document.getElementById('disbQuantityInput');
@@ -789,9 +692,12 @@ function handleOpenReviewModal() {
   const selOpt = select.options[select.selectedIndex];
   const unit = selOpt.dataset.unit || '';
   const curStock = parseFloat(selOpt.dataset.stock || 0);
-  const minStock = parseFloat(selOpt.dataset.min || 10);
+  const minStock = parseFloat(selOpt.dataset.min || 0);
   const newStock = Math.max(0, curStock - qty);
   const ref = document.getElementById('mgrDisbRefDisplay').textContent.trim();
+
+  // A disbursement may never take stock below the minimum stock
+  if (!refreshDisburseGuard()) { qtyInput.focus(); return; }
 
   // SECTION 8, 9, 10: Reference Duplicate Check (Reference is the ONLY basis for duplicate detection)
   const dupCheck = checkReferenceDuplicate(ref);
@@ -816,13 +722,13 @@ function handleOpenReviewModal() {
   const rawDate = dateInput.value || now.toISOString().slice(0, 10);
   const formattedDateTime = `${rawDate} • ${timeStr}`;
 
-  // Automatically determine production purpose from matched bundle products
+  // Automatically determine the finished product from matched bundle products
   const rawDisbMatName = selOpt.dataset.name || selOpt.text || selOpt.textContent || '';
   const cleanDisbMatName = rawDisbMatName.replace(/\s*\([A-Z0-9\-_]+\)\s*-\s*Current:.*$/i, '').trim();
-  const matchedProds = getFinishedProductsForMaterial(cleanDisbMatName);
-  const usedFor = matchedProds.length > 0 
-    ? (matchedProds.length === 1 ? `${matchedProds[0].productName} Batch` : `${matchedProds[0].productName} (+${matchedProds.length - 1} products)`)
-    : (notesInput && notesInput.value.trim() ? notesInput.value.trim() : 'Production Batch');
+  // ONE finished product per record (tap its card when the material is used by several products)
+  const pick = getSelectedFinishedProduct(cleanDisbMatName);
+  if (!pick.ok) { alert(pick.message); return; }
+  const usedFor = pick.product;
 
   currentPendingDisburse = {
     ref,
@@ -836,7 +742,7 @@ function handleOpenReviewModal() {
     date: formattedDateTime,
     time: timeStr,
     usedFor,
-    notes: notesInput ? notesInput.value.trim() || 'Production batch consumption' : 'Production batch consumption'
+    notes: notesInput ? notesInput.value.trim() || '' : ''
   };
 
   // Populate Review Modal
@@ -846,7 +752,7 @@ function handleOpenReviewModal() {
   document.getElementById('revDisbOutwardQtyVal').textContent = unit ? `-${qty} ${unit}` : `-${qty}`;
   document.getElementById('revDisbNewStockVal').textContent = unit ? `${newStock} ${unit}` : `${newStock}`;
   const usedForValEl = document.getElementById('revDisbUsedForVal');
-  if (usedForValEl) usedForValEl.textContent = currentPendingDisburse.usedFor;
+  if (usedForValEl) usedForValEl.textContent = currentPendingDisburse.usedFor || '—';
   document.getElementById('revDisbDateVal').textContent = currentPendingDisburse.date;
   document.getElementById('revDisbNotesVal').textContent = currentPendingDisburse.notes;
 
@@ -879,23 +785,57 @@ function bindReviewModalEvents() {
   if (btnCancel) btnCancel.addEventListener('click', closeModal);
 
   if (btnConfirm) {
-    btnConfirm.addEventListener('click', () => {
+    let confirmBusy = false;
+    btnConfirm.addEventListener('click', async () => {
+      if (!currentPendingDisburse || confirmBusy) return;
+      // Make sure the reference is not already used on another device / by a deleted record
+      // (a reused number made the new record disappear right after saving).
+      confirmBusy = true;
+      btnConfirm.disabled = true;
+      try {
+        const freeRef = await reserveReference(currentPendingDisburse.ref, 'DIS', 'manager');
+        if (freeRef && currentPendingDisburse && freeRef !== currentPendingDisburse.ref) {
+          currentPendingDisburse.ref = freeRef;
+          const refEl = document.getElementById('mgrDisbRefDisplay');
+          if (refEl) refEl.textContent = freeRef;
+        }
+      } catch (_) {
+      } finally {
+        confirmBusy = false;
+        btnConfirm.disabled = false;
+      }
       if (!currentPendingDisburse) return;
+
+      // Final safety check with the latest stock (it may have changed since the review opened)
+      {
+        const pd = currentPendingDisburse;
+        const fresh = (getSystemRawMaterials() || []).find(m =>
+          String(m.item_code || m.id || '').toUpperCase() === String(pd.materialId || '').toUpperCase());
+        if (fresh) {
+          const r = checkDisburseLimit({
+            current: fresh.current_stock ?? fresh.currentStock, minimum: fresh.minimum_threshold ?? fresh.minimum_stock,
+            quantity: pd.quantity, unit: pd.unit });
+          if (!r.ok) {
+            alert(r.message);
+            const rm = document.getElementById('mgrDisburseReviewModal'); if (rm) rm.classList.remove('open');
+            return;
+          }
+        }
+      }
 
       const p = currentPendingDisburse;
       isSavingDisburse = true;
 
       try {
         // Resolve authentic manager identity first
-        let managerName = 'Aizel';
+        let managerName = '';
         try {
           const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
           const e = (curUser.email || '').toLowerCase();
-          if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
-          else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
-          else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
-          else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+          if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
             managerName = curUser.fullName;
+          } else {
+            managerName = curUser.username || e.split('@')[0] || '';
           }
         } catch (_) {}
 
@@ -934,7 +874,7 @@ function bindReviewModalEvents() {
           raw_material_name: p.materialName,
           current_stock: p.newStock,
           unit: p.unit
-        }).catch(err => console.warn('[Disburse] Supabase stock upsert notice:', err));
+        }, { skipStockPush: true }).catch(err => console.warn('[Disburse] Supabase stock upsert notice:', err));
 
         // Also ensure custom raw materials list reflects the reduced stock
         try {
@@ -955,7 +895,7 @@ function bindReviewModalEvents() {
           consumed_quantity: p.quantity,
           unit: p.unit,
           usage_date: p.date,
-          activity_type: 'Production Usage',
+          activity_type: 'Material Usage',
           finished_product_name: p.usedFor,
           recorded_by: managerName
         });
@@ -1062,8 +1002,8 @@ function renderKpis() {
 
   managerDisbursements.forEach(d => {
     const q = Number(d.quantity || 0);
-    const target = d.usedFor || 'General Use';
-    targetSums[target] = (targetSums[target] || 0) + q;
+    const target = displayFinishedProduct(d.materialName || '', d.usedFor || d.recipient);
+    if (target !== '—') targetSums[target] = (targetSums[target] || 0) + q; // real finished products only
 
     if (String(d.date).includes('Today')) {
       todayKg += q;
@@ -1109,10 +1049,9 @@ function renderStaffDisburseReviewBanner() {
     return isDisb && (t.status === 'Pending' || t.status === 'Correction Needed');
   });
 
-  if (staffDisbs.length === 0) {
-    if (banner) banner.style.display = 'none';
-    return;
-  }
+  // Staff submissions are reviewed in Staff Activity (sidebar dot) - not listed inside the ledger
+  if (banner) banner.style.display = 'none';
+  if (staffDisbs.length >= 0) return;
 
   if (!banner) {
     banner = document.createElement('div');
@@ -1133,7 +1072,7 @@ function renderStaffDisburseReviewBanner() {
       ${staffDisbs.slice(0, 5).map(t => `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#FFFFFF; border:1px solid #FEF3C7; border-radius:8px; padding:8px 12px; font-size:12.5px;">
           <div>
-            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || 'Staff_1')}</strong>:
+            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || t.staffEmail || '—')}</strong>:
             <span style="color:#D97706; font-weight:700;">-${escapeHtml(t.quantity)} ${escapeHtml(t.unit || '')}</span> of <strong>${escapeHtml(t.material)}</strong>
             ${t.isUpdated ? `<span style="margin-left:6px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">🔵 Resubmitted</span>` : ''}
             ${t.status === 'Correction Needed' ? `<span style="margin-left:6px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Correction Needed: "${escapeHtml(t.correctionMessage || '')}"</span>` : ''}
@@ -1167,7 +1106,7 @@ function renderStaffDisburseReviewBanner() {
       const ref = btn.getAttribute('data-ref');
       const tx = staffDisbs.find(x => x.ref === ref);
       if (!tx) return;
-      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || 'Staff_1'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and batch purpose details.');
+      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || tx.staffEmail || '—'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and batch purpose details.');
       if (!msg || !msg.trim()) return;
       await returnTransactionForCorrectionOnSupabase(tx, msg.trim());
       loadDisbursements();
@@ -1239,7 +1178,7 @@ function renderHistoryTable() {
       <tr>
         <td colspan="10" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
           <div style="font-weight:700; color:#0F2A1B; margin-bottom:4px;">No disbursements recorded yet</div>
-          <div style="font-size:12px; color:#94A3B8;">Outward raw material usage recorded for production will appear here automatically.</div>
+          <div style="font-size:12px; color:#94A3B8;">Outward raw material usage you record will appear here automatically.</div>
         </td>
       </tr>
     `;
@@ -1314,8 +1253,8 @@ function renderHistoryTable() {
         </td>
         <td><strong>${escapeHtml(d.materialName)}</strong></td>
         <td><span class="mgr-qty-delta disburse">-${d.quantity} ${escapeHtml(d.unit)}</span></td>
-        <td style="color:#334155; font-weight:600;">${escapeHtml(d.usedFor || 'Production Batch')}</td>
-        <td style="font-size:12px; color:#475569;">${escapeHtml(d.recordedBy || 'Aizel')}</td>
+        <td style="color:#334155; font-weight:600;">${escapeHtml(displayFinishedProduct(d.materialName || d.material || '', d.usedFor || d.recipient))}</td>
+        <td style="font-size:12px; color:#475569;">${escapeHtml(d.recordedBy || '—')}</td>
         <td><span class="mgr-status-pill status-approved">Approved</span></td>
         <td style="color:#64748B; font-size:12px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(d.notes || '')}">
           ${escapeHtml(d.notes || '-')}
@@ -1466,7 +1405,7 @@ function bindDisbursementActionEvents() {
         return;
       }
       if (!usedFor) {
-        alert('Please specify the production target or purpose.');
+        alert('Please specify the finished product this is for.');
         return;
       }
 
@@ -1510,9 +1449,11 @@ function bindDisbursementActionEvents() {
     btnConfirmDel.addEventListener('click', () => {
       if (!pendingDeleteDisbursementRef) return;
       const ref = pendingDeleteDisbursementRef;
-      deleteMaterialDisbursementOnSupabase(ref).catch(() => {});
+      // 1) Local delete + stock restore FIRST (the record must still exist for this to work)
       const res = deleteManagerDisbursement(ref);
       if (res && res.success) {
+        // 2) Then clean up the remote copy (cleanup only; never touches local data or stock)
+        deleteMaterialDisbursementOnSupabase(ref).catch(() => {});
         closeDelModal();
         rawMaterials = getSystemRawMaterials();
         loadDisbursements();
@@ -1553,7 +1494,7 @@ function findDisbursementRecord(ref) {
           materialId: st.materialId || st.item_code || '',
           quantity: st.quantity != null ? st.quantity : (st.qtyNum != null ? st.qtyNum : parseFloat(st.qty) || 0),
           unit: st.unit || 'kg',
-          usedFor: st.usedFor || st.recipient || 'Production Department',
+          usedFor: st.usedFor || st.recipient || '—',
           notes: st.notes || ''
         };
       }

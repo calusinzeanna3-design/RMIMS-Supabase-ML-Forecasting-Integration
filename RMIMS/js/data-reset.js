@@ -14,6 +14,7 @@
 // enforcement (admin-only, protected tables) lives in the RPC.
 
 import { db } from "../supabase/supabase-config.js";
+import { wipeLocalRmimsData } from "./rmims-reset-guard.js";
 
 const RESET_OPTIONS = [
     {
@@ -34,9 +35,9 @@ const RESET_OPTIONS = [
     {
         key: "stock_receipts",
         scopes: ["stock_receipts"],
-        title: "Clear Material Activity (Receive)",
+        title: "Clear Material Activity (Received)",
         confirmWord: "RESET",
-        deleted: ["Recorded Receive activity"],
+        deleted: ["Recorded receipt activity"],
         kept: ["User accounts", "Raw Materials", "Finished Products", "Consumption Records (Used activity)"]
     },
     {
@@ -62,7 +63,7 @@ const FULL_RESET_OPTION = {
     scopes: ["raw_materials", "finished_products", "stock_receipts", "material_disbursements"],
     title: "Reset All System Data",
     confirmWord: "RESET ALL DATA",
-    deleted: ["Raw Materials", "Finished Products", "Material Activity (Receive)", "Consumption Records", ],
+    deleted: ["Raw Materials", "Finished Products", "Material Activity (Received)", "Consumption Records", ],
     kept: ["User accounts", "Admin accounts", "System Activity / audit log", "Backup History"]
 };
 
@@ -159,39 +160,13 @@ document.getElementById("resetConfirmBtn")?.addEventListener("click", async () =
     btn.textContent = "Resetting…";
 
     try {
-        let rpcSuccess = false;
-        try {
-            const { error: rpcError } = await db.rpc("reset_system_data", { scopes: currentOption.scopes });
-            if (!rpcError) rpcSuccess = true;
-            else console.warn("reset_system_data RPC error:", rpcError);
-        } catch (rpcErr) {
-            console.warn("reset_system_data RPC exception:", rpcErr);
-            rpcSuccess = false;
-        }
-
-        if (!rpcSuccess) {
-            // Direct table deletion fallback for the selected scopes
-            const scopes = currentOption.scopes || [];
-
-            // 1. Delete dependent transaction tables first to respect foreign keys
-            if (scopes.includes("raw_materials") || scopes.includes("material_disbursements") || scopes.includes("all") || currentOption.key === "all") {
-                const { error: disbErr } = await db.from("material_disbursements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                if (disbErr) console.warn("Disbursements reset warning:", disbErr);
-            }
-            if (scopes.includes("raw_materials") || scopes.includes("stock_receipts") || scopes.includes("all") || currentOption.key === "all") {
-                const { error: recErr } = await db.from("stock_receipts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                if (recErr) console.warn("Stock receipts reset warning:", recErr);
-            }
-            if (scopes.includes("raw_materials") || scopes.includes("all") || currentOption.key === "all") {
-                const { error: matErr } = await db.from("raw_materials").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-                if (matErr) throw matErr;
-            }
-
-            // 2. Clear local storage contexts
-            localStorage.removeItem("rmims_finished_product_context");
-            localStorage.removeItem("rmims_raw_materials_context");
-            localStorage.removeItem("rmims_inventory_cache");
-        }
+        // One database function does the whole reset (all or nothing); no partial client-side deletes.
+        const { data: resetRes, error: rpcError } = await db.rpc("reset_system_data", { scopes: currentOption.scopes });
+        if (rpcError) throw rpcError;
+        // this browser's saved copies go too (other devices clear themselves when they see the reset)
+        wipeLocalRmimsData();
+        try { localStorage.setItem("rmims_reset_epoch_seen", new Date().toISOString()); } catch (_) {}
+        void resetRes;
 
         showToast(`${currentOption.title} completed successfully.`);
         closeModal("resetModal");

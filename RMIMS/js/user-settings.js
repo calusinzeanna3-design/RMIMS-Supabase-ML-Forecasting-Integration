@@ -5,6 +5,8 @@
 // Strictly User Scope & Permissions. Live Supabase Account Data. Pure Light UI.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
+import { changeAccountPassword } from "../supabase/password-service.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 import "./rmsme-shell.js";
 
@@ -133,10 +135,8 @@ function getLocalStaffUser() {
             const cleanEmail = String(u.email || "").toLowerCase().trim();
             let sName = String(u.fullName || u.name || u.full_name || "").trim();
             const BANNED_STAFF_NAMES = ["manager", "user account", "user", "account", "staff member", "staff user", "store manager", "admin", "administrator", "store staff", "—", "-"];
-            if (!sName || BANNED_STAFF_NAMES.includes(sName.toLowerCase()) || sName.toLowerCase().includes("rafael") || sName.toLowerCase().includes("cruz")) {
-                if (cleanEmail === "sconesandmuffins@gmail.com") sName = "Staff_1";
-                else if (cleanEmail === "scone2@gmail.com") sName = "Staff_2";
-                else sName = "Staff_1";
+            if (!sName || BANNED_STAFF_NAMES.includes(sName.toLowerCase())) {
+                sName = String(u.username || cleanEmail.split("@")[0] || "").trim();
             }
             return {
                 uid,
@@ -177,7 +177,7 @@ function applyStaffUser(userData) {
     updateUserDisplay(currentUser.fullName);
 
     // Populate Form Fields
-    if ($("fullName")) $("fullName").value = currentUser.fullName || "Staff_1";
+    if ($("fullName")) $("fullName").value = currentUser.fullName || "";
     if ($("email")) $("email").value = currentUser.email || "";
     if ($("role")) $("role").value = "Staff Member";
 
@@ -241,7 +241,7 @@ onAuthStateChanged(auth, async (user) => {
             }
             applyStaffUser({
                 uid: user.uid || user.id || "active-staff-session",
-                fullName: user.displayName || user.user_metadata?.full_name || "Staff_1",
+                fullName: user.displayName || user.user_metadata?.full_name || "",
                 email: user.email || "",
                 role: "user",
                 status: "active",
@@ -594,6 +594,15 @@ function initActions() {
             }
 
             try {
+                const pw = await changeAccountPassword(currentPass, newPass);
+                if (!pw.ok) {
+                    const t = pw.field === 'current' ? currentErr : pw.field === 'new' ? newErr : null;
+                    if (t) t.textContent = pw.message; else showToast(pw.message, "error");
+                    return;
+                }
+                showToast("Password updated successfully.", "success");
+                directPasswordForm.reset();
+                return;
                 // 1. Resolve Staff Email
                 let userEmail = (currentUser?.email || "").trim().toLowerCase();
                 if (!userEmail) {
@@ -699,7 +708,7 @@ function initActions() {
                     regUsers.push({
                         id: currentUser?.uid || "user_" + Date.now(),
                         email: userEmail,
-                        name: currentUser?.fullName || "Staff_1",
+                        name: currentUser?.fullName || "",
                         role: "user",
                         status: "active"
                     });
@@ -810,8 +819,8 @@ function initActions() {
             showToast("Generating user activity backup…", "info");
             try {
                 const [uRes, rRes] = await Promise.all([
-                    supabase.from("material_disbursements").select("*"),
-                    supabase.from("stock_receipts").select("*")
+                    allRows(supabase.from("material_disbursements").select("*")),
+                    allRows(supabase.from("stock_receipts").select("*"))
                 ]);
 
                 const backupData = {

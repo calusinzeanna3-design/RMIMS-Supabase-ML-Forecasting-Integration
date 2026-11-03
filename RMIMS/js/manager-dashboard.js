@@ -33,12 +33,21 @@ import {
   AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS,
   AUTHENTIC_STOCK_RECEIPTS_6MONTHS
 } from './authentic-59-dataset.js';
+import { getMaterialCoverage } from './rmims-reorder-engine.js';
 import { initForecastCalendarCard } from './forecast-calendar-chart.js';
+import { resolveRecorderName } from './rmims-recorder-resolver.js';
 
 const STAFF_TX_KEY = 'rmims_staff_transactions';
 const MGR_RECEIPTS_KEY = 'rmims_manager_receipts';
 const MGR_DISBURSEMENTS_KEY = 'rmims_manager_disbursements';
 const MGR_ACTIVITIES_KEY = 'rmims_manager_activities';
+
+// Modules that await the Supabase CDN load finish AFTER DOMContentLoaded has already fired, so a bare
+// DOMContentLoaded listener never runs and the page stays on its HTML default of 0. Run immediately if ready.
+function onDomReady(fn) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+  else fn();
+}
 
 let donutChartInstance = null;
 let top5ChartInstance = null;
@@ -48,7 +57,7 @@ let managerUsageChartInstance = null;
 let dashboardCalWidgetInstance = null;
 let currentUsageDays = 14;
 
-document.addEventListener('DOMContentLoaded', () => {
+onDomReady(() => {
   // Purge any lingering mock transactions in localStorage
   cleanseMockTransactions();
 
@@ -69,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshDashboardData();
   });
 
+  window.addEventListener('rmims_live_data_updated', () => refreshDashboardData());
   window.addEventListener('rmims_inventory_updated', () => refreshDashboardData());
   window.addEventListener('rmims_manager_receipts_updated', () => refreshDashboardData());
   window.addEventListener('rmims_manager_disbursements_updated', () => refreshDashboardData());
@@ -312,41 +322,46 @@ function renderManagerUsageChartData() {
   const recData = [];
   const disbData = [];
 
+  // Only what users actually recorded. Approving a staff submission WRITES it into the receipt /
+  // disbursement ledger, so approved staff transactions must not be added a second time.
+  const localKey = (v) => {
+    if (!v) return '';
+    const str = String(v).split(' • ')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const dt = new Date(str);
+    if (isNaN(dt.getTime())) return str.slice(0, 10);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  };
+  const refOf = (x) => String(x.ref || x.reference || x.id || '').trim().toUpperCase();
+  const ledgerRecRefs = new Set(receipts.map(refOf).filter(Boolean));
+  const ledgerDisbRefs = new Set(disbursements.map(refOf).filter(Boolean));
+  const approvedNotInLedger = (t, refs) => t.status === 'Approved' && !refs.has(refOf(t));
+  const staffRecExtra = staffTx.filter(t => (t.type === 'Receive' || t.activity === 'Receive') && approvedNotInLedger(t, ledgerRecRefs));
+  const staffDisbExtra = staffTx.filter(t => (t.type === 'Disburse' || t.activity === 'Disburse') && approvedNotInLedger(t, ledgerDisbRefs));
+
   const now = new Date();
   for (let i = currentUsageDays - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const isoDate = d.toISOString().slice(0, 10);
+    const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     labels.push(label);
 
     let rSum = 0;
     receipts.forEach(r => {
-      const rd = r.receipt_date || r.date || r.created_at || '';
-      if (rd.startsWith(isoDate)) {
-        rSum += Number(r.received_quantity || r.quantity || 0);
-      }
+      if (localKey(r.receipt_date || r.date || r.created_at) === isoDate) rSum += Number(r.received_quantity || r.quantity || 0);
     });
-    staffTx.filter(t => (t.type === 'Receive' || t.activity === 'Receive') && t.status === 'Approved').forEach(t => {
-      const td = t.date || t.created_at || '';
-      if (td.startsWith(isoDate)) {
-        rSum += Number(t.quantity || 0);
-      }
+    staffRecExtra.forEach(t => {
+      if (localKey(t.date || t.created_at) === isoDate) rSum += Number(t.quantity || 0);
     });
     recData.push(Math.round(rSum));
 
     let dSum = 0;
-    disbursements.forEach(d => {
-      const dd = d.usage_date || d.date || d.created_at || '';
-      if (dd.startsWith(isoDate)) {
-        dSum += Number(d.consumed_quantity || d.quantity || 0);
-      }
+    disbursements.forEach(x => {
+      if (localKey(x.usage_date || x.date || x.created_at) === isoDate) dSum += Number(x.consumed_quantity || x.quantity || 0);
     });
-    staffTx.filter(t => (t.type === 'Disburse' || t.activity === 'Disburse') && t.status === 'Approved').forEach(t => {
-      const td = t.date || t.created_at || '';
-      if (td.startsWith(isoDate)) {
-        dSum += Number(t.quantity || 0);
-      }
+    staffDisbExtra.forEach(t => {
+      if (localKey(t.date || t.created_at) === isoDate) dSum += Number(t.quantity || 0);
     });
     disbData.push(Math.round(dSum));
   }
@@ -377,7 +392,7 @@ function renderManagerUsageChartData() {
           pointHoverRadius: 5
         },
         {
-          label: 'Production Disbursements',
+          label: 'Material Disbursements',
           data: disbData,
           borderColor: '#0284C7',
           backgroundColor: 'rgba(2, 132, 199, 0.08)',
@@ -422,16 +437,18 @@ function renderManagerUsageChartData() {
 // Helper to evaluate unified status strictly matching user criteria
 function getMaterialMetrics(m) {
   const stock = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
-  const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || m.avgDailyConsumption || m.dailyUsage || Math.max(0.5, Number((min / 7).toFixed(1))));
-  const daysRemaining = (dailyBurn > 0 && stock > 0) ? Math.max(0, Math.round(stock / dailyBurn)) : 0;
+  const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 0);
+  // Days left come ONLY from recorded usage (shared engine); no usage recorded -> unknown (null)
+  const _cov = getMaterialCoverage(m);
+  const dailyBurn = _cov.dailyRequirement;
+  const daysRemaining = stock > 0 ? _cov.daysOfCover : (_cov.hasData ? 0 : null);
 
   let statusKey = 'good';
   let statusText = 'Good';
   if (stock <= 0 || stock < min) {
     statusKey = 'out';
     statusText = 'Out of Stock';
-  } else if (daysRemaining <= 3) {
+  } else if (daysRemaining !== null && daysRemaining <= 3) {
     statusKey = 'low';
     statusText = 'Low';
   } else {
@@ -461,18 +478,25 @@ function renderKpis(materials, receipts, disbursements, staffTx) {
   if (kpiLowStock) kpiLowStock.textContent = lowCount;
 
   // Real today transaction counts
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // local calendar day (not UTC) so entries made after midnight / before 8am Manila time count for the right day
+  const _n = new Date();
+  const todayStr = `${_n.getFullYear()}-${String(_n.getMonth() + 1).padStart(2, '0')}-${String(_n.getDate()).padStart(2, '0')}`;
   const isToday = (dateVal) => {
     if (!dateVal) return false;
-    const s = String(dateVal).toLowerCase();
-    return s.includes('today') || s.startsWith(todayStr);
+    const str = String(dateVal);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str === todayStr;
+    const d = new Date(str);
+    if (isNaN(d)) return str.toLowerCase().includes('today');
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr;
   };
+  // approved / rejected staff submissions already exist in the ledgers (or never moved stock): count only the ones still waiting
+  const awaiting = t => !/^(approved|rejected|completed|cancelled|deleted)/i.test(String(t.status || t.state || ''));
 
   const recToday = receipts.filter(r => isToday(r.receipt_date || r.date || r.created_at)).length +
-    staffTx.filter(t => (t.type === 'Receive' || t.activity === 'Receive') && isToday(t.date || t.created_at)).length;
+    staffTx.filter(t => awaiting(t) && (t.type === 'Receive' || t.activity === 'Receive') && isToday(t.date || t.created_at)).length;
 
   const disbToday = disbursements.filter(d => isToday(d.usage_date || d.date || d.created_at)).length +
-    staffTx.filter(t => (t.type === 'Disburse' || t.activity === 'Disburse') && isToday(t.date || t.created_at)).length;
+    staffTx.filter(t => awaiting(t) && (t.type === 'Disburse' || t.activity === 'Disburse') && isToday(t.date || t.created_at)).length;
 
   const totalTx = recToday + disbToday;
 
@@ -807,18 +831,10 @@ function renderTop5ReceivedChart(materials, receipts, staffTx) {
     const unit = m.unit_of_measure || m.unit || 'kg';
 
     // (a) Future Requirement calculation (Forecast basis)
-    const cachedFc = forecastCache[name] || forecastCache[name.toLowerCase()];
-    let futureReq = cachedFc ? (Number(cachedFc.forecast7Day?.quantity) || Number(cachedFc.forecast_7days) || 0) : 0;
+    // Same 7-day requirement as Forecasting / Reports (shared engine, recorded usage only)
+    let futureReq = Number(getMaterialCoverage(m).requirement7) || 0;
 
-    if (futureReq <= 0) {
-      const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minStock ?? 10);
-      const dailyBurn = Number(m.forecast_daily || m.avg_daily_usage || Math.max(1, Number((min / 7).toFixed(1))));
-      futureReq = Number(m.forecast_daily ? Math.round(m.forecast_daily * 7) : Math.round(dailyBurn * 7));
-    }
-    if (futureReq <= 0) {
-      const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minStock ?? 10);
-      futureReq = Math.round(min * 1.2);
-    }
+    // No recorded consumption yet -> no requirement is invented (stays 0 until users record usage).
 
     // (b) Received quantity (Real recorded inward receipts only)
     const receivedQty = receivedByMat.get(name) || 0;
@@ -1108,7 +1124,7 @@ function renderSmartAlerts(materials) {
     const metB = getMaterialMetrics(b);
     if (metA.statusKey === 'out' && metB.statusKey !== 'out') return -1;
     if (metB.statusKey === 'out' && metA.statusKey !== 'out') return 1;
-    return metA.daysRemaining - metB.daysRemaining;
+    return (metA.daysRemaining ?? Infinity) - (metB.daysRemaining ?? Infinity);
   });
 
   if (criticalMaterials.length === 0) {
@@ -1130,7 +1146,7 @@ function renderSmartAlerts(materials) {
   let html = '';
   topCritical.forEach(mat => {
     const stock = Number(mat.current_stock) || 0;
-    const min = Number(mat.minimum_threshold) || 10;
+    const min = Number(mat.minimum_threshold) || 0;
     const unit = mat.unit_of_measure || mat.unit || '';
     const estDailyRate = Math.max(0.5, Number((min / 7).toFixed(1)));
     const days = stock <= 0 ? 0 : Math.max(1, Math.round(stock / estDailyRate));
@@ -1212,7 +1228,7 @@ function renderRecentActivity(receipts, disbursements, staffTx) {
       timestamp: new Date(r.created_at || r.receipt_date || r.date || Date.now()).getTime(),
       avatar: 'M',
       chipCls: 'chip-green',
-      user: r.received_by || r.receivedBy || 'Store Manager',
+      user: resolveRecorderName({ recordedBy: r.received_by || r.receivedBy, ref: r.ref || r.id }),
       activity: `Received ${r.received_quantity || r.quantity || 0}${r.unit ? ' ' + r.unit : ''} ${r.material_name || r.materialName || ''}`,
       ref: r.ref || r.id || 'REC-CUSTOM',
       status: 'Approved',
@@ -1227,7 +1243,7 @@ function renderRecentActivity(receipts, disbursements, staffTx) {
       timestamp: new Date(d.created_at || d.usage_date || d.date || Date.now()).getTime(),
       avatar: 'M',
       chipCls: 'chip-teal',
-      user: d.recorded_by || d.recordedBy || 'Store Manager',
+      user: resolveRecorderName({ recordedBy: d.recorded_by || d.recordedBy, ref: d.ref || d.id }),
       activity: `Disbursed ${d.consumed_quantity || d.quantity || 0}${d.unit ? ' ' + d.unit : ''} ${d.material_name || d.materialName || ''}`,
       ref: d.ref || d.id || 'DIS-CUSTOM',
       status: 'Approved',
@@ -1414,10 +1430,11 @@ function renderPendingTransactions(staffTx) {
         </tr>
       `;
     } else {
-      tbody.innerHTML = pending.map(t => {
+      // Dashboard shows the 5 latest; View All opens Staff Activity
+      tbody.innerHTML = pending.slice(0, 5).map(t => {
         const isRec = (t.type || t.activity || '').toLowerCase().includes('rec');
         const actLabel = isRec ? 'Receive' : 'Disburse';
-        const actPillCls = isRec ? 'pill-inward' : 'pill-production';
+        const actPillCls = isRec ? 'pill-inward' : 'pill-outward';
         return `
           <tr>
             <td><strong>${escapeHtml(t.date || '—')}</strong></td>

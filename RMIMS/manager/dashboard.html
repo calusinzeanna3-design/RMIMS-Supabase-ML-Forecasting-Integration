@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RMIMS - Store Management Overview</title>
@@ -9,13 +11,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js 4.4.1 -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="../vendor/chart/chart.umd.js"></script>
+    <script>window.Chart||document.write('<script src="../js/chart.js"><\/script>')</script>
   <!-- Admin Shell Stylesheet (100% Shared Theme & Components) -->
   <link rel="stylesheet" href="../css/admin-shell.css">
   <link rel="stylesheet" href="../css/manager-theme.css">
   <link rel="stylesheet" href="../css/forecast-calendar-chart.css">
   <link rel="stylesheet" href="../css/rmims-unified.css">
   <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 <body class="manager-page admin-page">
   <div class="admin-app">
@@ -56,10 +62,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -68,7 +74,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -492,7 +498,7 @@
 
         <!-- Rejection Reason Input Box -->
         <div id="rejectReasonBox" style="display:none; flex-direction:column; gap:6px; background:#FEF2F2; border:1px solid #FECACA; padding:12px; border-radius:10px;">
-          <label style="font-size:12px; font-weight:700; color:#DC2626;">Reason for Rejection *</label>
+          <label style="font-size:12px; font-weight:700; color:#DC2626;" for="rejectReasonInput">Reason for Rejection *</label>
           <textarea id="rejectReasonInput" rows="2" placeholder="Explain why this transaction was rejected..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCA5A5; font-size:12.5px; box-sizing:border-box;"></textarea>
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
             <button type="button" id="btnCancelRejectTx" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#FFF; border:1px solid #CBD5E1; cursor:pointer;">Cancel</button>
@@ -502,7 +508,7 @@
 
         <!-- Return for Correction Reason Box -->
         <div id="correctionReasonBox" style="display:none; flex-direction:column; gap:6px; background:#FFFBEB; border:1px solid #FDE68A; padding:12px; border-radius:10px;">
-          <label style="font-size:12px; font-weight:700; color:#D97706;">Manager's Correction Instructions for Staff *</label>
+          <label style="font-size:12px; font-weight:700; color:#D97706;" for="correctionReasonInput">Manager's Correction Instructions for Staff *</label>
           <textarea id="correctionReasonInput" rows="2" placeholder="e.g. Please verify the quantity entered..." style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #FCD34D; font-size:12.5px; box-sizing:border-box;"></textarea>
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
             <button type="button" id="btnCancelReturnTx" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#FFF; border:1px solid #CBD5E1; cursor:pointer;">Cancel</button>

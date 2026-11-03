@@ -13,6 +13,7 @@
 // to localStorage and dispatch standard RMIMS synchronization events.
 // ============================================================================
 
+import { loadRecorderDirectory, resolveRecorderName, recorderRoleForName, extractRef } from '../js/rmims-recorder-resolver.js';
 import { supabase } from './supabase-config.js';
 
 // Local storage key constants (aligned 1-to-1 with Admin portal views)
@@ -40,7 +41,6 @@ export function isMockUser(u) {
   if (!u) return false;
   const txt = `${u.name || u.full_name || ''} ${u.username || ''} ${u.email || ''} ${u.branchName || u.branch_name || ''}`.toLowerCase();
   const role = String(u.role || u.operational_role || '').toLowerCase();
-  if (txt.includes('aizel') && (role.includes('staff') || role.includes('user_staff'))) return true;
   if (u.email && (u.email.endsWith('@example.com') || u.email.endsWith('@test.com'))) return true;
   return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
 }
@@ -150,8 +150,14 @@ export async function fetchBranchStores() {
         .from('branch_stores')
         .select('*')
         .order('created_at', { ascending: true });
-      if (!sErr && Array.isArray(sData) && sData.length > 0) {
-        stores = sData.filter(s => !isDeletedBranchStore(s) && !isDeletedBranchStore(s.id) && !isDeletedBranchStore(s.branch_name));
+      // old built-in sample stores are not real stores: remove them (the Admin's delete is allowed by RLS)
+      const LEGACY_SEED_IDS = ['scones-lucena', 'kxc-tiaong'];
+      if (!sErr && Array.isArray(sData) && sData.some(r => LEGACY_SEED_IDS.includes(r.id))) {
+        try { await supabase.from('branch_stores').delete().in('id', LEGACY_SEED_IDS); } catch (_) {}
+      }
+      const realRows = (!sErr && Array.isArray(sData)) ? sData.filter(r => !LEGACY_SEED_IDS.includes(r.id)) : [];
+      if (realRows.length > 0) {
+        stores = realRows.filter(s => !isDeletedBranchStore(s) && !isDeletedBranchStore(s.id) && !isDeletedBranchStore(s.branch_name));
         const { data: pData, error: pErr } = await supabase
           .from('branch_store_personnel')
           .select('*')
@@ -201,7 +207,7 @@ export async function fetchBranchStores() {
             locKey: locKey,
             companyId: u.company_id || '',
             code: loc.substring(0, 3).toUpperCase(),
-            category: 'MSME Production & Retail Hub',
+            category: 'MSME Retail Hub',
             status: 'ACTIVE',
             managers: [],
             staff: []
@@ -236,14 +242,18 @@ export async function fetchBranchStores() {
         const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
         if (rawCustom) {
           const custom = JSON.parse(rawCustom);
+          ['scones-lucena', 'kxc-tiaong'].forEach(id => { if (custom && custom[id]) delete custom[id]; });
           Object.assign(derivedStores, custom);
         }
       } catch (_) {}
 
-      // Update local storage mirror
+      // Update local storage mirror (tell the pages only when something actually changed)
       try {
-        localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(derivedStores));
-        window.dispatchEvent(new Event('rmims_stores_updated'));
+        const next = JSON.stringify(derivedStores);
+        if (localStorage.getItem(STORAGE_KEYS.BRANCH_STORES) !== next) {
+          localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, next);
+          window.dispatchEvent(new Event('rmims_stores_updated'));
+        }
       } catch (_) {}
 
       return derivedStores;
@@ -259,7 +269,7 @@ export async function fetchBranchStores() {
         location: s.branch_location,
         locKey: s.branch_key,
         code: s.branch_key ? s.branch_key.toUpperCase() : 'STR',
-        category: 'MSME Production Hub',
+        category: 'MSME Store Hub',
         address: s.address || '',
         status: s.operating_status || 'ACTIVE',
         managers: storePersonnel
@@ -865,6 +875,30 @@ export async function fetchLiveSystemActivities(options = {}) {
   const combined = [];
   const seenIds = new Set();
 
+  // company -> branch / personnel map built from the live profiles (no hardcoded branches)
+  const companyInfo = {};
+  if (supabase) {
+    try {
+      const { data: profs } = await supabase.from('user_profiles').select('*');
+      (profs || []).forEach(u => {
+        if (!u || !u.company_id) return;
+        const r = String(u.operational_role || u.role || '').toLowerCase();
+        if (r === 'admin' || r === 'administrator') return;
+        const info = companyInfo[u.company_id] || (companyInfo[u.company_id] = { loc: '', name: '', manager: '', staff: '' });
+        if (!info.loc && u.branch_location) info.loc = u.branch_location;
+        if (!info.name && (u.branch_name || u.company_name)) info.name = u.branch_name || u.company_name;
+        if (r.includes('manager') && !info.manager) info.manager = u.full_name || u.username || '';
+        if (!r.includes('manager') && !info.staff) info.staff = u.full_name || u.username || '';
+      });
+    } catch (_) {}
+  }
+  // Real recorder names (UUID -> profile; staff submissions credited to the staff member who recorded them)
+  try { await loadRecorderDirectory(supabase); } catch (_) {}
+  const branchOf = (row) => {
+    const i = companyInfo[row.company_id] || {};
+    return { loc: i.loc || row.branch_location || 'Unassigned', name: i.name || row.company_name || row.branch_name || 'Branch Store', manager: i.manager, staff: i.staff };
+  };
+
   if (supabase) {
     try {
       // 1. Fetch from admin_activity_logs
@@ -910,22 +944,24 @@ export async function fetchLiveSystemActivities(options = {}) {
           seenIds.add(id);
           const matName = r.raw_materials?.name || 'Raw Material';
           const rDate = r.receipt_date || (r.created_at ? String(r.created_at).slice(0, 10) : '');
-          const isTiaong = String(r.company_id || '').includes('a72a7971') || String(r.company_name || '').toLowerCase().includes('kxc');
-          const branchLoc = isTiaong ? 'Tiaong' : 'Lucena';
-          const branchName = isTiaong ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery';
-          const managerName = r.received_by || (isTiaong ? 'Glazel' : 'Aizel');
+          const bi = branchOf(r);
+          const branchLoc = bi.loc;
+          const branchName = bi.name;
+          const recRef = extractRef(r.supplier_name);
+          const managerName = resolveRecorderName({ recordedBy: r.received_by, ref: recRef, fallback: '' }) || bi.manager || '—';
+          const recRole = recorderRoleForName(managerName) || 'Store Manager';
 
           combined.push({
             id,
             timestamp: r.created_at || (rDate ? `${rDate}T10:00:00Z` : new Date().toISOString()),
             date: rDate || new Date().toISOString().slice(0, 10),
             user: managerName,
-            role: 'Store Manager',
+            role: recRole,
             branchLoc: branchLoc,
             branchName: branchName,
             action: 'Received',
             module: 'Stock Receipts',
-            details: `Received ${r.received_quantity} ${r.unit} of ${matName} from ${r.supplier_name || 'Supplier'}.`,
+            details: `Received ${r.received_quantity} ${r.unit} of ${matName}${String(r.supplier_name || '').replace(/\s*\[Ref:[^\]]*\]\s*/i, '').trim() ? ` from ${String(r.supplier_name).replace(/\s*\[Ref:[^\]]*\]\s*/i, '').trim()}` : ''}.`,
             status: 'success'
           });
         });
@@ -947,18 +983,20 @@ export async function fetchLiveSystemActivities(options = {}) {
           seenIds.add(id);
           const matName = d.raw_materials?.name || 'Raw Material';
           const dDate = d.usage_date || (d.created_at ? String(d.created_at).slice(0, 10) : '');
-          const reason = d.finished_product_name || d.activity_type || 'Operations';
-          const isTiaong = String(d.company_id || '').includes('a72a7971') || String(d.company_name || '').toLowerCase().includes('kxc');
-          const branchLoc = isTiaong ? 'Tiaong' : 'Lucena';
-          const branchName = isTiaong ? 'KXC 5-Year Enterprise' : 'Scones & Muffins Bakery';
-          const staffName = d.disbursed_by || (isTiaong ? 'Staff_2' : 'Staff_1');
+          const reason = String(d.finished_product_name || '').trim() || '—';
+          const bi = branchOf(d);
+          const branchLoc = bi.loc;
+          const branchName = bi.name;
+          const disbRef = extractRef(d.activity_type);
+          const staffName = resolveRecorderName({ recordedBy: d.recorded_by || d.disbursed_by, ref: disbRef, fallback: '' }) || '—';
+          const disbRole = recorderRoleForName(staffName) || (/SMSt-/i.test(disbRef) ? 'Store Staff' : 'Store Manager');
 
           combined.push({
             id,
             timestamp: d.created_at || (dDate ? `${dDate}T14:30:00Z` : new Date().toISOString()),
             date: dDate || new Date().toISOString().slice(0, 10),
             user: staffName,
-            role: 'Store Staff',
+            role: disbRole,
             branchLoc: branchLoc,
             branchName: branchName,
             action: 'Disbursed',
@@ -1028,8 +1066,8 @@ export async function fetchRegisteredUsers() {
         name: u.full_name || u.username || 'User',
         username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
         email: u.email || '',
-        branchLoc: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.name && u.name.toLowerCase() === 'zeanna')) ? 'Headquarters' : (u.branch_location || 'Unassigned'),
-        branchName: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.name && u.name.toLowerCase() === 'zeanna')) ? 'Headquarters' : (u.branch_name || 'Branch Store'),
+        branchLoc: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || false) ? 'Headquarters' : (u.branch_location || 'Unassigned'),
+        branchName: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin' || false) ? 'Headquarters' : (u.branch_name || 'Branch Store'),
         role: (u.role === 'admin' || u.role === 'superadmin' || u.operational_role === 'admin') 
           ? 'Administrator' 
           : (u.operational_role ? (u.operational_role.charAt(0).toUpperCase() + u.operational_role.slice(1)) : 'Staff'),
@@ -1037,24 +1075,25 @@ export async function fetchRegisteredUsers() {
         created_at: u.created_at || new Date().toISOString()
       }));
 
-    // Ensure Zeanna real admin is present
-    const hasAdmin = users.some(u => 
-      (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-      (u.name && u.name.toLowerCase() === 'zeanna')
-    );
-    if (!hasAdmin) {
-      users.unshift({
-        id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-        name: 'Zeanna',
-        username: 'zeanna',
-        email: 'calusinzeanna3@gmail.com',
-        branchLoc: 'Headquarters',
-        branchName: 'Main Administration',
-        role: 'Administrator',
-        status: 'Active',
-        created_at: new Date().toISOString()
-      });
-    }
+    // The signed-in admin always appears in the directory (taken from the live session, never hardcoded).
+    try {
+      const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const myEmail = String(me.email || '').toLowerCase();
+      const isAdminSession = /^(admin|administrator|superadmin|main_admin)$/i.test(String(me.role || ''));
+      if (isAdminSession && myEmail && !users.some(u => u.email && u.email.toLowerCase() === myEmail)) {
+        users.unshift({
+          id: me.id || me.uid || myEmail,
+          name: me.name || me.fullName || myEmail.split('@')[0],
+          username: (me.username || myEmail.split('@')[0]),
+          email: me.email,
+          branchLoc: 'Headquarters',
+          branchName: 'Headquarters',
+          role: 'Administrator',
+          status: 'Active',
+          created_at: me.created_at || new Date().toISOString()
+        });
+      }
+    } catch (_) {}
 
     // Realtime Supabase synchronization: Supabase user_profiles is the authoritative source.
     // Sync local mirror with real Supabase records to prevent zombie / orphaned accounts.
@@ -1996,10 +2035,18 @@ export async function deleteUserAccount(userId, userEmail, userName, deletedBy =
   if (!supabase) return { success: true, offline: true };
 
   try {
+    // Step 7-0: delete the login itself (Supabase Auth) and its profile - the account can never sign in again
+    try {
+      const ident = (cleanId && cleanId.length > 20 && !cleanId.startsWith('user-') && !cleanId.startsWith('req_')) ? cleanId : (cleanEmail || cleanUser);
+      if (ident) {
+        const { data: delRes } = await supabase.rpc('admin_delete_user', { p_identifier: ident });
+        if (delRes && delRes.success) return { success: true, method: 'auth_deleted' };
+      }
+    } catch (_) {}
+
     // Step 7a: Immune deactivation fallback: mark 'inactive' so user can NEVER pop up as active or pending even if foreign keys block hard delete
     const deactPayload = {
       status: 'inactive',
-      operational_role: 'inactive',
       updated_at: new Date().toISOString()
     };
 
@@ -2038,7 +2085,9 @@ export function subscribeToAdminFeed(onUpdate) {
   }
 
   try {
-    const channel = supabase.channel('rmims-admin-live-feed')
+    // one channel per subscriber: a second .on() after subscribe() on a shared channel name throws
+    subscribeToAdminFeed.__n = (subscribeToAdminFeed.__n || 0) + 1;
+    const channel = supabase.channel(`rmims-admin-live-feed-${subscribeToAdminFeed.__n}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, payload => {
         if (typeof onUpdate === 'function') onUpdate({ table: 'stock_receipts', payload });
       })

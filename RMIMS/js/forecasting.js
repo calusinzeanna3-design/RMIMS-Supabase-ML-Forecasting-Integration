@@ -5,7 +5,9 @@
 // Authoritative, Read-Only, 100% Live Supabase + Flask AutoReg ML Pipeline.
 // Strictly Light Mode. No Mock Data. Unit-Safe.
 
+import { canonicalTxRef } from './rmims-tx-key.js';
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
@@ -20,11 +22,17 @@ import {
 } from "./tenant-manager.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache, getSconesMaterialImagePath, resolveForecastingMaterialByName, parseSafeDate } from "./system-materials.js";
 import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
+import { forecastNextDays, planRestock, REQUIREMENT_BUFFER_Z, buildLiveForecaster, dateKey as trainedDateKey, getTrainedProfile, trainedDailyForecast, TRAINED_OVERALL_DAILY_MAPE } from "./trained-forecast-engine.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
+import { extractRefFromText } from "./rmims-deleted-ledger.js";
+import { renderForecastGauges } from "./rmims-forecast-gauges.js";
+import { computeDataDrivenReorder } from "./rmims-reorder-engine.js";
 
 /* ==========================================================
    GLOBAL STATE
    ========================================================== */
+
+const FORECAST_MODEL_VERSION = "basis-v1"; // bump to invalidate cached forecasts from an older model
 
 const state = {
     materials: [],           // Normalized from public.raw_materials + Flask registry
@@ -72,11 +80,12 @@ async function checkMlServiceAvailable() {
 
     const candidates = [];
     if (window.ENV_FLASK_API_BASE) candidates.push(window.ENV_FLASK_API_BASE);
-    candidates.push("");
-    candidates.push("https://rmims-ml-model.web.app");
-    if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
-        candidates.push("http://127.0.0.1:5000");
-    }
+    try { const saved = localStorage.getItem("rmims_ml_api_base"); if (saved) candidates.push(saved); } catch (_) {}
+    const isLocalDev = ["127.0.0.1", "localhost", ""].includes(window.location.hostname);
+    // Deployed (Firebase): the ML service answers on the same site, so it is checked there.
+    // Local development: no ML server is contacted unless one is configured (window.ENV_FLASK_API_BASE or
+    // localStorage "rmims_ml_api_base"), so the console stays free of connection errors.
+    if (!isLocalDev) candidates.push("");
 
     for (const base of candidates) {
         try {
@@ -85,7 +94,7 @@ async function checkMlServiceAvailable() {
             const res = await fetch(`${base}/api/ml/status`, { method: "GET", signal: controller.signal }).catch(() => null);
             clearTimeout(timer);
             if (res && res.ok) {
-                resolvedApiBase = base;
+                resolvedApiBase = base || window.location.origin;
                 mlIsAvailable = true;
                 return true;
             }
@@ -184,6 +193,10 @@ function renderTenantBanner() {
 
 let isInitialized = false;
 
+function initials(name) {
+    return String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+}
+
 async function bootstrapForecastApp(user) {
     if (isInitialized) return;
     isInitialized = true;
@@ -223,12 +236,12 @@ async function bootstrapForecastApp(user) {
 
         const uid = activeUser.id || activeUser.uid || "mgr-session";
         const cleanEmail = (activeUser.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
         if (isMasterAdmin) {
             profile = {
                 id: uid,
-                full_name: activeUser.displayName || activeUser.fullName || "Zeanna Calusin",
+                full_name: activeUser.displayName || activeUser.fullName || "",
                 email: activeUser.email,
                 role: "admin",
                 operational_role: "admin",
@@ -266,9 +279,7 @@ async function bootstrapForecastApp(user) {
         let mName = (profile?.full_name || '').trim();
         const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
         if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
-            if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
-            else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
-            else mName = 'Aizel';
+            mName = (profile?.username || userEmail.split('@')[0] || '').trim();
         }
         if (pBtn) {
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
@@ -318,6 +329,18 @@ async function init() {
     initEventListeners();
     renderTenantBanner();
     await loadAuthoritativeData();
+
+    // Live database updates (new receipts, disbursements = new consumption, edited minimum stock) refresh the forecast
+    let liveForecastTimer = null;
+    const onLive = () => {
+        clearTimeout(liveForecastTimer);
+        liveForecastTimer = setTimeout(() => {
+            try { invalidateForecastCache(); } catch (_) {}
+            loadAuthoritativeData();
+        }, 1200);
+    };
+    ['rmims_live_data_updated', 'rmims_inventory_updated', 'rmims_manager_receipts_updated', 'rmims_manager_disbursements_updated']
+        .forEach(name => window.addEventListener(name, onLive));
 }
 
 /* ==========================================================
@@ -395,9 +418,9 @@ async function loadAuthoritativeData() {
 
             if (supabase) {
                 const [matRes, useRes, recRes] = await Promise.allSettled([
-                    fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")),
-                    fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })),
-                    fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, created_at").order("receipt_date", { ascending: false }))
+                    fetchWithTimeout(allRows(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")), 30000),
+                    fetchWithTimeout(allRows(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })), 30000),
+                    fetchWithTimeout(allRows(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, created_at").order("receipt_date", { ascending: false })), 30000)
                 ]);
 
                 if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
@@ -457,7 +480,7 @@ async function loadAuthoritativeData() {
                 name: (resolvedModel && resolvedModel.canonicalName) ? resolvedModel.canonicalName : (m.name || m.raw_material_name),
                 unit_of_measure: m.unit_of_measure || m.unit || bm.unit_of_measure || bm.unit || (tCtx.isScones ? "g" : "kg"),
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
-                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? bm.minimum_threshold ?? 10),
+                minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? bm.minimum_threshold ?? 0),
                 date_added: m.first_date || m.date_added || "",
                 last_updated: m.latest_date || m.last_updated || m.first_date || "",
                 description: m.description || bm.description || "",
@@ -496,19 +519,77 @@ async function loadAuthoritativeData() {
             return code.startsWith(expectedPrefix);
         });
 
+        // Guarantee 19 Scones & Muffins materials are ALWAYS present
+        if (tCtx.isScones && masterMats.length < 19) {
+            const existingCodes = new Set(masterMats.map(m => String(m.item_code || m.id || "").toUpperCase().trim()));
+            const AUTHENTIC_SCONES = (typeof AUTHENTIC_19_SCONES_MATERIALS !== 'undefined') ? AUTHENTIC_19_SCONES_MATERIALS : getTenantMaterials();
+            AUTHENTIC_SCONES.forEach(bm => {
+                const bCode = String(bm.item_code || bm.itemCode || bm.id || "").toUpperCase().trim();
+                if (!bCode || existingCodes.has(bCode)) return;
+                existingCodes.add(bCode);
+                masterMats.push({
+                    id: bCode.toLowerCase(),
+                    item_code: bCode,
+                    name: bm.name || bm.raw_material_name,
+                    unit_of_measure: bm.unit || bm.unit_of_measure || "kg",
+                    current_stock: Number(bm.current_stock ?? 0),
+                    minimum_threshold: Number(bm.minimum_threshold ?? bm.minimum_stock ?? 0),
+                    date_added: bm.date_added || "",
+                    last_updated: bm.last_updated || bm.date_added || "",
+                    description: bm.description || "",
+                    created_at: bm.created_at || new Date().toISOString(),
+                    forecast_daily: bm.forecast_daily,
+                    forecast_weekly: bm.forecast_weekly,
+                    forecast_monthly: bm.forecast_monthly,
+                    forecast_90d: bm.forecast_90d,
+                    daily_mape: bm.daily_mape,
+                    weekly_mape: bm.weekly_mape,
+                    p90_margin: bm.p90_margin,
+                    p95_margin: bm.p95_margin
+                });
+            });
+        }
+
         // 2. Authoritative Disbursements (Strictly Live User Transactions)
+        // One record per real movement: the local copy and the Supabase copy of the same disbursement share the
+        // system reference ("[Ref: X]" in the database text), so key both by it. Rows without a reference are
+        // matched on material + date + quantity so they are not counted twice either.
         const disbMap = new Map();
-        getSystemCustomDisbursements().forEach(d => disbMap.set(String(d.id), { ...d }));
-        rawUsage.forEach(u => disbMap.set(String(u.id), { ...u }));
+        const sigOf = (d) => [String(d.material_id || d.materialId || d.material_name || d.materialName || "").toLowerCase().trim(),
+            String(d.usage_date || d.usageDate || d.date || "").slice(0, 10),
+            Number(d.consumed_quantity ?? d.consumedQuantity ?? d.quantity ?? 0)].join("|");
+        const refKeyOf = (d) => canonicalTxRef(d);
+        const seenSig = new Set();
+        const addDisb = (d, preferNew) => {
+            const rk = refKeyOf(d);
+            const key = rk ? "ref:" + rk : "id:" + String(d.id);
+            if (!rk && seenSig.has(sigOf(d))) return;
+            if (disbMap.has(key) && !preferNew) return;
+            disbMap.set(key, { ...d });
+            seenSig.add(sigOf(d));
+        };
+        getSystemCustomDisbursements().forEach(d => addDisb(d, false));
+        rawUsage.forEach(u => addDisb(u, true));
         let masterDisbursements = Array.from(disbMap.values());
         if (deletedDisbIds.size > 0) {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
         }
 
+        // Supabase ledger rows carry the material's database UUID: map it to the item code so they match
+        const uuidToCode = new Map();
+        (rawMats || []).forEach(sm => { if (sm && sm.id && sm.item_code) uuidToCode.set(String(sm.id).toLowerCase().trim(), String(sm.item_code).toLowerCase().trim()); });
+
         // 3. Authoritative Receipts (Strictly Live User Transactions)
+        // the local copy and the Supabase copy of one delivery share the system reference -> one record
         const recMap = new Map();
-        getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
-        rawReceipts.forEach(r => recMap.set(String(r.id), { ...r }));
+        const recKeyOf = (r) => { const rk = canonicalTxRef(r); return rk ? "ref:" + rk : "id:" + String(r.id); };
+        const withCode = (r) => {
+            const raw = String(r.material_id || r.materialId || "").toLowerCase().trim();
+            const code = uuidToCode.get(raw);
+            return code ? { ...r, material_id: code, materialId: code } : { ...r };
+        };
+        getSystemCustomReceipts().forEach(r => recMap.set(recKeyOf(r), withCode(r)));
+        rawReceipts.forEach(r => recMap.set(recKeyOf(r), withCode(r)));
         let masterReceipts = Array.from(recMap.values());
         if (deletedRecIds.size > 0) {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
@@ -533,9 +614,12 @@ async function loadAuthoritativeData() {
                 "X-User-Role": userRole, 
                 "X-Tenant-Folder": datasetFolder 
             };
-            let mlRes = await fetch(`${apiBase}/api/ml/materials`, { headers: reqHeaders }).catch(() => null);
-            if (!mlRes || !mlRes.ok) {
-                mlRes = await fetch(`${apiBase}/api/materials`, { headers: reqHeaders }).catch(() => null);
+            let mlRes = null;
+            if (mlIsAvailable && apiBase) {   // only call the ML server when one was actually found
+                mlRes = await fetch(`${apiBase}/api/ml/materials`, { headers: reqHeaders }).catch(() => null);
+                if (!mlRes || !mlRes.ok) {
+                    mlRes = await fetch(`${apiBase}/api/materials`, { headers: reqHeaders }).catch(() => null);
+                }
             }
             if (mlRes && mlRes.ok) {
                 const mlData = await mlRes.json().catch(() => ({}));
@@ -575,6 +659,7 @@ async function loadAuthoritativeData() {
                 unit: (m.unit_of_measure || m.unit || (tMatch ? tMatch.unit : (tCtx.isScones ? "g" : "kg"))).trim(),
                 currentStock: Number(m.current_stock ?? m.currentStock) || 0,
                 minStock: Number(m.minimum_threshold ?? m.minimum_stock) || 0,
+                leadTimeDays: Number(m.lead_time_days ?? m.leadTimeDays ?? 3),
                 dateAdded: m.date_added || m.first_date || "",
                 lastUpdated: m.last_updated || m.latest_date || m.date_added || "",
                 lags: tMatch?.lags || 7,
@@ -604,7 +689,8 @@ async function loadAuthoritativeData() {
 
         // Normalize Disbursements
         state.disbursements = masterDisbursements.map(d => {
-            const dRawId = String(d.material_id || d.materialId || "").toLowerCase().trim();
+            const dIdRaw = String(d.material_id || d.materialId || "").toLowerCase().trim();
+            const dRawId = uuidToCode.get(dIdRaw) || dIdRaw;
             const dRawName = String(d.material_name || d.materialName || d.finished_product_name || "").toLowerCase().trim();
             const resolvedD = resolveForecastingMaterialByName(dRawName || dRawId);
             const resolvedCode = resolvedD ? String(resolvedD.code).toLowerCase() : "";
@@ -617,14 +703,8 @@ async function loadAuthoritativeData() {
                        (resolvedCode && (mId === resolvedCode || mCode === resolvedCode));
             });
             const pName = d.finished_product_name || d.activity_type || null;
-            let calibratedQty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
-
-            if (pName && isGenericOperational(pName)) {
-                const unitLower = (d.unit || (m ? m.unit : "kg")).toLowerCase().trim();
-                if ((unitLower === "kg" || unitLower === "l") && calibratedQty > 10) {
-                    calibratedQty = Number((calibratedQty / 10).toFixed(2));
-                }
-            }
+            // Exactly what the user recorded - never rescaled.
+            const calibratedQty = Number(d.consumed_quantity != null ? d.consumed_quantity : d.quantity) || 0;
 
             return {
                 id: d.id,
@@ -730,23 +810,39 @@ function computeAuthoritativeForecastBaseline() {
             }
         });
 
-        // Dynamic Pattern & Trend Momentum Analysis incorporating latest disbursements
-        const trainedF7 = Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : 0));
-        let weeklyRunRate = last7DaysUsage > 0
-            ? Math.max(last7DaysUsage, trainedF7)
-            : (recs.length > 0
-                ? Math.max(totalUsage / Math.max(1, recs.length / 7), trainedF7)
-                : trainedF7);
-        
-        // Momentum velocity: compare recent 7 days vs prior 7 days
-        let momentumVelocity = 1.0;
-        if (prev7DaysUsage > 0 && last7DaysUsage > 0) {
-            const growthRate = (last7DaysUsage - prev7DaysUsage) / prev7DaysUsage;
-            momentumVelocity = 1.0 + Math.max(-0.06, Math.min(0.075, growthRate * 0.4));
+        // Same engine as Reports, Dashboards and the gauges (rmims-reorder-engine): recorded usage only,
+        // trained model shape + MAPE, 7 / 30-day requirement, reorder = requirement + minimum - stock.
+        const actualsMap = new Map();
+        recs.forEach(r => {
+            const ud = parseSafeDate(r.usageDate || r.createdAt);
+            if (!ud) return;
+            const k = trainedDateKey(ud);
+            actualsMap.set(k, (actualsMap.get(k) || 0) + (Number(r.consumedQuantity) || 0));
+        });
+        const plan = computeDataDrivenReorder(
+            { id: m.id, itemCode: m.itemCode, name: m.name, unit: m.unit, currentStock: m.currentStock, minThreshold: m.minStock },
+            actualsMap
+        );
+        let f7Qty = plan.hasData ? Number(plan.requirement7) : 0;
+        let f1mQty = plan.hasData ? Number(plan.requirement30) : 0;
+        let restockPlan = null;
+        if (plan.hasData) {
+            const capped = plan.daysOfCover == null || plan.daysOfCover > 90;
+            const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+            const stockoutDate = capped ? null : new Date(today0.getTime() + plan.daysOfCover * 86400000);
+            restockPlan = {
+                hasEvidence: true,
+                evidenceDays: plan.evidenceDays,
+                lowConfidence: plan.lowConfidence,
+                suggestedQty: plan.reorderQty,
+                requirement7: plan.requirement7,
+                daysOfCover: capped ? 90 : plan.daysOfCover,
+                capped,
+                stockoutDate,
+                orderByDate: stockoutDate,
+                status: m.currentStock <= 0 ? 'out' : (plan.reorderQty > 0 ? 'order-now' : 'ok')
+            };
         }
-
-        let f7Qty = Number((weeklyRunRate * momentumVelocity).toFixed(1));
-        let f1mQty = Number((m.forecast_monthly && recs.length === 0 ? Number(m.forecast_monthly) : (f7Qty * 4.15)).toFixed(1));
 
         const curStock = m.currentStock;
         const diff = curStock - f7Qty;
@@ -761,6 +857,9 @@ function computeAuthoritativeForecastBaseline() {
             unit: m.unit,
             forecast7Day: { quantity: f7Qty, unit: m.unit },
             forecast1Month: { quantity: f1mQty, unit: m.unit },
+            restock_plan: restockPlan,
+            evidence_days: restockPlan ? restockPlan.evidenceDays : null,
+            low_confidence: restockPlan ? Boolean(restockPlan.lowConfidence) : false,
             current_inventory: {
                 current_stock: curStock,
                 minimum_threshold: m.minStock
@@ -775,11 +874,11 @@ function computeAuthoritativeForecastBaseline() {
                 difference: diff,
                 decision_status: decisionStatus,
                 status: decisionStatus,
-                interpretation: f7Qty === 0
-                    ? (curStock <= 0 ? `Zero stock recorded. Replenish stock via Inward Receipts.` : (curStock <= m.minStock ? `Stock near minimum threshold (${curStock} ${m.unit}). Monitor closely.` : `Current stock: ${curStock} ${m.unit}. Awaiting production disbursement telemetry.`))
+                interpretation: (restockPlan && restockPlan.hasEvidence && restockPlan.lowConfidence && f7Qty > 0 ? `Early estimate from only ${restockPlan.evidenceDays} recorded day(s); it firms up once 4 or more days are recorded. Days without a record are ignored, not counted as zero. ` : "") + (f7Qty === 0
+                    ? (curStock <= 0 ? `Zero stock recorded. Replenish stock via Inward Receipts.` : (curStock <= m.minStock ? `Stock near minimum threshold (${curStock} ${m.unit}). Monitor closely.` : `Current stock: ${curStock} ${m.unit}. Awaiting recorded consumption (Disburse) to start forecasting.`))
                     : (diff < 0 
                         ? `Potential shortage of ${Math.abs(diff).toFixed(1)} ${m.unit}. Replenishment recommended.`
-                        : (curStock <= m.minStock ? `Stock near minimum threshold. Monitor closely.` : `Sufficient stock for projected 7-day operations.`))
+                        : (curStock <= m.minStock ? `Stock near minimum threshold. Monitor closely.` : `Sufficient stock for projected 7-day operations.`)))
             }
         };
 
@@ -793,6 +892,7 @@ function computeAuthoritativeForecastBaseline() {
     try {
         const cacheObj = Object.fromEntries(state.forecasts);
         localStorage.setItem("rmims_forecast_cache", JSON.stringify(cacheObj));
+        localStorage.setItem("rmims_forecast_model_version", FORECAST_MODEL_VERSION);
         localStorage.setItem("rmims_forecast_timestamp", state.lastForecastTimestamp.toISOString());
 
         const needsAttn = Array.from(state.forecasts.values()).filter(fc => {
@@ -826,7 +926,10 @@ async function evaluateForecastState() {
 
     let isCacheValid = false;
 
-    if (cachedData && cachedTimestamp) {
+    // Cache from an older model (pre daily-basis) must never be reused
+    const cacheVersionOk = localStorage.getItem("rmims_forecast_model_version") === FORECAST_MODEL_VERSION;
+
+    if (cachedData && cachedTimestamp && cacheVersionOk) {
         const lastTime = new Date(cachedTimestamp).getTime();
         const latestDataTime = state.latestConsumptionTimestamp ? state.latestConsumptionTimestamp.getTime() : 0;
 
@@ -840,7 +943,7 @@ async function evaluateForecastState() {
                         Object.entries(parsed).forEach(([k, v]) => {
                             const liveMat = matByName.get(k);
                             if (liveMat && v && typeof v === "object") {
-                                const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || liveMat.minStock * 0.85 || 0);
+                                const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || 0);
                                 const f1m = Number(v.forecast1Month?.quantity) || Number((f7 * 4.15).toFixed(1));
                                 const curStock = liveMat.currentStock;
                                 const diff = curStock - f7;
@@ -912,18 +1015,18 @@ async function generateAllForecasts() {
                 const encoded = encodeURIComponent(m.name);
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1800);
-                const res = await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
+                const res = (mlIsAvailable && apiBase) ? await fetch(`${apiBase}/api/ml/forecast/${encoded}/inventory`, {
                     method: "GET",
                     headers,
                     signal: controller.signal
-                }).catch(() => null);
+                }).catch(() => null) : null;
                 clearTimeout(timeoutId);
 
                 if (res && res.ok) {
                     const data = await res.json();
                     if (data && (data.status === "success" || data.success === true)) {
                         const rawF7 = Number(data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0);
-                        const f7 = rawF7 > 0 ? rawF7 : Number(m.forecast_weekly || (m.minStock > 0 ? m.minStock * 0.85 : 0));
+                        const f7 = rawF7 > 0 ? rawF7 : Number(m.forecast_weekly || 0);
                         const rawF1m = Number(data.planning_28_day_requirement ?? data.forecast1Month?.quantity ?? 0);
                         const f1m = rawF1m > 0 ? rawF1m : Number((f7 * 4.15).toFixed(1));
                         const curStock = Number(m.currentStock ?? data.current_stock ?? 0);
@@ -995,7 +1098,7 @@ async function generateAllForecasts() {
                     category: 'forecast',
                     priority: 'success',
                     title: 'AI Forecast & Margin Synchronized',
-                    message: `Forecast projections and ±7.51% error margins successfully updated for ${updatedCount} raw materials.`,
+                    message: `Forecast projections and model error margins successfully updated for ${updatedCount} raw materials.`,
                     actor: 'Source: AI Machine Learning',
                     roleScope: 'all',
                     timestamp: new Date().toISOString()
@@ -1045,8 +1148,8 @@ function renderForecastCalendarWidget() {
 
     if (!fcCalendarWidgetInstance) {
         fcCalendarWidgetInstance = initForecastCalendarCard("forecastingCalendarCardContainer", {
-            materials: state.materials || [],
-            disbursements: state.disbursements || [],
+            materials: Array.from(state.materials || []),
+            disbursements: Array.from(state.disbursements || []),
             forecasts: Array.from(state.forecasts.values()),
             title: "Forecast Requirement & Consumed Materials Spline",
             subtitle: "Multi-horizon consumption telemetry & forecast guide bounds with side calendar tracking"
@@ -1092,7 +1195,7 @@ function updateMarginComplianceBanner() {
 
     state.materials.forEach(m => {
         const fc = state.forecasts.get(m.name);
-        const req7 = fc ? (Number(fc.forecast7Day?.quantity) || 0) : (m.minStock * 0.5);
+        const req7 = fc ? (Number(fc.forecast7Day?.quantity) || 0) : 0;
         if (req7 <= 0) return;
 
         let mat7DayUsage = 0;
@@ -1106,8 +1209,8 @@ function updateMarginComplianceBanner() {
         });
 
         const tCtx = getActiveTenantContext();
-        const thresholdPct = tCtx.isScones ? 0.05 : 0.0751;
-        const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
+        const thresholdPct = (tCtx.isScones ? TRAINED_OVERALL_DAILY_MAPE : 7.51) / 100;
+        const thresholdLabel = tCtx.isScones ? `±${TRAINED_OVERALL_DAILY_MAPE.toFixed(2)}% Margin of Error (trained model MAPE)` : "±7.51% Margin of Error System";
 
         if (mat7DayUsage > 0) {
             totalChecks++;
@@ -1121,13 +1224,13 @@ function updateMarginComplianceBanner() {
     });
 
     const tCtx = getActiveTenantContext();
-    const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
+    const thresholdLabel = tCtx.isScones ? `±${TRAINED_OVERALL_DAILY_MAPE.toFixed(2)}% Margin of Error (trained model MAPE)` : "±7.51% Margin of Error System";
     const complianceRate = totalChecks > 0 ? ((inMarginCount / totalChecks) * 100).toFixed(0) : 100;
 
     if (totalChecks === 0) {
         banner.className = "fc-margin-warning-banner success";
         if (titleEl) titleEl.textContent = `Disbursement Telemetry Ready`;
-        if (subTextEl) subTextEl.textContent = "Awaiting live production disbursements. Once materials are disbursed, variance corridors will track automatically.";
+        if (subTextEl) subTextEl.textContent = "Awaiting recorded disbursements. Once materials are disbursed, variance corridors will track automatically.";
         if (badge) {
             badge.style.background = "rgba(16, 185, 129, 0.14)";
             badge.style.color = "#047857";
@@ -1217,7 +1320,9 @@ function renderTopKPIs() {
         const currentStock = Number(m.currentStock) || 0;
         const deficit = Math.max(0, next7Qty - currentStock);
         const dailyAvg = next7Qty / 7;
-        const daysLeft = dailyAvg > 0 ? (currentStock / dailyAvg).toFixed(1) : "99+";
+        const plan = fc && fc.restock_plan;
+        const daysLeft = plan ? (plan.capped ? "90+" : String(plan.daysOfCover))
+            : (dailyAvg > 0 ? (currentStock / dailyAvg).toFixed(1) : "99+");
 
         let statusType = "sufficient";
         if (deficit > 0) statusType = "shortage";
@@ -1443,9 +1548,9 @@ function renderProductDemandConnection() {
                     return {
                         id: mId,
                         name: String(mId),
-                        unit: "kg",
+                        unit: "",
                         currentStock: 0,
-                        req7Day: loggedQty || 10,
+                        req7Day: loggedQty || 0,
                         loggedQty: loggedQty,
                         deficit: 0,
                         isShortage: false
@@ -1474,7 +1579,7 @@ function renderProductDemandConnection() {
             else if (lowerName.includes("jam") || lowerName.includes("jelly") || lowerName.includes("spread")) icon = "🍯";
 
             // 7-Day Target & Current Stock Capacity Calculation
-            const targetUnits = Math.max(100, Math.round(prod.totalUsage > 0 ? prod.totalUsage * 1.25 : 350));
+            const targetUnits = Math.round(prod.totalUsage > 0 ? prod.totalUsage : 0); // recorded usage only, no assumed target
             let minStockRatio = 1.0;
             matArray.forEach(m => {
                 if (m.req7Day > 0) {
@@ -1618,6 +1723,17 @@ let dragFcInitialXShift = 0;
 let dragFcInitialShift = 0;
 
 function renderPrimaryChart() {
+    // Forecast data card = two arc gauges (usage & future reorder). Same filters, same data.
+    const gaugeHost = document.getElementById("fcGaugeContainer");
+    if (gaugeHost) {
+        renderForecastGauges(gaugeHost, {
+            materials: state.materials,
+            disbursements: state.disbursements,
+            selectedId: state.selectedMaterialId || "ALL",
+            horizon: state.chartHorizon || "daily"
+        });
+        return;
+    }
     const canvas = document.getElementById("consumptionForecastChartCanvas");
     if (!canvas) return;
 
@@ -1641,193 +1757,127 @@ function renderPrimaryChart() {
     const forecastData = [];
 
     const now = new Date();
-    const LOCKED_MARGIN_FACTOR = 0.0751; // 7.51% Positive/Negative Margin of Error
+    let LOCKED_MARGIN_FACTOR = 0.0751; // default margin; replaced by trained per-material MAPE when available
+
+    // ---- Trained-dataset forecast (dow x month x trend from the 12-year data) adapted to real disbursements ----
+    const trainedTargets = [];
+    (isAll ? state.materials : (selectedMat ? [selectedMat] : [])).forEach(m => {
+        const code = String(m.itemCode || m.item_code || m.id || "").toUpperCase().trim();
+        const prof = getTrainedProfile(code);
+        if (!prof) return;
+        const nm = String(m.name || "").toLowerCase().trim();
+        const actuals = new Map();
+        state.disbursements.forEach(d => {
+            const dId = String(d.materialId || d.itemCode || d.material_id || "").toUpperCase().trim();
+            const dNm = String(d.materialName || d.material_name || "").toLowerCase().trim();
+            let hit = dId === code || dId === String(m.id || "").toUpperCase().trim() || (dNm && dNm === nm);
+            if (!hit && (dNm || dId)) {
+                const rec = resolveForecastingMaterialByName(dNm || dId, true);
+                hit = Boolean(rec && String(rec.code).toUpperCase().trim() === code);
+            }
+            if (!hit) return;
+            const ud = parseSafeDate(d.usageDate || d.createdAt);
+            if (!ud || isNaN(ud.getTime())) return;
+            const k = trainedDateKey(ud);
+            actuals.set(k, (actuals.get(k) || 0) + (Number(d.consumedQuantity) || 0));
+        });
+        trainedTargets.push({ code, prof, actuals });
+    });
+    const anyLiveUsage = trainedTargets.some(t => buildLiveForecaster(t.code, t.actuals, { asOf: now, coldStart: 'zero' }).hasEvidence);
+    trainedTargets.forEach(t => {
+        t.fc = buildLiveForecaster(t.code, t.actuals, { asOf: now, coldStart: 'zero' });
+    });
+    const useTrained = trainedTargets.length > 0;
+    if (useTrained) {
+        LOCKED_MARGIN_FACTOR = TRAINED_OVERALL_DAILY_MAPE / 100;
+    }
+    // Sum of the trained curve over `days` days starting at startDate (adapted=true applies the disbursement adjustment)
+    const periodSum = (startDate, days, adapted) => {
+        let sum = 0;
+        trainedTargets.forEach(t => {
+            for (let k = 0; k < days; k++) {
+                const dd = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + k);
+                sum += adapted ? t.fc.forecastFor(dd).requirement : (trainedDailyForecast(t.code, dd) || 0);
+            }
+        });
+        return Number(sum.toFixed(1));
+    };
+    const dayAt = (offset) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+
+    // ---- RULES (owner spec) ----------------------------------------------------------------
+    //  * Past days / recent week / recent 30 days  -> RECORDED CONSUMPTION ONLY (ground truth, no forecast bar)
+    //  * Future                                    -> FORECAST REQUIREMENT ONLY, starting tomorrow:
+    //        daily = next 7 days, weekly = the next 7 days as one block, monthly = the next 30 days as one block
+    //  * The margin corridor is centred on the EXPECTED consumption; the requirement bar sits INSIDE it.
+    const centerData = [];   // expected consumption (corridor centre) - future only
+    const halfData = [];     // corridor half-width in quantity - future only
+
+    const usageByDay = new Map();
+    state.disbursements.forEach(d => {
+        if (!(isAll || d.materialId === state.selectedMaterialId)) return;
+        const ud = parseSafeDate(d.usageDate || d.createdAt);
+        if (!ud || isNaN(ud.getTime())) return;
+        const k = trainedDateKey(ud);
+        usageByDay.set(k, (usageByDay.get(k) || 0) + (Number(d.consumedQuantity) || 0));
+    });
+    const usageRange = (startOffset, days) => {
+        let sum = 0;
+        for (let k = 0; k < days; k++) sum += usageByDay.get(trainedDateKey(dayAt(startOffset + k))) || 0;
+        return sum > 0 ? Number(sum.toFixed(1)) : 0;
+    };
+    // Forecast aggregate for `days` days starting `startOffset` days from today (tomorrow = 1)
+    const futureAgg = (startOffset, days) => {
+        let center = 0, req = 0, half = 0;
+        if (useTrained) {
+            trainedTargets.forEach(t => {
+                for (let k = 0; k < days; k++) {
+                    const r = t.fc.forecastFor(dayAt(startOffset + k));
+                    center += r.value;
+                    req += r.requirement;
+                    half += Math.max(0, r.upper - r.value);
+                }
+            });
+        } else {
+            let perDay = 0;
+            (isAll ? state.materials : (selectedMat ? [selectedMat] : [])).forEach(m => {
+                const fc = state.forecasts.get(m.name);
+                perDay += (fc ? Number(fc.forecast7Day?.quantity) || 0 : 0) / 7;
+            });
+            center = req = perDay * days;
+            half = center * LOCKED_MARGIN_FACTOR;
+        }
+        return { center: Number(center.toFixed(1)), req: Number(req.toFixed(1)), half: Number(half.toFixed(1)) };
+    };
+    const pushPast = (label, usage) => {
+        labels.push(label); usageData.push(usage); forecastData.push(null); centerData.push(null); halfData.push(null);
+    };
+    const pushFuture = (label, agg) => {
+        labels.push(label); usageData.push(null);
+        forecastData.push(agg.req > 0 ? agg.req : null);
+        centerData.push(agg.center); halfData.push(agg.half);
+    };
+    const fmtDay = (off) => dayAt(off).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
     if (horizon === "daily") {
-        // 7 past days + Today + 7 future forecast days (15 daily intervals)
-        const pastDaysUsage = new Array(8).fill(0); // index 0..7 (7 = today)
-        state.disbursements.forEach(d => {
-            if (isAll || d.materialId === state.selectedMaterialId) {
-                const uDate = new Date(d.usageDate || d.createdAt);
-                const diffDays = Math.floor((now.getTime() - uDate.getTime()) / 86400000);
-                if (diffDays >= 0 && diffDays < 8) {
-                    pastDaysUsage[7 - diffDays] += d.consumedQuantity;
-                }
-            }
-        });
-
-        let dailyForecastRate = 0;
-        if (isAll) {
-            state.materials.forEach(m => {
-                const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
-                dailyForecastRate += (req7 / 7);
-            });
-        } else if (selectedMat) {
-            const fc = state.forecasts.get(selectedMat.name);
-            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (selectedMat.minStock * 0.5);
-            dailyForecastRate = (req7 / 7);
-        }
-
-        const validPastUse = pastDaysUsage.slice(0, 7).filter(x => x > 0);
-        const actualDailyAvg = validPastUse.length > 0 
-            ? (validPastUse.reduce((a, b) => a + b, 0) / validPastUse.length)
-            : 0;
-        const effectiveDailyRate = actualDailyAvg > 0 ? actualDailyAvg : dailyForecastRate;
-
-        // 7 Past Days (Show BOTH usage and requirement for comparison)
-        for (let i = 7; i >= 1; i--) {
-            const d = new Date(now.getTime() - i * 86400000);
-            labels.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
-            const rawVal = pastDaysUsage[7 - i];
-            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
-            usageData.push(uVal);
-            const pastReqBaseline = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.35 + 0.4) * 0.052)).toFixed(1)) : 0;
-            forecastData.push(pastReqBaseline);
-        }
-
-        // Today
-        labels.push(`Today (${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
-        const todayRaw = pastDaysUsage[7];
-        const todayUse = todayRaw > 0 ? Number(todayRaw.toFixed(1)) : 0;
-        usageData.push(todayUse);
-        forecastData.push(effectiveDailyRate > 0 ? Number(effectiveDailyRate.toFixed(1)) : 0);
-
-        // 7 Future Forecasted Days
-        for (let i = 1; i <= 7; i++) {
-            const d = new Date(now.getTime() + i * 86400000);
-            labels.push(`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} (FC)`);
-            usageData.push(null);
-            const rate = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.5 + 0.3) * 0.050)).toFixed(1)) : 0;
-            forecastData.push(rate);
-        }
-
+        // 7 recorded days + Today (consumption) then the next 7 days (forecast)
+        for (let i = 7; i >= 1; i--) pushPast(fmtDay(-i), usageRange(-i, 1));
+        pushPast(`Today (${fmtDay(0)})`, usageRange(0, 1));
+        for (let i = 1; i <= 7; i++) pushFuture(`${fmtDay(i)} (FC)`, futureAgg(i, 1));
     } else if (horizon === "weekly") {
-        // 4 past weeks + Current Week + 4 future forecast weeks
-        const pastWeeksUsage = [0, 0, 0, 0, 0];
-        state.disbursements.forEach(d => {
-            if (isAll || d.materialId === state.selectedMaterialId) {
-                const uDate = new Date(d.usageDate || d.createdAt);
-                const diffDays = (now.getTime() - uDate.getTime()) / 86400000;
-                if (diffDays >= 0 && diffDays < 7) pastWeeksUsage[4] += d.consumedQuantity;
-                else if (diffDays >= 7 && diffDays < 14) pastWeeksUsage[3] += d.consumedQuantity;
-                else if (diffDays >= 14 && diffDays < 21) pastWeeksUsage[2] += d.consumedQuantity;
-                else if (diffDays >= 21 && diffDays < 28) pastWeeksUsage[1] += d.consumedQuantity;
-                else if (diffDays >= 28 && diffDays < 35) pastWeeksUsage[0] += d.consumedQuantity;
-            }
-        });
-
-        let weeklyForecastRate = 0;
-        let monthlyForecastRate = 0;
-        if (isAll) {
-            state.materials.forEach(m => {
-                const fc = state.forecasts.get(m.name);
-                weeklyForecastRate += fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
-                monthlyForecastRate += fc ? Number(fc.forecast1Month?.quantity) || 0 : (m.minStock * 2);
-            });
-        } else if (selectedMat) {
-            const fc = state.forecasts.get(selectedMat.name);
-            weeklyForecastRate = fc ? Number(fc.forecast7Day?.quantity) || 0 : (selectedMat.minStock * 0.5);
-            monthlyForecastRate = fc ? Number(fc.forecast1Month?.quantity) || 0 : (selectedMat.minStock * 2);
-        }
-
-        const recentWeeklyActual = pastWeeksUsage[4] > 0 ? pastWeeksUsage[4] : (pastWeeksUsage.slice(0, 4).filter(x => x > 0).reduce((a, b) => a + b, 0) / Math.max(1, pastWeeksUsage.slice(0, 4).filter(x => x > 0).length));
-        if (recentWeeklyActual > 0) {
-            weeklyForecastRate = Number(recentWeeklyActual.toFixed(1));
-            monthlyForecastRate = Number((weeklyForecastRate * 4.15).toFixed(1));
-        }
-
-        // Past 4 weeks (Show BOTH usage and requirement)
-        for (let i = 4; i >= 1; i--) {
-            const d = new Date(now.getTime() - i * 7 * 86400000);
-            labels.push(`Week -${i} (${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
-            const rawVal = pastWeeksUsage[4 - i];
-            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
-            usageData.push(uVal);
-            const pastReq = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.45 + 0.6) * 0.054)).toFixed(1)) : 0;
-            forecastData.push(pastReq);
-        }
-
-        // Current Week
-        labels.push(`Current Week`);
-        const curWeekRaw = pastWeeksUsage[4];
-        const curWeekUse = curWeekRaw > 0 ? Number(curWeekRaw.toFixed(1)) : 0;
-        usageData.push(curWeekUse);
-        forecastData.push(weeklyForecastRate > 0 ? Number(weeklyForecastRate.toFixed(1)) : 0);
-
-        // 4 Future Forecast Weeks
-        for (let i = 1; i <= 4; i++) {
-            const d = new Date(now.getTime() + i * 7 * 86400000);
-            labels.push(`Week +${i} (${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`);
-            usageData.push(null);
-            const rate = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048)).toFixed(1)) : 0;
-            forecastData.push(rate);
-        }
-
+        // 3 earlier weeks + the recent week (consumption) then ONE block: the next 7 days (forecast)
+        for (let i = 3; i >= 1; i--) pushPast(`Week -${i} (${fmtDay(-6 - 7 * i)})`, usageRange(-6 - 7 * i, 7));
+        pushPast(`Recent Week (${fmtDay(-6)} – ${fmtDay(0)})`, usageRange(-6, 7));
+        pushFuture(`Next 7 Days (${fmtDay(1)} – ${fmtDay(7)})`, futureAgg(1, 7));
     } else { // "monthly"
-        // 3 past months + Current month + 3 future forecast months
-        const pastMonthsUsage = [0, 0, 0, 0];
-        state.disbursements.forEach(d => {
-            if (isAll || d.materialId === state.selectedMaterialId) {
-                const uDate = new Date(d.usageDate || d.createdAt);
-                const diffDays = (now.getTime() - uDate.getTime()) / 86400000;
-                if (diffDays >= 0 && diffDays < 30) pastMonthsUsage[3] += d.consumedQuantity;
-                else if (diffDays >= 30 && diffDays < 60) pastMonthsUsage[2] += d.consumedQuantity;
-                else if (diffDays >= 60 && diffDays < 90) pastMonthsUsage[1] += d.consumedQuantity;
-                else if (diffDays >= 90 && diffDays < 120) pastMonthsUsage[0] += d.consumedQuantity;
-            }
-        });
-
-        let monthlyForecastRate = 0;
-        if (isAll) {
-            state.materials.forEach(m => {
-                const fc = state.forecasts.get(m.name);
-                monthlyForecastRate += fc ? Number(fc.forecast1Month?.quantity) || 0 : (m.minStock * 2);
-            });
-        } else if (selectedMat) {
-            const fc = state.forecasts.get(selectedMat.name);
-            monthlyForecastRate = fc ? Number(fc.forecast1Month?.quantity) || 0 : (selectedMat.minStock * 2);
-        }
-
-        const recentMonthlyActual = pastMonthsUsage[3] > 0 ? pastMonthsUsage[3] : (pastMonthsUsage.slice(0, 3).filter(x => x > 0).reduce((a, b) => a + b, 0) / Math.max(1, pastMonthsUsage.slice(0, 3).filter(x => x > 0).length));
-        if (recentMonthlyActual > 0) {
-            monthlyForecastRate = Number(recentMonthlyActual.toFixed(1));
-        }
-
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const curMonthIdx = now.getMonth();
-
-        // Past 3 months
-        for (let i = 3; i >= 1; i--) {
-            const mIdx = (curMonthIdx - i + 12) % 12;
-            labels.push(`${monthNames[mIdx]}`);
-            const rawVal = pastMonthsUsage[3 - i];
-            const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
-            usageData.push(uVal);
-            const pastMonthReq = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050)).toFixed(1)) : 0;
-            forecastData.push(pastMonthReq);
-        }
-
-        // Current Month
-        labels.push(`${monthNames[curMonthIdx]} (Current)`);
-        const curMonthRaw = pastMonthsUsage[3];
-        const curMonthUse = curMonthRaw > 0 ? Number(curMonthRaw.toFixed(1)) : 0;
-        usageData.push(curMonthUse);
-        forecastData.push(monthlyForecastRate > 0 ? Number(monthlyForecastRate.toFixed(1)) : 0);
-
-        // 3 Future Forecast Months
-        for (let i = 1; i <= 3; i++) {
-            const mIdx = (curMonthIdx + i) % 12;
-            labels.push(`${monthNames[mIdx]} (FC)`);
-            usageData.push(null);
-            const rate = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.1 + 0.3) * 0.045)).toFixed(1)) : 0;
-            forecastData.push(rate);
-        }
+        // 2 earlier 30-day blocks + the recent 30 days (consumption) then ONE block: the next 30 days (forecast)
+        for (let i = 2; i >= 1; i--) pushPast(`${30 * i}d ago (${fmtDay(-29 - 30 * i)})`, usageRange(-29 - 30 * i, 30));
+        pushPast(`Recent 30 Days (${fmtDay(-29)} – ${fmtDay(0)})`, usageRange(-29, 30));
+        pushFuture(`Next 30 Days (${fmtDay(1)} – ${fmtDay(30)})`, futureAgg(1, 30));
     }
 
     // Parallel Margin of Error Limits (±7.51%)
-    const upperMarginData = forecastData.map(v => (v !== null && v > 0) ? Number((v * (1 + LOCKED_MARGIN_FACTOR)).toFixed(1)) : null);
-    const lowerMarginData = forecastData.map(v => (v !== null && v > 0) ? Number((v * (1 - LOCKED_MARGIN_FACTOR)).toFixed(1)) : null);
+    const upperMarginData = centerData.map((c, i) => (c !== null && c > 0) ? Number((c + halfData[i]).toFixed(1)) : null);
+    const lowerMarginData = centerData.map((c, i) => (c !== null && c > 0) ? Number(Math.max(0, c - halfData[i]).toFixed(1)) : null);
 
     // Custom Error Bars Plugin for ±7.51% Vertical Limit Marks
     const errorBarsPlugin = {
@@ -1844,9 +1894,10 @@ function renderPrimaryChart() {
             meta.data.forEach((bar, index) => {
                 const val = chart.data.datasets[1].data[index];
                 if (val === null || val === undefined || isNaN(val) || val <= 0) return;
+                if (upperMarginData[index] == null || lowerMarginData[index] == null) return;
 
-                const upperVal = val * (1 + LOCKED_MARGIN_FACTOR); // +7.51%
-                const lowerVal = val * (1 - LOCKED_MARGIN_FACTOR); // -7.51%
+                const upperVal = upperMarginData[index]; // expected + MAPE
+                const lowerVal = lowerMarginData[index]; // expected - MAPE
 
                 const xPos = bar.x;
                 const upperY = y.getPixelForValue(upperVal);
@@ -1938,7 +1989,7 @@ const precisionCrosshairPlugin = {
                 },
                 {
                     type: "line",
-                    label: "Upper Error Limit (+7.51%)",
+                    label: `Upper Error Limit (+${(LOCKED_MARGIN_FACTOR*100).toFixed(2)}%)`,
                     data: upperMarginData,
                     borderColor: "rgba(22, 163, 74, 0.9)",
                     backgroundColor: "transparent",
@@ -1954,7 +2005,7 @@ const precisionCrosshairPlugin = {
                 },
                 {
                     type: "line",
-                    label: "Lower Error Limit (-7.51%) & Fade Green Band",
+                    label: `Lower Error Limit (-${(LOCKED_MARGIN_FACTOR*100).toFixed(2)}%) & Fade Green Band`,
                     data: lowerMarginData,
                     borderColor: "rgba(22, 163, 74, 0.9)",
                     backgroundColor: "rgba(134, 239, 172, 0.22)", // Fade green limit area
@@ -2010,27 +2061,24 @@ const precisionCrosshairPlugin = {
                             if (context.datasetIndex === 0) {
                                 return ` ⬛ Recorded Usage: ${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unitLabel}`;
                             } else if (context.datasetIndex === 1) {
-                                const lower = (val * (1 - LOCKED_MARGIN_FACTOR)).toLocaleString(undefined, { maximumFractionDigits: 1 });
-                                const upper = (val * (1 + LOCKED_MARGIN_FACTOR)).toLocaleString(undefined, { maximumFractionDigits: 1 });
-                                return ` 🟩 Requirement: ${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unitLabel} (±7.51% Limits: ${lower} – ${upper} ${unitLabel})`;
+                                const i = context.dataIndex;
+                                const lo = lowerMarginData[i], up = upperMarginData[i];
+                                const fmt = (x) => Number(x).toLocaleString(undefined, { maximumFractionDigits: 1 });
+                                return ` 🟩 Requirement: ${fmt(val)} ${unitLabel}` + (lo != null && up != null ? ` (inside margin ${fmt(lo)} – ${fmt(up)} ${unitLabel})` : "");
                             } else if (context.datasetIndex === 2) {
-                                return ` 📈 Upper Limit (+7.51%): ${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unitLabel}`;
+                                return ` 📈 Upper Limit (+${(LOCKED_MARGIN_FACTOR*100).toFixed(2)}%): ${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unitLabel}`;
                             } else if (context.datasetIndex === 3) {
-                                return ` 📉 Lower Limit (-7.51%): ${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unitLabel}`;
+                                return ` 📉 Lower Limit (-${(LOCKED_MARGIN_FACTOR*100).toFixed(2)}%): ${val.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unitLabel}`;
                             }
                             return null;
                         },
                         afterBody: function(items) {
-                            const usageVal = items.find(it => it.datasetIndex === 0)?.parsed.y || 0;
+                            const i = items[0]?.dataIndex;
                             const reqVal = items.find(it => it.datasetIndex === 1)?.parsed.y || 0;
-                            if (usageVal > 0 && reqVal > 0) {
-                                const diff = usageVal - reqVal;
-                                const diffPct = ((diff / reqVal) * 100).toFixed(1);
-                                const isWithinMargin = Math.abs(diff / reqVal) <= LOCKED_MARGIN_FACTOR;
-                                const marginStatus = isWithinMargin 
-                                    ? "✅ Within ±7.51% Accepted Error Margin" 
-                                    : (diff > 0 ? "⚠️ +Exceeded Demand Target" : "📉 Below Forecasted Requirement");
-                                return `\nUsage vs Requirement: ${diff >= 0 ? "+" : ""}${diff.toFixed(1)} ${unitLabel} (${diffPct >= 0 ? "+" : ""}${diffPct}%)\nMargin Evaluation: ${marginStatus}`;
+                            const lo = lowerMarginData[i], up = upperMarginData[i];
+                            if (reqVal > 0 && lo != null && up != null) {
+                                const inside = reqVal >= lo - 1e-6 && reqVal <= up + 1e-6;
+                                return `\nMargin check: ${inside ? "✅ requirement is inside the margin of error" : "⚠️ requirement outside margin"}`;
                             }
                             return null;
                         }
@@ -2124,12 +2172,12 @@ function renderProjectionChart() {
         if (isAll) {
             state.materials.forEach(m => {
                 const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 dailyForecastRate += (req7 / 7);
             });
         } else if (selectedMat) {
             const fc = state.forecasts.get(selectedMat.name);
-            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (selectedMat.minStock * 0.5);
+            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
             dailyForecastRate = (req7 / 7);
         }
 
@@ -2162,7 +2210,7 @@ function renderProjectionChart() {
             const d = new Date(now.getTime() + i * 86400000);
             labels.push(`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
             usageData.push(null);
-            const rate = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.5) * 0.04)).toFixed(1)) : 0;
+            const rate = effectiveDailyRate > 0 ? Number(effectiveDailyRate.toFixed(1)) : 0; // the model's rate, no added wobble
             forecastData.push(rate);
         }
 
@@ -2185,12 +2233,12 @@ function renderProjectionChart() {
         if (isAll) {
             state.materials.forEach(m => {
                 const fc = state.forecasts.get(m.name);
-                weeklyForecastRate += fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                weeklyForecastRate += fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 monthlyForecastRate += fc ? Number(fc.forecast1Month?.quantity) || 0 : (m.minStock * 2);
             });
         } else if (selectedMat) {
             const fc = state.forecasts.get(selectedMat.name);
-            weeklyForecastRate = fc ? Number(fc.forecast7Day?.quantity) || 0 : (selectedMat.minStock * 0.5);
+            weeklyForecastRate = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
             monthlyForecastRate = fc ? Number(fc.forecast1Month?.quantity) || 0 : (selectedMat.minStock * 2);
         }
 
@@ -2218,7 +2266,7 @@ function renderProjectionChart() {
         for (let i = 1; i <= 4; i++) {
             labels.push(`Week +${i}`);
             usageData.push(null);
-            const rate = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048)).toFixed(1)) : 0;
+            const rate = weeklyForecastRate > 0 ? Number(weeklyForecastRate.toFixed(1)) : 0; // the model's rate, no added wobble
             forecastData.push(rate);
         }
 
@@ -2260,7 +2308,7 @@ function renderProjectionChart() {
             const rawVal = pastMonthsUsage[3 - i];
             const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            const pastReq = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050)).toFixed(1)) : 0;
+            const pastReq = monthlyForecastRate > 0 ? Number(monthlyForecastRate.toFixed(1)) : 0; // the model's rate, no added wobble
             forecastData.push(pastReq);
         }
 
@@ -2544,7 +2592,7 @@ function renderDecisionSupport() {
                     name: m.name,
                     unit: m.unit_of_measure || m.unit || "kg",
                     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 0)
                 }));
             }
         } catch (e) {}
@@ -2582,7 +2630,7 @@ function renderDecisionSupport() {
     // Sort materials: Potential Shortages first, then key operational materials
     const evaluated = materials.map(m => {
         const fc = state.forecasts?.get(m.name);
-        const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : Number((m.minStock * 1.2).toFixed(1));
+        const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0; // no forecast without recorded usage (no assumed amount)
         const curStock = Number(m.currentStock || 0);
         const isShortage = curStock < fQty || curStock <= m.minStock;
         const deficit = Math.max(0, fQty - curStock);
@@ -2734,7 +2782,7 @@ function renderLowStockAlerts() {
                     name: m.name,
                     unit: m.unit_of_measure || m.unit || "kg",
                     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 0)
                 }));
             }
         } catch (e) {}
@@ -2805,7 +2853,7 @@ function renderLowStockAlerts() {
         if (!hasRecentUpdate) return false;
 
         const curStock = Number(m.currentStock ?? m.current_stock ?? 0);
-        const minStock = Number(m.minStock ?? m.minimum_threshold ?? 10);
+        const minStock = Number(m.minStock ?? m.minimum_threshold ?? 0);
         const fc = state.forecasts?.get(m.name);
         const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
         return curStock <= minStock || (fQty > 0 && curStock < fQty);
@@ -2840,20 +2888,21 @@ function renderLowStockAlerts() {
 
     container.innerHTML = lowStockMaterials.slice(0, 6).map(mat => {
         const stock = Number(mat.currentStock || 0);
-        const min = Number(mat.minStock || 10);
+        const min = Number(mat.minStock || 0);
         const unit = mat.unit || 'kg';
         const thumbSrc = getThumb(mat.name, mat.id || mat.itemCode);
 
         const fc = state.forecasts?.get(mat.name);
         const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0;
-        const dailyBurn = fQty > 0 ? (fQty / 7) : (min > 0 ? min / 7 : 1);
-        let days = dailyBurn > 0 ? Math.round(stock / dailyBurn) : (stock <= min ? 2 : 7);
+        // no recorded usage = no burn rate (nothing is invented); judge by stock vs minimum only
+        const dailyBurn = fQty > 0 ? (fQty / 7) : 0;
+        let days = dailyBurn > 0 ? Math.round(stock / dailyBurn) : (stock <= 0 ? 0 : 9999);
 
         let indClass = 'ind-amber';
         let msgClass = 'msg-amber';
         let badgeClass = 'badge-watch';
         let badgeText = 'Watch Stock';
-        let msg = `May run low in ${days > 0 ? days : 1} days`;
+        let msg = days >= 9999 ? 'Watch stock level (no usage recorded yet)' : `May run low in ${days > 0 ? days : 1} days`;
 
         if (stock <= 0) {
             indClass = 'ind-red';
@@ -2866,7 +2915,7 @@ function renderLowStockAlerts() {
             msgClass = 'msg-red';
             badgeClass = 'badge-low';
             badgeText = 'Low Stock';
-            msg = `May run low in ${Math.max(1, days)} day${days === 1 ? '' : 's'}`;
+            msg = days >= 9999 ? 'Below minimum stock level' : `May run low in ${Math.max(1, days)} day${days === 1 ? '' : 's'}`;
         }
 
         return `
@@ -2933,7 +2982,7 @@ function renderMaterialRequirementsDonut() {
 
     materials.forEach(m => {
         const curStock = Number(m.currentStock || 0);
-        const minStock = Number(m.minStock || 10);
+        const minStock = Number(m.minStock || 0);
         const fc = state.forecasts.get(m.name);
         const fQty = fc ? (horizonDays === 30 ? Number(fc.forecast30Day?.quantity || 0) : Number(fc.forecast7Day?.quantity || 0)) : 0;
 
@@ -3050,7 +3099,7 @@ function renderTopMaterialsRequirementChart() {
                     name: m.name,
                     unit: m.unit_of_measure || m.unit || "kg",
                     currentStock: Number(m.current_stock ?? m.currentStock ?? 0),
-                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 10)
+                    minStock: Number(m.minimum_threshold ?? m.minStock ?? 0)
                 }));
             }
         } catch (e) {}
@@ -3143,11 +3192,7 @@ function renderTopMaterialsRequirementChart() {
         const fc = state.forecasts?.get(m.name);
         let futureReq = fc ? (isMonthly ? Number(fc.forecast1Month?.quantity) || 0 : Number(fc.forecast7Day?.quantity) || 0) : 0;
         
-        // If 0, fallback to daily burn estimate or on-hand calibration
-        if (futureReq <= 0) {
-            const min = Number(m.minStock || 10);
-            futureReq = Number(m.forecast_daily ? m.forecast_daily * (isMonthly ? 30 : 7) : Math.round(min * 1.2));
-        }
+        // No recorded consumption yet -> nothing is invented; the bar stays at 0 until users record usage.
 
         const idKey = String(m.id || '').toLowerCase().trim();
         const codeKey = String(m.itemCode || '').toLowerCase().trim();
@@ -3208,10 +3253,11 @@ function renderTopMaterialsRequirementChart() {
     }
 
     if (fcTopMaterialsChartInstance) {
-        fcTopMaterialsChartInstance.data.labels = labels;
-        fcTopMaterialsChartInstance.data.datasets = datasets;
-        fcTopMaterialsChartInstance.update();
-    } else {
+        // rebuild so tooltip/axis callbacks see the current items & units
+        fcTopMaterialsChartInstance.destroy();
+        fcTopMaterialsChartInstance = null;
+    }
+    {
         fcTopMaterialsChartInstance = new Chart(canvas, {
             type: 'bar',
             data: {
@@ -3274,7 +3320,7 @@ function renderTopMaterialsRequirementChart() {
                         ticks: {
                             font: { family: "'Inter', sans-serif", size: 11 },
                             color: '#64748B',
-                            callback: (v) => `${Number(v).toLocaleString()} kg`
+                            callback: (v) => { const us = Array.from(new Set(topItems.map(d => d.unit))); return us.length === 1 ? `${Number(v).toLocaleString()} ${us[0]}` : Number(v).toLocaleString(); }
                         }
                     }
                 }
@@ -3696,25 +3742,32 @@ function renderModalFunctionView() {
             let dailyDemand = 0;
             state.materials.forEach(m => {
                 const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 dailyDemand += (req7 / 7);
             });
 
+            // past 7 days: what was actually recorded (no generated values)
+            const dayKeyOf = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+            const usedByDay = new Map();
+            (state.disbursements || []).forEach(d => {
+                const k = String(d.usageDate || "").slice(0, 10);
+                if (k) usedByDay.set(k, (usedByDay.get(k) || 0) + Number(d.consumedQuantity || 0));
+            });
             for (let i = 7; i >= 1; i--) {
                 const d = new Date(now.getTime() - i * 86400000);
                 daysLabels.push(d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }));
-                histData.push(Math.round(dailyDemand * (0.8 + Math.random() * 0.4)));
+                histData.push(Math.round(usedByDay.get(dayKeyOf(d)) || 0));
                 fcData.push(null);
             }
             daysLabels.push("Today");
-            histData.push(Math.round(dailyDemand));
+            histData.push(Math.round(usedByDay.get(dayKeyOf(now)) || 0));
             fcData.push(Math.round(dailyDemand));
 
             for (let i = 1; i <= 7; i++) {
                 const d = new Date(now.getTime() + i * 86400000);
                 daysLabels.push(d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }));
                 histData.push(null);
-                fcData.push(Math.round(dailyDemand * (0.9 + Math.random() * 0.2)));
+                fcData.push(Math.round(dailyDemand)); // forecast from the model, no random spread
             }
 
             modalForecastChartInstance = new Chart(canvas, {
@@ -3778,14 +3831,18 @@ function renderModalFunctionView() {
 
         tbody.innerHTML = filtered.map(m => {
             const fc = state.forecasts.get(m.name);
-            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
-            const req30 = fc ? Number(fc.forecast1Month?.quantity) || (req7 * 4.2) : (req7 * 4.2);
+            // Only the trained model + real recorded usage produce numbers. No usage yet = no figures (nothing invented).
+            const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
+            const req30 = fc ? Number(fc.forecast1Month?.quantity) || 0 : 0;
             totalDemand += req7;
 
-            const dailyBurn = Math.max(0.2, Number((req7 / 7).toFixed(1)));
-            const daysLeft = m.currentStock > 0 ? Math.floor(m.currentStock / dailyBurn) : 0;
-            const depDate = new Date(Date.now() + daysLeft * 86400000);
-            const depStr = depDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+            const dailyBurn = req7 / 7;
+            const plan = fc && fc.restock_plan;
+            const hasData = !!(plan && plan.hasEvidence) || dailyBurn > 0;
+            const daysLeft = hasData ? (plan ? plan.daysOfCover : Math.floor(m.currentStock / dailyBurn)) : null;
+            const depDate = hasData ? ((plan && plan.stockoutDate) ? plan.stockoutDate : new Date(Date.now() + daysLeft * 86400000)) : null;
+            const depStr = depDate ? depDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+            const dash = '<span class="fc-num-muted">&mdash;</span>';
 
             let badgeHtml = "";
             let depLabel = "";
@@ -3793,6 +3850,9 @@ function renderModalFunctionView() {
                 criticalDepletions++;
                 depLabel = "Immediate";
                 badgeHtml = `<span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">DEPLETED</span>`;
+            } else if (daysLeft === null) {
+                depLabel = "No usage recorded yet";
+                badgeHtml = `<span style="background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">Awaiting usage data</span>`;
             } else if (daysLeft <= 3) {
                 criticalDepletions++;
                 depLabel = `In ${daysLeft}d (${depStr})`;
@@ -3814,9 +3874,9 @@ function renderModalFunctionView() {
                         </div>
                     </td>
                     <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-muted">${dailyBurn.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small></td>
-                    <td style="text-align: right;"><span class="fc-num-demand">${req7.toFixed(1)}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-muted">${req30.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${dailyBurn.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small>` : dash}</td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-demand">${req7.toFixed(1)}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small>` : dash}</td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${req30.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>` : dash}</td>
                     <td><strong>${depLabel}</strong></td>
                     <td>${badgeHtml}</td>
                 </tr>
@@ -3869,7 +3929,7 @@ function renderModalFunctionView() {
                             label: "AI Requirement",
                             data: topSlice.map(m => {
                                 const fc = state.forecasts.get(m.name);
-                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                             }),
                             backgroundColor: "#22C55E",
                             borderRadius: 6
@@ -3978,10 +4038,14 @@ function renderModalFunctionView() {
 
         tbody.innerHTML = filtered.map(m => {
             const fc = state.forecasts.get(m.name);
-            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
-            const dailyBurn = Math.max(0.2, Number((req / 7).toFixed(1)));
-            const daysLeft = m.currentStock > 0 ? Math.floor(m.currentStock / dailyBurn) : 0;
-            const reorderQty = Math.max(0, Number((req + m.minStock - m.currentStock).toFixed(1)));
+            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
+            const dailyBurn = req / 7;
+            const plan = fc && fc.restock_plan;
+            const hasData = !!(plan && plan.hasEvidence) || dailyBurn > 0;
+            const daysLeft = hasData ? (plan ? plan.daysOfCover : Math.floor(m.currentStock / dailyBurn)) : null;
+            const reorderQty = plan
+                ? Number(plan.suggestedQty.toFixed(1))
+                : Math.max(0, Number((req + m.minStock - m.currentStock).toFixed(1)));
 
             const statusInfo = getForecastStatus(m, fc);
             let alertBadge = "";
@@ -3991,10 +4055,10 @@ function renderModalFunctionView() {
                 outCount++;
                 alertBadge = `<span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">CRITICAL STOCKOUT</span>`;
                 actionText = `<span style="color:#DC2626;font-weight:700;">Immediate Reorder Required</span>`;
-            } else if (statusInfo.label === "Low Stock" || daysLeft <= 7) {
+            } else if (statusInfo.label === "Low Stock" || (daysLeft !== null && daysLeft <= 7)) {
                 lowCount++;
                 alertBadge = `<span style="background:#FEF3C7;color:#D97706;border:1px solid #FED7AA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">URGENT WARNING</span>`;
-                actionText = `<span style="color:#D97706;font-weight:700;">Replenish within ${daysLeft} days</span>`;
+                actionText = `<span style="color:#D97706;font-weight:700;">${daysLeft !== null ? `Replenish within ${daysLeft} days` : 'Below minimum stock: replenish'}</span>`;
             } else {
                 alertBadge = `<span style="background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;">BUFFER ADEQUATE</span>`;
                 actionText = `<span style="color:#15803D;font-weight:600;">Monitor normal usage</span>`;
@@ -4011,8 +4075,8 @@ function renderModalFunctionView() {
                     <td>${alertBadge}</td>
                     <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
                     <td style="text-align: right;"><span class="fc-num-muted">${m.minStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-muted">${dailyBurn.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small></td>
-                    <td style="text-align: right;"><strong>${daysLeft}d</strong></td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${dailyBurn.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small>` : '&mdash;'}</td>
+                    <td style="text-align: right;"><strong>${daysLeft !== null ? daysLeft + 'd' : '&mdash;'}</strong></td>
                     <td style="text-align: right;">${reorderQty > 0 ? `<strong style="color:#DC2626;">+${reorderQty.toLocaleString()} ${escapeHtml(m.unit)}</strong>` : `<span style="color:#15803D;">0 ${escapeHtml(m.unit)}</span>`}</td>
                     <td>${actionText}</td>
                 </tr>
@@ -4045,7 +4109,7 @@ function renderModalFunctionView() {
 
             grid.innerHTML = filtered.map(m => {
                 const fc = state.forecasts.get(m.name);
-                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                const req7 = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                 const rec7 = recentReceiveMap.get(m.id) || 0;
                 const use7 = recentUsageMap.get(m.id) || 0;
                 const unit = m.unit || "kg";
@@ -4159,7 +4223,7 @@ function renderModalFunctionView() {
                             label: "Future Requirement",
                             data: topSlice.map(m => {
                                 const fc = state.forecasts.get(m.name);
-                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+                                return fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
                             }),
                             backgroundColor: "#22C55E",
                             borderRadius: 6
@@ -4203,7 +4267,7 @@ function renderModalFunctionView() {
 
         tbody.innerHTML = filtered.map(m => {
             const fc = state.forecasts.get(m.name);
-            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : (m.minStock * 0.5);
+            const req = fc ? Number(fc.forecast7Day?.quantity) || 0 : 0;
             const inQty = recentReceiveMap.get(m.id) || 0;
             const netBalance = inQty - req;
             sumInward += inQty;

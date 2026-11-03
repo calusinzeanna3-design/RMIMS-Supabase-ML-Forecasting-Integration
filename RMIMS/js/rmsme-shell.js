@@ -1,6 +1,20 @@
 import './rmims-notifications.js';
+import './rmims-reset-guard.js';
+import './rmims-notification-feed.js';
+import './rmims-staff-dot.js';
 import './rmims-custom-select.js';
 import { supabase } from '../supabase/supabase-config.js';
+import { mergeStaffTransactionLists } from './rmims-tx-merge.js';
+import { startFormA11y } from './form-a11y.js';
+import { startDateEnhance } from './date-enhance.js';
+startFormA11y();
+startDateEnhance();
+
+// Every manager / staff page shares ONE live data engine (materials, receipts, disbursements, staff transactions).
+// Pages that never imported it (analytics, usage, forecasting, reports) were stuck on stale local copies.
+if (/\/(manager|user)\//.test(location.pathname)) {
+  import('../supabase/manager-supabase-service.js').catch((e) => console.warn('[LiveSync] could not start:', e && e.message));
+}
 
 (function () {
   const path = location.pathname.split('/').filter(Boolean);
@@ -85,15 +99,7 @@ import { supabase } from '../supabase/supabase-config.js';
           // Remove zombie / hardcoded placeholder names and heal to authentic registered identity
           const isZombie = !p.fullName || ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', '—', '-'].includes(n.trim());
           if (isZombie) {
-            let authenticName = 'Aizel';
-            if (e === 'zeannapatty@gmail.com') authenticName = 'Aizel';
-            else if (e === 'zeannapatricia@gmail.com') authenticName = 'Glazel';
-            else if (e === 'calusinzeanna3@gmail.com') authenticName = 'Zeanna';
-            else if (e === 'sconesandmuffins@gmail.com') authenticName = 'Staff_1';
-            else if (e === 'scone2@gmail.com') authenticName = 'Staff_2';
-            else if (isStrictManager) authenticName = 'Aizel';
-            else if (isAnyAdmin) authenticName = 'Zeanna';
-            else authenticName = 'Staff_1';
+            const authenticName = (p.username || e.split('@')[0] || '').trim();
 
             p.fullName = authenticName;
             p.name = authenticName;
@@ -177,10 +183,12 @@ import { supabase } from '../supabase/supabase-config.js';
         try {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) {
+            // Only the old auto-seeded KXC samples (exact name, never user-made) are removed
             const clean = arr.filter(p => {
               if (!p || !p.name) return false;
               const pn = String(p.name).toLowerCase().trim();
-              return !LEGACY_KXC_PRODUCT_NAMES.some(kxc => pn === kxc || pn.includes(kxc));
+              const userMade = Boolean(p.recipeDetails || p.id || p.date_added || p.date_modified || p.created_at || p.last_updated);
+              return userMade || !LEGACY_KXC_PRODUCT_NAMES.some(kxc => pn === kxc);
             });
             if (clean.length !== arr.length) {
               localStorage.setItem(k, JSON.stringify(clean));
@@ -200,7 +208,6 @@ import { supabase } from '../supabase/supabase-config.js';
             if (!n || !n.id) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
-            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth')) return false;
@@ -221,7 +228,7 @@ import { supabase } from '../supabase/supabase-config.js';
       const u = JSON.parse(rawLocal);
       const uOp = String(u.operationalRole || u.operational_role || '').toLowerCase();
       const uBase = String(u.role || '').toLowerCase();
-      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com' && uOp !== 'manager' && uOp !== 'staff');
+      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || false;
       const uIsMgr = !uIsAdm && (uOp === 'manager' || uBase === 'manager');
       const uIsStaff = !uIsAdm && !uIsMgr;
 
@@ -528,7 +535,7 @@ import { supabase } from '../supabase/supabase-config.js';
     'dashboard.html': ['Dashboard', "Here's your company's raw materials inventory overview for today."],
     'inventory.html': [isStrictManager ? 'My Inventory' : 'Inventory Management', 'Manage raw materials inventory catalog and operational activity.'],
     'receive.html': ['Receive Raw Materials', 'Record incoming materials into inventory. Reference numbers are automatically generated.'],
-    'disburse.html': ['Disburse Raw Materials', 'Record materials taken from inventory for production.'],
+    'disburse.html': ['Disburse Raw Materials', 'Record materials taken from inventory for your finished products.'],
     'my-activity.html': ['My Activity', 'View your submitted transactions, track approvals, and correct returned items.'],
     'material-activity.html': ['Material Activity', 'Record and review raw-material movement.'],
     'usage.html': ['Analytics', 'Analyze raw-material consumption, rankings, and operational trends.'],
@@ -646,7 +653,7 @@ import { supabase } from '../supabase/supabase-config.js';
               <button class="mgr-profile-pill" id="rmsmeProfileBtn" aria-expanded="false" title="Manager Menu">
                 <span class="mgr-avatar" data-shell-avatar>A</span>
                 <span class="mgr-user-copy">
-                  <strong class="mgr-name" data-shell-name>Aizel</strong>
+                  <strong class="mgr-name" data-shell-name></strong>
                   <small class="mgr-role" data-shell-role>Manager</small>
                 </span>
                 <span class="mgr-chev">▾</span>
@@ -656,7 +663,7 @@ import { supabase } from '../supabase/supabase-config.js';
                   <div class="mgr-online-badge">
                     <span class="mgr-status-indicator"></span>
                     <div>
-                      <strong data-shell-name>Aizel</strong>
+                      <strong data-shell-name></strong>
                       <small data-shell-role style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                     </div>
                   </div>
@@ -1022,14 +1029,7 @@ import { supabase } from '../supabase/supabase-config.js';
           }
           const BANNED_PLACEHOLDERS = ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', 'administrator', '—', '-'];
           if (!rawName || BANNED_PLACEHOLDERS.includes(lowerName)) {
-            if (candidateEmail === 'zeannapatty@gmail.com') rawName = 'Aizel';
-            else if (candidateEmail === 'zeannapatricia@gmail.com') rawName = 'Glazel';
-            else if (candidateEmail === 'calusinzeanna3@gmail.com') rawName = 'Zeanna';
-            else if (candidateEmail === 'sconesandmuffins@gmail.com') rawName = 'Staff_1';
-            else if (candidateEmail === 'scone2@gmail.com') rawName = 'Staff_2';
-            else if (isStrictManager) rawName = 'Aizel';
-            else if (isAnyAdmin) rawName = 'Zeanna';
-            else rawName = 'Staff_1';
+            rawName = (o.username || candidateEmail.split('@')[0] || '').trim();
           }
           uid = o.id || o.uid || uid;
           name = rawName;
@@ -1051,7 +1051,7 @@ import { supabase } from '../supabase/supabase-config.js';
     } catch (e) { }
 
     const currentCachedAvatar = getCachedAvatar(uid, email);
-    const authenticFallback = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
+    const authenticFallback = (email || '').split('@')[0] || '';
     if (!name || ['manager', 'user account', 'user', 'account', '—', '-'].includes(name.trim().toLowerCase())) {
       name = authenticFallback;
     }
@@ -1059,8 +1059,8 @@ import { supabase } from '../supabase/supabase-config.js';
     if (!hasSession) {
       if (isStrictManager) {
         document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = 'Manager');
-        document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = 'Aizel');
-        applyShellAvatar(currentCachedAvatar, 'A');
+        document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = '');
+        applyShellAvatar(currentCachedAvatar, '');
       }
       return;
     }
@@ -1177,13 +1177,21 @@ import { supabase } from '../supabase/supabase-config.js';
         } catch (_) {}
 
         const meta = authUser.user_metadata || {};
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
+        if (!profile && !(localSession && localSession.id === authUser.id)) {
+          // no database profile for this login (and not the same person this device verified) -> no access
+          try { await supabase.auth.signOut(); } catch (_) {}
+          ['currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser'].forEach(k => localStorage.removeItem(k));
+          window.location.replace('../login.html');
+          return;
+        }
         if (!profile) {
+          // the database could not be reached: the same signed-in person this device already verified
           profile = {
             id: authUser.id || authUser.uid || localSession?.id,
             email: authUser.email || localSession?.email || '',
-            full_name: localSession?.fullName || localSession?.name || meta.full_name || (isMasterAdmin ? 'Zeanna' : ''),
+            full_name: localSession?.fullName || localSession?.name || meta.full_name || '',
             role: localSession?.role || meta.role || (isMasterAdmin ? 'admin' : 'user'),
             operational_role: localSession?.operationalRole || localSession?.operational_role || meta.operational_role || localSession?.role || meta.role || (isMasterAdmin ? 'admin' : (isStrictManager ? 'manager' : 'staff')),
             branch_name: localSession?.branchName || localSession?.branch_name || meta.branch_name || '',
@@ -1201,20 +1209,16 @@ import { supabase } from '../supabase/supabase-config.js';
           if (!profile.branch_location) {
             profile.branch_location = localSession?.branchLocation || localSession?.branch_location || meta.branch_location || '';
           }
-          if (String(localSession?.status || '').toLowerCase() === 'active' && String(profile.status || '').toLowerCase() === 'pending') {
-            profile.status = 'active';
-          }
         }
 
         if (isMasterAdmin) {
           profile.role = 'admin';
           profile.operational_role = 'admin';
           profile.status = 'active';
-          profile.full_name = profile.full_name || 'Zeanna';
         }
 
         const pStatus = String(profile.status || '').toLowerCase();
-        const isExplicitlyRevoked = pStatus === 'deleted' || pStatus === 'rejected' || pStatus === 'locked' || pStatus === 'inactive' || pStatus === 'suspended';
+        const isExplicitlyRevoked = pStatus === 'deleted' || pStatus === 'rejected' || pStatus === 'locked' || pStatus === 'inactive' || pStatus === 'suspended' || pStatus === 'pending';
         if (isExplicitlyRevoked && !isMasterAdmin) {
           try {
             await supabase.auth.signOut();
@@ -1253,12 +1257,7 @@ import { supabase } from '../supabase/supabase-config.js';
           let liveName = (profile.full_name || '').trim();
           const BANNED_PLACEHOLDERS = ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', 'administrator', '—', '-'];
           if (!liveName || BANNED_PLACEHOLDERS.includes(liveName.toLowerCase())) {
-            if (cleanEmail === 'zeannapatty@gmail.com') liveName = 'Aizel';
-            else if (cleanEmail === 'zeannapatricia@gmail.com') liveName = 'Glazel';
-            else if (cleanEmail === 'calusinzeanna3@gmail.com') liveName = 'Zeanna';
-            else if (cleanEmail === 'sconesandmuffins@gmail.com') liveName = 'Staff_1';
-            else if (cleanEmail === 'scone2@gmail.com') liveName = 'Staff_2';
-            else liveName = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
+            liveName = (profile.username || String(profile.email || authUser?.email || '').split('@')[0] || '').trim();
 
             profile.full_name = liveName;
             try {
@@ -1336,12 +1335,11 @@ import { supabase } from '../supabase/supabase-config.js';
             }
           }
         }
-      } else {
-        const hasLocal = localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('managerUser') || localStorage.getItem('staffUser') || localStorage.getItem('adminUser');
-        if (!hasLocal && sessionStorage.getItem('rmims_just_logged_in') !== 'true') {
-          window.location.href = '../login.html';
-          return;
-        }
+      } else if (sessionStorage.getItem('rmims_just_logged_in') !== 'true') {
+        // no signed-in session: the pages never open from a copy saved in the browser
+        ['currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser'].forEach(k => localStorage.removeItem(k));
+        window.location.replace('../login.html');
+        return;
       }
     } catch (e) { }
   }
@@ -1624,13 +1622,13 @@ import { supabase } from '../supabase/supabase-config.js';
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   </svg>
                 </span>
-                <span class="help-faq-question">How do I disburse materials to kitchen / production?</span>
+                <span class="help-faq-question">How do I disburse materials to the kitchen?</span>
                 <svg class="help-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
               </button>
               <div class="help-faq-answer">
-                Click <strong>Disburse</strong> in the sidebar or quick actions. Choose the requested material, batch (FIFO order), quantity needed, and production batch reference to log the consumption decrement.
+                Click <strong>Disburse</strong> in the sidebar or quick actions. Choose the requested material, batch (FIFO order), quantity needed, and the finished product to log the consumption decrement.
               </div>
             </div>
 
@@ -1677,7 +1675,7 @@ import { supabase } from '../supabase/supabase-config.js';
             <div class="help-guide-title-row">
               <h4 class="help-guide-title">Store Operations Guide</h4>
             </div>
-            <p class="help-guide-text">Follow our store operations standard to maintain real-time stock integrity, prevent ingredient expiration, and optimize daily production batches.</p>
+            <p class="help-guide-text">Follow our store operations standard to maintain real-time stock integrity, prevent ingredient expiration, and optimize daily operations.</p>
             <button type="button" class="btn-start-guide" id="btnStartOnboardingGuide">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
@@ -1964,16 +1962,16 @@ import { supabase } from '../supabase/supabase-config.js';
             <form id="mgrChangePasswordModalForm" style="margin:0;">
               <div class="mgr-modal-body" style="display:flex; flex-direction:column; gap:14px;">
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Current Password</label>
-                  <input type="password" id="mgrInputCurrentPwd" required placeholder="Enter current password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                  <label for="mgrInputCurrentPwd" style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Current Password</label>
+                  <input type="password" name="mgrInputCurrentPwd" autocomplete="current-password" id="mgrInputCurrentPwd" required placeholder="Enter current password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
                 </div>
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">New Password</label>
-                  <input type="password" id="mgrInputNewPwd" required minlength="6" placeholder="At least 6 characters" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                  <label for="mgrInputNewPwd" style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">New Password</label>
+                  <input type="password" name="mgrInputNewPwd" autocomplete="new-password" id="mgrInputNewPwd" required minlength="6" placeholder="At least 6 characters" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
                 </div>
                 <div>
-                  <label style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Confirm New Password</label>
-                  <input type="password" id="mgrInputConfirmPwd" required minlength="6" placeholder="Repeat new password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
+                  <label for="mgrInputConfirmPwd" style="display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:5px;">Confirm New Password</label>
+                  <input type="password" name="mgrInputConfirmPwd" autocomplete="new-password" id="mgrInputConfirmPwd" required minlength="6" placeholder="Repeat new password" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13px; box-sizing:border-box;">
                 </div>
                 <div id="mgrPwdAlert" style="display:none; font-size:12px; padding:8px 12px; border-radius:6px;"></div>
               </div>
@@ -1990,6 +1988,19 @@ import { supabase } from '../supabase/supabase-config.js';
 
     const activityBackdrop = document.getElementById('mgrMyActivityBackdrop');
     const pwdBackdrop = document.getElementById('mgrChangePasswordBackdrop');
+
+
+  // Transaction references are confidential: hide the running sequence number.
+  // "2026SMSt-D0002" -> "2026SMSt-D****"
+  function maskConfidentialRef(ref) {
+    const s = String(ref || '').trim();
+    if (!s || s === '—') return s || '—';
+    return s.replace(/(\d+)$/, m => '*'.repeat(Math.max(4, m.length)));
+  }
+  function maskRefsInText(text) {
+    return String(text || '').replace(/\b(\d{4}SM[A-Za-z]*-[A-Za-z]?)(\d{2,})\b/g, (_, pre, num) => pre + '*'.repeat(Math.max(4, num.length)))
+                              .replace(/\b((?:REC|DIS|RCV|DSB)-[A-Za-z0-9]*?)(\d{3,})\b/g, (_, pre, num) => pre + '*'.repeat(Math.max(4, num.length)));
+  }
 
     function openActivityModal() {
       closeMenus(null);
@@ -2032,8 +2043,8 @@ import { supabase } from '../supabase/supabase-config.js';
             <tr style="border-bottom:1px solid #F1F5F9;">
               <td style="padding:10px 8px; font-weight:600; color:#334155;">${escapeHtml(dPart)}</td>
               <td style="padding:10px 8px; font-size:12px; font-weight:600; color:#64748B;">${escapeHtml(tPart)}</td>
-              <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(row.activity || row.details || '')}</td>
-              <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(row.reference || '—')}</td>
+              <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(maskRefsInText(row.activity || row.details || ''))}</td>
+              <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(maskConfidentialRef(row.reference))}</td>
               <td style="padding:10px 8px;">
                 <span style="display:inline-block; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:${(row.status || '').toLowerCase() === 'approved' ? '#DCFCE7; color:#15803D;' : '#FEE2E2; color:#DC2626;'}">${escapeHtml(row.status || 'Success')}</span>
               </td>
@@ -2085,31 +2096,33 @@ import { supabase } from '../supabase/supabase-config.js';
     document.getElementById('btnCancelChangePwd')?.addEventListener('click', closePwdModal);
     pwdBackdrop?.addEventListener('click', (e) => { if (e.target === pwdBackdrop) closePwdModal(); });
 
-    document.getElementById('mgrChangePasswordModalForm')?.addEventListener('submit', (e) => {
+    document.getElementById('mgrChangePasswordModalForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const newPEl = document.getElementById('mgrInputNewPwd');
-      const confPEl = document.getElementById('mgrInputConfirmPwd');
-      const newP = newPEl ? newPEl.value : '';
-      const confP = confPEl ? confPEl.value : '';
+      const curP = document.getElementById('mgrInputCurrentPwd')?.value || '';
+      const newP = document.getElementById('mgrInputNewPwd')?.value || '';
+      const confP = document.getElementById('mgrInputConfirmPwd')?.value || '';
       const alertBox = document.getElementById('mgrPwdAlert');
-      if (newP !== confP) {
-        if (alertBox) {
-          alertBox.textContent = 'New password and confirmation do not match.';
-          alertBox.style.background = '#FEE2E2';
-          alertBox.style.color = '#DC2626';
-          alertBox.style.display = 'block';
-        }
-        return;
-      }
-      if (alertBox) {
-        alertBox.textContent = 'Password updated successfully!';
-        alertBox.style.background = '#DCFCE7';
-        alertBox.style.color = '#15803D';
+      const say = (msg, ok) => {
+        if (!alertBox) return;
+        alertBox.textContent = msg;
+        alertBox.style.background = ok ? '#DCFCE7' : '#FEE2E2';
+        alertBox.style.color = ok ? '#15803D' : '#DC2626';
         alertBox.style.display = 'block';
+      };
+      if (newP.length < 8) return say('New password must be at least 8 characters.', false);
+      if (newP !== confP) return say('New password and confirmation do not match.', false);
+      if (newP === curP) return say('New password must be different from your current password.', false);
+      const submit = e.target.querySelector('button[type="submit"]');
+      if (submit) { submit.disabled = true; submit.textContent = 'Updating…'; }
+      try {
+        const { changeAccountPassword } = await import('../supabase/password-service.js');
+        const r = await changeAccountPassword(curP, newP);
+        if (!r.ok) return say(r.message, false);
+        say('Password updated successfully!', true);
+        setTimeout(closePwdModal, 1200);
+      } finally {
+        if (submit) { submit.disabled = false; submit.textContent = 'Update Password'; }
       }
-      setTimeout(() => {
-        closePwdModal();
-      }, 1000);
     });
   }
 
@@ -2567,9 +2580,9 @@ import { supabase } from '../supabase/supabase-config.js';
           <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Daily Material Operations</span>
         </div>
         <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
-          <li style="margin-bottom:6px;"><strong>Dashboard:</strong> Check what ingredients are running low and view urgent restocking alerts before daily production.</li>
+          <li style="margin-bottom:6px;"><strong>Dashboard:</strong> Check what ingredients are running low and view urgent restocking alerts before daily operations.</li>
           <li style="margin-bottom:6px;"><strong>Inventory:</strong> Look up available raw materials (sugar, flour, oil, etc.) and see how much stock is on hand.</li>
-          <li style="margin-bottom:6px;"><strong>Material Activity:</strong> Record incoming items delivered by suppliers, and log materials taken out for daily production batches.</li>
+          <li style="margin-bottom:6px;"><strong>Material Activity:</strong> Record incoming items delivered by suppliers, and log materials taken out for your finished products.</li>
           <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> View 7-day and 30-day projected ingredient requirements (view-only) to plan ahead for upcoming material needs.</li>
           <li style="margin-bottom:6px;"><strong>Daily Reports:</strong> Review past usage history and check how much was consumed each day.</li>
         </ul>
@@ -2583,7 +2596,7 @@ import { supabase } from '../supabase/supabase-config.js';
         </div>
         <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
           <li style="margin-bottom:6px;"><strong>Add & Import Ingredients:</strong> Register new ingredients, import supplier spreadsheets (Excel/CSV), and set low-stock warning limits.</li>
-          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update production recipes for finished items and products (e.g., Artisan Bread, Signature Cookies).</li>
+          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update recipes for finished items and products (e.g., Artisan Bread, Signature Cookies).</li>
           <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> Estimate how many kilograms of materials will be needed over the next 7 days and 30 days to purchase supplies ahead of time.</li>
           <li style="margin-bottom:6px;"><strong>System Audits & Exports:</strong> Download official PDF and Excel reports for inventory audits and monitor all activity records.</li>
         </ul>
@@ -2632,7 +2645,6 @@ import { supabase } from '../supabase/supabase-config.js';
             if (n.id.startsWith('notif-sys-online-') || n.id.startsWith('notif-stock-low-sugar-')) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
-            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user signed in') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;
@@ -2683,6 +2695,12 @@ import { supabase } from '../supabase/supabase-config.js';
 
   function isNotificationInScope(n, portalRole, currentUserId) {
     if (!n || !n.id) return false;
+
+    // Shared feed (rmims-notification-feed.js): role & company scope already enforced by the database
+    if (n.sharedFeed && Array.isArray(n.targetRoles)) {
+      const pr = String(portalRole || '').toLowerCase();
+      return n.targetRoles.includes(pr === 'user' ? 'staff' : pr);
+    }
 
     const targetRole = String(n.targetRole || n.role || n.roleScope || '').toLowerCase();
     const title = String(n.title || '').toLowerCase();
@@ -2904,7 +2922,10 @@ import { supabase } from '../supabase/supabase-config.js';
       } catch (_) {}
     }
 
-    return allNotifs.filter(n => isNotificationInScope(n, portalRole, currentUserId));
+    // Latest first, always
+    return allNotifs
+      .filter(n => isNotificationInScope(n, portalRole, currentUserId))
+      .sort((x, y) => (new Date(y.timestamp).getTime() || 0) - (new Date(x.timestamp).getTime() || 0));
   }
 
   function formatTimeAgo(isoString) {
@@ -3370,29 +3391,14 @@ import { supabase } from '../supabase/supabase-config.js';
         modified = true;
       }
 
-      if (transaction && transaction.ref) {
-        const searchRef = String(transaction.ref).trim().toLowerCase();
-        const idx = localList.findIndex(t => String(t.ref || '').trim().toLowerCase() === searchRef);
-        if (idx !== -1) {
-          localList[idx] = { ...localList[idx], ...transaction };
-        } else {
-          localList.unshift(transaction);
-        }
-        modified = true;
-      }
-
-      if (Array.isArray(allTransactions) && allTransactions.length > 0) {
-        allTransactions.forEach(remoteTx => {
-          if (!remoteTx || !remoteTx.ref) return;
-          const searchRef = String(remoteTx.ref).trim().toLowerCase();
-          const idx = localList.findIndex(t => String(t.ref || '').trim().toLowerCase() === searchRef);
-          if (idx !== -1) {
-            localList[idx] = { ...localList[idx], ...remoteTx };
-          } else {
-            localList.push(remoteTx);
-            modified = true;
-          }
-        });
+      // Copies from other tabs / devices can be OLDER than ours (they send their whole list every time).
+      // Only take a copy when it is at least as new as ours, and never revive a permanently deleted record.
+      const incoming = [];
+      if (transaction && transaction.ref) incoming.push(transaction);
+      if (Array.isArray(allTransactions)) allTransactions.forEach(t => { if (t && t.ref) incoming.push(t); });
+      if (incoming.length) {
+        const res = mergeStaffTransactionLists(localList, incoming);
+        if (res.changed) { localList = res.list; modified = true; }
       }
 
       if (modified) {

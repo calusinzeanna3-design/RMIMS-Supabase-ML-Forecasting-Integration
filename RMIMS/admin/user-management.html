@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RMIMS - User Management</title>
@@ -11,6 +13,9 @@
   <!-- Admin Stylesheet -->
   <link rel="stylesheet" href="../css/admin-shell.css">
   <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 <body>
   <div class="admin-app">
@@ -139,7 +144,7 @@
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">Z</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Zeanna</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
               </div>
             </div>
@@ -148,7 +153,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Zeanna</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
                   </div>
                 </div>
@@ -406,17 +411,17 @@
       </div>
       <form id="addUserForm" onsubmit="event.preventDefault(); submitAddUser();">
         <div class="modal-form-group">
-          <label class="modal-form-label">Full Name</label>
+          <label class="modal-form-label" for="newUserName">Full Name</label>
           <input type="text" class="modal-input" id="newUserName" placeholder="Enter user full name" required>
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Username</label>
+          <label class="modal-form-label" for="newUserUsername">Username</label>
           <input type="text" class="modal-input" id="newUserUsername" placeholder="Enter username" required>
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Branch Location</label>
+          <label class="modal-form-label" for="newUserBranchLoc">Branch Location</label>
           <select class="modal-input" id="newUserBranchLoc" required>
             <option value="">Select Location</option>
             <!-- Options dynamically injected by admin-user-management.js -->
@@ -424,12 +429,12 @@
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Branch Name</label>
+          <label class="modal-form-label" for="newUserBranchName">Branch Name</label>
           <input type="text" class="modal-input" id="newUserBranchName" placeholder="Enter branch store name" required>
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Assigned Role</label>
+          <label class="modal-form-label" for="newUserRole">Assigned Role</label>
           <select class="modal-input" id="newUserRole" required>
             <option value="Manager">Manager</option>
             <option value="Staff">Staff</option>
@@ -438,8 +443,22 @@
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Email Address</label>
+          <label class="modal-form-label" for="newUserEmail">Email Address</label>
           <input type="email" class="modal-input" id="newUserEmail" placeholder="user@example.com" required>
+        </div>
+
+        <div class="modal-form-group" id="newUserCompanyGroup">
+          <label class="modal-form-label" for="newUserCompany">Company</label>
+          <select class="modal-input" id="newUserCompany">
+            <option value="">Select Company</option>
+            <option value="Scones & Muffins Bakery">Scones &amp; Muffins Bakery</option>
+            <option value="KXC 5-Year Enterprise">KXC 5-Year Enterprise</option>
+          </select>
+        </div>
+
+        <div class="modal-form-group">
+          <label class="modal-form-label" for="newUserPassword">Temporary Password</label>
+          <input type="password" class="modal-input" id="newUserPassword" placeholder="At least 8 characters, letters and numbers" autocomplete="new-password" required>
         </div>
 
         <div class="modal-footer">
@@ -465,17 +484,17 @@
       <form id="editUserForm" onsubmit="event.preventDefault(); submitEditUser();">
         <input type="hidden" id="editUserId">
         <div class="modal-form-group">
-          <label class="modal-form-label">Full Name</label>
+          <label class="modal-form-label" for="editUserName">Full Name</label>
           <input type="text" class="modal-input" id="editUserName" required>
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Username</label>
+          <label class="modal-form-label" for="editUserUsername">Username</label>
           <input type="text" class="modal-input" id="editUserUsername" required>
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Branch Location</label>
+          <label class="modal-form-label" for="editUserBranchLoc">Branch Location</label>
           <select class="modal-input" id="editUserBranchLoc" required>
             <option value="">Select Location</option>
             <!-- Options dynamically injected by admin-user-management.js -->
@@ -483,12 +502,12 @@
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Branch Name</label>
+          <label class="modal-form-label" for="editUserBranchName">Branch Name</label>
           <input type="text" class="modal-input" id="editUserBranchName" required>
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Assigned Role</label>
+          <label class="modal-form-label" for="editUserRole">Assigned Role</label>
           <select class="modal-input" id="editUserRole" required>
             <option value="Manager">Manager</option>
             <option value="Staff">Staff</option>
@@ -497,7 +516,7 @@
         </div>
 
         <div class="modal-form-group">
-          <label class="modal-form-label">Email Address</label>
+          <label class="modal-form-label" for="editUserEmail">Email Address</label>
           <input type="email" class="modal-input" id="editUserEmail" required>
         </div>
 

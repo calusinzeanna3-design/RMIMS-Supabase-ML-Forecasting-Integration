@@ -160,7 +160,7 @@ export function resolveForecastingMaterialByName(rawName, isSconesParam = null) 
             { code: 'NB-016', unit: 'g', category: 'Nuts & Seeds', canonicalName: 'Black Sesame Seeds', test: (s) => /\b(black\s*sesame|sesame\s*seeds?|sesame)\b/.test(s) },
             { code: 'NB-017', unit: 'g', category: 'Produce / Agricultural', canonicalName: 'Malunggay (Moringa) Flakes', test: (s) => /\b(malunggay|moringa)\b/.test(s) },
             { code: 'NB-018', unit: 'g', category: 'Flavorings & Extracts', canonicalName: 'Vanilla Extract', test: (s) => /\b(vanilla\s*extract|vanilla\s*flavor|vanilla)\b/.test(s) },
-            { code: 'NB-019', unit: 'kl', category: 'Packaging Materials', canonicalName: 'Plastic Pillow Packaging', test: (s) => /\b(plastic\s*pillow|pillow\s*packaging|pillow\s*pack|packaging|cellophane|wrapper)\b/.test(s) }
+            { code: 'NB-019', unit: 'pcs', category: 'Packaging Materials', canonicalName: 'Plastic Pillow Packaging', test: (s) => /\b(plastic\s*pillow|pillow\s*packaging|pillow\s*pack|packaging|cellophane|wrapper)\b/.test(s) }
         ];
         for (const rule of sconesRules) {
             if (rule.test(norm)) {
@@ -338,18 +338,37 @@ export function healForecastingMaterialCodes() {
         } catch (_) {}
 
         // 3. Remove any active/imported material codes & names from rmims_deleted_material_ids (case-insensitive)
-        if (activeCodesAndNamesLower.size > 0) {
+        // Also permanently protect all 19 Scones & Muffins core materials (NB-001 to NB-019) and 59 KXC materials
+        const protectedCodesAndNamesLower = new Set(activeCodesAndNamesLower);
+        try {
+            AUTHENTIC_19_SCONES_MATERIALS.forEach(m => {
+                if (m.item_code) protectedCodesAndNamesLower.add(String(m.item_code).toLowerCase().trim());
+                if (m.id) protectedCodesAndNamesLower.add(String(m.id).toLowerCase().trim());
+                if (m.name) protectedCodesAndNamesLower.add(String(m.name).toLowerCase().trim());
+                if (m.raw_material_name) protectedCodesAndNamesLower.add(String(m.raw_material_name).toLowerCase().trim());
+            });
+            AUTHENTIC_59_RAW_MATERIALS.forEach(m => {
+                if (m.item_code) protectedCodesAndNamesLower.add(String(m.item_code).toLowerCase().trim());
+                if (m.id) protectedCodesAndNamesLower.add(String(m.id).toLowerCase().trim());
+                if (m.name) protectedCodesAndNamesLower.add(String(m.name).toLowerCase().trim());
+                if (m.raw_material_name) protectedCodesAndNamesLower.add(String(m.raw_material_name).toLowerCase().trim());
+            });
+        } catch (_) {}
+
+        if (protectedCodesAndNamesLower.size > 0) {
             try {
-                const delRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
-                if (delRaw) {
-                    const delArr = JSON.parse(delRaw);
-                    if (Array.isArray(delArr) && delArr.length > 0) {
-                        const filteredDel = delArr.filter(d => !activeCodesAndNamesLower.has(String(d || "").toLowerCase().trim()));
-                        if (filteredDel.length !== delArr.length) {
-                            localStorage.setItem(RMIMS_DELETED_MATERIALS_KEY, JSON.stringify(filteredDel));
+                [RMIMS_DELETED_MATERIALS_KEY, "rmims_deleted_raw_materials", "rmims_manager_archived_ids", "rmims_archived_material_ids"].forEach(key => {
+                    const delRaw = localStorage.getItem(key);
+                    if (delRaw) {
+                        const delArr = JSON.parse(delRaw);
+                        if (Array.isArray(delArr) && delArr.length > 0) {
+                            const filteredDel = delArr.filter(d => !protectedCodesAndNamesLower.has(String(d || "").toLowerCase().trim()));
+                            if (filteredDel.length !== delArr.length) {
+                                localStorage.setItem(key, JSON.stringify(filteredDel));
+                            }
                         }
                     }
-                }
+                });
             } catch (_) {}
         }
     } catch (e) {
@@ -390,7 +409,7 @@ export function parseSafeDate(dStr) {
 /**
  * Authoritatively determines the measurement unit for raw materials:
  * - Fresh Whole Eggs (NB-006): 'pcs'
- * - Plastic Pillow Packaging (NB-019): 'kl'
+ * - Plastic Pillow Packaging (NB-019): 'pcs'
  * - All other 17 Scones & Muffins baking materials (flour, sugar, yeast, etc.): 'g' (Grams)
  * - Non-Scones materials (KXC Enterprise): preserves original unit_of_measure or unit ('kg', 'L', etc.)
  */
@@ -417,7 +436,7 @@ export function getAuthoritativeMaterialUnit(material, isScones = false) {
             return "pcs";
         }
         if (code === "NB-019" || name.includes("plastic pillow") || name.includes("pillow packaging")) {
-            return "kl";
+            return "pcs";
         }
         return "g";
     }
@@ -446,7 +465,7 @@ export function getSystemRawMaterials() {
         const bCode = String(b.item_code || b.itemCode || b.id || "").toUpperCase().trim();
         const bUnit = (b.unit || b.unit_of_measure || getAuthoritativeMaterialUnit(b, isScones)).trim();
         const bStock = Number((b.current_stock !== undefined && Number(b.current_stock) > 0) ? b.current_stock : (b.currentStock ?? b.current_stock ?? 0));
-        const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 10);
+        const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 0);
         const bFirst = b.date_added || b.first_date || "";
         const bLatest = b.last_updated || b.latest_date || bFirst || "";
         return {
@@ -497,7 +516,7 @@ export function getSystemRawMaterials() {
                     );
 
                     const rawCmStock = Number(cm.current_stock ?? cm.currentStock ?? cm.stock ?? 0);
-                    const resolvedMin = Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? cm.minStock ?? 10);
+                    const resolvedMin = Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? cm.minStock ?? 0);
                     const firstDate = cm.date_added || cm.first_date || (cm.created_at ? String(cm.created_at).slice(0, 10) : "");
                     const latestDate = cm.last_updated || cm.latest_date || cm.updated_at || firstDate || "";
 
@@ -684,7 +703,16 @@ export function getSystemRawMaterials() {
         console.warn("[SystemMaterials] Could not apply manager overrides:", e);
     }
 
-    // 3. Filter out deleted materials (never filter out newly imported materials)
+    // 3. Filter out deleted materials (never filter out registered core catalog or imported materials)
+    const isCoreProtectedMaterial = (m) => {
+        const c = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
+        if (isScones) {
+            return /^NB-0(0[1-9]|1[0-9])$/.test(c);
+        } else {
+            return /^RM-0(0[1-9]|[1-5][0-9])$/.test(c);
+        }
+    };
+
     try {
         const deletedRaw = localStorage.getItem(RMIMS_DELETED_MATERIALS_KEY);
         if (deletedRaw) {
@@ -692,6 +720,7 @@ export function getSystemRawMaterials() {
             if (Array.isArray(deletedArr) && deletedArr.length > 0) {
                 const deletedSet = new Set(deletedArr.map(d => String(d).trim().toLowerCase()));
                 list = list.filter(m => {
+                    if (isCoreProtectedMaterial(m)) return true; // Registered materials are IMMUTABLE and cannot be deleted
                     if (m.is_imported === true) return true;
                     const mId = String(m.id || "").trim().toLowerCase();
                     const mCode = String(m.item_code || m.itemCode || "").trim().toLowerCase();
@@ -711,7 +740,7 @@ export function getSystemRawMaterials() {
 
     // 5. Deduplicate by item code and normalized name
     const seenMatKeys = new Set();
-    const dedupedList = [];
+    let dedupedList = [];
     list.forEach(m => {
         const code = String(m.item_code || m.id || "").toUpperCase().trim();
         const name = String(m.name || m.raw_material_name || "").toLowerCase().trim();
@@ -725,9 +754,76 @@ export function getSystemRawMaterials() {
         dedupedList.push(m);
     });
 
+    // 6. Guarantee authoritative dataset integrity (strictly 19 for Scones, 59 for KXC)
+    if (isScones) {
+        const existingCodes = new Set(dedupedList.map(m => String(m.item_code || m.id || "").toUpperCase().trim()));
+        AUTHENTIC_19_SCONES_MATERIALS.forEach(b => {
+            const bCode = String(b.item_code || b.id).toUpperCase().trim();
+            if (!existingCodes.has(bCode)) {
+                const bUnit = (b.unit || b.unit_of_measure || getAuthoritativeMaterialUnit(b, true)).trim();
+                const bStock = Number((b.current_stock !== undefined && Number(b.current_stock) > 0) ? b.current_stock : (b.currentStock ?? 0));
+                const bMin = Number(b.minimum_threshold ?? b.minimum_stock ?? 0);
+                dedupedList.push({
+                    ...b,
+                    id: bCode,
+                    item_code: bCode,
+                    itemCode: bCode,
+                    name: b.name || b.raw_material_name,
+                    raw_material_name: b.raw_material_name || b.name,
+                    category: b.category || "Baking Supplies",
+                    unit: bUnit,
+                    unit_of_measure: bUnit,
+                    current_stock: bStock,
+                    currentStock: bStock,
+                    stock: bStock,
+                    minimum_threshold: bMin,
+                    minimum_stock: bMin,
+                    minimumStock: bMin,
+                    minStock: bMin,
+                    date_added: b.date_added || "",
+                    first_date: b.date_added || "",
+                    display_date: b.date_added || "",
+                    last_updated: b.last_updated || b.date_added || "",
+                    latest_date: b.last_updated || b.date_added || ""
+                });
+                existingCodes.add(bCode);
+            }
+        });
+
+        // Air-gap lockdown: filter out any cross-tenant items (RM-xxx) so Scones & Muffins is strictly the 19 Nutribun materials
+        dedupedList = dedupedList.filter(m => {
+            const c = String(m.item_code || m.id || "").toUpperCase().trim();
+            return /^NB-0(0[1-9]|1[0-9])$/.test(c);
+        });
+
+        dedupedList.sort((a, b) => {
+            const numA = parseInt(String(a.item_code || a.id).replace(/\D+/g, "") || "0", 10);
+            const numB = parseInt(String(b.item_code || b.id).replace(/\D+/g, "") || "0", 10);
+            return numA - numB;
+        });
+    } else {
+        const existingCodes = new Set(dedupedList.map(m => String(m.item_code || m.id || "").toUpperCase().trim()));
+        AUTHENTIC_59_RAW_MATERIALS.forEach(b => {
+            const bCode = String(b.item_code || b.id).toUpperCase().trim();
+            if (!existingCodes.has(bCode)) {
+                dedupedList.push({ ...b, id: bCode, item_code: bCode });
+                existingCodes.add(bCode);
+            }
+        });
+        dedupedList = dedupedList.filter(m => {
+            const c = String(m.item_code || m.id || "").toUpperCase().trim();
+            return /^RM-0(0[1-9]|[1-5][0-9])$/.test(c);
+        });
+        dedupedList.sort((a, b) => {
+            const numA = parseInt(String(a.item_code || a.id).replace(/\D+/g, "") || "0", 10);
+            const numB = parseInt(String(b.item_code || b.id).replace(/\D+/g, "") || "0", 10);
+            return numA - numB;
+        });
+    }
+
     return dedupedList.map(m => {
         const s = Number(m.current_stock ?? m.currentStock ?? m.stock ?? 0);
-        const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 10);
+        const min = Number(m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? m.minStock ?? 0);
         const u = m.unit || m.unit_of_measure || getAuthoritativeMaterialUnit(m, isScones);
         return {
             ...m,
@@ -747,6 +843,42 @@ export function getSystemRawMaterials() {
 /**
  * Persists a newly added raw material to localStorage and dispatches storage & sync events.
  */
+/**
+ * SINGLE SOURCE OF TRUTH FOR STOCK.
+ * Stock is mirrored in three places (custom list + two manager override maps). Writing only one of them
+ * left the others holding the OLD number, and getSystemRawMaterials()/the Supabase sync then served the
+ * stale value everywhere (inventory, dashboard, reports...), so disbursing the same item again looked
+ * "stuck". Every stock write now goes through here so all stores always agree.
+ */
+export function syncStockToOverrides(rec) {
+    try {
+        const stock = Number(rec.current_stock ?? rec.currentStock ?? rec.stock);
+        if (!isFinite(stock)) return;
+        const idKey = String(rec.item_code || rec.itemCode || rec.id || '').toUpperCase().trim();
+        const nameKey = String(rec.name || rec.raw_material_name || '').trim();
+        const ts = rec.last_updated || rec.latest_date || new Date().toISOString();
+        ["rmims_manager_material_overrides", "rmims_manager_inventory_overrides"].forEach(ovKey => {
+            let ovs = {};
+            try { ovs = JSON.parse(localStorage.getItem(ovKey) || '{}') || {}; } catch (_) { ovs = {}; }
+            const apply = (k) => {
+                if (!k || !ovs[k]) return; // only update entries that already exist; never invent new ones
+                ovs[k] = {
+                    ...ovs[k],
+                    current_stock: stock,
+                    currentStock: stock,
+                    stock: stock,
+                    last_updated: ts,
+                    latest_date: ts,
+                    is_zero_explicit: stock === 0
+                };
+            };
+            apply(idKey);
+            apply(nameKey);
+            localStorage.setItem(ovKey, JSON.stringify(ovs));
+        });
+    } catch (_) {}
+}
+
 export function saveCustomRawMaterial(mat) {
     let custom = [];
     try {
@@ -799,11 +931,11 @@ export function saveCustomRawMaterial(mat) {
         unit: mat.unit_of_measure || mat.unit || (recognized && recognized.unit) || "kg",
         current_stock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
         currentStock: Number(mat.current_stock ?? mat.currentStock ?? mat.stock ?? 0),
-        minimum_threshold: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
-        minimum_stock: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 10),
+        minimum_threshold: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 0),
+        minimum_stock: Number(mat.minimum_threshold ?? mat.minimum_stock ?? mat.minimumStock ?? 0),
         reorder_quantity: Number(mat.reorder_quantity ?? 25),
         lead_time_days: Number(mat.lead_time_days ?? 3),
-        storage_location: mat.storage_location || "Warehouse A - Shelf 1",
+        storage_location: mat.storage_location || "",
         supplier: mat.supplier || "General Supply Co.",
         description: mat.description || `Raw material ${mat.name || mat.raw_material_name}`,
         date_added: resolvedFirstDate,
@@ -818,6 +950,7 @@ export function saveCustomRawMaterial(mat) {
 
     custom.push(fullRecord);
     localStorage.setItem(RMIMS_CUSTOM_RAW_MATERIALS_KEY, JSON.stringify(custom));
+    syncStockToOverrides(fullRecord); // keep every stock store identical
 
     // Also remove from deleted set if it was previously marked deleted (case-insensitive)
     try {
@@ -847,29 +980,8 @@ export function saveCustomRawMaterial(mat) {
     localStorage.setItem("rmims_inventory_updated", String(Date.now()));
     window.dispatchEvent(new Event("storage"));
 
-    // 5. Asynchronously persist real input to Supabase raw_materials table
-    if (typeof window !== "undefined" && window.supabase && fullRecord.name) {
-        (async () => {
-            try {
-                const payload = {
-                    item_code: fullRecord.item_code,
-                    name: fullRecord.name,
-                    description: fullRecord.description || `Raw material ${fullRecord.name}`,
-                    unit_of_measure: fullRecord.unit_of_measure || "kg",
-                    minimum_threshold: fullRecord.minimum_threshold,
-                    reorder_quantity: fullRecord.reorder_quantity,
-                    lead_time_days: fullRecord.lead_time_days,
-                    current_stock: fullRecord.current_stock
-                };
-                if (fullRecord.id && fullRecord.id.length === 36) {
-                    payload.id = fullRecord.id;
-                }
-                await window.supabase.from("raw_materials").upsert([payload], {
-                    onConflict: payload.id ? "id" : "item_code"
-                });
-            } catch (_) {}
-        })();
-    }
+    // 5. Database persistence is done by saveRawMaterialToSupabase (manager-supabase-service.js), which is company-aware and
+    //    never pushes an absolute stock figure that could double count. A second direct upsert here is intentionally gone.
 
     return fullRecord;
 }
@@ -1026,7 +1138,9 @@ export function adjustSystemMaterialStock(materialIdOrName, delta) {
                     last_updated: mat.last_updated,
                     latest_date: mat.last_updated,
                     is_zero_explicit: (newStock === 0),
-                    is_manual_override: true
+                    is_manual_override: true,
+                    // marks this device's stock as newer than the server until the server confirms it (live sync)
+                    stock_local_ts: Date.now()
                 };
                 if (idKey && nameKey && idKey !== nameKey) {
                     ovs[nameKey] = {
@@ -1180,8 +1294,8 @@ export function getSystemCustomReceipts() {
                             quantity: Number(r.quantity ?? r.received_quantity ?? 0),
                             unit: r.unit || '',
                             receipt_date: r.date || r.receipt_date || new Date().toISOString().slice(0, 10),
-                            supplier_name: r.supplier || r.supplier_name || 'Inward Delivery',
-                            supplierName: r.supplier || r.supplier_name || 'Inward Delivery',
+                            supplier_name: r.supplier || r.supplier_name || '',
+                            supplierName: r.supplier || r.supplier_name || '',
                             status: r.status || 'Approved',
                             created_at: r.createdAt || r.created_at || new Date().toISOString()
                         };
@@ -1213,9 +1327,9 @@ export function saveCustomReceipt(receipt) {
         unit: receipt.unit || getAuthoritativeMaterialUnit({ id: receipt.material_id || receipt.materialId, name: receipt.material_name || receipt.materialName }),
         receipt_date: receipt.receipt_date || receipt.receiptDate || receipt.date || new Date().toISOString().slice(0, 10),
         receiptDate: receipt.receipt_date || receipt.receiptDate || receipt.date || new Date().toISOString().slice(0, 10),
-        supplier_name: receipt.supplier_name || receipt.supplierName || receipt.supplier || "Inward Delivery",
-        supplierName: receipt.supplier_name || receipt.supplierName || receipt.supplier || "Inward Delivery",
-        received_by: receipt.received_by || receipt.receivedBy || "System User",
+        supplier_name: receipt.supplier_name || receipt.supplierName || receipt.supplier || "",
+        supplierName: receipt.supplier_name || receipt.supplierName || receipt.supplier || "",
+        received_by: receipt.received_by || receipt.receivedBy || "",
         created_at: receipt.created_at || receipt.createdAt || new Date().toISOString()
     };
 
@@ -1302,11 +1416,11 @@ export function saveCustomDisbursement(disbursement) {
         unit: disbursement.unit || getAuthoritativeMaterialUnit({ id: disbursement.material_id || disbursement.materialId, name: disbursement.material_name || disbursement.materialName }),
         usage_date: disbursement.usage_date || disbursement.usageDate || disbursement.date || new Date().toISOString().slice(0, 10),
         usageDate: disbursement.usage_date || disbursement.usageDate || disbursement.date || new Date().toISOString().slice(0, 10),
-        activity_type: disbursement.activity_type || disbursement.activityType || disbursement.context || "Production Usage",
-        activityType: disbursement.activity_type || disbursement.activityType || disbursement.context || "Production Usage",
-        finished_product_name: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "Operational Batch",
-        finishedProductName: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "Operational Batch",
-        recorded_by: disbursement.recorded_by || disbursement.recordedBy || "System User",
+        activity_type: disbursement.activity_type || disbursement.activityType || disbursement.context || "Material Usage",
+        activityType: disbursement.activity_type || disbursement.activityType || disbursement.context || "Material Usage",
+        finished_product_name: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "",
+        finishedProductName: disbursement.finished_product_name || disbursement.finishedProductName || disbursement.context || "",
+        recorded_by: disbursement.recorded_by || disbursement.recordedBy || "",
         created_at: disbursement.created_at || disbursement.createdAt || new Date().toISOString()
     };
 

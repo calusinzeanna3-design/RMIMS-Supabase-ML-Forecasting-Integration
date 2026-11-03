@@ -10,6 +10,8 @@
  * - System Light Theme colors (Emerald #16A34A, Amber #D97706, Blue #2563EB)
  */
 
+import { canonicalTxRef } from './rmims-tx-key.js';
+import { resolveFinishedProductName, displayFinishedProduct } from './rmims-reorder-engine.js';
 import {
   getSystemRawMaterials,
   getSystemCustomReceipts,
@@ -94,6 +96,20 @@ export function initAnalytics() {
   renderAllCharts();
   bindModalEvents();
 
+  // Live database updates (receipts / disbursements / materials from the manager or staff) re-draw every chart
+  let liveTimer = null;
+  const onLive = () => {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => {
+      loadAuthoritativeData();
+      populateMaterialDropdown();
+      renderAllCharts();
+      if (state.modal.activeTarget) renderModalChart(state.modal.activeTarget);
+    }, 300);
+  };
+  ['rmims_live_data_updated', 'rmims_inventory_updated', 'rmims_manager_receipts_updated', 'rmims_manager_disbursements_updated']
+    .forEach(name => window.addEventListener(name, onLive));
+
   // Listen to live inventory updates from Receive and Disburse modules
   window.addEventListener('storage', (e) => {
     if (!e || e.key === 'rmims_inventory_updated' || e.key === 'rmims_manager_receipts' || e.key === 'rmims_manager_disbursements') {
@@ -143,10 +159,11 @@ function loadAuthoritativeData() {
     const qty = parseFloat(item.quantity) || parseFloat(item.received_quantity) || parseFloat(item.receivedQuantity) || 0;
     if (qty <= 0) return;
 
-    const ref = item.ref || item.id || `rcv-${receiptMap.size + 1}`;
+    const ref = canonicalTxRef(item) || item.id || `rcv-${receiptMap.size + 1}`;
+    if (receiptMap.has(ref)) return; // the same movement saved in two ledgers
     receiptMap.set(ref, {
       ref: ref,
-      date: item.date || item.receipt_date || item.receiptDate || 'Recent',
+      date: item.date || item.receipt_date || item.receiptDate || item.created_at || '',
       materialId: matched ? (matched.id || matched.item_code) : rawId,
       materialName: finalName,
       quantity: qty,
@@ -179,15 +196,16 @@ function loadAuthoritativeData() {
     const qty = parseFloat(item.quantity) || parseFloat(item.consumed_quantity) || parseFloat(item.consumedQuantity) || 0;
     if (qty <= 0) return;
 
-    const ref = item.ref || item.id || `disb-${disbMap.size + 1}`;
+    const ref = canonicalTxRef(item) || item.id || `disb-${disbMap.size + 1}`;
+    if (disbMap.has(ref)) return; // the same movement saved in two ledgers
     disbMap.set(ref, {
       ref: ref,
-      date: item.date || item.usage_date || item.disbursement_date || 'Recent',
+      date: item.date || item.usage_date || item.disbursement_date || item.created_at || '',
       materialId: matched ? (matched.id || matched.item_code) : rawId,
       materialName: finalName,
       quantity: qty,
       unit: matched ? (matched.unit_of_measure || matched.unit || '') : (item.unit || ''),
-      usedFor: item.usedFor || item.finished_product_name || item.product || 'Production Batch'
+      usedFor: displayFinishedProduct(finalName, item.usedFor || item.finished_product_name || item.product)
     });
   });
   state.disbursements = Array.from(disbMap.values());
@@ -529,7 +547,7 @@ function renderCard1() {
 
   if (state.card1.showDisburse) {
     datasets.push({
-      label: 'Disburse',
+      label: 'Disbursed',
       data: dataItems.map(d => Math.round(d.disbursed * 10) / 10),
       backgroundColor: '#F59E0B',
       hoverBackgroundColor: '#D97706',
@@ -612,7 +630,7 @@ function renderCard1() {
             font: { family: 'Inter, sans-serif', size: 11 },
             color: '#64748B',
             callback: function (val) {
-              return val + ' kg';
+              return Number(val).toLocaleString();
             }
           }
         }
@@ -822,7 +840,7 @@ function renderCardStock() {
             font: { family: 'Inter, sans-serif', size: 11 },
             color: '#64748B',
             callback: function (val) {
-              return val + ' kg';
+              return Number(val).toLocaleString();
             }
           }
         }
@@ -840,10 +858,8 @@ function getTopFinishedProductsData(limit = 5) {
 
   // Aggregate disbursements by finished product
   state.disbursements.forEach(d => {
-    let name = (d.usedFor || 'General Batch').trim();
-    // Normalize trailing batch names
-    name = name.replace(/\s+batch\s*(#\d+)?$/i, '').trim();
-    if (!name) name = 'Unspecified Product';
+    let name = String(d.usedFor || '').trim();
+    if (!name || name === '—') return; // only the Manager's finished products (no "General Batch" placeholder)
 
     if (!productTotals.has(name)) {
       productTotals.set(name, {
@@ -898,8 +914,8 @@ function renderCard2() {
       emptyBox.innerHTML = `
         <div style="text-align: center; color: var(--text-muted, #64748b); padding: 32px 16px;">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 8px; opacity: 0.6;"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
-          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Finished Products Production Logged</p>
-          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Finished product production batches will appear here as materials are disbursed.</p>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main, #1e293b);">No Finished Product Usage Logged</p>
+          <p style="font-size: 0.85rem; max-width: 320px; margin: 0 auto; color: #64748b;">Finished product usage will appear here as materials are disbursed.</p>
         </div>
       `;
     }
@@ -918,7 +934,7 @@ function renderCard2() {
 
   if (state.card2.showConsumed) {
     datasets.push({
-      label: 'Consumed (kg/L)',
+      label: 'Consumed',
       data: dataItems.map(d => Math.round(d.consumed * 10) / 10),
       backgroundColor: '#2563EB',
       hoverBackgroundColor: '#1D4ED8',
@@ -1162,7 +1178,7 @@ function renderCard3() {
     data: {
       labels: trendData.labels,
       datasets: [{
-        label: `${matLabel} Consumed (kg)`,
+        label: `${matLabel} Consumed`,
         data: trendData.values,
         borderColor: '#16A34A',
         borderWidth: 2.5,
@@ -1200,7 +1216,7 @@ function renderCard3() {
           cornerRadius: 8,
           callbacks: {
             label: function (context) {
-              return ` Consumed: ${context.raw} kg`;
+              return ` Consumed: ${Number(context.raw).toLocaleString()}`;
             }
           }
         }
@@ -1220,7 +1236,7 @@ function renderCard3() {
             font: { family: 'Inter, sans-serif', size: 11 },
             color: '#64748B',
             callback: function (val) {
-              return val + ' kg';
+              return Number(val).toLocaleString();
             }
           }
         }
@@ -1275,7 +1291,7 @@ function openMaximizeModal(targetType) {
     if (titleEl) titleEl.textContent = 'Enlarged View: Raw Materials Stock Levels & Inventory Health';
     if (subEl) subEl.textContent = 'Authoritative stock ledger of on-hand physical stock vs minimum replenishment buffer.';
   } else if (targetType === 'finished_products') {
-    if (titleEl) titleEl.textContent = 'Enlarged View: Top Finished Products Production Usage';
+    if (titleEl) titleEl.textContent = 'Enlarged View: Top Finished Products Material Usage';
     if (subEl) subEl.textContent = 'Comprehensive product ranking across all recorded manufacturing batches.';
   } else {
     if (titleEl) titleEl.textContent = 'Enlarged View: Disbursed Raw Materials Trend';
@@ -1425,7 +1441,7 @@ function renderModalChart(targetType) {
           y: {
             beginAtZero: true,
             ticks: {
-              callback: function(val) { return val + ' kg'; }
+              callback: function(val) { return Number(val).toLocaleString(); }
             }
           }
         }
@@ -1479,7 +1495,7 @@ function renderModalChart(targetType) {
         labels: labels,
         datasets: [
           {
-            label: 'Consumed (kg/L)',
+            label: 'Consumed',
             data: dataItems.map(d => Math.round(d.consumed * 10) / 10),
             backgroundColor: '#2563EB',
             borderRadius: 6
@@ -1521,7 +1537,7 @@ function renderModalChart(targetType) {
             ${dataItems.map(p => `
               <tr style="border-bottom:1px solid #F1F5F9;">
                 <td style="padding:10px 14px; font-weight:700;">${p.name}</td>
-                <td style="padding:10px 14px; color:#2563EB; font-weight:700;">${p.consumed.toFixed(1)} kg/L</td>
+                <td style="padding:10px 14px; color:#2563EB; font-weight:700;">${p.consumed.toFixed(1)}</td>
                 <td style="padding:10px 14px; color:#7C3AED; font-weight:700;">${p.batches} batches</td>
               </tr>
             `).join('')}

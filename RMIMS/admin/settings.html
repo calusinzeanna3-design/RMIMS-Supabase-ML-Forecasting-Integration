@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings | RMSME Admin</title>
@@ -13,6 +15,9 @@
   <link rel="stylesheet" href="../css/admin-shell.css">
   <link rel="stylesheet" href="../css/settings.css">
   <link rel="icon" type="image/png" href="../assets/favicon-32.png">
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 <body>
   <div class="admin-app">
@@ -140,7 +145,7 @@
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">Z</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Zeanna</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
               </div>
             </div>
@@ -149,7 +154,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Zeanna</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
                   </div>
                 </div>
@@ -335,7 +340,7 @@
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M4 5H20C21.1 5 22 5.9 22 7V17C22 18.1 21.1 19 20 19H4C2.9 19 2 18.1 2 17V7C2 5.9 2.9 5 4 5Z"></path><path d="M22 7L13.03 13.7C12.42 14.15 11.58 14.15 10.97 13.7L2 7"></path></svg>
                         Email Address
                       </label>
-                      <input id="adminSettingEmail" readonly type="email" placeholder="admin@store.ph" title="Email address cannot be modified directly"/>
+                      <input id="adminSettingEmail" readonly type="email" placeholder="" title="Email address cannot be modified directly"/>
                       <span class="field-hint">Managed via Supabase Auth</span>
                     </div>
                     <div class="input-group">
@@ -434,7 +439,7 @@
                   </div>
                   <div class="button-group">
                     <button id="adminLogoutBtn" type="button" style="display: flex; align-items: center; gap: 8px; padding: 9px 18px; border: none; border-radius: 9px; background: var(--bad); color: #fff; cursor: pointer; font-size: 0.84rem; font-weight: 700;">
-                      <svg fill="none" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3 5 3H9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 17L21 12L16 7" stroke-linecap="round" stroke-linejoin="round"></path><path d="M21 12H9" stroke-linecap="round"></path></svg>
+                      <svg fill="none" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 17L21 12L16 7" stroke-linecap="round" stroke-linejoin="round"></path><path d="M21 12H9" stroke-linecap="round"></path></svg>
                       Logout
                     </button>
                   </div>
@@ -617,7 +622,7 @@
                   <div style="padding: 14px 16px; background: #F8FAFC; border: 1px solid var(--line-soft); border-radius: 10px;">
                     <span style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase;">Software Version</span>
                     <strong style="display:block; font-size: 16px; color: var(--ink); margin-top: 4px;">RMSME v2.0.0</strong>
-                    <span style="font-size: 11.5px; color: #16A34A; font-weight: 600;">Production Release</span>
+                    <span style="font-size: 11.5px; color: #16A34A; font-weight: 600;">Live Release</span>
                   </div>
 
                   <div style="padding: 14px 16px; background: #F8FAFC; border: 1px solid var(--line-soft); border-radius: 10px;">
@@ -669,7 +674,7 @@
                       <strong style="color: #991B1B; font-size: 13px; display: block; margin-bottom: 4px;">Data Cleared (Brand-New State):</strong>
                       <ul style="font-size: 12px; color: #64748B; margin: 0; padding-left: 18px; line-height: 1.55;">
                         <li>All Stock Receipts (Receive module records)</li>
-                        <li>All Material Disbursements (Used/Disburse records)</li>
+                        <li>All Material Disbursements (Used / Disbursed records)</li>
                         <li>All Staff activity logs &amp; submission drafts</li>
                         <li>All Manager operational activity records</li>
                         <li>Pending account requests awaiting approval</li>
@@ -747,7 +752,7 @@
         <div id="modalBranchSelectorsContainer">
           <!-- Select Branch Location / Municipality -->
           <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;" for="modalBackupLocationSelect">
               Branch Location / Municipality
             </label>
             <select id="modalBackupLocationSelect" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid #CBD5E1; border-radius: 8px; font-size: 13.5px; background: #FFFFFF; font-weight: 600; color: #1E293B; outline: none;">
@@ -757,7 +762,7 @@
 
           <!-- Select Specific Branch Store -->
           <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;" for="modalBackupStoreSelect">
               Branch Name
             </label>
             <select id="modalBackupStoreSelect" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1.5px solid #CBD5E1; border-radius: 8px; font-size: 13.5px; background: #FFFFFF; font-weight: 600; color: #1E293B; outline: none;">
@@ -838,7 +843,7 @@
         </p>
 
         <div style="margin-bottom: 16px; padding: 12px 14px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
-          <label style="display: block; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 6px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 6px;" for="resetConfirmInput">
             To confirm, type <span style="color: #DC2626; font-family: monospace; font-size: 13px; font-weight: 700;">RESET</span> below:
           </label>
           <input type="text" id="resetConfirmInput" placeholder="RESET" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1.5px solid #CBD5E1; border-radius: 8px; font-size: 14px; font-family: monospace; outline: none; transition: border 0.2s;" autocomplete="off">

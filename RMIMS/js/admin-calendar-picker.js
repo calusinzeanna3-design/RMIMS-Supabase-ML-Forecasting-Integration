@@ -190,6 +190,7 @@ export function initAdminCalendarPicker(config) {
         bottomBox.style.display = 'none';
       }
     }
+    clampPopover();
   }
 
   // Day Selection logic
@@ -295,6 +296,22 @@ export function initAdminCalendarPicker(config) {
     });
   }
 
+  // Keep the whole calendar inside the screen (left-aligned by default, shift left when it overflows).
+  function clampPopover() {
+    try {
+      if (!popover.classList.contains('open')) return;
+      popover.style.left = '0'; popover.style.right = 'auto';
+      const r = popover.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      if (r.right > vw - 12) {
+        const shift = r.right - (vw - 12);
+        popover.style.left = `${-Math.min(shift, Math.max(0, r.left - 12))}px`;
+      }
+    } catch (_) {}
+  }
+
+  window.addEventListener('resize', clampPopover);
+
   // Popover Open / Close
   function openPopover() {
     popover.classList.add('open');
@@ -308,6 +325,7 @@ export function initAdminCalendarPicker(config) {
       }
     }
     renderAll();
+    clampPopover();
   }
 
   function closePopover() {

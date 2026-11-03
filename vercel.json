@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://rmims-ml-model.web.app/api/:match*"
+      "destination": "https://rmsme-ml-model.web.app/api/:match*"
     },
     {
       "source": "/RMIMS",

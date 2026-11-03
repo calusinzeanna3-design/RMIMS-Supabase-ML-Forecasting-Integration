@@ -95,7 +95,7 @@
       '.inv-filter-group, .staff-filter-box, .staff-search-box'
     ) || select.style.width === 'auto' || select.classList.contains('mgr-filter-select-compact');
 
-    const isFullWidthRequested = select.classList.contains('w-100') || select.dataset.fullWidth === 'true';
+    const isFullWidthRequested = select.classList.contains('w-100') || select.dataset.fullWidth === 'true' || select.classList.contains('modal-input') || !!select.closest('.modal-form-group, .auth-modal');
 
     if (isFullWidthRequested || (!isInlineFilter && select.closest('.modal-body .form-group, .modal-body .mgr-form-group'))) {
       wrapper.classList.add('rm-select-block');
@@ -250,6 +250,39 @@
       } else if (rect.right > viewportWidth - 10) {
         menu.classList.remove('align-left');
       }
+      floatMenuIfClipped();
+    }
+
+    // If a scrolling/overflow-hidden ancestor (modal body, card) would cut the list off, float it above everything instead.
+    function floatMenuIfClipped() {
+      menu.classList.remove('rm-menu-floating');
+      ['position','top','left','right','width','maxWidth','maxHeight'].forEach(k => { menu.style[k] = ''; });
+      const mr = menu.getBoundingClientRect();
+      let clipped = false;
+      for (let el = wrapper.parentElement; el && el !== document.body; el = el.parentElement) {
+        const o = getComputedStyle(el);
+        if (/(auto|scroll|hidden|clip)/.test(o.overflowX + o.overflowY)) {
+          const r = el.getBoundingClientRect();
+          if (mr.bottom > r.bottom + 1 || mr.right > r.right + 1 || mr.left < r.left - 1) { clipped = true; break; }
+        }
+      }
+      if (!clipped) return;
+      const tr = trigger.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+      const width = Math.min(Math.max(tr.width, 360), vw - 24);
+      const left = Math.max(12, Math.min(tr.left, vw - width - 12));
+      const below = vh - tr.bottom - 12, above = tr.top - 12;
+      const openUp = below < 200 && above > below;
+      const maxH = Math.max(140, Math.min(280, openUp ? above : below));
+      menu.classList.add('rm-menu-floating');
+      menu.style.setProperty('position', 'fixed', 'important');
+      menu.style.setProperty('left', left + 'px', 'important');
+      menu.style.setProperty('right', 'auto', 'important');
+      menu.style.setProperty('width', width + 'px', 'important');
+      menu.style.setProperty('max-width', width + 'px', 'important');
+      menu.style.setProperty('max-height', maxH + 'px', 'important');
+      if (openUp) { menu.style.setProperty('top', 'auto', 'important'); menu.style.setProperty('bottom', (vh - tr.top + 5) + 'px', 'important'); }
+      else { menu.style.setProperty('bottom', 'auto', 'important'); menu.style.setProperty('top', (tr.bottom + 5) + 'px', 'important'); }
     }
 
     function closeMenu() {
@@ -325,6 +358,11 @@
       'select.rpt-fe-select, ' +
       'select.fc-chart-select, ' +
       'select.filter-select, ' +
+      'select.fc-select, ' +
+      'select.fc-select-compact, ' +
+      'select.modal-input, ' +
+      '#addMatUnit, #editMatUnit, #specsUpdateUnit, #staffDisbUnit, #staffRecUnit, ' +
+      '#modalBackupLocationSelect, #modalBackupStoreSelect, ' +
       'select[data-custom-select="true"], ' +
       '.card-actions select, ' +
       '.filter-bar select, ' +

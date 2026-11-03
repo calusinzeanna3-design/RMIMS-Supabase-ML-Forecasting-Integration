@@ -1075,3 +1075,14 @@ body:has(.rmims-notif-backdrop.open) .rmsme-popover {
   color: #B91C1C !important;
 }
 
+
+/* ---- Notification popup header icons: same size on every page (page button styles must not squeeze them) ---- */
+#rmimsNotifBackdrop #rmimsNotifSearchToggle {
+  box-sizing: border-box !important;
+  width: 32px !important; min-width: 32px !important; height: 32px !important; min-height: 32px !important;
+  padding: 0 !important; margin: 0 !important; line-height: 1 !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; flex: 0 0 32px !important;
+}
+#rmimsNotifBackdrop #rmimsNotifSearchToggle svg {
+  width: 16px !important; min-width: 16px !important; height: 16px !important; flex: 0 0 16px !important; display: block !important;
+}

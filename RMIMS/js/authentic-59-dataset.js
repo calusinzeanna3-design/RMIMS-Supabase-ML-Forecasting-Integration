@@ -38,10 +38,10 @@ export function getSystemRawMaterials() {
                             unit_of_measure: cm.unit_of_measure || cm.unit || "kg",
                             unit: cm.unit_of_measure || cm.unit || "kg",
                             current_stock: Number(cm.current_stock ?? cm.currentStock ?? 0),
-                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 10),
-                            reorder_quantity: Number(cm.reorder_quantity ?? 25),
-                            lead_time_days: Number(cm.lead_time_days ?? 3),
+                            minimum_threshold: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 0),
+                            minimum_stock: Number(cm.minimum_threshold ?? cm.minimum_stock ?? cm.minimumStock ?? 0),
+                            reorder_quantity: cm.reorder_quantity != null ? Number(cm.reorder_quantity) : null,
+                            lead_time_days: cm.lead_time_days != null ? Number(cm.lead_time_days) : null,
                             description: cm.description || `Raw material ${cm.name || cm.raw_material_name}`,
                             created_at: cm.created_at || new Date().toISOString()
                         });
@@ -1013,6 +1013,18 @@ export const AUTHENTIC_59_RAW_MATERIALS = [
     }
 ];
 
+
+
+// ---------------------------------------------------------------------------------------------------------------
+// ACTUAL DATA ONLY: this catalog identifies the company's registered raw materials (code, name, unit, image) and
+// keeps the trained model's accuracy figures (MAPE / margins). Operational numbers are NOT built in: stock,
+// minimum stock, reorder quantity, lead time and forecasts come only from what the end users record.
+// ---------------------------------------------------------------------------------------------------------------
+AUTHENTIC_59_RAW_MATERIALS.forEach(m => {
+  ['current_stock', 'currentStock', 'minimum_threshold', 'minimum_stock', 'minimumStock'].forEach(k => { if (k in m) m[k] = 0; });
+  ['reorder_quantity', 'lead_time_days', 'forecast_daily', 'forecast_weekly', 'forecast_monthly', 'forecast_90d', 'status']
+    .forEach(k => { delete m[k]; });
+});
 
 // All old imported historical records permanently deleted; ML trained data preserved.
 export const AUTHENTIC_STOCK_RECEIPTS_6MONTHS = [];

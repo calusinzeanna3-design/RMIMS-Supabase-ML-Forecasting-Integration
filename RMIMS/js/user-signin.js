@@ -1,4 +1,4 @@
-import { loginUser } from "../supabase/auth-service.js";
+import { loginUser, callAuthGate, authGateMessage } from "../supabase/auth-service.js";
 import { supabase } from "../supabase/supabase-config.js";
 
 const loginForm = document.getElementById("loginForm");
@@ -86,6 +86,7 @@ if (forgotModal) {
     });
 }
 
+
 if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -99,11 +100,14 @@ if (forgotForm) {
         sendForgotBtn.innerHTML = `<span class="auth-spinner"></span> Sending...`;
 
         try {
+            // registered, approved and not locked is checked on the server (auth-gate), which also sends the e-mail
             const redirectUrl = window.location.href.split("#")[0];
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl
-            });
-            if (error) throw error;
+            const res = await callAuthGate({ action: "reset_password", email, redirect_to: redirectUrl });
+            if (!res.ok) {
+                forgotMsg.className = "auth-modal-msg error";
+                forgotMsg.textContent = authGateMessage(res);
+                return;
+            }
 
             forgotMsg.className = "auth-modal-msg success";
             forgotMsg.textContent = "Recovery link sent! Please check your email inbox.";

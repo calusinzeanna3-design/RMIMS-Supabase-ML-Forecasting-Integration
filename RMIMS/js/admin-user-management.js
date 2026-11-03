@@ -2,6 +2,7 @@
 // Handles pending approvals, active users directory, add/edit/delete user workflows,
 // dynamic counters, search filtering, and pagination.
 
+import { supabase } from '../supabase/supabase-config.js';
 import {
   STORAGE_KEYS,
   isMockUser,
@@ -81,9 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!u) return false;
     const txt = `${u.name || ''} ${u.username || ''} ${u.email || ''} ${u.branchName || ''}`.toLowerCase();
     const role = String(u.role || '').toLowerCase();
-    // Aizel does not have a staff account; purge any dump staff accounts for Aizel
-    if (txt.includes('aizel') && (role.includes('staff') || role.includes('user'))) return true;
-    return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
+        return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
   }
 
   function cleanPendingFromRegisteredDirectory() {
@@ -150,65 +149,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const MASTER_ADMIN_RECORD = {
-    id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-    name: 'Zeanna',
-    username: 'zeanna',
-    email: 'calusinzeanna3@gmail.com',
-    branchLoc: 'Headquarters',
-    branchName: 'Headquarters',
-    role: 'Administrator',
-    status: 'Active',
-    created_at: new Date().toISOString()
+  // The signed-in admin, built from the live session (nothing hardcoded).
+  function buildAdminRecord() {
+    try {
+      const me = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      const email = String(me.email || '').trim();
+      if (!email) return null;
+      return {
+        id: me.id || me.uid || email,
+        name: me.name || me.fullName || email.split('@')[0],
+        username: me.username || email.split('@')[0],
+        email,
+        branchLoc: 'Headquarters',
+        branchName: 'Headquarters',
+        role: 'Administrator',
+        status: 'Active',
+        created_at: me.created_at || new Date().toISOString()
+      };
+    } catch (_) { return null; }
+  }
+  const isAdminLike = (u) => {
+    const role = String(u && u.role || '').toLowerCase();
+    return role === 'administrator' || role === 'admin';
   };
-
-  const AUTHENTIC_INITIAL_REGISTERED_USERS = [
-    MASTER_ADMIN_RECORD,
-    {
-      id: '8436c433-268c-4d72-9e8c-f4dfdb1692f3',
-      name: 'Aizel',
-      username: 'Scones_manager',
-      email: 'zeannapatty@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Store Manager',
-      status: 'Active',
-      created_at: '2026-10-16T02:28:41.885691+00:00'
-    },
-    {
-      id: 'c99c9757-de31-4dbc-89da-005fdd9eed35',
-      name: 'Staff_1',
-      username: 'Scones_Staff_1',
-      email: 'Sconesandmuffins@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Staff Personnel',
-      status: 'Active',
-      created_at: '2026-10-16T04:59:34.011697+00:00'
-    },
-    {
-      id: '1cc2347e-8f3b-4553-b22e-f3048314991c',
-      name: 'Staff_2',
-      username: 'Staff_Scones_2',
-      email: 'scone2@gmail.com',
-      branchLoc: 'Lucena',
-      branchName: 'Scones & Muffins Bakery',
-      role: 'Staff Personnel',
-      status: 'Active',
-      created_at: '2026-10-25T05:35:44.348261+00:00'
-    },
-    {
-      id: 'b7173051-b383-4b51-be77-4f4f3e79a900',
-      name: 'Glazel',
-      username: 'Glazel_Kxc',
-      email: 'zeannapatricia@gmail.com',
-      branchLoc: 'Tiaong',
-      branchName: 'KXC 5-Year Enterprise',
-      role: 'Store Manager',
-      status: 'Active',
-      created_at: '2026-10-16T03:38:10.858827+00:00'
-    }
-  ];
+  const AUTHENTIC_INITIAL_REGISTERED_USERS = [];
 
   function getStoredRegisteredUsers() {
     try {
@@ -229,14 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      // Ensure Master Admin Zeanna is present with Headquarters location (separate from the two store companies)
+      // Show the Admin with Headquarters location (separate from the two store companies)
       list = list.map(u => {
         if (!u) return u;
         const role = String(u.role || '').toLowerCase();
         const email = String(u.email || '').toLowerCase();
         const name = String(u.name || '').toLowerCase();
         const user = String(u.username || '').toLowerCase();
-        if (role === 'administrator' || role === 'admin' || email === 'calusinzeanna3@gmail.com' || name === 'zeanna' || user === 'zeanna' || user === 'calusinzeanna3') {
+        if (role === 'administrator' || role === 'admin') {
           return {
             ...u,
             branchLoc: 'Headquarters',
@@ -247,12 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return u;
       });
 
-      const hasAdmin = list.some(u => 
-        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-        (u.name && u.name.toLowerCase() === 'zeanna')
-      );
-      if (!hasAdmin) {
-        list.unshift(MASTER_ADMIN_RECORD);
+      const adminRec = buildAdminRecord();
+      if (adminRec && !list.some(u => u.email && u.email.toLowerCase() === adminRec.email.toLowerCase())) {
+        list.unshift(adminRec);
       }
 
       return list;
@@ -271,13 +232,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      const hasRealAdmin = list.some(u => 
-        (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') ||
-        (u.username && u.username.toLowerCase() === 'zeanna') ||
-        (u.name && u.name.toLowerCase() === 'zeanna')
-      );
-      if (!hasRealAdmin) {
-        list.unshift({ ...MASTER_ADMIN_RECORD });
+      const adminRec = buildAdminRecord();
+      if (adminRec && !list.some(u => u.email && u.email.toLowerCase() === adminRec.email.toLowerCase())) {
+        list.unshift(adminRec);
       }
       localStorage.setItem('rmims_registered_users', JSON.stringify(list));
       window.dispatchEvent(new Event('rmims_registered_users_updated'));
@@ -490,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </svg>
                 <span>Edit</span>
               </button>
-              ${(u.role === 'Administrator' || u.role === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com') || (u.username && u.username.toLowerCase() === 'zeanna')) ? `
+              ${isAdminLike(u) ? `
                 <button type="button" class="btn-delete" style="opacity:0.45; cursor:not-allowed;" title="Main Admin account is permanently protected" disabled>Protected</button>
               ` : `
                 <button type="button" class="btn-delete" onclick="deleteUser('${escapeJs(u.id)}', '${escapeJs(u.name)}')">Delete</button>
@@ -607,50 +564,83 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Add User Submission
-  window.submitAddUser = function () {
+  // The account is created on the server by the admin-create-user Edge Function (a real login with a password);
+  // nothing is created only in this browser.
+  let addUserBusy = false;
+  window.submitAddUser = async function () {
+    if (addUserBusy) return;
     const nameInput = document.getElementById('newUserName');
     const usernameInput = document.getElementById('newUserUsername');
     const branchLocInput = document.getElementById('newUserBranchLoc') || document.getElementById('newUserBranch');
     const branchNameInput = document.getElementById('newUserBranchName');
     const roleInput = document.getElementById('newUserRole');
     const emailInput = document.getElementById('newUserEmail');
+    const companyInput = document.getElementById('newUserCompany');
+    const passwordInput = document.getElementById('newUserPassword');
 
     const name = nameInput ? nameInput.value.trim() : '';
     const username = usernameInput ? usernameInput.value.trim() : '';
     const branchLoc = branchLocInput ? branchLocInput.value : '';
-    let branchName = branchNameInput ? branchNameInput.value.trim() : '';
-    if (!branchName) {
-      branchName = branchLoc ? `${branchLoc} Branch` : 'Unassigned';
-    }
     const role = roleInput ? roleInput.value : 'Staff';
     const email = emailInput ? emailInput.value.trim() : '';
+    const company = companyInput ? companyInput.value : '';
+    const password = passwordInput ? passwordInput.value : '';
+    const branchName = (branchNameInput ? branchNameInput.value.trim() : '') || company;
 
-    if (!name || !username || !email) {
+    if (!name || !username || !email || !password) {
       window.showAdminToast('Please fill out all required fields.', 'danger');
       return;
     }
+    if (role !== 'Admin' && !company) {
+      window.showAdminToast('Please choose the company this account belongs to.', 'danger');
+      return;
+    }
 
-    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `user-${Date.now()}`;
+    addUserBusy = true;
+    const submitBtn = document.querySelector('#addUserForm button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    let res = null;
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { full_name: name, username, email, password, operational_role: role.toLowerCase(),
+                company, branch_name: branchName, branch_location: branchLoc }
+      });
+      if (error) {
+        let payload = null;
+        try { payload = error.context && typeof error.context.json === 'function' ? await error.context.json() : null; } catch (_) {}
+        res = payload && typeof payload.ok === 'boolean' ? payload
+          : { ok: false, message: 'The account service is not reachable. (Deploy the admin-create-user Edge Function.)' };
+      } else {
+        res = data;
+      }
+    } catch (_) {
+      res = { ok: false, message: 'The account service is not reachable right now. Please try again.' };
+    } finally {
+      addUserBusy = false;
+      if (submitBtn) submitBtn.disabled = false;
+    }
+    if (!res || !res.ok) {
+      window.showAdminToast((res && res.message) || 'The account could not be created.', 'danger');
+      return;
+    }
+
+    const created = res.user || {};
     const newUserRecord = {
-      id: newId,
+      id: created.id,
       name,
       username,
-      email,
+      email: created.email || email,
       branchLoc,
       branchName,
+      companyId: created.company_id || null,
+      companyName: created.company_name || null,
       role,
       status: 'Active'
     };
     const users = getStoredRegisteredUsers();
     users.push(newUserRecord);
     saveStoredRegisteredUsers(users);
-
-    // Persist user account directly to Supabase user_profiles
-    if (typeof srvCreateUser === 'function') {
-      srvCreateUser(newUserRecord).catch(err => {
-        console.warn('[AdminUserManagement] Supabase create user notice:', err.message || err);
-      });
-    }
+    if (passwordInput) passwordInput.value = '';
 
     // Broadcast live notification across all portals (Admin, Manager, Staff)
     try {
@@ -759,10 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (
       targetRole === 'administrator' || 
-      targetRole === 'admin' || 
-      targetEmail === 'calusinzeanna3@gmail.com' || 
-      targetName === 'zeanna' ||
-      targetUser === 'zeanna'
+      targetRole === 'admin'
     ) {
       if (window.showAdminToast) {
         window.showAdminToast('Main Administrator account is permanently protected and cannot be deleted.', 'danger');
@@ -838,7 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.pushRMIMSNotification === 'function') {
           window.pushRMIMSNotification({
             title: `Account Unlocked: ${name}`,
-            message: `Administrator Zeanna unlocked the account for ${name} (${email}). The user may now sign in.`,
+            message: `The Administrator unlocked the account for ${name} (${email}). The user may now sign in.`,
             category: 'Security',
             badge: 'Unlocked',
             role: 'all',
@@ -876,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
       branchName = branchLoc && branchLoc !== 'Unassigned' ? `${branchLoc} Branch` : 'Main Operations';
     }
     let role = target ? target.role : (row ? row.getAttribute('data-role') : 'Staff');
-    let email = target ? target.email : (row ? row.getAttribute('data-email') : `${username}@store.ph`);
+    let email = target ? target.email : (row ? row.getAttribute('data-email') : '');
 
     const targetPayload = {
       id: target && target.id ? target.id : (cleanParam.startsWith('req_') ? cleanParam.slice(4) : cleanParam),

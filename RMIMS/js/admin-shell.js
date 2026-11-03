@@ -1,4 +1,6 @@
 import './rmims-notifications.js';
+import './rmims-reset-guard.js';
+import './rmims-notification-feed.js';
 import './rmims-custom-select.js';
 
 (function () {
@@ -513,71 +515,64 @@ import './rmims-custom-select.js';
   // Dynamic session sync for admin topbar profile with Supabase session resilience
   async function syncAdminProfile() {
     try {
-      let userStr = localStorage.getItem('adminUser') || localStorage.getItem('rmimsAdminUser') || localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('rmimsCurrentUser');
+      // Admin pages open ONLY for a signed-in session whose database profile is an ACTIVE Admin.
+      // (No session -> sign-in page. Nothing is assumed or rebuilt in the browser.)
+      const { supabase } = await import('../supabase/supabase-config.js');
+      let session = null;
+      try { session = (await supabase.auth.getSession()).data.session; } catch (_) {}
+      const toLogin = () => {
+        ['adminUser', 'rmimsAdminUser', 'currentUser', 'userProfile', 'rmimsCurrentUser'].forEach(k => localStorage.removeItem(k));
+        window.location.replace('../login.html');
+      };
+      if (!session || !session.user) {
+        if (sessionStorage.getItem('rmims_just_logged_in') === 'true') return;   // sign-in still finishing
+        toLogin();
+        return;
+      }
+
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem('adminUser') || localStorage.getItem('currentUser') || 'null'); } catch (_) {}
+      let profile = null;
+      let profileReachable = true;
+      try {
+        const { data, error } = await supabase.from('user_profiles')
+          .select('id, email, full_name, username, role, operational_role, status').eq('id', session.user.id).maybeSingle();
+        if (error) profileReachable = false; else profile = data;
+      } catch (_) { profileReachable = false; }
+
       let user = null;
-      if (userStr) {
-        try {
-          user = JSON.parse(userStr);
-        } catch (_) {}
-      }
-
-      // If localStorage is empty or missing, asynchronously restore from Supabase session
-      if (!user) {
-        try {
-          const { supabase } = await import('../supabase/supabase-config.js');
-          if (supabase && supabase.auth) {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session && session.user) {
-              const email = (session.user.email || '').toLowerCase();
-              const isMasterAdmin = email === 'calusinzeanna3@gmail.com';
-              const meta = session.user.user_metadata || {};
-              const resolvedName = meta.full_name || (isMasterAdmin ? 'Zeanna' : email.split('@')[0]);
-
-              user = {
-                id: session.user.id,
-                fullName: resolvedName,
-                name: resolvedName,
-                email: session.user.email,
-                role: isMasterAdmin ? 'admin' : (meta.role || 'admin'),
-                operationalRole: isMasterAdmin ? 'admin' : (meta.operational_role || 'admin'),
-                status: 'active'
-              };
-
-              localStorage.setItem('adminUser', JSON.stringify(user));
-              localStorage.setItem('rmimsAdminUser', JSON.stringify(user));
-              localStorage.setItem('currentUser', JSON.stringify(user));
-              localStorage.setItem('userProfile', JSON.stringify(user));
-            }
-          }
-        } catch (e) {
-          console.warn('Admin session restore from Supabase error:', e);
-        }
-      }
-
-      if (!user) {
-        // If login transition is actively happening, give it a moment without ejecting
-        if (sessionStorage.getItem('rmims_just_logged_in') === 'true') {
+      if (profile) {
+        const op = String(profile.operational_role || '').toLowerCase();
+        if (String(profile.status || '').toLowerCase() !== 'active') {
+          try { await supabase.auth.signOut(); } catch (_) {}
+          toLogin();
           return;
         }
-        // Auto-heal admin session so Admin is never locked out of Admin portal
         user = {
-          id: '66041f5a-ce74-4866-bfcc-b0d05014f13b',
-          fullName: 'Zeanna',
-          name: 'Zeanna',
-          username: 'zeanna',
-          email: 'calusinzeanna3@gmail.com',
-          role: 'admin',
-          operationalRole: 'admin',
+          id: profile.id,
+          fullName: profile.full_name || profile.username || (profile.email || '').split('@')[0],
+          name: profile.full_name || profile.username || '',
+          username: profile.username || '',
+          email: profile.email,
+          role: op === 'admin' ? 'admin' : (op === 'manager' ? 'manager' : 'staff'),
+          operationalRole: op,
           status: 'active'
         };
-        localStorage.setItem('adminUser', JSON.stringify(user));
-        localStorage.setItem('rmimsAdminUser', JSON.stringify(user));
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('userProfile', JSON.stringify(user));
+        if (op === 'admin') {
+          localStorage.setItem('adminUser', JSON.stringify(user));
+          localStorage.setItem('rmimsAdminUser', JSON.stringify(user));
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        }
+      } else if (!profileReachable && cached && cached.id === session.user.id) {
+        user = cached;   // offline: the same signed-in person this device already verified
+      } else {
+        try { await supabase.auth.signOut(); } catch (_) {}
+        toLogin();
+        return;
       }
 
       const cleanEmail = (user.email || '').toLowerCase();
-      const isMasterAdmin = cleanEmail === 'calusinzeanna3@gmail.com';
+      const isMasterAdmin = false;
 
       // Blocked legacy dummy demo accounts
       if (cleanEmail === 'admin@rmims.ph' || cleanEmail === 'manager@rmims.ph' || cleanEmail === 'staff@rmims.ph') {
@@ -591,7 +586,7 @@ import './rmims-custom-select.js';
       }
 
       // Role check: If a Manager or Staff member lands on an Admin page, route gracefully to their workspace!
-      const isAdmin = user.role === 'admin' || user.role === 'main_admin' || user.operationalRole === 'admin' || isMasterAdmin;
+      const isAdmin = user.role === 'admin' || user.operationalRole === 'admin';
       const isManager = !isAdmin && (user.role === 'manager' || user.operationalRole === 'manager');
       const isStaff = !isAdmin && !isManager;
 
@@ -604,7 +599,7 @@ import './rmims-custom-select.js';
         return;
       }
 
-      const name = user.fullName || user.name || user.username || (isMasterAdmin ? 'Zeanna' : 'Admin');
+      const name = user.fullName || user.name || user.username || 'Admin';
       const role = 'Main Admin';
       const initial = (name.trim()[0] || 'A').toUpperCase();
 
@@ -781,7 +776,6 @@ import './rmims-custom-select.js';
             if (!n || !n.id) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
-            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;

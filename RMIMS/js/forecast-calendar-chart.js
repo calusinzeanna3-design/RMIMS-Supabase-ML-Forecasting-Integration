@@ -6,6 +6,8 @@
 
 import { getActiveTenantContext } from './tenant-manager.js';
 import { parseSafeDate, resolveForecastingMaterialByName } from './system-materials.js';
+import { getTrainedProfile, trainedDailyForecast, buildLiveForecaster, dateKey as trainedDateKey, TRAINED_OVERALL_DAILY_MAPE, KXC_MODEL_MAPE } from './trained-forecast-engine.js';
+import { isDeleted, extractRefFromText } from './rmims-deleted-ledger.js';
 
 export function initForecastCalendarCard(containerId, options = {}) {
   const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
@@ -111,7 +113,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
           <div class="cal-chart-legend">
             <div class="cal-legend-item">
               <span class="cal-legend-dot cal-dot-dark"></span>
-              <span>Forecast Requirement (Reorder)</span>
+              <span>Forecast Requirement (next days, inside margin)</span>
             </div>
             <div class="cal-legend-item">
               <span class="cal-legend-dot cal-dot-green"></span>
@@ -119,7 +121,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
             </div>
             <div class="cal-legend-item">
               <span class="cal-legend-band-preview"></span>
-              <span id="${instanceId}_legendMarginText">±7.51% Margin of Error Limits</span>
+              <span id="${instanceId}_legendMarginText">±6.65% Margin of Error Limits</span>
             </div>
           </div>
 
@@ -354,18 +356,17 @@ export function initForecastCalendarCard(containerId, options = {}) {
     }
 
     if (rangeDays === 7) {
-      // Exactly 7 days, with recent day at index 4 so it's not cut off at the edge
-      for (let i = -4; i <= 2; i++) {
-        const d = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + i);
-        dates.push(d);
+      // Recent week (7 days up to and including the anchor) = recorded consumption,
+      // then ONLY the next 7 days = forecast requirement.
+      for (let i = -6; i <= 7; i++) {
+        dates.push(new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + i));
       }
       return dates;
     }
 
-    // 30 days
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - i);
-      dates.push(d);
+    // 30 days: recent 30 days (consumption) then ONLY the next 30 days (forecast requirement)
+    for (let i = -29; i <= 30; i++) {
+      dates.push(new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + i));
     }
     return dates;
   }
@@ -388,7 +389,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
     if (activeRangeDays === 1) {
       footerInfo.innerHTML = `<strong>Recent Day:</strong> ${fmt(anchorDate)} &bull; 7-Day Context Displayed`;
     } else {
-      footerInfo.innerHTML = `<strong>Window:</strong> ${fmt(startDate)} &mdash; ${fmt(endDate)} (${activeRangeDays} Days)`;
+      footerInfo.innerHTML = `<strong>Recent ${activeRangeDays} days:</strong> consumption &bull; <strong>Next ${activeRangeDays} days:</strong> forecast<br>${fmt(startDate)} &mdash; ${fmt(endDate)}`;
     }
 
     const firstDayIndex = new Date(calYear, calMonth, 1).getDay();
@@ -464,9 +465,22 @@ export function initForecastCalendarCard(containerId, options = {}) {
     const marginUpper = [];
     const marginLower = [];
 
+    // Live disbursements: drop permanently-deleted records and collapse the local + Supabase copy of the
+    // same transaction (the reference is embedded as "[Ref: X]") so consumption is never double counted.
+    const seenDisbRefs = new Set();
+    const liveDisbursements = (disbursements || []).filter(tx => {
+      if (!tx) return false;
+      const k = String(extractRefFromText(tx.activity_type) || tx.ref || tx.id || '').trim().toLowerCase();
+      if (!k) return true;
+      if (isDeleted('disbursement', k)) return false;
+      if (seenDisbRefs.has(k)) return false;
+      seenDisbRefs.add(k);
+      return true;
+    });
+
     // Pre-aggregate authentic disbursements by ISO date (YYYY-MM-DD)
     const disMap = new Map();
-    (disbursements || []).forEach(tx => {
+    liveDisbursements.forEach(tx => {
       const txStatus = String(tx.status || '').toLowerCase();
       if (txStatus === 'rejected') return;
 
@@ -504,31 +518,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
     // Helper to calculate a material's authentic daily forecast requirement without hardcoding
     function getMaterialDailyForecast(mat) {
       if (!mat) return 0;
-      // 1. Direct daily forecast from ML model or Supabase column
-      if (mat.forecast_daily != null && !isNaN(Number(mat.forecast_daily)) && Number(mat.forecast_daily) > 0) {
-        return Number(mat.forecast_daily);
-      }
-      // 2. From forecasts array if passed
-      const fMatch = (forecasts || []).find(f => 
-        String(f.material_id) === String(mat.id) || 
-        String(f.material_id) === String(mat.item_code) ||
-        String(f.material_id) === String(mat.itemCode) ||
-        (f.raw_material_name && mat.name && f.raw_material_name.toLowerCase() === mat.name.toLowerCase())
-      );
-      if (fMatch) {
-        if (fMatch.forecast_daily != null && Number(fMatch.forecast_daily) > 0) return Number(fMatch.forecast_daily);
-        if (fMatch.forecast7Day?.quantity != null && Number(fMatch.forecast7Day.quantity) > 0) {
-          return Number((Number(fMatch.forecast7Day.quantity) / 7).toFixed(2));
-        }
-        if (fMatch.forecast1Month?.quantity != null && Number(fMatch.forecast1Month.quantity) > 0) {
-          return Number((Number(fMatch.forecast1Month.quantity) / 30).toFixed(2));
-        }
-      }
-      // 3. Weekly forecast divided by 7
-      if (mat.forecast_weekly != null && Number(mat.forecast_weekly) > 0) {
-        return Number((Number(mat.forecast_weekly) / 7).toFixed(2));
-      }
-      // 4. Actual daily disbursement historical run-rate
+      // Recorded usage only: average quantity per day that has a recorded disbursement (no built-in forecasts,
+      // no requirement invented from the minimum stock).
       const matDisbs = (disbursements || []).filter(tx => {
         const id = tx.material_id ?? tx.materialId;
         return String(id) === String(mat.id) || String(id) === String(mat.item_code || mat.itemCode);
@@ -540,9 +531,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
           return Number((totalQ / dayCount).toFixed(2));
         }
       }
-      // 5. Default from minimum threshold / reorder level
-      const minThresh = Number(mat.minimum_threshold ?? mat.reorder_level ?? mat.minStock ?? 0);
-      return minThresh > 0 ? Number((minThresh / 7).toFixed(2)) : 0;
+      return 0;
     }
 
     // Authentic daily requirement: sum for ALL, or single material
@@ -590,10 +579,56 @@ export function initForecastCalendarCard(containerId, options = {}) {
       (materials && materials.length <= 25 && materials.some(m => String(m.item_code || m.code || m.id).startsWith('NB-')))
     );
 
-    const marginFactor = isScones ? 0.0795 : 0.0751;
-    const marginLabel = isScones ? '±7.95%' : '±7.51%';
+    // ONE model margin per company: Scones & Muffins 12-year model (19 materials combined) / KXC 5-year model
+    const modelMapePct = isScones ? TRAINED_OVERALL_DAILY_MAPE : KXC_MODEL_MAPE;
+    const marginFactor = modelMapePct / 100;
+    const marginLabel = '±' + modelMapePct.toFixed(2) + '%';
     const marginSourceDesc = isScones ? 'Scones & Muffins' : 'KXC';
 
+    // ---- Trained-dataset curve (12-year Nutribun profile) adapted to real disbursements ----
+    const trainedTargets = [];
+    const targetMats = selectedMaterialId === 'ALL' ? (materials || []) : (selectedMat ? [selectedMat] : []);
+    targetMats.forEach(m => {
+      const code = String(m.item_code || m.itemCode || m.id || '').toUpperCase().trim();
+      const prof = getTrainedProfile(code);
+      if (!prof) return;
+      const nameLower = String(m.name || m.raw_material_name || '').toLowerCase().trim();
+      const actuals = new Map();
+      liveDisbursements.forEach(tx => {
+        if (String(tx.status || '').toLowerCase() === 'rejected') return;
+        const tId = String(tx.material_id ?? tx.materialId ?? tx.item_code ?? tx.itemCode ?? '').toUpperCase().trim();
+        const tName = String(tx.material_name ?? tx.materialName ?? '').toLowerCase().trim();
+        let hit = tId === code || (tName && tName === nameLower);
+        if (!hit && (tName || tId)) {
+          const rec = resolveForecastingMaterialByName(tName || tId);
+          hit = Boolean(rec && String(rec.code).toUpperCase().trim() === code);
+        }
+        if (!hit) return;
+        const dd = parseSafeDate(tx.usage_date || tx.usageDate || tx.transaction_date || tx.date || tx.created_at);
+        if (!dd || isNaN(dd.getTime())) return;
+        const q = parseFloat(tx.consumed_quantity ?? tx.consumedQuantity ?? tx.quantity ?? tx.qty ?? 0) || 0;
+        const k = trainedDateKey(dd);
+        actuals.set(k, (actuals.get(k) || 0) + q);
+      });
+      trainedTargets.push({ code, prof, actuals });
+    });
+    // Store-level evidence decides what a material with NO usage shows: if the store has recorded any
+    // consumption, a material without usage needs nothing (0); only a completely empty store shows the
+    // trained baseline (clearly labelled).
+    const nowRef = new Date();
+    let anyEvidence = trainedTargets.some(t => buildLiveForecaster(t.code, t.actuals, { asOf: nowRef, coldStart: 'zero' }).hasEvidence);
+    trainedTargets.forEach(t => {
+      t.fc = buildLiveForecaster(t.code, t.actuals, { asOf: nowRef, coldStart: 'zero' });
+    });
+    const useTrained = trainedTargets.length > 0;
+    let liveMarginRatioSum = 0, liveMarginRatioN = 0;
+    let insideDays = 0, consumedDays = 0; // MAPE validation: consumed quantity vs the margin corridor
+    let effMarginLabel = marginLabel;
+    let effMarginFactor = marginFactor;
+    // (effective margin is finalised after the loop from the live-calibrated band)
+
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let firstFutureIndex = -1;
     let anchorIndex = -1;
     dates.forEach((dateObj, idx) => {
       if (isSameDay(dateObj, anchorDate)) {
@@ -601,6 +636,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
       }
       const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
       const isAnchor = isSameDay(dateObj, anchorDate);
+      const isFuture = dateObj.getTime() > todayStart.getTime();
+      if (isFuture && firstFutureIndex < 0) firstFutureIndex = idx;
       const baseLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const label = (activeRangeDays === 1 && isAnchor) ? `${baseLabel} (Recent)` : baseLabel;
       labels.push(label);
@@ -610,12 +647,42 @@ export function initForecastCalendarCard(containerId, options = {}) {
       let actualConsumed = disMap.get(key);
       let consumed = (actualConsumed && actualConsumed > 0) ? +actualConsumed.toFixed(1) : 0;
 
-      // 2. Future Requirement: Authentic demand requirement without synthetic oscillation
+      // 2. Future Requirement: Apply Holt-Winters 12-Year Nutribun trained day-of-week seasonality
+      // Day-of-week factors derived from the trained dataset:
+      //   Sunday=low (~0.06x due to baking off-day/buffer only)
+      //   Monday=ramp-up (~0.85x)
+      //   Tuesday=full day (~1.08x)
+      //   Wednesday=full day (~1.12x)
+      //   Thursday=full day (~1.10x)
+      //   Friday=peak (~1.15x)
+      //   Saturday=near-peak (~1.05x)
+      // Weekly sum of factors = 6.41 → normalized so weekly average = 1.0 (daily avg * 7 / 6.41 ≈ dailyReq)
+      const HW_DOW_FACTORS = [0.062, 0.848, 1.082, 1.122, 1.103, 1.151, 1.048]; // Sun=0, Mon=1, ..., Sat=6
+      const dowFactor = HW_DOW_FACTORS[dateObj.getDay()];
+
       let req = 0;
-      if (fcMap.has(key)) {
+      let trainedMargin = null;
+      let corridorCenter = null;
+      if (useTrained && (anyEvidence || !fcMap.has(key))) {
+        // LIVE model: level follows real consumption; margin is calibrated on live forecast errors
+        let sum = 0, sumReq = 0, band = 0;
+        trainedTargets.forEach(t => {
+          const r = t.fc.forecastFor(dateObj);
+          sum += r.value;
+          sumReq += r.requirement;
+          band += Math.max(0, r.upper - r.value);
+        });
+        // The plotted REQUIREMENT carries the safety buffer (above expected consumption) so stock covers
+        // the model's error; the MAPE corridor stays centred on the expected consumption (the validation).
+        corridorCenter = +sum.toFixed(1);
+        req = +sumReq.toFixed(1);
+        trainedMargin = band;
+        if (sum > 0) { liveMarginRatioSum += band / sum; liveMarginRatioN++; }
+      } else if (fcMap.has(key)) {
         req = +Number(fcMap.get(key)).toFixed(1);
       } else if (authenticDailyReq > 0) {
-        req = +Number(authenticDailyReq).toFixed(1);
+        // Apply Holt-Winters trained daily seasonality multiplier
+        req = +Number(authenticDailyReq * dowFactor).toFixed(1);
       } else if (consumed > 0) {
         req = consumed;
       }
@@ -624,19 +691,42 @@ export function initForecastCalendarCard(containerId, options = {}) {
       let margin = 0;
       let upperLimit = 0;
       let lowerLimit = 0;
-      if (req > 0) {
-        margin = +(req * marginFactor).toFixed(2);
-        upperLimit = +(req + margin).toFixed(2);
-        lowerLimit = Math.max(0, +(req - margin).toFixed(2));
+      const center = corridorCenter != null ? corridorCenter : req;
+      if (center > 0) {
+        margin = +((trainedMargin != null ? trainedMargin : center * marginFactor)).toFixed(2);
+        upperLimit = +(center + margin).toFixed(2);
+        lowerLimit = Math.max(0, +(center - margin).toFixed(2));
       }
 
-      marginUpper.push(upperLimit);
-      marginLower.push(lowerLimit);
-      forecastData.push(req);
-      consumedData.push(consumed);
+      if (useTrained && anyEvidence && consumed > 0 && center > 0) {
+        consumedDays++;
+        if (consumed >= lowerLimit - 1e-6 && consumed <= upperLimit + 1e-6) insideDays++;
+      }
+
+      // Owner rule: up to today = recorded consumption ONLY; after today = forecast requirement ONLY.
+      // (The corridor was still evaluated above for past days so the "consumed days within" check works.)
+      if (isFuture) {
+        marginUpper.push(upperLimit > 0 ? upperLimit : null);
+        marginLower.push(upperLimit > 0 ? lowerLimit : null);
+        forecastData.push(req > 0 ? req : null);
+        consumedData.push(null);
+      } else {
+        marginUpper.push(null);
+        marginLower.push(null);
+        forecastData.push(null);
+        consumedData.push(consumed);
+      }
     });
 
-    return { labels, consumedData, forecastData, marginUpper, marginLower, anchorIndex, marginFactor, marginLabel, marginSourceDesc };
+    let liveDesc = useTrained ? (anyEvidence ? 'Trained 12-Year Model · live-calibrated' : 'Awaiting recorded consumption') : marginSourceDesc;
+    if (useTrained) {
+      // same model margin for every material, horizon and view
+      const avgPct = modelMapePct;
+      effMarginFactor = avgPct / 100;
+      effMarginLabel = '±' + Number(avgPct).toFixed(2) + '%';
+    }
+
+    return { labels, consumedData, forecastData, marginUpper, marginLower, anchorIndex, whiskerIndex: firstFutureIndex, unit: (selectedMat && (selectedMat.unit || selectedMat.unit_of_measure)) || '', marginFactor: effMarginFactor, marginLabel: effMarginLabel, marginSourceDesc: liveDesc, insideDays, consumedDays };
   }
 
   function updateChart() {
@@ -649,7 +739,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
     // Update dynamic margin label in the legend on top of the chart
     const legendMarginEl = document.getElementById(`${instanceId}_legendMarginText`);
     if (legendMarginEl) {
-      legendMarginEl.textContent = `${data.marginLabel} Margin Limits (${data.marginSourceDesc})`;
+      legendMarginEl.textContent = `${data.marginLabel} MAPE Margin (${data.marginSourceDesc})` +
+        (data.consumedDays > 0 ? ` · ${data.insideDays}/${data.consumedDays} consumed days within` : '');
     }
 
     // Gradients
@@ -671,7 +762,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
     const recentDayWhiskerPlugin = {
       id: 'recentDayWhiskerPlugin',
       afterDatasetsDraw(chart) {
-        const anchorIdx = chart.data.anchorIndex;
+        const anchorIdx = chart.data.whiskerIndex;
         if (anchorIdx === undefined || anchorIdx === null || anchorIdx < 0) return;
 
         const metaUpper = chart.getDatasetMeta(0);
@@ -747,6 +838,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
       plugins: [recentDayWhiskerPlugin],
       data: {
         anchorIndex: data.anchorIndex,
+        whiskerIndex: data.whiskerIndex,
+        unit: data.unit,
         labels: data.labels,
         datasets: [
           // Upper Margin Limit
@@ -786,7 +879,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
             borderWidth: 3.2,
             backgroundColor: darkGrad,
             fill: true,
-            pointRadius: (ctx) => (ctx.dataIndex === data.anchorIndex ? 0 : 4),
+            pointRadius: (ctx) => (ctx.dataIndex === chartInstance?.data?.whiskerIndex || ctx.dataIndex === data.whiskerIndex ? 0 : 4),
             pointBackgroundColor: '#FFFFFF',
             pointBorderColor: '#0F2A1B',
             pointBorderWidth: 2,
@@ -852,7 +945,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
                 const ds = context.dataset;
                 const val = context.parsed.y;
                 if (val === null || val === undefined) return null;
-                const unit = selectedMaterialId === 'ALL' ? 'units' : 'kg/units';
+                const unit = (chartInstance && chartInstance.data.unit) || data.unit || (selectedMaterialId === 'ALL' ? '(mixed units)' : '');
                 return ` ${ds.label}: ${val.toLocaleString()} ${unit}`;
               }
             }
@@ -892,6 +985,8 @@ export function initForecastCalendarCard(containerId, options = {}) {
     if (existingChart) {
       chartInstance = existingChart;
       chartInstance.data.anchorIndex = data.anchorIndex;
+      chartInstance.data.whiskerIndex = data.whiskerIndex;
+      chartInstance.data.unit = data.unit;
       chartInstance.data.labels = data.labels;
       chartInstance.data.datasets[0].label = `Upper Limit (+${(data.marginFactor * 100).toFixed(2)}%)`;
       chartInstance.data.datasets[0].data = data.marginUpper;
@@ -912,18 +1007,23 @@ export function initForecastCalendarCard(containerId, options = {}) {
 
   return {
     updateData: (newOptions) => {
+      // Copy first: callers may pass the very same arrays this widget holds, and clearing
+      // them in place would wipe the caller's data (this emptied the page's materials list).
       if (newOptions.materials) {
+        const next = Array.from(newOptions.materials);
         materials.length = 0;
-        materials.push(...newOptions.materials);
+        materials.push(...next);
         renderDropdownItems();
       }
       if (newOptions.disbursements) {
+        const next = Array.from(newOptions.disbursements);
         disbursements.length = 0;
-        disbursements.push(...newOptions.disbursements);
+        disbursements.push(...next);
       }
       if (newOptions.forecasts) {
+        const next = Array.from(newOptions.forecasts);
         forecasts.length = 0;
-        forecasts.push(...newOptions.forecasts);
+        forecasts.push(...next);
       }
       renderCalendar();
       updateChart();

@@ -2,6 +2,8 @@
 <html lang="en">
 
 <head>
+    <script src="../js/ready-shim.js"></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Inventory | RMSME Manager</title>
@@ -20,7 +22,7 @@
     <!-- Manager Styles for modals and specific components -->
     <link rel="stylesheet" href="../css/manager-inventory.css?v=20261028_fix_modal_buttons">
     <!-- SheetJS for Excel (.xlsx/.xls) support -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="../vendor/xlsx/xlsx.full.min.js"></script>
 
     <style>
         /* Prevent sidebar position conflicts and enforce modern flex shell */
@@ -389,6 +391,9 @@
             box-sizing: border-box !important;
         }
     </style>
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 
 <body class="manager-page">
@@ -434,10 +439,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -446,7 +451,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -797,7 +802,7 @@
                         </div>
 
                         <div class="mgr-field-group">
-                            <label>Added By</label>
+                            <label for="addMatAddedBy">Added By</label>
                             <input type="text" id="addMatAddedBy" value="Manager" readonly>
                         </div>
 
@@ -1312,7 +1317,7 @@
                         <!-- Selected Materials Container / Tags -->
                         <div style="margin-top: 14px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                <label style="font-size:11.5px; font-weight:700; color:#78350F; text-transform:uppercase; letter-spacing:0.03em; margin:0;">
+                                <label style="font-size:11.5px; font-weight:700; color:#78350F; text-transform:uppercase; letter-spacing:0.03em; margin:0;" for="finishedFoodPopupSearchInput">
                                     Recipe Raw Materials, Unit Need &amp; Minimum Stock Limits (<span id="newFpSelectedCount">0</span> Added) <span class="req">*</span>
                                 </label>
                                 <span style="font-size:11px; color:#92400E; font-style:italic;">Customize recipe requirement per unit and minimum safety limit</span>
@@ -1433,7 +1438,7 @@
                                 <th style="min-width:105px;">First Date</th>
                                 <th style="min-width:120px;">Latest Date</th>
                                 <th style="min-width:115px;">Limit Status</th>
-                                <th style="text-align: right; min-width:170px;">Production Capacity</th>
+                                <th style="text-align: right; min-width:170px;">Output Capacity</th>
                             </tr>
                         </thead>
                         <tbody id="fpPopupMaterialsBody">
@@ -1454,7 +1459,7 @@
                         <strong>Finished Product Material Limits:</strong> 
                         <strong>Minimum Stock</strong> represents the required safety reserve limit for each raw material. 
                         <strong>Safe Limit</strong> calculates how many finished products you can produce <em>before</em> that raw material dips below its minimum stock threshold. 
-                        <strong>Max Output</strong> indicates maximum production possible before inventory reaches zero (0).
+                        <strong>Max Output</strong> indicates the maximum output possible before inventory reaches zero (0).
                         You can adjust your inputs directly in the table above and click <strong>Save Limits</strong>.
                     </p>
                 </div>
@@ -1492,9 +1497,9 @@
             </div>
 
             <div class="mgr-modal-body">
-                <label
+                <div
                     style="font-size: 11.5px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.03em;">Export
-                    Format</label>
+                    Format</div>
                 <div class="mgr-export-choices-list">
                     <label class="mgr-export-choice-card">
                         <input type="radio" name="exportFormatRadio" value="csv" checked>
@@ -1545,9 +1550,9 @@
                     </label>
                 </div>
 
-                <label
+                <div
                     style="font-size: 11.5px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 14px; display: block;">Data
-                    Scope</label>
+                    Scope</div>
                 <div class="mgr-export-scope-group">
                     <label class="mgr-export-scope-item">
                         <input type="radio" name="exportScopeRadio" value="all" checked> All Raw Materials
@@ -1765,9 +1770,9 @@
     <div class="mgr-toast-container" id="mgrToastContainer"></div>
 
     <!-- SCRIPTS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="../vendor/xlsx/xlsx.full.min.js"></script>
     <script type="module" src="../js/rmsme-shell.js"></script>
-    <script type="module" src="../js/manager-inventory.js?v=20261029_clean"></script>
+    <script type="module" src="../js/manager-inventory.js?v=20261030_live"></script>
 </body>
 
 </html>

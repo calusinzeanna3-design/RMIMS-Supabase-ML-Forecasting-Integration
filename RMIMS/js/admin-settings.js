@@ -4,7 +4,9 @@
 // Branch Sync Policies, Database Backup, and Root Factory System Reset.
 
 import { supabase, auth } from '../supabase/supabase-config.js';
+import { changeAccountPassword } from '../supabase/password-service.js';
 import { onAuthStateChanged } from '../supabase/auth-compat.js';
+import { wipeLocalRmimsData } from './rmims-reset-guard.js';
 import { isMockUser, syncRestoredRolePayload, logAdminActivity } from '../supabase/admin-supabase-service.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,22 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (u && typeof u === 'object') {
           const role = (u.role || u.operationalRole || '').toLowerCase();
           const email = (u.email || '').toLowerCase();
-          const isMaster = email === 'calusinzeanna3@gmail.com' || email.startsWith('admin');
+          const isMaster = false;
           if (role === 'admin' || isMaster) {
             return u;
           }
         }
       }
     } catch (_) {}
-    return {
-      fullName: 'Zeanna Calusin',
-      name: 'Zeanna Calusin',
-      email: 'calusinzeanna3@gmail.com',
-      role: 'admin',
-      status: 'active',
-      created_at: '2026-10-03T04:00:00.000Z',
-      updated_at: new Date().toISOString()
-    };
+    return null;
   }
 
   /* ==========================================================
@@ -138,13 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================
      2. ADMIN PROFILE, AVATAR & METADATA
      ========================================================== */
-  let activeAdminUser = getStoredAdminUser();
+  let activeAdminUser = getStoredAdminUser() || {};
 
   function applyAdminProfile(userData) {
     if (!userData) return;
     activeAdminUser = userData;
     const uid = userData.id || userData.uid || 'admin_root';
-    const email = userData.email || 'calusinzeanna3@gmail.com';
+    const email = userData.email || '';
     const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
                       (email && localStorage.getItem('rmims_avatar_removed_' + email.toLowerCase()) === 'true');
     const savedAvatar = isRemoved ? '' : (localStorage.getItem('rmims_admin_avatar') || 
@@ -161,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const topbarAv = document.getElementById('topbarProfileAvatar');
     const topbarName = document.getElementById('topbarProfileName');
 
-    const fullName = userData.fullName || userData.name || 'Zeanna Calusin';
+    const fullName = userData.fullName || userData.name || userData.username || '';
     const role = 'Main Administrator';
 
     if (nameInput) nameInput.value = fullName;
@@ -264,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (removeBtn) {
       removeBtn.addEventListener('click', async () => {
         const uid = activeAdminUser?.id || activeAdminUser?.uid || 'admin_root';
-        const cleanEmail = (activeAdminUser?.email || 'calusinzeanna3@gmail.com').toLowerCase();
+        const cleanEmail = (activeAdminUser?.email || '').toLowerCase();
 
         // Set permanent tombstone so avatar is never resurrected on refresh
         localStorage.setItem('rmims_avatar_removed', 'true');
@@ -317,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (_) {}
 
         if (photoInput) photoInput.value = '';
-        const init = initials(activeAdminUser?.fullName || activeAdminUser?.name || 'Zeanna Calusin');
+        const init = initials(activeAdminUser?.fullName || activeAdminUser?.name || '');
         if (previewAv) previewAv.textContent = init;
         document.querySelectorAll('[data-shell-avatar], #topbarProfileAvatar, #topbarAvatar').forEach(el => {
           el.textContent = init;
@@ -356,13 +350,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // VERIFY LEGITIMATE ADMIN EMAIL
-        const legitAdminEmails = ['calusinzeanna3@gmail.com'];
         const currentEmail = (activeAdminUser?.email || '').trim().toLowerCase();
-        let isLegit = legitAdminEmails.includes(currentEmail);
+        let isLegit = String(activeAdminUser?.role || '').toLowerCase() === 'admin';
         if (!isLegit) {
           try {
             const regUsers = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-            isLegit = regUsers.some(u => (u.email || '').toLowerCase() === currentEmail && (u.role === 'admin' || (u.email || '').toLowerCase() === 'calusinzeanna3@gmail.com'));
+            isLegit = regUsers.some(u => (u.email || '').toLowerCase() === currentEmail && u.role === 'admin');
           } catch (_) {}
         }
 
@@ -426,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (authUser) => {
       if (!authUser) {
         const local = getStoredAdminUser();
-        if (local && (local.role === 'admin' || local.email === 'calusinzeanna3@gmail.com')) {
+        if (local && (local.role === 'admin')) {
           applyAdminProfile(local);
           return;
         }
@@ -441,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
           .maybeSingle();
 
         const email = (authUser.email || '').toLowerCase();
-        const isMasterAdmin = email === 'calusinzeanna3@gmail.com' || email.startsWith('admin');
+        const isMasterAdmin = false;
         const role = (profile?.role || (isMasterAdmin ? 'admin' : '')).toLowerCase();
 
         if (profile && profile.status !== 'active') {
@@ -469,12 +462,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminProfile = {
           id: authUser.uid,
           uid: authUser.uid,
-          fullName: profile?.full_name || authUser.displayName || (isMasterAdmin ? 'Zeanna Calusin' : 'Admin'),
-          name: profile?.full_name || authUser.displayName || (isMasterAdmin ? 'Zeanna Calusin' : 'Admin'),
-          email: authUser.email || 'calusinzeanna3@gmail.com',
+          fullName: profile?.full_name || authUser.displayName || 'Admin',
+          name: profile?.full_name || authUser.displayName || 'Admin',
+          email: authUser.email || '',
           role: 'admin',
           status: profile?.status || 'active',
-          created_at: profile?.created_at || authUser.created_at || '2026-10-03T04:00:00.000Z',
+          created_at: profile?.created_at || authUser.created_at || '',
           updated_at: profile?.updated_at || new Date().toISOString()
         };
 
@@ -545,6 +538,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+          const pw = await changeAccountPassword(cur, nw);
+          if (!pw.ok) {
+            const t = pw.field === 'current' ? curErr : pw.field === 'new' ? newErr : null;
+            if (t) t.textContent = pw.message; else if (window.showAdminToast) window.showAdminToast(pw.message, 'danger');
+            return;
+          }
+          if (window.showAdminToast) window.showAdminToast('Password updated successfully.');
+          passwordForm.reset();
+          return;
           // 1. Resolve Admin Email
           let adminEmail = (activeAdminUser?.email || '').trim().toLowerCase();
           if (!adminEmail) {
@@ -628,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
             regUsers.push({
               id: activeAdminUser?.id || 'admin_' + Date.now(),
               email: adminEmail,
-              name: activeAdminUser?.fullName || 'Zeanna Calusin',
+              name: activeAdminUser?.fullName || '',
               role: 'admin',
               status: 'active'
             });
@@ -1895,103 +1897,36 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>Resetting System...</span>
         `;
 
-        setTimeout(() => {
+        (async () => {
           try {
-            // 1. Operational keys to completely remove
-            const operationalKeys = [
-              // Manager & Staff Receipts
-              'rmims_manager_receipts',
-              'rmims_custom_receipts',
-              'rmims_deleted_receipt_ids',
-              'rmims_receipt_counter',
-              
-              // Manager & Staff Disbursements
-              'rmims_manager_disbursements',
-              'rmims_custom_disbursements',
-              'rmims_deleted_disbursement_ids',
-              'rmims_disburse_counter',
-              
-              // Staff & Manager Audit Trails
-              'rmims_manager_activities',
-              'rmims_staff_transactions',
-              'rmims_staff_submissions',
-              'rmims_staff_draft_receipts',
-              'rmims_staff_draft_disbursements',
-              
-              // Materials & Finished Products mutations & overrides
-              'rmims_custom_raw_materials',
-              'rmims_deleted_material_ids',
-              'rmims_archived_materials',
-              'rmims_materials_override',
-              'rmims_custom_materials',
-              'rmims_finished_products',
-              'rmims_deleted_finished_products',
-              'rmims_custom_finished_products',
-              'rmims_finished_product_context',
-              'rmims_raw_materials_context',
-              'rmims_inventory_cache',
-              'rmims_stock_adjustments',
-              'rmims_inventory_adjustments',
-              
-              // AI Forecasting models and predictions cache
-              'rmims_forecast_cache',
-              'rmims_forecast_timestamp',
-              'rmims_latest_forecast',
-              'rmims_historical_usage_cache',
-              
-              // User management custom accounts & pending requests
-              'rmims_pending_users',
-              'rmims_user_approvals',
-              'rmims_registered_users',
-              
-              // Diagnostics & Alerts
-              'rmims_system_alerts',
-              'RMIMS_SYSTEM_ALERTS_V2',
+            // 1. Supabase: every company's data and every Manager / Staff login are deleted (Admin kept)
+            const { data, error } = await supabase.rpc('admin_factory_reset', { p_confirm: 'RESET' });
+            if (error) throw error;
+            if (!data || !data.success) throw new Error('The database did not confirm the reset.');
 
-              // Branch stores network
-              'RMIMS_BRANCH_STORES_V3'
-            ];
-
-            operationalKeys.forEach(k => {
-              try { localStorage.removeItem(k); } catch (_) {}
-            });
-
-            // 2. Initialize pristine empty operational structures
-            localStorage.setItem('rmims_manager_receipts', JSON.stringify([]));
-            localStorage.setItem('rmims_manager_disbursements', JSON.stringify([]));
-            localStorage.setItem('rmims_manager_activities', JSON.stringify([]));
-            localStorage.setItem('rmims_staff_transactions', JSON.stringify([]));
-            localStorage.setItem('rmims_pending_users', JSON.stringify([]));
-            localStorage.setItem('rmims_registered_users', JSON.stringify([]));
-            localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify({}));
-
-            // 3. Broadcast sync events across all tabs/windows
-            const now = Date.now();
-            localStorage.setItem('rmims_sync_event', JSON.stringify({ time: now, action: 'factory_reset' }));
-            localStorage.setItem('rmims_inventory_updated', String(now));
-            window.dispatchEvent(new Event('rmims_inventory_updated'));
-            window.dispatchEvent(new Event('storage'));
+            // 2. This browser: every saved RMIMS copy is deleted too. Every other device does the same by
+            //    itself the moment it sees the new reset (js/rmims-reset-guard.js).
+            wipeLocalRmimsData();
+            try { localStorage.setItem('rmims_reset_epoch_seen', data.reset_epoch || new Date().toISOString()); } catch (_) {}
 
             closeResetModal();
-
             if (window.showAdminToast) {
-              window.showAdminToast('System successfully restored to brand-new factory state! Reloading...');
+              window.showAdminToast(`System reset to a brand-new state. ${data.accounts_removed || 0} account(s) removed. Reloading...`);
             }
-
-            setTimeout(() => {
-              window.location.reload();
-            }, 1200);
-
+            setTimeout(() => { window.location.reload(); }, 1200);
           } catch (err) {
             console.error('Factory Reset Error:', err);
             btnExecute.disabled = false;
             btnExecute.style.opacity = '1';
             btnExecute.textContent = 'Execute Reset';
+            const msg = String((err && err.message) || '');
             if (window.showAdminToast) {
-              window.showAdminToast('Reset encountered an error. Please try again.', 'danger');
+              window.showAdminToast(/admin_factory_reset|function|schema cache/i.test(msg)
+                ? 'Factory reset is not installed in Supabase yet: run the SQL files in RMIMS/supabase/fresh (00 to 11).'
+                : (msg.replace(/^RMIMS_[A-Z_]+:\s*/, '') || 'Reset could not be completed. Nothing was deleted.'), 'danger');
             }
           }
-        }, 900);
+        })();
       });
     }
   }

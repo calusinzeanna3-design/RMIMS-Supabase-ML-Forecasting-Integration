@@ -1,30 +1,194 @@
-/**
- * RMIMS Transaction & Reference Engine
- * Implements global rules for Staff & Manager:
- * - System-generated unique reference numbers (REC-YYYY-XXXXX, DIS-YYYY-XXXXX)
- * - Reference Number is the ONLY basis for duplicate detection
- * - Duplicate checks operate across Staff ↔ Staff, Staff ↔ Manager, Manager ↔ Manager
- * - A reference that has been submitted or used cannot be reused
- * - Duplicate warning modal with Cancel / Refresh Form
- * - Refreshing creates a new reference and resets the form
- * - Correction maintains the original reference number
- * - Resubmitted transactions display 🔵 UPDATED inside Manager Review popup
- */
-
-import { adjustSystemMaterialStock, getSystemRawMaterials } from './system-materials.js';
+import { adjustSystemMaterialStock, getSystemRawMaterials, resolveForecastingMaterialByName, invalidateForecastCache } from './system-materials.js';
+import { markDeleted, isDeleted, isRefDeletedAny, getDeletedSet } from './rmims-deleted-ledger.js';
 import { getCompanyAcronym, getRoleReferencePrefix } from './tenant-manager.js';
 import { supabase } from '../supabase/supabase-config.js';
 
-function persistStaffTxToSupabase(tx) {
-  if (!tx || !tx.ref || !supabase) return;
+const STAFF_TX_OUTBOX_KEY = 'rmims_staff_tx_outbox';
+const sleepMs = (ms) => new Promise(r => setTimeout(r, ms));
+function withTimeoutP(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+function supabaseUsable() { return Boolean(supabase && !supabase.__offline && typeof supabase.from === 'function'); }
+
+function readOutbox() {
+  try { const v = JSON.parse(localStorage.getItem(STAFF_TX_OUTBOX_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+}
+function writeOutbox(list) {
+  try { localStorage.setItem(STAFF_TX_OUTBOX_KEY, JSON.stringify(list.slice(-300))); } catch (_) {}
+}
+function queueOutbox(tx, isNew) {
+  const list = readOutbox().filter(o => !(o && o.tx && o.tx.id === tx.id && o.tx.updatedAt === tx.updatedAt && o.tx.status === tx.status));
+  list.push({ tx, isNew: Boolean(isNew), at: Date.now() });
+  writeOutbox(list);
+}
+
+/**
+ * Save the staff transaction state to the shared database log so the manager (and the staff member's other
+ * devices) can see it. If the write fails (offline, expired sign-in, ...) it is kept in an outbox and retried,
+ * instead of silently staying on this device only (the manager never saw such submissions).
+ */
+async function pushStaffTxState(tx) {
+  const { error } = await withTimeoutP(supabase.from('activity_audit_logs').insert([{
+    action: 'STAFF_TX_STATE',
+    entity_type: 'staff_transactions',
+    entity_id: String(tx.ref),
+    details: tx
+  }]), 8000);
+  if (error) throw new Error(error.message || 'insert failed');
+}
+
+function persistStaffTxToSupabase(tx, { isNew = false } = {}) {
+  if (!tx || !tx.ref) return;
+  if (!supabaseUsable()) { queueOutbox(tx, isNew); return; }
+  (async () => {
+    try {
+      await pushStaffTxState(tx);
+      if (isNew) await verifyStaffReferenceOwnership(tx);
+    } catch (e) {
+      console.warn('[TransactionEngine] staff tx not shared yet, will retry:', e && e.message);
+      queueOutbox(tx, isNew);
+    }
+  })();
+}
+
+let outboxRunning = false;
+export async function flushStaffTxOutbox() {
+  if (outboxRunning || !supabaseUsable()) return;
+  const items = readOutbox();
+  if (!items.length) return;
+  outboxRunning = true;
   try {
-    supabase.from('activity_audit_logs').insert([{
-      action_type: 'STAFF_TX_STATE',
-      entity_type: 'staff_transactions',
-      entity_id: tx.ref,
-      details: tx
-    }]).then(() => {}).catch(() => {});
+    const remaining = [];
+    for (const item of items) {
+      const tx = item && item.tx;
+      if (!tx || !tx.ref) continue;
+      // Only push the newest local version of this record
+      const current = readStaffListRaw().find(t => t && t.id === tx.id);
+      const toSend = current || tx;
+      try {
+        await pushStaffTxState(toSend);
+        if (item.isNew) await verifyStaffReferenceOwnership(toSend);
+      } catch (_) {
+        remaining.push(item);
+      }
+    }
+    // keep items queued while we were running
+    const fresh = readOutbox().filter(o => !items.includes(o) && !items.some(i => i && o && i.at === o.at && i.tx && o.tx && i.tx.id === o.tx.id));
+    writeOutbox([...remaining, ...fresh]);
+  } finally {
+    outboxRunning = false;
+  }
+}
+
+/**
+ * Two staff phones that have not synced yet can both issue e.g. 2026SMSt-R0003. The first record saved to the
+ * database keeps the number; the other device renumbers its own record so neither submission is lost.
+ */
+async function verifyStaffReferenceOwnership(tx) {
+  if (!supabaseUsable() || !tx || !tx.ref || !tx.id) return;
+  let rows = [];
+  try {
+    const res = await withTimeoutP(supabase
+      .from('activity_audit_logs')
+      .select('details, created_at')
+      .eq('entity_type', 'staff_transactions')
+      .eq('entity_id', String(tx.ref))
+      .eq('action', 'STAFF_TX_STATE')
+      .order('created_at', { ascending: true })
+      .limit(25), 6000);
+    rows = (res && Array.isArray(res.data)) ? res.data : [];
+  } catch (_) { return; }
+  let ownerId = null;
+  for (const r of rows) {
+    let det = r.details;
+    if (typeof det === 'string') { try { det = JSON.parse(det); } catch (_) { det = null; } }
+    if (det && det.id) { ownerId = det.id; break; }
+  }
+  if (!ownerId || ownerId === tx.id) return;
+
+  // We lost: move our record to a fresh number.
+  const oldRef = tx.ref;
+  burnReference(oldRef);
+  const type = /-D\d+/i.test(oldRef) || String(tx.activity || '').toLowerCase().startsWith('dis') ? 'DIS' : 'REC';
+  let newRef = generateNextReference(type, 'staff');
+  try { newRef = await reserveReference(newRef, type, 'staff'); } catch (_) {}
+  const list = readStaffListRaw();
+  const idx = list.findIndex(t => t && t.id === tx.id);
+  const base = idx !== -1 ? list[idx] : tx;
+  const moved = { ...base, ref: newRef, refChangedFrom: oldRef, updatedAt: new Date().toISOString() };
+  if (idx !== -1) list[idx] = moved; else list.unshift(moved);
+  writeStaffListRaw(list);
+  try { localStorage.setItem('rmims_staff_activity_updated', String(Date.now())); } catch (_) {}
+  try {
+    window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: moved }));
+    if (typeof window.pushRMIMSNotification === 'function') {
+      window.pushRMIMSNotification({
+        title: `Reference updated: ${newRef}`,
+        message: `Another staff device used ${oldRef} at the same time, so your ${String(moved.activity || 'submission').toLowerCase()} of ${moved.qty || moved.quantity} ${moved.material || ''} was saved as ${newRef}.`,
+        category: 'Inventory', badge: 'Pending', role: 'staff', targetRole: 'staff', roleScope: 'staff', priority: 'normal',
+        targetUrl: `user/my-activity.html?view=${encodeURIComponent(newRef)}`, ref: newRef
+      });
+    }
   } catch (_) {}
+  try { await pushStaffTxState(moved); } catch (_) { queueOutbox(moved, true); return; }
+  await verifyStaffReferenceOwnership(moved);
+}
+
+/** Is this reference already used anywhere in the company's shared records? (true / false / null = unknown) */
+async function isReferenceTakenRemotely(ref) {
+  if (!supabaseUsable() || !ref) return null;
+  try {
+    const tag = `%[Ref: ${String(ref).replace(/[\\%_]/g, c => '\\' + c)}]%`;
+    const [a, b, c] = await withTimeoutP(Promise.all([
+      supabase.from('activity_audit_logs').select('id').eq('entity_id', String(ref)).limit(1),
+      supabase.from('stock_receipts').select('id').ilike('supplier_name', tag).limit(1),
+      supabase.from('material_disbursements').select('id').ilike('activity_type', tag).limit(1)
+    ]), 3500);
+    const hit = [a, b, c].some(r => r && Array.isArray(r.data) && r.data.length > 0);
+    if (hit) return true;
+    if (a && a.error && b && b.error && c && c.error) return null;
+    return false;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** True when this number can no longer be used (already saved here, synced from another device, or deleted). */
+export function isReferenceUsed(ref) {
+  if (!ref || ref === '--') return true;
+  return checkReferenceDuplicate(ref).isDuplicate || isRefDeletedAny(ref);
+}
+
+/**
+ * Final check right before a receive / disburse is saved: make sure the reference shown on the form is not
+ * already used on another device or by a deleted record. Returns the reference to use (the same one, or the
+ * next free one).
+ */
+export async function reserveReference(ref, type = 'REC', role = null) {
+  let candidate = String(ref || '').trim() || generateNextReference(type, role);
+  for (let i = 0; i < 15; i++) {
+    const localTaken = checkReferenceDuplicate(candidate).isDuplicate || isRefDeletedAny(candidate);
+    if (localTaken) {
+      burnReference(candidate);
+      candidate = generateNextReference(type, role);
+      continue;
+    }
+    const remote = await isReferenceTakenRemotely(candidate);
+    if (remote === true) {
+      burnReference(candidate);
+      candidate = generateNextReference(type, role);
+      continue;
+    }
+    return candidate;
+  }
+  return candidate;
+}
+
+if (typeof window !== 'undefined') {
+  const kick = () => { flushStaffTxOutbox().catch(() => {}); };
+  setTimeout(kick, 3000);
+  setInterval(kick, 15000);
+  window.addEventListener('online', kick);
 }
 
 export const STAFF_TX_KEY = 'rmims_staff_transactions';
@@ -283,6 +447,19 @@ export function generateNextReference(type = 'REC', role = null, context = null)
     }
   });
 
+  // Permanently deleted receipts / disbursements keep their number forever. Those tombstones are shared through the
+  // database, but the "burned" list is per browser, so without this a second browser / phone re-issued a deleted
+  // number and the new record was immediately hidden as "deleted" (it saved, then vanished).
+  ['receipt', 'disbursement'].forEach(kind => {
+    getDeletedSet(kind).forEach(ref => {
+      const match = ref.match(exactRegex) || ref.match(typeRegex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+  });
+
   // Continuous sequence starting at 0001, padded to 4 digits
   const nextNum = maxNum + 1;
   return `${prefix}${String(nextNum).padStart(4, '0')}`;
@@ -452,7 +629,7 @@ export function showDuplicateWarningModal({ refNumber, existingTransaction, onCa
  * Save a new Staff transaction (starts as Pending)
  */
 export function submitStaffTransaction(data) {
-  const allStaff = getStaffTransactions();
+  const allStaff = readStaffListRaw();
   let resolvedMatId = data.materialId || data.item_code || '';
   let resolvedMatName = data.material || data.materialName || '';
   try {
@@ -488,15 +665,20 @@ export function submitStaffTransaction(data) {
     notes: data.notes || '',
     status: 'Pending',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     isUpdated: false
   };
 
+  // Never keep two records under one number on this device
+  const sameRefIdx = allStaff.findIndex(t => t && t.ref && String(t.ref).toLowerCase() === String(tx.ref).toLowerCase());
+  if (sameRefIdx !== -1) allStaff.splice(sameRefIdx, 1);
   allStaff.unshift(tx);
   try {
     localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
     localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
   } catch (e) {}
-  persistStaffTxToSupabase(tx);
+  burnReference(tx.ref);
+  persistStaffTxToSupabase(tx, { isNew: true });
 
   // Broadcast live notification across all portals (Admin, Manager, Staff)
   let staffTxNotif = null;
@@ -552,7 +734,7 @@ export function submitStaffTransaction(data) {
  * Sets isUpdated = true and logs previous correction info.
  */
 export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
-  const allStaff = getStaffTransactions();
+  const allStaff = readStaffListRaw();
   const searchKey = String(refOrId || '').trim().toLowerCase();
   const idx = allStaff.findIndex(t => 
     (t.ref && t.ref.toLowerCase() === searchKey) || 
@@ -661,27 +843,33 @@ export function resubmitStaffCorrection(refOrId, updatedFields, previousTx) {
   return updatedTx;
 }
 
+/** Everything stored on this device, including records the staff member withdrew (kept so syncs know they are gone). */
+export function readStaffListRaw() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STAFF_TX_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch (_) {
+    return [];
+  }
+}
+function writeStaffListRaw(list) {
+  try { localStorage.setItem(STAFF_TX_KEY, JSON.stringify(list)); } catch (_) {}
+}
+
 export function getStaffTransactions() {
   try {
     const raw = localStorage.getItem(STAFF_TX_KEY);
     let list = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(list)) list = [];
+    list = list.filter(Boolean);
     const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
     let modified = false;
     list.forEach(t => {
       if (!t) return;
       const lowerStaff = String(t.staff || '').toLowerCase().trim();
       if (!t.staff || BANNED_STAFF.includes(lowerStaff)) {
-        let resolved = 'Staff_1';
-        if (t.staffEmail === 'scone2@gmail.com') resolved = 'Staff_2';
-        else if (t.staffEmail === 'zeannapatty@gmail.com') resolved = 'Aizel';
-        else if (t.staffEmail === 'zeannapatricia@gmail.com') resolved = 'Glazel';
-        t.staff = resolved;
-        modified = true;
-      }
-      if (t.approvedBy && BANNED_STAFF.includes(String(t.approvedBy).toLowerCase().trim())) {
-        t.approvedBy = 'Aizel';
-        modified = true;
+        const resolved = String(t.staffEmail || '').split('@')[0];
+        if (resolved && resolved !== t.staff) { t.staff = resolved; modified = true; }
       }
     });
     if (modified) {
@@ -689,7 +877,7 @@ export function getStaffTransactions() {
         localStorage.setItem(STAFF_TX_KEY, JSON.stringify(list));
       } catch (_) {}
     }
-    return list.filter(t => !['tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005', 'st-001', 'st-002', 'st-003', 'st-004', 'st-005'].includes(t.id));
+    return list.filter(t => !t.withdrawnByStaff && !isRefDeletedAny(t.ref) && !['tx-staff-001', 'tx-staff-002', 'tx-staff-003', 'tx-staff-004', 'tx-staff-005', 'st-001', 'st-002', 'st-003', 'st-004', 'st-005'].includes(t.id));
   } catch (e) {
     return [];
   }
@@ -701,7 +889,7 @@ export function getStaffTransactions() {
  * records previous values, and alerts both Manager and Staff.
  */
 export function updateStaffTransaction(refOrId, updatedFields) {
-  const allStaff = getStaffTransactions();
+  const allStaff = readStaffListRaw();
   const searchKey = String(refOrId || '').trim().toLowerCase();
   const idx = allStaff.findIndex(t => 
     (t.ref && t.ref.toLowerCase() === searchKey) || 
@@ -827,10 +1015,10 @@ export function updateStaffTransaction(refOrId, updatedFields) {
  * Deletes a Staff transaction record and reverts stock if it was Approved.
  */
 export function deleteStaffTransaction(refOrId) {
-  const allStaff = getStaffTransactions();
+  const allStaff = readStaffListRaw();
   const searchKey = String(refOrId || '').trim().toLowerCase();
-  const idx = allStaff.findIndex(t => 
-    (t.ref && t.ref.toLowerCase() === searchKey) || 
+  const idx = allStaff.findIndex(t =>
+    (t.ref && t.ref.toLowerCase() === searchKey) ||
     (t.id && String(t.id).toLowerCase() === searchKey)
   );
   if (idx === -1) return { success: false, message: 'Transaction not found.' };
@@ -846,20 +1034,28 @@ export function deleteStaffTransaction(refOrId) {
     adjustSystemMaterialStock(current.material, delta);
   }
 
-  const removed = allStaff.splice(idx, 1)[0];
-  try {
-    localStorage.setItem(STAFF_TX_KEY, JSON.stringify(allStaff));
-    localStorage.setItem('rmims_staff_activity_updated', String(Date.now()));
-  } catch (e) {}
+  // The record is kept as "withdrawn" (hidden everywhere) instead of being removed. Removing it only on this
+  // device let the next database sync bring it straight back, on this device and on the manager's.
+  const nowIso = new Date().toISOString();
+  const removed = {
+    ...current,
+    status: 'Deleted',
+    withdrawnByStaff: true,
+    deletedBy: current.staff || 'Staff',
+    deletedAt: nowIso,
+    updatedAt: nowIso
+  };
+  allStaff[idx] = removed;
+  writeStaffListRaw(allStaff);
+  try { localStorage.setItem('rmims_staff_activity_updated', String(Date.now())); } catch (e) {}
+  burnReference(current.ref);
+  persistStaffTxToSupabase(removed);
 
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('rmims_staff_transactions_updated', { detail: removed }));
   try {
     if (typeof window !== 'undefined' && typeof window.broadcastRMIMSSync === 'function') {
-      window.broadcastRMIMSSync({
-        deletedRef: current.ref || refOrId,
-        allTransactions: allStaff
-      });
+      window.broadcastRMIMSSync({ transaction: removed });
     }
   } catch (e) {}
   try {
@@ -937,41 +1133,7 @@ export function updateManagerReceipt(refOrId, updatedFields) {
  * Deletes a Manager Receipt and reverts stock by subtracting inward quantity.
  */
 export function deleteManagerReceipt(refOrId) {
-  let receipts = [];
-  try {
-    receipts = JSON.parse(localStorage.getItem(MGR_RECEIPTS_KEY) || '[]');
-  } catch (e) { receipts = []; }
-
-  const searchKey = String(refOrId || '').trim().toLowerCase();
-  const idx = receipts.findIndex(r => 
-    (r.ref && r.ref.toLowerCase() === searchKey) || 
-    (r.id && String(r.id).toLowerCase() === searchKey)
-  );
-  if (idx === -1) return { success: false, message: 'Receipt not found.' };
-
-  const current = receipts[idx];
-  const qty = parseFloat(current.quantity || 0);
-
-  // Revert inward stock: -qty
-  if (qty > 0) {
-    adjustSystemMaterialStock(current.materialId || current.materialName || current.material, -qty);
-  }
-
-  const removed = receipts.splice(idx, 1)[0];
-  try {
-    localStorage.setItem(MGR_RECEIPTS_KEY, JSON.stringify(receipts));
-  } catch (e) {}
-
-  // Also remove from rmims_custom_receipts
-  try {
-    const customKey = 'rmims_custom_receipts';
-    let custom = JSON.parse(localStorage.getItem(customKey) || '[]');
-    custom = custom.filter(c => String(c.id).toLowerCase() !== searchKey && (!c.ref || c.ref.toLowerCase() !== searchKey));
-    localStorage.setItem(customKey, JSON.stringify(custom));
-  } catch (e) {}
-
-  window.dispatchEvent(new Event('storage'));
-  return { success: true, receipt: removed };
+  return deleteLedgerTransaction('receipt', refOrId);
 }
 
 /**
@@ -1039,40 +1201,168 @@ export function updateManagerDisbursement(refOrId, updatedFields) {
  * Deletes a Manager Disbursement and returns outward quantity back to stock.
  */
 export function deleteManagerDisbursement(refOrId) {
-  let disbursements = [];
-  try {
-    disbursements = JSON.parse(localStorage.getItem(MGR_DISBURSEMENTS_KEY) || '[]');
-  } catch (e) { disbursements = []; }
-
-  const searchKey = String(refOrId || '').trim().toLowerCase();
-  const idx = disbursements.findIndex(d => 
-    (d.ref && d.ref.toLowerCase() === searchKey) || 
-    (d.id && String(d.id).toLowerCase() === searchKey)
-  );
-  if (idx === -1) return { success: false, message: 'Disbursement not found.' };
-
-  const current = disbursements[idx];
-  const qty = parseFloat(current.quantity || 0);
-
-  // Return outward stock back: +qty
-  if (qty > 0) {
-    adjustSystemMaterialStock(current.materialId || current.materialName || current.material, qty);
-  }
-
-  const removed = disbursements.splice(idx, 1)[0];
-  try {
-    localStorage.setItem(MGR_DISBURSEMENTS_KEY, JSON.stringify(disbursements));
-  } catch (e) {}
-
-  // Also remove from rmims_custom_disbursements
-  try {
-    const customKey = 'rmims_custom_disbursements';
-    let custom = JSON.parse(localStorage.getItem(customKey) || '[]');
-    custom = custom.filter(c => String(c.id).toLowerCase() !== searchKey && (!c.ref || c.ref.toLowerCase() !== searchKey));
-    localStorage.setItem(customKey, JSON.stringify(custom));
-  } catch (e) {}
-
-  window.dispatchEvent(new Event('storage'));
-  return { success: true, disbursement: removed };
+  return deleteLedgerTransaction('disbursement', refOrId);
 }
 
+/**
+ * ============================================================================
+ * PERMANENT DELETE (receipts & disbursements)
+ * ----------------------------------------------------------------------------
+ * A transaction can exist in up to three local stores at once:
+ *   1. Manager ledger            (rmims_manager_receipts / rmims_manager_disbursements)
+ *   2. System custom ledger      (rmims_custom_receipts  / rmims_custom_disbursements)
+ *   3. Approved staff submission (rmims_staff_transactions)
+ * Deleting from only one of them (the old behaviour) either failed with
+ * "not found" or let the record reappear on the next sync. This removes it from
+ * every store, restores/reverts stock EXACTLY ONCE, and writes a tombstone so
+ * no sync path can bring it back.
+ * ============================================================================
+ */
+const LEDGER_KINDS = {
+  receipt: {
+    label: 'Receipt',
+    mgrKey: MGR_RECEIPTS_KEY,
+    customKey: 'rmims_custom_receipts',
+    qtyFields: ['quantity', 'received_quantity', 'qtyNum'],
+    stockSign: -1 // deleting an inward receipt takes the received quantity back OUT of stock
+  },
+  disbursement: {
+    label: 'Disbursement',
+    mgrKey: MGR_DISBURSEMENTS_KEY,
+    customKey: 'rmims_custom_disbursements',
+    qtyFields: ['quantity', 'consumed_quantity', 'qtyNum'],
+    stockSign: +1 // deleting an outward disbursement puts the quantity back INTO stock
+  }
+};
+
+function readJsonList(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeJsonList(key, list) {
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch (_) {}
+}
+
+function recMatches(rec, key) {
+  if (!rec) return false;
+  const k = String(key || '').trim().toLowerCase();
+  if (!k) return false;
+  return [rec.ref, rec.id, rec.referenceNo, rec.reference_no]
+    .some(v => v != null && String(v).trim().toLowerCase() === k);
+}
+
+function firstQty(rec, fields) {
+  for (const f of fields) {
+    const raw = rec && rec[f];
+    if (raw != null && raw !== '') {
+      const n = parseFloat(raw);
+      if (!isNaN(n)) return n;
+    }
+  }
+  // staff transactions sometimes only carry "720 g"
+  if (rec && typeof rec.qty === 'string') {
+    const n = parseFloat(rec.qty);
+    if (!isNaN(n)) return n;
+  }
+  return 0;
+}
+
+/** Resolve a ledger record to the key adjustSystemMaterialStock understands (code first, then canonical name match). */
+function resolveStockKey(rec) {
+  const id = rec.materialId || rec.material_id || rec.item_code || '';
+  const name = rec.materialName || rec.material_name || rec.material || '';
+  try {
+    const catalog = getSystemRawMaterials();
+    const idLower = String(id).trim().toLowerCase();
+    const nameLower = String(name).trim().toLowerCase();
+    const direct = catalog.find(m =>
+      (idLower && (String(m.id || '').toLowerCase() === idLower || String(m.item_code || '').toLowerCase() === idLower)) ||
+      (nameLower && String(m.name || '').trim().toLowerCase() === nameLower));
+    if (direct) return direct.item_code || direct.id;
+    // Names coming from Supabase / staff entry can differ ("All Purpose Flour" vs "All-Purpose / Bread Flour")
+    const recognized = resolveForecastingMaterialByName(name || id);
+    if (recognized && recognized.code) {
+      const viaCode = catalog.find(m => String(m.item_code || m.id || '').toUpperCase() === String(recognized.code).toUpperCase());
+      if (viaCode) return viaCode.item_code || viaCode.id;
+    }
+  } catch (_) {}
+  return id || name;
+}
+
+export function deleteLedgerTransaction(kind, refOrId) {
+  const cfg = LEDGER_KINDS[kind];
+  if (!cfg) return { success: false, message: 'Unknown transaction type.' };
+
+  const key = String(refOrId || '').trim();
+  if (!key) return { success: false, message: `${cfg.label} reference is missing.` };
+
+  const mgrList = readJsonList(cfg.mgrKey);
+  const customList = readJsonList(cfg.customKey);
+  const staffList = readJsonList(STAFF_TX_KEY);
+
+  const mgrRec = mgrList.find(r => recMatches(r, key)) || null;
+  const customRec = customList.find(r => recMatches(r, key)) || null;
+  const staffRec = staffList.find(r => recMatches(r, key)) || null;
+  const found = mgrRec || customRec || staffRec;
+
+  if (!found) {
+    // Already removed earlier (double-click, second tab, remote sync echo): treat as done, never touch stock twice.
+    if (isDeleted(kind, key)) return { success: true, alreadyDeleted: true, message: `${cfg.label} was already deleted.` };
+    return { success: false, message: `${cfg.label} not found.` };
+  }
+
+  // Quantity & material come from the richest record available
+  const qty = firstQty(mgrRec || customRec || staffRec, cfg.qtyFields) ||
+              firstQty(customRec || staffRec || {}, cfg.qtyFields);
+  const stockKey = resolveStockKey(mgrRec || customRec || staffRec || {}) ||
+                   resolveStockKey(customRec || staffRec || {});
+
+  // 1. Revert stock exactly once
+  let stockResult = null;
+  if (qty > 0 && stockKey) {
+    stockResult = adjustSystemMaterialStock(stockKey, cfg.stockSign * qty);
+  }
+
+  // 2. Remove from every local store
+  const ids = new Set([key]);
+  [mgrRec, customRec, staffRec].forEach(r => {
+    if (!r) return;
+    [r.ref, r.id, r.referenceNo, r.reference_no].forEach(v => { if (v != null && String(v).trim()) ids.add(String(v).trim()); });
+  });
+
+  if (mgrRec) writeJsonList(cfg.mgrKey, mgrList.filter(r => !recMatches(r, key)));
+  if (customRec) writeJsonList(cfg.customKey, customList.filter(r => !recMatches(r, key)));
+  if (staffRec) writeJsonList(STAFF_TX_KEY, staffList.filter(r => !recMatches(r, key)));
+
+  // 3. Tombstone so Supabase / staff / dashboard merges can never resurrect it
+  markDeleted(kind, ...ids);
+  burnReference(key); // the reference number is never reused
+
+  // 4. Notify every module (inventory KPIs, forecast, reports, dashboard, staff view)
+  try { invalidateForecastCache(); } catch (_) {}
+  try {
+    const now = String(Date.now());
+    localStorage.setItem('rmims_inventory_updated', now);
+    localStorage.setItem(kind === 'receipt' ? 'rmims_manager_receipts_updated' : 'rmims_manager_disbursements_updated', now);
+    localStorage.setItem('rmims_staff_transactions_updated', now);
+  } catch (_) {}
+  try {
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(kind === 'receipt' ? 'rmims_manager_receipts_updated' : 'rmims_manager_disbursements_updated'));
+    window.dispatchEvent(new Event('rmims_inventory_updated'));
+  } catch (_) {}
+
+  const removed = mgrRec || customRec || staffRec;
+  return {
+    success: true,
+    [kind]: removed,
+    restoredQty: qty,
+    stockKey,
+    newStock: stockResult ? stockResult.current_stock : null
+  };
+}

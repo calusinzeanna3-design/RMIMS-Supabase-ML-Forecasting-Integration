@@ -64,6 +64,12 @@
   function isNotificationInScope(n, portalRole, currentUserId) {
     if (!n || !n.id) return false;
 
+    // Shared feed (rmims-notification-feed.js): role & company scope already enforced by the database
+    if (n.sharedFeed && Array.isArray(n.targetRoles)) {
+      const pr = String(portalRole || '').toLowerCase();
+      return n.targetRoles.includes(pr === 'user' ? 'staff' : pr);
+    }
+
     const targetRole = String(n.targetRole || n.role || n.roleScope || '').toLowerCase();
     const title = String(n.title || '').toLowerCase();
     const message = String(n.message || '').toLowerCase();
@@ -267,8 +273,6 @@
     const t = (n.title || '').toLowerCase();
     const m = (n.message || '').toLowerCase();
     const a = (n.actor || '').toLowerCase();
-    // Aizel does not have a staff account; purge any dump staff login notifications for Aizel
-    if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
 
     const BANNED_TOKENS = [
       'maria santos', 'kenneth ramos', 'rafael cruz', 'alyssa lim', 'carla mendoza',
@@ -280,7 +284,7 @@
   }
 
 
-  // Immediately cleanse any dump staff accounts for Aizel (Aizel has only a Manager account)
+  // Immediately cleanse any dump staff accounts
   try {
     ['rmims_registered_users', 'rmims_pending_users', 'rmims_approved_users'].forEach(key => {
       const raw = localStorage.getItem(key);
@@ -291,7 +295,6 @@
         if (!u) return false;
         const name = String(u.name || u.fullName || u.username || '').toLowerCase();
         const role = String(u.role || '').toLowerCase();
-        if (name.includes('aizel') && (role.includes('staff') || role.includes('user'))) return false;
         return true;
       });
       if (filtered.length !== list.length) {
@@ -459,8 +462,36 @@
   let currentSearchQuery = '';
   let currentStatusFilter = 'all'; // 'all' or 'unread'
 
+
+  // Which tab a notification belongs to (same rule for Admin, Manager and Staff):
+  //   System   = alerts: admin diagnostic instructions, account lockouts / failed logins, resolved alerts,
+  //              low / out-of-stock / restored raw-material alerts, backups / restores / maintenance
+  //   Activity = operations: transactions (receive / disburse / approvals / corrections), inventory,
+  //              finished products, reports exported, inventory imported / exported, user accounts
+  //   Sign-ins appear under "All" only.
+  function notificationTab(n) {
+    const cat = String(n.category || '').toLowerCase();
+    const title = String(n.title || '').toLowerCase();
+    const msg = String(n.message || '').toLowerCase();
+    const badge = String(n.badge || '').toLowerCase();
+    const text = `${title} ${badge}`;
+    const isLogin = cat === 'login' || n.type === 'user_login' || /signed in|authenticated|login detected|session active/.test(`${title} ${msg}`);
+    if (isLogin && !/fail|locked|incorrect/.test(text)) return 'none';
+    if (cat === 'alert' || cat === 'system' || cat === 'security' ||
+        /alert|locked|lockout|unlock|failed|incorrect password|resolved|diagnostic|out of stock|low stock|stock restored|below (its )?minimum|backup|restore|maintenance|critical/.test(text)) {
+      return 'system';
+    }
+    return 'activity';
+  }
+
+  function notificationTime(n) {
+    const t = new Date(n && n.timestamp).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+
   // Unified category matcher supporting unified 'activity' and 'system'
-  function isCategoryMatch(itemCategory, tabId) {
+  function isCategoryMatch(itemCategory, tabId, item) {
+    if (item && (tabId === 'activity' || tabId === 'system')) return notificationTab(item) === tabId;
     if (!tabId || tabId === 'all') return true;
     const cat = String(itemCategory || '').toLowerCase();
     if (tabId === 'activity') {
@@ -489,9 +520,10 @@
     // Notification appears only if it is in scope for this active portal role
     const roleItems = all.filter(n => isNotificationInScope(n, role, uid));
 
-    return roleItems.filter(n => {
+    // Latest first, always (no grouping / re-ordering by type)
+    return roleItems.slice().sort((x, y) => notificationTime(y) - notificationTime(x)).filter(n => {
       // Tab filter
-      if (currentActiveTab !== 'all' && !isCategoryMatch(n.category, currentActiveTab)) {
+      if (currentActiveTab !== 'all' && !isCategoryMatch(n.category, currentActiveTab, n)) {
         return false;
       }
 
@@ -640,7 +672,7 @@
       const tabItems = all.filter(n => {
         if (!isNotificationInScope(n, role, uid)) return false;
         if (currentActiveTab === 'all') return true;
-        return isCategoryMatch(n.category, currentActiveTab);
+        return isCategoryMatch(n.category, currentActiveTab, n);
       });
 
       tabItems.forEach(n => readSet.add(String(n.id)));
@@ -719,7 +751,7 @@
       btn.dataset.tab = tab.id;
 
       // Count unread for this tab
-      const tabItems = tab.id === 'all' ? roleItems : roleItems.filter(n => isCategoryMatch(n.category, tab.id));
+      const tabItems = tab.id === 'all' ? roleItems : roleItems.filter(n => isCategoryMatch(n.category, tab.id, n));
       const unreadCount = tabItems.filter(n => !readSet.has(String(n.id))).length;
 
       let badgeHtml = '';

@@ -2,6 +2,8 @@
 <html lang="en">
 
 <head>
+    <script src="../js/ready-shim.js"></script>
+
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Current Report | RMSME</title>
@@ -11,11 +13,14 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+    <link rel="stylesheet" href="../vendor/flatpickr/flatpickr.min.css" />
     <link rel="stylesheet" href="../css/admin-shell.css" />
     <link href="../css/rmims-unified.css" rel="stylesheet" />
     <link href="../css/reports.css" rel="stylesheet" />
     <link href="../css/manager-theme.css" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -60,10 +65,10 @@
                     <!-- Profile Pill & Dropdown -->
                     <div class="rmsme-popover-anchor" id="profileAnchor">
                         <div class="topbar-profile" id="profileBtn" role="button" tabindex="0"
-                            title="Signed in as Aizel" style="cursor: pointer;">
+                            title="Signed in" style="cursor: pointer;">
                             <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
                             <div class="profile-meta">
-                                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
                             </div>
                         </div>
@@ -72,7 +77,7 @@
                                 <div class="mgr-online-badge">
                                     <span class="mgr-status-indicator"></span>
                                     <div>
-                                        <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                                        <strong data-shell-name id="dropdownUserName"></strong>
                                         <small data-shell-role id="dropdownUserRole"
                                             style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                                     </div>
@@ -272,7 +277,7 @@
                                 </svg>
                             </div>
                             <h3 class="rpt-cat-title">Material Disbursement</h3>
-                            <p class="rpt-cat-desc">Disbursed raw materials released for production batches.</p>
+                            <p class="rpt-cat-desc">Disbursed raw materials released for finished products.</p>
                         </div>
 
                         <!-- 6. Material Activity -->
@@ -383,7 +388,7 @@
                                         <div class="rpt-kpi-box">
                                             <span class="rpt-kpi-label">Sufficient Stock</span>
                                             <h3 class="rpt-kpi-val text-green" id="mgrGoodStock">0</h3>
-                                            <span class="rpt-kpi-sub">Ready for Production</span>
+                                            <span class="rpt-kpi-sub">Ready for Use</span>
                                         </div>
                                         <div class="rpt-kpi-box">
                                             <span class="rpt-kpi-label">Needs Reordering</span>
@@ -588,7 +593,7 @@
                                                     <th>Reference No.</th>
                                                     <th>Material Code</th>
                                                     <th>Raw Material</th>
-                                                    <th>Finished Product / Batch</th>
+                                                    <th>Finished Product</th>
                                                     <th>Disbursed Quantity</th>
                                                     <th>Unit</th>
                                                     <th>Activity Type</th>
@@ -640,7 +645,7 @@
                                                     <th>Raw Material</th>
                                                     <th>Net Change</th>
                                                     <th>Unit</th>
-                                                    <th>Details / Context</th>
+                                                    <th>Finished Product</th>
                                                     <th>Operator</th>
                                                 </tr>
                                             </thead>
@@ -830,7 +835,7 @@
                 </div>
 
                 <div class="rpt-modal-field">
-                    <label class="rpt-modal-label">Save Location</label>
+                    <label class="rpt-modal-label" for="saveModalLocation">Save Location</label>
                     <div class="rpt-location-row">
                         <input type="text" class="rpt-input" id="saveModalLocation" readonly
                             value="Downloads (Browser Default)" />
@@ -841,7 +846,7 @@
                 </div>
 
                 <div class="rpt-modal-field">
-                    <label class="rpt-modal-label">File Format</label>
+                    <div class="rpt-modal-label">File Format</div>
                     <div class="rpt-format-options">
                         <label class="rpt-format-radio">
                             <input type="radio" name="saveFileFormat" value="pdf" checked />
@@ -891,7 +896,7 @@
 
                 <div class="rpt-modal-field">
                     <div class="rpt-sections-header">
-                        <label class="rpt-modal-label" style="margin-bottom:0;">Reports to Include</label>
+                        <div class="rpt-modal-label" style="margin-bottom:0;">Reports to Include</div>
                         <div class="rpt-section-btns">
                             <button type="button" class="rpt-btn-link-sm" id="saveSelectAllBtn">Select All</button>
                             <button type="button" class="rpt-btn-link-sm" id="saveClearAllBtn">Clear</button>
@@ -899,35 +904,35 @@
                     </div>
                     <div class="rpt-section-checklist" id="saveSectionsChecklist">
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="manager" checked />
+                            <input type="checkbox" value="manager" checked  id="fld_1" name="fld_1"/>
                             <span><strong>1. Manager Summary</strong> (Overview &amp; Health)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="restock" checked />
+                            <input type="checkbox" value="restock" checked  id="fld_2" name="fld_2"/>
                             <span><strong>2. Restock Recommendations</strong> (Action Guide)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="inventory" checked />
+                            <input type="checkbox" value="inventory" checked  id="fld_3" name="fld_3"/>
                             <span><strong>3. Inventory Records</strong> (Current stock catalog)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="receiving" checked />
+                            <input type="checkbox" value="receiving" checked  id="fld_4" name="fld_4"/>
                             <span><strong>3. Material Receiving</strong> (Stock receipt records)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="disbursement" checked />
-                            <span><strong>4. Material Disbursement</strong> (Production issues)</span>
+                            <input type="checkbox" value="disbursement" checked  id="fld_5" name="fld_5"/>
+                            <span><strong>4. Material Disbursement</strong> (Usage records)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="activity" checked />
+                            <input type="checkbox" value="activity" checked  id="fld_6" name="fld_6"/>
                             <span><strong>5. Material Activity</strong> (Chronological log)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="consumption" checked />
+                            <input type="checkbox" value="consumption" checked  id="fld_7" name="fld_7"/>
                             <span><strong>6. Consumption Analysis</strong> (Usage &amp; trend)</span>
                         </label>
                         <label class="rpt-check-item">
-                            <input type="checkbox" value="forecasting" checked />
+                            <input type="checkbox" value="forecasting" checked  id="fld_8" name="fld_8"/>
                             <span><strong>7. AI Forecasting</strong> (Projected requirement &amp; decisions)</span>
                         </label>
                     </div>
@@ -1029,13 +1034,13 @@
     <div class="toast-stack" id="toastStack"></div>
 
     <!-- LIBRARIES -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="../js/reports.js" type="module"></script>
+    <script src="../vendor/flatpickr/flatpickr.min.js"></script>
+    <script src="../vendor/chart/chart.umd.js"></script>
+    <script src="../vendor/jspdf/jspdf.umd.min.js"></script>
+    <script src="../vendor/jspdf/jspdf.plugin.autotable.min.js"></script>
+    <script src="../vendor/xlsx/xlsx.full.min.js"></script>
+    <script src="../vendor/jszip/jszip.min.js"></script>
+    <script src="../js/reports.js?v=20261030_live" type="module"></script>
     <script type="module" src="../js/rmsme-shell.js"></script>
 </body>
 

@@ -3,6 +3,8 @@
 // (manager activity audit log, stock receipts, material disbursements, and staff submissions).
 // Supports dynamic KPI calculations, multi-filter toolbar, date range selection, and CSV export.
 
+import { getAdminActivityList } from './admin-activity-feed.js';
+import { maskOperationalDetails } from './admin-privacy.js';
 import { initAdminCalendarPicker, getLiveTodayISO, getDaysAgoISO, formatDisplayDate } from './admin-calendar-picker.js';
 
 function escapeHtml(str) {
@@ -68,15 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const LIVE_TODAY = getLiveTodayISO();
   const LIVE_TODAY_LABEL = formatDisplayDate(LIVE_TODAY);
 
-  if (dateDisplayLabel) dateDisplayLabel.textContent = LIVE_TODAY_LABEL;
+  if (dateDisplayLabel) dateDisplayLabel.textContent = 'All Dates';
   if (startDateText) startDateText.textContent = LIVE_TODAY_LABEL;
   if (endDateText) endDateText.textContent = LIVE_TODAY_LABEL;
 
-  let appliedFilter = {
-    mode: 'single',
-    start: LIVE_TODAY,
-    end: LIVE_TODAY
-  };
+  // Default: every synced record (all dates) - same rows as the Overview card; the picker narrows it down
+  let appliedFilter = { mode: 'all', start: null, end: null };
 
   const calPicker = initAdminCalendarPicker({
     popover: datePopover,
@@ -112,156 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load and consolidate real system events
   function loadConsolidatedActivities() {
-    const list = [];
-
-    // 1. Manager / Admin Activities
-    try {
-      const mgrAct = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
-      mgrAct.forEach(item => {
-        const itemDetails = (item.details || item.activity || '').trim();
-        const user = (item.user || '').trim();
-        const bLoc = (item.branchLoc || item.branch || (item.role === 'Main Admin' || item.role === 'Administrator' ? 'Headquarters' : '')).trim();
-        const bName = (item.branchName || (item.role === 'Main Admin' || item.role === 'Administrator' ? 'Main Administration' : bLoc)).trim();
-        const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-        
-        // Strict requirement: must have a branch/HQ context and real user name
-        if (!hasBranch && item.role !== 'Main Admin') return;
-        const displayUser = user || (item.role === 'Main Admin' ? 'Zeanna' : (item.role === 'Manager' ? 'Store Manager' : 'Store Staff'));
-        
-        const txt = `${user} ${itemDetails} ${bLoc} ${bName}`.toLowerCase();
-        if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
-          return;
-        }
-        // Authentic operations included
-        const itemDate = item.date || (item.timestamp ? String(item.timestamp).slice(0, 10) : LIVE_TODAY);
-        list.push({
-          id: item.id || `act-${Math.random()}`,
-          timestamp: item.timestamp || new Date().toISOString(),
-          date: itemDate,
-          dateTimeStr: formatLogTimestamp(item.timestamp),
-          user: user,
-          role: item.role || 'Manager',
-          branchLoc: bLoc,
-          branchName: bName || bLoc,
-          action: item.action || 'Updated',
-          module: item.module || 'Inventory',
-          details: itemDetails || 'Inventory operation executed.',
-          status: item.status || 'success'
-        });
-      });
-    } catch (_) {}
-
-    // 2. Live Stock Receipts (Manager + Custom)
-    try {
-      const mgrRec = JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]');
-      const customRec = JSON.parse(localStorage.getItem('rmims_custom_receipts') || '[]');
-      const receipts = [...mgrRec, ...customRec];
-      const seenRec = new Set();
-      receipts.forEach(r => {
-        const key = r.id || r.ref || JSON.stringify(r);
-        if (seenRec.has(key)) return;
-        seenRec.add(key);
-        const bLoc = (r.branchLoc || '').trim();
-        const bName = (r.branchName || '').trim();
-        const user = (r.receivedBy || '').trim();
-        const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-        if (!hasBranch) return;
-        const displayUser = user || 'Store Manager';
-        const ref = r.ref || '';
-        // Process all authentic live receipts without hardcoded filters
-
-        const rDate = r.receiptDate || r.date || (r.timestamp ? String(r.timestamp).slice(0, 10) : LIVE_TODAY);
-        const itemCount = Array.isArray(r.items) ? r.items.length : 1;
-        list.push({
-          id: `rec-act-${r.id || r.ref || Math.random()}`,
-          timestamp: r.timestamp || (rDate + 'T10:00:00Z'),
-          date: rDate,
-          dateTimeStr: formatLogTimestamp(r.timestamp || rDate),
-          user: user,
-          role: 'Manager',
-          branchLoc: bLoc,
-          branchName: bName || bLoc,
-          action: 'Received',
-          module: 'Receive',
-          details: `Recorded stock receipt (${r.ref || 'Ref'}): ${itemCount} raw material item(s) from ${r.supplierName || 'Supplier'}.`,
-          status: 'success'
-        });
-      });
-    } catch (_) {}
-
-    // 3. Live Material Disbursements (Manager + Custom)
-    try {
-      const mgrDisb = JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]');
-      const customDisb = JSON.parse(localStorage.getItem('rmims_custom_disbursements') || '[]');
-      const disbursements = [...mgrDisb, ...customDisb];
-      const seenDisb = new Set();
-      disbursements.forEach(d => {
-        const key = d.id || d.ref || JSON.stringify(d);
-        if (seenDisb.has(key)) return;
-        seenDisb.add(key);
-        const bLoc = (d.branchLoc || '').trim();
-        const bName = (d.branchName || '').trim();
-        const user = (d.disbursedBy || '').trim();
-        const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-        if (!hasBranch) return;
-        const displayUser = user || 'Store Staff';
-        const ref = d.ref || '';
-        // Process all authentic live disbursements without hardcoded filters
-
-        const dDate = d.disbursementDate || d.date || (d.timestamp ? String(d.timestamp).slice(0, 10) : LIVE_TODAY);
-        const itemCount = Array.isArray(d.items) ? d.items.length : 1;
-        list.push({
-          id: `disb-act-${d.id || d.ref || Math.random()}`,
-          timestamp: d.timestamp || (dDate + 'T14:30:00Z'),
-          date: dDate,
-          dateTimeStr: formatLogTimestamp(d.timestamp || dDate),
-          user: user,
-          role: 'Staff',
-          branchLoc: bLoc,
-          branchName: bName || bLoc,
-          action: 'Disbursed',
-          module: 'Disbursement',
-          details: `Disbursed stock (${d.ref || 'Ref'}): ${itemCount} item(s) for ${d.reason || 'Production batch'}.`,
-          status: 'success'
-        });
-      });
-    } catch (_) {}
-
-    // 4. Staff Submissions & Transactions
-    try {
-      const staffTx = JSON.parse(localStorage.getItem('rmims_staff_transactions') || '[]');
-      staffTx.forEach(st => {
-        const bLoc = (st.branchLoc || '').trim();
-        const bName = (st.branchName || '').trim();
-        const user = (st.staff || st.user || '').trim();
-        const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-        if (!hasBranch) return;
-        const displayUser = user || 'Store Staff';
-        const ref = st.ref || '';
-        // Process all authentic staff transactions without hardcoded filters
-        if (user.toLowerCase().includes('john reyes') || user.toLowerCase().includes('maria santos')) return;
-
-        const stDate = st.date || (st.timestamp ? String(st.timestamp).slice(0, 10) : LIVE_TODAY);
-        list.push({
-          id: `staff-act-${st.id || Math.random()}`,
-          timestamp: st.timestamp || (stDate + 'T09:00:00Z'),
-          date: stDate,
-          dateTimeStr: formatLogTimestamp(st.timestamp || stDate),
-          user: user,
-          role: 'Staff',
-          branchLoc: bLoc,
-          branchName: bName || bLoc,
-          action: st.type === 'disbursement' ? 'Disbursed' : 'Created',
-          module: st.type === 'disbursement' ? 'Disbursement' : 'Production',
-          details: st.details || st.note || 'Staff transaction submitted.',
-          status: 'success'
-        });
-      });
-    } catch (_) {}
-
-    // Sort descending by timestamp / date
-    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    return list;
+    return getAdminActivityList();
   }
 
   function populateBranchFilter(activities = []) {
@@ -496,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(act.branchName)}</td>
           <td><span class="action-tag ${actionTagClass}">${escapeHtml(act.action)}</span></td>
           <td><strong>${escapeHtml(act.module)}</strong></td>
-          <td>${escapeHtml(act.details)}</td>
+          <td>${escapeHtml(maskOperationalDetails(act.details))}</td>
           <td><span class="status-pill ${statusPillClass}">${statusText}</span></td>
         </tr>
       `;
@@ -541,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const actStatus = (act.status || '').toLowerCase();
       const statusMatch = sVal === 'all' || actStatus === sVal;
 
-      const fullText = `${act.user || ''} ${act.action || ''} ${act.details || ''} ${act.module || ''} ${act.branchName || ''} ${act.branchLoc || ''}`.toLowerCase();
+      const fullText = `${act.user || ''} ${act.action || ''} ${maskOperationalDetails(act.details || '')} ${act.module || ''} ${act.branchName || ''} ${act.branchLoc || ''}`.toLowerCase();
       const queryMatch = !query || fullText.includes(query);
 
       let dateMatch = true;
@@ -586,14 +436,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (topSearchInput) topSearchInput.value = '';
 
       // Reset date popover
-      appliedFilter = {
-        mode: 'single',
-        start: LIVE_TODAY,
-        end: LIVE_TODAY
-      };
+      appliedFilter = { mode: 'all', start: null, end: null };
       if (calPicker) {
         calPicker.setSelection(LIVE_TODAY, null, LIVE_TODAY_LABEL);
       }
+      if (dateDisplayLabel) dateDisplayLabel.textContent = 'All Dates';
 
       filterRows();
       if (window.showAdminToast) {

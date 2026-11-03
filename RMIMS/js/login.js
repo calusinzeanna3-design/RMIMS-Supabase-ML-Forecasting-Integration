@@ -1,5 +1,6 @@
-import { loginUser, signUpUser } from "../supabase/auth-service.js";
+import { loginUser, signUpUser, callAuthGate, authGateMessage } from "../supabase/auth-service.js";
 import { supabase } from "../supabase/supabase-config.js";
+import { enhanceSystemSelect, enhanceCompanyInput, loadCompanyNames, matchRegisteredCompany, COMPANY_NOT_FOUND_MSG } from "./signup-fields.js";
 
 /* =========================================================
    DOM ELEMENTS: SIGN IN
@@ -32,6 +33,12 @@ const regUsername = document.getElementById("regUsername");
 const regBranchName = document.getElementById("regBranchName");
 const regBranchLocation = document.getElementById("regBranchLocation");
 const regRole = document.getElementById("regRole");
+
+// System-styled dropdowns + typable company with ghost completion (registered companies only)
+enhanceSystemSelect(regBranchLocation);
+enhanceSystemSelect(regRole);
+enhanceCompanyInput(regBranchName);
+loadCompanyNames(supabase).catch(() => {});
 const regSection1Error = document.getElementById("regSection1Error");
 const toSection2Btn = document.getElementById("toSection2Btn");
 
@@ -75,7 +82,7 @@ function setLoginError(message) {
     }
 }
 
-function setLoginSuccess(message) {
+function setLoginSuccess(message, label = "Account Ready") {
     if (!loginErrorEl) return;
     loginErrorEl.style.color = "";
     if (!message) {
@@ -84,7 +91,7 @@ function setLoginSuccess(message) {
         return;
     }
     loginErrorEl.className = "form-note success";
-    loginErrorEl.innerHTML = `<strong>✓ Account Ready:</strong> ${message}`;
+    loginErrorEl.innerHTML = `<strong>✓ ${label}:</strong> ${message}`;
 }
 
 function setRegSection1Error(message) {
@@ -281,6 +288,12 @@ if (toSection2Btn) {
             return;
         }
 
+        if (!matchRegisteredCompany(branchName)) {
+            setRegSection1Error(COMPANY_NOT_FOUND_MSG);
+            regBranchName?.focus();
+            return;
+        }
+
         if (!branchLocation) {
             setRegSection1Error("Please select your branch location.");
             regBranchLocation?.focus();
@@ -357,8 +370,14 @@ if (createAccountForm) {
             return;
         }
 
-        if (password.length < 6) {
-            setRegSection2Error("Password must be at least 6 characters long.");
+        if (!matchRegisteredCompany(branchName)) {
+            returnToSection1();
+            setRegSection1Error(COMPANY_NOT_FOUND_MSG);
+            return;
+        }
+
+        if (password.length < 8) {
+            setRegSection2Error("The password must have at least 8 characters.");
             regPassword?.focus();
             return;
         }
@@ -379,6 +398,7 @@ if (createAccountForm) {
                 email,
                 username,
                 password,
+                confirmPassword,
                 branchName,
                 branchLocation,
                 role
@@ -511,6 +531,7 @@ if (forgotModal) {
     });
 }
 
+
 if (forgotForm) {
     forgotForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -524,17 +545,21 @@ if (forgotForm) {
         sendForgotBtn.innerHTML = `<span class="auth-spinner"></span> Sending...`;
 
         try {
+            // 1. The email must belong to a registered RMIMS account
+            // registered, approved and not locked is checked on the server (auth-gate), which also sends the e-mail
             const redirectUrl = window.location.href.split("#")[0];
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl
-            });
-            if (error) throw error;
+            const res = await callAuthGate({ action: "reset_password", email, redirect_to: redirectUrl });
+            if (!res.ok) {
+                forgotMsg.className = "auth-modal-msg error";
+                forgotMsg.textContent = authGateMessage(res);
+                return;
+            }
 
             forgotMsg.className = "auth-modal-msg success";
             forgotMsg.textContent = "Recovery link sent! Please check your email inbox.";
             setTimeout(() => {
                 closeForgotModal();
-                setLoginSuccess("Password reset email sent! Check your inbox.");
+                setLoginSuccess("Password reset email sent! Check your inbox.", "Password Reset");
             }, 3000);
 
         } catch (err) {

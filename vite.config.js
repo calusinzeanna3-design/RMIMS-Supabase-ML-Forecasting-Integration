@@ -1,15 +1,33 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import fs from 'fs';
+import { transformSync } from 'esbuild';
 
-function copyDirSync(src, dest) {
+// Deployed copies: database setup files (.sql) and notes (.md) are never published, and the app's own
+// JavaScript is minified (comments and formatting removed, no source maps).
+const NEVER_PUBLISH = /\.(sql|md)$/i;
+
+function copyDirSync(src, dest, opts = {}) {
   if (!fs.existsSync(src)) return;
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     const srcPath = resolve(src, entry.name);
     const destPath = resolve(dest, entry.name);
     if (entry.isDirectory()) {
-      copyDirSync(srcPath, destPath);
+      copyDirSync(srcPath, destPath, opts);
+    } else if (NEVER_PUBLISH.test(entry.name)) {
+      continue;
+    } else if (opts.minifyJs && /\.js$/i.test(entry.name)) {
+      const code = fs.readFileSync(srcPath, 'utf8');
+      try {
+        // ES modules stay modules; classic <script> files keep their script semantics (no module rewriting)
+        const isModule = /^\s*(import|export)\b/m.test(code);
+        const out = transformSync(code, { loader: 'js', minifyWhitespace: true, minifySyntax: true, legalComments: 'none', target: 'es2022', ...(isModule ? { format: 'esm' } : {}), sourcemap: false });
+        fs.writeFileSync(destPath, out.code);
+      } catch (e) {
+        console.warn('[Vite Plugin] could not minify', entry.name, '-', e.message);
+        fs.copyFileSync(srcPath, destPath);
+      }
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
@@ -34,14 +52,18 @@ const copyRmimsAssetsPlugin = () => ({
     const jsSrc = resolve(__dirname, 'RMIMS/js');
     const jsDest1 = resolve(__dirname, 'dist/RMIMS/js');
     const jsDest2 = resolve(__dirname, 'dist/js');
-    copyDirSync(jsSrc, jsDest1);
-    copyDirSync(jsSrc, jsDest2);
+    copyDirSync(jsSrc, jsDest1, { minifyJs: true });
+    copyDirSync(jsSrc, jsDest2, { minifyJs: true });
 
     const sbSrc = resolve(__dirname, 'RMIMS/supabase');
     const sbDest1 = resolve(__dirname, 'dist/RMIMS/supabase');
     const sbDest2 = resolve(__dirname, 'dist/supabase');
-    copyDirSync(sbSrc, sbDest1);
-    copyDirSync(sbSrc, sbDest2);
+    copyDirSync(sbSrc, sbDest1, { minifyJs: true });
+    copyDirSync(sbSrc, sbDest2, { minifyJs: true });
+
+    const vendorSrc = resolve(__dirname, 'RMIMS/vendor');
+    copyDirSync(vendorSrc, resolve(__dirname, 'dist/RMIMS/vendor'));
+    copyDirSync(vendorSrc, resolve(__dirname, 'dist/vendor'));
 
     const dataSrc = resolve(__dirname, 'DATASETS');
     const dataDest1 = resolve(__dirname, 'dist/DATASETS');
@@ -72,6 +94,8 @@ export default defineConfig({
     host: '127.0.0.1'
   },
   build: {
+    target: 'es2022',
+    sourcemap: false,
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {

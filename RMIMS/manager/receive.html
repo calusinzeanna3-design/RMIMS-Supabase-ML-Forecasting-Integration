@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Receive Raw Materials | RMSME</title>
@@ -12,14 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 
 <!-- Flatpickr for clean date handling -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="../vendor/flatpickr/flatpickr.min.css">
+<script src="../vendor/flatpickr/flatpickr.min.js"></script>
 
 <!-- Stylesheets -->
 <link rel="stylesheet" href="../css/admin-shell.css">
 <link rel="stylesheet" href="../css/rmims-unified.css">
 <link rel="stylesheet" href="../css/manager-theme.css">
 <link rel="stylesheet" href="../css/manager-transaction.css">
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -63,10 +68,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -75,7 +80,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -216,7 +221,7 @@
       <!-- Section: Receipts History Ledger (Enclosing 4 KPI Metric Cards & Pagination) -->
       <section class="mgr-tx-table-card">
 
-        <!-- 4 Mini Metric KPI Cards (Inside Receive History Ledger Card) -->
+        <!-- 4 Mini Metric KPI Cards (Inside Received Materials Ledger Card) -->
         <div class="mgr-tx-kpi-grid" id="mgrTxKpiGrid">
           <!-- 1. Total Received Today -->
           <div class="mgr-tx-kpi-card">
@@ -270,7 +275,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-top:8px;">
           <div>
             <h3 style="margin:0; font-family:var(--rm-font-display); font-size:17px; font-weight:700; color:var(--rm-ink);">
-              Receive History Ledger
+              Received Materials Ledger
             </h3>
             <p style="margin:2px 0 0; font-size:12.5px; color:var(--rm-ink-dim);">
               All incoming stock deliveries recorded for your company. Reference numbers are plain text.
@@ -333,8 +338,8 @@
             <div class="page-size-selector" style="margin-left: 12px;">
               <label for="recPageSize" style="font-size: 12px; color: #64748B; font-weight: 600;">Rows:</label>
               <select id="recPageSize" class="mgr-form-select" style="width:auto; padding:4px 28px 4px 10px; font-size:12px;">
-                <option value="5" selected>5</option>
-                <option value="10">10</option>
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
                 <option value="25">25</option>
               </select>
             </div>
@@ -467,33 +472,33 @@
         <input type="hidden" id="editRecRef">
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Reference Number</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editRecRefDisplay">Reference Number</label>
           <input type="text" id="editRecRefDisplay" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-weight:700; font-family:monospace; font-size:13.5px;">
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Raw Material</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editRecMaterial">Raw Material</label>
           <input type="text" id="editRecMaterial" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#1E293B; font-weight:600; font-size:13.5px;">
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Quantity Received</label>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editRecQty">Quantity Received</label>
             <input type="number" step="any" min="0.01" id="editRecQty" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
           </div>
           <div>
-            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Unit</label>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editRecUnit">Unit</label>
             <input type="text" id="editRecUnit" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-size:13.5px;">
           </div>
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Supplier / Source</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editRecSupplier">Supplier / Source</label>
           <input type="text" id="editRecSupplier" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Notes / Remarks</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editRecNotes">Notes / Remarks</label>
           <input type="text" id="editRecNotes" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
         </div>
       </div>
@@ -545,7 +550,7 @@
 
 <!-- SCRIPTS -->
 <script type="module" src="../js/system-materials.js"></script>
-<script type="module" src="../js/manager-receive.js"></script>
+<script type="module" src="../js/manager-receive.js?v=20261030_live"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 
 </body>

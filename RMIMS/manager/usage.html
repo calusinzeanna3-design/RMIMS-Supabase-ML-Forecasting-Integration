@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Analytics | RMSME</title>
@@ -19,9 +21,13 @@
 <link rel="stylesheet" href="../css/manager-transaction.css"/>
 
 <!-- Flatpickr & Chart.js -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="../vendor/flatpickr/flatpickr.min.css">
+<script src="../vendor/flatpickr/flatpickr.min.js"></script>
+<script src="../vendor/chart/chart.umd.js"></script>
+    <script>window.Chart||document.write('<script src="../js/chart.js"><\/script>')</script>
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -38,7 +44,7 @@
       <div class="topbar-left">
         <span class="topbar-kicker">STORE OPERATIONS</span>
         <h1 class="topbar-title">Consumption Analytics</h1>
-        <p class="topbar-subtitle">Authoritative real-time telemetry comparing inward deliveries, production disbursements, and consumption trends.</p>
+        <p class="topbar-subtitle">Authoritative real-time telemetry comparing inward deliveries, material disbursements, and consumption trends.</p>
       </div>
 
       <div class="topbar-right">
@@ -64,10 +70,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -76,7 +82,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -145,7 +151,7 @@
           <label class="an-check-pill active-disburse" id="anPillRawDisburse">
             <input type="checkbox" id="anChkRawDisburse" checked>
             <span class="an-check-dot dot-disb"></span>
-            <span>Disburse</span>
+            <span>Disbursed</span>
           </label>
         </div>
 
@@ -154,7 +160,7 @@
           <canvas id="anRawMaterialsChartCanvas"></canvas>
           <div class="an-chart-empty" id="anRawChartEmpty">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>No metrics selected. Check Received or Disburse above to display the chart.</span>
+            <span>No metrics selected. Check Received or Disbursed above to display the chart.</span>
           </div>
         </div>
       </section>
@@ -199,7 +205,7 @@
           <label class="an-check-pill active-stock-cur" id="anPillStockCurrent">
             <input type="checkbox" id="anChkStockCurrent" checked>
             <span class="an-check-dot dot-stock-cur"></span>
-            <span>Current Stock (kg/L)</span>
+            <span>Current Stock</span>
           </label>
 
           <label class="an-check-pill active-stock-min" id="anPillStockMin">
@@ -262,7 +268,7 @@
             <label class="an-check-pill active-received" id="anPillProdConsumed">
               <input type="checkbox" id="anChkProdConsumed" checked>
               <span class="an-check-dot dot-prod"></span>
-              <span>Consumed (kg/L)</span>
+              <span>Consumed</span>
             </label>
 
             <label class="an-check-pill active-disburse" id="anPillProdBatches">
@@ -320,7 +326,7 @@
               <button type="button" class="an-timeframe-btn" data-timeframe="weeks">Weeks</button>
               <button type="button" class="an-timeframe-btn" data-timeframe="months">Months</button>
             </div>
-            <span style="font-size:11.5px; color:#64748B; font-weight:600;">Continuous Production Curve</span>
+            <span style="font-size:11.5px; color:#64748B; font-weight:600;">Continuous Usage Curve</span>
           </div>
 
           <!-- Chart Canvas -->

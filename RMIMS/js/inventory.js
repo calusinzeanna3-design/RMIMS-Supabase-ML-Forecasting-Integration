@@ -4,6 +4,7 @@
 // Zero direct current_stock overwrites. Pure live Supabase data.
 
 import { auth, supabase } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { getSystemRawMaterials, saveCustomRawMaterial, getSystemNextItemCode, getSystemCustomReceipts, saveCustomReceipt, getSystemCustomDisbursements, saveCustomDisbursement, invalidateForecastCache } from "./system-materials.js";
@@ -164,9 +165,9 @@ async function loadData() {
                 ]);
 
             const [mRes, rRes, dRes] = await Promise.allSettled([
-                fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, description, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, created_at, updated_at").order("name")),
-                fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false })),
-                fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false }))
+                fetchWithTimeout(allRows(supabase.from("raw_materials").select("id, item_code, name, description, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, created_at, updated_at").order("name")), 30000),
+                fetchWithTimeout(allRows(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at").order("receipt_date", { ascending: false })), 30000),
+                fetchWithTimeout(allRows(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at").order("usage_date", { ascending: false })), 30000)
             ]);
 
             if (mRes.status === "fulfilled" && mRes.value?.data && mRes.value.data.length > 0) {
@@ -213,7 +214,13 @@ async function loadData() {
         } catch (e) {}
 
         if (deletedMatIds.size > 0) {
-            rawList = rawList.filter(m => !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim()));
+            // Never filter out core NB-001 to NB-019 or RM-001 to RM-059 materials
+            rawList = rawList.filter(m => {
+                const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
+                if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true;
+                if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true;
+                return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
+            });
         }
         if (deletedDisbIds.size > 0) {
             rawDisbursements = rawDisbursements.filter(d => !deletedDisbIds.has(String(d.id)));
@@ -978,7 +985,7 @@ function openHistoryModal(materialId) {
             type: "Disburse",
             qty: `-${fmtQty(d.consumedQuantity || d.consumed_quantity || d.quantity)} ${d.unit || mat.unit}`,
             color: "#B45309",
-            context: d.finishedProductName || d.finished_product_name || d.productContext || "Production Batch",
+            context: d.finishedProductName || d.finished_product_name || d.productContext || "—",
             user: d.recordedBy || d.recorded_by || "Store Manager",
             status: "Approved"
         });
@@ -2323,8 +2330,8 @@ async function handleImportConfirm() {
                             usage_date: recordDate,
                             consumed_quantity: item.dsbQty,
                             unit: targetUnit,
-                            activity_type: "Production Usage",
-                            finished_product_name: item.productName || item.note || "General Production",
+                            activity_type: "Material Usage",
+                            finished_product_name: item.productName || item.note || null,
                             created_at: new Date().toISOString()
                         });
                         totalDsbsLogged++;
@@ -2506,7 +2513,7 @@ function updateExportSummary() {
     let recordCount = state.materials.length;
 
     if (currentExportDataset === "receive") {
-        datasetName = "Receive Records";
+        datasetName = "Received Records";
         recordCount = state.receipts.length;
     } else if (currentExportDataset === "disbursement") {
         datasetName = "Disbursement Logs";

@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="../js/ready-shim.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Disburse Raw Materials | RMSME Staff</title>
@@ -12,14 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 
 <!-- Flatpickr for clean date handling -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="../vendor/flatpickr/flatpickr.min.css">
+<script src="../vendor/flatpickr/flatpickr.min.js"></script>
 
 <!-- Stylesheets matching Manager & Admin design -->
 <link rel="stylesheet" href="../css/admin-shell.css">
 <link rel="stylesheet" href="../css/rmims-unified.css">
 <link rel="stylesheet" href="../css/manager-theme.css">
 <link rel="stylesheet" href="../css/manager-transaction.css">
+    <link rel="stylesheet" href="../css/responsive-fix.css">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/motion.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -37,7 +42,7 @@
       <div class="topbar-left">
         <span class="topbar-kicker">STAFF OPERATIONS</span>
         <h1 class="topbar-title">Disburse Raw Materials</h1>
-        <p class="topbar-subtitle">Record materials taken from inventory for production. Submissions are sent to Manager for verification.</p>
+        <p class="topbar-subtitle">Record materials taken from inventory for your finished products. Submissions are sent to Manager for verification.</p>
       </div>
 
       <div class="topbar-right">
@@ -66,7 +71,7 @@
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">S</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Staff_1</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
               </div>
             </div>
@@ -75,7 +80,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Staff_1</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
                   </div>
                 </div>
@@ -216,10 +221,10 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
           <div>
             <h3 style="margin:0; font-family:var(--rm-font-display); font-size:17px; font-weight:700; color:var(--rm-ink);">
-              My Recent Disburse Submissions
+              My Recent Disbursed Submissions
             </h3>
             <p style="margin:2px 0 0; font-size:12.5px; color:var(--rm-ink-dim);">
-              Status of your outgoing production disbursements awaiting Manager approval
+              Status of your outgoing disbursements awaiting Manager approval
             </p>
           </div>
           <span style="font-size:12px; color:#5C7A68;" id="myDisbSubCount">0 submissions</span>
@@ -319,7 +324,7 @@
           <span style="font-size:14px; font-weight:800; color:#D97706;" id="revStaffDisbQty">--</span>
         </div>
         <div>
-          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Production Purpose / Batch</span>
+          <span style="display:block; font-size:11.5px; color:#64748B; font-weight:600; text-transform:uppercase;">Finished Product</span>
           <span style="font-size:13px; font-weight:600; color:#334155;" id="revStaffDisbUsedFor">--</span>
         </div>
         <div>
@@ -356,7 +361,7 @@
         </div>
         <div>
           <h3 style="margin:0; font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#0F2A1B;">Edit Disburse Submission</h3>
-          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Update outward production request details</p>
+          <p style="margin:2px 0 0; font-size:12.5px; color:#64748B;">Update outward disbursement request details</p>
         </div>
       </div>
       <button type="button" class="mgr-modal-close" id="btnCloseStaffEditDisb" aria-label="Close modal">
@@ -381,33 +386,33 @@
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Reference Number</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="staffEditDisbRefDisplay">Reference Number</label>
           <input type="text" id="staffEditDisbRefDisplay" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-weight:700; font-family:monospace; font-size:13.5px;">
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Raw Material</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="staffEditDisbMaterial">Raw Material</label>
           <input type="text" id="staffEditDisbMaterial" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#1E293B; font-weight:600; font-size:13.5px;">
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Quantity Disbursed</label>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="staffEditDisbQty">Quantity Disbursed</label>
             <input type="number" step="any" min="0.01" id="staffEditDisbQty" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
           </div>
           <div>
-            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Unit</label>
+            <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="staffEditDisbUnit">Unit</label>
             <input type="text" id="staffEditDisbUnit" readonly style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; color:#64748B; font-size:13.5px;">
           </div>
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Used For / Production Purpose</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="staffEditDisbUsedFor">Used For / Finished Product</label>
           <input type="text" id="staffEditDisbUsedFor" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;">Notes / Remarks</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="staffEditDisbNotes">Notes / Remarks</label>
           <input type="text" id="staffEditDisbNotes" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
         </div>
       </div>

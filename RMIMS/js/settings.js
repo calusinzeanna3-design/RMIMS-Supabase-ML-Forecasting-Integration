@@ -5,6 +5,7 @@
 // Light UI Only. No Mock Data.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { changeAccountPassword } from "../supabase/password-service.js";
 import { onAuthStateChanged, signOut } from "../supabase/auth-compat.js";
 import { initBackupRestore, loadDataSummary as reloadDataSummary } from "./backup-restore.js";
 import { initDataReset } from "./data-reset.js";
@@ -102,7 +103,7 @@ function getLocalManagerOrAdmin() {
 
             const role = String(u.role || u.operationalRole || u.operational_role || "").toLowerCase();
             const email = String(u.email || "").toLowerCase();
-            const isMaster = email === "calusinzeanna3@gmail.com";
+            const isMaster = false;
 
             if (role === "admin" || isMaster) {
                 return { redirect: "../admin/settings.html" };
@@ -115,11 +116,8 @@ function getLocalManagerOrAdmin() {
             let mgrEmail = (u.email || "").toLowerCase().trim();
             let mgrName = (u.fullName || u.name || u.full_name || "").trim();
             const BANNED_MGR_NAMES = ["manager", "user account", "user", "account", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
-            if (!mgrName || BANNED_MGR_NAMES.includes(mgrName.toLowerCase()) || mgrName.toLowerCase().includes("rafael") || mgrName.toLowerCase().includes("cruz") || mgrName.toLowerCase().includes("staff") || mgrName.includes("Maria Santos")) {
-                if (mgrEmail === "zeannapatty@gmail.com") mgrName = "Aizel";
-                else if (mgrEmail === "zeannapatricia@gmail.com") mgrName = "Glazel";
-                else if (mgrEmail === "calusinzeanna3@gmail.com") mgrName = "Zeanna";
-                else mgrName = "Aizel";
+            if (!mgrName || BANNED_MGR_NAMES.includes(mgrName.toLowerCase())) {
+                mgrName = (u.username || mgrEmail.split("@")[0] || "").trim();
             }
             const isRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
                               (mgrEmail && localStorage.getItem('rmims_avatar_removed_' + mgrEmail.toLowerCase()) === 'true');
@@ -156,11 +154,8 @@ function applyManagerUser(userData) {
     // Deep sanitize manager identity: ensure authentic registered name is always restored
     const BANNED_MGR_NAMES = ["manager", "user account", "user", "account", "staff member", "staff user", "store manager", "admin", "administrator", "—", "-"];
     const candidateEmail = (userData.email || "").toLowerCase().trim();
-    if (!userData.fullName || BANNED_MGR_NAMES.includes(userData.fullName.toLowerCase()) || userData.fullName.toLowerCase().includes("rafael") || userData.fullName.toLowerCase().includes("cruz") || userData.fullName.toLowerCase().includes("staff") || userData.fullName.includes("Maria Santos")) {
-        if (candidateEmail === "zeannapatty@gmail.com") userData.fullName = "Aizel";
-        else if (candidateEmail === "zeannapatricia@gmail.com") userData.fullName = "Glazel";
-        else if (candidateEmail === "calusinzeanna3@gmail.com") userData.fullName = "Zeanna";
-        else userData.fullName = "Aizel";
+    if (!userData.fullName || BANNED_MGR_NAMES.includes(userData.fullName.toLowerCase())) {
+        userData.fullName = (userData.username || candidateEmail.split("@")[0] || "").trim();
     }
     if (!userData.email || userData.email.toLowerCase().includes("staff@")) {
         userData.email = userData.email || "";
@@ -202,7 +197,8 @@ function applyManagerUser(userData) {
 const immediateLocalUser = getLocalManagerOrAdmin();
 if (immediateLocalUser) {
     if (immediateLocalUser.redirect) {
-        window.location.href = immediateLocalUser.redirect;
+        // no cached account on this device: wait for the real sign-in check below (it sends to login if needed)
+        if (!/login\.html/.test(immediateLocalUser.redirect)) window.location.href = immediateLocalUser.redirect;
     } else {
         applyManagerUser(immediateLocalUser);
     }
@@ -228,7 +224,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
         let profile = null;
         try {
@@ -276,7 +272,7 @@ onAuthStateChanged(auth, async (user) => {
             if (!profile) {
                 profile = {
                     id: uid,
-                    full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+                    full_name: user.displayName || user.user_metadata?.full_name || "",
                     email: user.email,
                     role: "admin",
                     operational_role: "admin",
@@ -315,8 +311,8 @@ onAuthStateChanged(auth, async (user) => {
 
         if (profile) {
             let mName = profile.full_name || "";
-            if (!mName || mName.toLowerCase().includes("rafael") || mName.toLowerCase().includes("cruz") || mName.toLowerCase().includes("staff") || mName.includes("Maria Santos")) {
-                mName = "Manager";
+            if (!mName) {
+                mName = profile.username || String(profile.email || user.email || "").split("@")[0] || "";
             }
             let mEmail = profile.email || user.email || "";
             const isAuthRemoved = localStorage.getItem('rmims_avatar_removed') === 'true' ||
@@ -376,7 +372,7 @@ function syncUserInterface() {
     const loginEl = document.getElementById("accountLastLogin");
     const previewAv = document.getElementById("profileAvatarPreview");
 
-    if (fullNameInput) fullNameInput.value = currentUser.fullName || "Aizel";
+    if (fullNameInput) fullNameInput.value = currentUser.fullName || "";
     if (emailInput) emailInput.value = currentUser.email || "";
     if (roleInput) roleInput.value = "Store Manager";
 
@@ -392,7 +388,7 @@ function syncUserInterface() {
             previewAv.style.padding = '0';
             previewAv.style.overflow = 'hidden';
         } else {
-            previewAv.textContent = initials(currentUser.fullName || "Aizel");
+            previewAv.textContent = initials(currentUser.fullName || "");
         }
     }
 }
@@ -655,14 +651,11 @@ function initProfileEditor() {
 
             // Security Gate 1: Verify legitimate registered email
             const cleanEmail = (currentUser.email || "").toLowerCase().trim();
-            const LEGIT_EMAILS = [
-                "zeannapatty@gmail.com",
-                "zeannapatricia@gmail.com",
-                "calusinzeanna3@gmail.com",
-                "sconesandmuffins@gmail.com",
-                "scone2@gmail.com"
-            ];
-            let isLegitEmail = LEGIT_EMAILS.includes(cleanEmail);
+            let isLegitEmail = false;
+            try {
+                const { data: sessData } = await supabase.auth.getSession();
+                isLegitEmail = !!cleanEmail && String(sessData?.session?.user?.email || "").toLowerCase().trim() === cleanEmail;
+            } catch (_) {}
             if (!isLegitEmail && cleanEmail) {
                 try {
                     const reg = JSON.parse(localStorage.getItem("rmims_registered_users") || "[]");
@@ -833,6 +826,15 @@ function initSecurityForm() {
             btn.textContent = "Updating…";
 
             try {
+                const pw = await changeAccountPassword(currentPassword, newPassword);
+                if (!pw.ok) {
+                    const t = pw.field === 'current' ? currentErr : pw.field === 'new' ? newErr : null;
+                    if (t) t.textContent = pw.message; else showToast(pw.message, "error");
+                    return;
+                }
+                showToast("Password updated successfully.", "success");
+                directForm.reset();
+                return;
                 // 1. Resolve email
                 let userEmail = (currentUser?.email || "").trim().toLowerCase();
                 if (!userEmail) {
@@ -938,7 +940,7 @@ function initSecurityForm() {
                     regUsers.push({
                         id: currentUser?.uid || "user_" + Date.now(),
                         email: userEmail,
-                        name: currentUser?.fullName || "Aizel",
+                        name: currentUser?.fullName || "",
                         role: currentUser?.role || "manager",
                         status: "active"
                     });
@@ -1029,6 +1031,16 @@ function initSecurityForm() {
             }
 
             try {
+                const pw = await changeAccountPassword(currentPassword, newPassword);
+                if (!pw.ok) {
+                    const t = pw.field === 'current' ? currentErr : pw.field === 'new' ? newErr : null;
+                    if (t) t.textContent = pw.message; else showToast(pw.message, "error");
+                    return;
+                }
+                showToast("Password changed successfully.", "success");
+                closeModal("changePasswordModal");
+                modalForm.reset();
+                return;
                 let userEmail = (currentUser?.email || "").trim().toLowerCase();
                 if (!userEmail) {
                     const keys = ["managerUser", "currentUser", "rmimsCurrentUser", "userProfile"];
@@ -1102,7 +1114,7 @@ function initSecurityForm() {
                     regUsers.push({
                         id: currentUser?.uid || "user_" + Date.now(),
                         email: userEmail,
-                        name: currentUser?.fullName || "Aizel",
+                        name: currentUser?.fullName || "",
                         role: currentUser?.role || "manager",
                         status: "active"
                     });
