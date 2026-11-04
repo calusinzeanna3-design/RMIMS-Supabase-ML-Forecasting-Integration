@@ -1,502 +1,164 @@
 // supabase/functions/admin-create-user/index.ts
 //
-// RMIMS V2 — Edge Function: Secure Admin User Provisioning
-// Purpose: Allows authenticated active administrators to securely provision new
-//          user accounts without exposing the service_role key to browser-side code.
+// RMIMS — Edge Function: the Administrator creates a Manager / Staff (or another Admin) login.
+// Used by Admin -> User Management -> Add User. Runs on Supabase's server: the service key never reaches the
+// browser and every check happens here.
 //
-// Authoritative Project: rmims-v2 (hgandqozgcpytxebhvtn)
-// Phase: Phase 8 (Edge Functions) — Step 8.4: Secure Admin User Creation
+// Security
+//   * caller must send a valid signed-in session (Bearer token) AND be an ACTIVE Admin in public.user_profiles
+//     (nothing is trusted from user_metadata or the e-mail address)
+//   * each invalid case has its own check and message: same e-mail / username, company, role, password rules,
+//     full name, e-mail format (database checks from 02_AUTH_SECURITY.sql + password rules here)
+//   * Manager / Staff must belong to one of the registered companies; an Admin belongs to none
+//   * rate limited per Admin
+//
+// Deploy:  supabase functions deploy admin-create-user --no-verify-jwt
+//   (or Dashboard -> Edge Functions -> admin-create-user -> replace the code with this file -> Deploy;
+//    turn OFF "Verify JWT": the function checks the session itself)
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
-// Standard CORS headers for RMIMS frontend integration
-export const corsHeaders = {
+const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Email validation regex (RFC 5322 simplified)
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MESSAGES: Record<string, string> = {
+  OK: "Account created.",
+  BAD_REQUEST: "The request could not be read. Please refresh the page and try again.",
+  NOT_SIGNED_IN: "Your session has ended. Please sign in again.",
+  NOT_ADMIN: "Only an active Administrator can create accounts.",
+  TOO_MANY_REQUESTS: "Too many accounts created in a short time. Please wait a few minutes.",
+  MISSING_FIELDS: "Please fill in every required field.",
+  INVALID_EMAIL_FORMAT: "That e-mail address is not valid (example: name@company.com).",
+  FULL_NAME_INVALID: "Please enter the person's real full name.",
+  USERNAME_TOO_SHORT: "The username must have at least 3 characters.",
+  USERNAME_INVALID: "The username can only use letters, numbers, dot, dash and underscore (no spaces).",
+  USERNAME_TAKEN: "This username is already taken. Please choose another one.",
+  EMAIL_ALREADY_REGISTERED: "An account with this e-mail address already exists.",
+  EMAIL_PENDING_APPROVAL: "This e-mail address already has a request waiting for approval. Approve it instead.",
+  COMPANY_NOT_FOUND: "That company does not exist in the system.",
+  ROLE_INVALID: "Please choose Manager, Staff or Admin.",
+  PASSWORD_TOO_SHORT: "The password must have at least 8 characters.",
+  PASSWORD_TOO_WEAK: "The password must contain at least one letter and one number.",
+  PASSWORD_HAS_SPACES: "The password cannot start or end with a space.",
+  PASSWORD_CONTAINS_PERSONAL_INFO: "The password cannot contain the username or e-mail name.",
+  SERVER_ERROR: "The account service is having a problem. Please try again in a moment.",
+};
 
-serve(async (req: Request) => {
-  // 1. Handle CORS Preflight Request
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+function reply(code: string, extra: Record<string, unknown> = {}, ok = false) {
+  return new Response(JSON.stringify({ ok, code, message: MESSAGES[code] || MESSAGES.SERVER_ERROR, ...extra }), {
+    status: 200,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
+
+function checkPassword(pw: string, email: string, username: string): string {
+  if (pw.length < 8) return "PASSWORD_TOO_SHORT";
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) return "PASSWORD_TOO_WEAK";
+  if (pw !== pw.trim()) return "PASSWORD_HAS_SPACES";
+  const p = pw.toLowerCase();
+  const local = email.split("@")[0].toLowerCase();
+  if ((username.length >= 3 && p.includes(username.toLowerCase())) || (local.length >= 3 && p.includes(local))) {
+    return "PASSWORD_CONTAINS_PERSONAL_INFO";
   }
+  return "OK";
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "POST") return reply("BAD_REQUEST");
+
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const firstKey = (name: string) => {
+    try { const v = JSON.parse(Deno.env.get(name) ?? "{}"); return String(v.default ?? Object.values(v)[0] ?? ""); } catch { return ""; }
+  };
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || firstKey("SUPABASE_SECRET_KEYS");
+  if (!url || !serviceKey) return reply("SERVER_ERROR");
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   try {
-    // 2. Validate HTTP Method
-    if (req.method !== "POST") {
-      return new Response(
-        JSON.stringify({
-          error: "Method Not Allowed",
-          message: "Only POST requests are supported.",
-        }),
-        {
-          status: 405,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    // 1. who is calling: a real session, and an ACTIVE Admin according to the database only
+    const token = (req.headers.get("Authorization") || "").replace(/^bearer\s+/i, "").trim();
+    if (!token) return reply("NOT_SIGNED_IN");
+    const { data: who, error: whoErr } = await admin.auth.getUser(token);
+    if (whoErr || !who?.user) return reply("NOT_SIGNED_IN");
+    const { data: caller } = await admin.from("user_profiles")
+      .select("id, operational_role, status").eq("id", who.user.id).maybeSingle();
+    if (!caller || caller.operational_role !== "admin" || caller.status !== "active") return reply("NOT_ADMIN");
 
-    // 3. Validate Environment Configuration (Dynamic Server Secrets)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const supabaseAnonKey =
-      Deno.env.get("SUPABASE_ANON_KEY") ||
-      Deno.env.get("SUPABASE_KEY") ||
-      supabaseServiceRoleKey;
+    const { data: rate } = await admin.rpc("auth_check_rate_limit", {
+      p_bucket: `admin:${caller.id}:create-user`, p_max: 30, p_window_seconds: 600,
+    });
+    if (rate !== "OK") return reply("TOO_MANY_REQUESTS");
 
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      return new Response(
-        JSON.stringify({
-          error: "Configuration Error",
-          message: "Server configuration missing required Supabase environment secrets.",
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    // 2. input
+    let body: Record<string, string> = {};
+    try { body = await req.json(); } catch { return reply("BAD_REQUEST"); }
+    const email = String(body.email || "").trim().toLowerCase();
+    const username = String(body.username || "").trim();
+    const fullName = String(body.full_name || "").trim();
+    const role = String(body.operational_role || body.role || "").trim().toLowerCase();
+    const company = String(body.company || body.company_name || body.company_id || "").trim();
+    const password = String(body.password || "");
+    const branchName = String(body.branch_name || company).trim();
+    const branchLocation = String(body.branch_location || "").trim();
+    if (!["manager", "staff", "admin"].includes(role)) return reply("ROLE_INVALID");
+    if (!email || !username || !fullName || !password) return reply("MISSING_FIELDS");
 
-    // 4. Extract and Validate Authorization Header
-    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({
-          error: "Unauthorized",
-          message: "Missing Authorization header.",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    // 3. the same checks as self sign-up (one code per problem); an Admin has no company
+    const check = (await admin.rpc("auth_check_signup", {
+      p_email: email, p_username: username, p_full_name: fullName,
+      p_company: role === "admin" ? "Scones & Muffins Bakery" : company,  // company is ignored for an Admin
+      p_role: role === "admin" ? "staff" : role, p_branch_location: branchLocation,
+    })).data;
+    if (!check || check.code !== "OK") return reply(check?.code || "SERVER_ERROR");
+    const pw = checkPassword(password, email, username);
+    if (pw !== "OK") return reply(pw);
 
-    if (!authHeader.startsWith("Bearer ") && !authHeader.startsWith("bearer ")) {
-      return new Response(
-        JSON.stringify({
-          error: "Unauthorized",
-          message: "Malformed Authorization header. Expected 'Bearer <token>'.",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const token = authHeader.replace(/^bearer\s+/i, "").trim();
-    if (!token) {
-      return new Response(
-        JSON.stringify({
-          error: "Unauthorized",
-          message: "Empty Bearer token provided.",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 5. Cryptographic JWT Verification via Supabase Auth
-    const authVerificationClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+    // 4. create the login (confirmed: the Admin vouches for it) - the profile is created by the database trigger
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        username,
+        operational_role: role === "admin" ? "staff" : role,   // the trigger only accepts manager / staff
+        company_id: role === "admin" ? null : check.company_id,
+        company_name: role === "admin" ? null : check.company_name,
+        branch_name: role === "admin" ? null : branchName,
+        branch_location: role === "admin" ? null : branchLocation,
+        branch_store: role === "admin" ? null : (branchLocation ? `${branchName} (${branchLocation})` : branchName),
       },
     });
-
-    const {
-      data: { user: callingUser },
-      error: authError,
-    } = await authVerificationClient.auth.getUser(token);
-
-    if (authError || !callingUser) {
-      return new Response(
-        JSON.stringify({
-          error: "Unauthorized",
-          message: "Invalid, expired, or unverified authentication token.",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (createErr || !created?.user?.id) {
+      const m = String(createErr?.message || "").toLowerCase();
+      if (m.includes("already") || m.includes("registered") || m.includes("exists")) return reply("EMAIL_ALREADY_REGISTERED");
+      return reply("SERVER_ERROR");
     }
 
-    // 6. Verify Administrator Authorization via Database Record (public.user_profiles)
-    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
+    // 5. created by the Admin = approved right away (an Admin account becomes admin here, server-side only)
+    const patch: Record<string, unknown> = { status: "active", approved_at: new Date().toISOString(), approved_by: caller.id };
+    if (role === "admin") Object.assign(patch, { role: "admin", operational_role: "admin" });
+    const { error: upErr } = await admin.from("user_profiles").update(patch).eq("id", created.user.id);
+    if (upErr) {
+      await admin.auth.admin.deleteUser(created.user.id);   // never leave a half-made account
+      return reply("SERVER_ERROR");
+    }
+    await admin.rpc("auth_log_event", {
+      p_email: email, p_action: "Account Created", p_status: "success",
+      p_details: `Administrator created a ${role} account${role === "admin" ? "" : ` for ${check.company_name}`}.`,
+      p_ip: (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null,
     });
 
-    // 6. Verify Administrator Authorization via Database Record (public.user_profiles)
-    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
-
-    let { data: adminProfile } = await adminClient
-      .from("user_profiles")
-      .select("id, email, full_name, role, status")
-      .eq("id", callingUser.id)
-      .maybeSingle();
-
-    // Self-healing bootstrap: if caller is authenticated admin but profile record is missing
-    const isCallerAdmin = 
-      adminProfile?.role === "admin" ||
-      callingUser.user_metadata?.role === "admin" ||
-      callingUser.user_metadata?.operational_role === "admin" ||
-      (callingUser.email && callingUser.email.toLowerCase().startsWith("admin@"));
-
-    if (!adminProfile && isCallerAdmin) {
-      const adminName = callingUser.user_metadata?.full_name || "Main Administrator";
-      try {
-        const { data: createdProf } = await adminClient
-          .from("user_profiles")
-          .upsert({
-            id: callingUser.id,
-            email: callingUser.email?.toLowerCase(),
-            full_name: adminName,
-            role: "admin",
-            operational_role: "admin",
-            status: "active"
-          })
-          .select()
-          .single();
-        adminProfile = createdProf || { id: callingUser.id, email: callingUser.email, role: "admin", status: "active" };
-      } catch {
-        adminProfile = { id: callingUser.id, email: callingUser.email, role: "admin", status: "active" };
-      }
-    }
-
-    if (!isCallerAdmin || (adminProfile && adminProfile.status !== "active")) {
-      return new Response(
-        JSON.stringify({
-          error: "Forbidden",
-          message: "Insufficient privileges. Active Administrator role required.",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 8. Parse Request Body Safely
-    let body: any;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Invalid JSON request body.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!body || typeof body !== "object") {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Request body must be a valid JSON object.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 9. Input Validation — Email
-    const rawEmail = typeof body.email === "string" ? body.email.trim() : "";
-    if (!rawEmail) {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Field 'email' is required.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!EMAIL_REGEX.test(rawEmail)) {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Field 'email' must be a valid email address.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const normalizedEmail = rawEmail.toLowerCase();
-
-    // 10. Input Validation — Password (Enforce minimum 8 characters)
-    const rawPassword = typeof body.password === "string" ? body.password : "";
-    if (!rawPassword) {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Field 'password' is required.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (rawPassword.length < 8) {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Password must be at least 8 characters long.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 11. Input Validation — Full Name
-    const rawFullName = typeof body.full_name === "string" ? body.full_name.trim() : "";
-    if (!rawFullName || rawFullName.length < 2) {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: "Field 'full_name' is required (minimum 2 characters).",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 12. Input Validation — Operational Role Security Guard
-    // Strictly support the 3 canonical roles: 'manager', 'staff', 'admin'
-    const rawOpRole = typeof body.operational_role === "string" 
-      ? body.operational_role.trim().toLowerCase() 
-      : (typeof body.role === "string" ? body.role.trim().toLowerCase() : "staff");
-
-    const validOperationalRoles = ["manager", "staff", "admin", "user"];
-    if (!validOperationalRoles.includes(rawOpRole)) {
-      return new Response(
-        JSON.stringify({
-          error: "Bad Request",
-          message: `Invalid role '${rawOpRole}'. Permitted roles are: 'manager', 'staff', 'admin'.`,
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const assignedOperationalRole = rawOpRole === "user" ? "staff" : rawOpRole;
-    const assignedBaseRole = assignedOperationalRole === "admin" ? "admin" : (assignedOperationalRole === "manager" ? "manager" : "user");
-    const assignedStatus = typeof body.status === "string" && ["active", "pending", "inactive"].includes(body.status)
-      ? body.status
-      : "active";
-
-    const rawUsername = typeof body.username === "string" ? body.username.trim() : "";
-    const rawBranchName = typeof body.branch_name === "string" ? body.branch_name.trim() : "";
-    const rawBranchLocation = typeof body.branch_location === "string" ? body.branch_location.trim() : "";
-    const rawBranchStore = typeof body.branch_store === "string" 
-      ? body.branch_store.trim() 
-      : (rawBranchName && rawBranchLocation ? `${rawBranchName} (${rawBranchLocation})` : rawBranchName);
-
-    // 13. Create Supabase Auth User via Server-Side Admin API
-    const { data: authData, error: createAuthError } =
-      await adminClient.auth.admin.createUser({
-        email: normalizedEmail,
-        password: rawPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: rawFullName,
-          username: rawUsername,
-          role: assignedBaseRole,
-          operational_role: assignedOperationalRole,
-          branch_name: rawBranchName,
-          branch_location: rawBranchLocation,
-          branch_store: rawBranchStore,
-          status: assignedStatus,
-        },
-      });
-
-    if (createAuthError) {
-      const errMsg = createAuthError.message.toLowerCase();
-      if (
-        errMsg.includes("already registered") ||
-        errMsg.includes("already exists") ||
-        errMsg.includes("duplicate") ||
-        createAuthError.status === 422
-      ) {
-        return new Response(
-          JSON.stringify({
-            error: "Conflict",
-            message: "A user with this email address already exists.",
-          }),
-          {
-            status: 409,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          error: "User Creation Error",
-          message: createAuthError.message,
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!authData?.user?.id) {
-      return new Response(
-        JSON.stringify({
-          error: "User Creation Error",
-          message: "Auth user was created without a valid identifier.",
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const newUserId = authData.user.id;
-
-    // 14. Synchronize User Profile Record in public.user_profiles
-    const profilePayload: Record<string, any> = {
-      id: newUserId,
-      email: normalizedEmail,
-      full_name: rawFullName,
-      role: assignedBaseRole,
-      operational_role: assignedOperationalRole,
-      status: assignedStatus,
-    };
-    if (rawUsername) profilePayload.username = rawUsername;
-    if (rawBranchName) profilePayload.branch_name = rawBranchName;
-    if (rawBranchStore) profilePayload.branch_store = rawBranchStore;
-
-    let { error: profileInsertError } = await adminClient
-      .from("user_profiles")
-      .insert(profilePayload);
-
-    // Fallback if some schema columns are missing
-    if (profileInsertError && profileInsertError.message?.includes("column")) {
-      const basicPayload = {
-        id: newUserId,
-        email: normalizedEmail,
-        full_name: rawFullName,
-        role: assignedBaseRole,
-        status: assignedStatus,
-      };
-      const fb = await adminClient.from("user_profiles").insert(basicPayload);
-      profileInsertError = fb.error;
-    }
-
-    // 15. Handle Partial Failure (Rollback Auth User if Profile Insertion Fails)
-    if (profileInsertError) {
-      try {
-        await adminClient.auth.admin.deleteUser(newUserId);
-      } catch (cleanupError) {
-        console.error("Rollback cleanup failed for auth user:", newUserId, cleanupError);
-      }
-
-      return new Response(
-        JSON.stringify({
-          error: "Database Error",
-          message: "Failed to create user profile record. User creation was safely rolled back.",
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 16. Record Audit Event in public.activity_audit_logs
-    try {
-      await adminClient.from("activity_audit_logs").insert({
-        user_id: callingUser.id,
-        action: "ADMIN_CREATE_USER",
-        entity_type: "user_profiles",
-        entity_id: newUserId,
-        details: {
-          created_user_id: newUserId,
-          created_user_email: normalizedEmail,
-          created_user_name: rawFullName,
-          assigned_role: assignedBaseRole,
-          assigned_operational_role: assignedOperationalRole,
-          assigned_status: assignedStatus,
-          branch_store: rawBranchStore,
-          created_by_admin: callingUser.id,
-        },
-      });
-    } catch (auditError) {
-      console.warn("Audit log creation notice:", auditError);
-    }
-
-    // 17. Success Response (Zero passwords, tokens, or service-role keys returned)
-    return new Response(
-      JSON.stringify({
-        status: "success",
-        message: "User account created successfully.",
-        user: {
-          id: newUserId,
-          email: normalizedEmail,
-          full_name: rawFullName,
-          username: rawUsername,
-          role: assignedBaseRole,
-          operational_role: assignedOperationalRole,
-          branch_store: rawBranchStore,
-          status: assignedStatus,
-        },
-      }),
-      {
-        status: 201,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: "Internal Server Error",
-        message: error instanceof Error ? error.message : "An unexpected error occurred.",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return reply("OK", {
+      user: { id: created.user.id, email, username, full_name: fullName, operational_role: role,
+              company_id: role === "admin" ? null : check.company_id, company_name: role === "admin" ? null : check.company_name },
+    }, true);
+  } catch (e) {
+    console.error("[admin-create-user]", e instanceof Error ? e.message : e);
+    return reply("SERVER_ERROR");
   }
 });

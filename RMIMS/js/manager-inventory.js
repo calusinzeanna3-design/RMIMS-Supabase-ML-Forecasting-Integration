@@ -14,6 +14,8 @@ import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, 
 import {
   fetchUnifiedInventoryFromSupabase,
   fetchLiveFinishedProductsFromSupabase,
+  saveFinishedProductToSupabase,
+  deleteFinishedProductInSupabase,
   saveRawMaterialToSupabase,
   deleteRawMaterialOnSupabase,
   broadcastManagerSync
@@ -1177,6 +1179,16 @@ function getDeletedFinishedProducts() {
   }
 }
 
+/** A name the user saves again is no longer "deleted" (the deleted list only hides what the user removed). */
+function clearDeletedFinishedProduct(name) {
+  try {
+    const raw = localStorage.getItem(DELETED_FP_STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const kept = arr.filter(n => String(n).toLowerCase() !== String(name || '').toLowerCase());
+    if (kept.length !== arr.length) localStorage.setItem(DELETED_FP_STORAGE_KEY, JSON.stringify(kept));
+  } catch (_) {}
+}
+
 function addDeletedFinishedProduct(name) {
   try {
     const raw = localStorage.getItem(DELETED_FP_STORAGE_KEY);
@@ -1342,9 +1354,22 @@ function getCustomFinishedProducts() {
   }
 }
 
-function saveCustomFinishedProducts(list) {
+/**
+ * Writes the formulations to this device. `pushNames` = the formulations the Manager just added / edited: only
+ * those are sent to Supabase (returns the database answers so the screen can say whether it really saved).
+ */
+function saveCustomFinishedProducts(list, pushNames = []) {
+    const pushKeys = new Set((pushNames || []).map(n => String(n || '').toLowerCase().trim()));
+    const pushes = [];
     if (Array.isArray(list)) {
-      list.forEach(p => { if (typeof saveFinishedProductToSupabase === 'function') saveFinishedProductToSupabase(p).catch(() => {}); });
+      list.forEach(p => {
+        if (!p || !p.name) return;
+        if (!p.last_updated || p.date_modified > p.last_updated) p.last_updated = p.date_modified || new Date().toISOString();
+        if (pushKeys.has(String(p.name).toLowerCase().trim())) {
+          clearDeletedFinishedProduct(p.name);
+          pushes.push(saveFinishedProductToSupabase(p).catch(err => ({ success: false, error: (err && err.message) || String(err) })));
+        }
+      });
     }
   try {
     const json = JSON.stringify(list);
@@ -1360,6 +1385,17 @@ function saveCustomFinishedProducts(list) {
   } catch (e) {
     console.warn('Failed to save custom finished products', e);
   }
+  return Promise.all(pushes);
+}
+
+/** Tells the Manager whether the formulation is really in Supabase. */
+function reportFinishedProductSave(results, okMessage) {
+  const failed = (results || []).find(r => !r || !r.success);
+  if (!failed) { showToast(okMessage, 'success'); return true; }
+  const why = failed.error || 'The database did not save it.';
+  showToast(`NOT saved to the database: ${why} It is kept on this device and will be saved again automatically.`, 'danger');
+  try { alert(`The finished product was NOT saved to Supabase.\n\n${why}\n\nIt stays on this device and is uploaded again automatically when the problem is fixed.`); } catch (_) {}
+  return false;
 }
 
 function getAllFinishedProducts() {
@@ -1808,7 +1844,7 @@ function renderNewFpSelectedMaterials() {
   });
 }
 
-function handleAddFinishedProductSubmit(e) {
+async function handleAddFinishedProductSubmit(e) {
   e.preventDefault();
 
   const nameInput = document.getElementById('newFpName');
@@ -1830,17 +1866,18 @@ function handleAddFinishedProductSubmit(e) {
   }
 
   const allProducts = getAllFinishedProducts();
+  const sameName = (a, b) => String(a || '').toLowerCase().replace(/\s+/g, ' ').trim() === String(b || '').toLowerCase().replace(/\s+/g, ' ').trim();
   if (originalName) {
     if (name.toLowerCase() !== originalName.toLowerCase()) {
-      if (allProducts.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-        alert(`A finished product named "${name}" already exists. Please choose a unique name.`);
+      if (allProducts.some(p => sameName(p.name, name))) {
+        alert(`"${name}" is already saved as a finished product. Open it and use Edit instead of adding it again.`);
         if (nameInput) nameInput.focus();
         return;
       }
     }
   } else {
-    if (allProducts.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-      alert(`A finished product named "${name}" already exists. Please choose a unique name.`);
+    if (allProducts.some(p => sameName(p.name, name))) {
+      alert(`"${name}" is already saved as a finished product. Open it and use Edit instead of adding it again.`);
       if (nameInput) nameInput.focus();
       return;
     }
@@ -1915,12 +1952,25 @@ function handleAddFinishedProductSubmit(e) {
       custom[existingIndex] = updatedProduct;
     } else {
       custom.unshift(updatedProduct);
-      if (name.toLowerCase() !== originalName.toLowerCase()) {
-        addDeletedFinishedProduct(originalName);
-      }
     }
-    saveCustomFinishedProducts(custom);
-    showToast(`Formulation "${name}" updated successfully!`, 'success');
+    // Renamed: the old name is removed everywhere (this device AND Supabase), so it never comes back
+    if (!sameName(name, originalName)) {
+      for (let i = custom.length - 1; i >= 0; i--) {
+        if (custom[i] !== updatedProduct && sameName(custom[i].name, originalName)) custom.splice(i, 1);
+      }
+      addDeletedFinishedProduct(originalName);
+      try { deleteFinishedProductInSupabase(originalName).catch(() => {}); } catch (_) {}
+    }
+    const fpSubmitBtn = (e && e.submitter) || (document.getElementById('btnSubmitAddFpText') || {}).closest?.('button');
+    if (fpSubmitBtn) fpSubmitBtn.disabled = true;
+    const fpSubmitText = document.getElementById('btnSubmitAddFpText');
+    if (fpSubmitText) fpSubmitText.textContent = 'Saving…';
+    try {
+      const results = await saveCustomFinishedProducts(custom, [name]);
+      reportFinishedProductSave(results, `Formulation "${name}" updated and saved to the database.`);
+    } finally {
+      if (fpSubmitBtn) fpSubmitBtn.disabled = false;
+    }
   } else {
     const newProduct = {
       id: 'fp-' + Date.now(),
@@ -1931,20 +1981,52 @@ function handleAddFinishedProductSubmit(e) {
       date_added: new Date().toISOString()
     };
     custom.unshift(newProduct);
-    saveCustomFinishedProducts(custom);
-    showToast(`Finished product "${name}" created with ${materialNames.length} raw materials and minimum stock limits!`, 'success');
+    const fpSubmitBtn = (e && e.submitter) || (document.getElementById('btnSubmitAddFpText') || {}).closest?.('button');
+    if (fpSubmitBtn) fpSubmitBtn.disabled = true;
+    const fpSubmitText = document.getElementById('btnSubmitAddFpText');
+    if (fpSubmitText) fpSubmitText.textContent = 'Saving…';
+    try {
+      const results = await saveCustomFinishedProducts(custom, [name]);
+      reportFinishedProductSave(results, `Finished product "${name}" saved to the database with ${materialNames.length} raw materials and minimum stock limits.`);
+    } finally {
+      if (fpSubmitBtn) fpSubmitBtn.disabled = false;
+    }
   }
 
+  // Saved: close the form (and any open recipe window) and go back to the finished product cards
+  returnToFinishedProductCards(name, { showCatalog: true });
+}
+
+/**
+ * After a save: the form and the recipe detail window close, the Finished Food cards are shown (refreshed) and
+ * the saved product's card is scrolled into view and highlighted for a moment.
+ */
+function returnToFinishedProductCards(productName, { showCatalog = true } = {}) {
   closeAddFinishedProductPanel();
+  const detailModal = document.getElementById('modalFinishedProductFolder');
+  if (detailModal && !detailModal.hidden) closeFinishedProductModal();
+
+  const catalog = document.getElementById('modalFinishedFoodCatalogPopup');
+  const catalogOpen = Boolean(catalog && !catalog.hidden);
+  const search = document.getElementById('finishedFoodPopupSearchInput');
+  if (search) search.value = '';
+  if (catalog && (showCatalog || catalogOpen)) showModalBackdrop(catalog);
+
   renderFinishedFoodModalContent('');
   renderFinishedProductsFolders();
 
-  const detailModal = document.getElementById('modalFinishedProductFolder');
-  if (detailModal && !detailModal.hidden) {
-    openFinishedProductModal(name);
-  } else if (!originalName) {
-    openFinishedProductModal(name);
-  }
+  if (!productName) return;
+  const target = encodeURIComponent(productName);
+  const scope = (catalog && !catalog.hidden) ? catalog : document;
+  const card = Array.from(scope.querySelectorAll('.mgr-fp-folder-card')).find(c => c.getAttribute('data-fp-name') === target);
+  if (!card) return;
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+  const prevShadow = card.style.boxShadow;
+  const prevOutline = card.style.outline;
+  card.style.transition = 'box-shadow 0.3s ease, outline-color 0.3s ease';
+  card.style.outline = '2px solid #D97706';
+  card.style.boxShadow = '0 0 0 6px rgba(217, 119, 6, 0.18)';
+  setTimeout(() => { card.style.outline = prevOutline; card.style.boxShadow = prevShadow; }, 2200);
 }
 
 /**
@@ -1977,6 +2059,8 @@ function handleConfirmDeleteFinishedProduct() {
   saveCustomFinishedProducts(custom);
 
   addDeletedFinishedProduct(nameToDelete);
+  // the user's delete is the only thing that removes a formulation on every device
+  try { deleteFinishedProductInSupabase(nameToDelete).catch(() => {}); } catch (_) {}
   closeDeleteFinishedProductModal();
 
   const detailModal = document.getElementById('modalFinishedProductFolder');
@@ -3875,10 +3959,11 @@ function openFinishedProductModal(productName) {
         };
       });
       custom[idx].date_modified = new Date().toISOString();
-      saveCustomFinishedProducts(custom);
-      renderFinishedFoodModalContent('');
-      renderFinishedProductsFolders();
-      showToast(`Formulation limits for "${product.name}" saved successfully!`, 'success');
+      const savedName = custom[idx].name;
+      const pushed = saveCustomFinishedProducts(custom, [savedName]);
+      // back to the finished product cards (the catalog stays open if the recipe was opened from it)
+      returnToFinishedProductCards(savedName, { showCatalog: false });
+      pushed.then(results => reportFinishedProductSave(results, `Formulation limits for "${product.name}" saved to the database.`));
     }
   };
 
@@ -4684,6 +4769,36 @@ async function handleConfirmImportMaterials() {
   const totalRows = pendingImportMaterials.length;
   if (statusEl) statusEl.textContent = `Importing data... (0 / ${totalRows} records)`;
 
+  // 1. The whole file is imported in Supabase in one step (import_raw_materials, SQL file 13): materials,
+  //    deliveries from the stock counts, current stock. Every device then loads the same result.
+  let dbResult = null;
+  try {
+    const { supabase: sb } = await import('../supabase/supabase-config.js');
+    const rows = pendingImportMaterials.map(r => ({
+      'Date': String(r.row_date || r.latest_date || r.first_date || '').slice(0, 10),
+      'Raw Material Name': r.name || r.raw_material_name || '',
+      'Current Stock': r.current_stock,
+      'Unit': r.unit || '',
+      'Minimum Stock': r.minimum_stock ?? '',
+      'Item Code': r.item_code || r.id || ''
+    }));
+    const { data, error } = await sb.rpc('import_raw_materials', { p_rows: rows });
+    if (error) throw error;
+    dbResult = data;
+  } catch (err) {
+    const msg = String((err && err.message) || '');
+    if (progressBox) progressBox.style.display = 'none';
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `<span id="importModalConfirmText">Import Raw Materials</span>`;
+    }
+    showImportError(/import_raw_materials|function|schema cache/i.test(msg)
+      ? 'Import is not installed in Supabase yet: run SQL file 13_IMPORT_RAW_MATERIALS.sql.'
+      : (msg.replace(/^RMIMS_[A-Z_]+:\s*/, '') || 'The file could not be imported. Nothing was changed.'));
+    return;
+  }
+  const rejected = Array.isArray(dbResult && dbResult.rejected_rows) ? dbResult.rejected_rows : [];
+
   const overrides = getStoredOverrides();
   const now = new Date();
   const defaultDateEl = document.getElementById('importDefaultDateInput');
@@ -4783,13 +4898,7 @@ async function handleConfirmImportMaterials() {
       unit: latestRow.unit,
       current_stock: latestRow.current_stock,
       minimum_stock: latestRow.minimum_stock,
-      safety_stock: latestRow.safety_stock || latestRow.minimum_stock,
-      reorder_point: latestRow.reorder_point || (latestRow.minimum_stock * 2),
-      maximum_stock: (latestRow.minimum_stock * 5) || 100,
-      storage_location: latestRow.storage_location || 'Warehouse A - Main Rack',
-      supplier: latestRow.supplier || 'Batch Imported via File',
-      unit_cost: latestRow.unit_cost || 0,
-      description: latestRow.description || `Raw material ${latestRow.name} batch imported by Store Manager.`,
+      description: latestRow.description || 'Imported from file',
       date_added: itemFirstDate,
       first_date: itemFirstDate,
       display_date: itemFirstDate,
@@ -4812,14 +4921,7 @@ async function handleConfirmImportMaterials() {
       current_stock: latestRow.current_stock,
       minimum_threshold: latestRow.minimum_stock,
       minimum_stock: latestRow.minimum_stock,
-      safety_stock: latestRow.safety_stock || latestRow.minimum_stock,
-      reorder_point: latestRow.reorder_point || (latestRow.minimum_stock * 2),
-      reorder_quantity: latestRow.reorder_point || Math.max(10, latestRow.minimum_stock * 2),
-      supplier: latestRow.supplier || 'Batch Imported via File',
-      unit_cost: latestRow.unit_cost || 0,
-      storage_location: latestRow.storage_location || 'Warehouse A - Main Rack',
-      lead_time_days: 3,
-      description: latestRow.description || `Batch imported raw material ${latestRow.name}`,
+      description: latestRow.description || 'Imported from file',
       date_added: itemFirstDate,
       first_date: itemFirstDate,
       display_date: itemFirstDate,
@@ -4831,7 +4933,7 @@ async function handleConfirmImportMaterials() {
     };
 
     saveCustomRawMaterial(recordPayload);
-    saveRawMaterialToSupabase(recordPayload).catch(() => {});
+    // (already saved in Supabase by import_raw_materials above)
 
     logMaterialHistory(
       code,
@@ -4853,9 +4955,10 @@ async function handleConfirmImportMaterials() {
   }
 
   if (!isImportCancelled) {
-    // Atomically persist batch receipts & disbursements
+    // Deliveries from the file were created in Supabase (step 1); they arrive with the live sync below,
+    // so nothing is written to this browser's ledger here (no double counting).
     try {
-      if (batchReceipts.length > 0) {
+      if (false && batchReceipts.length > 0) {
         const existingRecs = getSystemCustomReceipts();
         const batchRecIds = new Set(batchReceipts.map(r => String(r.id)));
         const mergedRecs = [...batchReceipts, ...existingRecs.filter(r => !batchRecIds.has(String(r.id)))];
@@ -4913,7 +5016,12 @@ async function handleConfirmImportMaterials() {
     closeImportRawMaterialsModal();
     loadMaterials();
     renderUI();
-    showToast(`Successfully imported ${totalRows} records across ${uniqueMaterialCount} raw material${uniqueMaterialCount === 1 ? '' : 's'}!`, 'success');
+    try { const svc = await import('../supabase/manager-supabase-service.js'); await svc.pullLiveData('import'); loadMaterials(); renderUI(); } catch (_) {}
+    const d = dbResult || {};
+    showToast(`Imported: ${d.materials_created || 0} new, ${d.materials_updated || 0} updated, ${d.deliveries_created || 0} deliveries recorded`
+      + (d.rows_already_imported ? `, ${d.rows_already_imported} already imported` : '')
+      + (rejected.length ? `. ${rejected.length} row(s) skipped: ${rejected.slice(0, 2).map(r => `row ${r.row} - ${r.error}`).join('; ')}` : '.'),
+      rejected.length ? 'warning' : 'success');
   }
 
   if (confirmBtn) {

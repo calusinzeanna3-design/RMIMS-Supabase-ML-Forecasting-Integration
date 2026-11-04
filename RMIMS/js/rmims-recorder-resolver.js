@@ -179,3 +179,16 @@ export function currentRecorderName() {
     return '';
   }
 }
+
+/** Display role for a resolved recorder name ('Store Manager' | 'Store Staff' | ''), from the loaded profiles. */
+export function recorderRoleForName(name) {
+  const n = String(name || '').trim().toLowerCase();
+  if (!n) return '';
+  for (const p of directory.profiles.values()) {
+    if (String(p.name || '').trim().toLowerCase() === n) {
+      if (p.isAdmin) return '';
+      return /manager/i.test(p.role) ? 'Store Manager' : 'Store Staff';
+    }
+  }
+  return '';
+}

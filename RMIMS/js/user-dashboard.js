@@ -24,11 +24,11 @@ function getLiveStaffName() {
       const e = (o.email || '').toLowerCase().trim();
       const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
       if (n && !BANNED_STAFF.includes(n.toLowerCase())) return n;
-      if (e === 'scone2@gmail.com') return 'Staff_2';
-      if (e === 'sconesandmuffins@gmail.com') return 'Staff_1';
+      if (o.username) return String(o.username);
+      if (e) return e.split('@')[0];
     } catch (_) {}
   }
-  return 'Staff_1';
+  return '';
 }
 
 function escapeHtml(str) {
@@ -250,7 +250,7 @@ function renderStaffChart(providedStaffTx = null) {
           pointHoverRadius: 5
         },
         {
-          label: 'Production Disbursements',
+          label: 'Material Disbursements',
           data: disbData,
           borderColor: '#0284C7',
           backgroundColor: 'rgba(2, 132, 199, 0.08)',
@@ -508,9 +508,9 @@ function renderTop5Materials(materials, allCompanyTx) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; padding: 22px 16px; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 10px; text-align: center; color: #64748B; font-size: 13px;">
         <span style="font-size: 16px; margin-right: 6px;">📊</span>
-        <strong>No production disbursements recorded yet.</strong>
+        <strong>No disbursements recorded yet.</strong>
         <div style="font-size: 11.5px; color: #94A3B8; margin-top: 4px;">
-          Top consumed materials will appear here once production disbursements are approved.
+          Top consumed materials will appear here once disbursements are approved.
         </div>
       </div>
     `;
@@ -542,7 +542,7 @@ function renderRecentActivity(staffTx) {
     return;
   }
 
-  tbody.innerHTML = staffTx.slice(0, 6).map(t => {
+  tbody.innerHTML = staffTx.slice(0, 5).map(t => {
     let statusClass = 'pill-pending';
     let statusLabel = t.status || 'Pending';
 

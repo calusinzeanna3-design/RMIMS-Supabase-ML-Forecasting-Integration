@@ -30,7 +30,7 @@ export function maskOperationalDetails(text) {
     return `${sent[1]}*** of ${maskName(sent[2])}${sent[3] ? ` ${sent[3]} ***` : ''}${sent[4] || ''}`;
   }
 
-  // "<Action>: +260 g Fresh Yellow Squash (Kalabasa) (for production)"
+  // "<Action>: +260 g Fresh Yellow Squash (Kalabasa) (for Nutribun)"
   let m = t.match(/^(.*?:\s*)([+-])\s*[\d.,]+\s*(?:[A-Za-z]{1,8}\b)?\s+(.+?)((?:\s*\((?:for|used|reason)[^)]*\))?)$/i);
   if (m) {
     return `${m[1]}${m[2]}*** of ${maskName(m[3])}${m[4] ? ' (confidential)' : ''}`;

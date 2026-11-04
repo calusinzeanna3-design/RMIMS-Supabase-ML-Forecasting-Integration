@@ -5,6 +5,16 @@
 import { TRAINED_PROFILE, TRAINED_ANCHOR_DATE, TRAINED_OVERALL_DAILY_MAPE } from "./trained-forecast-profile.js";
 
 export { TRAINED_OVERALL_DAILY_MAPE };
+
+/**
+ * ONE margin of error per company model (no per-material / per-horizon differences):
+ *   Scones & Muffins (NB-xxx): the trained 12-year model, all 19 materials combined -> 6.65 %
+ *   KXC (RM-xxx):              the trained 5-year model                            -> 7.51 %
+ */
+export const KXC_MODEL_MAPE = 7.51;
+export function modelMapeFor(code) {
+  return /^RM-/i.test(String(code || '').trim()) ? KXC_MODEL_MAPE : TRAINED_OVERALL_DAILY_MAPE;
+}
 const ANCHOR_MS = new Date(TRAINED_ANCHOR_DATE + "T00:00:00").getTime();
 
 export const dateKey = (d) =>
@@ -69,7 +79,7 @@ export const REQUIREMENT_BUFFER_Z = REQUIREMENT_BAND_FRACTION;
 export function buildLiveForecaster(code, actualsByDate, opts = {}) {
   const asOf = dayStart(opts.asOf || new Date());
   const prof = getTrainedProfile(code);
-  const mapePct = prof ? Number(prof.mape) || TRAINED_OVERALL_DAILY_MAPE : TRAINED_OVERALL_DAILY_MAPE;
+  const mapePct = modelMapeFor(code);
   const mapeFrac = mapePct / 100;
   const marginMode = opts.marginMode || 'trained';
   const lambda = Math.pow(0.5, 1 / HALF_LIFE_DAYS);

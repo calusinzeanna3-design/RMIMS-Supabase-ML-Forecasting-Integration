@@ -5,7 +5,9 @@
 // Authoritative Supabase Data (raw_materials, stock_receipts, material_disbursements) & Authoritative AI Forecast Output.
 // Strictly Light Mode. No Mock Data. Unit-Safe.
 
+import { canonicalTxRef, txKey } from './rmims-tx-key.js';
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS, AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
@@ -14,10 +16,24 @@ import { getDeletedSet, extractRefFromText } from "./rmims-deleted-ledger.js";
 import { getActiveTenantContext } from "./tenant-manager.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { loadRecorderDirectory, resolveRecorderName } from "./rmims-recorder-resolver.js";
-import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, finishedProductsForMaterial, fmtQtyOrDash } from "./rmims-reorder-engine.js";
+import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, displayFinishedProduct, finishedProductsForMaterial, fmtQtyOrDash } from "./rmims-reorder-engine.js";
 
 /** Reorder quantity for display: only data-driven values, "—" when there is no recorded consumption. */
+/** Reorder cell: the reorder quantity, plus tomorrow's estimated need (from recorded usage) underneath. */
+function reorderCellHtml(m, withUnit = false) {
+    if (reorderShowsTomorrow(m)) {
+        return `${escapeHtml(fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit))}<div style="font-size:11px; color:#64748B; font-weight:500; margin-top:2px;" title="No 7-day reorder needed yet; estimated need for tomorrow from recorded usage">Est. for tomorrow</div>`;
+    }
+    return escapeHtml(reorderText(m, withUnit));
+}
+/** Reorder figure shown to users: the 7-day reorder quantity when one is needed; when none is needed yet
+ *  (0), tomorrow's estimated need from recorded usage is shown instead of a bare 0. */
+function reorderShowsTomorrow(m) {
+    const plan = m && m.reorderPlan;
+    return Boolean(m && m.reorderQty === 0 && plan && plan.hasData && plan.requirementTomorrow != null);
+}
 function reorderText(m, withUnit = true) {
+    if (reorderShowsTomorrow(m)) return `${fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit)} (est. tomorrow)`;
     return fmtQtyOrDash(m && m.reorderQty, withUnit ? (m && m.unit) : "");
 }
 function reorderAction(m, verb) {
@@ -62,7 +78,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
         let profile = null;
         try {
@@ -113,7 +129,7 @@ onAuthStateChanged(auth, async (user) => {
             if (!profile) {
                 profile = {
                     id: uid,
-                    full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+                    full_name: user.displayName || user.user_metadata?.full_name || "",
                     email: user.email,
                     role: "admin",
                     operational_role: "admin",
@@ -152,9 +168,7 @@ onAuthStateChanged(auth, async (user) => {
         let mName = (profile?.full_name || '').trim();
         const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
         if (!mName || ['manager', 'user account', 'user', 'undefined', 'null', '—', '-'].includes(mName.toLowerCase())) {
-            if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
-            else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
-            else mName = 'Aizel';
+            mName = (profile?.username || userEmail.split('@')[0] || '').trim();
         }
         if (pBtn) {
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
@@ -572,18 +586,18 @@ async function loadAuthoritativeData() {
                     ]);
 
                 const [matRes, rcvRes, disbRes] = await Promise.allSettled([
-                    fetchWithTimeout(supabase
+                    fetchWithTimeout(allRows(supabase
                         .from("raw_materials")
                         .select("*")
-                        .order("name")),
-                    fetchWithTimeout(supabase
+                        .order("name")), 30000),
+                    fetchWithTimeout(allRows(supabase
                         .from("stock_receipts")
                         .select("*")
-                        .order("receipt_date", { ascending: false })),
-                    fetchWithTimeout(supabase
+                        .order("receipt_date", { ascending: false })), 30000),
+                    fetchWithTimeout(allRows(supabase
                         .from("material_disbursements")
                         .select("*")
-                        .order("usage_date", { ascending: false }))
+                        .order("usage_date", { ascending: false })), 30000)
                 ]);
 
                 if (matRes.status === "fulfilled" && Array.isArray(matRes.value?.data)) rawMats = matRes.value.data;
@@ -712,8 +726,9 @@ async function loadAuthoritativeData() {
         // 3. Receipts mapping (STRICTLY live: Supabase + local manager receipts, ZERO 6-month mock fallbacks)
         // Remote rows carry the system reference inside text ("[Ref: X]"); use it as the id so the
         // local copy and the Supabase copy collapse into ONE record instead of being double counted.
-        rawReceipts = (rawReceipts || []).map(r => ({ ...r, id: extractRefFromText(r.supplier_name) || r.id }));
-        rawDisbursements = (rawDisbursements || []).map(d => ({ ...d, id: extractRefFromText(d.activity_type) || d.id }));
+        // one key per real movement (local copies, approval copies and the Supabase row are the same record)
+        rawReceipts = (rawReceipts || []).map(r => ({ ...r, ref: canonicalTxRef(r) || undefined, __key: txKey(r) }));
+        rawDisbursements = (rawDisbursements || []).map(d => ({ ...d, ref: canonicalTxRef(d) || undefined, __key: txKey(d) }));
         const recBaseMap = new Map();
         let localMgrReceipts = [];
         try {
@@ -723,22 +738,29 @@ async function loadAuthoritativeData() {
         } catch (_) {}
 
         localMgrReceipts.forEach(r => {
-            const rId = String(r.id || r.ref || "");
+            const rId = txKey(r);
+            const prev = recBaseMap.get(rId) || {};
             if (rId) recBaseMap.set(rId, {
-                id: rId,
-                material_id: r.materialId || r.material_id,
+                ...prev,
+                id: canonicalTxRef(r) || r.id,
+                ref: canonicalTxRef(r) || prev.ref,
+                material_name: r.materialName || r.material_name || prev.material_name,
+                material_id: r.materialId || r.material_id || prev.material_id,
                 received_quantity: Number(r.quantity || r.received_quantity || 0),
                 receipt_date: r.date || r.receipt_date,
                 unit: r.unit,
                 supplier_name: r.supplier || r.supplier_name,
                 received_by: r.recordedBy || r.received_by || "",
+                finished_product_name: r.usedFor || r.finished_product_name || prev.finished_product_name,
                 created_at: r.createdAt || r.created_at
             });
         });
 
         (rawReceipts || []).forEach(r => {
-            const rId = String(r.id || "");
-            if (rId) recBaseMap.set(rId, { ...(recBaseMap.get(rId) || {}), ...r });
+            const rId = r.__key;
+            const prev = recBaseMap.get(rId) || {};
+            // keep the device's readable fields (recorder / material name) when the database row lacks them
+            if (rId) recBaseMap.set(rId, { ...prev, ...r, id: r.ref || r.id, received_by: r.received_by || prev.received_by, material_name: prev.material_name || r.material_name, finished_product_name: r.finished_product_name || prev.finished_product_name });
         });
         rawReceipts = Array.from(recBaseMap.values());
 
@@ -752,14 +774,18 @@ async function loadAuthoritativeData() {
         } catch (_) {}
 
         localMgrDisb.forEach(d => {
-            const dId = String(d.id || d.ref || "");
+            const dId = txKey(d);
+            const prev = disbBaseMap.get(dId) || {};
             if (dId) disbBaseMap.set(dId, {
-                id: dId,
-                material_id: d.materialId || d.material_id,
+                ...prev,
+                id: canonicalTxRef(d) || d.id,
+                ref: canonicalTxRef(d) || prev.ref,
+                material_name: d.materialName || d.material_name || prev.material_name,
+                material_id: d.materialId || d.material_id || prev.material_id,
                 consumed_quantity: Number(d.quantity || d.consumed_quantity || 0),
                 usage_date: d.date || d.usage_date,
                 unit: d.unit,
-                finished_product_name: d.recipient || d.finished_product_name,
+                finished_product_name: d.recipient || d.usedFor || d.finished_product_name || prev.finished_product_name,
                 activity_type: d.activity_type || "",
                 recorded_by: d.recordedBy || d.recorded_by || "",
                 created_at: d.createdAt || d.created_at
@@ -767,8 +793,9 @@ async function loadAuthoritativeData() {
         });
 
         (rawDisbursements || []).forEach(d => {
-            const dId = String(d.id || "");
-            if (dId) disbBaseMap.set(dId, { ...(disbBaseMap.get(dId) || {}), ...d });
+            const dId = d.__key;
+            const prev = disbBaseMap.get(dId) || {};
+            if (dId) disbBaseMap.set(dId, { ...prev, ...d, id: d.ref || d.id, recorded_by: d.recorded_by || prev.recorded_by, material_name: prev.material_name || d.material_name, finished_product_name: d.finished_product_name || prev.finished_product_name });
         });
         rawDisbursements = Array.from(disbBaseMap.values());
 
@@ -831,7 +858,10 @@ async function loadAuthoritativeData() {
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
             const matKey = String(r.material_id || "").toLowerCase().trim();
-            const mat = matMap.get(r.material_id) || matMap.get(uuidToCode.get(String(r.material_id))) || state.materials.find(m => String(m.id).toLowerCase() === matKey || (m.name && m.name.toLowerCase() === matKey));
+            const nameKey = String(r.material_name || r.materialName || "").toLowerCase().trim();
+            const mat = matMap.get(r.material_id) || matMap.get(uuidToCode.get(String(r.material_id))) || state.materials.find(m =>
+                String(m.id).toLowerCase() === matKey || String(m.itemCode || "").toLowerCase() === matKey ||
+                (m.name && (m.name.toLowerCase() === matKey || (nameKey && m.name.toLowerCase() === nameKey))));
             const supName = (r.supplier_name && r.supplier_name.toLowerCase() !== "all" ? String(r.supplier_name).replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() : "") || "—";
             const refNo = r.reference_no || r.ref || r.id || "—";
             const matCode = mat ? (mat.itemCode || mat.item_code || mat.id || "—") : (r.item_code || r.material_id || "—");
@@ -847,13 +877,13 @@ async function loadAuthoritativeData() {
                 receiptTime: rTime,
                 materialCode: matCode,
                 materialId: mat ? mat.id : r.material_id,
-                materialName: mat ? mat.name : "Raw Material",
+                materialName: mat ? mat.name : (r.material_name || r.materialName || "—"),
                 receivedQuantity: Number(r.received_quantity || 0),
                 receiptDate: r.receipt_date || (r.created_at ? r.created_at.split("T")[0] : "—"),
                 unit: (r.unit || (mat ? (mat.unit || mat.unit_of_measure) : "") || "").trim(),
                 supplierName: supName,
                 receivedBy: resolveRecorderName({ recordedBy: r.received_by, ref: refNo }),
-                finishedProduct: (finishedProductsForMaterial(mat ? mat.name : "", userFinishedProducts).join(", ") || "—"),
+                finishedProduct: displayFinishedProduct(mat ? mat.name : "", r.finished_product_name || r.usedFor || r.finishedProduct, userFinishedProducts), // the finished product this delivery is for
                 createdAt: r.created_at
             };
         });
@@ -861,9 +891,12 @@ async function loadAuthoritativeData() {
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
             const matKey = String(d.material_id || "").toLowerCase().trim();
-            const mat = matMap.get(d.material_id) || matMap.get(uuidToCode.get(String(d.material_id))) || state.materials.find(m => String(m.id).toLowerCase() === matKey || (m.name && m.name.toLowerCase() === matKey));
-            const pName = resolveFinishedProductName(mat ? mat.name : "", d.finished_product_name, userFinishedProducts);
-            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? String(d.activity_type).replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() : "") || "—";
+            const nameKey = String(d.material_name || d.materialName || "").toLowerCase().trim();
+            const mat = matMap.get(d.material_id) || matMap.get(uuidToCode.get(String(d.material_id))) || state.materials.find(m =>
+                String(m.id).toLowerCase() === matKey || String(m.itemCode || "").toLowerCase() === matKey ||
+                (m.name && (m.name.toLowerCase() === matKey || (nameKey && m.name.toLowerCase() === nameKey))));
+            const pName = displayFinishedProduct(mat ? mat.name : "", d.finished_product_name, userFinishedProducts);
+            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? String(d.activity_type).replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim().replace(/^pro\u0064uction usage$/i, "Material Usage") : "") || "—"; // older records' label shown as today's
             const refNo = d.reference_no || d.ref || d.id || "—";
             const matCode = mat ? (mat.itemCode || mat.item_code || mat.id || "—") : (d.item_code || d.material_id || "—");
             let dTime = d.time || d.usage_time || "";
@@ -878,7 +911,7 @@ async function loadAuthoritativeData() {
                 usageTime: dTime,
                 materialCode: matCode,
                 materialId: mat ? mat.id : d.material_id,
-                materialName: mat ? mat.name : "Raw Material",
+                materialName: mat ? mat.name : (d.material_name || d.materialName || "—"),
                 disbursedQuantity: Number(d.consumed_quantity || 0),
                 usageDate: d.usage_date || (d.created_at ? d.created_at.split("T")[0] : "—"),
                 unit: (d.unit || (mat ? (mat.unit || mat.unit_of_measure) : "") || "").trim(),
@@ -944,13 +977,29 @@ function loadAuthoritativeForecasts() {
 
     state.materials.forEach(m => {
         const plan = m.reorderPlan || computeDataDrivenReorder(m, buildActualsForMaterial(m, state.disbursements));
-        const recent = state.disbursements
-            .filter(d => d.materialId === m.id && d.usageDate && d.usageDate >= since30Key)
-            .reduce((sum, d) => sum + (Number(d.disbursedQuantity) || 0), 0);
-        const usedFor = Array.from(new Set(state.disbursements
+        // same record matching as the forecast (id, code or name): consumption in the last 30 days
+        let recent = 0;
+        buildActualsForMaterial(m, state.disbursements).forEach((q, day) => { if (day >= since30Key) recent += q; });
+        // Every finished product that uses this raw material (the Manager's formulations), with its limit per unit
+        // and the total of this material recorded for it -> "Nutribun (30 g/unit): 750 g · Nutricookies (10 g/unit): 250 g"
+        const totals = new Map();
+        state.disbursements
             .filter(d => d.materialId === m.id && d.finishedProduct && d.finishedProduct !== "—")
-            .map(d => d.finishedProduct)));
-        const finishedProduct = usedFor.length ? usedFor.join(", ") : (finishedProductsForMaterial(m.name, fpList).join(", ") || "—");
+            .forEach(d => totals.set(d.finishedProduct, (totals.get(d.finishedProduct) || 0) + Number(d.disbursedQuantity || 0)));
+        const matKey = String(m.name || "").toLowerCase().trim();
+        const parts = [];
+        const seen = new Set();
+        finishedProductsForMaterial(m.name, fpList).forEach(name => {
+            if (seen.has(name)) return;
+            seen.add(name);
+            const prod = fpList.find(p => String(p.name).trim() === name) || {};
+            const recipeKey = Object.keys(prod.recipeDetails || {}).find(k => k.toLowerCase().trim() === matKey);
+            const need = recipeKey ? parseFloat(String((prod.recipeDetails[recipeKey] || {}).needPerUnit ?? "").replace(/[^0-9.]/g, "")) : NaN;
+            const limit = isFinite(need) && need > 0 ? ` (${fmtQtyOrDash(need, m.unit)}/unit)` : "";
+            parts.push(`${name}${limit}: ${fmtQtyOrDash(totals.get(name) || 0, m.unit)}`);
+        });
+        totals.forEach((q, name) => { if (!seen.has(name)) parts.push(`${name}: ${fmtQtyOrDash(q, m.unit)}`); });
+        const finishedProduct = parts.length ? parts.join(" · ") : "—";
 
         let additionalNeed7 = null, additionalNeed1m = null, status, interpretation;
         if (plan.hasData) {
@@ -1114,7 +1163,7 @@ function renderManagerSummaryTab() {
                 <td>${periodReceipts.length > 0 ? `<span class="rpt-badge rpt-badge-good">${periodReceipts.length} Batches Stored</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
             </tr>
             <tr>
-                <td><strong>Production Usage</strong></td>
+                <td><strong>Material Usage</strong></td>
                 <td><strong>${periodDisbursements.length}</strong></td>
                 <td>Stock Used in Kitchen</td>
                 <td>${periodDisbursements.length > 0 ? `<span class="rpt-badge rpt-badge-good">${periodDisbursements.length} Usages Recorded</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
@@ -1582,7 +1631,7 @@ function renderInventoryRecordsTab() {
                     <td>${escapeHtml(m.unit)}</td>
                     <td><strong>${m.currentStock.toLocaleString()}</strong></td>
                     <td>${m.minThreshold.toLocaleString()}</td>
-                    <td>${escapeHtml(reorderText(m, false))}</td>
+                    <td>${reorderCellHtml(m, false)}</td>
                     <td><span class="rpt-badge ${badgeCls}">${m.status}</span></td>
                 </tr>
             `;
@@ -2472,7 +2521,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                     <td>${escapeHtml(m.unit)}</td>
                                     <td><strong>${m.currentStock.toLocaleString()}</strong></td>
                                     <td>${m.minThreshold.toLocaleString()}</td>
-                                    <td>${escapeHtml(reorderText(m, false))}</td>
+                                    <td>${reorderCellHtml(m, false)}</td>
                                     <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `).join("")
@@ -2526,7 +2575,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
 
         sectionsHtml += `
             <div class="print-section">
-                <h3 class="print-section-title">Production Material Disbursement Log</h3>
+                <h3 class="print-section-title">Material Disbursement Log</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -2538,12 +2587,12 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                         </tr>
                     </thead>
                     <tbody>
-                        ${displayDisbs.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No production disbursements recorded for this period.</td></tr>` :
+                        ${displayDisbs.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No disbursements recorded for this period.</td></tr>` :
                             displayDisbs.map(d => `
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
                                     <td><strong>${escapeHtml(d.materialName)}</strong></td>
-                                    <td>${escapeHtml(d.finishedProduct || "Production Batch")}</td>
+                                    <td>${escapeHtml(d.finishedProduct || "—")}</td>
                                     <td><strong style="color:#DC2626;">-${(d.disbursedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(d.unit || "")}</td>
                                     <td>${escapeHtml(d.recordedBy || "Manager")}</td>
                                 </tr>
@@ -3287,7 +3336,7 @@ function generateSingleTabPdf(tabKey = "manager") {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10.5);
         doc.setTextColor(...RM_GREEN);
-        doc.text("Production Material Disbursement Log", 40, y);
+        doc.text("Material Disbursement Log", 40, y);
         y += 10;
 
         const rows = filteredData.records.length === 0
@@ -3464,7 +3513,7 @@ function generateSingleTabExcelBlob(tabKey = "manager") {
         sheetName = "Inventory Records";
         rows = [
             ["Raw Material", "Item Code", "Unit", "Current Stock", "Minimum Threshold", "Reorder Quantity", "Status"],
-            ...filteredData.records.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, m.reorderQty == null ? "—" : m.reorderQty, m.status])
+            ...filteredData.records.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, reorderText(m), m.status])
         ];
     } else if (tabKey === "receiving") {
         sheetName = "Material Receiving";
@@ -3572,7 +3621,7 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
     ];
     const rightCol = [
         ["GENERATED AT", `${genDateStr} ${genTimeStr}`],
-        ["SYSTEM AUTHORITY", "RMSME Production & Inventory Controller"],
+        ["SYSTEM AUTHORITY", "RMSME Inventory Controller"],
         ["SOURCE DATABASE", "RMSME Authoritative PostgreSQL Database"]
     ];
 
@@ -3651,7 +3700,7 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
                     ["Optimal / Good Stock Items", `${goodStock} items`],
                     ["Attention Required (Low / Critical)", `${attentionStock} items`],
                     ["Period Material Receipts Logged", `${periodReceipts.length} receipt records`],
-                    ["Period Production Disbursements Logged", `${periodDisbursements.length} disbursement records`]
+                    ["Period Disbursements Logged", `${periodDisbursements.length} disbursement records`]
                 ],
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
@@ -4017,7 +4066,7 @@ function buildMultiSheetExcelWorkbook(selectedSections = ["manager", "restock", 
         if (key === "inventory") {
             const rows = [
                 ["Raw Material", "Item Code", "Unit", "Current Stock", "Minimum Threshold", "Reorder Quantity", "Status"],
-                ...targetMaterials.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, m.reorderQty == null ? "—" : m.reorderQty, m.status])
+                ...targetMaterials.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, reorderText(m), m.status])
             ];
             const ws = XLSX.utils.aoa_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, "Inventory Records");
@@ -4660,7 +4709,7 @@ function updateCorporatePreviewDetails(target) {
         restock: { title: "Restock Recommendations", ref: "MRV-2026-RST", desc: "Actionable replenishment guide for low and critical inventory." },
         inventory: { title: "Inventory Records", ref: "MRV-2026-INV", desc: "Stock catalog, quantities on hand, units, and replenishment states." },
         receiving: { title: "Material Receiving", ref: "MRV-2026-RCV", desc: "Supplier deliveries, inbound shipments, lots, and dates." },
-        disbursement: { title: "Material Disbursement", ref: "MRV-2026-DSB", desc: "Disbursed raw materials released for production batches." },
+        disbursement: { title: "Material Disbursement", ref: "MRV-2026-DSB", desc: "Disbursed raw materials released for finished products." },
         activity: { title: "Material Activity", ref: "MRV-2026-ACT", desc: "Chronological audit ledger combining all inbound and outbound stock." },
         consumption: { title: "Consumption Analysis", ref: "MRV-2026-CNS", desc: "Material burn rates, daily consumption velocity, and usage trends." },
         forecasting: { title: "AI Forecasting", ref: "MRV-2026-FOR", desc: "Machine learning demand projections and safety stock targets." }
@@ -4681,7 +4730,7 @@ function updateCorporatePreviewDetails(target) {
         const pBtn = document.getElementById("profileBtn");
         let pName = pBtn?.querySelector("[data-shell-name]")?.textContent?.trim();
         if (!pName || ['manager', 'manager_01', 'user account', 'user'].includes(pName.toLowerCase())) {
-            pName = "Aizel";
+            pName = pName || "";
         }
         mgrEl.textContent = pName;
     }
@@ -4811,7 +4860,7 @@ function formatOperatorDisplay(val, fallback = "Manager") {
     return clean;
 }
 
-function formatContextDisplay(val, fallback = "General Production") {
+function formatContextDisplay(val, fallback = "—") {
     if (!val || typeof val !== "string") return fallback;
     const clean = val.trim();
     if (clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || !clean) {

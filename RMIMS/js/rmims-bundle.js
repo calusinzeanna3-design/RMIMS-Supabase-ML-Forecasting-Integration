@@ -70,3 +70,68 @@ export function notSetBundleCard(p, escapeHtml) {
         <div class="rec-bar-wrap"><div class="rec-bar-fill fill-unreached" style="width:0%;"></div></div>
       </div>`;
 }
+
+/* ============================================================================
+ * ONE finished product per disbursement (Manager & Staff)
+ * A disbursement record names exactly one finished product, so every product gets its own rows in Supabase,
+ * Reports and Analytics (never "A, B" merged into one row). One linked product -> chosen automatically;
+ * several -> the user taps the product card it is for.
+ * ========================================================================== */
+const selection = { material: '', product: '' };
+
+/** Wire the bundle cards in `grid` for selection; call after the cards are rendered. */
+export function bindBundleSelection(grid, materialName, linked) {
+  if (!grid) return;
+  const names = Array.from(new Set((linked || []).map(p => p.productName)));
+  if (selection.material !== materialName || !names.includes(selection.product)) {
+    selection.material = materialName;
+    selection.product = names.length === 1 ? names[0] : '';
+  }
+  const paint = () => {
+    grid.querySelectorAll('.rec-product-card').forEach(card => {
+      const on = card.dataset.product === selection.product;
+      card.style.outline = on ? '2px solid #15803D' : '';
+      card.style.outlineOffset = on ? '2px' : '';
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
+      card.title = on ? 'Selected: this record is for this finished product' : 'Tap to record this for this finished product';
+    });
+    let hint = grid.parentElement && grid.parentElement.querySelector('.rmims-bundle-pick-hint');
+    if (!hint && grid.parentElement) {
+      hint = document.createElement('div');
+      hint.className = 'rmims-bundle-pick-hint';
+      hint.style.cssText = 'margin-top:8px; font-size:12px; font-weight:600;';
+      grid.insertAdjacentElement('afterend', hint);
+    }
+    if (hint) {
+      if (names.length > 1) {
+        hint.style.color = selection.product ? '#15803D' : '#B45309';
+        hint.textContent = selection.product
+          ? `Recording for: ${selection.product}`
+          : 'Tap the finished product this record is for (one product per record).';
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+  };
+  grid.querySelectorAll('.rec-product-card').forEach(card => {
+    if (card.__rmimsPick) return;
+    card.__rmimsPick = true;
+    card.addEventListener('click', () => { selection.product = card.dataset.product || ''; paint(); });
+  });
+  paint();
+}
+
+/**
+ * The finished product for the disbursement being recorded.
+ * @returns {{ok:boolean, product:string, message?:string}}
+ */
+export function getSelectedFinishedProduct(materialName) {
+  const linked = Array.from(new Set(getLinkedFinishedProducts(materialName).map(p => p.productName)));
+  if (linked.length === 0) return { ok: true, product: '' };
+  if (linked.length === 1) return { ok: true, product: linked[0] };
+  if (selection.material === materialName && linked.includes(selection.product)) return { ok: true, product: selection.product };
+  return { ok: false, product: '', message: `"${materialName}" is used by ${linked.length} finished products (${linked.join(', ')}). Tap the one this record is for, so each finished product gets its own record.` };
+}
+
+export function clearBundleSelection() { selection.material = ''; selection.product = ''; }

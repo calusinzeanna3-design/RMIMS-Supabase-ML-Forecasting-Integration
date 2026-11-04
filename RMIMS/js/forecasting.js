@@ -5,7 +5,9 @@
 // Authoritative, Read-Only, 100% Live Supabase + Flask AutoReg ML Pipeline.
 // Strictly Light Mode. No Mock Data. Unit-Safe.
 
+import { canonicalTxRef } from './rmims-tx-key.js';
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
@@ -234,12 +236,12 @@ async function bootstrapForecastApp(user) {
 
         const uid = activeUser.id || activeUser.uid || "mgr-session";
         const cleanEmail = (activeUser.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
         if (isMasterAdmin) {
             profile = {
                 id: uid,
-                full_name: activeUser.displayName || activeUser.fullName || "Zeanna Calusin",
+                full_name: activeUser.displayName || activeUser.fullName || "",
                 email: activeUser.email,
                 role: "admin",
                 operational_role: "admin",
@@ -277,9 +279,7 @@ async function bootstrapForecastApp(user) {
         let mName = (profile?.full_name || '').trim();
         const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
         if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
-            if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
-            else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
-            else mName = 'Aizel';
+            mName = (profile?.username || userEmail.split('@')[0] || '').trim();
         }
         if (pBtn) {
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
@@ -418,9 +418,9 @@ async function loadAuthoritativeData() {
 
             if (supabase) {
                 const [matRes, useRes, recRes] = await Promise.allSettled([
-                    fetchWithTimeout(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")),
-                    fetchWithTimeout(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })),
-                    fetchWithTimeout(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, created_at").order("receipt_date", { ascending: false }))
+                    fetchWithTimeout(allRows(supabase.from("raw_materials").select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description, created_at").order("name")), 30000),
+                    fetchWithTimeout(allRows(supabase.from("material_disbursements").select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, created_at").order("usage_date", { ascending: false })), 30000),
+                    fetchWithTimeout(allRows(supabase.from("stock_receipts").select("id, receipt_date, material_id, received_quantity, unit, supplier_name, created_at").order("receipt_date", { ascending: false })), 30000)
                 ]);
 
                 if (matRes.status === "fulfilled" && matRes.value?.data && matRes.value.data.length > 0) rawMats = matRes.value.data;
@@ -558,7 +558,7 @@ async function loadAuthoritativeData() {
         const sigOf = (d) => [String(d.material_id || d.materialId || d.material_name || d.materialName || "").toLowerCase().trim(),
             String(d.usage_date || d.usageDate || d.date || "").slice(0, 10),
             Number(d.consumed_quantity ?? d.consumedQuantity ?? d.quantity ?? 0)].join("|");
-        const refKeyOf = (d) => String(d.ref || extractRefFromText(d.activity_type || d.activityType || "") || (/^(\d{4}SM[A-Za-z]*-|REC-|DIS-)/i.test(String(d.id || "")) ? d.id : "") || "").trim().toUpperCase();
+        const refKeyOf = (d) => canonicalTxRef(d);
         const seenSig = new Set();
         const addDisb = (d, preferNew) => {
             const rk = refKeyOf(d);
@@ -575,10 +575,21 @@ async function loadAuthoritativeData() {
             masterDisbursements = masterDisbursements.filter(u => !deletedDisbIds.has(String(u.id)));
         }
 
+        // Supabase ledger rows carry the material's database UUID: map it to the item code so they match
+        const uuidToCode = new Map();
+        (rawMats || []).forEach(sm => { if (sm && sm.id && sm.item_code) uuidToCode.set(String(sm.id).toLowerCase().trim(), String(sm.item_code).toLowerCase().trim()); });
+
         // 3. Authoritative Receipts (Strictly Live User Transactions)
+        // the local copy and the Supabase copy of one delivery share the system reference -> one record
         const recMap = new Map();
-        getSystemCustomReceipts().forEach(r => recMap.set(String(r.id), { ...r }));
-        rawReceipts.forEach(r => recMap.set(String(r.id), { ...r }));
+        const recKeyOf = (r) => { const rk = canonicalTxRef(r); return rk ? "ref:" + rk : "id:" + String(r.id); };
+        const withCode = (r) => {
+            const raw = String(r.material_id || r.materialId || "").toLowerCase().trim();
+            const code = uuidToCode.get(raw);
+            return code ? { ...r, material_id: code, materialId: code } : { ...r };
+        };
+        getSystemCustomReceipts().forEach(r => recMap.set(recKeyOf(r), withCode(r)));
+        rawReceipts.forEach(r => recMap.set(recKeyOf(r), withCode(r)));
         let masterReceipts = Array.from(recMap.values());
         if (deletedRecIds.size > 0) {
             masterReceipts = masterReceipts.filter(r => !deletedRecIds.has(String(r.id)));
@@ -678,7 +689,8 @@ async function loadAuthoritativeData() {
 
         // Normalize Disbursements
         state.disbursements = masterDisbursements.map(d => {
-            const dRawId = String(d.material_id || d.materialId || "").toLowerCase().trim();
+            const dIdRaw = String(d.material_id || d.materialId || "").toLowerCase().trim();
+            const dRawId = uuidToCode.get(dIdRaw) || dIdRaw;
             const dRawName = String(d.material_name || d.materialName || d.finished_product_name || "").toLowerCase().trim();
             const resolvedD = resolveForecastingMaterialByName(dRawName || dRawId);
             const resolvedCode = resolvedD ? String(resolvedD.code).toLowerCase() : "";
@@ -1086,7 +1098,7 @@ async function generateAllForecasts() {
                     category: 'forecast',
                     priority: 'success',
                     title: 'AI Forecast & Margin Synchronized',
-                    message: `Forecast projections and ±7.51% error margins successfully updated for ${updatedCount} raw materials.`,
+                    message: `Forecast projections and model error margins successfully updated for ${updatedCount} raw materials.`,
                     actor: 'Source: AI Machine Learning',
                     roleScope: 'all',
                     timestamp: new Date().toISOString()
@@ -1197,8 +1209,8 @@ function updateMarginComplianceBanner() {
         });
 
         const tCtx = getActiveTenantContext();
-        const thresholdPct = tCtx.isScones ? 0.05 : 0.0751;
-        const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
+        const thresholdPct = (tCtx.isScones ? TRAINED_OVERALL_DAILY_MAPE : 7.51) / 100;
+        const thresholdLabel = tCtx.isScones ? `±${TRAINED_OVERALL_DAILY_MAPE.toFixed(2)}% Margin of Error (trained model MAPE)` : "±7.51% Margin of Error System";
 
         if (mat7DayUsage > 0) {
             totalChecks++;
@@ -1212,13 +1224,13 @@ function updateMarginComplianceBanner() {
     });
 
     const tCtx = getActiveTenantContext();
-    const thresholdLabel = tCtx.isScones ? "±5.0% Margin Corridor (Weekly MAPE 2.70%)" : "±7.51% Margin of Error System";
+    const thresholdLabel = tCtx.isScones ? `±${TRAINED_OVERALL_DAILY_MAPE.toFixed(2)}% Margin of Error (trained model MAPE)` : "±7.51% Margin of Error System";
     const complianceRate = totalChecks > 0 ? ((inMarginCount / totalChecks) * 100).toFixed(0) : 100;
 
     if (totalChecks === 0) {
         banner.className = "fc-margin-warning-banner success";
         if (titleEl) titleEl.textContent = `Disbursement Telemetry Ready`;
-        if (subTextEl) subTextEl.textContent = "Awaiting live production disbursements. Once materials are disbursed, variance corridors will track automatically.";
+        if (subTextEl) subTextEl.textContent = "Awaiting recorded disbursements. Once materials are disbursed, variance corridors will track automatically.";
         if (badge) {
             badge.style.background = "rgba(16, 185, 129, 0.14)";
             badge.style.color = "#047857";
@@ -1567,7 +1579,7 @@ function renderProductDemandConnection() {
             else if (lowerName.includes("jam") || lowerName.includes("jelly") || lowerName.includes("spread")) icon = "🍯";
 
             // 7-Day Target & Current Stock Capacity Calculation
-            const targetUnits = Math.max(100, Math.round(prod.totalUsage > 0 ? prod.totalUsage * 1.25 : 350));
+            const targetUnits = Math.round(prod.totalUsage > 0 ? prod.totalUsage : 0); // recorded usage only, no assumed target
             let minStockRatio = 1.0;
             matArray.forEach(m => {
                 if (m.req7Day > 0) {
@@ -1777,7 +1789,7 @@ function renderPrimaryChart() {
     });
     const useTrained = trainedTargets.length > 0;
     if (useTrained) {
-        LOCKED_MARGIN_FACTOR = (isAll ? TRAINED_OVERALL_DAILY_MAPE : trainedTargets[0].prof.mape) / 100;
+        LOCKED_MARGIN_FACTOR = TRAINED_OVERALL_DAILY_MAPE / 100;
     }
     // Sum of the trained curve over `days` days starting at startDate (adapted=true applies the disbursement adjustment)
     const periodSum = (startDate, days, adapted) => {
@@ -2198,7 +2210,7 @@ function renderProjectionChart() {
             const d = new Date(now.getTime() + i * 86400000);
             labels.push(`${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
             usageData.push(null);
-            const rate = effectiveDailyRate > 0 ? Number((effectiveDailyRate * (1 + Math.sin(i * 1.5) * 0.04)).toFixed(1)) : 0;
+            const rate = effectiveDailyRate > 0 ? Number(effectiveDailyRate.toFixed(1)) : 0; // the model's rate, no added wobble
             forecastData.push(rate);
         }
 
@@ -2254,7 +2266,7 @@ function renderProjectionChart() {
         for (let i = 1; i <= 4; i++) {
             labels.push(`Week +${i}`);
             usageData.push(null);
-            const rate = weeklyForecastRate > 0 ? Number((weeklyForecastRate * (1 + Math.sin(i * 1.2 + 0.4) * 0.048)).toFixed(1)) : 0;
+            const rate = weeklyForecastRate > 0 ? Number(weeklyForecastRate.toFixed(1)) : 0; // the model's rate, no added wobble
             forecastData.push(rate);
         }
 
@@ -2296,7 +2308,7 @@ function renderProjectionChart() {
             const rawVal = pastMonthsUsage[3 - i];
             const uVal = rawVal > 0 ? Number(rawVal.toFixed(1)) : 0;
             usageData.push(uVal);
-            const pastReq = monthlyForecastRate > 0 ? Number((monthlyForecastRate * (1 + Math.sin(i * 1.5 + 0.5) * 0.050)).toFixed(1)) : 0;
+            const pastReq = monthlyForecastRate > 0 ? Number(monthlyForecastRate.toFixed(1)) : 0; // the model's rate, no added wobble
             forecastData.push(pastReq);
         }
 
@@ -2618,7 +2630,7 @@ function renderDecisionSupport() {
     // Sort materials: Potential Shortages first, then key operational materials
     const evaluated = materials.map(m => {
         const fc = state.forecasts?.get(m.name);
-        const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : Number((m.minStock * 1.2).toFixed(1));
+        const fQty = fc ? Number(fc.forecast7Day?.quantity || 0) : 0; // no forecast without recorded usage (no assumed amount)
         const curStock = Number(m.currentStock || 0);
         const isShortage = curStock < fQty || curStock <= m.minStock;
         const deficit = Math.max(0, fQty - curStock);
@@ -3734,21 +3746,28 @@ function renderModalFunctionView() {
                 dailyDemand += (req7 / 7);
             });
 
+            // past 7 days: what was actually recorded (no generated values)
+            const dayKeyOf = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+            const usedByDay = new Map();
+            (state.disbursements || []).forEach(d => {
+                const k = String(d.usageDate || "").slice(0, 10);
+                if (k) usedByDay.set(k, (usedByDay.get(k) || 0) + Number(d.consumedQuantity || 0));
+            });
             for (let i = 7; i >= 1; i--) {
                 const d = new Date(now.getTime() - i * 86400000);
                 daysLabels.push(d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }));
-                histData.push(Math.round(dailyDemand * (0.8 + Math.random() * 0.4)));
+                histData.push(Math.round(usedByDay.get(dayKeyOf(d)) || 0));
                 fcData.push(null);
             }
             daysLabels.push("Today");
-            histData.push(Math.round(dailyDemand));
+            histData.push(Math.round(usedByDay.get(dayKeyOf(now)) || 0));
             fcData.push(Math.round(dailyDemand));
 
             for (let i = 1; i <= 7; i++) {
                 const d = new Date(now.getTime() + i * 86400000);
                 daysLabels.push(d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }));
                 histData.push(null);
-                fcData.push(Math.round(dailyDemand * (0.9 + Math.random() * 0.2)));
+                fcData.push(Math.round(dailyDemand)); // forecast from the model, no random spread
             }
 
             modalForecastChartInstance = new Chart(canvas, {

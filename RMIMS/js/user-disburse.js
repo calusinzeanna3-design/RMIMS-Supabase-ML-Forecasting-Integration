@@ -10,7 +10,9 @@
  * - Official inventory is NOT updated yet
  */
 
-import { getLinkedFinishedProducts, notSetBundleCard } from './rmims-bundle.js';
+import { displayFinishedProduct } from './rmims-reorder-engine.js';
+import { autoPaginate } from './rmims-table-pager.js';
+import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
 import { checkDisburseLimit, applyDisburseGuardUI } from './disburse-guard.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
@@ -228,6 +230,7 @@ function updateBundleDisbursePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+  bindBundleSelection(productsGrid, matName, matchedProducts);
 
   // Add click to fill notes
   productsGrid.querySelectorAll('.rec-product-card').forEach(card => {
@@ -272,8 +275,7 @@ function getLiveStaffInfo() {
         const email = (o.email || '').toLowerCase().trim();
         const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
         if (!name || BANNED_STAFF.includes(name.toLowerCase())) {
-          if (email === 'scone2@gmail.com') name = 'Staff_2';
-          else name = 'Staff_1';
+          name = (o.username || email.split('@')[0] || '').trim();
         }
         return {
           name,
@@ -283,7 +285,7 @@ function getLiveStaffInfo() {
       }
     } catch (_) {}
   }
-  return { name: 'Staff_1', email: 'sconesandmuffins@gmail.com', id: '' };
+  return { name: '', email: '', id: '' };
 }
 
 function initUserDisburse() {
@@ -331,6 +333,7 @@ function initUserDisburse() {
   window.addEventListener('rmims_staff_activity_updated', refreshDisburseState);
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleDisbursePreview();
+    try { renderMySubmissions(); } catch (_) {} // finished product column follows the current products
   });
 
   try {
@@ -567,12 +570,11 @@ function handleOpenReview() {
     return;
   }
 
-  // Derive usedFor / production purpose dynamically from matched bundle finished products
-  const matchedProds = getFinishedProductsForMaterial(material);
-  // Finished product(s) whose formulation covers this raw material (from My Inventory -> Finished Products)
-  const usedFor = matchedProds.length > 0
-    ? Array.from(new Set(matchedProds.map(p => p.productName))).join(', ')
-    : '—';
+  // Derive usedFor (finished product) dynamically from matched bundle finished products
+  // ONE finished product per record (tap its card when the material is used by several products)
+  const pick = getSelectedFinishedProduct(material);
+  if (!pick.ok) { alert(pick.message); return; }
+  const usedFor = pick.product;
 
   // =========================================================================
   // RULE #8, 9, 10: REFERENCE NUMBER CHECK (ONLY BASIS FOR DUPLICATE DETECTION)
@@ -615,7 +617,7 @@ function handleOpenReview() {
   document.getElementById('revStaffDisbRef').textContent = currentRef;
   document.getElementById('revStaffDisbMaterial').textContent = material;
   document.getElementById('revStaffDisbQty').textContent = `-${quantity.toLocaleString()}${unit ? ' ' + unit : ''}`;
-  document.getElementById('revStaffDisbUsedFor').textContent = usedFor;
+  document.getElementById('revStaffDisbUsedFor').textContent = usedFor || '—';
   document.getElementById('revStaffDisbDate').textContent = date;
   document.getElementById('revStaffDisbNotes').textContent = notes || 'No extra notes provided.';
 
@@ -803,7 +805,7 @@ function renderMySubmissions() {
     }
   }
 
-  tbody.innerHTML = staffTx.slice(0, 10).map(t => {
+  tbody.innerHTML = staffTx.map(t => {
     let statusBadge = '';
     const st = t.status || 'Pending';
     const isCorrection = st === 'Correction Needed';
@@ -836,7 +838,7 @@ function renderMySubmissions() {
         <td><small style="color:#64748B; font-weight:600;">${escapeHtml(timeVal)}</small></td>
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
         <td style="font-weight:700; color:#D97706;">-${escapeHtml(t.quantity)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</td>
-        <td style="color:#334155; font-size:12px;">${escapeHtml(t.usedFor || 'General Batch')}</td>
+        <td style="color:#334155; font-size:12px;">${escapeHtml(displayFinishedProduct(t.material || t.materialName || '', t.usedFor))}</td>
         <td>${statusBadge}</td>
         <td style="text-align:right; white-space:nowrap;">
           ${(t.status === 'Approved' || t.status === 'Deleted')
@@ -905,7 +907,7 @@ function bindStaffDisbActionEvents() {
         return;
       }
       if (!usedFor) {
-        alert('Please enter a production purpose / batch.');
+        alert('Please enter the finished product this is for.');
         return;
       }
 
@@ -1003,3 +1005,7 @@ function openStaffDeleteDisbModal(ref) {
   if (modal) modal.style.display = 'flex';
 }
 
+
+
+// 10 records per page
+autoPaginate('myDisburseSubmissionsTbody', { pageSize: 10, label: 'submissions' });

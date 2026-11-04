@@ -42,7 +42,7 @@
       <div class="topbar-left">
         <span class="topbar-kicker">STORE OPERATIONS</span>
         <h1 class="topbar-title">Disburse Raw Materials</h1>
-        <p class="topbar-subtitle">Record materials taken from inventory for production. Reference numbers are automatically generated.</p>
+        <p class="topbar-subtitle">Record materials taken from inventory for your finished products. Reference numbers are automatically generated.</p>
       </div>
 
       <div class="topbar-right">
@@ -68,10 +68,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -80,7 +80,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -113,7 +113,7 @@
               </svg>
               Record Material Disbursement
             </h2>
-            <p class="mgr-tx-card-sub">Step 1: Specify material and production purpose &bull; Step 2: Review stock impact &amp; confirm deduction.</p>
+            <p class="mgr-tx-card-sub">Step 1: Specify material and finished product &bull; Step 2: Review stock impact &amp; confirm deduction.</p>
           </div>
 
           <!-- Auto-Generated Non-Editable Non-Clickable Reference Display -->
@@ -226,7 +226,7 @@
             <div class="mgr-tx-kpi-body">
               <span class="mgr-tx-kpi-label">Disbursed Today</span>
               <span class="mgr-tx-kpi-value" id="kpiDisbToday">0</span>
-              <span class="mgr-tx-kpi-sub" id="kpiDisbTodaySub">Across 0 production runs</span>
+              <span class="mgr-tx-kpi-sub" id="kpiDisbTodaySub">Across 0 disbursements</span>
             </div>
           </div>
 
@@ -238,7 +238,7 @@
             <div class="mgr-tx-kpi-body">
               <span class="mgr-tx-kpi-label">This Month</span>
               <span class="mgr-tx-kpi-value" id="kpiDisbMonth">0</span>
-              <span class="mgr-tx-kpi-sub" id="kpiDisbMonthSub">0 production batches</span>
+              <span class="mgr-tx-kpi-sub" id="kpiDisbMonthSub">0 disbursements</span>
             </div>
           </div>
 
@@ -319,7 +319,7 @@
                 <tr>
                   <td colspan="10" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
                     <div style="font-weight:700; color:#0F2A1B; margin-bottom:4px;">No disbursements recorded yet</div>
-                    <div style="font-size:12px; color:#94A3B8;">Outward raw material usage recorded for production will appear here automatically.</div>
+                    <div style="font-size:12px; color:#94A3B8;">Outward raw material usage you record will appear here automatically.</div>
                   </td>
                 </tr>
               </tbody>
@@ -333,8 +333,8 @@
             <div class="page-size-selector" style="margin-left: 12px;">
               <label for="disbPageSize" style="font-size: 12px; color: #64748B; font-weight: 600;">Rows:</label>
               <select id="disbPageSize" class="mgr-form-select" style="width:auto; padding:4px 28px 4px 10px; font-size:12px;">
-                <option value="5" selected>5</option>
-                <option value="10">10</option>
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
                 <option value="25">25</option>
               </select>
             </div>
@@ -423,7 +423,7 @@
           <span class="mgr-review-val" id="revDisbDateVal">-</span>
         </div>
         <div class="mgr-review-item span-2">
-          <span class="mgr-review-label">Production Remarks / Notes</span>
+          <span class="mgr-review-label">Remarks / Notes</span>
           <span class="mgr-review-val" style="font-weight:500; font-size:13.5px; color:#334155;" id="revDisbNotesVal">None provided</span>
         </div>
         <div class="mgr-review-item span-2" style="background:#F1F5F9; padding:10px 12px; border-radius:8px; border:1px solid #E2E8F0;">
@@ -496,7 +496,7 @@
         </div>
 
         <div>
-          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editDisbUsedFor">Used For / Production Target</label>
+          <label style="font-size:12.5px; font-weight:700; color:#1E293B; display:block; margin-bottom:6px;" for="editDisbUsedFor">Used For / Finished Product</label>
           <input type="text" id="editDisbUsedFor" required style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid #CBD5E1; font-size:13.5px;">
         </div>
 

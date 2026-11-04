@@ -9,7 +9,8 @@
  * - Exact time tracking for all outward disbursements
  */
 
-import { getLinkedFinishedProducts, notSetBundleCard } from './rmims-bundle.js';
+import { displayFinishedProduct } from './rmims-reorder-engine.js';
+import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
 import { checkDisburseLimit, applyDisburseGuardUI } from './disburse-guard.js';
 import { isDeleted } from './rmims-deleted-ledger.js';
 import {
@@ -57,7 +58,7 @@ let isSavingDisburse = false;
 
 // Pagination state
 let currentLedgerPage = 1;
-let ledgerPageSize = 5;
+let ledgerPageSize = 10;
 
 // Generate next sequential reference number
 function generateNextReferenceLocal() {
@@ -116,7 +117,7 @@ function loadDisbursements() {
                 unit: unitVal,
                 recipient: t.usedFor || t.recipient || '—',
                 recordedBy: t.staff || t.staffName || '—',
-                approvedBy: t.approvedBy || 'Aizel',
+                approvedBy: t.approvedBy || '',
                 status: 'Approved',
                 notes: t.notes || (t.isUpdated ? 'Resubmitted & Approved' : 'Staff Submission Approved')
               });
@@ -192,6 +193,7 @@ function initManagerDisburse() {
   window.addEventListener('rmims_inventory_updated', handleLiveRefresh);
   window.addEventListener('rmims_finished_products_updated', () => {
     updateBundleDisbursePreview();
+    try { renderHistoryTable(); } catch (_) {} // finished product column follows the current products
   });
 }
 
@@ -407,7 +409,7 @@ function bindFormEvents() {
 
   if (pageSizeSelect) {
     pageSizeSelect.addEventListener('change', () => {
-      ledgerPageSize = parseInt(pageSizeSelect.value, 10) || 5;
+      ledgerPageSize = parseInt(pageSizeSelect.value, 10) || 10;
       currentLedgerPage = 1;
       renderHistoryTable();
     });
@@ -436,7 +438,7 @@ function bindFormEvents() {
 }
 
 // ============================================================================
-// BUNDLE DISBURSE LOGIC: RECOGNIZE FINISHED PRODUCTS & PRODUCTION IMPACT
+// BUNDLE DISBURSE LOGIC: RECOGNIZE FINISHED PRODUCTS & STOCK IMPACT
 // ============================================================================
 
 function matchProductIngredient(ingredientName, selectedMaterialName) {
@@ -624,6 +626,7 @@ function updateBundleDisbursePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+  bindBundleSelection(productsGrid, matName, matchedProducts);
 
   // Add click to fill notes / purpose
   productsGrid.querySelectorAll('.rec-product-card').forEach(card => {
@@ -719,14 +722,13 @@ function handleOpenReviewModal() {
   const rawDate = dateInput.value || now.toISOString().slice(0, 10);
   const formattedDateTime = `${rawDate} • ${timeStr}`;
 
-  // Automatically determine production purpose from matched bundle products
+  // Automatically determine the finished product from matched bundle products
   const rawDisbMatName = selOpt.dataset.name || selOpt.text || selOpt.textContent || '';
   const cleanDisbMatName = rawDisbMatName.replace(/\s*\([A-Z0-9\-_]+\)\s*-\s*Current:.*$/i, '').trim();
-  const matchedProds = getFinishedProductsForMaterial(cleanDisbMatName);
-  // Finished product(s) whose formulation covers this raw material (from My Inventory -> Finished Products)
-  const usedFor = matchedProds.length > 0
-    ? Array.from(new Set(matchedProds.map(p => p.productName))).join(', ')
-    : '—';
+  // ONE finished product per record (tap its card when the material is used by several products)
+  const pick = getSelectedFinishedProduct(cleanDisbMatName);
+  if (!pick.ok) { alert(pick.message); return; }
+  const usedFor = pick.product;
 
   currentPendingDisburse = {
     ref,
@@ -740,7 +742,7 @@ function handleOpenReviewModal() {
     date: formattedDateTime,
     time: timeStr,
     usedFor,
-    notes: notesInput ? notesInput.value.trim() || 'Production batch consumption' : 'Production batch consumption'
+    notes: notesInput ? notesInput.value.trim() || '' : ''
   };
 
   // Populate Review Modal
@@ -750,7 +752,7 @@ function handleOpenReviewModal() {
   document.getElementById('revDisbOutwardQtyVal').textContent = unit ? `-${qty} ${unit}` : `-${qty}`;
   document.getElementById('revDisbNewStockVal').textContent = unit ? `${newStock} ${unit}` : `${newStock}`;
   const usedForValEl = document.getElementById('revDisbUsedForVal');
-  if (usedForValEl) usedForValEl.textContent = currentPendingDisburse.usedFor;
+  if (usedForValEl) usedForValEl.textContent = currentPendingDisburse.usedFor || '—';
   document.getElementById('revDisbDateVal').textContent = currentPendingDisburse.date;
   document.getElementById('revDisbNotesVal').textContent = currentPendingDisburse.notes;
 
@@ -826,15 +828,14 @@ function bindReviewModalEvents() {
 
       try {
         // Resolve authentic manager identity first
-        let managerName = 'Aizel';
+        let managerName = '';
         try {
           const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
           const e = (curUser.email || '').toLowerCase();
-          if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
-          else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
-          else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
-          else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+          if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
             managerName = curUser.fullName;
+          } else {
+            managerName = curUser.username || e.split('@')[0] || '';
           }
         } catch (_) {}
 
@@ -894,7 +895,7 @@ function bindReviewModalEvents() {
           consumed_quantity: p.quantity,
           unit: p.unit,
           usage_date: p.date,
-          activity_type: 'Production Usage',
+          activity_type: 'Material Usage',
           finished_product_name: p.usedFor,
           recorded_by: managerName
         });
@@ -1001,8 +1002,8 @@ function renderKpis() {
 
   managerDisbursements.forEach(d => {
     const q = Number(d.quantity || 0);
-    const target = d.usedFor || 'General Use';
-    targetSums[target] = (targetSums[target] || 0) + q;
+    const target = displayFinishedProduct(d.materialName || '', d.usedFor || d.recipient);
+    if (target !== '—') targetSums[target] = (targetSums[target] || 0) + q; // real finished products only
 
     if (String(d.date).includes('Today')) {
       todayKg += q;
@@ -1048,10 +1049,9 @@ function renderStaffDisburseReviewBanner() {
     return isDisb && (t.status === 'Pending' || t.status === 'Correction Needed');
   });
 
-  if (staffDisbs.length === 0) {
-    if (banner) banner.style.display = 'none';
-    return;
-  }
+  // Staff submissions are reviewed in Staff Activity (sidebar dot) - not listed inside the ledger
+  if (banner) banner.style.display = 'none';
+  if (staffDisbs.length >= 0) return;
 
   if (!banner) {
     banner = document.createElement('div');
@@ -1072,7 +1072,7 @@ function renderStaffDisburseReviewBanner() {
       ${staffDisbs.slice(0, 5).map(t => `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#FFFFFF; border:1px solid #FEF3C7; border-radius:8px; padding:8px 12px; font-size:12.5px;">
           <div>
-            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || 'Staff_1')}</strong>:
+            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || t.staffEmail || '—')}</strong>:
             <span style="color:#D97706; font-weight:700;">-${escapeHtml(t.quantity)} ${escapeHtml(t.unit || '')}</span> of <strong>${escapeHtml(t.material)}</strong>
             ${t.isUpdated ? `<span style="margin-left:6px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">🔵 Resubmitted</span>` : ''}
             ${t.status === 'Correction Needed' ? `<span style="margin-left:6px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Correction Needed: "${escapeHtml(t.correctionMessage || '')}"</span>` : ''}
@@ -1106,7 +1106,7 @@ function renderStaffDisburseReviewBanner() {
       const ref = btn.getAttribute('data-ref');
       const tx = staffDisbs.find(x => x.ref === ref);
       if (!tx) return;
-      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || 'Staff_1'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and batch purpose details.');
+      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || tx.staffEmail || '—'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and batch purpose details.');
       if (!msg || !msg.trim()) return;
       await returnTransactionForCorrectionOnSupabase(tx, msg.trim());
       loadDisbursements();
@@ -1178,7 +1178,7 @@ function renderHistoryTable() {
       <tr>
         <td colspan="10" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
           <div style="font-weight:700; color:#0F2A1B; margin-bottom:4px;">No disbursements recorded yet</div>
-          <div style="font-size:12px; color:#94A3B8;">Outward raw material usage recorded for production will appear here automatically.</div>
+          <div style="font-size:12px; color:#94A3B8;">Outward raw material usage you record will appear here automatically.</div>
         </td>
       </tr>
     `;
@@ -1253,7 +1253,7 @@ function renderHistoryTable() {
         </td>
         <td><strong>${escapeHtml(d.materialName)}</strong></td>
         <td><span class="mgr-qty-delta disburse">-${d.quantity} ${escapeHtml(d.unit)}</span></td>
-        <td style="color:#334155; font-weight:600;">${escapeHtml(d.usedFor || d.recipient || '—')}</td>
+        <td style="color:#334155; font-weight:600;">${escapeHtml(displayFinishedProduct(d.materialName || d.material || '', d.usedFor || d.recipient))}</td>
         <td style="font-size:12px; color:#475569;">${escapeHtml(d.recordedBy || '—')}</td>
         <td><span class="mgr-status-pill status-approved">Approved</span></td>
         <td style="color:#64748B; font-size:12px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(d.notes || '')}">
@@ -1405,7 +1405,7 @@ function bindDisbursementActionEvents() {
         return;
       }
       if (!usedFor) {
-        alert('Please specify the production target or purpose.');
+        alert('Please specify the finished product this is for.');
         return;
       }
 

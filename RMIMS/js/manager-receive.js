@@ -9,7 +9,7 @@
  * - Exact time tracking for all inward receipts
  */
 
-import { getLinkedFinishedProducts, notSetBundleCard } from './rmims-bundle.js';
+import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
 import { isDeleted } from './rmims-deleted-ledger.js';
 import {
   getSystemRawMaterials,
@@ -57,7 +57,7 @@ let isSavingReceive = false;
 
 // Pagination state
 let currentLedgerPage = 1;
-let ledgerPageSize = 5;
+let ledgerPageSize = 10;
 
 // Generate next sequential reference number
 function getNextReceiveReference() {
@@ -419,7 +419,7 @@ function bindFormEvents() {
 
   if (pageSizeSelect) {
     pageSizeSelect.addEventListener('change', () => {
-      ledgerPageSize = parseInt(pageSizeSelect.value, 10) || 5;
+      ledgerPageSize = parseInt(pageSizeSelect.value, 10) || 10;
       currentLedgerPage = 1;
       renderHistoryTable();
     });
@@ -599,7 +599,7 @@ function updateBundleReceivePreview() {
     }
 
     return `
-      <div class="rec-product-card ${statusClass}">
+      <div class="rec-product-card ${statusClass}" data-product="${escapeHtml(p.productName)}" style="cursor:pointer;">
         <div class="rec-product-card-top">
           <span class="rec-product-name">${escapeHtml(p.productName)}</span>
           <span class="rec-badge-tag ${tagClass}">${statusText}</span>
@@ -623,6 +623,7 @@ function updateBundleReceivePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+  bindBundleSelection(productsGrid, matName, matchedProducts);
 }
 
 function hideBundleReceiveSection() {
@@ -668,6 +669,11 @@ function handleOpenReviewModal() {
   const newStock = curStock + qty;
   const ref = document.getElementById('mgrRecRefDisplay').textContent.trim();
 
+  // One finished product per receipt (same rule as Disburse)
+  const recMatName = String(selOpt.dataset.name || selOpt.text || selOpt.textContent || '').replace(/\s*\([A-Z0-9\-_]+\)\s*-\s*Current:.*$/i, '').trim();
+  const pick = getSelectedFinishedProduct(recMatName);
+  if (!pick.ok) { alert(pick.message); return; }
+
   // SECTION 8, 9, 10: Reference Duplicate Check (Reference is the ONLY basis for duplicate detection)
   const dupCheck = checkReferenceDuplicate(ref);
   if (dupCheck.isDuplicate) {
@@ -702,6 +708,7 @@ function handleOpenReviewModal() {
     date: formattedDateTime,
     time: timeStr,
     supplier: supplierInput.value.trim(),
+    usedFor: pick.product,
     notes: notesInput ? notesInput.value.trim() || 'Direct delivery' : 'Direct delivery'
   };
 
@@ -759,15 +766,14 @@ function bindReviewModalEvents() {
 
       try {
         // Resolve authentic manager identity first
-        let managerName = 'Aizel';
+        let managerName = '';
         try {
           const curUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('rmimsCurrentUser') || localStorage.getItem('managerUser') || '{}');
           const e = (curUser.email || '').toLowerCase();
-          if (e === 'zeannapatty@gmail.com') managerName = 'Aizel';
-          else if (e === 'zeannapatricia@gmail.com') managerName = 'Glazel';
-          else if (e === 'calusinzeanna3@gmail.com') managerName = 'Zeanna';
-          else if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
+          if (curUser.fullName && !['manager', 'user account', 'user', 'store manager'].includes(curUser.fullName.toLowerCase())) {
             managerName = curUser.fullName;
+          } else {
+            managerName = curUser.username || e.split('@')[0] || '';
           }
         } catch (_) {}
 
@@ -781,6 +787,7 @@ function bindReviewModalEvents() {
           quantity: p.quantity,
           unit: p.unit,
           supplier: p.supplier,
+          usedFor: p.usedFor || '',
           recordedBy: managerName,
           status: 'Approved',
           notes: p.notes
@@ -996,10 +1003,9 @@ function renderStaffReceiveReviewBanner() {
     return isRec && (t.status === 'Pending' || t.status === 'Correction Needed');
   });
 
-  if (staffRecs.length === 0) {
-    if (banner) banner.style.display = 'none';
-    return;
-  }
+  // Staff submissions are reviewed in Staff Activity (sidebar dot) - not listed inside the ledger
+  if (banner) banner.style.display = 'none';
+  if (staffRecs.length >= 0) return;
 
   if (!banner) {
     banner = document.createElement('div');
@@ -1020,7 +1026,7 @@ function renderStaffReceiveReviewBanner() {
       ${staffRecs.slice(0, 5).map(t => `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#FFFFFF; border:1px solid #DCFCE7; border-radius:8px; padding:8px 12px; font-size:12.5px;">
           <div>
-            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || 'Staff_1')}</strong>:
+            <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || t.staffEmail || '—')}</strong>:
             <span style="color:#15803D; font-weight:700;">+${escapeHtml(t.quantity)} ${escapeHtml(t.unit || '')}</span> of <strong>${escapeHtml(t.material)}</strong>
             ${t.isUpdated ? `<span style="margin-left:6px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">🔵 Resubmitted</span>` : ''}
             ${t.status === 'Correction Needed' ? `<span style="margin-left:6px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Correction Needed: "${escapeHtml(t.correctionMessage || '')}"</span>` : ''}
@@ -1054,7 +1060,7 @@ function renderStaffReceiveReviewBanner() {
       const ref = btn.getAttribute('data-ref');
       const tx = staffRecs.find(x => x.ref === ref);
       if (!tx) return;
-      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || 'Staff_1'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and supplier details.');
+      const msg = window.prompt(`Enter correction message for Staff (${tx.staff || tx.staffEmail || '—'}) regarding ${tx.ref}:`, tx.correctionMessage || 'Please verify quantity and supplier details.');
       if (!msg || !msg.trim()) return;
       await returnTransactionForCorrectionOnSupabase(tx, msg.trim());
       loadReceipts();
