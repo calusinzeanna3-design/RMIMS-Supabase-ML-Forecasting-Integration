@@ -474,8 +474,8 @@ body.manager-page .mgr-kpi-icon.bg-green {
 }
 
 body.manager-page .mgr-kpi-icon.bg-blue {
-  background-color: #DBEAFE !important;
-  color: #2563EB !important;
+  background-color: #DCFCE7 !important;
+  color: #14532D !important;
 }
 
 body.manager-page .mgr-kpi-icon.bg-red {
@@ -557,7 +557,7 @@ body.manager-page .mgr-tx-num.blue {
   font-family: var(--rm-font-display, 'Sora', sans-serif) !important;
   font-size: 26px !important;
   font-weight: 800 !important;
-  color: #2563EB !important;
+  color: #14532D !important;
   line-height: 1.1 !important;
 }
 
@@ -975,7 +975,7 @@ body.manager-page .mgr-user-avatar-chip {
   font-weight: 800 !important;
 }
 
-body.manager-page .mgr-user-avatar-chip.chip-blue   { background-color: #DBEAFE !important; color: #1D4ED8 !important; }
+body.manager-page .mgr-user-avatar-chip.chip-blue   { background-color: #DCFCE7 !important; color: #14532D !important; }
 body.manager-page .mgr-user-avatar-chip.chip-green  { background-color: #DCFCE7 !important; color: #15803D !important; }
 body.manager-page .mgr-user-avatar-chip.chip-teal   { background-color: #CCFBF1 !important; color: #0F766E !important; }
 body.manager-page .mgr-user-avatar-chip.chip-orange { background-color: #FFEDD5 !important; color: #C2410C !important; }

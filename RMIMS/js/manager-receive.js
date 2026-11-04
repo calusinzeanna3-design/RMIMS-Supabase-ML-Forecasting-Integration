@@ -11,6 +11,7 @@
 
 import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
 import { isDeleted } from './rmims-deleted-ledger.js';
+import { attachUnitPicker, detachUnitPicker, readQtyInStockUnit } from './rmims-unit-convert.js';
 import {
   getSystemRawMaterials,
   parseSafeDate,
@@ -118,7 +119,7 @@ function loadReceipts() {
                 recordedBy: t.staff || t.staffName || t.user || '—',
                 approvedBy: t.approvedBy || 'Store Manager',
                 status: 'Approved',
-                notes: t.notes || (t.isUpdated ? 'Resubmitted & Approved' : 'Staff Submission Approved')
+                notes: t.notes || (t.isUpdated ? 'Staff Update Approved' : 'Staff Submission Approved')
               });
               modified = true;
             } else {
@@ -271,7 +272,7 @@ function populateMaterialSelects() {
     opt.dataset.stock = m.current_stock ?? 0;
     opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? 0;
     opt.dataset.name = m.name;
-    opt.textContent = `${m.name} (${m.item_code || m.id}) - Current: ${m.current_stock ?? 0}${u ? ' ' + u : ''}`;
+    opt.textContent = m.name; // the raw material only (stock is shown next to the form)
     select.appendChild(opt);
 
     if (filter) {
@@ -337,19 +338,21 @@ function updateReceiveMaterialSelection() {
   if (selOpt && selOpt.value) {
     const unit = selOpt.dataset.unit || '';
     const stock = selOpt.dataset.stock || '0';
-    const min = selOpt.dataset.min || '10';
+    const min = selOpt.dataset.min || '0';
 
     if (unitBadge) unitBadge.textContent = unit || '--';
+    attachUnitPicker('recUnitBadge', unit); // enter in any compatible unit (kg, g, L, mL, dozen...)
     if (curStockNum) curStockNum.textContent = unit ? `${stock} ${unit}` : `${stock}`;
     if (minStockNum) minStockNum.textContent = unit ? `${min} ${unit}` : `${min}`;
     if (previewWrap) previewWrap.style.display = 'inline-flex';
-    if (qtyInput) qtyInput.placeholder = unit ? `e.g. 50 ${unit}` : 'e.g. 50';
+    if (qtyInput) qtyInput.placeholder = "e.g. 50";
 
     // Update Bundle Receive finished products
     updateBundleReceivePreview();
   } else {
     if (previewWrap) previewWrap.style.display = 'none';
     if (unitBadge) unitBadge.textContent = '--';
+        detachUnitPicker('recUnitBadge');
     if (qtyInput) qtyInput.placeholder = 'e.g. 50';
     hideBundleReceiveSection();
   }
@@ -377,6 +380,7 @@ function bindFormEvents() {
         document.getElementById('recStockPreviewWrap').style.display = 'none';
         const unitBadge = document.getElementById('recUnitBadge');
         if (unitBadge) unitBadge.textContent = '--';
+        detachUnitPicker('recUnitBadge');
         hideBundleReceiveSection();
         initDatePicker();
         initReferenceDisplay();
@@ -650,7 +654,7 @@ function handleOpenReviewModal() {
     return;
   }
 
-  const qty = parseFloat(qtyInput.value);
+  let qty = parseFloat(qtyInput.value);
   if (isNaN(qty) || qty <= 0) {
     alert('Please enter a valid positive quantity received.');
     qtyInput.focus();
@@ -665,8 +669,11 @@ function handleOpenReviewModal() {
 
   const selOpt = select.options[select.selectedIndex];
   const unit = selOpt.dataset.unit || '';
+  // the quantity may be typed in another unit (e.g. kg for a material kept in g): add it up in the stock unit
+  const unitConv = readQtyInStockUnit(qty, 'recUnitBadge', unit);
+  qty = unitConv.qty;
   const curStock = parseFloat(selOpt.dataset.stock || 0);
-  const newStock = curStock + qty;
+  const newStock = Number((curStock + qty).toFixed(6));
   const ref = document.getElementById('mgrRecRefDisplay').textContent.trim();
 
   // One finished product per receipt (same rule as Disburse)
@@ -686,6 +693,7 @@ function handleOpenReviewModal() {
         document.getElementById('recStockPreviewWrap').style.display = 'none';
         const unitBadge = document.getElementById('recUnitBadge');
         if (unitBadge) unitBadge.textContent = '--';
+        detachUnitPicker('recUnitBadge');
         initReferenceDisplay();
       }
     });
@@ -709,7 +717,7 @@ function handleOpenReviewModal() {
     time: timeStr,
     supplier: supplierInput.value.trim(),
     usedFor: pick.product,
-    notes: notesInput ? notesInput.value.trim() || 'Direct delivery' : 'Direct delivery'
+    notes: [notesInput ? notesInput.value.trim() : '', unitConv.note].filter(Boolean).join(' • ')
   };
 
   // Populate Review Modal
@@ -1028,7 +1036,7 @@ function renderStaffReceiveReviewBanner() {
           <div>
             <strong>${escapeHtml(t.ref)}</strong> • <strong>${escapeHtml(t.staff || t.staffEmail || '—')}</strong>:
             <span style="color:#15803D; font-weight:700;">+${escapeHtml(t.quantity)} ${escapeHtml(t.unit || '')}</span> of <strong>${escapeHtml(t.material)}</strong>
-            ${t.isUpdated ? `<span style="margin-left:6px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">🔵 Resubmitted</span>` : ''}
+            ${t.isUpdated ? `<span style="margin-left:6px; background:#F0FDF4; color:#14532D; border:1px solid #BBF7D0; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Updated</span>` : ''}
             ${t.status === 'Correction Needed' ? `<span style="margin-left:6px; background:#FEF3C7; color:#B45309; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;">Correction Needed: "${escapeHtml(t.correctionMessage || '')}"</span>` : ''}
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
@@ -1130,7 +1138,7 @@ function renderHistoryTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
+        <td colspan="9" style="text-align:center; padding:36px 16px; color:#5C7A68; font-size:13px;">
           <div style="font-weight:700; color:#0F2A1B; margin-bottom:4px;">No receipts recorded yet</div>
           <div style="font-size:12px; color:#94A3B8;">Incoming raw material deliveries recorded will appear here automatically.</div>
         </td>
@@ -1164,7 +1172,7 @@ function renderHistoryTable() {
   if (totalItems === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" style="text-align:center; padding:32px; color:#64748B;">
+        <td colspan="9" style="text-align:center; padding:32px; color:#64748B;">
           No receive transactions found matching criteria.
         </td>
       </tr>
@@ -1199,32 +1207,18 @@ function renderHistoryTable() {
         <td>
           <span class="mgr-date-text" style="font-weight:600; color:#1E293B; font-size:12.5px;">${escapeHtml(datePart)}</span>
         </td>
-        <td>
-          <span class="mgr-time-text" style="font-size:12px; color:#15803D; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            ${escapeHtml(timePart)}
-          </span>
-        </td>
         <td><strong>${escapeHtml(r.materialName)}</strong></td>
         <td><span class="mgr-qty-delta receive">+${r.quantity} ${escapeHtml(r.unit)}</span></td>
         <td style="color:#334155; font-size:13px;">${escapeHtml(r.supplier || '—')}</td>
         <td style="font-size:12px; color:#475569;">${escapeHtml(r.recordedBy || '—')}</td>
         <td><span class="mgr-status-pill status-approved">Approved</span></td>
-        <td style="color:#64748B; font-size:12px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(r.notes || '')}">
-          ${escapeHtml(r.notes || '-')}
-        </td>
-        <td style="text-align: center;">
-          <div style="display:inline-flex; align-items:center; gap:6px; justify-content:center;">
-            <button type="button" class="btn-mgr-edit-rec" data-ref="${escapeHtml(r.ref)}" title="Edit Receipt" style="padding:4px 8px; border-radius:6px; border:1px solid #0F766E; background:#FFFFFF; color:#0F766E; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span>Edit</span>
-            </button>
-            <button type="button" class="btn-mgr-del-rec" data-ref="${escapeHtml(r.ref)}" title="Delete Receipt" style="padding:4px 8px; border-radius:6px; border:1px solid #FECACA; background:#FEF2F2; color:#DC2626; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              <span>Delete</span>
-            </button>
+        <td style="white-space:nowrap;">
+          <div class="rmims-row-actions">
+            <button type="button" class="rmims-btn-xs rmims-btn-edit btn-mgr-edit-rec" data-ref="${escapeHtml(r.ref)}" title="Edit Receipt"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Edit</span></button>
+            <button type="button" class="rmims-btn-xs rmims-btn-delete btn-mgr-del-rec" data-ref="${escapeHtml(r.ref)}" title="Delete Receipt"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Delete</span></button>
           </div>
         </td>
+        <td style="color:#475569; font-size:12px; white-space:nowrap;">${escapeHtml(r.notes || '-')}</td>
       </tr>
     `;
   }).join('');

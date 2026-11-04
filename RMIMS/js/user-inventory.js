@@ -10,6 +10,7 @@
 import { getMaterialCoverage } from './rmims-reorder-engine.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import { fetchUnifiedInventoryFromSupabase, pullLiveData } from '../supabase/manager-supabase-service.js';
+import { supabase } from '../supabase/supabase-config.js';
 
 
 let rawMaterials = [];
@@ -43,6 +44,23 @@ function initStaffInventory() {
       loadInventory();
     }).catch(e => console.warn('[Staff Inventory] Supabase live sync notice:', e));
   } catch (_) {}
+
+  // Live: re-read the database whenever the manager changes a material, and every 30 s while the page is open
+  let liveBusy = false;
+  const liveRefresh = () => {
+    if (liveBusy || document.hidden) return;
+    liveBusy = true;
+    fetchUnifiedInventoryFromSupabase().then(() => loadInventory()).catch(() => {}).finally(() => { liveBusy = false; });
+  };
+  try {
+    if (supabase && typeof supabase.channel === 'function' && !window.__rmimsStaffInvChannel) {
+      window.__rmimsStaffInvChannel = supabase.channel('rmims_staff_inventory_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'raw_materials' }, liveRefresh)
+        .subscribe();
+    }
+  } catch (_) {}
+  setInterval(liveRefresh, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) liveRefresh(); });
 
   // Cross-tab and cross-module real-time sync
   window.addEventListener('storage', (e) => {
@@ -393,9 +411,7 @@ function renderTable() {
           ${escapeHtml(fmtDate(latestActDate))}
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
-          <span class="mgr-status-pill ${statusPillClass}">
-            ${statusText}
-          </span>
+          <span class="mgr-status-pill ${statusPillClass}">${statusText === 'Low' ? 'Low Stock' : statusText}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <span style="font-weight:700; color:${met.daysRemaining !== null && met.daysRemaining <= 3 ? '#DC2626' : '#334155'};">

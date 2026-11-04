@@ -1,6 +1,8 @@
 # RMIMS — fresh Supabase setup
 
-Run each file once in the Supabase SQL Editor, in this order (00 to 15). Every file is one module of the system.
+Run each file once in the Supabase SQL Editor, in this order (00 to 17). Every file is one module of the system.
+
+**Already set up with 01-14?** Run only `RMIMS_ALL_NEW_SQL_15_16_17.sql` (15 + 16 + 17 in one file, safe to re-run).
 
 | File | Module | What it holds |
 |---|---|---|
@@ -20,6 +22,8 @@ Run each file once in the Supabase SQL Editor, in this order (00 to 15). Every f
 | 13_IMPORT_RAW_MATERIALS.sql | Import | Import raw materials from the template file (Manager, or a CSV uploaded in Supabase) |
 | 14_STAFF_REPORTS.sql | Staff reports | One row per staff submission and per staff member, each with its company (no cross-company) |
 | 15_FIX_FINISHED_PRODUCTS_SAVE.sql | Fix (v25) | Finished products always save; clear reason when the database refuses; Manager account check. Safe to re-run, deletes nothing |
+| 16_ML_CONTINUOUS_LEARNING.sql | ML self-learning (v30) | Model table (12-year trained columns + continuous-learning columns), live usage feed (daily / weekly / monthly), automatic refresh after every disbursement, save_ml_profile. Safe to re-run, deletes nothing |
+| 17_START_WITH_19_MATERIALS.sql | Starting materials (v32) | Registers the 19 raw materials with code, name, category and unit only (stock 0, no minimum, no built-in data). Re-run after a factory reset. Never overwrites existing materials |
 
 About 00: it keeps every login whose profile has the Admin role (no e-mail is written in the file).
 Only if it stops with "No Admin account found", type your Admin e-mail inside `v_admin_emails` at the top

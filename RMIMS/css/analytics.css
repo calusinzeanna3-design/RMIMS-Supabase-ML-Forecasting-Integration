@@ -18,7 +18,7 @@
   --an-amber-hover: #D97706;
   --an-orange: #EA580C;
   --an-orange-light: #FFF7ED;
-  --an-blue: #2563EB;
+  --an-blue: #14532D;
   --an-purple: #8B5CF6;
   --an-radius: 14px;
 }
@@ -277,7 +277,7 @@ input[type="text"].an-top-input {
 
 .dot-rec { background: #16A34A; }
 .dot-disb { background: #D97706; }
-.dot-prod { background: #2563EB; }
+.dot-prod { background: #14532D; }
 .dot-stock-cur { background: #16A34A; }
 .dot-stock-min { background: #EA580C; }
 

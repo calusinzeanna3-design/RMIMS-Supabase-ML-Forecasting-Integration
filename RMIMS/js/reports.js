@@ -20,6 +20,20 @@ import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProdu
 
 /** Reorder quantity for display: only data-driven values, "—" when there is no recorded consumption. */
 /** Reorder cell: the reorder quantity, plus tomorrow's estimated need (from recorded usage) underneath. */
+/** Finished products of a raw material as one compact "Products" dropdown per row (never spills into other columns). */
+function productsDropdownHtml(parts) {
+    const list = Array.isArray(parts) ? parts.filter(Boolean) : [];
+    if (!list.length) return '<span style="color:#64748B;">—</span>';
+    return `<details class="rmims-products-dd"><summary>Products (${list.length})</summary><ul>${
+        list.map(t => {
+            const i = t.lastIndexOf(':');
+            const name = i > 0 ? t.slice(0, i) : t;
+            const qty = i > 0 ? t.slice(i + 1).trim() : '';
+            return `<li><span class="rmims-products-dd-name">${escapeHtml(name)}</span>${qty ? `<strong>${escapeHtml(qty)}</strong>` : ''}</li>`;
+        }).join('')
+    }</ul></details>`;
+}
+
 function reorderCellHtml(m, withUnit = false) {
     if (reorderShowsTomorrow(m)) {
         return `${escapeHtml(fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit))}<div style="font-size:11px; color:#64748B; font-weight:500; margin-top:2px;" title="No 7-day reorder needed yet; estimated need for tomorrow from recorded usage">Est. for tomorrow</div>`;
@@ -624,15 +638,16 @@ async function loadAuthoritativeData() {
         const getCanonicalCode = (rawName, rawCode) => {
             const cleanCode = String(rawCode || "").toUpperCase().trim();
             const cleanName = String(rawName || "").trim();
+            if (cleanCode.startsWith(expectedPrefix)) return cleanCode;   // the material's own code always wins
             const rec = resolveForecastingMaterialByName(cleanName, isScones);
             if (rec && rec.code && rec.code.startsWith(expectedPrefix)) return rec.code;
-            if (cleanCode.startsWith(expectedPrefix)) {
+            if (false) {
                 return cleanCode;
             }
             return null;
         };
 
-        // Seed with authentic system raw materials for the current tenant (guarantees strictly 19 for Scones, 59 for KXC)
+        // Seed with the company's own raw materials (every material, not a fixed 19 / 59)
         getSystemRawMaterials().forEach(m => {
             const code = getCanonicalCode(m.name || m.raw_material_name, m.item_code || m.id);
             if (!code) return;
@@ -709,7 +724,7 @@ async function loadAuthoritativeData() {
             }
         });
 
-        // Enforce strict sequential sort and strict 19-material limit for Scones & Muffins
+        // Sequential sort of every company material
         rawMats = Array.from(matBaseMap.values());
         if (isScones) {
             rawMats = rawMats.filter(m => {
@@ -812,8 +827,6 @@ async function loadAuthoritativeData() {
             // Never delete core registered catalog materials (NB-001 to NB-019 for Scones; RM-001 to RM-059 for KXC)
             rawMats = rawMats.filter(m => {
                 const code = String(m.item_code || m.id || "").toUpperCase().trim();
-                if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true;
-                if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true;
                 return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
             });
         }
@@ -1000,6 +1013,7 @@ function loadAuthoritativeForecasts() {
         });
         totals.forEach((q, name) => { if (!seen.has(name)) parts.push(`${name}: ${fmtQtyOrDash(q, m.unit)}`); });
         const finishedProduct = parts.length ? parts.join(" · ") : "—";
+        const finishedProductParts = parts.slice();
 
         let additionalNeed7 = null, additionalNeed1m = null, status, interpretation;
         if (plan.hasData) {
@@ -1028,6 +1042,7 @@ function loadAuthoritativeForecasts() {
             hasUsageData: plan.hasData,
             mapePct: plan.mapePct,
             finishedProduct,
+            finishedProductParts,
             forecast7Day: plan.forecast7,
             forecast1Month: plan.forecast30,
             additionalNeed7,
@@ -1459,7 +1474,7 @@ function renderManagerCharts() {
                     {
                         label: "Disbursed Outflow (-)",
                         data: disbData.length > 0 ? disbData : [0],
-                        backgroundColor: "#2563eb", // Blue
+                        backgroundColor: "#14532D", // Blue
                         borderRadius: 4,
                         barPercentage: 0.7,
                         categoryPercentage: 0.8
@@ -1690,20 +1705,19 @@ function renderMaterialReceivingTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
                 <td>${escapeHtml(r.receiptDate)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(r.receiptTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(r.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(r.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
                 <td><strong style="color:var(--rpt-green-dark);">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
                 <td>${escapeHtml(r.unit)}</td>
                 <td>${escapeHtml(r.supplierName)}</td>
                 <td>${escapeHtml(r.receivedBy)}</td>
-                <td><span class="rpt-badge rpt-badge-good">Verified &amp; Received</span></td>
+                <td><span class="rpt-badge rpt-badge-good">Received</span></td>
             </tr>
         `).join("");
     }
@@ -1760,14 +1774,13 @@ function renderMaterialDisbursementTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
                 <td>${escapeHtml(d.usageDate)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(d.usageTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(d.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(d.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
                 <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(d.finishedProduct)}</span></td>
                 <td><strong style="color:var(--rpt-orange-dark);">${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
@@ -1865,7 +1878,7 @@ function renderMaterialActivityTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => {
             const isRcv = a.type === "Received";
@@ -1876,9 +1889,8 @@ function renderMaterialActivityTab() {
             return `
                 <tr>
                     <td>${escapeHtml(a.date)}</td>
-                    <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(a.time || '—')}</span></td>
                     <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
-                    <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(a.materialCode || '—')}</span></td>
+                    <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(a.materialCode || '—')}</span></td>
                     <td><span class="rpt-badge ${badgeCls}">${a.type}</span></td>
                     <td><strong>${escapeHtml(a.material)}</strong></td>
                     <td><strong style="color:${qtyColor};">${qtyStr}</strong></td>
@@ -2142,52 +2154,41 @@ function renderAiForecastingTab() {
 
             let cardsHtml = "";
 
+            // Status cards: Critical (red) / Low (orange) / Good (green) - the whole card is tinted and glows in its status colour
+            const card = (tone, title, label, body) => `
+                        <div class="rpt-fc-decision-card rmims-status-card rmims-status-card-${tone}">
+                            <div class="rpt-fc-decision-title">
+                                <span class="rmims-status-card-title">${title}</span>
+                                <span class="rmims-status-card-badge">${label}</span>
+                            </div>
+                            <div class="rpt-fc-decision-body">${body}</div>
+                        </div>`;
+            const fmt = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
             if (criticalItems.length > 0) {
                 criticalItems.slice(0, 3).forEach(item => {
                     const req = isMonthly ? item.forecast1Month : item.forecast7Day;
                     const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
-                    cardsHtml += `
-                        <div class="rpt-fc-decision-card warning">
-                            <div class="rpt-fc-decision-title">
-                                <span style="color:#b91c1c;">${escapeHtml(item.name)} — Potential Deficit</span>
-                                <span class="rpt-badge rpt-badge-shortage">Deficit Warning</span>
-                            </div>
-                            <div class="rpt-fc-decision-body">
-                                Projected ${isMonthly ? "30-day" : "7-day"} requirement is <strong>${req.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong> vs current stock of <strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong>. Additional <strong>+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong> required to satisfy operations.
-                            </div>
-                        </div>
-                    `;
+                    const u = escapeHtml(item.unit);
+                    const minPart = Number(item.minThreshold) > 0 ? ` plus the minimum stock of <strong>${fmt(item.minThreshold)} ${u}</strong>` : "";
+                    // colour follows the stock itself: Critical = out of stock / far below minimum, otherwise Low (order more)
+                    const stk = Number(item.currentStock) || 0, mn = Number(item.minThreshold) || 0;
+                    const isCrit = stk <= 0 || (mn > 0 && stk <= mn / 2);
+                    cardsHtml += card(isCrit ? "critical" : "low", `${escapeHtml(item.name)} — ${isCrit ? "needs restock now" : "order more"}`, isCrit ? "Critical" : "Low",
+                        `Expected use in the next ${isMonthly ? "30" : "7"} days: <strong>${fmt(req)} ${u}</strong>${minPart}. In stock: <strong>${fmt(item.currentStock)} ${u}</strong>. Order <strong>${fmt(addNeed)} ${u}</strong> more.`);
                 });
             }
 
             if (attentionItems.length > 0 && criticalItems.length < 3) {
                 attentionItems.slice(0, 3 - criticalItems.length).forEach(item => {
-                    cardsHtml += `
-                        <div class="rpt-fc-decision-card attention">
-                            <div class="rpt-fc-decision-title">
-                                <span style="color:#c2410c;">${escapeHtml(item.name)} — Threshold Alert</span>
-                                <span class="rpt-badge rpt-badge-attention">Needs Attention</span>
-                            </div>
-                            <div class="rpt-fc-decision-body">
-                                Current stock (<strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong>) is within minimum safety threshold (<strong>${item.minThreshold} ${escapeHtml(item.unit)}</strong>). Place replenishment order with supplier to avoid kitchen stockout.
-                            </div>
-                        </div>
-                    `;
+                    const u = escapeHtml(item.unit);
+                    cardsHtml += card("low", `${escapeHtml(item.name)} — running low`, "Low",
+                        `In stock: <strong>${fmt(item.currentStock)} ${u}</strong>, at or below its minimum of <strong>${fmt(item.minThreshold)} ${u}</strong>. Order soon to avoid running out.`);
                 });
             }
 
             if (!cardsHtml) {
-                cardsHtml = `
-                    <div class="rpt-fc-decision-card">
-                        <div class="rpt-fc-decision-title">
-                            <span style="color:#15803d;">All Raw Materials Within Safe Operational Buffers</span>
-                            <span class="rpt-badge rpt-badge-good">Sufficient Stock</span>
-                        </div>
-                        <div class="rpt-fc-decision-body">
-                            Current inventory cushions across all registered materials fully satisfy projected ${isMonthly ? "30-day" : "7-day"} operational demand. No immediate shortage risks detected.
-                        </div>
-                    </div>
-                `;
+                cardsHtml = card("good", "All raw materials have enough stock", "Good",
+                    `Stock on hand covers the expected use for the next ${isMonthly ? "30" : "7"} days for every raw material.`);
             }
 
             decisionListEl.innerHTML = cardsHtml;
@@ -2260,11 +2261,11 @@ function renderAiForecastingTab() {
                 <tr>
                     <td><strong>${escapeHtml(item.name)}</strong></td>
                     <td><span style="font-size:0.75rem; color:var(--rpt-text-mid); font-family:monospace;">${escapeHtml(item.itemCode)}</span></td>
-                    <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span></td>
+                    <td>${productsDropdownHtml(item.finishedProductParts)}</td>
                     <td><strong>${item.currentStock.toLocaleString()}</strong> <small style="color:var(--rpt-text-dim);">${escapeHtml(item.unit)}</small></td>
                     <td>${escapeHtml(item.unit)}</td>
                     <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : (item.hasUsageData ? `0 ${escapeHtml(item.unit)}` : "—")}</td>
-                    <td><strong style="color:var(--rpt-blue-dark, #1e40af); font-weight:700;" title="${item.hasUsageData ? `±${item.mapePct}% margin of error` : "No recorded usage"}">${escapeHtml(fmtQtyOrDash(req, item.unit))}</strong></td>
+                    <td><strong style="color:var(--rpt-blue-dark, #14532D); font-weight:700;" title="${item.hasUsageData ? `±${item.mapePct}% margin of error` : "No recorded usage"}">${escapeHtml(fmtQtyOrDash(req, item.unit))}</strong></td>
                     <td><strong style="color:${addNeed > 0 ? '#DC2626' : 'var(--rpt-text-mid)'}; font-weight:700;">${addNeed == null ? "—" : escapeHtml(fmtQtyOrDash(addNeed, item.unit, { signed: true }))}</strong></td>
                     <td>${badge}</td>
                 </tr>
@@ -2481,7 +2482,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                     <td><span style="font-family:'Inter', sans-serif; font-weight:600; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
                                     <td>${escapeHtml(m.stock)}</td>
                                     <td>${escapeHtml(m.threshold)}</td>
-                                    <td><span style="color:#2563EB; font-weight:600;">${escapeHtml(m.action)}</span></td>
+                                    <td><span style="color:#14532D; font-weight:600;">${escapeHtml(m.action)}</span></td>
                                     <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `).join("")
@@ -2539,7 +2540,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
 
         sectionsHtml += `
             <div class="print-section">
-                <h3 class="print-section-title">Material Receiving Verified Log</h3>
+                <h3 class="print-section-title">Material Receiving Log</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -2558,7 +2559,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                     <td><strong>${escapeHtml(r.materialName)}</strong></td>
                                     <td><strong style="color:#059669;">+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(r.unit || "")}</td>
                                     <td>${escapeHtml(r.supplierName || "—")}</td>
-                                    <td>${escapeHtml(r.receivedBy || "Verified")}</td>
+                                    <td>${escapeHtml(r.receivedBy || "—")}</td>
                                 </tr>
                             `).join("")
                         }
@@ -3310,7 +3311,7 @@ function generateSingleTabPdf(tabKey = "manager") {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10.5);
         doc.setTextColor(...RM_GREEN);
-        doc.text("Material Receiving Verified Log", 40, y);
+        doc.text("Material Receiving Log", 40, y);
         y += 10;
 
         const rows = filteredData.records.length === 0
@@ -3321,7 +3322,7 @@ function generateSingleTabPdf(tabKey = "manager") {
                 `+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
                 r.supplierName,
                 r.receivedBy,
-                "Verified"
+                "Received"
             ]);
 
         doc.autoTable({
@@ -3519,7 +3520,7 @@ function generateSingleTabExcelBlob(tabKey = "manager") {
         sheetName = "Material Receiving";
         rows = [
             ["Receipt Date", "Raw Material", "Received Qty", "Unit", "Supplier Name", "Received By", "Status"],
-            ...filteredData.records.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Verified Inbound"])
+            ...filteredData.records.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Received"])
         ];
     } else if (tabKey === "disbursement") {
         sheetName = "Material Disbursement";
@@ -3822,7 +3823,7 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
                         `+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
                         r.supplierName,
                         r.receivedBy,
-                        "Verified"
+                        "Received"
                     ]),
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
@@ -4075,7 +4076,7 @@ function buildMultiSheetExcelWorkbook(selectedSections = ["manager", "restock", 
         if (key === "receiving") {
             const rows = [
                 ["Receipt Date", "Raw Material", "Received Qty", "Unit", "Supplier Name", "Received By", "Status"],
-                ...periodReceipts.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Verified"])
+                ...periodReceipts.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Received"])
             ];
             const ws = XLSX.utils.aoa_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, "Material Receiving");
@@ -4607,9 +4608,9 @@ function initEventListeners() {
     }
 
     if (locInput) {
-        locInput.addEventListener("click", () => {
+        locInput.addEventListener("click", async () => {
             if (state.customSaveDirectoryHandle || state.customSaveDirectoryName) {
-                if (confirm("Reset save location back to default browser Downloads folder?")) {
+                if (await window.rmimsConfirm("Reset save location back to default browser Downloads folder?")) {
                     state.customSaveDirectoryHandle = null;
                     state.customSaveDirectoryName = null;
                     locInput.value = "Downloads (Browser Default)";

@@ -25,6 +25,9 @@
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -254,17 +257,7 @@
             </div>
           </div>
 
-          <!-- 4. Most Used Finished Product Target -->
-          <div class="mgr-tx-kpi-card">
-            <div class="mgr-tx-kpi-icon icon-emerald">
-              <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </div>
-            <div class="mgr-tx-kpi-body">
-              <span class="mgr-tx-kpi-label">Top Consumption Target</span>
-              <span class="mgr-tx-kpi-value" style="font-size:18px;" id="kpiDisbTopTarget">--</span>
-              <span class="mgr-tx-kpi-sub" id="kpiDisbTopTargetSub">--</span>
-            </div>
-          </div>
+          
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-top:8px;">
@@ -305,14 +298,13 @@
               <tr>
                 <th>Reference No.</th>
                 <th>Date</th>
-                <th>Time</th>
                 <th>Raw Material</th>
                 <th>Quantity Disbursed</th>
                 <th>Used For / Purpose</th>
                 <th>Recorded By</th>
                 <th>Status</th>
+                <th>Actions</th>
                 <th>Notes</th>
-                <th style="text-align:right;">Actions</th>
               </tr>
             </thead>
             <tbody id="mgrDisburseHistoryTbody">

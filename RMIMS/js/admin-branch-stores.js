@@ -615,7 +615,7 @@ window.deleteBranchStore = async function () {
   const mgrCount = (store.managers || []).length;
   const staffCount = (store.staff || []).length;
   const confirmMsg = `Are you sure you want to permanently delete "${store.name}"?\n\nThis will permanently delete this branch and revoke credentials for ${mgrCount} manager(s) and ${staffCount} staff member(s).`;
-  if (!confirm(confirmMsg)) return;
+  if (!await window.rmimsConfirm(confirmMsg)) return;
 
   const deletedId = currentViewingStoreId;
   const deletedStoreObj = JSON.parse(JSON.stringify(store));

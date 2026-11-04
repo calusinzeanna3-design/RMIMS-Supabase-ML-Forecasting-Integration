@@ -35,6 +35,20 @@ const dayKey = (v) => {
 const norm = (s) => String(s || '').toLowerCase().replace(/[\/\(\)\-_,&.]/g, ' ').replace(/\s+/g, ' ').trim();
 
 /**
+ * True when a recipe ingredient name and a raw material name are the same material:
+ * same words, one inside the other, or (for a renamed material) every word of the shorter name appears in the
+ * longer one with at least two words in common - "All-Purpose Flour" = "All-Purpose / Bread Flour".
+ */
+export function sameMaterialName(a, b) {
+  const x = norm(a), y = norm(b);
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  const ta = x.split(' ').filter(w => w.length > 1), tb = y.split(' ').filter(w => w.length > 1);
+  const [small, big] = ta.length <= tb.length ? [ta, new Set(tb)] : [tb, new Set(ta)];
+  return small.length >= 2 && small.every(w => big.has(w));
+}
+
+/**
  * Build YYYY-MM-DD -> consumed quantity for ONE material from disbursement rows.
  * Rows may use either snake_case (Supabase) or camelCase (normalized) fields.
  */
@@ -76,7 +90,9 @@ export function forecastHorizon(material, actualsByDate, days, opts = {}) {
   const mapePct = modelMapeFor(code);
   if (evidenceDays === 0) return { hasData: false, evidenceDays: 0, expected: 0, requirement: 0, half: 0, mapePct, basis: 'none' };
 
-  if (profile && evidenceDays >= MIN_EVIDENCE_DAYS) {
+  // always the model (also with few records: it reads a first batch as at least one week's usage, instead of
+  // averaging per recorded day - that turned 5,035 g used this week into an 18,560 g weekly requirement)
+  if (profile) {
     const fc = buildLiveForecaster(code, actuals, { asOf });
     if (fc.hasEvidence) {
       let expected = 0, requirement = 0, half = 0;
@@ -234,10 +250,7 @@ function productUsesMaterial(p, materialName) {
     ...Object.keys(p.recipeDetails || {}),
     ...(Array.isArray(p.ingredients) ? p.ingredients.map(i => (i && (i.name || i.material || i.materialName)) || i) : [])
   ];
-  return names.some(n => {
-    const x = norm(n);
-    return x && (x === target || x.includes(target) || target.includes(x));
-  });
+  return names.some(n => sameMaterialName(n, materialName));
 }
 
 /** Finished products (names) whose formulation covers this raw material. */
@@ -269,7 +282,8 @@ export function displayFinishedProduct(materialName, storedName, products = getU
   const current = list.find(p => String(p.name).toLowerCase().trim() === saved.toLowerCase().trim());
   if (current) return String(current.name).trim();
   const linked = Array.from(new Set(finishedProductsForMaterial(materialName, list)));
-  return linked.length === 1 ? linked[0] : '—';
+  // no product picked when it was recorded: it covers every linked product (the database splits it per product)
+  return linked.length === 1 ? linked[0] : (linked.length > 1 ? `All: ${linked.join(', ')}` : '—');
 }
 
 /** Value to SAVE as finished_product_name: the real product name, or null (never a placeholder). */

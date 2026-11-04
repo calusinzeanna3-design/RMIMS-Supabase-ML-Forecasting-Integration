@@ -358,8 +358,9 @@ export function syncOperationalAlerts() {
         // Find critical depleted (Out of stock)
         const outOfStock = list.filter(m => {
           const s = String(m.status || '').toLowerCase();
-          const stock = Number(m.currentStock ?? m.stock ?? m.quantity ?? 100);
-          return s === 'out of stock' || s === 'critical' || stock <= 0;
+          const raw = m.currentStock ?? m.stock ?? m.quantity;
+          if (raw == null || raw === '') return s === 'out of stock' || s === 'critical'; // unknown stock: never assumed
+          return s === 'out of stock' || s === 'critical' || Number(raw) <= 0;
         });
 
         if (outOfStock.length > 0) {
@@ -397,9 +398,12 @@ export function syncOperationalAlerts() {
         // Find low stock items
         const lowStock = list.filter(m => {
           const s = String(m.status || '').toLowerCase();
-          const stock = Number(m.currentStock ?? m.stock ?? m.quantity ?? 100);
-          const min = Number(m.minStock ?? m.minThreshold ?? 50);
-          return (s === 'low' || s === 'low stock' || stock <= min) && stock > 0;
+          const raw = m.currentStock ?? m.stock ?? m.quantity;
+          const rawMin = m.minStock ?? m.minThreshold;
+          if (raw == null || raw === '') return s === 'low' || s === 'low stock';  // unknown stock: never assumed
+          const stock = Number(raw);
+          const min = rawMin == null || rawMin === '' ? null : Number(rawMin);       // no minimum entered: no low alert
+          return (s === 'low' || s === 'low stock' || (min !== null && stock <= min)) && stock > 0;
         });
 
         if (lowStock.length > 0) {

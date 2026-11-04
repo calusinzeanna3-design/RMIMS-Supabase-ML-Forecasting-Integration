@@ -489,10 +489,10 @@
 }
 
 .fc-icon-blue {
-  background: radial-gradient(circle at 35% 35%, #DBEAFE 0%, #BFDBFE 100%);
-  color: #1D4ED8;
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  background: radial-gradient(circle at 35% 35%, #DCFCE7 0%, #BBF7D0 100%);
+  color: #14532D;
+  border-color: rgba(20, 83, 45, 0.3);
+  box-shadow: 0 6px 16px rgba(20, 83, 45, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 .fc-kpi-icon svg {
@@ -628,10 +628,10 @@
 }
 
 .fc-icon-blue {
-  background: radial-gradient(circle at 35% 35%, #DBEAFE 0%, #BFDBFE 100%);
-  color: #1D4ED8;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  background: radial-gradient(circle at 35% 35%, #DCFCE7 0%, #BBF7D0 100%);
+  color: #14532D;
+  border: 1px solid rgba(20, 83, 45, 0.3);
+  box-shadow: 0 6px 18px rgba(20, 83, 45, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.6);
 }
 
 .fc-icon-orange {
@@ -1661,7 +1661,7 @@ body.admin-page .fc-card {
 
 .fc-req-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  background: linear-gradient(90deg, #14532D, #14532D);
   border-radius: var(--fc-radius-pill);
   transition: width 0.4s ease;
 }
@@ -2131,9 +2131,9 @@ body.admin-page .fc-card {
 }
 
 .fc-meta-model {
-  background: #EFF6FF;
-  border-color: #BFDBFE;
-  color: #1D4ED8;
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+  color: #14532D;
   font-weight: 700;
 }
 
@@ -2228,8 +2228,8 @@ button.fc-modal-close svg,
 }
 
 .fc-modal-search-box:focus-within {
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: #14532D;
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.12);
 }
 
 .fc-modal-search-box svg {
@@ -2267,8 +2267,8 @@ button.fc-modal-close svg,
 }
 
 .fc-count-pill {
-  background: rgba(37, 99, 235, 0.1);
-  color: #2563EB;
+  background: rgba(20, 83, 45, 0.1);
+  color: #14532D;
   font-size: 0.75rem;
   font-weight: 700;
   padding: 4px 10px;
@@ -2389,7 +2389,7 @@ button.fc-modal-close svg,
 
 .fc-num-demand {
   font-weight: 800;
-  color: #2563EB;
+  color: #14532D;
   font-size: 0.88rem;
   font-family: var(--font-mono, monospace);
 }

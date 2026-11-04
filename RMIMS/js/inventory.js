@@ -217,8 +217,6 @@ async function loadData() {
             // Never filter out core NB-001 to NB-019 or RM-001 to RM-059 materials
             rawList = rawList.filter(m => {
                 const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
-                if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true;
-                if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true;
                 return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
             });
         }
@@ -872,7 +870,7 @@ function attachOverviewTableListeners() {
             const count = state.selectedOverviewIds.size;
             if (count === 0) return;
 
-            if (!confirm(`Are you sure you want to delete the ${count} selected raw material(s) and all their associated transaction history? This action cannot be undone.`)) {
+            if (!await window.rmimsConfirm(`Are you sure you want to delete the ${count} selected raw material(s) and all their associated transaction history? This action cannot be undone.`)) {
                 return;
             }
 
@@ -925,7 +923,7 @@ function attachOverviewTableListeners() {
             const id = btn.dataset.id;
             const name = btn.dataset.name || "this raw material";
 
-            if (!confirm(`Are you sure you want to delete "${name}" and all its transaction history? This action cannot be undone.`)) return;
+            if (!await window.rmimsConfirm(`Are you sure you want to delete "${name}" and all its transaction history? This action cannot be undone.`)) return;
 
             try {
                 toast(`Deleting "${name}"...`);
@@ -958,7 +956,7 @@ function openHistoryModal(materialId) {
     if ($("histMatId")) $("histMatId").textContent = mat.itemCode || mat.id || "—";
     if ($("histMatCat")) $("histMatCat").textContent = mat.category || "General Materials";
     if ($("histMatStock")) $("histMatStock").textContent = `${fmtQty(mat.currentStock)} ${mat.unit || "kg"}`;
-    if ($("histMatMinMax")) $("histMatMinMax").textContent = `${mat.minStock !== null ? fmtQty(mat.minStock) : 10} / ${fmtQty(Number(mat.minStock || 10) * 10)} ${mat.unit || "kg"}`;
+    if ($("histMatMinMax")) $("histMatMinMax").textContent = `${mat.minStock !== null && mat.minStock !== undefined ? fmtQty(mat.minStock) : "—"} / ${mat.maxStock ? fmtQty(mat.maxStock) : "—"} ${mat.unit || ""}`;
     if ($("matHistoryTitle")) $("matHistoryTitle").textContent = `${mat.name} Movement History`;
 
     const matRecs = (state.receipts || []).filter(r => String(r.materialId) === String(materialId) || String(r.material_id) === String(materialId));
@@ -1233,7 +1231,7 @@ function attachReceiveTableListeners() {
         bulkDeleteReceiveBtn.onclick = async () => {
             const count = state.selectedReceiveIds.size;
             if (count === 0) return;
-            const conf = confirm(`Are you sure you want to delete ${count} selected stock receipt record(s)? This will recalculate current inventory.`);
+            const conf = await window.rmimsConfirm(`Are you sure you want to delete ${count} selected stock receipt record(s)? This will recalculate current inventory.`);
             if (!conf) return;
 
             try {
@@ -1267,7 +1265,7 @@ function attachReceiveTableListeners() {
             e.stopPropagation();
             const id = btn.getAttribute("data-id");
             if (!id) return;
-            const conf = confirm("Are you sure you want to delete this stock receipt record?");
+            const conf = await window.rmimsConfirm("Are you sure you want to delete this stock receipt record?");
             if (!conf) return;
 
             try {
@@ -1488,7 +1486,7 @@ function attachDisburseTableListeners() {
         bulkDeleteDisburseBtn.onclick = async () => {
             const count = state.selectedDisburseIds.size;
             if (count === 0) return;
-            const conf = confirm(`Are you sure you want to delete ${count} selected material disbursement record(s)? This will recalculate current inventory.`);
+            const conf = await window.rmimsConfirm(`Are you sure you want to delete ${count} selected material disbursement record(s)? This will recalculate current inventory.`);
             if (!conf) return;
 
             try {
@@ -1523,7 +1521,7 @@ function attachDisburseTableListeners() {
             e.stopPropagation();
             const id = btn.getAttribute("data-id");
             if (!id) return;
-            const conf = confirm("Are you sure you want to delete this material disbursement record?");
+            const conf = await window.rmimsConfirm("Are you sure you want to delete this material disbursement record?");
             if (!conf) return;
 
             try {
@@ -2216,11 +2214,11 @@ async function handleImportConfirm() {
     if (previewArea) {
         previewArea.hidden = false;
         previewArea.innerHTML = `
-            <div class="import-progress-box" style="padding: 18px 16px; background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: var(--radius-md, 8px); margin-bottom: 12px;">
+            <div class="import-progress-box" style="padding: 18px 16px; background: rgba(20, 83, 45, 0.04); border: 1px solid rgba(20, 83, 45, 0.2); border-radius: var(--radius-md, 8px); margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px;">
                     <svg width="48" height="48" viewBox="0 0 44 44" style="transform: rotate(-90deg);">
                         <circle cx="22" cy="22" r="18" stroke="#E2E8F0" stroke-width="4" fill="none" />
-                        <circle id="importCircleProgress" cx="22" cy="22" r="18" stroke="#2563EB" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition: stroke-dashoffset 0.15s ease;" />
+                        <circle id="importCircleProgress" cx="22" cy="22" r="18" stroke="#14532D" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="113.1" stroke-dashoffset="113.1" style="transition: stroke-dashoffset 0.15s ease;" />
                     </svg>
                     <div style="text-align: left;">
                         <div id="importPercentText" style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2;">0%</div>
@@ -2228,7 +2226,7 @@ async function handleImportConfirm() {
                     </div>
                 </div>
                 <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden;">
-                    <div id="importProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #2563EB, #10B981); transition: width 0.15s ease; border-radius: 4px;"></div>
+                    <div id="importProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #14532D, #10B981); transition: width 0.15s ease; border-radius: 4px;"></div>
                 </div>
             </div>
         `;

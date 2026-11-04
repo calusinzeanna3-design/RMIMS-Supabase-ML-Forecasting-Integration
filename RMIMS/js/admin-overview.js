@@ -459,8 +459,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // RMIMS Sky/Teal Gradient for Store 2
   const gradSky = ctx.createLinearGradient(0, 0, 0, 240);
-  gradSky.addColorStop(0, 'rgba(14, 165, 233, 0.22)');
-  gradSky.addColorStop(1, 'rgba(14, 165, 233, 0.02)');
+  gradSky.addColorStop(0, 'rgba(20, 83, 45, 0.22)');
+  gradSky.addColorStop(1, 'rgba(20, 83, 45, 0.02)');
 
   // Initial stores from storage
   const initialStores = getStoresData();
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── Dynamic Custom Legend Builder ───────────────────────────────────────
   // Populates the #branchUsageChartLegend container from live chart dataset
   // labels and colors — no hardcoded branch names.
-  const DATASET_COLORS = ['#10B981', '#0EA5E9', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+  const DATASET_COLORS = ['#10B981', '#14532D', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
   function buildChartLegend() {
     const legendEl = document.getElementById('branchUsageChartLegend');
     if (!legendEl) return;
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ROLE_SERIES = {
     total:   { label: 'Total (All Roles)', color: '#10B981', fill: 'rgba(16, 185, 129, 0.10)' },
     admin:   { label: 'Admin',             color: '#F87171', fill: 'rgba(248, 113, 113, 0.12)' },
-    manager: { label: 'Manager',           color: '#60A5FA', fill: 'rgba(96, 165, 250, 0.12)' },
+    manager: { label: 'Manager',           color: '#4ADE80', fill: 'rgba(20, 83, 45, 0.12)' },
     staff:   { label: 'Staff',             color: '#FBBF24', fill: 'rgba(251, 191, 36, 0.14)' }
   };
   const roleSelect = document.getElementById('chartRoleSelect');

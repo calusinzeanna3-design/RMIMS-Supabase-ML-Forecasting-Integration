@@ -252,13 +252,13 @@ function renderStaffChart(providedStaffTx = null) {
         {
           label: 'Material Disbursements',
           data: disbData,
-          borderColor: '#0284C7',
-          backgroundColor: 'rgba(2, 132, 199, 0.08)',
+          borderColor: '#14532D',
+          backgroundColor: 'rgba(20, 83, 45, 0.08)',
           fill: true,
           tension: 0.35,
           borderWidth: 2.2,
           pointRadius: 3,
-          pointBackgroundColor: '#0284C7',
+          pointBackgroundColor: '#14532D',
           pointHoverRadius: 5
         }
       ]
@@ -533,7 +533,7 @@ function renderRecentActivity(staffTx) {
   if (staffTx.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align:center; padding:28px 16px; color:#64748B;">
+        <td colspan="7" style="text-align:center; padding:28px 16px; color:#64748B;">
           <strong>No recent transactions recorded.</strong><br>
           <span style="font-size:12px;">Create your first transaction using "Record Receive" or "Record Disburse".</span>
         </td>
@@ -556,7 +556,6 @@ function renderRecentActivity(staffTx) {
     return `
       <tr>
         <td><strong>${escapeHtml(t.date || '—')}</strong></td>
-        <td><small style="color:#64748B; font-weight:600;">${escapeHtml(t.time || '—')}</small></td>
         <td>
           <span style="font-weight:700; color:${t.activity === 'Receive' ? '#15803D' : '#D97706'};">
             ${t.activity === 'Receive' ? '📥 Receive' : '📤 Disburse'}

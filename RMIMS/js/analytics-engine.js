@@ -7,7 +7,7 @@
  *   2. Top Finished Products (Bar chart, [✓] Consumed & [✓] Batches checkboxes, Top N input, Maximize modal)
  *   3. Disbursed Raw Materials Trend (Area curve, Material select dropdown, [Days / Weeks / Months] timeframe, Maximize modal)
  * - Responsive Maximize Modal (Matching Reference Image 4) with expanded canvas and complete data table
- * - System Light Theme colors (Emerald #16A34A, Amber #D97706, Blue #2563EB)
+ * - System Light Theme colors (Emerald #16A34A, Amber #D97706, Blue #14532D)
  */
 
 import { canonicalTxRef } from './rmims-tx-key.js';
@@ -619,7 +619,7 @@ function renderCard1() {
             color: '#475569',
             callback: function (val, index) {
               const label = (dataItems && dataItems[index]) ? dataItems[index].name : (this.getLabelForValue(val) || '');
-              return label.length > 14 ? label.slice(0, 12) + '...' : label;
+              return (window.rmimsWrapLabel ? window.rmimsWrapLabel(label, 14) : label);
             }
           }
         },
@@ -829,7 +829,7 @@ function renderCardStock() {
             color: '#475569',
             callback: function (val, index) {
               const label = (dataItems && dataItems[index]) ? dataItems[index].name : (this.getLabelForValue(val) || '');
-              return label.length > 14 ? label.slice(0, 12) + '...' : label;
+              return (window.rmimsWrapLabel ? window.rmimsWrapLabel(label, 14) : label);
             }
           }
         },
@@ -936,9 +936,9 @@ function renderCard2() {
     datasets.push({
       label: 'Consumed',
       data: dataItems.map(d => Math.round(d.consumed * 10) / 10),
-      backgroundColor: '#2563EB',
-      hoverBackgroundColor: '#1D4ED8',
-      borderColor: '#1D4ED8',
+      backgroundColor: '#14532D',
+      hoverBackgroundColor: '#14532D',
+      borderColor: '#14532D',
       borderWidth: 1,
       borderRadius: 6,
       barPercentage: 0.7,
@@ -1014,7 +1014,7 @@ function renderCard2() {
             color: '#475569',
             callback: function (val) {
               const label = this.getLabelForValue(val) || '';
-              return label.length > 13 ? label.slice(0, 11) + '...' : label;
+              return (window.rmimsWrapLabel ? window.rmimsWrapLabel(label, 13) : label);
             }
           }
         },
@@ -1497,7 +1497,7 @@ function renderModalChart(targetType) {
           {
             label: 'Consumed',
             data: dataItems.map(d => Math.round(d.consumed * 10) / 10),
-            backgroundColor: '#2563EB',
+            backgroundColor: '#14532D',
             borderRadius: 6
           },
           {
@@ -1537,7 +1537,7 @@ function renderModalChart(targetType) {
             ${dataItems.map(p => `
               <tr style="border-bottom:1px solid #F1F5F9;">
                 <td style="padding:10px 14px; font-weight:700;">${p.name}</td>
-                <td style="padding:10px 14px; color:#2563EB; font-weight:700;">${p.consumed.toFixed(1)}</td>
+                <td style="padding:10px 14px; color:#14532D; font-weight:700;">${p.consumed.toFixed(1)}</td>
                 <td style="padding:10px 14px; color:#7C3AED; font-weight:700;">${p.batches} batches</td>
               </tr>
             `).join('')}

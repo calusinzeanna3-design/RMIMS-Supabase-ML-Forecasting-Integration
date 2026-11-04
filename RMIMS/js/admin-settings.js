@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminLogoutBtn = document.getElementById('adminLogoutBtn');
     if (adminLogoutBtn) {
       adminLogoutBtn.addEventListener('click', async () => {
-        const confirmLogout = confirm('Are you sure you want to log out of the Administrator Portal?');
+        const confirmLogout = await window.rmimsConfirm('Are you sure you want to log out of the Administrator Portal?');
         if (!confirmLogout) return;
         try {
           localStorage.removeItem('adminUser');
@@ -906,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
           key: 'manager',
           name: 'Branch Store Manager',
-          badgeHtml: '<span style="background:#E0F2FE; color:#0284C7; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Branch Manager</span>',
+          badgeHtml: '<span style="background:#DCFCE7; color:#14532D; padding:4px 10px; border-radius:999px; font-weight:700; font-size:11.5px;">Branch Manager</span>',
           modules: 'All Manager Data: Raw Materials Catalog, Stock Inflows &amp; Receipts, Disbursements, Finished Products, AI Forecasting Models, Saved Reports &amp; Manager Operational Logs',
           count: metrics.manager.count,
           countSub: metrics.manager.subtext,
@@ -954,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-size:11px; color:#64748B; margin-top:3px;">${r.countSub}</div>
           </td>
           <td style="padding: 14px; color:#475569;">
-            <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:#2563EB; font-size:12px;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:#14532D; font-size:12px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
               <span>${r.destination}</span>
             </div>
@@ -1041,15 +1041,15 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       modalScopeBadge.textContent = `${roleBadges[roleKey] || 'All Role Data'}`;
-      modalScopeBadge.style.background = roleKey === 'admin' ? '#DCFCE7' : roleKey === 'manager' ? '#E0F2FE' : roleKey === 'staff' ? '#FEF3C7' : '#EDE9FE';
-      modalScopeBadge.style.color = roleKey === 'admin' ? '#15803D' : roleKey === 'manager' ? '#0284C7' : roleKey === 'staff' ? '#D97706' : '#7C3AED';
+      modalScopeBadge.style.background = roleKey === 'admin' ? '#DCFCE7' : roleKey === 'manager' ? '#DCFCE7' : roleKey === 'staff' ? '#FEF3C7' : '#EDE9FE';
+      modalScopeBadge.style.color = roleKey === 'admin' ? '#15803D' : roleKey === 'manager' ? '#14532D' : roleKey === 'staff' ? '#D97706' : '#7C3AED';
 
       const locText = loc === 'ALL' ? 'All Locations' : loc;
       modalScopeSummaryText.textContent = `Target Branch: ${targetStoreName} (${locText})`;
       if (modalScopeBadge) {
         modalScopeBadge.textContent = loc === 'ALL' ? 'Global Scope' : loc;
-        modalScopeBadge.style.background = '#E0F2FE';
-        modalScopeBadge.style.color = '#0284C7';
+        modalScopeBadge.style.background = '#DCFCE7';
+        modalScopeBadge.style.color = '#14532D';
       }
     }
 
@@ -1437,8 +1437,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeBg = '#DCFCE7';
                 badgeColor = '#15803D';
               } else if (role === 'manager') {
-                badgeBg = '#E0F2FE';
-                badgeColor = '#0284C7';
+                badgeBg = '#DCFCE7';
+                badgeColor = '#14532D';
               } else if (role === 'staff') {
                 badgeBg = '#FEF3C7';
                 badgeColor = '#D97706';
@@ -1522,7 +1522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetLoc = scope.branchLocation || '';
         const isSpecificStore = targetStore && targetStore !== 'All Stores' && !targetStore.startsWith('All Branch Stores') && !targetStore.includes('Own Admin Only');
 
-        if (!confirm(`Confirm Restore & Automatic Linking:\n\nThis snapshot will be applied and linked directly to:\n• Target Role: ${roleName}\n• Branch Location: ${targetLoc || 'Global'}\n• Branch Store Hub: ${targetStore || 'All Stores'}\n\nThis will update local records and synchronize all data directly to Supabase. Proceed?`)) {
+        if (!await window.rmimsConfirm(`Confirm Restore & Automatic Linking:\n\nThis snapshot will be applied and linked directly to:\n• Target Role: ${roleName}\n• Branch Location: ${targetLoc || 'Global'}\n• Branch Store Hub: ${targetStore || 'All Stores'}\n\nThis will update local records and synchronize all data directly to Supabase. Proceed?`)) {
           return;
         }
 

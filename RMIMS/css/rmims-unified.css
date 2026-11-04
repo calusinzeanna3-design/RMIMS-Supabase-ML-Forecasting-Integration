@@ -2707,8 +2707,8 @@ table {
 }
 
 .icon-blue {
-  background: rgba(37, 99, 235, 0.12) !important;
-  color: #2563eb !important;
+  background: rgba(20, 83, 45, 0.12) !important;
+  color: #14532D !important;
 }
 
 .icon-green {
@@ -2819,8 +2819,8 @@ table {
 }
 
 .rmsme-notif-icon.priority-info {
-  background: #eff6ff !important;
-  color: #2563eb !important;
+  background: #F0FDF4 !important;
+  color: #14532D !important;
 }
 
 .rmsme-notification-item {
@@ -3158,11 +3158,11 @@ table {
 }
 
 .rmsme-category-badge.cat-receiving { background: #dcfce7; color: #15803d; }
-.rmsme-category-badge.cat-disbursement { background: #dbeafe; color: #1d4ed8; }
+.rmsme-category-badge.cat-disbursement { background: #DCFCE7; color: #14532D; }
 .rmsme-category-badge.cat-inventory { background: #f1f5f9; color: #475569; }
 .rmsme-category-badge.cat-alert { background: #fef3c7; color: #b45309; }
 .rmsme-category-badge.cat-forecast { background: #ede9fe; color: #6d28d9; }
-.rmsme-category-badge.cat-login { background: #e0f2fe; color: #0369a1; }
+.rmsme-category-badge.cat-login { background: #DCFCE7; color: #14532D; }
 .rmsme-category-badge.cat-system { background: #f3f4f6; color: #374151; }
 
 .rmsme-modal-notif-desc {
@@ -4077,8 +4077,8 @@ input.inv-input-date.flatpickr-input.active {
 }
 
 .modal-icon.icon-blue {
-  background: #EFF6FF !important;
-  color: #2563EB !important;
+  background: #F0FDF4 !important;
+  color: #14532D !important;
 }
 
 .modal-header-info h4 {
@@ -4202,8 +4202,8 @@ input.inv-input-date.flatpickr-input.active {
 
 .ma-stepper-wrap:focus-within,
 .input-group .ma-stepper-wrap:focus-within {
-  border-color: #2563EB !important;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
+  border-color: #14532D !important;
+  box-shadow: 0 0 0 2px rgba(20, 83, 45, 0.12) !important;
 }
 
 .ma-stepper-btn {

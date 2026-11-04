@@ -394,13 +394,13 @@ function renderManagerUsageChartData() {
         {
           label: 'Material Disbursements',
           data: disbData,
-          borderColor: '#0284C7',
-          backgroundColor: 'rgba(2, 132, 199, 0.08)',
+          borderColor: '#14532D',
+          backgroundColor: 'rgba(20, 83, 45, 0.08)',
           fill: true,
           tension: 0.35,
           borderWidth: 2.2,
           pointRadius: 3,
-          pointBackgroundColor: '#0284C7',
+          pointBackgroundColor: '#14532D',
           pointHoverRadius: 5
         }
       ]
@@ -661,7 +661,7 @@ function renderTop5Chart(materials, disbursements, staffTx) {
 
   const labels = sorted.map(item => {
     // Keep labels concise for clean bar rendering
-    return item.name.length > 18 ? item.name.slice(0, 16) + '...' : item.name;
+    return (window.rmimsWrapLabel ? window.rmimsWrapLabel(item.name, 16) : item.name);
   });
   const dataVals = sorted.map(item => item.total);
 
@@ -748,7 +748,7 @@ function renderTop5Chart(materials, disbursements, staffTx) {
         }
       }
     },
-    plugins: [valueLabelsPlugin]
+    plugins: [] // the bar numbers come from js/chart-bar-values.js (one set, hidden when crowded)
   });
 }
 
@@ -854,7 +854,7 @@ function renderTop5ReceivedChart(materials, receipts, staffTx) {
   const topItems = matList.slice(0, 5);
 
   const labels = topItems.map(item => {
-    return item.name.length > 18 ? item.name.slice(0, 16) + '...' : item.name;
+    return (window.rmimsWrapLabel ? window.rmimsWrapLabel(item.name, 16) : item.name);
   });
   const futureReqVals = topItems.map(item => item.futureReq);
   const receivedVals = topItems.map(item => item.received);
@@ -969,7 +969,7 @@ function renderTop5ReceivedChart(materials, receipts, staffTx) {
         }
       }
     },
-    plugins: [valueLabelsPlugin]
+    plugins: [] // the bar numbers come from js/chart-bar-values.js (one set, hidden when crowded)
   });
 }
 
@@ -1148,14 +1148,17 @@ function renderSmartAlerts(materials) {
     const stock = Number(mat.current_stock) || 0;
     const min = Number(mat.minimum_threshold) || 0;
     const unit = mat.unit_of_measure || mat.unit || '';
-    const estDailyRate = Math.max(0.5, Number((min / 7).toFixed(1)));
-    const days = stock <= 0 ? 0 : Math.max(1, Math.round(stock / estDailyRate));
+    // days left come ONLY from recorded usage (same engine as Forecasting); no usage recorded -> no estimate
+    let cov = null;
+    try { cov = getMaterialCoverage(mat); } catch (_) {}
+    const knownDays = cov && cov.hasData && Number.isFinite(cov.daysOfCover) ? Math.max(0, Math.round(cov.daysOfCover)) : null;
+    const days = stock <= 0 ? 0 : (knownDays === null ? 9999 : Math.max(1, knownDays));
 
     let indClass = 'ind-amber';
     let msgClass = 'msg-amber';
     let badgeClass = 'badge-watch';
     let badgeText = 'Watch Stock';
-    let msg = `May run low in ${days} days`;
+    let msg = days >= 9999 ? (stock < min ? 'Below minimum stock level' : 'Watch stock level (no usage recorded yet)') : `May run low in ${days} days`;
 
     if (stock <= 0) {
       indClass = 'ind-red';
@@ -1163,18 +1166,18 @@ function renderSmartAlerts(materials) {
       badgeClass = 'badge-low';
       badgeText = 'Out of Stock';
       msg = 'Stock exhausted - Reorder required';
-    } else if (days <= 3) {
-      indClass = 'ind-red';
-      msgClass = 'msg-red';
-      badgeClass = 'badge-low';
+    } else if (days <= 3 || stock < min) {
+      indClass = 'ind-amber';
+      msgClass = 'msg-amber';
+      badgeClass = 'badge-watch';
       badgeText = 'Low Stock';
-      msg = `May run low in ${days} day${days === 1 ? '' : 's'}`;
+      msg = days >= 9999 ? 'Below minimum stock level' : `May run low in ${days} day${days === 1 ? '' : 's'}`;
     }
 
     // Resolve authentic material thumbnail from 19 Raw materials of scones and muffins images
     let thumbSrc = mat.image || mat.imageUrl || getSconesMaterialImagePath(mat.id || mat.item_code || mat.name, '../assets');
     if (!thumbSrc) {
-      thumbSrc = getSconesMaterialImagePath(mat.name, '../assets') || '../assets/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-001%20All%20Purpose%20Flour.jpg';
+      thumbSrc = getSconesMaterialImagePath(mat.name, '../assets') || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='10' fill='%23F0FDF4'/%3E%3Cpath d='M22 11l9 5v12l-9 5-9-5V16z' fill='none' stroke='%2315803D' stroke-width='2'/%3E%3Cpath d='M13 16l9 5 9-5M22 21v12' fill='none' stroke='%2315803D' stroke-width='2'/%3E%3C/svg%3E";
     }
 
     html += `
@@ -1335,7 +1338,7 @@ function renderPendingTransactions(staffTx) {
             material: tx.material || tx.materialName,
             quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
             actor: tx.staff || 'Staff Member',
-            timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '10:00:00'}` : new Date().toISOString())
+            timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '00:00:00'}` : new Date().toISOString())
           });
           notifModified = true;
         }
@@ -1416,7 +1419,7 @@ function renderPendingTransactions(staffTx) {
     if (pending.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" class="table-empty-state" style="text-align:center; padding:38px 20px;">
+          <td colspan="7" class="table-empty-state" style="text-align:center; padding:38px 20px;">
             <div class="empty-icon-wrap" style="width:44px; height:44px; border-radius:50%; background:#F0FDF4; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; color:#16A34A;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1438,7 +1441,6 @@ function renderPendingTransactions(staffTx) {
         return `
           <tr>
             <td><strong>${escapeHtml(t.date || '—')}</strong></td>
-            <td><small style="color:#64748B; font-weight:600;">${escapeHtml(t.time || '—')}</small></td>
             <td><span class="status-pill ${actPillCls}">${actLabel}</span></td>
             <td><strong>${escapeHtml(t.material || t.materialName || '--')}</strong></td>
             <td><strong>${escapeHtml(t.quantity || 0)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</strong></td>
@@ -1448,10 +1450,9 @@ function renderPendingTransactions(staffTx) {
                 <span>${escapeHtml(t.staff || t.staffName || 'Staff Member')}</span>
               </div>
             </td>
-            <td><span class="status-pill status-pending">Pending</span></td>
+            <td><span class="status-pill status-pending" style="white-space:nowrap;">${t.isUpdated ? 'Pending Update' : 'Pending'}</span></td>
             <td>
-              <button type="button" class="btn-primary-action btn-open-review-row"
-                style="padding:5px 14px; font-size:12px; border-radius:8px; cursor:pointer;"
+              <button type="button" class="rmims-btn-xs rmims-btn-primary btn-open-review-row"
                 data-ref="${escapeHtml(t.ref || t.id)}"
                 data-staff="${escapeHtml(t.staff || t.staffName || 'Staff Member')}"
                 data-activity="${escapeHtml(t.type || t.activity || 'Transaction')}"
@@ -1467,7 +1468,12 @@ function renderPendingTransactions(staffTx) {
       }).join('');
 
       tbody.querySelectorAll('.btn-open-review-row').forEach(btn => {
-        btn.addEventListener('click', () => {
+        // Review opens the record in Staff Activity (where it is approved / returned)
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault(); ev.stopPropagation();
+          window.location.href = 'staff-activity.html?review=' + encodeURIComponent(btn.getAttribute('data-ref') || '');
+        });
+        if (false) btn.addEventListener('click', () => {
           const data = {
             ref: btn.getAttribute('data-ref'),
             staff: btn.getAttribute('data-staff'),

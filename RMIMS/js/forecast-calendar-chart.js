@@ -119,10 +119,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
               <span class="cal-legend-dot cal-dot-green"></span>
               <span>Consumed Materials (Usage)</span>
             </div>
-            <div class="cal-legend-item">
-              <span class="cal-legend-band-preview"></span>
-              <span id="${instanceId}_legendMarginText">±6.65% Margin of Error Limits</span>
-            </div>
+
           </div>
 
           <div class="cal-chart-canvas-wrap">
@@ -718,7 +715,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
       }
     });
 
-    let liveDesc = useTrained ? (anyEvidence ? 'Trained 12-Year Model · live-calibrated' : 'Awaiting recorded consumption') : marginSourceDesc;
+    let liveDesc = useTrained ? (anyEvidence ? 'Trained 12-Year Model · live-calibrated · self-learning for new materials' : 'Awaiting recorded consumption') : marginSourceDesc;
     if (useTrained) {
       // same model margin for every material, horizon and view
       const avgPct = modelMapePct;
@@ -738,10 +735,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
 
     // Update dynamic margin label in the legend on top of the chart
     const legendMarginEl = document.getElementById(`${instanceId}_legendMarginText`);
-    if (legendMarginEl) {
-      legendMarginEl.textContent = `${data.marginLabel} MAPE Margin (${data.marginSourceDesc})` +
-        (data.consumedDays > 0 ? ` · ${data.insideDays}/${data.consumedDays} consumed days within` : '');
-    }
+    // (the technical margin-of-error line is not shown to end users)
 
     // Gradients
     const darkGrad = ctx.createLinearGradient(0, 0, 0, 300);

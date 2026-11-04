@@ -1098,23 +1098,7 @@ export async function fetchRegisteredUsers() {
     // Realtime Supabase synchronization: Supabase user_profiles is the authoritative source.
     // Sync local mirror with real Supabase records to prevent zombie / orphaned accounts.
 
-    // Ensure approved users cache is kept in sync with Supabase status
-    try {
-      const rawApproved = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
-      const approvedUsers = rawApproved ? JSON.parse(rawApproved) : [];
-      if (Array.isArray(approvedUsers)) {
-        approvedUsers.forEach(au => {
-          if (!au) return;
-          const auEmail = (au.email || '').toLowerCase().trim();
-          const auId = String(au.id || '').trim();
-          const match = users.find(u => 
-            (auId && u.id && String(u.id) === auId) ||
-            (auEmail && u.email && u.email.toLowerCase() === auEmail)
-          );
-          if (match) match.status = 'Active';
-        });
-      }
-    } catch (_) {}
+    // (a user's status comes ONLY from Supabase: an old local "approved" copy never shows a deactivated user as Active)
 
     try {
       localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
@@ -1167,51 +1151,7 @@ export async function fetchPendingApprovals() {
 
     // Realtime Supabase synchronization: Pending list is synced directly from Supabase user_profiles
 
-    // Strictly filter out ANY user who is already approved in STORAGE_KEYS.APPROVED_USERS or REGISTERED_USERS as Active
-    try {
-      const rawApproved = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
-      const approvedUsers = rawApproved ? JSON.parse(rawApproved) : [];
-      const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-      const activeReg = rawReg ? JSON.parse(rawReg) : [];
-
-      pending = pending.filter(p => {
-        if (!p) return false;
-        const pEmail = (p.email || '').toLowerCase().trim();
-        const pUser = (p.username || '').toLowerCase().trim();
-        const pId = String(p.id || '').trim();
-        const pName = (p.name || '').toLowerCase().trim();
-
-        const isApproved = Array.isArray(approvedUsers) && approvedUsers.some(a => {
-          if (!a) return false;
-          const aEmail = (a.email || '').toLowerCase().trim();
-          const aUser = (a.username || '').toLowerCase().trim();
-          const aId = String(a.id || '').trim();
-          const aName = (a.name || '').toLowerCase().trim();
-          return (pEmail && aEmail && aEmail === pEmail) ||
-                 (pUser && aUser && (aUser === pUser || aUser.replace(/\s+/g, '') === pUser.replace(/\s+/g, ''))) ||
-                 (pId && aId && aId === pId) ||
-                 (pName && aName && (aName === pName || aName.replace(/\s+/g, '') === pName.replace(/\s+/g, '')));
-        });
-        if (isApproved) return false;
-
-        const isRegActive = Array.isArray(activeReg) && activeReg.some(r => {
-          if (!r) return false;
-          const rStatus = String(r.status || '').toLowerCase().trim();
-          if (rStatus !== 'active') return false;
-          const rEmail = (r.email || '').toLowerCase().trim();
-          const rUser = (r.username || '').toLowerCase().trim();
-          const rId = String(r.id || '').trim();
-          const rName = (r.name || '').toLowerCase().trim();
-          return (pEmail && rEmail && rEmail === pEmail) ||
-                 (pUser && rUser && (rUser === pUser || rUser.replace(/\s+/g, '') === pUser.replace(/\s+/g, ''))) ||
-                 (pId && rId && rId === pId) ||
-                 (pName && rName && (rName === pName || rName.replace(/\s+/g, '') === pName.replace(/\s+/g, '')));
-        });
-        if (isRegActive) return false;
-
-        return true;
-      });
-    } catch (_) {}
+    // (the pending list is exactly what Supabase says: an old local copy never hides a real request)
 
     try {
       localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(pending));

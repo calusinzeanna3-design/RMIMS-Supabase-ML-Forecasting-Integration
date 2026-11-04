@@ -10,10 +10,11 @@
  * - Official inventory is NOT updated yet
  */
 
+import { attachUnitPicker, detachUnitPicker, readQtyInStockUnit } from './rmims-unit-convert.js';
 import { displayFinishedProduct } from './rmims-reorder-engine.js';
 import { autoPaginate } from './rmims-table-pager.js';
 import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
-import { checkDisburseLimit, applyDisburseGuardUI } from './disburse-guard.js';
+import { checkDisburseLimit, applyDisburseGuardUI, confirmBelowMinimum } from './disburse-guard.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
 import {
@@ -232,16 +233,7 @@ function updateBundleDisbursePreview() {
   productsGrid.innerHTML = cardsHtml;
   bindBundleSelection(productsGrid, matName, matchedProducts);
 
-  // Add click to fill notes
-  productsGrid.querySelectorAll('.rec-product-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const prodName = card.dataset.product;
-      const notesEl = document.getElementById('staffDisbNotes');
-      if (notesEl && prodName) {
-        notesEl.value = `${prodName} Batch`;
-      }
-    });
-  });
+  // (picking a product does not write anything into Notes: notes are only what the user types)
 }
 
 function hideBundleDisburseSection() {
@@ -393,7 +385,7 @@ function populateMaterialSelect() {
     opt.value = matName;
     opt.dataset.name = matName;
     const unit = m.unit_of_measure || m.unit || '';
-    opt.textContent = unit ? `${matName} (${m.category || 'General'} • ${unit})` : `${matName} (${m.category || 'General'})`;
+    opt.textContent = matName; // the raw material only
     opt.dataset.unit = unit;
     opt.dataset.stock = m.current_stock ?? m.currentStock ?? m.stock ?? 0;
     opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 0;
@@ -441,6 +433,7 @@ function bindFormEvents() {
       if (selected && selected.value) {
         const u = selected.dataset.unit || '';
         if (unitBadge) unitBadge.textContent = u || '--';
+        { const us = attachUnitPicker('staffDisbUnitBadge', u); if (us) us.onchange = () => refreshStaffDisburseGuard(); } // any compatible unit
         if (unitSelect) {
           if (u && !Array.from(unitSelect.options).some(o => o.value === u)) {
             const opt = document.createElement('option');
@@ -450,7 +443,7 @@ function bindFormEvents() {
           }
           unitSelect.value = u;
         }
-        if (qtyInput) qtyInput.placeholder = u ? `e.g. 20 ${u}` : 'e.g. 20';
+        if (qtyInput) qtyInput.placeholder = "e.g. 20";
         if (stockPreview) stockPreview.style.display = 'block';
         if (stockVal) stockVal.textContent = u ? `${selected.dataset.stock} ${u}` : `${selected.dataset.stock}`;
         if (minVal) minVal.textContent = u ? `${selected.dataset.min} ${u}` : `${selected.dataset.min}`;
@@ -458,6 +451,7 @@ function bindFormEvents() {
       } else {
         if (stockPreview) stockPreview.style.display = 'none';
         if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffDisbUnitBadge');
         if (unitSelect) unitSelect.value = '';
         if (qtyInput) qtyInput.placeholder = 'e.g. 20';
         hideBundleDisburseSection();
@@ -484,6 +478,7 @@ function bindFormEvents() {
       setTimeout(() => {
         if (stockPreview) stockPreview.style.display = 'none';
         if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffDisbUnitBadge');
         if (unitSelect) unitSelect.value = '';
         hideBundleDisburseSection();
         initDatePicker();
@@ -516,7 +511,7 @@ function bindFormEvents() {
   }
 }
 
-/** Re-evaluates the quantity against (current stock - minimum stock). Returns true when the quantity is allowed. */
+/** Checks the quantity: more than the stock is blocked; below the minimum shows a ⚠ warning (asked again before saving). */
 function refreshStaffDisburseGuard() {
   const sel = document.getElementById('staffDisbMaterial');
   const qty = document.getElementById('staffDisbQuantity');
@@ -524,7 +519,9 @@ function refreshStaffDisburseGuard() {
   const opt = sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
   const ui = { warningEl: document.getElementById('staffDisbStockWarning'), inputEl: qty, buttonEl: document.getElementById('btnOpenStaffDisbReview') };
   if (!opt || !opt.value) { applyDisburseGuardUI({ result: { ok: true }, ...ui }); return true; }
-  const result = checkDisburseLimit({ current: opt.dataset.stock, minimum: opt.dataset.min, quantity: qty.value, unit: opt.dataset.unit || '' });
+  const enteredQty = parseFloat(qty.value);
+  const qtyInStockUnit = isNaN(enteredQty) ? qty.value : readQtyInStockUnit(enteredQty, 'staffDisbUnitBadge', opt.dataset.unit || '').qty;
+  const result = checkDisburseLimit({ current: opt.dataset.stock, minimum: opt.dataset.min, quantity: qtyInStockUnit, unit: opt.dataset.unit || '' });
   applyDisburseGuardUI({ result, ...ui });
   return result.ok;
 }
@@ -537,11 +534,14 @@ function handleOpenReview() {
   const notesInput = document.getElementById('staffDisbNotes');
 
   const material = matSelect ? matSelect.value : '';
-  const quantity = qtyInput ? parseFloat(qtyInput.value) : 0;
+  let quantity = qtyInput ? parseFloat(qtyInput.value) : 0;
   const selectedOpt = matSelect && matSelect.selectedIndex >= 0 ? matSelect.options[matSelect.selectedIndex] : null;
   const unit = (selectedOpt && selectedOpt.dataset.unit) ? selectedOpt.dataset.unit : (unitSelect && unitSelect.value ? unitSelect.value : '');
+  // the quantity may be typed in another unit (e.g. kg for a material kept in g): use it in the stock unit
+  const unitConv = (quantity > 0) ? readQtyInStockUnit(quantity, 'staffDisbUnitBadge', unit) : { qty: quantity, note: '' };
+  quantity = unitConv.qty;
   const date = dateInput ? dateInput.value : '';
-  const notes = notesInput ? notesInput.value.trim() : '';
+  const notes = [notesInput ? notesInput.value.trim() : '', unitConv.note].filter(Boolean).join(' • ');
 
   if (!material) {
     alert('Please choose a raw material to disburse.');
@@ -554,15 +554,12 @@ function handleOpenReview() {
     return;
   }
 
-  // A disbursement may never take stock below the minimum stock (hard block, not a warning)
+  // More than the stock on hand is blocked; below the minimum only warns (asked again before saving)
   if (!refreshStaffDisburseGuard()) { if (qtyInput) qtyInput.focus(); return; }
 
   // Soft check for stock availability (kept as a second line of defence; the guard above already blocks this)
   const currentStock = selectedOpt ? parseFloat(selectedOpt.dataset.stock || 0) : 0;
-  if (false && quantity > currentStock) {
-    const proceed = confirm(`Warning: The quantity entered (${quantity} ${unit}) exceeds currently recorded stock (${currentStock} ${unit}).\n\nDo you still wish to submit this disbursement for Manager review?`);
-    if (!proceed) return;
-  }
+  void currentStock;
 
   if (!date) {
     alert('Please select the disbursement date.');
@@ -617,7 +614,7 @@ function handleOpenReview() {
   document.getElementById('revStaffDisbRef').textContent = currentRef;
   document.getElementById('revStaffDisbMaterial').textContent = material;
   document.getElementById('revStaffDisbQty').textContent = `-${quantity.toLocaleString()}${unit ? ' ' + unit : ''}`;
-  document.getElementById('revStaffDisbUsedFor').textContent = usedFor || '—';
+  document.getElementById('revStaffDisbUsedFor').textContent = pick.label || usedFor || '—';
   document.getElementById('revStaffDisbDate').textContent = date;
   document.getElementById('revStaffDisbNotes').textContent = notes || 'No extra notes provided.';
 
@@ -643,6 +640,21 @@ async function handleConfirmSubmission() {
       const displayEl = document.getElementById('staffDisbRefDisplay');
       if (displayEl) displayEl.textContent = freeRef;
     }
+    // Below the minimum stock: allowed, but ask "Are you sure?" first (Yes deducts, No goes back)
+    try {
+      const rd = currentReviewData;
+      const key = String(rd.materialId || rd.material || '').toUpperCase();
+      const fresh = (getSystemRawMaterials() || []).find(m =>
+        String(m.item_code || m.id || '').toUpperCase() === key || String(m.name || '').toUpperCase() === key);
+      if (fresh) {
+        const r = checkDisburseLimit({ current: fresh.current_stock ?? fresh.currentStock, minimum: fresh.minimum_threshold ?? fresh.minimum_stock,
+          quantity: rd.quantity, unit: rd.unit });
+        if (r.ok && r.warn) {
+          const yes = await confirmBelowMinimum(r, { material: fresh.name || rd.material, quantity: rd.quantity, unit: rd.unit });
+          if (!yes) return;
+        }
+      }
+    } catch (_) {}
     submitDisburseNow();
   } finally {
     staffDisbSubmitting = false;
@@ -663,9 +675,9 @@ function submitDisburseNow() {
       const r = checkDisburseLimit({ current: fresh.current_stock ?? fresh.currentStock, minimum: fresh.minimum_threshold ?? fresh.minimum_stock,
         quantity: rd.quantity, unit: rd.unit });
       if (!r.ok) {
-        alert(r.message);
         const m0 = document.getElementById('staffDisburseReviewModal');
         if (m0) { m0.classList.remove('open'); m0.style.display = 'none'; }
+        alert(r.message);
         return;
       }
     }
@@ -688,6 +700,7 @@ function submitDisburseNow() {
         document.getElementById('staffDisbStockPreview').style.display = 'none';
         const unitBadge = document.getElementById('staffDisbUnitBadge');
         if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffDisbUnitBadge');
         const unitSelect = document.getElementById('staffDisbUnit');
         if (unitSelect) unitSelect.value = '';
         hideBundleDisburseSection();
@@ -743,6 +756,7 @@ function submitDisburseNow() {
   document.getElementById('staffDisbStockPreview').style.display = 'none';
   const unitBadge = document.getElementById('staffDisbUnitBadge');
   if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffDisbUnitBadge');
   const unitSelect = document.getElementById('staffDisbUnit');
   if (unitSelect) unitSelect.value = '';
   hideBundleDisburseSection();
@@ -779,7 +793,7 @@ function renderMySubmissions() {
   if (staffTx.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align:center; padding:28px 16px; color:#64748B;">
+        <td colspan="7" style="text-align:center; padding:28px 16px; color:#64748B;">
           No disburse submissions recorded yet.
         </td>
       </tr>
@@ -818,7 +832,7 @@ function renderMySubmissions() {
     } else if (st === 'Deleted') {
       statusBadge = `<span class="badge" style="background:#F1F5F9; color:#64748B; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Deleted by Manager</span>`;
     } else {
-      statusBadge = `<span class="badge" style="background:#E0F2FE; color:#0369A1; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Pending</span>`;
+      statusBadge = `<span class="badge" style="background:#DCFCE7; color:#14532D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px; white-space:nowrap;">${t.isUpdated ? 'Pending Update' : 'Pending'}</span>`;
     }
 
     let actionBtn = '';
@@ -835,7 +849,6 @@ function renderMySubmissions() {
       <tr style="${isCorrection ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B;">${escapeHtml(t.ref)}</td>
         <td><strong>${escapeHtml(dateVal)}</strong></td>
-        <td><small style="color:#64748B; font-weight:600;">${escapeHtml(timeVal)}</small></td>
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
         <td style="font-weight:700; color:#D97706;">-${escapeHtml(t.quantity)}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</td>
         <td style="color:#334155; font-size:12px;">${escapeHtml(displayFinishedProduct(t.material || t.materialName || '', t.usedFor))}</td>

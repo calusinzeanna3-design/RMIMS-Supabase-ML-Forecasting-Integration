@@ -22,7 +22,8 @@ import {
 } from "./tenant-manager.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements, invalidateForecastCache, getSconesMaterialImagePath, resolveForecastingMaterialByName, parseSafeDate } from "./system-materials.js";
 import { initForecastCalendarCard } from "./forecast-calendar-chart.js";
-import { forecastNextDays, planRestock, REQUIREMENT_BUFFER_Z, buildLiveForecaster, dateKey as trainedDateKey, getTrainedProfile, trainedDailyForecast, TRAINED_OVERALL_DAILY_MAPE } from "./trained-forecast-engine.js";
+import { forecastNextDays, planRestock, REQUIREMENT_BUFFER_Z, buildLiveForecaster, dateKey as trainedDateKey, getTrainedProfile, trainedDailyForecast, TRAINED_OVERALL_DAILY_MAPE, isTrainedMaterial } from "./trained-forecast-engine.js";
+import { getLearnedProfile, describeLearnedProfile } from "./self-learning-model.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { extractRefFromText } from "./rmims-deleted-ledger.js";
 import { renderForecastGauges } from "./rmims-forecast-gauges.js";
@@ -32,7 +33,13 @@ import { computeDataDrivenReorder } from "./rmims-reorder-engine.js";
    GLOBAL STATE
    ========================================================== */
 
-const FORECAST_MODEL_VERSION = "basis-v1"; // bump to invalidate cached forecasts from an older model
+/** The fixed margin of error of the company's model (7-day and monthly alike): Scones & Muffins 6.65 %, KXC 7.51 %. */
+function fcMarginPct() {
+    let isScones = true;
+    try { const t = getActiveTenantContext(); if (t) isScones = Boolean(t.isScones); } catch (_) {}
+    return (isScones ? TRAINED_OVERALL_DAILY_MAPE : 7.51).toFixed(2);
+}
+const FORECAST_MODEL_VERSION = "self-learning-v2-batches-fixed-mape"; // bump to invalidate cached forecasts from an older model
 
 const state = {
     materials: [],           // Normalized from public.raw_materials + Flask registry
@@ -76,7 +83,11 @@ let resolvedApiBase = window.ENV_FLASK_API_BASE ?? null;
 let mlIsAvailable = null;
 
 async function checkMlServiceAvailable() {
-    if (mlIsAvailable !== null) return mlIsAvailable;
+    // The forecasts come only from the in-app model (12-year trained pattern + recorded usage). The external ML web
+    // service is never used, so no material list or forecast from outside the company's own data can appear.
+    resolvedApiBase = "";
+    mlIsAvailable = false;
+    if (mlIsAvailable === false) return false;
 
     const candidates = [];
     if (window.ENV_FLASK_API_BASE) candidates.push(window.ENV_FLASK_API_BASE);
@@ -137,7 +148,7 @@ function renderTenantBanner() {
 
     if (titleEl) titleEl.textContent = tCtx.name;
     if (folderEl) folderEl.textContent = tCtx.datasetFolder;
-    if (modelEl) modelEl.textContent = `Model: ${tCtx.modelFile} (${tCtx.materialsCount} Materials)`;
+    if (modelEl) modelEl.textContent = `Model: ${tCtx.modelFile} + continuous self-learning from live usage (${(state && state.materials && state.materials.length) || tCtx.materialsCount} Materials)`;
     if (marginEl) {
         marginEl.textContent = `Tolerance Corridor: ${tCtx.corridor} (${tCtx.lockedMape})`;
         marginEl.style.color = tCtx.isScones ? "#b45309" : "#059669";
@@ -212,15 +223,9 @@ async function bootstrapForecastApp(user) {
     }
 
     if (!activeUser) {
-        activeUser = {
-            id: "mgr-session",
-            uid: "mgr-session",
-            email: "manager@rmsme.ph",
-            role: "manager",
-            operational_role: "manager",
-            status: "active",
-            full_name: "Store Manager"
-        };
+        // nobody signed in: no made-up session, back to the login page
+        window.location.href = "../login.html";
+        return;
     }
 
     try {
@@ -452,7 +457,7 @@ async function loadAuthoritativeData() {
 
         // 1. Authoritative Materials per Active Tenant (Strictly End-User Imported / Added Materials)
         const expectedPrefix = tCtx.isScones ? "NB-" : "RM-";
-        const tenantBaseMats = getTenantMaterials();
+        const tenantBaseMats = []; // no built-in catalog figures: every value comes from the company's own data
         const baseModelByCode = new Map();
         const baseModelByName = new Map();
         tenantBaseMats.forEach(bm => {
@@ -466,9 +471,7 @@ async function loadAuthoritativeData() {
         getSystemRawMaterials().forEach(m => {
             const resolvedModel = resolveForecastingMaterialByName(m.name || m.raw_material_name);
             let code = String(m.item_code || m.id || (resolvedModel ? resolvedModel.code : "")).toUpperCase().trim();
-            if (resolvedModel && resolvedModel.code && resolvedModel.code.startsWith(expectedPrefix)) {
-                code = resolvedModel.code;
-            }
+            // the material's own code always wins (the registered code only fills in a missing one)
             if (!code.startsWith(expectedPrefix)) return; // Air-gap: strictly reject cross-tenant items!
 
             const bm = baseModelByCode.get(code) || baseModelByName.get(String(m.name || "").toLowerCase().trim()) || {};
@@ -477,7 +480,7 @@ async function loadAuthoritativeData() {
             matMap.set(key, {
                 id: code.toLowerCase(),
                 item_code: code,
-                name: (resolvedModel && resolvedModel.canonicalName) ? resolvedModel.canonicalName : (m.name || m.raw_material_name),
+                name: m.name || m.raw_material_name || (resolvedModel && resolvedModel.canonicalName), // the company's own name
                 unit_of_measure: m.unit_of_measure || m.unit || bm.unit_of_measure || bm.unit || (tCtx.isScones ? "g" : "kg"),
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
                 minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? bm.minimum_threshold ?? 0),
@@ -500,9 +503,7 @@ async function loadAuthoritativeData() {
         rawMats.forEach(sm => {
             const resolvedModel = resolveForecastingMaterialByName(sm.name || sm.raw_material_name);
             let smCode = String(sm.item_code || sm.id || (resolvedModel ? resolvedModel.code : "")).toUpperCase().trim();
-            if (resolvedModel && resolvedModel.code && resolvedModel.code.startsWith(expectedPrefix)) {
-                smCode = resolvedModel.code;
-            }
+            // the material's own code always wins
             if (!smCode || !smCode.startsWith(expectedPrefix)) return;
             const key = smCode.toLowerCase();
             const smStock = Number(sm.current_stock ?? 0);
@@ -511,6 +512,20 @@ async function loadAuthoritativeData() {
                 if (target.current_stock <= 0 && smStock > 0) {
                     target.current_stock = smStock;
                 }
+            } else {
+                // a raw material added in Supabase (e.g. from another device) is forecast too, not only the 19
+                matMap.set(key, {
+                    id: key,
+                    item_code: smCode,
+                    name: sm.name || sm.raw_material_name || smCode,
+                    unit_of_measure: sm.unit_of_measure || sm.unit || (tCtx.isScones ? "g" : "kg"),
+                    current_stock: smStock,
+                    minimum_threshold: Number(sm.minimum_threshold ?? sm.minimum_stock ?? 0),
+                    date_added: sm.first_date || sm.date_added || (sm.created_at ? String(sm.created_at).slice(0, 10) : ""),
+                    last_updated: sm.latest_date || sm.last_updated || sm.updated_at || "",
+                    description: sm.description || "",
+                    created_at: sm.created_at || new Date().toISOString()
+                });
             }
         });
 
@@ -519,36 +534,7 @@ async function loadAuthoritativeData() {
             return code.startsWith(expectedPrefix);
         });
 
-        // Guarantee 19 Scones & Muffins materials are ALWAYS present
-        if (tCtx.isScones && masterMats.length < 19) {
-            const existingCodes = new Set(masterMats.map(m => String(m.item_code || m.id || "").toUpperCase().trim()));
-            const AUTHENTIC_SCONES = (typeof AUTHENTIC_19_SCONES_MATERIALS !== 'undefined') ? AUTHENTIC_19_SCONES_MATERIALS : getTenantMaterials();
-            AUTHENTIC_SCONES.forEach(bm => {
-                const bCode = String(bm.item_code || bm.itemCode || bm.id || "").toUpperCase().trim();
-                if (!bCode || existingCodes.has(bCode)) return;
-                existingCodes.add(bCode);
-                masterMats.push({
-                    id: bCode.toLowerCase(),
-                    item_code: bCode,
-                    name: bm.name || bm.raw_material_name,
-                    unit_of_measure: bm.unit || bm.unit_of_measure || "kg",
-                    current_stock: Number(bm.current_stock ?? 0),
-                    minimum_threshold: Number(bm.minimum_threshold ?? bm.minimum_stock ?? 0),
-                    date_added: bm.date_added || "",
-                    last_updated: bm.last_updated || bm.date_added || "",
-                    description: bm.description || "",
-                    created_at: bm.created_at || new Date().toISOString(),
-                    forecast_daily: bm.forecast_daily,
-                    forecast_weekly: bm.forecast_weekly,
-                    forecast_monthly: bm.forecast_monthly,
-                    forecast_90d: bm.forecast_90d,
-                    daily_mape: bm.daily_mape,
-                    weekly_mape: bm.weekly_mape,
-                    p90_margin: bm.p90_margin,
-                    p95_margin: bm.p95_margin
-                });
-            });
-        }
+        // (no built-in materials are added: the forecast covers exactly the company's own raw materials)
 
         // 2. Authoritative Disbursements (Strictly Live User Transactions)
         // One record per real movement: the local copy and the Supabase copy of the same disbursement share the
@@ -943,8 +929,8 @@ async function evaluateForecastState() {
                         Object.entries(parsed).forEach(([k, v]) => {
                             const liveMat = matByName.get(k);
                             if (liveMat && v && typeof v === "object") {
-                                const f7 = Number(v.forecast7Day?.quantity) || Number(liveMat.forecast_weekly || 0);
-                                const f1m = Number(v.forecast1Month?.quantity) || Number((f7 * 4.15).toFixed(1));
+                                const f7 = Number(v.forecast7Day?.quantity) || 0;      // only what the model computed (no assumed amount)
+                                const f1m = Number(v.forecast1Month?.quantity) || 0;
                                 const curStock = liveMat.currentStock;
                                 const diff = curStock - f7;
                                 const st = curStock <= 0 ? "Out of Stock" : (diff < 0 || curStock <= liveMat.minStock ? "Low Stock" : "Good");
@@ -987,7 +973,9 @@ async function generateAllForecasts() {
     if (genBtn) genBtn.disabled = true;
 
     try {
-        const isMlOnline = await checkMlServiceAvailable();
+        // ONE model everywhere: the in-app engine (12-year trained pattern + the users' recorded usage, fixed margin).
+        // The separate ML web service is not used for the numbers, so Forecasting, Reports and Dashboards always agree.
+        const isMlOnline = false;
         if (!isMlOnline) {
             // Rapid authoritative baseline computation (immediate < 10ms)
             computeAuthoritativeForecastBaseline();
@@ -1010,8 +998,13 @@ async function generateAllForecasts() {
             headers["Authorization"] = `Bearer ${session.access_token}`;
         }
 
+        // Continuous learning: a material with recorded live usage is forecast by the model that keeps training on it
+        // (the 19: the 12-year model + their live days appended after its history; new materials: their own model).
+        // The fixed 12-year backend only answers for trained materials that have no live usage yet.
+        computeAuthoritativeForecastBaseline();
         const fetchPromises = state.materials.map(async (m) => {
             try {
+                if (!isTrainedMaterial(m.itemCode) || getLearnedProfile(m.itemCode)) return null;
                 const encoded = encodeURIComponent(m.name);
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1800);
@@ -1026,9 +1019,9 @@ async function generateAllForecasts() {
                     const data = await res.json();
                     if (data && (data.status === "success" || data.success === true)) {
                         const rawF7 = Number(data.operational_7_day_requirement ?? data.forecast7Day?.quantity ?? 0);
-                        const f7 = rawF7 > 0 ? rawF7 : Number(m.forecast_weekly || 0);
+                        const f7 = rawF7 > 0 ? rawF7 : 0;
                         const rawF1m = Number(data.planning_28_day_requirement ?? data.forecast1Month?.quantity ?? 0);
-                        const f1m = rawF1m > 0 ? rawF1m : Number((f7 * 4.15).toFixed(1));
+                        const f1m = rawF1m > 0 ? rawF1m : 0;
                         const curStock = Number(m.currentStock ?? data.current_stock ?? 0);
                         const diff = Number((curStock - f7).toFixed(2));
                         const normalizedData = {
@@ -1245,7 +1238,7 @@ function updateMarginComplianceBanner() {
         if (titleEl) titleEl.textContent = `Disbursement Accuracy & ${thresholdLabel}`;
         if (subTextEl) subTextEl.textContent = tCtx.isScones 
             ? "All 19 Nutribun raw material disbursements strictly conform to the 12-Year Holt-Winters forecast envelope (Weekly MAPE 2.70%)."
-            : "All raw material disbursements strictly conform to the ±7.51% requirement envelope. Forecast accuracy and stock balance are preserved.";
+            : `All raw material disbursements strictly conform to the ±${fcMarginPct()}% requirement envelope. Forecast accuracy and stock balance are preserved.`;
         if (badge) {
             badge.style.background = "rgba(16, 185, 129, 0.14)";
             badge.style.color = "#047857";
@@ -2618,7 +2611,7 @@ function renderDecisionSupport() {
     if (!hasTransactions) {
         container.innerHTML = `
             <div class="fc-decision-standby" style="grid-column: 1 / -1; text-align: center; padding: 36px 20px; background: #F8FAFC; border: 1.5px dashed #CBD5E1; border-radius: 14px;">
-                <div style="width: 44px; height: 44px; border-radius: 50%; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: #F0FDF4; color: #14532D; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 </div>
                 <div style="font-weight: 700; font-size: 14px; color: #0F2A1B; margin-bottom: 4px;">AI Forecasting Decision Support Standby</div>
@@ -2881,7 +2874,7 @@ function renderLowStockAlerts() {
     const getThumb = (name, matId) => {
         let path = getSconesMaterialImagePath(matId || name, '../assets');
         if (!path) {
-            path = getSconesMaterialImagePath(name, '../assets') || '../assets/19%20Raw%20materials%20of%20scones%20and%20muffins%20images/NB-001%20All%20Purpose%20Flour.jpg';
+            path = getSconesMaterialImagePath(name, '../assets') || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='10' fill='%23F0FDF4'/%3E%3Cpath d='M22 11l9 5v12l-9 5-9-5V16z' fill='none' stroke='%2315803D' stroke-width='2'/%3E%3Cpath d='M13 16l9 5 9-5M22 21v12' fill='none' stroke='%2315803D' stroke-width='2'/%3E%3C/svg%3E";
         }
         return path;
     };
@@ -2911,9 +2904,9 @@ function renderLowStockAlerts() {
             badgeText = 'Out of Stock';
             msg = 'Stock exhausted - Reorder required';
         } else if (stock <= min || days <= 3) {
-            indClass = 'ind-red';
-            msgClass = 'msg-red';
-            badgeClass = 'badge-low';
+            indClass = 'ind-amber';
+            msgClass = 'msg-amber';
+            badgeClass = 'badge-watch';
             badgeText = 'Low Stock';
             msg = days >= 9999 ? 'Below minimum stock level' : `May run low in ${Math.max(1, days)} day${days === 1 ? '' : 's'}`;
         }
@@ -3219,7 +3212,7 @@ function renderTopMaterialsRequirementChart() {
 
     const labels = topItems.map(d => {
         const name = d.name || 'Raw Material';
-        return name.length > 16 ? name.substring(0, 14) + '...' : name;
+        return window.rmimsWrapLabel ? window.rmimsWrapLabel(name, 16) : name; // full name, wrapped (never "...")
     });
 
     const datasets = [];
@@ -3565,7 +3558,7 @@ const MODAL_FUNCTION_CONFIG = {
     },
     forecast_data: {
         title: "Material Requirement Planning & Consumption Forecast",
-        subtitle: "Ground truth recorded usage vs AutoReg AI predicted requirements with ±7.51% confidence intervals",
+        subtitle: `Ground truth recorded usage vs AI predicted requirements with ±${fcMarginPct()}% margin of error`,
         tag: "Forecast Data",
         icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`
     },
@@ -3875,7 +3868,7 @@ function renderModalFunctionView() {
                     </td>
                     <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
                     <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${dailyBurn.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}/d</small>` : dash}</td>
-                    <td style="text-align: right;">${hasData ? `<span class="fc-num-demand">${req7.toFixed(1)}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small>` : dash}</td>
+                    <td style="text-align: right;">${hasData ? `<span class="fc-num-demand">${req7.toFixed(1)}</span> <small style="color:#14532D;">${escapeHtml(m.unit)}</small>` : dash}</td>
                     <td style="text-align: right;">${hasData ? `<span class="fc-num-muted">${req30.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small>` : dash}</td>
                     <td><strong>${depLabel}</strong></td>
                     <td>${badgeHtml}</td>
@@ -3903,11 +3896,11 @@ function renderModalFunctionView() {
 
         const chartLabel = document.getElementById("modalChartLabel");
         const chartLegend = document.getElementById("modalChartLegend");
-        if (chartLabel) chartLabel.textContent = "Material Requirement Planning (Recorded Usage vs AI Future Demand ±7.51%)";
+        if (chartLabel) chartLabel.textContent = `Material Requirement Planning (Recorded Usage vs AI Future Demand ±${fcMarginPct()}%)`;
         if (chartLegend) {
             chartLegend.innerHTML = `
                 <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#0F2A1B;"></span>Recorded Usage (Ground Truth)</span>
-                <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#22C55E;"></span>AI Future Requirement (±7.51%)</span>
+                <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#22C55E;"></span>AI Future Requirement (±${fcMarginPct()}%)</span>
             `;
         }
 
@@ -3917,7 +3910,7 @@ function renderModalFunctionView() {
             modalForecastChartInstance = new Chart(canvas, {
                 type: "bar",
                 data: {
-                    labels: topSlice.map(m => m.name.length > 14 ? m.name.slice(0, 14) + "…" : m.name),
+                    labels: topSlice.map(m => (window.rmimsWrapLabel ? window.rmimsWrapLabel(m.name, 14) : m.name)),
                     datasets: [
                         {
                             label: "Recorded Usage",
@@ -3956,7 +3949,7 @@ function renderModalFunctionView() {
                     <th style="width: 12%; text-align: right;">Current Stock</th>
                     <th style="width: 13%; text-align: right;">Recorded Usage</th>
                     <th style="width: 13%; text-align: right;">AI Future Demand</th>
-                    <th style="width: 15%; text-align: right;">±7.51% Confidence Range</th>
+                    <th style="width: 15%; text-align: right;">±${fcMarginPct()}% Margin of Error</th>
                     <th style="width: 13%; text-align: right;">Deficit Required</th>
                 </tr>
             `;
@@ -3993,7 +3986,7 @@ function renderModalFunctionView() {
                     <td>${badge}</td>
                     <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString()}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
                     <td style="text-align: right;"><span class="fc-num-muted">${recUse.toFixed(1)}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
-                    <td style="text-align: right;"><span class="fc-num-demand">${req.toFixed(1)}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small></td>
+                    <td style="text-align: right;"><span class="fc-num-demand">${req.toFixed(1)}</span> <small style="color:#14532D;">${escapeHtml(m.unit)}</small></td>
                     <td style="text-align: right; color:#475569; font-size:12px;"><strong>${lowerBound} – ${upperBound}</strong> <small>${escapeHtml(m.unit)}</small></td>
                     <td style="text-align: right;">${addNeed > 0 ? `<span class="fc-deficit-pill pill-shortage">+${addNeed.toFixed(1)} ${escapeHtml(m.unit)}</span>` : `<span class="fc-deficit-pill pill-sufficient">0 ${escapeHtml(m.unit)}</span>`}</td>
                 </tr>
@@ -4022,7 +4015,7 @@ function renderModalFunctionView() {
             thead.innerHTML = `
                 <tr>
                     <th style="width: 20%;">Raw Material</th>
-                    <th style="width: 14%;">Alert Urgency</th>
+                    <th style="width: 14%;">Stock Alert</th>
                     <th style="width: 12%; text-align: right;">Current Stock</th>
                     <th style="width: 12%; text-align: right;">Safety Buffer</th>
                     <th style="width: 12%; text-align: right;">7-Day Burn Rate</th>
@@ -4053,15 +4046,15 @@ function renderModalFunctionView() {
 
             if (m.currentStock === 0 || statusInfo.label === "Out of Stock") {
                 outCount++;
-                alertBadge = `<span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">CRITICAL STOCKOUT</span>`;
-                actionText = `<span style="color:#DC2626;font-weight:700;">Immediate Reorder Required</span>`;
+                alertBadge = `<span style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">Out of Stock</span>`;
+                actionText = `<span style="color:#DC2626;font-weight:700;">Order now</span>`;
             } else if (statusInfo.label === "Low Stock" || (daysLeft !== null && daysLeft <= 7)) {
                 lowCount++;
-                alertBadge = `<span style="background:#FEF3C7;color:#D97706;border:1px solid #FED7AA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">URGENT WARNING</span>`;
+                alertBadge = `<span style="background:#FEF3C7;color:#D97706;border:1px solid #FED7AA;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:0.02em;">Running Low</span>`;
                 actionText = `<span style="color:#D97706;font-weight:700;">${daysLeft !== null ? `Replenish within ${daysLeft} days` : 'Below minimum stock: replenish'}</span>`;
             } else {
-                alertBadge = `<span style="background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;">BUFFER ADEQUATE</span>`;
-                actionText = `<span style="color:#15803D;font-weight:600;">Monitor normal usage</span>`;
+                alertBadge = `<span style="background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;">Enough Stock</span>`;
+                actionText = `<span style="color:#15803D;font-weight:600;">No action needed</span>`;
             }
 
             return `
@@ -4217,7 +4210,7 @@ function renderModalFunctionView() {
             modalForecastChartInstance = new Chart(canvas, {
                 type: "bar",
                 data: {
-                    labels: topSlice.map(m => m.name.length > 14 ? m.name.slice(0, 14) + "…" : m.name),
+                    labels: topSlice.map(m => (window.rmimsWrapLabel ? window.rmimsWrapLabel(m.name, 14) : m.name)),
                     datasets: [
                         {
                             label: "Future Requirement",
@@ -4366,7 +4359,7 @@ function renderModalFunctionView() {
                 <td style="text-align: right;"><span class="fc-num-bold">${m.currentStock.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
                 <td style="text-align: right;"><span class="fc-num-muted" style="font-weight: 600; color: #1E293B;">${recentUse.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
                 <td style="text-align: right;"><span class="fc-num-muted" style="font-weight: 700; color: #0F2A1B;">${consumedTotal.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#64748B;">${escapeHtml(m.unit)}</small></td>
-                <td style="text-align: right;"><span class="fc-num-demand">${req.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#2563EB;">${escapeHtml(m.unit)}</small></td>
+                <td style="text-align: right;"><span class="fc-num-demand">${req.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span> <small style="color:#14532D;">${escapeHtml(m.unit)}</small></td>
                 <td style="text-align: right;">${addNeed > 0 ? `<span class="fc-deficit-pill pill-shortage">+${addNeed.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${escapeHtml(m.unit)}</span>` : `<span class="fc-deficit-pill pill-sufficient">0 ${escapeHtml(m.unit)}</span>`}</td>
             </tr>
         `;
@@ -4518,7 +4511,6 @@ function openMaterialDetailModal(mName) {
         subEl.innerHTML = `
             <span class="fc-meta-pill"><span class="fc-meta-label">Code:</span> <strong>${escapeHtml(mat.itemCode)}</strong></span>
             <span class="fc-meta-pill"><span class="fc-meta-label">Unit:</span> <strong>${escapeHtml(mat.unit)}</strong></span>
-            <span class="fc-meta-pill fc-meta-model"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:3px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>AutoReg (${mat.lags} Lags)</span>
         `;
     }
     if (curStockEl) curStockEl.textContent = `${mat.currentStock.toLocaleString()} ${mat.unit}`;
@@ -4534,6 +4526,20 @@ function openMaterialDetailModal(mName) {
     if (statusEl) {
         const statusInfo = getForecastStatus(mat, fc);
         statusEl.innerHTML = `<span class="fc-status-badge ${statusInfo.cls}"><span class="fc-status-dot"></span>${statusInfo.label}</span>`;
+        // the whole Status card takes the status colour (Out of Stock red, Low Stock orange, Good green)
+        const statusBox = statusEl.closest('.fc-detail-metric-box');
+        if (statusBox) {
+            const tone = statusInfo.cls === 'fc-status-shortage'
+                ? { bg: '#FEF2F2', border: '#FCA5A5', ink: '#DC2626' }
+                : (statusInfo.cls === 'fc-status-attention'
+                    ? { bg: '#FFF7ED', border: '#FDBA74', ink: '#EA580C' }
+                    : { bg: '#F0FDF4', border: '#86EFAC', ink: '#166534' });
+            statusBox.style.setProperty('background', tone.bg, 'important');
+            statusBox.style.setProperty('border-color', tone.border, 'important');
+            statusBox.style.setProperty('border-top', `4px solid ${tone.ink}`, 'important');
+            const lbl = statusBox.querySelector('.fc-detail-metric-label');
+            if (lbl) lbl.style.color = tone.ink;
+        }
     }
 
     if (insightTextEl) {
@@ -4544,6 +4550,7 @@ function openMaterialDetailModal(mName) {
             insightTextEl.innerHTML = `<strong>Coverage Confirmed:</strong> Current stock of ${mat.currentStock} ${mat.unit} is sufficient to cover projected operations of ${req.toFixed(1)} ${mat.unit}.`;
             if (insightBoxEl) insightBoxEl.className = "fc-decision-box sufficient";
         }
+        // (the model keeps learning in the background; no technical model text is shown to end users)
     }
 
     // Finished Product Context

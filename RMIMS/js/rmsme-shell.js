@@ -1929,7 +1929,6 @@ if (/\/(manager|user)\//.test(location.pathname)) {
                 <thead>
                   <tr style="border-bottom:1.5px solid #CBD5E1; color:#64748B; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px;">
                     <th style="padding:10px 8px;">Date</th>
-                    <th style="padding:10px 8px;">Time</th>
                     <th style="padding:10px 8px;">Activity</th>
                     <th style="padding:10px 8px;">Reference</th>
                     <th style="padding:10px 8px;">Status</th>
@@ -2018,7 +2017,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
         if (!stored || stored.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="5" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
+              <td colspan="4" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
                 No recent activity records found.
               </td>
             </tr>
@@ -2042,7 +2041,6 @@ if (/\/(manager|user)\//.test(location.pathname)) {
             return `
             <tr style="border-bottom:1px solid #F1F5F9;">
               <td style="padding:10px 8px; font-weight:600; color:#334155;">${escapeHtml(dPart)}</td>
-              <td style="padding:10px 8px; font-size:12px; font-weight:600; color:#64748B;">${escapeHtml(tPart)}</td>
               <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(maskRefsInText(row.activity || row.details || ''))}</td>
               <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(maskConfidentialRef(row.reference))}</td>
               <td style="padding:10px 8px;">
@@ -2576,7 +2574,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
       <!-- STAFF / USER SECTION -->
       <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:14px 16px; margin-bottom:12px;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-          <span style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.8rem; padding:3px 8px; border-radius:6px;">👤 Staff / User Access</span>
+          <span style="background:#DCFCE7; color:#14532D; font-weight:700; font-size:0.8rem; padding:3px 8px; border-radius:6px;">👤 Staff / User Access</span>
           <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Daily Material Operations</span>
         </div>
         <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
@@ -2908,7 +2906,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
                   material: tx.material || tx.materialName,
                   quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
                   actor: tx.staff || 'Staff Member',
-                  timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '10:00:00'}` : new Date().toISOString())
+                  timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '00:00:00'}` : new Date().toISOString())
                 };
                 allNotifs.unshift(newNotif);
                 modified = true;

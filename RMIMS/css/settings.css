@@ -8,9 +8,9 @@
   --bg-panel: #0a1730;
   --bg-panel-hover: #11244a;
   --teal: #22d3ee;
-  --blue: #2563eb;
-  --blue-light: #eff6ff;
-  --blue-border: #bfdbfe;
+  --blue: #14532D;
+  --blue-light: #F0FDF4;
+  --blue-border: #BBF7D0;
   --ink: #0f172a;
   --text-main: #1e293b;
   --text-dim: #7c92b3;
@@ -440,7 +440,7 @@ body {
 .icon-green { background: var(--good-light); color: var(--good); }
 .icon-orange { background: var(--warn-light); color: var(--warn); }
 .icon-purple { background: var(--purple-light); color: var(--purple); }
-.icon-teal { background: #ecfeff; color: #0891b2; }
+.icon-teal { background: #ecfeff; color: #14532D; }
 .icon-red { background: var(--bad-light); color: var(--bad); }
 
 /* ---------- PROFILE PHOTO STRIP ---------- */

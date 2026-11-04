@@ -1,13 +1,11 @@
 // js/rmims-forecast-gauges.js
 //
-// Two car-style arc gauges ("boosters") with a pointer:
-//   1. USAGE          - recorded consumption (today / last 7 days / last 30 days)
-//   2. FUTURE REORDER - what must be ordered to cover the forecast of the next day / 7 days / 30 days
-//                       plus minimum stock, minus what is on hand. Never negative.
-// The value sits in the middle of the arc; under each gauge: the figure with its margin of error.
-// "All Raw Materials" = overall total across every material that has recorded usage (same unit);
-// choosing one material in the searchable filter changes only the gauges.
-// Everything comes from recorded disbursements via rmims-reorder-engine - nothing built in.
+// "Forecast data" card: ONE bar chart.
+//   * black bars - recorded usage per day (last 7 days) / week (last 4 weeks) / month (last 3 months)
+//   * green bars - forecast need for the next 7 days / 4 weeks / 3 months
+// Each bar shows its number on top; the y-axis is the quantity in the selected material's own unit.
+// Under the chart: one plain sentence with what to order. Everything comes from recorded disbursements via
+// rmims-reorder-engine - nothing built in.
 
 import { buildActualsForMaterial, forecastHorizon, roundQty } from './rmims-reorder-engine.js';
 
@@ -42,6 +40,14 @@ function injectStyles() {
   .rg-card:hover .rg-tip,.rg-card:focus-within .rg-tip{opacity:1;transform:none}
   .rg-tip b{font-weight:700}
   .rg-foot{grid-column:1/-1;font:500 11.5px/1.4 Inter,system-ui,sans-serif;color:#64748B;text-align:center}
+  .rg-chart-card{display:flex;flex-direction:column;gap:8px;width:100%}
+  .rg-legend{display:flex;flex-wrap:wrap;gap:14px;font:700 12px/1.2 Inter,system-ui,sans-serif;color:#0F172A}
+  .rg-legend span{display:inline-flex;align-items:center;gap:6px}
+  .rg-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .rg-chart-box{position:relative;width:100%;height:280px}
+  .rg-summary{font:500 12.5px/1.45 Inter,system-ui,sans-serif;color:#334155}
+  .rg-summary strong{color:#0F172A}
+  .rg-muted{color:#64748B}
   `;
   document.head.appendChild(st);
 }
@@ -151,17 +157,51 @@ function computeFigures({ materials, disbursements, selectedId, horizon, asOf })
   };
 }
 
+/** Periods shown as bars: past (recorded usage) and future (forecast need), per horizon. */
+function buildPeriods(horizon, base) {
+  const day = (n) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
+  const md = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const past = [], future = [];
+  if (horizon === 'monthly') {
+    for (let i = 2; i >= 0; i--) {                       // this month and the 2 before (calendar months)
+      const s = new Date(base.getFullYear(), base.getMonth() - i, 1);
+      const e = i === 0 ? base : new Date(base.getFullYear(), base.getMonth() - i + 1, 0);
+      past.push({ label: s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), from: s, to: e });
+    }
+    for (let k = 0; k < 3; k++) {                        // next 3 blocks of 30 days, named by their month
+      const s = day(1 + k * 30), e = day((k + 1) * 30);
+      future.push({ label: `${md(s)} – ${md(e)}`, startOffset: 1 + k * 30, days: 30 });
+    }
+  } else if (horizon === 'weekly') {
+    for (let i = 3; i >= 0; i--) {                       // the last 4 weeks (7-day blocks ending today)
+      const s = day(-i * 7 - 6), e = day(-i * 7);
+      past.push({ label: `${md(s)} – ${md(e)}`, from: s, to: e });
+    }
+    for (let k = 0; k < 4; k++) {                        // the next 4 weeks
+      const s = day(1 + k * 7), e = day((k + 1) * 7);
+      future.push({ label: `${md(s)} – ${md(e)}`, startOffset: 1 + k * 7, days: 7 });
+    }
+  } else {
+    for (let i = 6; i >= 0; i--) { const d = day(-i); past.push({ label: md(d), from: d, to: d }); }   // last 7 days
+    for (let k = 1; k <= 7; k++) { future.push({ label: md(day(k)), startOffset: k, days: 1 }); }      // next 7 days
+  }
+  return { past, future };
+}
+
+let chartInstance = null;
+
 /**
+ * Forecast data as ONE bar chart: recorded usage per day / week / month (black bars) and the forecast need for the
+ * coming days / weeks / months (green bars), each bar with its number on top, the y-axis in the material's own unit.
  * @param {HTMLElement|string} container
  * @param {{materials:Array, disbursements:Array, selectedId:string, horizon:'daily'|'weekly'|'monthly', asOf?:Date}} opts
- *   materials:     {id, itemCode, name, unit, currentStock, minStock}
- *   disbursements: {materialId, itemCode, materialName, consumedQuantity, usageDate}
  */
 export function renderForecastGauges(container, opts) {
   const el = typeof container === 'string' ? document.getElementById(container) : container;
   if (!el) return null;
   injectStyles();
   const asOf = opts.asOf || new Date();
+  const base = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
   const horizon = opts.horizon || 'daily';
   const disb = (opts.disbursements || []).map(d => ({
     materialId: d.materialId, item_code: d.itemCode, materialName: d.materialName,
@@ -169,36 +209,76 @@ export function renderForecastGauges(container, opts) {
   }));
   const f = computeFigures({ materials: opts.materials || [], disbursements: disb, selectedId: opts.selectedId, horizon, asOf });
 
-  const max = niceMax(Math.max(f.usage + f.usageMoe, (f.reorder || 0) + f.reorderMoe) * 1.1);
-  const pastLbl = { daily: 'Today', weekly: 'Last 7 days', monthly: 'Last 30 days' }[horizon];
-  const futLbl = { daily: 'Tomorrow', weekly: 'Next 7 days', monthly: 'Next 30 days' }[horizon];
-  const USAGE_C = '#11161B';
-  const REORDER_C = '#16A34A';
-  const noUsage = f.withData === 0;
+  // per-period values, only materials in the shown unit (grams are never added to pieces)
+  const isAll = !opts.selectedId || opts.selectedId === 'ALL';
+  const targets = (isAll ? (opts.materials || []) : (opts.materials || []).filter(m => m.id === opts.selectedId))
+    .filter(m => (m.unit || '') === f.unit);
+  const { past, future } = buildPeriods(horizon, base);
+  const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const pastVals = past.map(() => 0);
+  const futVals = future.map(() => 0);
+  let anyForecast = false;
+  targets.forEach(m => {
+    const actuals = buildActualsForMaterial(m, disb);
+    past.forEach((p, i) => {
+      for (let d = new Date(p.from); d <= p.to; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) pastVals[i] += actuals.get(key(d)) || 0;
+    });
+    // forecast need of each future period = total(up to its end) - total(up to its start)
+    const cum = (n) => (n <= 0 ? 0 : (forecastHorizon(m, actuals, n, { asOf }).expected || 0));
+    const fc = forecastHorizon(m, actuals, 1, { asOf });
+    if (!fc.hasData) return;
+    anyForecast = true;
+    future.forEach((p, i) => { futVals[i] += cum(p.startOffset - 1 + p.days) - cum(p.startOffset - 1); });
+  });
+  const unit = f.unit || '';
+  const r = (v) => Number(roundQty(v, unit) || 0);
+  const labels = [...past.map(p => p.label), ...future.map(p => p.label)];
+  const usageData = [...pastVals.map(r), ...future.map(() => null)];
+  const needData = [...past.map(() => null), ...futVals.map(v => (anyForecast ? r(v) : null))];
+  const futLbl = { daily: 'next 7 days', weekly: 'next 4 weeks', monthly: 'next 3 months' }[horizon];
+  const reorderLbl = { daily: 'tomorrow', weekly: 'the next 7 days', monthly: 'the next 30 days' }[horizon];
 
   el.innerHTML = `
-    <div class="rg-wrap" aria-live="polite">
-      <div class="rg-card ${f.usage > 0 ? '' : 'rg-empty'}" tabindex="0" aria-label="Recorded usage ${pastLbl}: ${fmt(f.usage)} ${esc(f.unit)}, margin of error plus or minus ${fmt(f.usageMoe)}">
-        <div class="rg-title"><span class="rg-swatch" style="background:${USAGE_C}"></span>Recorded Usage<span class="rg-period">${pastLbl}</span></div>
-        ${gaugeSvg({ value: f.usage, moe: f.usageMoe, max, color: USAGE_C, empty: false, unit: f.unit })}
-        <div class="rg-under"><strong>${fmt(f.usage)} ${esc(f.unit)}</strong><span class="rg-moe">± ${fmt(f.usageMoe)} ${esc(f.unit)}</span></div>
-        <div class="rg-note">${esc(f.name)} · margin of error from the trained model's MAPE</div>
-        <div class="rg-tip" style="top:8px;right:8px"><b>Recorded usage · ${pastLbl}</b><br>${fmt(f.usage)} ${esc(f.unit)} disbursed (user-recorded)<br>Margin of error: ± ${fmt(f.usageMoe)} ${esc(f.unit)}</div>
+    <div class="rg-chart-card">
+      <div class="rg-legend">
+        <span><i style="background:#11161B"></i>Recorded usage</span>
+        <span><i style="background:#16A34A"></i>Forecast need (${futLbl})</span>
       </div>
-      <div class="rg-card ${noUsage ? 'rg-empty' : ''}" tabindex="0" aria-label="Future reorder ${futLbl}: ${noUsage ? 'not available, no recorded usage' : fmt(f.reorder) + ' ' + esc(f.unit) + ', margin of error plus or minus ' + fmt(f.reorderMoe)}">
-        <div class="rg-title"><span class="rg-swatch" style="background:${REORDER_C}"></span>Future Reorder<span class="rg-period">${futLbl}</span></div>
-        ${gaugeSvg({ value: f.reorder || 0, moe: f.reorderMoe, max, color: REORDER_C, empty: noUsage, unit: f.unit })}
-        <div class="rg-under">${noUsage
-          ? '<strong>No recorded usage yet</strong>'
-          : `<strong>${fmt(f.reorder)} ${esc(f.unit)}</strong><span class="rg-moe">± ${fmt(f.reorderMoe)} ${esc(f.unit)}</span>`}</div>
-        <div class="rg-note">${noUsage
-          ? 'Reorder is computed once consumption is recorded.'
-          : `Forecast need ${fmt(f.need)} ± ${fmt(f.needMoe)} · on hand ${fmt(f.onHand)} · min ${fmt(f.minStock)} ${esc(f.unit)}`}</div>
-        <div class="rg-tip" style="top:8px;right:8px"><b>Future reorder · ${futLbl}</b><br>${noUsage ? 'No recorded usage to forecast from.' : `Forecast requirement + minimum stock − on hand<br>= ${fmt(f.reorder)} ${esc(f.unit)} (± ${fmt(f.reorderMoe)})`}</div>
-      </div>
-      <div class="rg-foot">${f.isAll
-        ? `${f.withData} of ${f.targetCount} materials have recorded usage${f.skippedUnit ? ` · ${f.skippedUnit} item${f.skippedUnit === 1 ? '' : 's'} in other units not added to the ${esc(f.unit)} total` : ''}`
-        : `Scale 0 – ${fmt(max)} ${esc(f.unit)} (same scale on both gauges)`}</div>
+      <div class="rg-chart-box"><canvas aria-label="Recorded usage and forecast need of ${esc(f.name)}"></canvas></div>
+      <div class="rg-summary">${!anyForecast
+        ? `<strong>${esc(f.name)}</strong>: no recorded usage yet, so there is no forecast. Record disbursements to start it.`
+        : (f.reorder > 0
+          ? `<strong>${esc(f.name)}</strong>: order <strong>${fmt(f.reorder)} ${esc(unit)}</strong> to cover ${reorderLbl} (on hand ${fmt(f.onHand)} ${esc(unit)}, minimum ${fmt(f.minStock)} ${esc(unit)}).`
+          : `<strong>${esc(f.name)}</strong>: stock on hand (${fmt(f.onHand)} ${esc(unit)}) covers ${reorderLbl}. Nothing to order.`)}${f.isAll && f.skippedUnit
+        ? ` <span class="rg-muted">${f.skippedUnit} material${f.skippedUnit === 1 ? '' : 's'} in other units are not added to this ${esc(unit)} total.</span>` : ''}</div>
     </div>`;
+
+  const ChartClass = window.Chart;
+  const canvas = el.querySelector('canvas');
+  if (chartInstance) { try { chartInstance.destroy(); } catch (_) {} chartInstance = null; }
+  if (ChartClass && canvas) {
+    chartInstance = new ChartClass(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Recorded usage', data: usageData, backgroundColor: '#11161B', borderRadius: 6, maxBarThickness: 46, skipNull: true },
+          { label: 'Forecast need', data: needData, backgroundColor: '#16A34A', borderRadius: 6, maxBarThickness: 46, skipNull: true }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmt(c.raw)} ${unit}` } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#475569', maxRotation: 40, autoSkip: false } },
+          y: { beginAtZero: true, grid: { color: '#F1F5F9' }, title: { display: Boolean(unit), text: unit, font: { weight: '700' }, color: '#334155' },
+               ticks: { color: '#64748B', callback: (v) => Number(v).toLocaleString() } }
+        }
+      }
+    });
+  }
   return f;
 }

@@ -438,14 +438,11 @@ async function loadAuthoritativeData() {
         const getCanonicalCode = (rawName, rawCode) => {
             const cleanCode = String(rawCode || "").toUpperCase().trim();
             const cleanName = String(rawName || "").trim();
+            if (cleanCode.startsWith(expectedPrefix)) return cleanCode;   // the material's own code always wins
             const rec = resolveForecastingMaterialByName(cleanName, isScones);
             if (rec && rec.code && rec.code.startsWith(expectedPrefix)) return rec.code;
-            if (cleanCode.startsWith(expectedPrefix)) {
-                if (isScones && !cleanCode.match(/^NB-0(0[1-9]|1[0-9])$/)) {
-                    const rec2 = resolveForecastingMaterialByName(cleanName, true);
-                    return rec2 ? rec2.code : null;
-                }
-                return cleanCode;
+            if (false) {
+                return cleanCode; // registered or newly added material (NB-020, NB-021, ...)
             }
             return null;
         };
@@ -463,7 +460,7 @@ async function loadAuthoritativeData() {
                 unit_of_measure: m.unit_of_measure || m.unit || (isScones ? "g" : "kg"),
                 current_stock: Number(m.current_stock ?? m.currentStock ?? 0),
                 minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 0),
-                reorder_quantity: Number(m.reorder_quantity ?? 50),
+                reorder_quantity: m.reorder_quantity != null ? Number(m.reorder_quantity) : null,
                 lead_time_days: Number(m.lead_time_days ?? 3)
             });
         });
@@ -494,7 +491,7 @@ async function loadAuthoritativeData() {
                         unit_of_measure: m.unit_of_measure || m.unit || "kg",
                         current_stock: curStock,
                         minimum_threshold: Number(m.minimum_threshold ?? m.minimum_stock ?? 0),
-                        reorder_quantity: Number(m.reorder_quantity ?? 50),
+                        reorder_quantity: m.reorder_quantity != null ? Number(m.reorder_quantity) : null,
                         lead_time_days: Number(m.lead_time_days ?? 3)
                     });
                 }
@@ -519,18 +516,18 @@ async function loadAuthoritativeData() {
                     unit_of_measure: m.unit_of_measure || "kg",
                     current_stock: curStock,
                     minimum_threshold: Number(m.minimum_threshold ?? 0),
-                    reorder_quantity: Number(m.reorder_quantity ?? 50),
+                    reorder_quantity: m.reorder_quantity != null ? Number(m.reorder_quantity) : null,
                     lead_time_days: Number(m.lead_time_days ?? 3)
                 });
             }
         });
 
-        // Enforce strict sequential sort and strict 19-material limit for Scones & Muffins
+        // Sequential sort; every Scones & Muffins material is included (the 19 registered + any newly added)
         rawMats = Array.from(matBaseMap.values());
         if (isScones) {
             rawMats = rawMats.filter(m => {
                 const c = String(m.item_code || m.id).toUpperCase().trim();
-                return /^NB-0(0[1-9]|1[0-9])$/.test(c);
+                return /^NB-/.test(c);
             });
             rawMats.sort((a, b) => {
                 const numA = parseInt(String(a.item_code || a.id).replace(/\D+/g, "") || "0", 10);
@@ -851,20 +848,19 @@ function renderMaterialReceivingTab() {
     const pageItems = list.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No material delivery records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
                 <td>${escapeHtml(r.receiptDate)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(r.receiptTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(r.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(r.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
                 <td><strong style="color:#059669;">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
                 <td>${escapeHtml(r.unit)}</td>
                 <td>${escapeHtml(r.supplierName)}</td>
                 <td>${escapeHtml(r.receivedBy)}</td>
-                <td><span class="rpt-badge rpt-badge-good">Verified Inbound</span></td>
+                <td><span class="rpt-badge rpt-badge-good">Received</span></td>
             </tr>
         `).join("");
     }
@@ -908,14 +904,13 @@ function renderMaterialDisbursementTab() {
     const pageItems = list.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748b;">No disbursement records found for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No disbursement records found for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
                 <td>${escapeHtml(d.usageDate)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(d.usageTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(d.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(d.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
                 <td>${escapeHtml(d.finishedProduct)}</td>
                 <td><strong style="color:#DC2626;">-${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
@@ -994,14 +989,13 @@ function renderMaterialActivityTab() {
     const pageItems = list.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#64748b;">No material activity recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => `
             <tr>
                 <td>${escapeHtml(a.date)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(a.time || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(a.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(a.materialCode || '—')}</span></td>
                 <td>
                     <span class="rpt-badge ${a.type === 'Received' ? 'rpt-badge-good' : 'rpt-badge-critical'}">
                         ${escapeHtml(a.type)}
@@ -1898,7 +1892,7 @@ async function generateStaffSingleTabPdf(fileName, tabKey = (state.activeTab || 
                 `+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
                 r.supplierName,
                 r.receivedBy,
-                "Verified Inbound"
+                "Received"
             ]);
         doc.autoTable({
             startY: y,
@@ -2308,7 +2302,7 @@ async function generateStaffPdf(baseName, sections) {
                 `+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
                 r.supplierName,
                 r.receivedBy,
-                "Verified Inbound"
+                "Received"
             ]);
 
         doc.autoTable({

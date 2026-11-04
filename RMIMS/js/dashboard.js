@@ -82,7 +82,7 @@ let currentForecastSupportItems = [];
 const RECEIVE_PIE_PALETTE = [
   "#00B5AD", // Teal / Cyan
   "#FF7A00", // Vibrant Orange
-  "#6366F1", // Indigo / Purple
+  "#14532D", // Indigo / Purple
   "#84CC16", // Lime Green
   "#EC4899", // Pink
   "#64748B"  // Slate (Others)
@@ -156,14 +156,14 @@ let currentModalCategory = "all";
 // Guaranteed unique series colors palette for Chart.js
 const SERIES_PALETTE = [
   "#10B981", // Emerald
-  "#3B82F6", // Blue
+  "#14532D", // Blue
   "#F59E0B", // Amber
   "#8B5CF6", // Purple
   "#EC4899", // Pink
-  "#06B6D4", // Cyan
+  "#14532D", // Cyan
   "#14B8A6", // Teal
   "#F97316", // Orange
-  "#6366F1", // Indigo
+  "#14532D", // Indigo
   "#84CC16"  // Lime
 ];
 
@@ -271,8 +271,6 @@ function renderBaselineInstant() {
     if (deletedMatIds.size > 0) {
       rawMats = rawMats.filter(m => {
         const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
-        if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true; // Always keep Scones 19
-        if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true; // Always keep KXC 59
         return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
       });
     }
@@ -449,8 +447,6 @@ async function loadDashboard() {
     if (deletedMatIds.size > 0) {
       rawMats = rawMats.filter(m => {
         const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
-        if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true;
-        if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true;
         return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
       });
     }
@@ -1292,7 +1288,7 @@ function startCard3Ticker() {
 // ============================================================
 
 function renderCard4LowStock() {
-  const lowStockMats = catalogMaterials.filter(m => m.status === "Might Restock" || (m.currentStock > 0 && m.currentStock <= (m.reorderPoint || 100)));
+  const lowStockMats = catalogMaterials.filter(m => m.status === "Might Restock" || (m.currentStock > 0 && m.currentStock <= Number(m.reorderPoint ?? m.minStock ?? m.minimum_stock ?? 0)));
   const countEl = $("lowStockCount");
   if (countEl) countEl.textContent = lowStockMats.length;
 
@@ -1448,7 +1444,7 @@ function computeClientSideForecastBreakdown(matName, horizonType = "month", hori
 
   const count = matchedRecords.length;
   const total = matchedRecords.reduce((sum, r) => sum + r.consumedQuantity, 0);
-  const avgDaily = count > 0 ? total / Math.max(1, count) : Math.max(1, (mat?.currentStock || 50) * 0.05);
+  const avgDaily = count > 0 ? total / Math.max(1, count) : 0; // no recorded usage -> no invented rate
 
   let stepDays = 1;
   let numSteps = horizonVal;
@@ -1995,15 +1991,15 @@ async function renderRawMaterialsTrendChart() {
         {
           label: `Actual (${primaryUnit})`,
           data: consumedData,
-          borderColor: "#0284C7",
-          backgroundColor: "#0284C7",
+          borderColor: "#14532D",
+          backgroundColor: "#14532D",
           borderWidth: 2.6,
           fill: false,
           tension: 0,
           pointStyle: "circle",
           pointRadius: 5,
           pointHoverRadius: 8,
-          pointBackgroundColor: "#0284C7",
+          pointBackgroundColor: "#14532D",
           pointBorderColor: "#FFFFFF",
           pointBorderWidth: 2,
           spanGaps: false
@@ -2802,9 +2798,9 @@ async function updateModalForecastProjection() {
         datasets: [{
           label: `Forecasted ${mat.materialName} Demand (${unit})`,
           data: chartValues,
-          backgroundColor: "rgba(37, 99, 235, 0.75)",
-          hoverBackgroundColor: "rgba(37, 99, 235, 0.95)",
-          borderColor: "#2563EB",
+          backgroundColor: "rgba(20, 83, 45, 0.75)",
+          hoverBackgroundColor: "rgba(20, 83, 45, 0.95)",
+          borderColor: "#14532D",
           borderWidth: 1.5,
           borderRadius: 6,
           maxBarThickness: 45,

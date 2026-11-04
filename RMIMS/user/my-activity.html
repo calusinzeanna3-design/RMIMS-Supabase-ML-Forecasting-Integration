@@ -70,9 +70,9 @@
     flex-shrink: 0;
   }
   .diff-badge {
-    background: #EFF6FF;
-    border: 1px solid #BFDBFE;
-    color: #1D4ED8;
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    color: #14532D;
     padding: 4px 10px;
     border-radius: 6px;
     font-size: 12px;
@@ -97,6 +97,9 @@
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -287,7 +290,6 @@
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Time</th>
                 <th>Activity</th>
                 <th>Reference No.</th>
                 <th>Raw Material</th>
@@ -306,11 +308,8 @@
           </table>
         </div>
 
-        <!-- Table Footer / Count -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid #E2E8F0; font-size:12.5px; color:#64748B;">
-          <span id="activityTableCountDisplay">Showing 0 transactions</span>
-          <span style="color:#15803D; font-weight:600;">Reference is the only basis for duplicate detection</span>
-        </div>
+        <!-- the page count is shown by the table pager below the table (one count only) -->
+        <div style="margin-top:8px; font-size:12px; color:#15803D; font-weight:600;">Reference is the only basis for duplicate detection</div>
 
       </section>
 

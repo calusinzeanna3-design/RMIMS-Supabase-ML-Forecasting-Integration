@@ -120,11 +120,19 @@ function initStaffActivity() {
   try {
     const sp = new URLSearchParams(window.location.search);
     if (sp.has('review')) {
-      const targetRef = sp.get('review');
-      const found = transactions.find(t => t.ref && t.ref.toLowerCase() === targetRef.toLowerCase());
-      if (found) {
-        setTimeout(() => openReviewModal(found), 250);
-      }
+      const targetRef = String(sp.get('review') || '').toLowerCase();
+      // the records may still be loading from the database: keep looking for up to 15 s
+      let tries = 0;
+      const look = () => {
+        const found = transactions.find(t => t.ref && t.ref.toLowerCase() === targetRef);
+        if (found) {
+          openReviewModal(found);
+          try { history.replaceState(null, '', window.location.pathname); } catch (_) {}
+          const row = Array.from(document.querySelectorAll('#staffActivityTbody tr')).find(r => (r.textContent || '').toLowerCase().includes(targetRef));
+          if (row) row.scrollIntoView({ block: 'center' });
+        } else if (++tries < 30) setTimeout(look, 500);
+      };
+      setTimeout(look, 250);
     }
   } catch (e) {}
 }
@@ -213,7 +221,7 @@ function renderTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center; padding:44px 16px; color:#5C7A68;">
+        <td colspan="8" style="text-align:center; padding:44px 16px; color:#5C7A68;">
           <div style="font-weight:700; font-size:15px; color:#0F2A1B; margin-bottom:6px;">No Staff Activity Records</div>
           <div style="font-size:13px; color:#64748B;">No staff material movements match your filter criteria.</div>
         </td>
@@ -237,11 +245,13 @@ function renderTable() {
     } else if (isCorrection) {
       statusPill = `<span class="badge" style="background:#FEF3C7; color:#D97706; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Correction Needed</span>`;
     } else {
-      statusPill = `<span class="badge" style="background:#E0F2FE; color:#0369A1; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Pending</span>`;
+      // a staff member changed a pending submission -> one label only: "Pending Update"
+      statusPill = `<span class="badge" style="background:#DCFCE7; color:#14532D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px; white-space:nowrap;">${t.isUpdated ? 'Pending Update' : 'Pending'}</span>`;
     }
 
     // Indicator if resubmitted (for manager table hint)
-    const updatedTag = t.isUpdated ? `<span style="margin-left:6px; font-size:11px; background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; padding:1px 6px; border-radius:4px; font-weight:700;">Resubmitted</span>` : '';
+    // one status only (Approved stays "Approved"; a pending change already says "Pending Update")
+    const updatedTag = '';
 
     const dateStr = String(t.date || '');
     let datePart = dateStr || '—';
@@ -261,7 +271,6 @@ function renderTable() {
     return `
       <tr data-ref="${escapeHtml(t.ref)}">
         <td style="font-weight:600; color:#334155; font-size:12.5px;">${escapeHtml(datePart)}</td>
-        <td style="font-size:12px; color:#64748B; font-weight:600;">${escapeHtml(timePart)}</td>
         <td>
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="width:28px; height:28px; border-radius:50%; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px;">
@@ -288,11 +297,13 @@ function renderTable() {
           ${statusPill} ${updatedTag}
         </td>
         <td style="text-align:right; white-space:nowrap;">
+          <div class="rmims-row-actions" style="justify-content:flex-end;">
           ${(isPending || isCorrection)
-            ? `<button type="button" class="btn-review-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 12px; font-size:12px; font-weight:700; border-radius:6px; background:${isCorrection ? '#D97706' : '#15803D'}; color:#FFF; border:none; cursor:pointer;">${isCorrection ? 'Review / Update' : 'Review'}</button>`
-            : `<button type="button" class="btn-view-tx" data-ref="${escapeHtml(t.ref)}" style="padding:5px 10px; font-size:12px; font-weight:600; color:#5C7A68; background:transparent; border:none; cursor:pointer;">View</button>`
+            ? `<button type="button" class="rmims-btn-xs rmims-btn-primary btn-review-tx" data-ref="${escapeHtml(t.ref)}" style="${isCorrection ? 'background:#D97706; border-color:#D97706;' : ''}">${isCorrection ? 'Review / Update' : 'Review'}</button>`
+            : `<button type="button" class="rmims-btn-xs rmims-btn-view btn-view-tx" data-ref="${escapeHtml(t.ref)}">View</button>`
           }
-          ${t.status === 'Deleted' ? '' : `<button type="button" class="btn-delete-tx" data-ref="${escapeHtml(t.ref)}" title="Delete this transaction" aria-label="Delete transaction ${escapeHtml(t.ref)}" style="margin-left:6px; padding:5px 10px; font-size:12px; font-weight:700; color:#DC2626; background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; cursor:pointer;">Delete</button>`}
+          ${t.status === 'Deleted' ? '' : `<button type="button" class="rmims-btn-xs rmims-btn-delete btn-delete-tx" data-ref="${escapeHtml(t.ref)}" title="Delete this transaction" aria-label="Delete transaction ${escapeHtml(t.ref)}">Delete</button>`}
+          </div>
         </td>
       </tr>
     `;

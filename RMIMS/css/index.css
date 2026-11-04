@@ -162,12 +162,12 @@ body.rmsme-entry-lock {
 }
 
 .rm-stage.hover-user .cluster-right .m-shape {
-  stroke: #38BDF8;
+  stroke: #4ADE80;
   opacity: 0.85;
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
+  filter: drop-shadow(0 0 8px rgba(20, 83, 45, 0.6));
 }
 .rm-stage.hover-user .cluster-right .m-shape.fill-soft {
-  fill: rgba(56, 189, 248, 0.2);
+  fill: rgba(20, 83, 45, 0.2);
 }
 
 /* ---------------------------------------------------------
@@ -530,28 +530,28 @@ body.rmsme-entry-lock {
 
 /* USER CARD — TEAL / CYAN AURA */
 .portal-user {
-  border-color: rgba(56, 189, 248, 0.35);
+  border-color: rgba(20, 83, 45, 0.35);
   animation: portalCardFloatUser 6.5s ease-in-out infinite 0.5s;
 }
 
 .portal-user .p-icon {
-  background: rgba(56, 189, 248, 0.16);
-  color: #0284C7;
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(20, 83, 45, 0.16);
+  color: #14532D;
+  border: 1px solid rgba(20, 83, 45, 0.4);
 }
 
 .portal-user .p-arrow {
-  color: #0284C7;
+  color: #14532D;
 }
 
 .portal-user:hover {
-  border-color: rgba(56, 189, 248, 0.8);
+  border-color: rgba(20, 83, 45, 0.8);
   transform: translateY(-8px) scale(1.02) !important;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3), 0 0 35px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3), 0 0 35px rgba(20, 83, 45, 0.3);
 }
 
 .portal-user:hover .p-icon {
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 16px rgba(20, 83, 45, 0.55);
 }
 
 .portal-card:active {

@@ -394,6 +394,9 @@
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 
 <body class="manager-page">
@@ -788,7 +791,19 @@
                                 <option value="sacks">sacks</option>
                                 <option value="tins">tins</option>
                                 <option value="boxes">boxes</option>
+                                <option value="mg">mg (Milligrams)</option>
+                                <option value="lb">lb (Pounds)</option>
+                                <option value="oz">oz (Ounces)</option>
+                                <option value="gal">gal (Gallons)</option>
+                                <option value="dozen">dozen</option>
+                                <option value="trays">trays</option>
+                                <option value="packs">packs</option>
+                                <option value="bottles">bottles</option>
+                                <option value="bags">bags</option>
+                                <option value="__other__">Other (type your own unit)</option>
                             </select>
+                            <input type="text" id="addMatUnitCustom" placeholder="Type the unit, e.g. jars" maxlength="20"
+                                style="display:none; margin-top:6px;" aria-label="Custom unit">
                         </div>
 
                         <div class="mgr-field-group">
@@ -873,7 +888,19 @@
                                 <option value="sacks">sacks</option>
                                 <option value="tins">tins</option>
                                 <option value="boxes">boxes</option>
+                                <option value="mg">mg (Milligrams)</option>
+                                <option value="lb">lb (Pounds)</option>
+                                <option value="oz">oz (Ounces)</option>
+                                <option value="gal">gal (Gallons)</option>
+                                <option value="dozen">dozen</option>
+                                <option value="trays">trays</option>
+                                <option value="packs">packs</option>
+                                <option value="bottles">bottles</option>
+                                <option value="bags">bags</option>
+                                <option value="__other__">Other (type your own unit)</option>
                             </select>
+                            <input type="text" id="editMatUnitCustom" placeholder="Type the unit, e.g. jars" maxlength="20"
+                                style="display:none; margin-top:6px;" aria-label="Custom unit">
                         </div>
 
                         <div class="mgr-field-group">
@@ -1264,15 +1291,15 @@
 
                 <!-- Add / Edit Finished Product Form Panel (Collapsible) -->
                 <div class="specs-update-panel" id="addFinishedProductPanel"
-                    style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; padding:16px 18px; margin-bottom:16px;">
-                    <div class="specs-update-header" style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #FDE68A; padding-bottom:8px; margin-bottom:12px;">
+                    style="display:none; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px; padding:16px 18px; margin-bottom:16px;">
+                    <div class="specs-update-header" style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #E2E8F0; padding-bottom:8px; margin-bottom:12px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="font-size:16px;" id="addFpFormIcon">✨</span>
-                            <h4 style="font-size:14px; font-weight:700; color:#92400E; margin:0;" id="addFpFormTitle">
+                            <h4 style="font-size:14px; font-weight:700; color:#0F172A; margin:0;" id="addFpFormTitle">
                                 Add Finished Product Formulation
                             </h4>
                         </div>
-                        <span style="font-size:11.5px; color:#B45309; font-weight:600; background:rgba(217,119,6,0.12); padding:3px 8px; border-radius:6px;" id="addFpCatalogBadge">
+                        <span style="font-size:11.5px; color:#166534; font-weight:600; background:#F0FDF4; padding:3px 8px; border-radius:6px;" id="addFpCatalogBadge">
                             Authoritative Dataset Catalog
                         </span>
                     </div>
@@ -1282,22 +1309,22 @@
                         <div class="mgr-form-grid" style="grid-template-columns: 1fr 1fr; gap: 14px;">
                             <!-- Finished Product Name -->
                             <div class="mgr-field-group">
-                                <label for="newFpName" style="color:#78350F; font-size:12px; font-weight:600;">
+                                <label for="newFpName" style="color:#0F172A; font-size:12px; font-weight:600;">
                                     Finished Product Name <span class="req">*</span>
                                 </label>
                                 <input type="text" id="newFpName" required
                                     placeholder="e.g. Scones Formulation"
-                                    style="border-color:#FCD34D; font-size:13px;">
-                                <small style="color:#92400E; font-size:11px; margin-top:2px;">Enter a unique name for the finished product formulation folder.</small>
+                                    style="border-color:#CBD5E1; font-size:13px;">
+                                <small style="color:#0F172A; font-size:11px; margin-top:2px;">Enter a unique name for the finished product formulation folder.</small>
                             </div>
 
                             <!-- Raw Materials Selection Dropdown (All Dataset Materials Available) -->
                             <div class="mgr-field-group">
-                                <label for="newFpRawMaterialSelect" style="color:#78350F; font-size:12px; font-weight:600;">
+                                <label for="newFpRawMaterialSelect" style="color:#0F172A; font-size:12px; font-weight:600;">
                                     Dataset Raw Materials Choices <span class="req">*</span>
                                 </label>
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                    <select id="newFpRawMaterialSelect" class="mgr-select-filter" style="flex:1; min-width:200px; border-color:#FCD34D; font-size:12.5px; height:38px;">
+                                    <select id="newFpRawMaterialSelect" class="mgr-select-filter" style="flex:1; min-width:200px; border-color:#CBD5E1; font-size:12.5px; height:38px;">
                                         <!-- Dynamically populated with all raw materials from dataset -->
                                     </select>
                                     <button type="button" class="btn-primary-sm" id="btnAddNewFpMaterial"
@@ -1305,25 +1332,25 @@
                                         + Add Material
                                     </button>
                                     <button type="button" class="btn-secondary-sm" id="btnAddAllFpMaterials"
-                                        style="white-space:nowrap; background:#FEF3C7 !important; border:1px solid #F59E0B !important; color:#92400E !important; font-weight:600; padding:6px 14px; border-radius:6px;"
+                                        style="white-space:nowrap; background:#FFFFFF !important; border:1px solid #15803D !important; color:#0F172A !important; font-weight:600; padding:6px 14px; border-radius:6px;"
                                         title="Add all raw materials from dataset into recipe formulation">
                                         + Add All Materials
                                     </button>
                                 </div>
-                                <small style="color:#92400E; font-size:11px; margin-top:2px;">All raw materials from your active dataset are available in these choices.</small>
+                                <small style="color:#0F172A; font-size:11px; margin-top:2px;">All raw materials from your active dataset are available in these choices.</small>
                             </div>
                         </div>
 
                         <!-- Selected Materials Container / Tags -->
                         <div style="margin-top: 14px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                <label style="font-size:11.5px; font-weight:700; color:#78350F; text-transform:uppercase; letter-spacing:0.03em; margin:0;" for="finishedFoodPopupSearchInput">
+                                <label style="font-size:11.5px; font-weight:700; color:#0F172A; text-transform:uppercase; letter-spacing:0.03em; margin:0;" for="finishedFoodPopupSearchInput">
                                     Recipe Raw Materials, Unit Need &amp; Minimum Stock Limits (<span id="newFpSelectedCount">0</span> Added) <span class="req">*</span>
                                 </label>
-                                <span style="font-size:11px; color:#92400E; font-style:italic;">Customize recipe requirement per unit and minimum safety limit</span>
+                                <span style="font-size:11px; color:#0F172A; font-style:italic;">Customize recipe requirement per unit and minimum safety limit</span>
                             </div>
                             <div id="newFpSelectedMaterialsTags"
-                                style="min-height:50px; padding:4px; background:#FFFFFF; border:1px solid #FCD34D; border-radius:8px;">
+                                style="min-height:50px; padding:4px; background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px;">
                                 <span id="newFpEmptyHint" style="font-size:12px; color:#94A3B8; font-style:italic; display:block; padding:12px;">
                                     No raw materials added yet. Choose an available raw material from the dropdown above and click "+ Add Material".
                                 </span>
@@ -1334,7 +1361,7 @@
                         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
                             <button type="button" class="btn-secondary-sm" id="btnCancelAddFinishedProduct">Cancel</button>
                             <button type="submit" class="btn-primary-sm" id="btnSubmitAddFinishedProduct"
-                                style="background:#D97706; border-color:#D97706; color:#FFFFFF; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                style="background:#15803D; border-color:#15803D; color:#FFFFFF; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
                                     <polyline points="20 6 9 17 4 12" />
                                 </svg>
@@ -1390,13 +1417,13 @@
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         Save Limits
                     </button>
-                    <button type="button" class="btn-fp-card-action btn-fp-card-edit" id="btnFpDetailEdit" title="Edit this formulation">
+                    <button type="button" class="rmims-btn-xs rmims-btn-edit rmims-btn-pair" id="btnFpDetailEdit" title="Edit this formulation">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Edit Formulation
+                        <span>Edit</span>
                     </button>
-                    <button type="button" class="btn-fp-card-action btn-fp-card-delete" id="btnFpDetailDelete" title="Delete this formulation">
+                    <button type="button" class="rmims-btn-xs rmims-btn-delete rmims-btn-pair" id="btnFpDetailDelete" title="Delete this formulation">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                        Delete
+                        <span>Delete</span>
                     </button>
                     <button type="button" class="mgr-modal-close-btn" id="fpPopupClose"
                         aria-label="Close modal">
@@ -1411,10 +1438,6 @@
             <div class="mgr-modal-body">
                 <div class="specs-popup-meta-bar" style="background:#FFFBEB; border-color:#FDE68A; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
                     <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
-                        <div class="specs-popup-meta-item">
-                            <span style="color:#B45309; font-weight:700;">Role:</span>
-                            <strong style="color:#92400E;">Formulation &amp; Material Limits Guide</strong>
-                        </div>
                         <div class="specs-popup-meta-item">
                             <span style="color:#B45309; font-weight:700;">Specified Raw Materials:</span>
                             <strong id="fpPopupCount" style="color:#92400E;">0 Items</strong>
@@ -1447,22 +1470,6 @@
                     </table>
                 </div>
 
-                <div
-                    style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 10px; margin-top: 12px;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#15803D" stroke-width="2"
-                        style="flex-shrink:0; margin-top:1px;">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    <p style="font-size: 11.8px; color: #475569; margin: 0; line-height: 1.5;">
-                        <strong>Finished Product Material Limits:</strong> 
-                        <strong>Minimum Stock</strong> represents the required safety reserve limit for each raw material. 
-                        <strong>Safe Limit</strong> calculates how many finished products you can produce <em>before</em> that raw material dips below its minimum stock threshold. 
-                        <strong>Max Output</strong> indicates the maximum output possible before inventory reaches zero (0).
-                        You can adjust your inputs directly in the table above and click <strong>Save Limits</strong>.
-                    </p>
-                </div>
             </div>
 
             <div class="mgr-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1602,19 +1609,8 @@
                 </button>
             </div>
             <div class="mgr-modal-body" style="padding: 20px 24px;">
-                <!-- Import Date Field & Template Helper -->
-                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; padding:12px 14px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px;">
-                    <div style="flex:1; min-width:210px;">
-                        <label for="importDefaultDateInput" style="display:block; font-size:12px; font-weight:700; color:#0F172A; margin-bottom:4px;">
-                            Import Date (Applied if row has no Date column)
-                        </label>
-                        <input type="date" id="importDefaultDateInput" style="width:100%; height:36px; padding:6px 10px; border:1px solid #CBD5E1; border-radius:8px; font-size:12.5px; color:#0F172A; background:#FFFFFF;">
-                    </div>
-                    <button type="button" class="btn-secondary-sm" onclick="window.downloadImportRawMaterialsTemplate && window.downloadImportRawMaterialsTemplate()" style="height:36px; padding:0 12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px; border:1px solid #CBD5E1; border-radius:8px; background:#FFFFFF; color:#0F766E; cursor:pointer;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Download CSV Template
-                    </button>
-                </div>
+                <!-- Rows without a Date column are imported with today's date -->
+                <input type="hidden" id="importDefaultDateInput" value="">
 
                 <!-- File Drag & Drop Zone -->
                 <div class="mgr-import-dropzone" id="importRawMaterialsDropzone" onclick="document.getElementById('rawMaterialsImportFileInput').click()" style="border:2px dashed #CBD5E1; border-radius:12px; padding:28px 20px; text-align:center; background:#F8FAFC; cursor:pointer; transition:all 0.2s ease; position:relative;">

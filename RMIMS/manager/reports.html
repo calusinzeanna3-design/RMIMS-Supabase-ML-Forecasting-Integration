@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -380,24 +383,24 @@
                                 <div class="rpt-tab-panel active" id="tabPanelManager" style="display: block;">
                                     <!-- Top Summary KPI Mini Cards -->
                                     <div class="rpt-manager-kpi-grid">
-                                        <div class="rpt-kpi-box">
+                                        <div class="rpt-kpi-box rmims-kpi rmims-kpi-ink">
                                             <span class="rpt-kpi-label">Total Raw Materials</span>
                                             <h3 class="rpt-kpi-val" id="mgrTotalMaterials">0</h3>
                                             <span class="rpt-kpi-sub">Registered Ingredients</span>
                                         </div>
-                                        <div class="rpt-kpi-box">
+                                        <div class="rpt-kpi-box rmims-kpi rmims-kpi-good">
                                             <span class="rpt-kpi-label">Sufficient Stock</span>
                                             <h3 class="rpt-kpi-val text-green" id="mgrGoodStock">0</h3>
                                             <span class="rpt-kpi-sub">Ready for Use</span>
                                         </div>
-                                        <div class="rpt-kpi-box">
+                                        <div class="rpt-kpi-box rmims-kpi rmims-kpi-critical">
                                             <span class="rpt-kpi-label">Needs Reordering</span>
                                             <h3 class="rpt-kpi-val text-red" id="mgrAttentionStock">0</h3>
                                             <span class="rpt-kpi-sub">Low / Out of Stock</span>
                                         </div>
-                                        <div class="rpt-kpi-box">
+                                        <div class="rpt-kpi-box rmims-kpi rmims-kpi-ink">
                                             <span class="rpt-kpi-label">Total Activities</span>
-                                            <h3 class="rpt-kpi-val text-blue" id="mgrPeriodActivities">0</h3>
+                                            <h3 class="rpt-kpi-val" id="mgrPeriodActivities">0</h3>
                                             <span class="rpt-kpi-sub">Deliveries + Usage</span>
                                         </div>
                                     </div>
@@ -544,7 +547,6 @@
                                             <thead>
                                                 <tr>
                                                     <th>Receipt Date</th>
-                                                    <th>Receipt Time</th>
                                                     <th>Reference No.</th>
                                                     <th>Material Code</th>
                                                     <th>Raw Material</th>
@@ -589,7 +591,6 @@
                                             <thead>
                                                 <tr>
                                                     <th>Usage Date</th>
-                                                    <th>Usage Time</th>
                                                     <th>Reference No.</th>
                                                     <th>Material Code</th>
                                                     <th>Raw Material</th>
@@ -638,7 +639,6 @@
                                             <thead>
                                                 <tr>
                                                     <th>Date</th>
-                                                    <th>Time</th>
                                                     <th>Reference No.</th>
                                                     <th>Material Code</th>
                                                     <th>Movement Type</th>
@@ -702,35 +702,10 @@
                                 <!-- TAB 7: AI FORECASTING -->
                                 <div class="rpt-tab-panel" id="tabPanelForecasting"
                                     style="width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;">
-                                    <!-- Forecast Summary & Unit-Safe Requirement Grid -->
-                                    <div class="rpt-manager-kpi-grid"
-                                        style="grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;">
-                                        <div class="rpt-kpi-box">
-                                            <span class="rpt-kpi-label">Forecast Status</span>
-                                            <h3 class="rpt-kpi-val" id="fcReportStatus">No Forecast Data</h3>
-                                            <span class="rpt-kpi-sub" id="fcReportHorizon">Horizon: Operational
-                                                Buffer</span>
-                                        </div>
-                                        <div class="rpt-kpi-box">
-                                            <span class="rpt-kpi-label">Forecasted Materials</span>
-                                            <h3 class="rpt-kpi-val" id="fcReportMatCount">0 Materials</h3>
-                                            <span class="rpt-kpi-sub" id="fcReportLastTime">Status: Live AI
-                                                Projections</span>
-                                        </div>
-                                        <div class="rpt-kpi-box" style="grid-column: span 2;">
-                                            <span class="rpt-kpi-label">Total Forecasted Requirement (Unit-Safe)</span>
-                                            <div class="fc-unit-req-pills" id="fcReportReqPills">
-                                                <span class="fc-unit-pill empty">0 Projected</span>
-                                            </div>
-                                            <span class="rpt-kpi-sub">Unit-safe projected consumption requirement</span>
-                                        </div>
-                                    </div>
-
                                     <!-- AI Forecast Decision Support Findings -->
                                     <div class="rpt-section-header" style="margin-top: 10px; margin-bottom: 12px;">
-                                        <h4 class="rpt-section-title">AI Forecast Decision Support</h4>
-                                        <p class="rpt-section-desc">Authoritative inventory projections and
-                                            replenishment insights derived from latest AutoReg forecasting models.</p>
+                                        <h4 class="rpt-section-title">Restock Advice</h4>
+                                        <p class="rpt-section-desc">Which raw materials need to be ordered, based on recorded use and stock on hand.</p>
                                     </div>
                                     <div class="rpt-fc-decision-grid" id="fcReportDecisionList">
                                         <!-- Populated via JS -->
@@ -1036,6 +1011,7 @@
     <!-- LIBRARIES -->
     <script src="../vendor/flatpickr/flatpickr.min.js"></script>
     <script src="../vendor/chart/chart.umd.js"></script>
+    <script src="../js/chart-bar-values.js"></script>
     <script src="../vendor/jspdf/jspdf.umd.min.js"></script>
     <script src="../vendor/jspdf/jspdf.plugin.autotable.min.js"></script>
     <script src="../vendor/xlsx/xlsx.full.min.js"></script>

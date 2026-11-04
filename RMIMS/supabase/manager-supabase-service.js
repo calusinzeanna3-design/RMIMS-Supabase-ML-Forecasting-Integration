@@ -269,10 +269,15 @@ async function seedMissingMaterials(remoteRows) {
   const haveNames = new Set(remoteRows.map(r => String(r.name || '').trim().toLowerCase()));
   let locals = [];
   try { locals = getSystemRawMaterials() || []; } catch (_) {}
+  const pending = getPendingPushes();
   const payloads = locals
     .filter(m => {
       const code = String(m.item_code || m.id || '').toUpperCase().trim();
       if (!code || have.has(code)) return false;
+      // A material that was already in the database (it has a database id) and is gone now was deleted there
+      // (another device / a reset): it is NEVER re-created from this device's copy. Only a material added on this
+      // device and not saved yet is pushed.
+      if (m.db_id && !pending[code]) return false;
       if (haveNames.has(String(m.name || '').trim().toLowerCase())) return false;
       return true;   // the database stamps the company from the signed-in manager, so no client-side tenant rule is needed
     })
@@ -327,17 +332,26 @@ export function reconcileRemoteMaterials(rows) {
     if (k) customIndex.set(k, i);
   });
 
+  // Only the manager edits materials. On every other device (staff) the database is ALWAYS the truth:
+  // a leftover local edit / stock figure there must never hide the manager's latest numbers.
+  const canHoldLocal = isManagerSession();
+  let pendingChanged = false;
   rows.forEach(r => {
     if (!r) return;
     const code = String(r.item_code || '').toUpperCase().trim();
     if (!code) return;
     // Tenant isolation is enforced by the database (row level security): only this company's rows arrive here.
-    if (pending[code]) return;                          // local un-pushed edit wins until saved
+    if (pending[code]) {
+      const age = Date.now() - Number(pending[code].ts || 0);
+      // a manager's un-pushed edit wins for a short while; a stuck / old one (or any on a staff device) is dropped
+      if (canHoldLocal && age < 120000) return;
+      delete pending[code]; pendingChanged = true;
+    }
 
     const prev = overrides[code] || {};
     const remoteStock = Number(r.current_stock ?? 0);
     const remoteUpdatedMs = Date.parse(r.updated_at || r.last_updated || '') || 0;
-    const localStockTs = Number(prev.stock_local_ts || 0);
+    const localStockTs = canHoldLocal ? Number(prev.stock_local_ts || 0) : 0;
     // A stock movement made on this device keeps its figure until the database has had time to apply it
     // (stored procedure still running, or the row's updated_at was bumped by an unrelated field update first).
     const withinGrace = localStockTs > 0 && (Date.now() - localStockTs < LOCAL_STOCK_GRACE_MS || ledgerInFlight > 0);
@@ -366,7 +380,7 @@ export function reconcileRemoteMaterials(rows) {
     if (hasVal(r.lead_time_days)) entry.lead_time_days = Number(r.lead_time_days);
     if (!localIsNewer && prev.stock_local_ts) delete entry.stock_local_ts; // server caught up
 
-    overrides[code] = { ...entry, maximum_stock: prev.maximum_stock || (entry.reorder_quantity ? entry.reorder_quantity * 2 : prev.maximum_stock) };
+    overrides[code] = { ...entry, maximum_stock: prev.maximum_stock || null };
     mirrorToLegacyOverrides(code, entry);
 
     const idx = customIndex.get(code);
@@ -375,6 +389,7 @@ export function reconcileRemoteMaterials(rows) {
     else { customIndex.set(code, customList.length); customList.push(customEntry); }
   });
 
+  if (pendingChanged) setJsonIfChanged(PENDING_PUSH_KEY, pending);
   const before = localStorage.getItem(CUSTOM_MATS_KEY) + '|' + localStorage.getItem(MAT_OVERRIDES_KEY);
   setJsonIfChanged(CUSTOM_MATS_KEY, customList);
   setJsonIfChanged(MAT_OVERRIDES_KEY, overrides);
@@ -1684,6 +1699,9 @@ export async function fetchUnifiedInventoryFromSupabase() {
     try { existingOverrides = JSON.parse(localStorage.getItem('rmims_manager_material_overrides') || '{}'); } catch (_) {}
 
     const mergedMap = new Map();
+    // materials that were in the database but are not any more (deleted on another device / reset) leave this device too
+    const pendingNow = getPendingPushes();
+    const goneFromDb = (key, entry) => remoteCodes.size > 0 && entry && entry.db_id && !remoteCodes.has(key) && !pendingNow[key];
 
     // 1. Always preserve local user-imported and user-added materials first
     if (Array.isArray(existingCustom)) {
@@ -1693,10 +1711,11 @@ export async function fetchUnifiedInventoryFromSupabase() {
         const rawCode = String(c.item_code || c.id || '').toUpperCase().trim();
         const isSconesCode = rawCode.startsWith('NB-') || !rawCode.startsWith('RM-');
         const recognized = resolveForecastingMaterialByName(name, isSconesCode);
-        const key = (recognized && recognized.code) ? recognized.code : rawCode;
+        const key = rawCode || ((recognized && recognized.code) ? recognized.code : ''); // own code first
         if (!key) return;
-        const isCoreProtected = /^NB-0(0[1-9]|1[0-9])$/i.test(key) || /^RM-0(0[1-9]|[1-5][0-9])$/i.test(key);
+        const isCoreProtected = false; // no material is locked (the 19 registered ones included)
         const isImportedOrManual = Boolean(c.is_imported || c.is_manual_override || Number(c.current_stock ?? 0) > 0);
+        if (goneFromDb(key, c)) return;
         if (isCoreProtected || isImportedOrManual || !deletedSet.has(key.toLowerCase())) {
           mergedMap.set(key, {
             ...c,
@@ -1717,9 +1736,10 @@ export async function fetchUnifiedInventoryFromSupabase() {
         const rawCode = String(ov.item_code || ov.id || rawKey || '').toUpperCase().trim();
         const isSconesCode = rawCode.startsWith('NB-') || !rawCode.startsWith('RM-');
         const recognized = resolveForecastingMaterialByName(name, isSconesCode);
-        const key = (recognized && recognized.code) ? recognized.code : rawCode;
+        const key = rawCode || ((recognized && recognized.code) ? recognized.code : ''); // own code first
         if (!key) return;
         const isImportedOrManual = Boolean(ov.is_imported || ov.is_manual_override || Number(ov.current_stock ?? 0) > 0);
+        if (goneFromDb(key, ov)) return;
         if (isImportedOrManual || !deletedSet.has(key.toLowerCase())) {
           const prev = mergedMap.get(key) || {};
           mergedMap.set(key, {
@@ -1767,7 +1787,7 @@ export async function fetchUnifiedInventoryFromSupabase() {
             const rawCode = String(det.id || row.entity_id || '').toUpperCase().trim();
             const isSconesCode = rawCode.startsWith('NB-') || !rawCode.startsWith('RM-');
             const recognized = resolveForecastingMaterialByName(det.name, isSconesCode);
-            const key = (recognized && recognized.code) ? recognized.code : rawCode;
+            const key = rawCode || ((recognized && recognized.code) ? recognized.code : ''); // own code first
             if (!key || deletedSet.has(key.toLowerCase()) || deletedSet.has(String(det.name).toLowerCase().trim())) return;
             if (remoteCodes.has(key)) return; // live database row is authoritative; never use a stale log snapshot
 
@@ -1831,7 +1851,7 @@ export async function fetchUnifiedInventoryFromSupabase() {
           unit: m.unit || prev.unit,
           current_stock: Number(m.current_stock ?? 0),
           minimum_stock: Number(m.minimum_threshold ?? m.minimum_stock ?? 0),
-          maximum_stock: prev.maximum_stock || (m.reorder_quantity ? m.reorder_quantity * 4 : 100),
+          maximum_stock: prev.maximum_stock || null,
           date_added: firstDate,
           first_date: firstDate,
           display_date: m.display_date || prev.display_date || firstDate || '',
@@ -1842,6 +1862,16 @@ export async function fetchUnifiedInventoryFromSupabase() {
         };
       });
       localStorage.setItem('rmims_manager_material_overrides', JSON.stringify(mgrOverrides));
+      // the older copy of the overrides must not bring a deleted material back either
+      try {
+        const legacy = JSON.parse(localStorage.getItem('rmims_manager_inventory_overrides') || '{}') || {};
+        let pruned = false;
+        Object.keys(legacy).forEach(k => {
+          const key = String((legacy[k] && (legacy[k].item_code || legacy[k].id)) || k).toUpperCase().trim();
+          if (goneFromDb(key, legacy[k]) || (remoteCodes.size > 0 && !mgrOverrides[key] && !pendingNow[key])) { delete legacy[k]; pruned = true; }
+        });
+        if (pruned) localStorage.setItem('rmims_manager_inventory_overrides', JSON.stringify(legacy));
+      } catch (_) {}
     }
   } catch (err) {
     console.warn('[ManagerSupabase] Live inventory sync notice:', err);
@@ -1868,7 +1898,7 @@ export async function saveRawMaterialToSupabase(material, opts = {}) {
   const name = (material.name || material.raw_material_name || '').trim();
   const isSconesCode = rawId.startsWith('NB-') || !rawId.startsWith('RM-');
   const recognized = resolveForecastingMaterialByName(name, isSconesCode);
-  const id = (recognized && recognized.code) ? recognized.code : rawId;
+  const id = rawId || ((recognized && recognized.code) ? recognized.code : ''); // own code first
 
   let existing = {};
   try {
@@ -1889,7 +1919,7 @@ export async function saveRawMaterialToSupabase(material, opts = {}) {
   const unit = pickVal(material.unit, material.unit_of_measure, existing.unit_of_measure, existing.unit, recognized && recognized.unit) || 'kg';
   const stock = Number(hasVal(providedStock) ? providedStock : (existing.current_stock ?? 0));
   const minStock = Number(hasVal(providedMin) ? providedMin : (existing.minimum_threshold ?? existing.minimum_stock ?? 0));
-  const reorderQty = Number(hasVal(providedReorder) ? providedReorder : (existing.reorder_quantity ?? ((minStock * 2) || 25)));
+  const reorderQty = hasVal(providedReorder) ? Number(providedReorder) : (existing.reorder_quantity != null ? Number(existing.reorder_quantity) : null);
   const leadTime = Number(hasVal(providedLead) ? providedLead : (existing.lead_time_days ?? 3));
   const desc = pickVal(material.description, existing.description) || `Raw material ${name}`;
   const cat = pickVal(material.category, existing.category, recognized && recognized.category) || 'General Materials';
@@ -1941,9 +1971,9 @@ export async function saveRawMaterialToSupabase(material, opts = {}) {
       category: cat, unit,
       current_stock: stock,
       minimum_stock: minStock,
-      maximum_stock: material.maximum_stock || prevOv.maximum_stock || (minStock * 5) || 100,
+      maximum_stock: material.maximum_stock || prevOv.maximum_stock || null,
       storage_location: material.storage_location || prevOv.storage_location || '',
-      supplier: material.supplier || prevOv.supplier || 'General Supply Co.',
+      supplier: material.supplier || prevOv.supplier || '',
       description: desc,
       date_added: firstDateToKeep, first_date: firstDateToKeep,
       display_date: material.display_date || prevOv.display_date || firstDateToKeep,

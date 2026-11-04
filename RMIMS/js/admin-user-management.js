@@ -759,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!confirm(`Are you sure you want to permanently delete ${name} from all branch stores and user directories?`)) {
+    if (!await window.rmimsConfirm(`Are you sure you want to permanently delete ${name} from all branch stores and user directories?`)) {
       return;
     }
 
@@ -779,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Unlock User Account Action (Admin Security Operation)
   window.unlockUserAccountAction = async function (id, name, email) {
-    if (!confirm(`Unlock account for ${name} (${email})?\nThis will clear the failed login lock and restore full access.`)) {
+    if (!await window.rmimsConfirm(`Unlock account for ${name} (${email})?\nThis will clear the failed login lock and restore full access.`)) {
       return;
     }
 
