@@ -341,6 +341,7 @@ async function init() {
         clearTimeout(liveForecastTimer);
         liveForecastTimer = setTimeout(() => {
             try { invalidateForecastCache(); } catch (_) {}
+            _liveRefreshPending = true;
             loadAuthoritativeData();
         }, 1200);
     };
@@ -1156,7 +1157,26 @@ function renderForecastCalendarWidget() {
     }
 }
 
+// A live refresh that brings exactly the same data does not redraw the page (no chart re-animation / flicker).
+let _lastRenderSig = null;
+let _liveRefreshPending = false;
+function forecastDataSignature() {
+    try {
+        const mats = (state.materials || []).map(m => [m.id, m.name, m.unit, m.currentStock, m.minStock].join('~')).join('|');
+        const disb = (state.disbursements || []).map(d => [d.id, d.materialId, d.usageDate, d.consumedQuantity].join('~')).sort().join('|');
+        const rec = (state.receipts || []).map(r => [r.id, r.materialId || r.material_id, r.receipt_date || r.date, r.received_quantity ?? r.quantity].join('~')).sort().join('|');
+        const fc = Array.from((state.forecasts && state.forecasts.entries && state.forecasts.entries()) || [])
+            .map(([k, v]) => [k, v && v.forecast7Day && v.forecast7Day.quantity, v && v.forecast1Month && v.forecast1Month.quantity].join('~')).join('|');
+        let fps = '';
+        try { fps = localStorage.getItem('rmims_custom_finished_products') || ''; } catch (_) {}
+        return [mats, disb, rec, fc, fps].join('#');
+    } catch (_) { return String(Math.random()); }
+}
 function renderAll() {
+    const sig = forecastDataSignature();
+    _liveRefreshPending = false;
+    if (sig === _lastRenderSig) return;   // renderAll is only called when data was (re)loaded
+    _lastRenderSig = sig;
     try { renderTopKPIs(); } catch (e) { console.error("renderTopKPIs error:", e); }
     try { updateMarginComplianceBanner(); } catch (e) { console.error("updateMarginComplianceBanner error:", e); }
     try { renderPrimaryChart(); } catch (e) { console.error("renderPrimaryChart error:", e); }

@@ -18,6 +18,10 @@ import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { loadRecorderDirectory, resolveRecorderName } from "./rmims-recorder-resolver.js";
 import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, displayFinishedProduct, finishedProductsForMaterial, fmtQtyOrDash } from "./rmims-reorder-engine.js";
 
+// declared first: the report is drawn once its data has loaded (never a "0 materials" report first)
+var _lastReportDataSig = null;
+var _reportDataLoaded = false;
+
 /** Reorder quantity for display: only data-driven values, "—" when there is no recorded consumption. */
 /** Reorder cell: the reorder quantity, plus tomorrow's estimated need (from recorded usage) underneath. */
 /** Finished products of a raw material as one compact "Products" dropdown per row (never spills into other columns). */
@@ -962,6 +966,11 @@ async function loadAuthoritativeData() {
         // Load Authoritative Forecast Cache / Output (staged as blank placeholders)
         loadAuthoritativeForecasts();
 
+        // a live reload that brought exactly the same data does not redraw the report (no flicker)
+        const dataSig = reportDataSignature();
+        if (dataSig === _lastReportDataSig) return;
+        _lastReportDataSig = dataSig;
+        _reportDataLoaded = true;
         state.generatedAt = new Date();
         populateMaterialDropdown();
         updateMetadataLabels();
@@ -1090,7 +1099,20 @@ function updateMetadataLabels() {
    RENDER ALL ON-SCREEN REPORT TABS
    ========================================================== */
 
+function reportDataSignature() {
+    try {
+        const pick = (a, f) => (a || []).map(f).sort().join('|');
+        return [
+            pick(state.materials, m => [m.id, m.name, m.unit, m.currentStock, m.minThreshold, m.status].join('~')),
+            pick(state.receipts, r => [r.id, r.materialId, r.receiptDate, r.receivedQuantity, r.receivedBy, r.finishedProduct].join('~')),
+            pick(state.disbursements, d => [d.id, d.materialId, d.usageDate, d.disbursedQuantity, d.recordedBy, d.finishedProduct].join('~')),
+            String(state.startDate), String(state.endDate), String(state.selectedMaterialId), String(state.periodPreset),
+            (() => { try { return localStorage.getItem('rmims_custom_finished_products') || ''; } catch (_) { return ''; } })()
+        ].join('#');
+    } catch (_) { return String(Math.random()); }
+}
 function renderAllTabs() {
+    if (!_reportDataLoaded) return;
     renderManagerSummaryTab();
     renderRestockRecommendationsTab();
     renderInventoryRecordsTab();
@@ -4259,7 +4281,8 @@ function initEventListeners() {
         updateCorporatePreviewDetails(target);
 
         // Re-render tab specific content
-        if (target === "manager") renderManagerSummaryTab();
+        if (!_reportDataLoaded) { /* drawn once the data has loaded */ }
+        else if (target === "manager") renderManagerSummaryTab();
         else if (target === "restock") renderRestockRecommendationsTab();
         else if (target === "inventory") renderInventoryRecordsTab();
         else if (target === "receiving") renderMaterialReceivingTab();

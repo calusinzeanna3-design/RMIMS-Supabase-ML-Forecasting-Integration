@@ -4908,7 +4908,6 @@ async function handleConfirmImportMaterials() {
   setImportPct(dbPct);
   const dbTicker = setInterval(() => { dbPct += (70 - dbPct) * 0.08; setImportPct(dbPct); }, 120);
 
-
   // 1. The whole file is imported in Supabase in one step (import_raw_materials, SQL file 13): materials,
   //    deliveries from the stock counts, current stock. Every device then loads the same result.
   let dbResult = null;
@@ -4925,16 +4924,23 @@ async function handleConfirmImportMaterials() {
     const { data, error } = await sb.rpc('import_raw_materials', { p_rows: rows });
     if (error) throw error;
     dbResult = data;
+    clearInterval(dbTicker);
+    setImportPct(70);
   } catch (err) {
+    clearInterval(dbTicker);
     const msg = String((err && err.message) || '');
     if (progressBox) progressBox.style.display = 'none';
     if (confirmBtn) {
       confirmBtn.disabled = false;
       confirmBtn.innerHTML = `<span id="importModalConfirmText">Import Raw Materials</span>`;
     }
-    showImportError(/import_raw_materials|function|schema cache/i.test(msg)
-      ? 'Import is not installed in Supabase yet: run SQL file 13_IMPORT_RAW_MATERIALS.sql.'
-      : (msg.replace(/^RMIMS_[A-Z_]+:\s*/, '') || 'The file could not be imported. Nothing was changed.'));
+    showImportError(/Failed to fetch|NetworkError|network|Load failed|ERR_|timeout/i.test(msg)
+      ? 'Could not reach the database (check the internet connection). Nothing was imported - please try again.'
+      : /JWT|session|not authenticated|401/i.test(msg)
+        ? 'Your sign-in session has expired. Sign out, sign in again, then import the file.'
+        : /import_raw_materials|function|schema cache/i.test(msg)
+          ? 'Import is not installed in Supabase yet: run SQL file 13_IMPORT_RAW_MATERIALS.sql.'
+          : (msg.replace(/^RMIMS_[A-Z_]+:\s*/, '').replace(/^TypeError:\s*/, '') || 'The file could not be imported. Nothing was changed.'));
     return;
   }
   const rejected = Array.isArray(dbResult && dbResult.rejected_rows) ? dbResult.rejected_rows : [];

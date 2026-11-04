@@ -157,15 +157,20 @@
   function start() {
     scan(document.body);
     try {
-      new MutationObserver(recs => recs.forEach(r => {
-        if (r.type === 'childList') { r.addedNodes.forEach(queue); if (r.target && r.target.closest && r.target.closest('table')) queue(r.target); }
-        else if (r.type === 'characterData') queue(r.target);
-        else if (r.attributeName === 'hidden' || r.attributeName === 'class') {
-          const t = r.target;
-          if (t.classList && (t.classList.contains('rmims-status-row') || t.classList.contains('rmims-status-oval'))) return;
-          queue(t);
-        }
-      })).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+      // processed in the observer callback itself (before the browser paints), so a redrawn table never flashes
+      // full names / unstyled statuses for a moment before the initials and status colours appear
+      new MutationObserver(recs => {
+        recs.forEach(r => {
+          if (r.type === 'childList') { r.addedNodes.forEach(queue); if (r.target && r.target.closest && r.target.closest('table')) queue(r.target); }
+          else if (r.type === 'characterData') queue(r.target);
+          else if (r.attributeName === 'hidden' || r.attributeName === 'class') {
+            const t = r.target;
+            if (t.classList && (t.classList.contains('rmims-status-row') || t.classList.contains('rmims-status-oval'))) return;
+            queue(t);
+          }
+        });
+        if (timer) { clearTimeout(timer); flush(); }
+      }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'hidden'] });
     } catch (_) {}
     setTimeout(() => scan(document.body), 1500);
     setTimeout(() => scan(document.body), 4000);

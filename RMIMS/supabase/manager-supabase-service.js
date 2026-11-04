@@ -482,7 +482,7 @@ function mapRemoteReceipts(rows, matLookup, auditRows) {
       const mat = matLookup.get(sr.material_id) || {};
       const name = sr.material_name || mat.name || '';
       const tagged = extractRefFromText(sr.supplier_name);
-      const ref = tagged || recover(sr.received_quantity, name, sr.created_at) || sr.id;
+      const ref = tagged || (sr.reference_no ? String(sr.reference_no).trim() : '') || recover(sr.received_quantity, name, sr.created_at) || sr.id;
       return {
         id: ref,
         ref,
@@ -510,7 +510,7 @@ function mapRemoteDisbursements(rows, matLookup, auditRows) {
       const mat = matLookup.get(sd.material_id) || {};
       const name = sd.material_name || mat.name || '';
       const tagged = extractRefFromText(sd.activity_type);
-      const ref = tagged || recover(sd.consumed_quantity, name, sd.created_at) || sd.id;
+      const ref = tagged || (sd.reference_no ? String(sd.reference_no).trim() : '') || recover(sd.consumed_quantity, name, sd.created_at) || sd.id;
       return {
         id: ref,
         ref,
@@ -2688,6 +2688,18 @@ function restoreEmptyFromSnapshot() {
   } catch (_) {}
 }
 
+/** First live pull finished: empty tables may now say "nothing recorded" (before that they say "Loading..."). */
+function markLiveReady() {
+  try {
+    if (typeof document !== 'undefined' && document.documentElement) document.documentElement.classList.remove('rmims-syncing');
+    if (typeof window !== 'undefined') window.__rmimsLiveReady = true;
+  } catch (_) {}
+}
+if (typeof document !== 'undefined' && document.documentElement && supabase && !supabase.__offline) {
+  document.documentElement.classList.add('rmims-syncing');
+  setTimeout(markLiveReady, 10000);   // never longer than 10 s, even when offline
+}
+
 export async function pullLiveData(reason = 'manual') {
   if (!supabase || supabase.__offline) return false;
   restoreEmptyFromSnapshot();
@@ -2695,6 +2707,13 @@ export async function pullLiveData(reason = 'manual') {
   if (livePullRunning) { livePullQueued = true; return false; }
   livePullRunning = true;
   const before = liveSignature();
+  let notifiedSig = before;
+  // The screens are redrawn ONCE when everything has arrived. Only on a slow connection (still waiting after
+  // 2.5 s) is what already arrived shown first, so a screen never waits long - and never redraws part by part.
+  const early = setTimeout(() => {
+    const sig = liveSignature();
+    if (sig !== notifiedSig) { notifiedSig = sig; notifyLiveViews({ reason: reason + ':partial' }); }
+  }, 2500);
   try {
     await retryPendingPushes();
     await Promise.allSettled([
@@ -2706,11 +2725,14 @@ export async function pullLiveData(reason = 'manual') {
   } catch (e) {
     console.warn('[LiveSync] pull notice:', e && e.message);
   } finally {
+    clearTimeout(early);
     livePullRunning = false;
     liveLastPullAt = Date.now();
+    markLiveReady();
   }
-  const changed = liveSignature() !== before;
-  if (changed) notifyLiveViews({ reason });
+  const finalSig = liveSignature();
+  const changed = finalSig !== before;
+  if (finalSig !== notifiedSig) notifyLiveViews({ reason });
   if (livePullQueued) { livePullQueued = false; scheduleLivePull(500, 'queued'); }
   return changed;
 }

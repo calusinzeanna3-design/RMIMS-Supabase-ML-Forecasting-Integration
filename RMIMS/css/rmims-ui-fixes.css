@@ -425,3 +425,11 @@
 :root:not(#rmims-ui-x) .rmims-products-dd > ul { position: static !important; width: 100%; min-width: max-content; box-sizing: border-box; }
 /* v37: Receive / Disburse summary shows 3 cards (the "Top ..." card was removed) */
 :root:not(#rmims-ui-x) .mgr-tx-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
+
+/* v42: while the first live data is loading, an empty table says "Loading live data..." instead of "No records" */
+:root.rmims-syncing tbody td[colspan] { position: relative; color: transparent !important; }
+:root.rmims-syncing tbody td[colspan] > * { visibility: hidden; }
+:root.rmims-syncing tbody td[colspan]::after {
+  content: 'Loading live data…'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #64748B !important; font-size: 13px; font-weight: 600;
+}
