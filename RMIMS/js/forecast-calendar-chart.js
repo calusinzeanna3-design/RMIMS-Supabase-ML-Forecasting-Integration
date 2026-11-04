@@ -6,7 +6,7 @@
 
 import { getActiveTenantContext } from './tenant-manager.js';
 import { parseSafeDate, resolveForecastingMaterialByName } from './system-materials.js';
-import { getTrainedProfile, trainedDailyForecast, buildLiveForecaster, dateKey as trainedDateKey, TRAINED_OVERALL_DAILY_MAPE } from './trained-forecast-engine.js';
+import { getTrainedProfile, trainedDailyForecast, buildLiveForecaster, dateKey as trainedDateKey, TRAINED_OVERALL_DAILY_MAPE, KXC_MODEL_MAPE } from './trained-forecast-engine.js';
 import { isDeleted, extractRefFromText } from './rmims-deleted-ledger.js';
 
 export function initForecastCalendarCard(containerId, options = {}) {
@@ -119,10 +119,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
               <span class="cal-legend-dot cal-dot-green"></span>
               <span>Consumed Materials (Usage)</span>
             </div>
-            <div class="cal-legend-item">
-              <span class="cal-legend-band-preview"></span>
-              <span id="${instanceId}_legendMarginText">±7.51% Margin of Error Limits</span>
-            </div>
+
           </div>
 
           <div class="cal-chart-canvas-wrap">
@@ -579,8 +576,10 @@ export function initForecastCalendarCard(containerId, options = {}) {
       (materials && materials.length <= 25 && materials.some(m => String(m.item_code || m.code || m.id).startsWith('NB-')))
     );
 
-    const marginFactor = isScones ? 0.0795 : 0.0751;
-    const marginLabel = isScones ? '±7.95%' : '±7.51%';
+    // ONE model margin per company: Scones & Muffins 12-year model (19 materials combined) / KXC 5-year model
+    const modelMapePct = isScones ? TRAINED_OVERALL_DAILY_MAPE : KXC_MODEL_MAPE;
+    const marginFactor = modelMapePct / 100;
+    const marginLabel = '±' + modelMapePct.toFixed(2) + '%';
     const marginSourceDesc = isScones ? 'Scones & Muffins' : 'KXC';
 
     // ---- Trained-dataset curve (12-year Nutribun profile) adapted to real disbursements ----
@@ -649,9 +648,9 @@ export function initForecastCalendarCard(containerId, options = {}) {
       // Day-of-week factors derived from the trained dataset:
       //   Sunday=low (~0.06x due to baking off-day/buffer only)
       //   Monday=ramp-up (~0.85x)
-      //   Tuesday=full production (~1.08x)
-      //   Wednesday=full production (~1.12x)
-      //   Thursday=full production (~1.10x)
+      //   Tuesday=full day (~1.08x)
+      //   Wednesday=full day (~1.12x)
+      //   Thursday=full day (~1.10x)
       //   Friday=peak (~1.15x)
       //   Saturday=near-peak (~1.05x)
       // Weekly sum of factors = 6.41 → normalized so weekly average = 1.0 (daily avg * 7 / 6.41 ≈ dailyReq)
@@ -716,11 +715,10 @@ export function initForecastCalendarCard(containerId, options = {}) {
       }
     });
 
-    let liveDesc = useTrained ? (anyEvidence ? 'Trained 12-Year Model · live-calibrated' : 'Awaiting recorded consumption') : marginSourceDesc;
+    let liveDesc = useTrained ? (anyEvidence ? 'Trained 12-Year Model · live-calibrated · self-learning for new materials' : 'Awaiting recorded consumption') : marginSourceDesc;
     if (useTrained) {
-      const avgPct = liveMarginRatioN > 0
-        ? (liveMarginRatioSum / liveMarginRatioN) * 100
-        : (selectedMaterialId === 'ALL' ? TRAINED_OVERALL_DAILY_MAPE : trainedTargets[0].prof.mape);
+      // same model margin for every material, horizon and view
+      const avgPct = modelMapePct;
       effMarginFactor = avgPct / 100;
       effMarginLabel = '±' + Number(avgPct).toFixed(2) + '%';
     }
@@ -737,10 +735,7 @@ export function initForecastCalendarCard(containerId, options = {}) {
 
     // Update dynamic margin label in the legend on top of the chart
     const legendMarginEl = document.getElementById(`${instanceId}_legendMarginText`);
-    if (legendMarginEl) {
-      legendMarginEl.textContent = `${data.marginLabel} MAPE Margin (${data.marginSourceDesc})` +
-        (data.consumedDays > 0 ? ` · ${data.insideDays}/${data.consumedDays} consumed days within` : '');
-    }
+    // (the technical margin-of-error line is not shown to end users)
 
     // Gradients
     const darkGrad = ctx.createLinearGradient(0, 0, 0, 300);

@@ -70,7 +70,7 @@ export function isRefDeletedAny(...ids) {
     return isDeleted("disbursement", ...ids) || isDeleted("receipt", ...ids);
 }
 
-/** Pulls the system reference out of text such as "Production Usage [Ref: 2026SMM-D0007]". */
+/** Pulls the system reference out of text such as "Material Usage [Ref: 2026SMM-D0007]". */
 export function extractRefFromText(text) {
     const m = String(text || "").match(/\[Ref:\s*([^\]\s]+)\s*\]/i);
     return m ? m[1].trim() : "";

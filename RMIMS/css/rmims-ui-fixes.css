@@ -1,0 +1,435 @@
+/* RMIMS v27 shared UI rules. Every selector starts with :root:not(#rmims-ui-x) so these rules win over older
+   page styles whatever order the build puts the stylesheets in. */
+/* ============================================================================
+   RMIMS v27 — shared UI rules (loaded LAST on every page so they win)
+   1. Stock status ovals: white inside, the TEXT carries the colour
+   2. Compact table action buttons (still easy to tap: 28px tall)
+   3. Tables never cut or wrap text: columns grow, the table scrolls sideways
+   ============================================================================ *//* ---------- 1. Status ovals (My Inventory + every other stock status) ---------- */
+:root:not(#rmims-ui-x) .mgr-status-pill.status-pill-good,
+:root:not(#rmims-ui-x) .mgr-status-pill.status-pill-low,
+:root:not(#rmims-ui-x) .mgr-status-pill.status-pill-out,
+:root:not(#rmims-ui-x) .status-pill.status-pill-good,
+:root:not(#rmims-ui-x) .status-pill.status-pill-low,
+:root:not(#rmims-ui-x) .status-pill.status-pill-out,
+:root:not(#rmims-ui-x) .status-pill-good,
+:root:not(#rmims-ui-x) .status-pill-low,
+:root:not(#rmims-ui-x) .status-pill-out,
+:root:not(#rmims-ui-x) .status-badge-instock,
+:root:not(#rmims-ui-x) .status-badge-lowstock,
+:root:not(#rmims-ui-x) .status-badge-outofstock {
+  background: #FFFFFF !important;
+  border: 1.5px solid currentColor !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+
+:root:not(#rmims-ui-x) .mgr-status-pill.status-pill-good,
+:root:not(#rmims-ui-x) .status-pill-good,
+:root:not(#rmims-ui-x) .status-badge-instock { color: #166534 !important; }
+
+/* Good: dark green */
+:root:not(#rmims-ui-x) .mgr-status-pill.status-pill-low,
+:root:not(#rmims-ui-x) .status-pill-low,
+:root:not(#rmims-ui-x) .status-badge-lowstock { color: #EA580C !important; }
+
+/* Low Stock: orange */
+:root:not(#rmims-ui-x) .mgr-status-pill.status-pill-out,
+:root:not(#rmims-ui-x) .status-pill-out,
+:root:not(#rmims-ui-x) .status-badge-outofstock { color: #DC2626 !important; }
+
+/* Out of Stock: red *//* ---------- 2. Compact action buttons inside tables ---------- */
+:root:not(#rmims-ui-x) .rmims-row-actions {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap !important;
+}
+
+
+:root:not(#rmims-ui-x) table td button,
+:root:not(#rmims-ui-x) table td a.btn,
+:root:not(#rmims-ui-x) table td a[class*="btn"],
+:root:not(#rmims-ui-x) .rmims-btn-xs {
+  padding: 4px 10px !important;
+  min-height: 28px !important;
+  height: auto !important;
+  font-size: 11.5px !important;
+  line-height: 1.2 !important;
+  border-radius: 6px !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  min-width: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center;
+  gap: 4px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+
+:root:not(#rmims-ui-x) table td button svg,
+:root:not(#rmims-ui-x) .rmims-btn-xs svg { width: 11px !important; height: 11px !important; flex-shrink: 0; }
+
+/* a cell with several buttons keeps them on one line */
+:root:not(#rmims-ui-x) table td:has(> button + button) { white-space: nowrap !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-xs { font-weight: 700 !important; border: 1px solid transparent; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-edit { background: #FFFFFF !important; border-color: #0F766E !important; color: #0F766E !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-delete { background: #FEF2F2 !important; border-color: #FECACA !important; color: #DC2626 !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-primary { background: #15803D !important; border-color: #15803D !important; color: #FFFFFF !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-view { background: #FFFFFF !important; border-color: #CBD5E1 !important; color: #334155 !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-edit:hover { background: #F0FDFA !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-delete:hover { background: #FEE2E2 !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-primary:hover { background: #166534 !important; }
+
+
+:root:not(#rmims-ui-x) .rmims-btn-view:hover { background: #F8FAFC !important; }
+
+/* ---------- 3. Tables: columns grow with their text, the table scrolls sideways ---------- */
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) th,
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td {
+  white-space: nowrap !important;
+}
+
+
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td[style*="ellipsis"],
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) th[style*="ellipsis"],
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td [style*="ellipsis"],
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td .mgr-item-name,
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td strong,
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td small,
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td span {
+  text-overflow: clip !important;
+}
+
+
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td[style*="ellipsis"],
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td [style*="ellipsis"] {
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* the box holding a table scrolls left/right instead of squeezing it */
+:root:not(#rmims-ui-x) div:has(> table:not(.rmims-allow-wrap)) {
+  overflow-x: auto !important;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) {
+  width: max-content !important;
+  min-width: 100% !important;
+  table-layout: auto !important;
+}
+
+@media print {
+
+:root:not(#rmims-ui-x) div:has(> table) { overflow: visible !important; }
+
+
+:root:not(#rmims-ui-x) table { width: 100% !important; }
+
+
+:root:not(#rmims-ui-x) table th,
+:root:not(#rmims-ui-x) table td { white-space: normal !important; }
+}
+
+/* ---------- Finished product recipe window + cards ---------- *//* Edit and Delete are the same size everywhere they sit together */
+:root:not(#rmims-ui-x) .rmims-btn-pair { min-width: 78px !important; min-height: 30px !important; padding: 5px 12px !important; font-size: 12px !important; }
+
+
+:root:not(#rmims-ui-x) #modalFinishedProductFolder .mgr-modal-header #btnFpSaveLimitsHeader { min-height: 30px !important; padding: 5px 12px !important; font-size: 12px !important; }
+
+/* recipe window summary chips: coloured text, white inside (no coloured background) */
+:root:not(#rmims-ui-x) .fp-meta-kpi-chip { background: #FFFFFF !important; }
+
+
+:root:not(#rmims-ui-x) .specs-popup-meta-bar:has(#fpPopupMetaExtra) { background: #FFFFFF !important; border-color: #E2E8F0 !important; }
+
+
+:root:not(#rmims-ui-x) .fp-safe-capacity-box > div { background: transparent !important; padding-left: 0 !important; }
+
+/* card status tint stays visible on hover (only the shadow changes) */
+:root:not(#rmims-ui-x) .mgr-fp-folder-card.fp-health-critical:hover { box-shadow: 0 10px 24px -6px rgba(220, 38, 38, 0.25) !important; }
+
+
+:root:not(#rmims-ui-x) .mgr-fp-folder-card.fp-health-low:hover { box-shadow: 0 10px 24px -6px rgba(234, 88, 12, 0.25) !important; }
+
+
+:root:not(#rmims-ui-x) .mgr-fp-folder-card.fp-health-good:hover { box-shadow: 0 10px 24px -6px rgba(22, 101, 52, 0.22) !important; }
+
+
+:root:not(#rmims-ui-x) .mgr-fp-folder-card[class*="fp-health-"]::before { display: none !important; }
+
+/* ---------- Import: small loading spinner ---------- */
+:root:not(#rmims-ui-x) .rmims-inline-spinner {
+  display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px;
+  border: 2px solid #A7F3D0; border-top-color: #059669; border-radius: 50%;
+  animation: rmims-spin 0.7s linear infinite;
+}
+
+@keyframes rmims-spin { to { transform: rotate(360deg); } }
+
+/* slightly tighter cells so wide tables need less side-scrolling (text is never cut) */
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) th,
+:root:not(#rmims-ui-x) table:not(.rmims-allow-wrap) td {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+/* Receive / Disburse: unit dropdown next to the quantity (enter kg for a material kept in g, etc.) */
+:root:not(#rmims-ui-x) .rmims-unit-picker {
+  flex: 0 0 auto;
+  height: auto;
+  min-width: 74px;
+  padding: 0 26px 0 10px;
+  border: 1px solid #CBD5E1;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  background: #F0FDF4 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23166534' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 9px center;
+  color: #166534;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+:root:not(#rmims-ui-x) .mgr-input-with-unit:has(.rmims-unit-picker) { display: flex; align-items: stretch; }
+:root:not(#rmims-ui-x) .mgr-input-with-unit:has(.rmims-unit-picker) > input { flex: 1 1 auto; min-width: 0; }
+
+/* ---------- Responsive text everywhere (not only tables) ----------
+   Long words never spill out of their box, and any text that was cut off ("...", clamped or clipped)
+   is marked by js/rmims-text-fit.js and shown in full, wrapping onto the next line. */
+:root:not(#rmims-ui-x) body { overflow-wrap: break-word; }
+:root:not(#rmims-ui-x) .rmims-text-fit {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  max-height: none !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+:root:not(#rmims-ui-x) .rmims-text-fit[style*="-webkit-box"],
+:root:not(#rmims-ui-x) .rmims-text-fit:is([class*="clamp"]) { display: block !important; }
+/* a page header whose title / subtitle now wraps grows taller instead of squeezing the text */
+:root:not(#rmims-ui-x) .admin-topbar:has(.rmims-text-fit) {
+  height: auto !important;
+  min-height: 76px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  align-items: center !important;
+}
+:root:not(#rmims-ui-x) .admin-topbar:has(.rmims-text-fit) .topbar-left { overflow: visible !important; }
+
+/* table text that was cut: shown in full on one line; the column widens and the table scrolls sideways */
+:root:not(#rmims-ui-x) .rmims-text-fit-row {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
+  max-height: none !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+}
+/* never "..." anywhere: any remaining ellipsis rule shows the text instead */
+:root:not(#rmims-ui-x) body *:not(input):not(select):not(textarea) { text-overflow: clip !important; }
+/* a form box that was widened to fit its value can push its row wider (the page may scroll sideways) */
+:root:not(#rmims-ui-x) .rmims-control-fit { max-width: none !important; flex-shrink: 0 !important; }
+/* searchable dropdowns: the box grows with the chosen name (never cut); icons and buttons stay inside */
+:root:not(#rmims-ui-x) .cal-combobox-wrap,
+:root:not(#rmims-ui-x) .rm-combobox-wrap { width: max-content !important; max-width: none !important; flex-shrink: 0 !important; }
+:root:not(#rmims-ui-x) .cal-combobox-input-box { width: max-content !important; max-width: none !important; min-width: 300px; }
+:root:not(#rmims-ui-x) .cal-combobox-input { field-sizing: content; width: auto !important; flex: 1 1 auto !important; min-width: 160px; max-width: none !important; }
+
+/* ======================= v34 ======================= */
+/* ---- tables with a status column: white rows, outline in the status colour ---- */
+:root:not(#rmims-ui-x) tr.rmims-status-row > td { background-color: #FFFFFF !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-red > td    { box-shadow: inset 0 2px 0 #FCA5A5, inset 0 -2px 0 #FCA5A5 !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-orange > td { box-shadow: inset 0 2px 0 #FDBA74, inset 0 -2px 0 #FDBA74 !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-green > td  { box-shadow: inset 0 2px 0 #86EFAC, inset 0 -2px 0 #86EFAC !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-red > td:first-child    { box-shadow: inset 2px 0 0 #FCA5A5, inset 0 2px 0 #FCA5A5, inset 0 -2px 0 #FCA5A5 !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-orange > td:first-child { box-shadow: inset 2px 0 0 #FDBA74, inset 0 2px 0 #FDBA74, inset 0 -2px 0 #FDBA74 !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-green > td:first-child  { box-shadow: inset 2px 0 0 #86EFAC, inset 0 2px 0 #86EFAC, inset 0 -2px 0 #86EFAC !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-red > td:last-child     { box-shadow: inset -2px 0 0 #FCA5A5, inset 0 2px 0 #FCA5A5, inset 0 -2px 0 #FCA5A5 !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-orange > td:last-child  { box-shadow: inset -2px 0 0 #FDBA74, inset 0 2px 0 #FDBA74, inset 0 -2px 0 #FDBA74 !important; }
+:root:not(#rmims-ui-x) tr.rmims-row-green > td:last-child   { box-shadow: inset -2px 0 0 #86EFAC, inset 0 2px 0 #86EFAC, inset 0 -2px 0 #86EFAC !important; }
+:root:not(#rmims-ui-x) tr.rmims-status-row > td:first-child { border-left-color: transparent !important; }
+
+/* ---- the status itself: the My Inventory oval (white inside, coloured text + border) ---- */
+:root:not(#rmims-ui-x) .rmims-status-oval {
+  display: inline-flex !important; align-items: center; gap: 6px;
+  background: #FFFFFF !important; border: 1.5px solid currentColor !important; border-radius: 9999px !important;
+  padding: 3px 12px !important; font-weight: 800 !important; font-size: 12px !important; line-height: 1.3 !important;
+  white-space: nowrap !important; box-shadow: none !important; letter-spacing: 0 !important; text-transform: none !important;
+}
+:root:not(#rmims-ui-x) .rmims-status-oval.rmims-oval-red     { color: #DC2626 !important; }
+:root:not(#rmims-ui-x) .rmims-status-oval.rmims-oval-orange  { color: #C2410C !important; }
+:root:not(#rmims-ui-x) .rmims-status-oval.rmims-oval-green   { color: #166534 !important; }
+:root:not(#rmims-ui-x) .rmims-status-oval.rmims-oval-neutral { color: #334155 !important; }
+:root:not(#rmims-ui-x) .rmims-status-oval .mgr-status-dot,
+:root:not(#rmims-ui-x) .rmims-status-oval .fc-status-dot { background: currentColor !important; }
+
+/* ---- initials (full name on hover) ---- */
+:root:not(#rmims-ui-x) .rmims-initials {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 26px; padding: 0 8px;
+  border-radius: 9999px; background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; font-weight: 800; font-size: 12px;
+  letter-spacing: 0.04em; cursor: default;
+}
+
+/* ---- summary cards: the status colour is the background, the text is white ---- */
+:root:not(#rmims-ui-x) .rmims-kpi { border: none !important; box-shadow: 0 6px 16px -8px rgba(15, 42, 27, 0.35) !important; }
+:root:not(#rmims-ui-x) .rmims-kpi-ink      { background: #14532D !important; }
+:root:not(#rmims-ui-x) .rmims-kpi-good     { background: #15803D !important; }
+:root:not(#rmims-ui-x) .rmims-kpi-critical { background: #DC2626 !important; }
+:root:not(#rmims-ui-x) .rmims-kpi-low      { background: #EA580C !important; }
+:root:not(#rmims-ui-x) .rmims-kpi,
+:root:not(#rmims-ui-x) .rmims-kpi * { color: #FFFFFF !important; }
+
+/* ---- restock advice cards: Critical / Low / Good, tinted and glowing in the status colour ---- */
+:root:not(#rmims-ui-x) .rmims-status-card { border-left-width: 5px !important; border-radius: 12px !important; }
+:root:not(#rmims-ui-x) .rmims-status-card-critical { background: #FEF2F2 !important; border-color: #FCA5A5 !important; border-left-color: #DC2626 !important; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.10), 0 8px 22px -10px rgba(220, 38, 38, 0.55) !important; }
+:root:not(#rmims-ui-x) .rmims-status-card-low      { background: #FFF7ED !important; border-color: #FDBA74 !important; border-left-color: #EA580C !important; box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.10), 0 8px 22px -10px rgba(234, 88, 12, 0.55) !important; }
+:root:not(#rmims-ui-x) .rmims-status-card-good     { background: #F0FDF4 !important; border-color: #86EFAC !important; border-left-color: #15803D !important; box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.10), 0 8px 22px -10px rgba(21, 128, 61, 0.50) !important; }
+:root:not(#rmims-ui-x) .rmims-status-card-critical .rmims-status-card-title { color: #B91C1C !important; font-weight: 800; }
+:root:not(#rmims-ui-x) .rmims-status-card-low .rmims-status-card-title      { color: #C2410C !important; font-weight: 800; }
+:root:not(#rmims-ui-x) .rmims-status-card-good .rmims-status-card-title     { color: #166534 !important; font-weight: 800; }
+:root:not(#rmims-ui-x) .rmims-status-card-badge { display: inline-flex; padding: 3px 12px; border-radius: 9999px; font-size: 12px; font-weight: 800; color: #FFFFFF !important; }
+:root:not(#rmims-ui-x) .rmims-status-card-critical .rmims-status-card-badge { background: #DC2626; }
+:root:not(#rmims-ui-x) .rmims-status-card-low .rmims-status-card-badge      { background: #EA580C; }
+:root:not(#rmims-ui-x) .rmims-status-card-good .rmims-status-card-badge     { background: #15803D; }
+
+/* ---- finished products of a raw material: one "Products" dropdown per row ---- */
+:root:not(#rmims-ui-x) .rmims-products-dd { display: inline-block; max-width: none; }
+:root:not(#rmims-ui-x) .rmims-products-dd > summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 9999px; border: 1px solid #BBF7D0; background: #F0FDF4;
+  color: #166534; font-weight: 700; font-size: 12px; user-select: none;
+}
+:root:not(#rmims-ui-x) .rmims-products-dd > summary::-webkit-details-marker { display: none; }
+:root:not(#rmims-ui-x) .rmims-products-dd > summary::after { content: '▾'; font-size: 11px; transition: transform 0.15s ease; }
+:root:not(#rmims-ui-x) .rmims-products-dd[open] > summary::after { transform: rotate(180deg); }
+:root:not(#rmims-ui-x) .rmims-products-dd > ul {
+  list-style: none; margin: 6px 0 0; padding: 6px; border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF;
+  box-shadow: 0 6px 16px -8px rgba(15, 42, 27, 0.25); display: grid; gap: 4px;
+}
+:root:not(#rmims-ui-x) .rmims-products-dd li { display: flex; justify-content: space-between; gap: 16px; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: #0F2A1B; }
+:root:not(#rmims-ui-x) .rmims-products-dd li:nth-child(odd) { background: #F8FAFC; }
+:root:not(#rmims-ui-x) .rmims-products-dd li strong { color: #166534; }
+
+/* v34: a full-width row in a form grid spans the columns that exist (on phones the grid has ONE column;
+   "span 2" there created a hidden second column and squeezed every label into a thin strip) */
+:root:not(#rmims-ui-x) .mgr-form-grid > .span-2,
+:root:not(#rmims-ui-x) .mgr-form-grid > [style*="grid-column"],
+:root:not(#rmims-ui-x) .input-group.span-2 { grid-column: 1 / -1 !important; }
+/* phones: searchable dropdowns fill their box instead of pushing past the screen edge */
+@media (max-width: 600px) {
+  :root:not(#rmims-ui-x) .cal-combobox-wrap,
+  :root:not(#rmims-ui-x) .rm-combobox-wrap,
+  :root:not(#rmims-ui-x) .cal-combobox-input-box { width: 100% !important; max-width: 100% !important; min-width: 0 !important; flex-shrink: 1 !important; box-sizing: border-box; }
+  :root:not(#rmims-ui-x) .cal-combobox-input { min-width: 0 !important; }
+}
+
+/* unit dropdown beside the quantity: its own width fits the longest unit, with room for the arrow */
+:root:not(#rmims-ui-x) .rmims-unit-picker { width: auto !important; min-width: 78px !important; padding: 0 30px 0 12px !important; background-position: right 10px center !important; min-height: 42px; }
+:root:not(#rmims-ui-x) .mgr-stock-preview-badge { flex-wrap: wrap; row-gap: 2px; }
+
+/* v34: cards are only as tall as what is inside them (no fixed tall boxes with empty space).
+   Chart areas keep their height so the charts can draw. */
+:root:not(#rmims-ui-x) .activities-panel,
+:root:not(#rmims-ui-x) .process-node,
+:root:not(#rmims-ui-x) .forecast-state-box,
+:root:not(#rmims-ui-x) .admin-summary-card,
+:root:not(#rmims-ui-x) .forecast-support-card,
+:root:not(#rmims-ui-x) .fc-kpi-card,
+:root:not(#rmims-ui-x) .fc-card-rotator,
+:root:not(#rmims-ui-x) .mgr-dashboard-card,
+:root:not(#rmims-ui-x) .fc-grid-row-1 > section,
+:root:not(#rmims-ui-x) #lowStockAlertsCard,
+:root:not(#rmims-ui-x) .fc-grid-row-1 .forecast-support-grid,
+:root:not(#rmims-ui-x) #lowStockAlertsList,
+:root:not(#rmims-ui-x) .an-grid-2col > .an-card,
+:root:not(#rmims-ui-x) .rm-card,
+:root:not(#rmims-ui-x) .mgr-tx-card,
+:root:not(#rmims-ui-x) .admin-card { min-height: 0 !important; }
+/* empty-state rows / boxes inside tables and cards: compact */
+:root:not(#rmims-ui-x) td[colspan] { padding-top: 14px !important; padding-bottom: 14px !important; }
+/* report date boxes: the visible date field fills its frame (no small inner box cutting "dd/mm/yyyy") */
+:root:not(#rmims-ui-x) .rpt-fe-field .inv-date-range-wrap > input.inv-input-date { width: 100% !important; border: none !important; background: transparent !important; box-shadow: none !important; min-width: 0; padding-left: 0; }
+/* forecasting "TOP:" number box: the number is fully visible */
+:root:not(#rmims-ui-x) #fcTopCount { padding: 0 4px !important; width: 44px !important; min-width: 44px !important; max-width: 44px !important; text-indent: 0 !important; }
+/* side-by-side cards keep their own height (no stretched card with empty space under its content) */
+:root:not(#rmims-ui-x) .fc-grid-row-1 { align-items: start !important; }
+:root:not(#rmims-ui-x) .fc-grid-row-1 > .admin-card { height: auto !important; }
+
+/* ======================= v35 ======================= */
+/* Receive reference numbers: light green badge, dark green text (always readable) */
+:root:not(#rmims-ui-x) #mgrReceiveHistoryTbody .mgr-ref-pill,
+:root:not(#rmims-ui-x) #myReceiveSubmissionsTbody .mgr-ref-pill,
+:root:not(#rmims-ui-x) #revRefVal {
+  background: #DCFCE7 !important; color: #14532D !important; border: 1px solid #BBF7D0 !important;
+}
+/* Add / Edit finished product form: system colours, black text, neat buttons that fit their text */
+:root:not(#rmims-ui-x) #addFinishedProductPanel { background: #FFFFFF !important; border: 1px solid #E2E8F0 !important; color: #0F172A; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel label,
+:root:not(#rmims-ui-x) #addFinishedProductPanel small,
+:root:not(#rmims-ui-x) #addFinishedProductPanel h4 { color: #0F172A !important; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel button {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 6px;
+  min-height: 38px !important; height: auto !important; padding: 8px 16px !important; border-radius: 8px !important;
+  white-space: nowrap !important; box-sizing: border-box !important; width: auto !important; max-width: 100%; line-height: 1.2 !important;
+  font-size: 13px !important; font-weight: 700 !important; flex: 0 0 auto;
+}
+:root:not(#rmims-ui-x) #addFinishedProductPanel #btnSubmitAddFinishedProduct,
+:root:not(#rmims-ui-x) #addFinishedProductPanel #btnAddNewFpMaterial { background: #15803D !important; border: 1px solid #15803D !important; color: #FFFFFF !important; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel #btnAddAllFpMaterials { background: #FFFFFF !important; border: 1px solid #15803D !important; color: #15803D !important; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel #btnCancelAddFinishedProduct { background: #FFFFFF !important; border: 1px solid #CBD5E1 !important; color: #0F172A !important; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel input,
+:root:not(#rmims-ui-x) #addFinishedProductPanel select { border-color: #CBD5E1 !important; color: #0F172A; }
+/* finished product card: Edit / Delete sit at the bottom of the card */
+:root:not(#rmims-ui-x) .mgr-fp-card-footer .btn-fp-card-action { min-height: 32px; padding: 6px 14px !important; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel button { align-self: flex-start !important; }
+:root:not(#rmims-ui-x) #addFinishedProductPanel .cal-combobox-input,
+:root:not(#rmims-ui-x) #addFinishedProductPanel .cal-combobox-input-box,
+:root:not(#rmims-ui-x) #addFinishedProductPanel .cal-combobox-input-box * { color: #0F172A !important; }
+
+/* v36: the Products dropdown opens INSIDE its own column: the column widens to fit the list (the table scrolls
+   sideways when needed) and keeps a gap before the next column, so it never covers other text */
+:root:not(#rmims-ui-x) table:has(.rmims-products-dd) { table-layout: auto !important; }
+:root:not(#rmims-ui-x) td:has(> .rmims-products-dd) { min-width: 200px; padding-right: 28px !important; overflow: visible; }
+:root:not(#rmims-ui-x) td:has(> .rmims-products-dd[open]) { min-width: 300px; }
+:root:not(#rmims-ui-x) .rmims-products-dd { display: block !important; position: static !important; }
+:root:not(#rmims-ui-x) .rmims-products-dd > ul { position: static !important; width: 100%; min-width: max-content; box-sizing: border-box; }
+/* v37: Receive / Disburse summary shows 3 cards (the "Top ..." card was removed) */
+:root:not(#rmims-ui-x) .mgr-tx-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
+
+/* v42: while the first live data is loading, an empty table says "Loading live data..." instead of "No records" */
+:root.rmims-syncing tbody td[colspan] { position: relative; color: transparent !important; }
+:root.rmims-syncing tbody td[colspan] > * { visibility: hidden; }
+:root.rmims-syncing tbody td[colspan]::after {
+  content: 'Loading live data…'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #64748B !important; font-size: 13px; font-weight: 600;
+}

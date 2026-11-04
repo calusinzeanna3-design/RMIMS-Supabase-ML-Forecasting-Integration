@@ -9,11 +9,13 @@
  *   Last Updated, Added By, Status.
  */
 
-import { getMaterialCoverage } from './rmims-reorder-engine.js';
+import { getMaterialCoverage, sameMaterialName } from './rmims-reorder-engine.js';
 import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, getSystemCustomDisbursements, saveCustomReceipt, saveCustomDisbursement, getSystemNextItemCode, deleteSystemRawMaterial, getAuthoritativeMaterialUnit, getSconesMaterialImagePath, resolveForecastingMaterialByName, parseSafeDate } from './system-materials.js';
 import {
   fetchUnifiedInventoryFromSupabase,
   fetchLiveFinishedProductsFromSupabase,
+  saveFinishedProductToSupabase,
+  deleteFinishedProductInSupabase,
   saveRawMaterialToSupabase,
   deleteRawMaterialOnSupabase,
   broadcastManagerSync
@@ -292,9 +294,9 @@ function loadMaterials() {
     const mStock = Number(m.current_stock ?? m.currentStock ?? 0);
     const currentStock = (ovStock !== undefined && (ovStock > 0 || ov.is_zero_explicit === true)) ? ovStock : mStock;
     const minStock = Number(ov.minimum_stock !== undefined ? ov.minimum_stock : (m.minimum_threshold ?? m.minimum_stock ?? 0));
-    const maxStock = Number(ov.maximum_stock !== undefined ? ov.maximum_stock : (m.reorder_quantity ? m.reorder_quantity * 4 : 100));
+    const maxStock = ov.maximum_stock != null ? Number(ov.maximum_stock) : (m.maximum_stock != null ? Number(m.maximum_stock) : null); // only entered values
     const location = ov.storage_location || m.storage_location || '';
-    const supplier = ov.supplier || m.supplier || DEFAULT_SUPPLIERS[category] || 'General Supply Co.';
+    const supplier = ov.supplier || m.supplier || ''; // only what the user entered
     const description = ov.description || m.description || `Food grade ${specificationName} suitable for food processing operations.`;
 
     // Compute real dynamic activity dates from recent receipts, disbursements, or user inputs
@@ -852,7 +854,7 @@ function renderInventoryTable() {
           ${escapeHtml(latestDateStr)}
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
-          <span class="mgr-status-pill ${statusPillClass}">${statusText}</span>
+          <span class="mgr-status-pill ${statusPillClass}">${statusText === 'Low' ? 'Low Stock' : statusText}</span>
         </td>
         <td style="background-color: ${rowBg} !important; border-bottom: 1px solid ${rowBorder} !important; text-align: center;">
           <div style="display:inline-flex; align-items:center; gap:6px; justify-content:center;">
@@ -1177,6 +1179,16 @@ function getDeletedFinishedProducts() {
   }
 }
 
+/** A name the user saves again is no longer "deleted" (the deleted list only hides what the user removed). */
+function clearDeletedFinishedProduct(name) {
+  try {
+    const raw = localStorage.getItem(DELETED_FP_STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const kept = arr.filter(n => String(n).toLowerCase() !== String(name || '').toLowerCase());
+    if (kept.length !== arr.length) localStorage.setItem(DELETED_FP_STORAGE_KEY, JSON.stringify(kept));
+  } catch (_) {}
+}
+
 function addDeletedFinishedProduct(name) {
   try {
     const raw = localStorage.getItem(DELETED_FP_STORAGE_KEY);
@@ -1342,9 +1354,22 @@ function getCustomFinishedProducts() {
   }
 }
 
-function saveCustomFinishedProducts(list) {
+/**
+ * Writes the formulations to this device. `pushNames` = the formulations the Manager just added / edited: only
+ * those are sent to Supabase (returns the database answers so the screen can say whether it really saved).
+ */
+function saveCustomFinishedProducts(list, pushNames = []) {
+    const pushKeys = new Set((pushNames || []).map(n => String(n || '').toLowerCase().trim()));
+    const pushes = [];
     if (Array.isArray(list)) {
-      list.forEach(p => { if (typeof saveFinishedProductToSupabase === 'function') saveFinishedProductToSupabase(p).catch(() => {}); });
+      list.forEach(p => {
+        if (!p || !p.name) return;
+        if (!p.last_updated || p.date_modified > p.last_updated) p.last_updated = p.date_modified || new Date().toISOString();
+        if (pushKeys.has(String(p.name).toLowerCase().trim())) {
+          clearDeletedFinishedProduct(p.name);
+          pushes.push(saveFinishedProductToSupabase(p).catch(err => ({ success: false, error: (err && err.message) || String(err) })));
+        }
+      });
     }
   try {
     const json = JSON.stringify(list);
@@ -1360,6 +1385,17 @@ function saveCustomFinishedProducts(list) {
   } catch (e) {
     console.warn('Failed to save custom finished products', e);
   }
+  return Promise.all(pushes);
+}
+
+/** Tells the Manager whether the formulation is really in Supabase. */
+function reportFinishedProductSave(results, okMessage) {
+  const failed = (results || []).find(r => !r || !r.success);
+  if (!failed) { showToast(okMessage, 'success'); return true; }
+  const why = failed.error || 'The database did not save it.';
+  showToast(`NOT saved to the database: ${why} It is kept on this device and will be saved again automatically.`, 'danger');
+  try { alert(`The finished product was NOT saved to Supabase.\n\n${why}\n\nIt stays on this device and is uploaded again automatically when the problem is fixed.`); } catch (_) {}
+  return false;
 }
 
 function getAllFinishedProducts() {
@@ -1392,34 +1428,24 @@ function findMaterialRecord(matName) {
       name: '',
       specification_name: '',
       current_stock: 0,
-      minimum_stock: 10,
+      minimum_stock: 0,
       unit: 'kg',
       status: 'Available',
-      storage_location: 'Warehouse A'
+      storage_location: ''
     };
   }
 
-  let matched = (rawMaterials || []).find(m => {
-    const rName = (m.raw_material_name || m.name || '').toLowerCase();
-    const sName = (m.specification_name || '').toLowerCase();
-    const query = matName.toLowerCase();
-    return rName.includes(query) || query.includes(rName) || sName.includes(query);
-  });
+  const query = String(matName).toLowerCase().trim();
+  // exact name first, then the same material under a slightly different / renamed name
+  let matched = (rawMaterials || []).find(m => (m.raw_material_name || m.name || '').toLowerCase().trim() === query)
+    || (rawMaterials || []).find(m => {
+      const rName = (m.raw_material_name || m.name || '').toLowerCase();
+      const sName = (m.specification_name || '').toLowerCase();
+      return (rName && (rName.includes(query) || query.includes(rName))) || (sName && sName.includes(query));
+    })
+    || (rawMaterials || []).find(m => sameMaterialName(m.raw_material_name || m.name, matName));
 
-  if (!matched) {
-    const sconeMatch = AUTHENTIC_19_SCONES_MATERIALS.find(m => 
-      (m.name || '').toLowerCase() === matName.toLowerCase() ||
-      (m.raw_material_name || '').toLowerCase() === matName.toLowerCase()
-    );
-    if (sconeMatch) {
-      matched = {
-        ...sconeMatch,
-        specification_name: `${sconeMatch.name} Standard Formulation Grade`,
-        storage_location: 'Bakery Store - Tier 1',
-        minimum_stock: Number(sconeMatch.minimum_threshold || 0)
-      };
-    }
-  }
+  // (no fallback to a built-in catalog: a material's figures come only from the company's own inventory)
 
   if (!matched) {
     matched = {
@@ -1427,7 +1453,7 @@ function findMaterialRecord(matName) {
       name: matName,
       specification_name: `${matName} Standard Formulation Grade`,
       current_stock: 0,
-      minimum_stock: 10,
+      minimum_stock: 0,
       unit: getAuthoritativeMaterialUnit({ name: matName }),
       status: 'Available',
       storage_location: ''
@@ -1569,8 +1595,8 @@ function populateAvailableRawMaterialsDropdown() {
     });
   }
 
-  // Ensure ALL 19 Scones materials from the dataset are always available as selectable choices
-  if (isSconesTenant || available.length < 19) {
+  // Choices are exactly the company's own raw materials (no built-in 19 are added)
+  if (false) {
     AUTHENTIC_19_SCONES_MATERIALS.forEach(sconeMat => {
       const exists = available.some(m => {
         const mName = (m.raw_material_name || m.name || '').toLowerCase().trim();
@@ -1691,9 +1717,9 @@ function renderNewFpSelectedMaterials() {
 
   // Visual pills row at the top (familiar quick-remove badges)
   const pillsHtml = Array.from(selectedNewFpMaterials).map(matName => `
-    <span class="mgr-recipe-tag" style="background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; padding:4px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;">
+    <span class="mgr-recipe-tag" style="background:#F0FDF4; color:#0F172A; border:1px solid #E2E8F0; padding:4px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;">
       <span>🌾 ${escapeHtml(matName)}</span>
-      <button type="button" data-remove="${escapeHtml(matName)}" title="Remove ${escapeHtml(matName)}" style="background:none; border:none; color:#B45309; font-weight:700; cursor:pointer; font-size:14px; line-height:1; padding:0 2px;">&times;</button>
+      <button type="button" data-remove="${escapeHtml(matName)}" title="Remove ${escapeHtml(matName)}" style="background:none; border:none; color:#166534; font-weight:700; cursor:pointer; font-size:14px; line-height:1; padding:0 2px;">&times;</button>
     </span>
   `).join('');
 
@@ -1729,7 +1755,7 @@ function renderNewFpSelectedMaterials() {
             <input type="number" step="any" min="0" class="fp-recipe-input fp-recipe-min-input"
               data-mat-min="${escapeHtml(matName)}" value="${cfg.minStock}"
               title="Minimum safety stock threshold limit for this raw material">
-            <span style="font-size:11.5px; color:#92400E; font-weight:700; min-width:32px; text-align:left;">${escapeHtml(cfg.unit || matched.unit)}</span>
+            <span style="font-size:11.5px; color:#0F172A; font-weight:700; min-width:32px; text-align:left;">${escapeHtml(cfg.unit || matched.unit)}</span>
           </div>
         </td>
         <td style="text-align:center; padding:8px 10px;">
@@ -1743,15 +1769,15 @@ function renderNewFpSelectedMaterials() {
   }).join('');
 
   container.innerHTML = `
-    <div style="padding:8px 10px 10px; background:#FFFBEB; border-radius:8px 8px 0 0; border-bottom:1px solid #FDE68A;">
-      <div style="font-size:11px; font-weight:700; color:#B45309; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
+    <div style="padding:8px 10px 10px; background:#F8FAFC; border-radius:8px 8px 0 0; border-bottom:1px solid #E2E8F0;">
+      <div style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
         Recipe Materials In Formulation (${selectedNewFpMaterials.size}):
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:6px;">
         ${pillsHtml}
       </div>
     </div>
-    <div style="width:100%; max-height:280px; overflow-y:auto; border-radius:0 0 8px 8px; border:1px solid #FDE68A; border-top:none;">
+    <div style="width:100%; max-height:280px; overflow-y:auto; border-radius:0 0 8px 8px; border:1px solid #E2E8F0; border-top:none;">
       <table class="fp-recipe-builder-table">
         <thead>
           <tr>
@@ -1808,7 +1834,7 @@ function renderNewFpSelectedMaterials() {
   });
 }
 
-function handleAddFinishedProductSubmit(e) {
+async function handleAddFinishedProductSubmit(e) {
   e.preventDefault();
 
   const nameInput = document.getElementById('newFpName');
@@ -1830,17 +1856,18 @@ function handleAddFinishedProductSubmit(e) {
   }
 
   const allProducts = getAllFinishedProducts();
+  const sameName = (a, b) => String(a || '').toLowerCase().replace(/\s+/g, ' ').trim() === String(b || '').toLowerCase().replace(/\s+/g, ' ').trim();
   if (originalName) {
     if (name.toLowerCase() !== originalName.toLowerCase()) {
-      if (allProducts.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-        alert(`A finished product named "${name}" already exists. Please choose a unique name.`);
+      if (allProducts.some(p => sameName(p.name, name))) {
+        alert(`"${name}" is already saved as a finished product. Open it and use Edit instead of adding it again.`);
         if (nameInput) nameInput.focus();
         return;
       }
     }
   } else {
-    if (allProducts.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-      alert(`A finished product named "${name}" already exists. Please choose a unique name.`);
+    if (allProducts.some(p => sameName(p.name, name))) {
+      alert(`"${name}" is already saved as a finished product. Open it and use Edit instead of adding it again.`);
       if (nameInput) nameInput.focus();
       return;
     }
@@ -1879,7 +1906,9 @@ function handleAddFinishedProductSubmit(e) {
   materialNames.forEach(matName => {
     const cfg = newFpRecipeConfig.get(matName) || {};
     const minVal = Number(cfg.minStock);
+    const codeRec = findMaterialRecord(matName);
     recipeDetails[matName] = {
+      code: (codeRec && (codeRec.item_code || codeRec.id)) || undefined,
       needPerUnit: Number(cfg.qtyPerUnit) > 0 ? Number(cfg.qtyPerUnit) : getDefaultRecipeQtyForMaterial(matName),
       minStock: !isNaN(minVal) && minVal >= 0 ? minVal : getDefaultMinStockForMaterial(matName),
       unit: cfg.unit || getAuthoritativeMaterialUnit({ name: matName })
@@ -1915,12 +1944,25 @@ function handleAddFinishedProductSubmit(e) {
       custom[existingIndex] = updatedProduct;
     } else {
       custom.unshift(updatedProduct);
-      if (name.toLowerCase() !== originalName.toLowerCase()) {
-        addDeletedFinishedProduct(originalName);
-      }
     }
-    saveCustomFinishedProducts(custom);
-    showToast(`Formulation "${name}" updated successfully!`, 'success');
+    // Renamed: the old name is removed everywhere (this device AND Supabase), so it never comes back
+    if (!sameName(name, originalName)) {
+      for (let i = custom.length - 1; i >= 0; i--) {
+        if (custom[i] !== updatedProduct && sameName(custom[i].name, originalName)) custom.splice(i, 1);
+      }
+      addDeletedFinishedProduct(originalName);
+      try { deleteFinishedProductInSupabase(originalName).catch(() => {}); } catch (_) {}
+    }
+    const fpSubmitBtn = (e && e.submitter) || (document.getElementById('btnSubmitAddFpText') || {}).closest?.('button');
+    if (fpSubmitBtn) fpSubmitBtn.disabled = true;
+    const fpSubmitText = document.getElementById('btnSubmitAddFpText');
+    if (fpSubmitText) fpSubmitText.textContent = 'Saving…';
+    try {
+      const results = await saveCustomFinishedProducts(custom, [name]);
+      reportFinishedProductSave(results, `Formulation "${name}" updated and saved to the database.`);
+    } finally {
+      if (fpSubmitBtn) fpSubmitBtn.disabled = false;
+    }
   } else {
     const newProduct = {
       id: 'fp-' + Date.now(),
@@ -1931,20 +1973,52 @@ function handleAddFinishedProductSubmit(e) {
       date_added: new Date().toISOString()
     };
     custom.unshift(newProduct);
-    saveCustomFinishedProducts(custom);
-    showToast(`Finished product "${name}" created with ${materialNames.length} raw materials and minimum stock limits!`, 'success');
+    const fpSubmitBtn = (e && e.submitter) || (document.getElementById('btnSubmitAddFpText') || {}).closest?.('button');
+    if (fpSubmitBtn) fpSubmitBtn.disabled = true;
+    const fpSubmitText = document.getElementById('btnSubmitAddFpText');
+    if (fpSubmitText) fpSubmitText.textContent = 'Saving…';
+    try {
+      const results = await saveCustomFinishedProducts(custom, [name]);
+      reportFinishedProductSave(results, `Finished product "${name}" saved to the database with ${materialNames.length} raw materials and minimum stock limits.`);
+    } finally {
+      if (fpSubmitBtn) fpSubmitBtn.disabled = false;
+    }
   }
 
+  // Saved: close the form (and any open recipe window) and go back to the finished product cards
+  returnToFinishedProductCards(name, { showCatalog: true });
+}
+
+/**
+ * After a save: the form and the recipe detail window close, the Finished Food cards are shown (refreshed) and
+ * the saved product's card is scrolled into view and highlighted for a moment.
+ */
+function returnToFinishedProductCards(productName, { showCatalog = true } = {}) {
   closeAddFinishedProductPanel();
+  const detailModal = document.getElementById('modalFinishedProductFolder');
+  if (detailModal && !detailModal.hidden) closeFinishedProductModal();
+
+  const catalog = document.getElementById('modalFinishedFoodCatalogPopup');
+  const catalogOpen = Boolean(catalog && !catalog.hidden);
+  const search = document.getElementById('finishedFoodPopupSearchInput');
+  if (search) search.value = '';
+  if (catalog && (showCatalog || catalogOpen)) showModalBackdrop(catalog);
+
   renderFinishedFoodModalContent('');
   renderFinishedProductsFolders();
 
-  const detailModal = document.getElementById('modalFinishedProductFolder');
-  if (detailModal && !detailModal.hidden) {
-    openFinishedProductModal(name);
-  } else if (!originalName) {
-    openFinishedProductModal(name);
-  }
+  if (!productName) return;
+  const target = encodeURIComponent(productName);
+  const scope = (catalog && !catalog.hidden) ? catalog : document;
+  const card = Array.from(scope.querySelectorAll('.mgr-fp-folder-card')).find(c => c.getAttribute('data-fp-name') === target);
+  if (!card) return;
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+  const prevShadow = card.style.boxShadow;
+  const prevOutline = card.style.outline;
+  card.style.transition = 'box-shadow 0.3s ease, outline-color 0.3s ease';
+  card.style.outline = '2px solid #D97706';
+  card.style.boxShadow = '0 0 0 6px rgba(217, 119, 6, 0.18)';
+  setTimeout(() => { card.style.outline = prevOutline; card.style.boxShadow = prevShadow; }, 2200);
 }
 
 /**
@@ -1977,6 +2051,8 @@ function handleConfirmDeleteFinishedProduct() {
   saveCustomFinishedProducts(custom);
 
   addDeletedFinishedProduct(nameToDelete);
+  // the user's delete is the only thing that removes a formulation on every device
+  try { deleteFinishedProductInSupabase(nameToDelete).catch(() => {}); } catch (_) {}
   closeDeleteFinishedProductModal();
 
   const detailModal = document.getElementById('modalFinishedProductFolder');
@@ -1998,22 +2074,27 @@ window.handleConfirmDeleteFinishedProduct = handleConfirmDeleteFinishedProduct;
  */
 function buildFinishedProductCardHtml(p) {
   const matCount = p.materialNames ? p.materialNames.length : 0;
-  
+  const INK = '#0F172A';
+
   let belowMinCount = 0;
   let minProducible = Infinity;
   let bottleneckMaterial = '';
+  const health = { critical: 0, low: 0, good: 0 };
 
   (p.materialNames || []).forEach(m => {
     const matched = findMaterialRecord(m);
     const cfg = (p.recipeDetails && p.recipeDetails[m]) || {};
     const minStock = cfg.minStock !== undefined ? Number(cfg.minStock) : getDefaultMinStockForMaterial(m);
     const qtyPerUnit = cfg.needPerUnit !== undefined ? Number(cfg.needPerUnit) : getDefaultRecipeQtyForMaterial(m);
+    const cur = Number(matched.current_stock || 0);
 
-    if (Number(matched.current_stock || 0) < minStock) {
-      belowMinCount++;
-    }
+    if (cur < minStock) belowMinCount++;
+    // same rule as the recipe table: critical = out of stock / below the limit, low = within 25% of the limit
+    if (cur <= 0 || cur < minStock) health.critical++;
+    else if (cur <= minStock * 1.25) health.low++;
+    else health.good++;
 
-    const producible = qtyPerUnit > 0 ? Math.floor(Number(matched.current_stock || 0) / qtyPerUnit) : 0;
+    const producible = qtyPerUnit > 0 ? Math.floor(cur / qtyPerUnit) : 0;
     if (producible < minProducible) {
       minProducible = producible;
       bottleneckMaterial = m;
@@ -2022,22 +2103,37 @@ function buildFinishedProductCardHtml(p) {
 
   if (minProducible === Infinity) minProducible = 0;
 
-  const minLimitBadge = belowMinCount > 0
-    ? `<span class="mgr-folder-badge" style="background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; font-weight:700;">⚠️ ${belowMinCount} Below Min Limit</span>`
-    : `<span class="mgr-folder-badge" style="background:#ECFDF5; color:#15803D; border:1px solid #A7F3D0; font-weight:700;">✅ Min Limits OK</span>`;
+  // the card takes the colour of what MOST of its raw materials are (a tie goes to the more serious status)
+  let healthKey = 'good';
+  if (matCount > 0) {
+    const top = Math.max(health.critical, health.low, health.good);
+    healthKey = health.critical === top ? 'critical' : (health.low === top ? 'low' : 'good');
+  }
+  const HEALTH = {
+    critical: { label: 'Mostly Critical', color: '#DC2626', bg: '#FEF2F2', border: '#FCA5A5' },
+    low:      { label: 'Mostly Low Stock', color: '#EA580C', bg: '#FFF7ED', border: '#FDBA74' },
+    good:     { label: 'Mostly Good', color: '#166534', bg: '#F0FDF4', border: '#86EFAC' }
+  }[healthKey];
 
-  const materialsPreviewHtml = (p.materialNames || []).slice(0, 3).map(m => `
-    <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:9999px; min-height:28px; height:auto; box-sizing:border-box;">
+  const healthBadge = `<span class="mgr-folder-badge" title="${health.critical} critical • ${health.low} low stock • ${health.good} good" style="background:#FFFFFF; color:${HEALTH.color}; border:1.5px solid ${HEALTH.color}; font-weight:800;">${HEALTH.label}</span>`;
+  const minLimitBadge = belowMinCount > 0
+    ? `<span class="mgr-folder-badge" style="background:#FFFFFF; color:${INK}; border:1px solid #CBD5E1; font-weight:700;">${belowMinCount} Below Min Limit</span>`
+    : `<span class="mgr-folder-badge" style="background:#FFFFFF; color:${INK}; border:1px solid #CBD5E1; font-weight:700;">Min Limits OK</span>`;
+
+  const shownName = (m) => { const r = findMaterialRecord(m); return (r && (r.raw_material_name || r.name)) || m; };
+  const materialsPreviewHtml = (p.materialNames || []).slice(0, 3).map(m0 => { const m = shownName(m0); return `
+    <span class="mgr-folder-spec-pill" title="${escapeHtml(m)}" style="background:#FFFFFF; color:${INK}; border:1px solid #E2E8F0; display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:9999px; min-height:28px; height:auto; box-sizing:border-box;">
       <span style="font-size:13px; line-height:1; display:inline-flex; align-items:center; flex-shrink:0;">🌾</span>
-      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; line-height:1.2; font-size:12px; font-weight:600; padding-bottom:1px;">${escapeHtml(m)}</span>
+      <span style="white-space:normal; overflow-wrap:anywhere; display:inline-flex; align-items:center; line-height:1.25; font-size:12px; font-weight:600; padding-bottom:1px; color:${INK};">${escapeHtml(m)}</span>
     </span>
-  `).join('');
-  const moreCount = (p.materialNames || []).length > 3 ? `<span style="font-size:11px; color:#B45309; padding-left:4px; font-weight:600;">+${(p.materialNames.length - 3)} more ingredients</span>` : '';
+  `; }).join('');
+  const moreCount = (p.materialNames || []).length > 3 ? `<span style="font-size:11px; color:${INK}; padding-left:4px; font-weight:600;">+${(p.materialNames.length - 3)} more ingredients</span>` : '';
 
   return `
-    <div class="mgr-folder-card mgr-fp-folder-card" data-fp-name="${encodeURIComponent(p.name)}" role="button" tabindex="0" title="Click to view recipe raw materials & minimum stock limits for ${escapeHtml(p.name)}">
+    <div class="mgr-folder-card mgr-fp-folder-card fp-health-${healthKey}" data-fp-name="${encodeURIComponent(p.name)}" role="button" tabindex="0" title="Click to view recipe raw materials & minimum stock limits for ${escapeHtml(p.name)}"
+      style="background:${HEALTH.bg} !important; border:1.5px solid ${HEALTH.border} !important; border-top:4px solid ${HEALTH.color} !important; color:${INK};">
       <div class="mgr-folder-top">
-        <div class="mgr-folder-icon-wrap" style="background:#FEF3C7; color:#D97706;">
+        <div class="mgr-folder-icon-wrap" style="background:#FFFFFF; color:${INK}; border:1px solid #E2E8F0;">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
@@ -2046,23 +2142,17 @@ function buildFinishedProductCardHtml(p) {
         </div>
 
         <div class="mgr-fp-actions-group">
-          <span class="mgr-folder-badge" style="background:rgba(217, 119, 6, 0.12); color:#B45309; font-weight:700;">${matCount} Materials</span>
+          <span class="mgr-folder-badge" style="background:#FFFFFF; color:${INK}; border:1px solid #CBD5E1; font-weight:700;">${matCount} Materials</span>
+          ${healthBadge}
           ${minLimitBadge}
-          <button type="button" class="btn-fp-card-action btn-fp-card-edit" data-fp-edit="${encodeURIComponent(p.name)}" title="Edit ${escapeHtml(p.name)} formulation">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </button>
-          <button type="button" class="btn-fp-card-action btn-fp-card-delete" data-fp-delete="${encodeURIComponent(p.name)}" title="Delete ${escapeHtml(p.name)} formulation">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            Delete
-          </button>
+
         </div>
       </div>
 
       <div style="margin-top: 4px;">
-        <h4 class="mgr-folder-name" title="${escapeHtml(p.name)}" style="font-size: 15px; font-weight: 700; color: #0F2A1B; margin-bottom: 2px;">${escapeHtml(p.name)}</h4>
-        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#5C7A68; margin-top:3px;">
-          <span style="width:6px; height:6px; border-radius:50%; background:#D97706;"></span>
+        <h4 class="mgr-folder-name" title="${escapeHtml(p.name)}" style="font-size: 15px; font-weight: 800; color: ${INK}; margin-bottom: 2px;">${escapeHtml(p.name)}</h4>
+        <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:${INK}; margin-top:3px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:${HEALTH.color};"></span>
           <span>Finished Food Formulation</span>
         </div>
       </div>
@@ -2072,19 +2162,20 @@ function buildFinishedProductCardHtml(p) {
         ${moreCount}
       </div>
 
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding:6px 10px; background:#F8FAFC; border-radius:8px; font-size:11.5px; border:1px solid #E2E8F0;">
-        <span style="color:#64748B;">Max Batch Limit:</span>
-        <strong style="color:${minProducible > 0 ? '#15803D' : '#DC2626'};">${minProducible.toLocaleString()} units ${bottleneckMaterial ? `(${escapeHtml(bottleneckMaterial)})` : ''}</strong>
-      </div>
-
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px; padding:5px 10px; background:#FFFBEB; border-radius:8px; font-size:11px; border:1px solid #FDE68A; color:#92400E;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; padding:5px 10px; background:#FFFFFF; border-radius:8px; font-size:11px; border:1px solid #E2E8F0; color:${INK};">
         <span>First Date: <strong>${escapeHtml((p.date_added || p.created_at) ? new Date(p.date_added || p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}</strong></span>
         <span>Latest: <strong>${escapeHtml((p.date_modified || p.last_updated || p.date_added || p.created_at) ? new Date(p.date_modified || p.last_updated || p.date_added || p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}</strong></span>
       </div>
 
-      <div class="mgr-folder-footer" style="color: #D97706; margin-top: 12px; border-top: 1px dashed #FDE68A;">
-        <span>Open Formulation & Limits Guide</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      <div class="mgr-folder-footer mgr-fp-card-footer" style="color: ${INK}; margin-top: 12px; border-top: 1px dashed #CBD5E1; display:flex; justify-content:flex-end; gap:8px; padding-top:10px;">
+        <button type="button" class="btn-fp-card-action btn-fp-card-edit rmims-btn-xs rmims-btn-edit rmims-btn-pair" data-fp-edit="${encodeURIComponent(p.name)}" title="Edit ${escapeHtml(p.name)} formulation">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Edit</span>
+          </button>
+        <button type="button" class="btn-fp-card-action btn-fp-card-delete rmims-btn-xs rmims-btn-delete rmims-btn-pair" data-fp-delete="${encodeURIComponent(p.name)}" title="Delete ${escapeHtml(p.name)} formulation">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            <span>Delete</span>
+          </button>
       </div>
     </div>
   `;
@@ -2195,7 +2286,7 @@ function renderFinishedFoodModalContent(query = '') {
         </p>
         <div style="display:inline-flex; gap:10px; flex-wrap:wrap; justify-content:center;">
           <button type="button" class="btn-primary-sm" onclick="window.openAddFinishedProductPanel && window.openAddFinishedProductPanel()"
-            style="background:#D97706; border-color:#D97706; color:#FFFFFF; font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px;">
+            style="background:#15803D; border-color:#15803D; color:#FFFFFF; font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px;">
             + Add Finished Product
           </button>
         </div>
@@ -2233,10 +2324,10 @@ function openSpecsUpdatePanel(id, mode = 'edit') {
     if (specNameInput) specNameInput.value = '';
     if (unitSelect) unitSelect.value = '';
     if (currentStockInput) currentStockInput.value = 0;
-    if (minStockInput) minStockInput.value = 10;
-    if (maxStockInput) maxStockInput.value = 100;
+    if (minStockInput) minStockInput.value = '';   // entered by the user
+    if (maxStockInput) maxStockInput.value = '';
     if (locationInput) locationInput.value = '';
-    if (supplierInput) supplierInput.value = 'General Mills';
+    if (supplierInput) supplierInput.value = '';
   } else {
     const m = rawMaterials.find(x => x.id === id);
     if (!m) return;
@@ -2277,9 +2368,9 @@ function handleSpecsInlineUpdateSubmit(e) {
   const currentStock = parseFloat(document.getElementById('specsUpdateCurrentStock').value) || 0;
   const minStock = parseFloat(document.getElementById('specsUpdateMinStock').value) || 0;
   const maxStockInputEl = document.getElementById('specsUpdateMaxStock');
-  const maxStock = (maxStockInputEl && parseFloat(maxStockInputEl.value)) || (minStock * 5) || 100;
-  const location = document.getElementById('specsUpdateLocation').value.trim() || 'Warehouse A';
-  const supplier = document.getElementById('specsUpdateSupplier').value.trim() || 'General Supply Co.';
+  const maxStock = (maxStockInputEl && parseFloat(maxStockInputEl.value)) || null; // only what the user entered
+  const location = document.getElementById('specsUpdateLocation').value.trim();
+  const supplier = document.getElementById('specsUpdateSupplier').value.trim();
 
   let status = 'Good';
   if (currentStock === 0) status = 'Out of Stock';
@@ -2915,6 +3006,21 @@ function openAddMaterialModal() {
   const dateAddedInput = document.getElementById('addMatDateAdded');
   if (dateAddedInput) dateAddedInput.value = new Date().toISOString().slice(0, 10);
 
+  // "Other" unit: show a box to type it
+  const unitSelEl = document.getElementById('addMatUnit');
+  const unitCustomEl = document.getElementById('addMatUnitCustom');
+  if (unitCustomEl) { unitCustomEl.value = ''; unitCustomEl.style.display = 'none'; }
+  if (unitSelEl && !unitSelEl.dataset.otherBound) {
+    unitSelEl.dataset.otherBound = '1';
+    unitSelEl.addEventListener('change', () => {
+      const isOther = unitSelEl.value === '__other__';
+      if (unitCustomEl) {
+        unitCustomEl.style.display = isOther ? 'block' : 'none';
+        if (isOther) unitCustomEl.focus();
+      }
+    });
+  }
+
   showModalBackdrop(modal);
 }
 
@@ -2932,15 +3038,23 @@ function handleAddMaterialSubmit(e) {
   const specificationName = (specInput && specInput.value.trim()) ? specInput.value.trim() : rawMaterialName;
   const catInput = document.getElementById('addMatCategory');
   const category = catInput ? catInput.value : 'Baking Supplies';
-  const unit = document.getElementById('addMatUnit').value;
+  const unitSel = document.getElementById('addMatUnit').value;
+  const unitCustomEl = document.getElementById('addMatUnitCustom');
+  // any unit is allowed: pick one from the list or type your own ("Other")
+  const unit = unitSel === '__other__' ? ((unitCustomEl && unitCustomEl.value.trim()) || '') : unitSel;
+  if (!unit) {
+    alert('Please choose or type the unit of measure for this raw material.');
+    if (unitCustomEl && unitSel === '__other__') unitCustomEl.focus();
+    return;
+  }
   const currentStock = parseFloat(document.getElementById('addMatCurrentStock').value) || 0;
   const minStock = parseFloat(document.getElementById('addMatMinStock').value) || 0;
   const maxStockInput = document.getElementById('addMatMaxStock');
-  const maxStock = (maxStockInput && parseFloat(maxStockInput.value)) || (minStock * 5) || 100;
+  const maxStock = (maxStockInput && parseFloat(maxStockInput.value)) || null; // only what the user entered
   const locEl = document.getElementById('addMatLocation');
   const location = (locEl && locEl.value.trim()) || '';
   const supEl = document.getElementById('addMatSupplier');
-  const supplier = (supEl && supEl.value.trim()) || DEFAULT_SUPPLIERS[category] || 'General Supply Co.';
+  const supplier = (supEl && supEl.value.trim()) || ''; // only what the user entered
   const descEl = document.getElementById('addMatDescription');
   const description = (descEl && descEl.value.trim()) || `Raw material ${rawMaterialName} registered by Manager.`;
 
@@ -3014,7 +3128,7 @@ function handleAddMaterialSubmit(e) {
     current_stock: currentStock,
     minimum_threshold: minStock,
     minimum_stock: minStock,
-    reorder_quantity: maxStock / 2,
+    reorder_quantity: maxStock ? maxStock / 2 : undefined, // only when the manager set a maximum stock
     lead_time_days: 3,
     description,
     date_added: userDateVal || dateStr,
@@ -3037,7 +3151,7 @@ function handleAddMaterialSubmit(e) {
     current_stock: currentStock,
     minimum_threshold: minStock,
     minimum_stock: minStock,
-    reorder_quantity: maxStock / 2,
+    reorder_quantity: maxStock ? maxStock / 2 : undefined, // only when the manager set a maximum stock
     storage_location: location,
     supplier,
     description,
@@ -3145,7 +3259,25 @@ function openEditMaterialModal(id) {
   if (editSpec) editSpec.value = m.specification_name || '';
   const editCat = document.getElementById('editMatCategory');
   if (editCat) editCat.value = m.category;
-  document.getElementById('editMatUnit').value = m.unit;
+  const editUnitSel = document.getElementById('editMatUnit');
+  if (editUnitSel) {
+    // any unit is kept: a unit not in the list (e.g. "dozen", "jars") is added as a choice
+    if (m.unit && !Array.from(editUnitSel.options).some(o => o.value === m.unit)) {
+      const o = document.createElement('option'); o.value = m.unit; o.textContent = m.unit;
+      const other = editUnitSel.querySelector('option[value="__other__"]');
+      editUnitSel.insertBefore(o, other || null);
+    }
+    editUnitSel.value = m.unit;
+    const editUnitCustom = document.getElementById('editMatUnitCustom');
+    if (editUnitCustom) { editUnitCustom.value = ''; editUnitCustom.style.display = 'none'; }
+    if (!editUnitSel.dataset.otherBound) {
+      editUnitSel.dataset.otherBound = '1';
+      editUnitSel.addEventListener('change', () => {
+        const c = document.getElementById('editMatUnitCustom');
+        if (c) { c.style.display = editUnitSel.value === '__other__' ? 'block' : 'none'; if (editUnitSel.value === '__other__') c.focus(); }
+      });
+    }
+  }
   document.getElementById('editMatCurrentStock').value = m.current_stock;
   document.getElementById('editMatMinStock').value = m.minimum_stock;
   const editDateEl = document.getElementById('editMatDateAdded');
@@ -3183,17 +3315,20 @@ function handleEditMaterialSubmit(e) {
   const specificationName = (specInput && specInput.value.trim()) ? specInput.value.trim() : (m.specification_name || `${rawMaterialName} Standard Food Grade`);
   const editCat = document.getElementById('editMatCategory');
   const category = editCat ? editCat.value : (m.category || 'Baking Supplies');
-  const unit = document.getElementById('editMatUnit').value;
+  const editUnitSelVal = document.getElementById('editMatUnit').value;
+  const editUnitCustomEl = document.getElementById('editMatUnitCustom');
+  const unit = editUnitSelVal === '__other__' ? ((editUnitCustomEl && editUnitCustomEl.value.trim()) || '') : editUnitSelVal;
+  if (!unit) { alert('Please choose or type the unit of measure.'); return; }
   const currentStock = parseFloat(document.getElementById('editMatCurrentStock').value) || 0;
   const minStock = parseFloat(document.getElementById('editMatMinStock').value) || 0;
   const editDateEl = document.getElementById('editMatDateAdded');
   const userFirstDate = (editDateEl && editDateEl.value) ? editDateEl.value.trim() : (m.date_added && m.date_added !== '—' ? m.date_added : new Date().toISOString().slice(0, 10));
   const editMaxInput = document.getElementById('editMatMaxStock');
-  const maxStock = (editMaxInput && parseFloat(editMaxInput.value)) || (m.maximum_stock !== undefined ? m.maximum_stock : (minStock * 5) || 100);
+  const maxStock = (editMaxInput && parseFloat(editMaxInput.value)) || (m.maximum_stock != null ? m.maximum_stock : null);
   const locInput = document.getElementById('editMatLocation');
   const location = (locInput && locInput.value.trim()) || (m.storage_location || '');
   const supInput = document.getElementById('editMatSupplier');
-  const supplier = (supInput && supInput.value.trim()) || (m.supplier || 'General Supply Co.');
+  const supplier = (supInput && supInput.value.trim()) || (m.supplier || '');
   const descInput = document.getElementById('editMatDescription');
   const description = (descInput && descInput.value.trim()) || (m.description || `Raw material ${rawMaterialName}`);
 
@@ -3246,7 +3381,7 @@ function handleEditMaterialSubmit(e) {
     current_stock: currentStock,
     minimum_threshold: minStock,
     minimum_stock: minStock,
-    reorder_quantity: maxStock / 2,
+    reorder_quantity: maxStock ? maxStock / 2 : undefined, // only when the manager set a maximum stock
     lead_time_days: 3,
     description,
     date_added: userFirstDate,
@@ -3268,7 +3403,7 @@ function handleEditMaterialSubmit(e) {
     current_stock: currentStock,
     minimum_threshold: minStock,
     minimum_stock: minStock,
-    reorder_quantity: maxStock / 2,
+    reorder_quantity: maxStock ? maxStock / 2 : undefined, // only when the manager set a maximum stock
     storage_location: location,
     supplier,
     description,
@@ -3279,6 +3414,31 @@ function handleEditMaterialSubmit(e) {
   });
 
   logMaterialHistory(id, 'Updated', diffs.join('. ') + '.');
+
+  // A renamed raw material stays linked to its finished products: the formulations use the new name too
+  const oldMatName = String(m.raw_material_name || m.name || '').trim();
+  if (oldMatName && oldMatName !== rawMaterialName) {
+    try {
+      const fps = getCustomFinishedProducts();
+      const changed = [];
+      fps.forEach(fp => {
+        let touched = false;
+        if (Array.isArray(fp.materialNames)) {
+          fp.materialNames = fp.materialNames.map(n => (String(n).trim() === oldMatName ? (touched = true, rawMaterialName) : n));
+        }
+        if (fp.recipeDetails && fp.recipeDetails[oldMatName]) {
+          fp.recipeDetails[rawMaterialName] = { ...fp.recipeDetails[oldMatName], code: id };
+          delete fp.recipeDetails[oldMatName];
+          touched = true;
+        }
+        if (touched) changed.push(fp.name);
+      });
+      if (changed.length) {
+        const pushed = saveCustomFinishedProducts(fps, changed);
+        if (pushed && pushed.then) pushed.catch(() => {});
+      }
+    } catch (err) { console.warn('[Inventory] Could not rename the material inside finished products:', err); }
+  }
 
   closeEditModal();
   loadMaterials();
@@ -3333,7 +3493,7 @@ function openMaterialInfoModal(id) {
   document.getElementById('infoCurrentStock').textContent = `${m.current_stock.toLocaleString()} ${m.unit}`;
   document.getElementById('infoMinStock').textContent = `${m.minimum_stock.toLocaleString()} ${m.unit}`;
   const infoMaxEl = document.getElementById('infoMaxStock');
-  if (infoMaxEl) infoMaxEl.textContent = `${(m.maximum_stock || m.minimum_stock * 5 || 100).toLocaleString()} ${m.unit}`;
+  if (infoMaxEl) infoMaxEl.textContent = m.maximum_stock ? `${Number(m.maximum_stock).toLocaleString()} ${m.unit}` : '—';
 
   const infoCat = document.getElementById('infoCategory');
   if (infoCat) infoCat.textContent = m.category;
@@ -3517,7 +3677,47 @@ function handleConfirmActionSubmit() {
  * (FORMULATION GUIDE)
  * ==========================================================
  */
+/**
+ * Recipes saved before a raw material was renamed still use the old name ("All-Purpose / Bread Flour" for
+ * "All-Purpose Flour"). The database links Receive / Disburse records to finished products by the exact name, so the
+ * old name is replaced by the material's current name once and saved (manager device only).
+ */
+let _fpHealBusy = false;
+function healFinishedProductIngredientNames() {
+  if (_fpHealBusy || !Array.isArray(rawMaterials) || !rawMaterials.length) return;
+  const current = rawMaterials.map(m => String(m.raw_material_name || m.name || '').trim()).filter(Boolean);
+  const exact = new Set(current.map(n => n.toLowerCase()));
+  const fps = getCustomFinishedProducts();
+  const changed = [];
+  fps.forEach(fp => {
+    let touched = false;
+    const rename = (n) => {
+      const name = String(n || '').trim();
+      if (!name || exact.has(name.toLowerCase())) return name;
+      const hits = current.filter(c => sameMaterialName(c, name));
+      return hits.length === 1 ? hits[0] : name;          // only when exactly one material matches
+    };
+    if (Array.isArray(fp.materialNames)) {
+      fp.materialNames = fp.materialNames.map(n => { const r = rename(n); if (r !== n) touched = true; return r; });
+    }
+    if (fp.recipeDetails && typeof fp.recipeDetails === 'object') {
+      Object.keys(fp.recipeDetails).forEach(k => {
+        const r = rename(k);
+        if (r !== k && !fp.recipeDetails[r]) { fp.recipeDetails[r] = fp.recipeDetails[k]; delete fp.recipeDetails[k]; touched = true; }
+      });
+    }
+    if (touched) changed.push(fp.name);
+  });
+  if (!changed.length) return;
+  _fpHealBusy = true;
+  try {
+    const pushed = saveCustomFinishedProducts(fps, changed);
+    if (pushed && pushed.finally) pushed.finally(() => { _fpHealBusy = false; }); else _fpHealBusy = false;
+  } catch (_) { _fpHealBusy = false; }
+}
+
 function renderFinishedProductsFolders() {
+  try { healFinishedProductIngredientNames(); } catch (_) {}
   // Always synchronize modal content so Finished Food modal stays updated
   renderFinishedFoodModalContent('');
 
@@ -3551,7 +3751,7 @@ function renderFinishedProductsFolders() {
           <h4>No finished food formulations yet</h4>
           <p>Click "+ Add Finished Product" to create your enterprise formulation recipes.</p>
           <div style="display:inline-flex; gap:10px; margin-top:6px; flex-wrap:wrap; justify-content:center;">
-            <button type="button" class="btn btn-primary" onclick="openAddFinishedProductPanel()" style="font-size:12px; font-weight:700; background:#D97706; border-color:#B45309;">
+            <button type="button" class="btn btn-primary" onclick="openAddFinishedProductPanel()" style="font-size:12px; font-weight:700; background:#15803D; border-color:#166534;">
               + Add Finished Product
             </button>
           </div>
@@ -3641,26 +3841,28 @@ function openFinishedProductModal(productName) {
         }
 
         let statusBadge = '';
-        let stockColor = '#15803D';
+        let stockColor = '#166534';
+        // white inside the oval, the TEXT carries the status colour (same look as My Inventory)
+        const fpPill = (text, color, title) => `<span class="rmims-status-text-pill" title="${escapeHtml(title)}" style="display:inline-flex; align-items:center; gap:6px; padding:3px 12px; border-radius:9999px; background:#FFFFFF; border:1.5px solid ${color}; color:${color}; font-size:12px; font-weight:800; white-space:nowrap;"><span style="width:7px; height:7px; border-radius:50%; background:${color};"></span>${text}</span>`;
 
         if (curStock <= 0) {
-          statusBadge = '<span class="mgr-status-badge status-outofstock" title="Inventory stock is zero"><span class="mgr-status-dot"></span>Depleted (0)</span>';
+          statusBadge = fpPill('Out of Stock (0)', '#DC2626', 'Inventory stock is zero');
           stockColor = '#DC2626';
         } else if (curStock < minStock) {
           const deficit = (minStock - curStock).toFixed(1);
-          statusBadge = `<span class="mgr-status-badge status-lowstock" style="background:#FEF2F2; color:#DC2626; border-color:#FECACA;" title="Deficit: ${deficit} ${matched.unit} below minimum stock limit"><span class="mgr-status-dot" style="background:#DC2626;"></span>Below Limit (-${deficit})</span>`;
+          statusBadge = fpPill(`Below Limit (-${deficit})`, '#DC2626', `Deficit: ${deficit} ${matched.unit} below minimum stock limit`);
           stockColor = '#DC2626';
         } else if (curStock <= minStock * 1.25) {
           const buffer = (curStock - minStock).toFixed(1);
-          statusBadge = `<span class="mgr-status-badge status-lowstock" title="Buffer: only ${buffer} ${matched.unit} above minimum stock limit"><span class="mgr-status-dot"></span>Near Limit (+${buffer})</span>`;
-          stockColor = '#D97706';
+          statusBadge = fpPill(`Low Stock (+${buffer})`, '#EA580C', `Buffer: only ${buffer} ${matched.unit} above minimum stock limit`);
+          stockColor = '#EA580C';
         } else {
-          statusBadge = '<span class="mgr-status-badge status-instock" title="Current stock is safely above minimum limit"><span class="mgr-status-dot"></span>Above Limit</span>';
-          stockColor = '#15803D';
+          statusBadge = fpPill('Good', '#166534', 'Current stock is safely above minimum limit');
+          stockColor = '#166534';
         }
 
-        const safeBadgeBg = safeProducible > 0 ? '#ECFDF5' : '#FEF2F2';
-        const safeBadgeColor = safeProducible > 0 ? '#15803D' : '#DC2626';
+        const safeBadgeBg = 'transparent';
+        const safeBadgeColor = safeProducible > 0 ? '#166534' : '#DC2626';
 
         const fpFirstDate = matched.first_date_display || matched.date_added || (product.date_added ? new Date(product.date_added).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
         const fpLatestDate = matched.latest_date_display || matched.last_updated || (product.date_modified ? new Date(product.date_modified).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : fpFirstDate);
@@ -3685,9 +3887,9 @@ function openFinishedProductModal(productName) {
             <td style="text-align: right;">
               <div style="display:inline-flex; align-items:center; gap:5px; justify-content:flex-end;">
                 <input type="number" step="any" min="0" class="fp-modal-min-input fp-recipe-input"
-                  data-mat-min="${escapeHtml(matName)}" value="${minStock}" style="width:85px; color:#92400E; font-weight:700;"
+                  data-mat-min="${escapeHtml(matName)}" value="${minStock}" style="width:85px; color:#0F172A; font-weight:700;"
                   title="Minimum safety stock threshold limit for this material">
-                <span style="font-size:12px; color:#92400E; font-weight:700; min-width:32px; text-align:left;">${escapeHtml(matched.unit)}</span>
+                <span style="font-size:12px; color:#0F172A; font-weight:700; min-width:32px; text-align:left;">${escapeHtml(matched.unit)}</span>
               </div>
             </td>
             <td>
@@ -3751,7 +3953,7 @@ function openFinishedProductModal(productName) {
             <div class="fp-meta-kpi-chip" style="background:${belowMinCount === 0 ? '#DCFCE7' : '#FEE2E2'}; color:${belowMinCount === 0 ? '#15803D' : '#B91C1C'}; border:1px solid ${belowMinCount === 0 ? '#86EFAC' : '#FCA5A5'};">
               <span>${belowMinCount === 0 ? '✅ All Materials Above Minimum Limit' : `⚠️ ${belowMinCount} Material${belowMinCount > 1 ? 's' : ''} Below Minimum Stock`}</span>
             </div>
-            <div class="fp-meta-kpi-chip" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE;" title="Total units producible before raw material runs out">
+            <div class="fp-meta-kpi-chip" style="background:#F0FDF4; color:#14532D; border:1px solid #BBF7D0;" title="Total units producible before raw material runs out">
               <span>Max Capacity: <strong>${lowestMaxProducible.toLocaleString()} units</strong></span>
               ${bottleneckMatName ? `<small style="color:#64748B; margin-left:4px;">(Bottleneck: ${escapeHtml(bottleneckMatName)})</small>` : ''}
             </div>
@@ -3777,8 +3979,8 @@ function openFinishedProductModal(productName) {
         const safeStock = Math.max(0, curStock - minStock);
         const safeProducible = qtyPerUnit > 0 ? Math.floor(safeStock / qtyPerUnit) : 0;
 
-        const safeBadgeBg = safeProducible > 0 ? '#ECFDF5' : '#FEF2F2';
-        const safeBadgeColor = safeProducible > 0 ? '#15803D' : '#DC2626';
+        const safeBadgeBg = 'transparent';
+        const safeBadgeColor = safeProducible > 0 ? '#166534' : '#DC2626';
 
         const capBox = row.querySelector('.fp-safe-capacity-box');
         if (capBox) {
@@ -3829,7 +4031,7 @@ function openFinishedProductModal(productName) {
         <div class="fp-meta-kpi-chip" style="background:${belowMinCount === 0 ? '#DCFCE7' : '#FEE2E2'}; color:${belowMinCount === 0 ? '#15803D' : '#B91C1C'}; border:1px solid ${belowMinCount === 0 ? '#86EFAC' : '#FCA5A5'};">
           <span>${belowMinCount === 0 ? '✅ All Materials Above Minimum Limit' : `⚠️ ${belowMinCount} Material${belowMinCount > 1 ? 's' : ''} Below Minimum Stock`}</span>
         </div>
-        <div class="fp-meta-kpi-chip" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE;" title="Total units producible before raw material runs out">
+        <div class="fp-meta-kpi-chip" style="background:#F0FDF4; color:#14532D; border:1px solid #BBF7D0;" title="Total units producible before raw material runs out">
           <span>Max Capacity: <strong>${lowestMaxProducible.toLocaleString()} units</strong></span>
           ${bottleneckMatName ? `<small style="color:#64748B; margin-left:4px;">(Bottleneck: ${escapeHtml(bottleneckMatName)})</small>` : ''}
         </div>
@@ -3875,10 +4077,11 @@ function openFinishedProductModal(productName) {
         };
       });
       custom[idx].date_modified = new Date().toISOString();
-      saveCustomFinishedProducts(custom);
-      renderFinishedFoodModalContent('');
-      renderFinishedProductsFolders();
-      showToast(`Formulation limits for "${product.name}" saved successfully!`, 'success');
+      const savedName = custom[idx].name;
+      const pushed = saveCustomFinishedProducts(custom, [savedName]);
+      // back to the finished product cards (the catalog stays open if the recipe was opened from it)
+      returnToFinishedProductCards(savedName, { showCatalog: false });
+      pushed.then(results => reportFinishedProductSave(results, `Formulation limits for "${product.name}" saved to the database.`));
     }
   };
 
@@ -3945,8 +4148,10 @@ function openImportRawMaterialsModal() {
   const modal = document.getElementById('modalImportRawMaterials');
   if (!modal) return;
   const dateInput = document.getElementById('importDefaultDateInput');
-  if (dateInput && !dateInput.value) {
-    dateInput.value = new Date().toISOString().slice(0, 10);
+  if (dateInput) {
+    // today in the user's own time zone (Asia/Manila), not UTC
+    const t = new Date();
+    dateInput.value = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
   }
   if (dateInput && !dateInput.dataset.boundChange) {
     dateInput.dataset.boundChange = 'true';
@@ -4151,7 +4356,12 @@ async function handleImportFileSelected(e) {
   if (fileInfo) fileInfo.style.display = 'flex';
   if (fileNameEl) fileNameEl.textContent = fileName;
   if (fileSizeEl) fileSizeEl.textContent = `(${fileSizeKB} KB)`;
-  if (dropTitle) dropTitle.textContent = `Selected: ${fileName}`;
+  if (dropTitle) dropTitle.innerHTML = `<span class="rmims-inline-spinner" aria-hidden="true"></span> Reading ${escapeHtml(fileName)}...`;
+  const confirmBtnWhileReading = document.getElementById('importModalConfirmBtn');
+  if (confirmBtnWhileReading) confirmBtnWhileReading.disabled = true;
+  const doneReading = () => { if (dropTitle) dropTitle.textContent = `Selected: ${fileName}`; };
+  // let the loading text paint before the (possibly large) file is parsed
+  await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
   try {
     if (ext === 'xlsx' || ext === 'xls') {
@@ -4197,6 +4407,8 @@ async function handleImportFileSelected(e) {
   } catch (err) {
     console.error('Import file parse error:', err);
     showImportError(`Failed to parse file: ${err.message || 'Unknown error'}`);
+  } finally {
+    doneReading();
   }
 }
 
@@ -4330,7 +4542,7 @@ function processParsedObjectRows(rows) {
         reorder_point: (!isNaN(reorderPoint) && reorderPoint >= 0) ? reorderPoint : (parsedMin * 2),
         supplier: supplier || 'Batch Imported via File',
         unit_cost: (!isNaN(unitCost) && unitCost >= 0) ? unitCost : 0,
-        storage_location: location || 'Warehouse A - Main Rack',
+        storage_location: location || '',
         description: desc || `Raw material ${rawName} imported into inventory.`
       });
     }
@@ -4363,13 +4575,14 @@ function prepareImportedMaterialsPreview(validRows) {
       String(m.raw_material_name || m.name || '').trim().toLowerCase() === normName
     );
 
+    // the file's own code, then the company's existing material, then (same material only) the registered code
     let code = '';
-    if (forecastingMatch && forecastingMatch.code) {
-      code = forecastingMatch.code;
-    } else if (row.explicitCode) {
+    if (row.explicitCode) {
       code = String(row.explicitCode).toUpperCase().trim();
     } else if (existingMatch && (existingMatch.item_code || existingMatch.id)) {
       code = String(existingMatch.item_code || existingMatch.id).toUpperCase().trim();
+    } else if (forecastingMatch && forecastingMatch.code && !(rawMaterials || []).some(m => String(m.item_code || m.id || '').toUpperCase().trim() === forecastingMatch.code)) {
+      code = forecastingMatch.code;
     } else if (newCodeByNameMap.has(normName)) {
       code = newCodeByNameMap.get(normName);
     } else {
@@ -4378,7 +4591,8 @@ function prepareImportedMaterialsPreview(validRows) {
       workingMaterialsList.push({ id: code, item_code: code, name: row.name });
     }
 
-    const resolvedUnit = row.unit || (forecastingMatch && forecastingMatch.unit) || getAuthoritativeMaterialUnit({ id: code, name: row.name });
+    // the file's unit, then the company's existing unit for this material; a built-in unit is only a last fallback
+    const resolvedUnit = row.unit || (existingMatch && (existingMatch.unit || existingMatch.unit_of_measure)) || (forecastingMatch && forecastingMatch.unit) || getAuthoritativeMaterialUnit({ id: code, name: row.name });
     const resolvedCategory = (row.category && row.category !== 'General Materials')
       ? row.category
       : ((forecastingMatch && forecastingMatch.category) || (existingMatch && existingMatch.category) || 'General Materials');
@@ -4580,7 +4794,7 @@ function processParsedMatrix(matrix) {
         reorder_point: (!isNaN(reorderPoint) && reorderPoint >= 0) ? reorderPoint : (parsedMin * 2),
         supplier: supplier || 'Batch Imported via File',
         unit_cost: (!isNaN(unitCost) && unitCost >= 0) ? unitCost : 0,
-        storage_location: location || 'Warehouse A - Main Rack',
+        storage_location: location || '',
         description: desc || `Raw material ${rawName} imported into inventory.`
       });
     }
@@ -4682,7 +4896,54 @@ async function handleConfirmImportMaterials() {
   if (pctEl) pctEl.textContent = '0%';
 
   const totalRows = pendingImportMaterials.length;
-  if (statusEl) statusEl.textContent = `Importing data... (0 / ${totalRows} records)`;
+  if (statusEl) statusEl.textContent = `Saving ${totalRows} records to the database...`;
+  const setImportPct = (pct) => {
+    pct = Math.max(0, Math.min(100, Math.round(pct)));
+    if (circleEl) circleEl.style.strokeDashoffset = String(113.1 - (113.1 * pct) / 100);
+    if (barEl) barEl.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+  };
+  // the database step has no row-by-row progress: the bar moves steadily toward 70% while it works
+  let dbPct = 2;
+  setImportPct(dbPct);
+  const dbTicker = setInterval(() => { dbPct += (70 - dbPct) * 0.08; setImportPct(dbPct); }, 120);
+
+  // 1. The whole file is imported in Supabase in one step (import_raw_materials, SQL file 13): materials,
+  //    deliveries from the stock counts, current stock. Every device then loads the same result.
+  let dbResult = null;
+  try {
+    const { supabase: sb } = await import('../supabase/supabase-config.js');
+    const rows = pendingImportMaterials.map(r => ({
+      'Date': String(r.row_date || r.latest_date || r.first_date || '').slice(0, 10),
+      'Raw Material Name': r.name || r.raw_material_name || '',
+      'Current Stock': r.current_stock,
+      'Unit': r.unit || '',
+      'Minimum Stock': r.minimum_stock ?? '',
+      'Item Code': r.item_code || r.id || ''
+    }));
+    const { data, error } = await sb.rpc('import_raw_materials', { p_rows: rows });
+    if (error) throw error;
+    dbResult = data;
+    clearInterval(dbTicker);
+    setImportPct(70);
+  } catch (err) {
+    clearInterval(dbTicker);
+    const msg = String((err && err.message) || '');
+    if (progressBox) progressBox.style.display = 'none';
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `<span id="importModalConfirmText">Import Raw Materials</span>`;
+    }
+    showImportError(/Failed to fetch|NetworkError|network|Load failed|ERR_|timeout/i.test(msg)
+      ? 'Could not reach the database (check the internet connection). Nothing was imported - please try again.'
+      : /JWT|session|not authenticated|401/i.test(msg)
+        ? 'Your sign-in session has expired. Sign out, sign in again, then import the file.'
+        : /import_raw_materials|function|schema cache/i.test(msg)
+          ? 'Import is not installed in Supabase yet: run SQL file 13_IMPORT_RAW_MATERIALS.sql.'
+          : (msg.replace(/^RMIMS_[A-Z_]+:\s*/, '').replace(/^TypeError:\s*/, '') || 'The file could not be imported. Nothing was changed.'));
+    return;
+  }
+  const rejected = Array.isArray(dbResult && dbResult.rejected_rows) ? dbResult.rejected_rows : [];
 
   const overrides = getStoredOverrides();
   const now = new Date();
@@ -4783,13 +5044,7 @@ async function handleConfirmImportMaterials() {
       unit: latestRow.unit,
       current_stock: latestRow.current_stock,
       minimum_stock: latestRow.minimum_stock,
-      safety_stock: latestRow.safety_stock || latestRow.minimum_stock,
-      reorder_point: latestRow.reorder_point || (latestRow.minimum_stock * 2),
-      maximum_stock: (latestRow.minimum_stock * 5) || 100,
-      storage_location: latestRow.storage_location || 'Warehouse A - Main Rack',
-      supplier: latestRow.supplier || 'Batch Imported via File',
-      unit_cost: latestRow.unit_cost || 0,
-      description: latestRow.description || `Raw material ${latestRow.name} batch imported by Store Manager.`,
+      description: latestRow.description || 'Imported from file',
       date_added: itemFirstDate,
       first_date: itemFirstDate,
       display_date: itemFirstDate,
@@ -4812,14 +5067,7 @@ async function handleConfirmImportMaterials() {
       current_stock: latestRow.current_stock,
       minimum_threshold: latestRow.minimum_stock,
       minimum_stock: latestRow.minimum_stock,
-      safety_stock: latestRow.safety_stock || latestRow.minimum_stock,
-      reorder_point: latestRow.reorder_point || (latestRow.minimum_stock * 2),
-      reorder_quantity: latestRow.reorder_point || Math.max(10, latestRow.minimum_stock * 2),
-      supplier: latestRow.supplier || 'Batch Imported via File',
-      unit_cost: latestRow.unit_cost || 0,
-      storage_location: latestRow.storage_location || 'Warehouse A - Main Rack',
-      lead_time_days: 3,
-      description: latestRow.description || `Batch imported raw material ${latestRow.name}`,
+      description: latestRow.description || 'Imported from file',
       date_added: itemFirstDate,
       first_date: itemFirstDate,
       display_date: itemFirstDate,
@@ -4831,7 +5079,7 @@ async function handleConfirmImportMaterials() {
     };
 
     saveCustomRawMaterial(recordPayload);
-    saveRawMaterialToSupabase(recordPayload).catch(() => {});
+    // (already saved in Supabase by import_raw_materials above)
 
     logMaterialHistory(
       code,
@@ -4841,21 +5089,18 @@ async function handleConfirmImportMaterials() {
 
     uniqueMaterialCount++;
     processedRows += rowsForMat.length;
-    const pct = Math.min(100, Math.round((processedRows / totalRows) * 100));
-    const offset = 113.1 - (113.1 * pct) / 100;
-
-    if (circleEl) circleEl.style.strokeDashoffset = String(offset);
-    if (barEl) barEl.style.width = `${pct}%`;
-    if (pctEl) pctEl.textContent = `${pct}%`;
-    if (statusEl) statusEl.textContent = `Importing data... (${processedRows} / ${totalRows} records)`;
-
-    await new Promise(r => setTimeout(r, 35));
+    if (gIdx % 25 === 24 || gIdx === groupEntries.length - 1) {
+      setImportPct(70 + (30 * processedRows) / totalRows);
+      if (statusEl) statusEl.textContent = `Updating inventory... (${processedRows} / ${totalRows} records)`;
+      await new Promise(r => requestAnimationFrame(() => r()));
+    }
   }
 
   if (!isImportCancelled) {
-    // Atomically persist batch receipts & disbursements
+    // Deliveries from the file were created in Supabase (step 1); they arrive with the live sync below,
+    // so nothing is written to this browser's ledger here (no double counting).
     try {
-      if (batchReceipts.length > 0) {
+      if (false && batchReceipts.length > 0) {
         const existingRecs = getSystemCustomReceipts();
         const batchRecIds = new Set(batchReceipts.map(r => String(r.id)));
         const mergedRecs = [...batchReceipts, ...existingRecs.filter(r => !batchRecIds.has(String(r.id)))];
@@ -4907,13 +5152,20 @@ async function handleConfirmImportMaterials() {
     renderUI();
     broadcastManagerSync({ action: 'import_materials', count: uniqueMaterialCount, totalRows });
 
-    // Wait briefly at 100% so user sees completion
-    await new Promise(r => setTimeout(r, 450));
+    // short pause at 100% so the user sees it finished
+    await new Promise(r => setTimeout(r, 250));
 
     closeImportRawMaterialsModal();
-    loadMaterials();
-    renderUI();
-    showToast(`Successfully imported ${totalRows} records across ${uniqueMaterialCount} raw material${uniqueMaterialCount === 1 ? '' : 's'}!`, 'success');
+    // the full live refresh continues in the background (the table is already up to date)
+    import('../supabase/manager-supabase-service.js')
+      .then(svc => svc.pullLiveData('import'))
+      .then(() => { loadMaterials(); renderUI(); })
+      .catch(() => {});
+    const d = dbResult || {};
+    showToast(`Imported: ${d.materials_created || 0} new, ${d.materials_updated || 0} updated, ${d.deliveries_created || 0} deliveries recorded`
+      + (d.rows_already_imported ? `, ${d.rows_already_imported} already imported` : '')
+      + (rejected.length ? `. ${rejected.length} row(s) skipped: ${rejected.slice(0, 2).map(r => `row ${r.row} - ${r.error}`).join('; ')}` : '.'),
+      rejected.length ? 'warning' : 'success');
   }
 
   if (confirmBtn) {
@@ -5095,7 +5347,7 @@ function exportMaterialsToExcel(data) {
               <td>${m.unit}</td>
               <td style="text-align:right;">${m.current_stock}</td>
               <td style="text-align:right;">${m.minimum_stock}</td>
-              <td style="text-align:right;">${m.maximum_stock}</td>
+              <td style="text-align:right;">${m.maximum_stock != null ? m.maximum_stock : "—"}</td>
               <td>${m.storage_location}</td>
               <td>${m.supplier}</td>
               <td>${m.status}</td>
@@ -5184,7 +5436,7 @@ function printInventoryReport(data) {
               <td>${m.specification_name || ''}</td>
               <td>${m.current_stock} ${m.unit}</td>
               <td>${m.minimum_stock} ${m.unit}</td>
-              <td>${m.maximum_stock} ${m.unit}</td>
+              <td>${m.maximum_stock != null ? `${m.maximum_stock} ${m.unit}` : "—"}</td>
               <td>${m.storage_location}</td>
               <td>${m.supplier}</td>
               <td>

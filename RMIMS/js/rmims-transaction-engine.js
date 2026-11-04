@@ -868,16 +868,8 @@ export function getStaffTransactions() {
       if (!t) return;
       const lowerStaff = String(t.staff || '').toLowerCase().trim();
       if (!t.staff || BANNED_STAFF.includes(lowerStaff)) {
-        let resolved = 'Staff_1';
-        if (t.staffEmail === 'scone2@gmail.com') resolved = 'Staff_2';
-        else if (t.staffEmail === 'zeannapatty@gmail.com') resolved = 'Aizel';
-        else if (t.staffEmail === 'zeannapatricia@gmail.com') resolved = 'Glazel';
-        t.staff = resolved;
-        modified = true;
-      }
-      if (t.approvedBy && BANNED_STAFF.includes(String(t.approvedBy).toLowerCase().trim())) {
-        t.approvedBy = 'Aizel';
-        modified = true;
+        const resolved = String(t.staffEmail || '').split('@')[0];
+        if (resolved && resolved !== t.staff) { t.staff = resolved; modified = true; }
       }
     });
     if (modified) {

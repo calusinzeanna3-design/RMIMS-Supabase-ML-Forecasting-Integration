@@ -74,13 +74,10 @@ export function resolveTenantFromUser(user = null) {
   const cleanUsername = String(user.username || user.user_metadata?.username || '').toLowerCase().trim();
   const cleanName = String(user.name || user.fullName || user.user_metadata?.full_name || '').toLowerCase().trim();
   const rawRole = String(user.role || user.operationalRole || user.operational_role || '').toLowerCase().trim();
-  const isAdmin = cleanEmail === "calusinzeanna3@gmail.com" || rawRole === "admin" || rawRole === "super_admin";
+  const isAdmin = rawRole === "admin" || rawRole === "super_admin";
 
   // If in manager or staff portal, or non-admin role, strictly enforce Scones & Muffins Bakery
   if ((isManagerPortalOrUser || !isAdmin) && (
-    cleanName.includes("aizel") ||
-    cleanUsername.includes("aizel") ||
-    cleanEmail.includes("aizel") ||
     rawRole === "manager" ||
     rawRole === "staff" ||
     rawRole === "user" ||
@@ -94,14 +91,8 @@ export function resolveTenantFromUser(user = null) {
     return { ...TENANT_CONFIGS[SCONES_TENANT_ID] };
   }
 
-  // 1. Explicit Scones & Muffins account matches (Aizel, Scones Manager, Scones Staff)
+  // 1. Explicit Scones & Muffins account matches (Scones Manager, Scones Staff)
   const isSconesExplicit = 
-    cleanName.includes("aizel") ||
-    cleanUsername.includes("aizel") ||
-    cleanEmail.includes("aizel") ||
-    cleanEmail === "zeannapatty@gmail.com" ||
-    cleanEmail === "sconesandmuffins@gmail.com" ||
-    cleanEmail === "scone2@gmail.com" ||
     cleanEmail.includes("scones") ||
     cleanUsername.includes("scones") ||
     cleanUsername.includes("muffin") ||
@@ -186,7 +177,7 @@ export function resolveTenantFromUser(user = null) {
 
 /**
  * Gets the current active tenant context.
- * For Admin (Zeanna), allows active store switching if selected.
+ * For the Admin, allows active store switching if selected.
  * For Managers and Staff, strictly locks into their assigned store.
  */
 export function getActiveTenantContext() {
@@ -201,7 +192,7 @@ export function getActiveTenantContext() {
   } catch (_) {}
 
   const cleanEmail = (user?.email || '').toLowerCase().trim();
-  const isAdmin = cleanEmail === "calusinzeanna3@gmail.com" || 
+  const isAdmin =
     user?.role === "admin" || 
     user?.operationalRole === "admin" || 
     user?.operationalRole === "SUPER_ADMIN";

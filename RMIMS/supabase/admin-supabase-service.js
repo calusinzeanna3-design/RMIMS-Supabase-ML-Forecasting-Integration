@@ -13,6 +13,7 @@
 // to localStorage and dispatch standard RMIMS synchronization events.
 // ============================================================================
 
+import { loadRecorderDirectory, resolveRecorderName, recorderRoleForName, extractRef } from '../js/rmims-recorder-resolver.js';
 import { supabase } from './supabase-config.js';
 
 // Local storage key constants (aligned 1-to-1 with Admin portal views)
@@ -40,7 +41,6 @@ export function isMockUser(u) {
   if (!u) return false;
   const txt = `${u.name || u.full_name || ''} ${u.username || ''} ${u.email || ''} ${u.branchName || u.branch_name || ''}`.toLowerCase();
   const role = String(u.role || u.operational_role || '').toLowerCase();
-  if (txt.includes('aizel') && (role.includes('staff') || role.includes('user_staff'))) return true;
   if (u.email && (u.email.endsWith('@example.com') || u.email.endsWith('@test.com'))) return true;
   return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
 }
@@ -150,8 +150,14 @@ export async function fetchBranchStores() {
         .from('branch_stores')
         .select('*')
         .order('created_at', { ascending: true });
-      if (!sErr && Array.isArray(sData) && sData.length > 0) {
-        stores = sData.filter(s => !isDeletedBranchStore(s) && !isDeletedBranchStore(s.id) && !isDeletedBranchStore(s.branch_name));
+      // old built-in sample stores are not real stores: remove them (the Admin's delete is allowed by RLS)
+      const LEGACY_SEED_IDS = ['scones-lucena', 'kxc-tiaong'];
+      if (!sErr && Array.isArray(sData) && sData.some(r => LEGACY_SEED_IDS.includes(r.id))) {
+        try { await supabase.from('branch_stores').delete().in('id', LEGACY_SEED_IDS); } catch (_) {}
+      }
+      const realRows = (!sErr && Array.isArray(sData)) ? sData.filter(r => !LEGACY_SEED_IDS.includes(r.id)) : [];
+      if (realRows.length > 0) {
+        stores = realRows.filter(s => !isDeletedBranchStore(s) && !isDeletedBranchStore(s.id) && !isDeletedBranchStore(s.branch_name));
         const { data: pData, error: pErr } = await supabase
           .from('branch_store_personnel')
           .select('*')
@@ -201,7 +207,7 @@ export async function fetchBranchStores() {
             locKey: locKey,
             companyId: u.company_id || '',
             code: loc.substring(0, 3).toUpperCase(),
-            category: 'MSME Production & Retail Hub',
+            category: 'MSME Retail Hub',
             status: 'ACTIVE',
             managers: [],
             staff: []
@@ -236,14 +242,18 @@ export async function fetchBranchStores() {
         const rawCustom = localStorage.getItem('RMIMS_CUSTOM_BRANCH_STORES');
         if (rawCustom) {
           const custom = JSON.parse(rawCustom);
+          ['scones-lucena', 'kxc-tiaong'].forEach(id => { if (custom && custom[id]) delete custom[id]; });
           Object.assign(derivedStores, custom);
         }
       } catch (_) {}
 
-      // Update local storage mirror
+      // Update local storage mirror (tell the pages only when something actually changed)
       try {
-        localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, JSON.stringify(derivedStores));
-        window.dispatchEvent(new Event('rmims_stores_updated'));
+        const next = JSON.stringify(derivedStores);
+        if (localStorage.getItem(STORAGE_KEYS.BRANCH_STORES) !== next) {
+          localStorage.setItem(STORAGE_KEYS.BRANCH_STORES, next);
+          window.dispatchEvent(new Event('rmims_stores_updated'));
+        }
       } catch (_) {}
 
       return derivedStores;
@@ -259,7 +269,7 @@ export async function fetchBranchStores() {
         location: s.branch_location,
         locKey: s.branch_key,
         code: s.branch_key ? s.branch_key.toUpperCase() : 'STR',
-        category: 'MSME Production Hub',
+        category: 'MSME Store Hub',
         address: s.address || '',
         status: s.operating_status || 'ACTIVE',
         managers: storePersonnel
@@ -882,6 +892,8 @@ export async function fetchLiveSystemActivities(options = {}) {
       });
     } catch (_) {}
   }
+  // Real recorder names (UUID -> profile; staff submissions credited to the staff member who recorded them)
+  try { await loadRecorderDirectory(supabase); } catch (_) {}
   const branchOf = (row) => {
     const i = companyInfo[row.company_id] || {};
     return { loc: i.loc || row.branch_location || 'Unassigned', name: i.name || row.company_name || row.branch_name || 'Branch Store', manager: i.manager, staff: i.staff };
@@ -935,19 +947,21 @@ export async function fetchLiveSystemActivities(options = {}) {
           const bi = branchOf(r);
           const branchLoc = bi.loc;
           const branchName = bi.name;
-          const managerName = r.received_by || bi.manager || 'Store Manager';
+          const recRef = extractRef(r.supplier_name);
+          const managerName = resolveRecorderName({ recordedBy: r.received_by, ref: recRef, fallback: '' }) || bi.manager || '—';
+          const recRole = recorderRoleForName(managerName) || 'Store Manager';
 
           combined.push({
             id,
             timestamp: r.created_at || (rDate ? `${rDate}T10:00:00Z` : new Date().toISOString()),
             date: rDate || new Date().toISOString().slice(0, 10),
             user: managerName,
-            role: 'Store Manager',
+            role: recRole,
             branchLoc: branchLoc,
             branchName: branchName,
             action: 'Received',
             module: 'Stock Receipts',
-            details: `Received ${r.received_quantity} ${r.unit} of ${matName} from ${r.supplier_name || 'Supplier'}.`,
+            details: `Received ${r.received_quantity} ${r.unit} of ${matName}${String(r.supplier_name || '').replace(/\s*\[Ref:[^\]]*\]\s*/i, '').trim() ? ` from ${String(r.supplier_name).replace(/\s*\[Ref:[^\]]*\]\s*/i, '').trim()}` : ''}.`,
             status: 'success'
           });
         });
@@ -969,18 +983,20 @@ export async function fetchLiveSystemActivities(options = {}) {
           seenIds.add(id);
           const matName = d.raw_materials?.name || 'Raw Material';
           const dDate = d.usage_date || (d.created_at ? String(d.created_at).slice(0, 10) : '');
-          const reason = d.finished_product_name || d.activity_type || 'Operations';
+          const reason = String(d.finished_product_name || '').trim() || '—';
           const bi = branchOf(d);
           const branchLoc = bi.loc;
           const branchName = bi.name;
-          const staffName = d.disbursed_by || bi.staff || 'Store Staff';
+          const disbRef = extractRef(d.activity_type);
+          const staffName = resolveRecorderName({ recordedBy: d.recorded_by || d.disbursed_by, ref: disbRef, fallback: '' }) || '—';
+          const disbRole = recorderRoleForName(staffName) || (/SMSt-/i.test(disbRef) ? 'Store Staff' : 'Store Manager');
 
           combined.push({
             id,
             timestamp: d.created_at || (dDate ? `${dDate}T14:30:00Z` : new Date().toISOString()),
             date: dDate || new Date().toISOString().slice(0, 10),
             user: staffName,
-            role: 'Store Staff',
+            role: disbRole,
             branchLoc: branchLoc,
             branchName: branchName,
             action: 'Disbursed',
@@ -1082,23 +1098,7 @@ export async function fetchRegisteredUsers() {
     // Realtime Supabase synchronization: Supabase user_profiles is the authoritative source.
     // Sync local mirror with real Supabase records to prevent zombie / orphaned accounts.
 
-    // Ensure approved users cache is kept in sync with Supabase status
-    try {
-      const rawApproved = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
-      const approvedUsers = rawApproved ? JSON.parse(rawApproved) : [];
-      if (Array.isArray(approvedUsers)) {
-        approvedUsers.forEach(au => {
-          if (!au) return;
-          const auEmail = (au.email || '').toLowerCase().trim();
-          const auId = String(au.id || '').trim();
-          const match = users.find(u => 
-            (auId && u.id && String(u.id) === auId) ||
-            (auEmail && u.email && u.email.toLowerCase() === auEmail)
-          );
-          if (match) match.status = 'Active';
-        });
-      }
-    } catch (_) {}
+    // (a user's status comes ONLY from Supabase: an old local "approved" copy never shows a deactivated user as Active)
 
     try {
       localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(users));
@@ -1151,51 +1151,7 @@ export async function fetchPendingApprovals() {
 
     // Realtime Supabase synchronization: Pending list is synced directly from Supabase user_profiles
 
-    // Strictly filter out ANY user who is already approved in STORAGE_KEYS.APPROVED_USERS or REGISTERED_USERS as Active
-    try {
-      const rawApproved = localStorage.getItem(STORAGE_KEYS.APPROVED_USERS);
-      const approvedUsers = rawApproved ? JSON.parse(rawApproved) : [];
-      const rawReg = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
-      const activeReg = rawReg ? JSON.parse(rawReg) : [];
-
-      pending = pending.filter(p => {
-        if (!p) return false;
-        const pEmail = (p.email || '').toLowerCase().trim();
-        const pUser = (p.username || '').toLowerCase().trim();
-        const pId = String(p.id || '').trim();
-        const pName = (p.name || '').toLowerCase().trim();
-
-        const isApproved = Array.isArray(approvedUsers) && approvedUsers.some(a => {
-          if (!a) return false;
-          const aEmail = (a.email || '').toLowerCase().trim();
-          const aUser = (a.username || '').toLowerCase().trim();
-          const aId = String(a.id || '').trim();
-          const aName = (a.name || '').toLowerCase().trim();
-          return (pEmail && aEmail && aEmail === pEmail) ||
-                 (pUser && aUser && (aUser === pUser || aUser.replace(/\s+/g, '') === pUser.replace(/\s+/g, ''))) ||
-                 (pId && aId && aId === pId) ||
-                 (pName && aName && (aName === pName || aName.replace(/\s+/g, '') === pName.replace(/\s+/g, '')));
-        });
-        if (isApproved) return false;
-
-        const isRegActive = Array.isArray(activeReg) && activeReg.some(r => {
-          if (!r) return false;
-          const rStatus = String(r.status || '').toLowerCase().trim();
-          if (rStatus !== 'active') return false;
-          const rEmail = (r.email || '').toLowerCase().trim();
-          const rUser = (r.username || '').toLowerCase().trim();
-          const rId = String(r.id || '').trim();
-          const rName = (r.name || '').toLowerCase().trim();
-          return (pEmail && rEmail && rEmail === pEmail) ||
-                 (pUser && rUser && (rUser === pUser || rUser.replace(/\s+/g, '') === pUser.replace(/\s+/g, ''))) ||
-                 (pId && rId && rId === pId) ||
-                 (pName && rName && (rName === pName || rName.replace(/\s+/g, '') === pName.replace(/\s+/g, '')));
-        });
-        if (isRegActive) return false;
-
-        return true;
-      });
-    } catch (_) {}
+    // (the pending list is exactly what Supabase says: an old local copy never hides a real request)
 
     try {
       localStorage.setItem(STORAGE_KEYS.PENDING_USERS, JSON.stringify(pending));
@@ -2019,10 +1975,18 @@ export async function deleteUserAccount(userId, userEmail, userName, deletedBy =
   if (!supabase) return { success: true, offline: true };
 
   try {
+    // Step 7-0: delete the login itself (Supabase Auth) and its profile - the account can never sign in again
+    try {
+      const ident = (cleanId && cleanId.length > 20 && !cleanId.startsWith('user-') && !cleanId.startsWith('req_')) ? cleanId : (cleanEmail || cleanUser);
+      if (ident) {
+        const { data: delRes } = await supabase.rpc('admin_delete_user', { p_identifier: ident });
+        if (delRes && delRes.success) return { success: true, method: 'auth_deleted' };
+      }
+    } catch (_) {}
+
     // Step 7a: Immune deactivation fallback: mark 'inactive' so user can NEVER pop up as active or pending even if foreign keys block hard delete
     const deactPayload = {
       status: 'inactive',
-      operational_role: 'inactive',
       updated_at: new Date().toISOString()
     };
 
@@ -2061,7 +2025,9 @@ export function subscribeToAdminFeed(onUpdate) {
   }
 
   try {
-    const channel = supabase.channel('rmims-admin-live-feed')
+    // one channel per subscriber: a second .on() after subscribe() on a shared channel name throws
+    subscribeToAdminFeed.__n = (subscribeToAdminFeed.__n || 0) + 1;
+    const channel = supabase.channel(`rmims-admin-live-feed-${subscribeToAdminFeed.__n}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_receipts' }, payload => {
         if (typeof onUpdate === 'function') onUpdate({ table: 'stock_receipts', payload });
       })

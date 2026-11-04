@@ -44,8 +44,12 @@ function isLocalOnly(n, sender) {
   if (sender === 'admin') {
     // Admin-private: accounts, registrations, security, credentials
     if (cat === 'security' || cat === 'user' || cat === 'security & access') return true;
-    if (badge.includes('registration') || badge.includes('user management') || badge.includes('unlocked') || badge.includes('critical')) return true;
-    if (/registration|account (locked|approved|unlocked)|new user created|password|security alert/.test(title)) return true;
+    // Alerts the Admin addresses to a Manager / Staff role are shared; account administration stays private
+    const t = low(n.targetRole || n.role || n.roleScope);
+    const toBranchRole = t.includes('manager') || t.includes('staff') || t === 'all';
+    if (!toBranchRole && (badge.includes('registration') || badge.includes('user management') || badge.includes('unlocked') || badge.includes('critical'))) return true;
+    if (!toBranchRole && /registration|account (locked|approved|unlocked)|new user created|password|security alert/.test(title)) return true;
+    if (/registration|new user created|password reset/.test(title)) return true;
   }
   return false;
 }
@@ -199,7 +203,7 @@ function start() {
   try {
     if (supabase && typeof supabase.channel === 'function') {
       supabase
-        .channel('rmims_shared_notifications')
+        .channel('rmims_system_notifications_feed') // own name: the shell already uses rmims_shared_notifications
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_notifications' }, (payload) => {
           if (payload && payload.new) ingest([payload.new]);
         })

@@ -13,9 +13,11 @@
 //
 // Also resolves the real FINISHED PRODUCT a raw material was disbursed for, from the manager's own
 // finished-product formulations (My Inventory -> Finished Products), instead of placeholders like
-// "Production Batch" / "Production Operations".
+// placeholder labels (old records).
 
-import { getTrainedProfile, buildLiveForecaster, TRAINED_OVERALL_DAILY_MAPE, MIN_EVIDENCE_DAYS, REQUIREMENT_BAND_FRACTION } from './trained-forecast-engine.js';
+import { txKey } from './rmims-tx-key.js';
+import { isDeleted } from './rmims-deleted-ledger.js';
+import { getTrainedProfile, buildLiveForecaster, MIN_EVIDENCE_DAYS, REQUIREMENT_BAND_FRACTION, modelMapeFor } from './trained-forecast-engine.js';
 
 
 const isCountUnit = (u) => ['pcs', 'pc', 'pieces', 'piece', 'packs', 'pack', 'units'].includes(String(u || '').toLowerCase().trim());
@@ -31,6 +33,20 @@ const dayKey = (v) => {
 };
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[\/\(\)\-_,&.]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * True when a recipe ingredient name and a raw material name are the same material:
+ * same words, one inside the other, or (for a renamed material) every word of the shorter name appears in the
+ * longer one with at least two words in common - "All-Purpose Flour" = "All-Purpose / Bread Flour".
+ */
+export function sameMaterialName(a, b) {
+  const x = norm(a), y = norm(b);
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  const ta = x.split(' ').filter(w => w.length > 1), tb = y.split(' ').filter(w => w.length > 1);
+  const [small, big] = ta.length <= tb.length ? [ta, new Set(tb)] : [tb, new Set(ta)];
+  return small.length >= 2 && small.every(w => big.has(w));
+}
 
 /**
  * Build YYYY-MM-DD -> consumed quantity for ONE material from disbursement rows.
@@ -71,10 +87,12 @@ export function forecastHorizon(material, actualsByDate, days, opts = {}) {
   actuals.forEach(q => { if (q > 0) { total += q; evidenceDays++; } });
   const code = String(material.itemCode || material.item_code || material.id || '').toUpperCase().trim();
   const profile = getTrainedProfile(code);
-  const mapePct = profile ? Number(profile.mape) || TRAINED_OVERALL_DAILY_MAPE : TRAINED_OVERALL_DAILY_MAPE;
+  const mapePct = modelMapeFor(code);
   if (evidenceDays === 0) return { hasData: false, evidenceDays: 0, expected: 0, requirement: 0, half: 0, mapePct, basis: 'none' };
 
-  if (profile && evidenceDays >= MIN_EVIDENCE_DAYS) {
+  // always the model (also with few records: it reads a first batch as at least one week's usage, instead of
+  // averaging per recorded day - that turned 5,035 g used this week into an 18,560 g weekly requirement)
+  if (profile) {
     const fc = buildLiveForecaster(code, actuals, { asOf });
     if (fc.hasEvidence) {
       let expected = 0, requirement = 0, half = 0;
@@ -109,10 +127,11 @@ export function computeDataDrivenReorder(material, actualsByDate, opts = {}) {
   if (!f7.hasData) {
     return {
       hasData: false, evidenceDays: 0, lowConfidence: true, recordedUsage: 0, avgDaily: null,
-      forecast7: null, forecast30: null, requirement7: null, requirement30: null, mapePct: f7.mapePct, reorderQty: null, daysOfCover: null, basis: 'none'
+      forecast7: null, forecast30: null, requirement7: null, requirement30: null, requirementTomorrow: null, mapePct: f7.mapePct, reorderQty: null, daysOfCover: null, basis: 'none'
     };
   }
   const f30 = forecastHorizon(material, actuals, 30, opts);
+  const f1 = forecastHorizon(material, actuals, 1, opts);   // tomorrow
   return {
     hasData: true,
     evidenceDays: f7.evidenceDays,
@@ -123,6 +142,7 @@ export function computeDataDrivenReorder(material, actualsByDate, opts = {}) {
     forecast30: roundQty(f30.expected, unit),
     requirement7: roundQty(f7.requirement, unit),
     requirement30: roundQty(f30.requirement, unit),
+    requirementTomorrow: roundQty(f1.requirement, unit),
     mapePct: f7.mapePct,
     reorderQty: roundQty(Math.max(0, f7.requirement + minStock - stock), unit),
     // Days the current stock lasts at the forecast daily requirement (from recorded usage only)
@@ -136,12 +156,14 @@ export function computeDataDrivenReorder(material, actualsByDate, opts = {}) {
  * The synced ledger (rmims_manager_disbursements: Supabase rows + this device's entries, merged by reference)
  * plus locally saved disbursements, one record per reference.
  * ========================================================================== */
-let _ledgerCache = { at: 0, rows: [] };
-const REF_LIKE = /^(\d{4}SM[A-Za-z]*-|REC-|DIS-)/i;
+let _ledgerCache = { stamp: null, rows: [] };
 
 export function readRecordedDisbursements() {
-  const now = Date.now();
-  if (now - _ledgerCache.at < 1000) return _ledgerCache.rows;
+  // cached only while the ledgers are unchanged (a sync that lands a moment later is picked up immediately)
+  let rawA = '', rawB = '', rawDel = '';
+  try { rawA = localStorage.getItem('rmims_manager_disbursements') || ''; rawB = localStorage.getItem('rmims_custom_disbursements') || ''; rawDel = localStorage.getItem('rmims_deleted_disbursement_ids') || ''; } catch (_) {}
+  const stamp = rawA.length + ':' + rawB.length + ':' + rawDel.length + ':' + rawA.slice(0, 200) + rawB.slice(0, 200) + rawA.slice(-200) + rawB.slice(-200);
+  if (_ledgerCache.stamp === stamp) return _ledgerCache.rows;
   const read = (k) => { try { const a = JSON.parse(localStorage.getItem(k) || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; } };
   const out = new Map();
   const sig = (d) => [String(d.materialId ?? d.material_id ?? d.materialName ?? d.material_name ?? '').toLowerCase(),
@@ -150,15 +172,14 @@ export function readRecordedDisbursements() {
   const sigs = new Set();
   [...read('rmims_manager_disbursements'), ...read('rmims_custom_disbursements')].forEach(d => {
     if (!d) return;
-    const tag = String(d.activity_type || d.activityType || '').match(/\[Ref:\s*([^\]]+)\]/i);
-    const ref = String(d.ref || (tag && tag[1]) || (REF_LIKE.test(String(d.id || '')) ? d.id : '') || '').trim().toUpperCase();
-    const key = ref ? 'ref:' + ref : 'id:' + String(d.id || '');
+    if (isDeleted('disbursement', d.ref, d.id, d.dbId, d.referenceNo)) return; // removed by the user / in Supabase
+    const key = txKey(d);
     if (out.has(key)) return;
-    if (!ref && sigs.has(sig(d))) return;
+    if (key.startsWith('id:') && sigs.has(sig(d))) return;
     out.set(key, d);
     sigs.add(sig(d));
   });
-  _ledgerCache = { at: now, rows: Array.from(out.values()) };
+  _ledgerCache = { stamp, rows: Array.from(out.values()) };
   return _ledgerCache.rows;
 }
 
@@ -186,30 +207,37 @@ export function fmtQtyOrDash(v, unit, { signed = false } = {}) {
 const FP_KEYS = ['rmims_custom_finished_products', 'RMSME_CUSTOM_FINISHED_PRODUCTS', 'rmims_finished_products', 'rmims_finished_product_context'];
 const TEMPLATE_IDS = new Set(['fp-scones-01', 'fp-scones-formulation']);
 const PLACEHOLDER_PRODUCTS = new Set([
-  '', 'all', 'null', 'undefined', '—', '-', 'production batch', 'production operations', 'general production',
-  'operational batch', 'production issue', 'production usage', 'production', 'n/a', 'na', 'none'
+  '', 'all', 'null', 'undefined', '—', '-', 'operational batch', 'material usage', 'n/a', 'na', 'none'
 ]);
 
 export function isPlaceholderProduct(name) {
   const s = String(name || '').replace(/\s*\[Ref:[^\]]*\]\s*/i, '').trim().toLowerCase();
-  return PLACEHOLDER_PRODUCTS.has(s) || /imported operational usage/i.test(s);
+  return PLACEHOLDER_PRODUCTS.has(s) || /imported operational usage/i.test(s) || /^(general )?pro\u0064uction( batch| operations| issue| usage)?$/i.test(s);
 }
 
-/** The manager's own finished products (no built-in templates). */
+/**
+ * The manager's current finished products: the synced list (Supabase + this device) only. Older copies kept in
+ * other storage keys and products the manager deleted are never shown (no stale "old inputs").
+ */
 export function getUserFinishedProducts() {
+  let deleted = new Set();
+  try { deleted = new Set((JSON.parse(localStorage.getItem('RMSME_DELETED_FINISHED_PRODUCTS') || '[]') || []).map(n => String(n).toLowerCase().trim())); } catch (_) {}
+  let list = null;
+  try {
+    const raw = localStorage.getItem('rmims_custom_finished_products');
+    if (raw != null) list = JSON.parse(raw);
+  } catch (_) {}
+  if (!Array.isArray(list)) {
+    // first run on this device: fall back to the other keys once
+    list = [];
+    FP_KEYS.slice(1).forEach(k => { try { const a = JSON.parse(localStorage.getItem(k) || '[]'); if (Array.isArray(a) && a.length && !list.length) list = a; } catch (_) {} });
+  }
   const seen = new Map();
-  FP_KEYS.forEach(k => {
-    try {
-      const arr = JSON.parse(localStorage.getItem(k) || '[]');
-      if (!Array.isArray(arr)) return;
-      arr.forEach(p => {
-        if (!p || !p.name || TEMPLATE_IDS.has(p.id)) return;
-        const key = String(p.name).toLowerCase().trim();
-        const ex = seen.get(key);
-        const cnt = (x) => Object.keys(x.recipeDetails || {}).length + (Array.isArray(x.materialNames) ? x.materialNames.length : 0);
-        if (!ex || cnt(p) > cnt(ex)) seen.set(key, p);
-      });
-    } catch (_) {}
+  list.forEach(p => {
+    if (!p || !p.name || TEMPLATE_IDS.has(p.id)) return;
+    const key = String(p.name).toLowerCase().trim();
+    if (deleted.has(key) || seen.has(key)) return;
+    seen.set(key, p);
   });
   return Array.from(seen.values());
 }
@@ -222,10 +250,7 @@ function productUsesMaterial(p, materialName) {
     ...Object.keys(p.recipeDetails || {}),
     ...(Array.isArray(p.ingredients) ? p.ingredients.map(i => (i && (i.name || i.material || i.materialName)) || i) : [])
   ];
-  return names.some(n => {
-    const x = norm(n);
-    return x && (x === target || x.includes(target) || target.includes(x));
-  });
+  return names.some(n => sameMaterialName(n, materialName));
 }
 
 /** Finished products (names) whose formulation covers this raw material. */
@@ -234,12 +259,35 @@ export function finishedProductsForMaterial(materialName, products = getUserFini
 }
 
 /**
- * Real finished product for a disbursement row: the one recorded with it, otherwise the finished product(s)
- * in My Inventory whose formulation uses this raw material. Never a placeholder.
+ * The finished product a disbursement was recorded for - exactly what was saved with it, nothing guessed.
+ * Placeholders show as "—".
  */
-export function resolveFinishedProductName(materialName, storedName, products) {
+export function resolveFinishedProductName(materialName, storedName) {
   const clean = String(storedName || '').replace(/\s*\[Ref:[^\]]*\]\s*/i, '').trim();
-  if (clean && !isPlaceholderProduct(clean)) return clean;
-  const list = finishedProductsForMaterial(materialName, products);
-  return list.length ? list.join(', ') : '—';
+  return clean && !isPlaceholderProduct(clean) ? clean : '—';
+}
+
+/**
+ * The finished product to SHOW for a record, from the Manager's current finished products only:
+ *   - the saved name when it is one of the current products
+ *   - otherwise (blank, "—", an old / merged / deleted name) the one current product that uses the material
+ *   - "—" only when no current product (or more than one, until the database splits the record) uses it
+ * The database (rmims_sync_finished_products) links and splits the records themselves; this keeps the screens
+ * right in the meantime and never shows an old name.
+ */
+export function displayFinishedProduct(materialName, storedName, products = getUserFinishedProducts()) {
+  const saved = resolveFinishedProductName(materialName, storedName);
+  const list = (Array.isArray(products) ? products : []).filter(p => p && p.name);
+  if (list.length === 0) return saved; // the product list has not loaded on this device yet
+  const current = list.find(p => String(p.name).toLowerCase().trim() === saved.toLowerCase().trim());
+  if (current) return String(current.name).trim();
+  const linked = Array.from(new Set(finishedProductsForMaterial(materialName, list)));
+  // no product picked when it was recorded: it covers every linked product (the database splits it per product)
+  return linked.length === 1 ? linked[0] : (linked.length > 1 ? `All: ${linked.join(', ')}` : '—');
+}
+
+/** Value to SAVE as finished_product_name: the real product name, or null (never a placeholder). */
+export function productNameForRecord(storedName) {
+  const v = resolveFinishedProductName('', storedName);
+  return v === '—' ? null : v;
 }

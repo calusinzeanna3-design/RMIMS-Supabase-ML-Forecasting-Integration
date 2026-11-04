@@ -274,11 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (role === 'Inventory Staff') {
       if (dispatchContactInput) dispatchContactInput.value = `inventory@${branchDomain}`;
     } else if (role === 'IT Maintenance') {
-      if (dispatchContactInput) dispatchContactInput.value = 'it.maintenance@store.ph';
+      if (dispatchContactInput) dispatchContactInput.value = '';
     } else if (role === 'System Maintenance') {
-      if (dispatchContactInput) dispatchContactInput.value = 'maintenance.ops@store.ph';
+      if (dispatchContactInput) dispatchContactInput.value = '';
     } else if (role === 'Account Security') {
-      if (dispatchContactInput) dispatchContactInput.value = 'security.admin@store.ph';
+      if (dispatchContactInput) dispatchContactInput.value = '';
     }
   };
 

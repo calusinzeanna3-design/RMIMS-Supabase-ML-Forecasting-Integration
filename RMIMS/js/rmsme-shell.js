@@ -1,5 +1,7 @@
 import './rmims-notifications.js';
+import './rmims-reset-guard.js';
 import './rmims-notification-feed.js';
+import './rmims-staff-dot.js';
 import './rmims-custom-select.js';
 import { supabase } from '../supabase/supabase-config.js';
 import { mergeStaffTransactionLists } from './rmims-tx-merge.js';
@@ -97,15 +99,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
           // Remove zombie / hardcoded placeholder names and heal to authentic registered identity
           const isZombie = !p.fullName || ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', '—', '-'].includes(n.trim());
           if (isZombie) {
-            let authenticName = 'Aizel';
-            if (e === 'zeannapatty@gmail.com') authenticName = 'Aizel';
-            else if (e === 'zeannapatricia@gmail.com') authenticName = 'Glazel';
-            else if (e === 'calusinzeanna3@gmail.com') authenticName = 'Zeanna';
-            else if (e === 'sconesandmuffins@gmail.com') authenticName = 'Staff_1';
-            else if (e === 'scone2@gmail.com') authenticName = 'Staff_2';
-            else if (isStrictManager) authenticName = 'Aizel';
-            else if (isAnyAdmin) authenticName = 'Zeanna';
-            else authenticName = 'Staff_1';
+            const authenticName = (p.username || e.split('@')[0] || '').trim();
 
             p.fullName = authenticName;
             p.name = authenticName;
@@ -189,10 +183,12 @@ if (/\/(manager|user)\//.test(location.pathname)) {
         try {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) {
+            // Only the old auto-seeded KXC samples (exact name, never user-made) are removed
             const clean = arr.filter(p => {
               if (!p || !p.name) return false;
               const pn = String(p.name).toLowerCase().trim();
-              return !LEGACY_KXC_PRODUCT_NAMES.some(kxc => pn === kxc || pn.includes(kxc));
+              const userMade = Boolean(p.recipeDetails || p.id || p.date_added || p.date_modified || p.created_at || p.last_updated);
+              return userMade || !LEGACY_KXC_PRODUCT_NAMES.some(kxc => pn === kxc);
             });
             if (clean.length !== arr.length) {
               localStorage.setItem(k, JSON.stringify(clean));
@@ -212,7 +208,6 @@ if (/\/(manager|user)\//.test(location.pathname)) {
             if (!n || !n.id) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
-            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth')) return false;
@@ -233,7 +228,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
       const u = JSON.parse(rawLocal);
       const uOp = String(u.operationalRole || u.operational_role || '').toLowerCase();
       const uBase = String(u.role || '').toLowerCase();
-      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || (u.email && u.email.toLowerCase() === 'calusinzeanna3@gmail.com' && uOp !== 'manager' && uOp !== 'staff');
+      const uIsAdm = uBase === 'admin' || uBase === 'main_admin' || uOp === 'admin' || false;
       const uIsMgr = !uIsAdm && (uOp === 'manager' || uBase === 'manager');
       const uIsStaff = !uIsAdm && !uIsMgr;
 
@@ -540,7 +535,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
     'dashboard.html': ['Dashboard', "Here's your company's raw materials inventory overview for today."],
     'inventory.html': [isStrictManager ? 'My Inventory' : 'Inventory Management', 'Manage raw materials inventory catalog and operational activity.'],
     'receive.html': ['Receive Raw Materials', 'Record incoming materials into inventory. Reference numbers are automatically generated.'],
-    'disburse.html': ['Disburse Raw Materials', 'Record materials taken from inventory for production.'],
+    'disburse.html': ['Disburse Raw Materials', 'Record materials taken from inventory for your finished products.'],
     'my-activity.html': ['My Activity', 'View your submitted transactions, track approvals, and correct returned items.'],
     'material-activity.html': ['Material Activity', 'Record and review raw-material movement.'],
     'usage.html': ['Analytics', 'Analyze raw-material consumption, rankings, and operational trends.'],
@@ -658,7 +653,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
               <button class="mgr-profile-pill" id="rmsmeProfileBtn" aria-expanded="false" title="Manager Menu">
                 <span class="mgr-avatar" data-shell-avatar>A</span>
                 <span class="mgr-user-copy">
-                  <strong class="mgr-name" data-shell-name>Aizel</strong>
+                  <strong class="mgr-name" data-shell-name></strong>
                   <small class="mgr-role" data-shell-role>Manager</small>
                 </span>
                 <span class="mgr-chev">▾</span>
@@ -668,7 +663,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
                   <div class="mgr-online-badge">
                     <span class="mgr-status-indicator"></span>
                     <div>
-                      <strong data-shell-name>Aizel</strong>
+                      <strong data-shell-name></strong>
                       <small data-shell-role style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                     </div>
                   </div>
@@ -1034,14 +1029,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
           }
           const BANNED_PLACEHOLDERS = ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', 'administrator', '—', '-'];
           if (!rawName || BANNED_PLACEHOLDERS.includes(lowerName)) {
-            if (candidateEmail === 'zeannapatty@gmail.com') rawName = 'Aizel';
-            else if (candidateEmail === 'zeannapatricia@gmail.com') rawName = 'Glazel';
-            else if (candidateEmail === 'calusinzeanna3@gmail.com') rawName = 'Zeanna';
-            else if (candidateEmail === 'sconesandmuffins@gmail.com') rawName = 'Staff_1';
-            else if (candidateEmail === 'scone2@gmail.com') rawName = 'Staff_2';
-            else if (isStrictManager) rawName = 'Aizel';
-            else if (isAnyAdmin) rawName = 'Zeanna';
-            else rawName = 'Staff_1';
+            rawName = (o.username || candidateEmail.split('@')[0] || '').trim();
           }
           uid = o.id || o.uid || uid;
           name = rawName;
@@ -1063,7 +1051,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
     } catch (e) { }
 
     const currentCachedAvatar = getCachedAvatar(uid, email);
-    const authenticFallback = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
+    const authenticFallback = (email || '').split('@')[0] || '';
     if (!name || ['manager', 'user account', 'user', 'account', '—', '-'].includes(name.trim().toLowerCase())) {
       name = authenticFallback;
     }
@@ -1071,8 +1059,8 @@ if (/\/(manager|user)\//.test(location.pathname)) {
     if (!hasSession) {
       if (isStrictManager) {
         document.querySelectorAll('[data-shell-role]').forEach(e => e.textContent = 'Manager');
-        document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = 'Aizel');
-        applyShellAvatar(currentCachedAvatar, 'A');
+        document.querySelectorAll('[data-shell-name]').forEach(e => e.textContent = '');
+        applyShellAvatar(currentCachedAvatar, '');
       }
       return;
     }
@@ -1189,13 +1177,21 @@ if (/\/(manager|user)\//.test(location.pathname)) {
         } catch (_) {}
 
         const meta = authUser.user_metadata || {};
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
+        if (!profile && !(localSession && localSession.id === authUser.id)) {
+          // no database profile for this login (and not the same person this device verified) -> no access
+          try { await supabase.auth.signOut(); } catch (_) {}
+          ['currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser'].forEach(k => localStorage.removeItem(k));
+          window.location.replace('../login.html');
+          return;
+        }
         if (!profile) {
+          // the database could not be reached: the same signed-in person this device already verified
           profile = {
             id: authUser.id || authUser.uid || localSession?.id,
             email: authUser.email || localSession?.email || '',
-            full_name: localSession?.fullName || localSession?.name || meta.full_name || (isMasterAdmin ? 'Zeanna' : ''),
+            full_name: localSession?.fullName || localSession?.name || meta.full_name || '',
             role: localSession?.role || meta.role || (isMasterAdmin ? 'admin' : 'user'),
             operational_role: localSession?.operationalRole || localSession?.operational_role || meta.operational_role || localSession?.role || meta.role || (isMasterAdmin ? 'admin' : (isStrictManager ? 'manager' : 'staff')),
             branch_name: localSession?.branchName || localSession?.branch_name || meta.branch_name || '',
@@ -1213,20 +1209,16 @@ if (/\/(manager|user)\//.test(location.pathname)) {
           if (!profile.branch_location) {
             profile.branch_location = localSession?.branchLocation || localSession?.branch_location || meta.branch_location || '';
           }
-          if (String(localSession?.status || '').toLowerCase() === 'active' && String(profile.status || '').toLowerCase() === 'pending') {
-            profile.status = 'active';
-          }
         }
 
         if (isMasterAdmin) {
           profile.role = 'admin';
           profile.operational_role = 'admin';
           profile.status = 'active';
-          profile.full_name = profile.full_name || 'Zeanna';
         }
 
         const pStatus = String(profile.status || '').toLowerCase();
-        const isExplicitlyRevoked = pStatus === 'deleted' || pStatus === 'rejected' || pStatus === 'locked' || pStatus === 'inactive' || pStatus === 'suspended';
+        const isExplicitlyRevoked = pStatus === 'deleted' || pStatus === 'rejected' || pStatus === 'locked' || pStatus === 'inactive' || pStatus === 'suspended' || pStatus === 'pending';
         if (isExplicitlyRevoked && !isMasterAdmin) {
           try {
             await supabase.auth.signOut();
@@ -1265,12 +1257,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
           let liveName = (profile.full_name || '').trim();
           const BANNED_PLACEHOLDERS = ['manager', 'user account', 'user', 'account', 'staff member', 'staff user', 'store manager', 'admin', 'administrator', '—', '-'];
           if (!liveName || BANNED_PLACEHOLDERS.includes(liveName.toLowerCase())) {
-            if (cleanEmail === 'zeannapatty@gmail.com') liveName = 'Aizel';
-            else if (cleanEmail === 'zeannapatricia@gmail.com') liveName = 'Glazel';
-            else if (cleanEmail === 'calusinzeanna3@gmail.com') liveName = 'Zeanna';
-            else if (cleanEmail === 'sconesandmuffins@gmail.com') liveName = 'Staff_1';
-            else if (cleanEmail === 'scone2@gmail.com') liveName = 'Staff_2';
-            else liveName = isStrictManager ? 'Aizel' : (isAnyAdmin ? 'Zeanna' : 'Staff_1');
+            liveName = (profile.username || String(profile.email || authUser?.email || '').split('@')[0] || '').trim();
 
             profile.full_name = liveName;
             try {
@@ -1348,12 +1335,11 @@ if (/\/(manager|user)\//.test(location.pathname)) {
             }
           }
         }
-      } else {
-        const hasLocal = localStorage.getItem('currentUser') || localStorage.getItem('userProfile') || localStorage.getItem('managerUser') || localStorage.getItem('staffUser') || localStorage.getItem('adminUser');
-        if (!hasLocal && sessionStorage.getItem('rmims_just_logged_in') !== 'true') {
-          window.location.href = '../login.html';
-          return;
-        }
+      } else if (sessionStorage.getItem('rmims_just_logged_in') !== 'true') {
+        // no signed-in session: the pages never open from a copy saved in the browser
+        ['currentUser', 'rmimsCurrentUser', 'userProfile', 'managerUser', 'staffUser'].forEach(k => localStorage.removeItem(k));
+        window.location.replace('../login.html');
+        return;
       }
     } catch (e) { }
   }
@@ -1636,13 +1622,13 @@ if (/\/(manager|user)\//.test(location.pathname)) {
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   </svg>
                 </span>
-                <span class="help-faq-question">How do I disburse materials to kitchen / production?</span>
+                <span class="help-faq-question">How do I disburse materials to the kitchen?</span>
                 <svg class="help-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
               </button>
               <div class="help-faq-answer">
-                Click <strong>Disburse</strong> in the sidebar or quick actions. Choose the requested material, batch (FIFO order), quantity needed, and production batch reference to log the consumption decrement.
+                Click <strong>Disburse</strong> in the sidebar or quick actions. Choose the requested material, batch (FIFO order), quantity needed, and the finished product to log the consumption decrement.
               </div>
             </div>
 
@@ -1689,7 +1675,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
             <div class="help-guide-title-row">
               <h4 class="help-guide-title">Store Operations Guide</h4>
             </div>
-            <p class="help-guide-text">Follow our store operations standard to maintain real-time stock integrity, prevent ingredient expiration, and optimize daily production batches.</p>
+            <p class="help-guide-text">Follow our store operations standard to maintain real-time stock integrity, prevent ingredient expiration, and optimize daily operations.</p>
             <button type="button" class="btn-start-guide" id="btnStartOnboardingGuide">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
@@ -1943,7 +1929,6 @@ if (/\/(manager|user)\//.test(location.pathname)) {
                 <thead>
                   <tr style="border-bottom:1.5px solid #CBD5E1; color:#64748B; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px;">
                     <th style="padding:10px 8px;">Date</th>
-                    <th style="padding:10px 8px;">Time</th>
                     <th style="padding:10px 8px;">Activity</th>
                     <th style="padding:10px 8px;">Reference</th>
                     <th style="padding:10px 8px;">Status</th>
@@ -2032,7 +2017,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
         if (!stored || stored.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="5" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
+              <td colspan="4" style="text-align:center; padding:24px 12px; color:#94A3B8; font-size:13px;">
                 No recent activity records found.
               </td>
             </tr>
@@ -2056,7 +2041,6 @@ if (/\/(manager|user)\//.test(location.pathname)) {
             return `
             <tr style="border-bottom:1px solid #F1F5F9;">
               <td style="padding:10px 8px; font-weight:600; color:#334155;">${escapeHtml(dPart)}</td>
-              <td style="padding:10px 8px; font-size:12px; font-weight:600; color:#64748B;">${escapeHtml(tPart)}</td>
               <td style="padding:10px 8px; font-weight:600; color:#0F2A1B;">${escapeHtml(maskRefsInText(row.activity || row.details || ''))}</td>
               <td style="padding:10px 8px; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size:12px; font-weight:600; color:#475569;">${escapeHtml(maskConfidentialRef(row.reference))}</td>
               <td style="padding:10px 8px;">
@@ -2590,13 +2574,13 @@ if (/\/(manager|user)\//.test(location.pathname)) {
       <!-- STAFF / USER SECTION -->
       <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:14px 16px; margin-bottom:12px;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-          <span style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.8rem; padding:3px 8px; border-radius:6px;">👤 Staff / User Access</span>
+          <span style="background:#DCFCE7; color:#14532D; font-weight:700; font-size:0.8rem; padding:3px 8px; border-radius:6px;">👤 Staff / User Access</span>
           <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Daily Material Operations</span>
         </div>
         <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
-          <li style="margin-bottom:6px;"><strong>Dashboard:</strong> Check what ingredients are running low and view urgent restocking alerts before daily production.</li>
+          <li style="margin-bottom:6px;"><strong>Dashboard:</strong> Check what ingredients are running low and view urgent restocking alerts before daily operations.</li>
           <li style="margin-bottom:6px;"><strong>Inventory:</strong> Look up available raw materials (sugar, flour, oil, etc.) and see how much stock is on hand.</li>
-          <li style="margin-bottom:6px;"><strong>Material Activity:</strong> Record incoming items delivered by suppliers, and log materials taken out for daily production batches.</li>
+          <li style="margin-bottom:6px;"><strong>Material Activity:</strong> Record incoming items delivered by suppliers, and log materials taken out for your finished products.</li>
           <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> View 7-day and 30-day projected ingredient requirements (view-only) to plan ahead for upcoming material needs.</li>
           <li style="margin-bottom:6px;"><strong>Daily Reports:</strong> Review past usage history and check how much was consumed each day.</li>
         </ul>
@@ -2610,7 +2594,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
         </div>
         <ul style="padding-left:18px; margin:0; font-size:0.86rem; color:#334155; line-height:1.55;">
           <li style="margin-bottom:6px;"><strong>Add & Import Ingredients:</strong> Register new ingredients, import supplier spreadsheets (Excel/CSV), and set low-stock warning limits.</li>
-          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update production recipes for finished items and products (e.g., Artisan Bread, Signature Cookies).</li>
+          <li style="margin-bottom:6px;"><strong>Finished Products & Recipes:</strong> Create and update recipes for finished items and products (e.g., Artisan Bread, Signature Cookies).</li>
           <li style="margin-bottom:6px;"><strong>AI Demand Forecasting:</strong> Estimate how many kilograms of materials will be needed over the next 7 days and 30 days to purchase supplies ahead of time.</li>
           <li style="margin-bottom:6px;"><strong>System Audits & Exports:</strong> Download official PDF and Excel reports for inventory audits and monitor all activity records.</li>
         </ul>
@@ -2659,7 +2643,6 @@ if (/\/(manager|user)\//.test(location.pathname)) {
             if (n.id.startsWith('notif-sys-online-') || n.id.startsWith('notif-stock-low-sugar-')) return false;
             const t = (n.title || '').toLowerCase();
             const m = (n.message || '').toLowerCase();
-            if (t.includes('aizel') && (t.includes('staff') || m.includes('staff account login detected'))) return false;
             if (t.includes('staff user signed in') || m.includes('staff account login detected')) return false;
             if (t.includes('signed in') && (t.includes('staff user') || !n.userId)) return false;
             if (t.includes('maria santos') || t.includes('rafael cruz') || t.includes('kenneth ramos')) return false;
@@ -2923,7 +2906,7 @@ if (/\/(manager|user)\//.test(location.pathname)) {
                   material: tx.material || tx.materialName,
                   quantity: tx.qty || `${tx.quantity} ${tx.unit || ''}`,
                   actor: tx.staff || 'Staff Member',
-                  timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '10:00:00'}` : new Date().toISOString())
+                  timestamp: tx.approvedAt || (tx.date ? `${tx.date}T${tx.time || '00:00:00'}` : new Date().toISOString())
                 };
                 allNotifs.unshift(newNotif);
                 modified = true;
@@ -2937,7 +2920,10 @@ if (/\/(manager|user)\//.test(location.pathname)) {
       } catch (_) {}
     }
 
-    return allNotifs.filter(n => isNotificationInScope(n, portalRole, currentUserId));
+    // Latest first, always
+    return allNotifs
+      .filter(n => isNotificationInScope(n, portalRole, currentUserId))
+      .sort((x, y) => (new Date(y.timestamp).getTime() || 0) - (new Date(x.timestamp).getTime() || 0));
   }
 
   function formatTimeAgo(isoString) {

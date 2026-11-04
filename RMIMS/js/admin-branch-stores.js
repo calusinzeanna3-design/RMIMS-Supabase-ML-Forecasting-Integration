@@ -7,38 +7,24 @@ export { isDeletedBranchStore, getDeletedBranchStores };
 // 3. Store Personnel List Modal (Separate roles for Branch Managers and Staff & Employees with access codes 🔑, NO revenue)
 // 4. Destructive Branch Deletion & Dynamic Add Branch
 
-// Default Stores Data Seed (Authentic active branch stores)
-const DEFAULT_STORES_DATA = {
-  "scones-lucena": {
-    id: "scones-lucena",
-    name: "Scones & Muffins Bakery",
-    location: "Lucena",
-    locKey: "lucena",
-    companyId: "1872cf44-e821-4370-b227-d1b7e4fc6f56",
-    code: "NB-LUC",
-    category: "Bakery & Production Hub",
-    managers: [
-      { name: "Aizel", username: "Scones_manager", email: "zeannapatty@gmail.com", accessCode: "MGR-LUC-01", status: "APPROVED" }
-    ],
-    staff: [
-      { name: "Staff_1", username: "Scones_Staff_1", email: "Sconesandmuffins@gmail.com", accessCode: "STF-LUC-01", status: "APPROVED" },
-      { name: "Staff_2", username: "Staff_Scones_2", email: "scone2@gmail.com", accessCode: "STF-LUC-02", status: "APPROVED" }
-    ]
-  },
-  "kxc-tiaong": {
-    id: "kxc-tiaong",
-    name: "KXC 5-Year Enterprise",
-    location: "Tiaong",
-    locKey: "tiaong",
-    companyId: "a72a7971-6ec7-4edc-ae72-89d702199ed9",
-    code: "RM-TIA",
-    category: "Pasalubong & Enterprise Hub",
-    managers: [
-      { name: "Glazel", username: "Glazel_Kxc", email: "zeannapatricia@gmail.com", accessCode: "MGR-TIA-01", status: "APPROVED" }
-    ],
-    staff: []
-  }
-};
+const DEFAULT_STORES_DATA = {};
+
+// Old built-in sample stores (no longer used): removed from this device and, for the Admin, from Supabase.
+export const LEGACY_SEED_STORE_IDS = ['scones-lucena', 'kxc-tiaong'];
+function purgeLegacySeedStores() {
+  ['RMIMS_BRANCH_STORES_V3', 'RMIMS_CUSTOM_BRANCH_STORES'].forEach(key => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object') return;
+      let changed = false;
+      LEGACY_SEED_STORE_IDS.forEach(id => { if (obj[id]) { delete obj[id]; changed = true; } });
+      if (changed) localStorage.setItem(key, JSON.stringify(obj));
+    } catch (_) {}
+  });
+}
+purgeLegacySeedStores();
 
 // Dynamic location metadata helper - adapts cleanly to any registered location
 function getLocationMeta(locKey, locationName) {
@@ -63,6 +49,7 @@ function getInitials(name) {
 // Filter out legacy pre-seeded mock stores
 function isMockStore(st) {
   if (!st) return false;
+  if (LEGACY_SEED_STORE_IDS.includes(String(st.id || ''))) return true;
   const mockTokens = [
     'lucena bakers hub', 'sweet treats',
     'rafael cruz', 'kenneth lim', 'victor morales', 'alyssa lim', 'ethan cruz',
@@ -168,20 +155,11 @@ export function getStoresData() {
   } catch (err) {
     console.warn('Failed reading stores from localStorage:', err);
   }
-  const defaults = JSON.parse(JSON.stringify(DEFAULT_STORES_DATA));
-  const filteredDefaults = {};
-  Object.entries(defaults).forEach(([id, st]) => {
-    if (!isDeletedBranchStore(st) && !isDeletedBranchStore(id) && !isMockStore(st)) {
-      filteredDefaults[id] = st;
-    }
-  });
-  try {
-    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(filteredDefaults));
-  } catch (_) {}
-  return filteredDefaults;
+  // nothing registered yet: no built-in stores
+  return {};
 }
 
-export function saveStoresData(data) {
+export function saveStoresData(data, options = {}) {
   try {
     const cleanData = {};
     if (data && typeof data === 'object') {
@@ -191,19 +169,26 @@ export function saveStoresData(data) {
         }
       });
     }
-    localStorage.setItem('RMIMS_BRANCH_STORES_V3', JSON.stringify(cleanData));
-    window.dispatchEvent(new Event('rmims_stores_updated'));
-    window.dispatchEvent(new Event('storage'));
+    const next = JSON.stringify(cleanData);
+    const prev = localStorage.getItem('RMIMS_BRANCH_STORES_V3');
+    if (prev !== next) {
+      localStorage.setItem('RMIMS_BRANCH_STORES_V3', next);
+      window.dispatchEvent(new Event('rmims_stores_updated'));
+    }
 
-    import('../supabase/admin-supabase-service.js')
-      .then(srv => {
-        Object.values(cleanData).forEach(st => {
-          if (!srv.isDeletedBranchStore(st)) {
-            srv.saveBranchStore(st).catch(() => {});
-          }
-        });
-      })
-      .catch(() => {});
+    // Only a store the Admin just added / changed is written to Supabase (never on a page refresh,
+    // which would echo back through the live feed and redraw the page again and again).
+    const pushIds = Array.isArray(options.push) ? options.push : [];
+    if (pushIds.length) {
+      import('../supabase/admin-supabase-service.js')
+        .then(srv => {
+          pushIds.forEach(id => {
+            const st = cleanData[id];
+            if (st && !srv.isDeletedBranchStore(st)) srv.saveBranchStore(st).catch(() => {});
+          });
+        })
+        .catch(() => {});
+    }
   } catch (err) {
     console.warn('Failed saving stores to localStorage:', err);
   }
@@ -248,6 +233,8 @@ export function renderLocationDividers(containerId) {
   const allStoresList = Object.values(stores);
 
   if (allStoresList.length === 0) {
+    if (container.__rmimsHtml === 'EMPTY') return;
+    container.__rmimsHtml = 'EMPTY';
     container.innerHTML = `
       <div class="empty-state-card" style="grid-column: 1 / -1; text-align: center; padding: 56px 24px; background: var(--rm-card-bg, #ffffff); border: 1px dashed var(--rm-border, #E2E8F0); border-radius: 16px;">
         <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: #10B981; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
@@ -375,7 +362,10 @@ export function renderLocationDividers(containerId) {
     `;
   });
 
-  container.innerHTML = html;
+  if (container.__rmimsHtml !== html) {
+    container.__rmimsHtml = html;
+    container.innerHTML = html;
+  }
 }
 window.renderLocationDividers = renderLocationDividers;
 
@@ -625,7 +615,7 @@ window.deleteBranchStore = async function () {
   const mgrCount = (store.managers || []).length;
   const staffCount = (store.staff || []).length;
   const confirmMsg = `Are you sure you want to permanently delete "${store.name}"?\n\nThis will permanently delete this branch and revoke credentials for ${mgrCount} manager(s) and ${staffCount} staff member(s).`;
-  if (!confirm(confirmMsg)) return;
+  if (!await window.rmimsConfirm(confirmMsg)) return;
 
   const deletedId = currentViewingStoreId;
   const deletedStoreObj = JSON.parse(JSON.stringify(store));
@@ -707,14 +697,14 @@ window.submitAddBranch = function () {
     code: code,
     location: locLabel,
     locKey: locKey,
-    category: category || 'MSME Retail & Production Hub',
+    category: category || 'MSME Retail Hub',
     status: 'ACTIVE',
     managers: [
       {
         name: manager,
         username: managerUsername,
         initials: managerInitials,
-        email: `${managerUsername}@store.ph`,
+        email: '',
         role: 'Manager',
         status: 'APPROVED'
       }
@@ -724,7 +714,7 @@ window.submitAddBranch = function () {
 
   const stores = getStoresData();
   stores[storeId] = newStore;
-  saveStoresData(stores);
+  saveStoresData(stores, { push: [storeId] });
 
   const addModal = document.getElementById('addBranchModal');
   if (addModal) { addModal.classList.remove('active'); addModal.style.display = 'none'; addModal.style.opacity = '0'; addModal.style.visibility = 'hidden'; addModal.style.pointerEvents = 'none'; }
@@ -855,33 +845,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === addModal) addModal.classList.remove('active');
   });
 
-  // Asynchronously query Supabase for registered branch stores
+  // Load the registered branch stores from Supabase (only on the Branch Stores page)
+  if (!document.getElementById('locationDividersContainer')) return;
   import('../supabase/admin-supabase-service.js')
     .then(srv => {
-      Promise.resolve(srv.fetchRegisteredUsers ? srv.fetchRegisteredUsers() : null).catch(() => null).then(() => srv.fetchBranchStores()).then(remoteStores => {
-        if (remoteStores && typeof remoteStores === 'object') {
-          const clean = {};
-          Object.entries(remoteStores).forEach(([id, st]) => {
-            if (!isMockStore(st) && !isDeletedBranchStore(st) && !isDeletedBranchStore(id)) clean[id] = st;
-          });
-          saveStoresData(clean);
-          renderLocationDividers('locationDividersContainer');
-        }
-      }).catch(() => {});
+      let busy = false, again = false, timer = null;
+      const reload = () => {
+        if (busy) { again = true; return; }
+        busy = true;
+        Promise.resolve(srv.fetchRegisteredUsers ? srv.fetchRegisteredUsers() : null).catch(() => null)
+          .then(() => srv.fetchBranchStores())
+          .then(remoteStores => {
+            if (remoteStores && typeof remoteStores === 'object') {
+              const clean = {};
+              Object.entries(remoteStores).forEach(([id, st]) => {
+                if (!isMockStore(st) && !isDeletedBranchStore(st) && !isDeletedBranchStore(id)) clean[id] = st;
+              });
+              saveStoresData(clean);
+              renderLocationDividers('locationDividersContainer');
+            }
+          })
+          .catch(() => {})
+          .finally(() => { busy = false; if (again) { again = false; reload(); } });
+      };
+      reload();
 
       if (typeof srv.subscribeToAdminFeed === 'function') {
         srv.subscribeToAdminFeed(({ table }) => {
-          if (table === 'branch_stores' || table === 'branch_store_personnel') {
-            Promise.resolve(srv.fetchRegisteredUsers ? srv.fetchRegisteredUsers() : null).catch(() => null).then(() => srv.fetchBranchStores()).then(remoteStores => {
-              if (remoteStores && typeof remoteStores === 'object') {
-                const clean = {};
-                Object.entries(remoteStores).forEach(([id, st]) => {
-                  if (!isMockStore(st)) clean[id] = st;
-                });
-                saveStoresData(clean);
-                renderLocationDividers('locationDividersContainer');
-              }
-            }).catch(() => {});
+          if (table === 'branch_stores' || table === 'branch_store_personnel' || table === 'user_profiles') {
+            clearTimeout(timer);
+            timer = setTimeout(reload, 700);
           }
         });
       }
@@ -905,8 +898,6 @@ function escapeJs(str) {
 }
 
 window.addEventListener('rmims_registered_users_updated', () => {
-  const stores = getStoresData();
-  saveStoresData(stores);
   renderLocationDividers('locationDividersContainer');
 });
 
@@ -915,7 +906,6 @@ window.addEventListener('rmims_registered_users_updated', () => {
 try {
   const bc = new BroadcastChannel('rmims_user_sync');
   bc.onmessage = () => {
-    const stores = getStoresData();
     renderLocationDividers('locationDividersContainer');
   };
 } catch (_) {}

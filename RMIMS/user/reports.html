@@ -18,6 +18,9 @@
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 <body class="manager-page admin-page">
 <div class="admin-app">
@@ -61,7 +64,7 @@
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Staff" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">S</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Staff_1</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Staff</span>
               </div>
             </div>
@@ -70,7 +73,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Staff_1</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Staff</small>
                   </div>
                 </div>
@@ -204,7 +207,7 @@
                         </svg>
                     </div>
                     <h3 class="rpt-cat-title">Material Disbursement</h3>
-                    <p class="rpt-cat-desc">Disbursed raw materials released for production batches.</p>
+                    <p class="rpt-cat-desc">Disbursed raw materials released for finished products.</p>
                 </div>
 
                 <!-- 4. Material Activity -->
@@ -335,7 +338,6 @@
                                     <thead>
                                         <tr>
                                             <th>Receipt Date</th>
-                                            <th>Receipt Time</th>
                                             <th>Reference No.</th>
                                             <th>Material Code</th>
                                             <th>Raw Material</th>
@@ -374,7 +376,6 @@
                                     <thead>
                                         <tr>
                                             <th>Usage Date</th>
-                                            <th>Usage Time</th>
                                             <th>Reference No.</th>
                                             <th>Material Code</th>
                                             <th>Raw Material</th>
@@ -417,7 +418,6 @@
                                     <thead>
                                         <tr>
                                             <th>Date</th>
-                                            <th>Time</th>
                                             <th>Reference No.</th>
                                             <th>Material Code</th>
                                             <th>Movement Type</th>
@@ -526,7 +526,7 @@
                     </label>
                     <label class="rpt-check-item">
                         <input type="checkbox" value="disbursement" checked id="fld_3" name="fld_3"/>
-                        <span><strong>3. Material Disbursement</strong> (Production issues)</span>
+                        <span><strong>3. Material Disbursement</strong> (Usage records)</span>
                     </label>
                     <label class="rpt-check-item">
                         <input type="checkbox" value="activity" checked id="fld_4" name="fld_4"/>

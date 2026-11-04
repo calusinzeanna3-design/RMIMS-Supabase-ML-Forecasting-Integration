@@ -10,7 +10,9 @@
  * - Official inventory is NOT updated yet
  */
 
-import { getLinkedFinishedProducts, notSetBundleCard } from './rmims-bundle.js';
+import { attachUnitPicker, detachUnitPicker, readQtyInStockUnit } from './rmims-unit-convert.js';
+import { autoPaginate } from './rmims-table-pager.js';
+import { getLinkedFinishedProducts, notSetBundleCard, bindBundleSelection, getSelectedFinishedProduct } from './rmims-bundle.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import { AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from './authentic-finished-products.js';
 import {
@@ -200,7 +202,7 @@ function updateBundleReceivePreview() {
     }
 
     return `
-      <div class="rec-product-card ${statusClass}">
+      <div class="rec-product-card ${statusClass}" data-product="${escapeHtml(p.productName)}" style="cursor:pointer;">
         <div class="rec-product-card-top">
           <span class="rec-product-name">${escapeHtml(p.productName)}</span>
           <span class="rec-badge-tag ${tagClass}">${statusText}</span>
@@ -224,6 +226,7 @@ function updateBundleReceivePreview() {
   }).join('');
 
   productsGrid.innerHTML = cardsHtml;
+  bindBundleSelection(productsGrid, matName, matchedProducts);
 }
 
 function hideBundleReceiveSection() {
@@ -256,8 +259,7 @@ function getLiveStaffInfo() {
         const email = (o.email || '').toLowerCase().trim();
         const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
         if (!name || BANNED_STAFF.includes(name.toLowerCase())) {
-          if (email === 'scone2@gmail.com') name = 'Staff_2';
-          else name = 'Staff_1';
+          name = (o.username || email.split('@')[0] || '').trim();
         }
         return {
           name,
@@ -267,7 +269,7 @@ function getLiveStaffInfo() {
       }
     } catch (_) {}
   }
-  return { name: 'Staff_1', email: 'sconesandmuffins@gmail.com', id: '' };
+  return { name: '', email: '', id: '' };
 }
 
 function initUserReceive() {
@@ -375,7 +377,7 @@ function populateMaterialSelect() {
     opt.value = matName;
     opt.dataset.name = matName;
     const unit = m.unit_of_measure || m.unit || '';
-    opt.textContent = unit ? `${matName} (${m.category || 'General'} • ${unit})` : `${matName} (${m.category || 'General'})`;
+    opt.textContent = matName; // the raw material only
     opt.dataset.unit = unit;
     opt.dataset.stock = m.current_stock ?? m.currentStock ?? m.stock ?? 0;
     opt.dataset.min = m.minimum_threshold ?? m.minimum_stock ?? m.minimumStock ?? 0;
@@ -423,6 +425,7 @@ function bindFormEvents() {
       if (selected && selected.value) {
         const u = selected.dataset.unit || '';
         if (unitBadge) unitBadge.textContent = u || '--';
+        attachUnitPicker('staffRecUnitBadge', u); // enter in any compatible unit; converted to the material's stock unit
         if (unitSelect) {
           if (u && !Array.from(unitSelect.options).some(o => o.value === u)) {
             const opt = document.createElement('option');
@@ -432,7 +435,7 @@ function bindFormEvents() {
           }
           unitSelect.value = u;
         }
-        if (qtyInput) qtyInput.placeholder = u ? `e.g. 50 ${u}` : 'e.g. 50';
+        if (qtyInput) qtyInput.placeholder = "e.g. 50";
         if (stockPreview) stockPreview.style.display = 'block';
         if (stockVal) stockVal.textContent = u ? `${selected.dataset.stock} ${u}` : `${selected.dataset.stock}`;
         if (minVal) minVal.textContent = u ? `${selected.dataset.min} ${u}` : `${selected.dataset.min}`;
@@ -440,6 +443,7 @@ function bindFormEvents() {
       } else {
         if (stockPreview) stockPreview.style.display = 'none';
         if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffRecUnitBadge');
         if (unitSelect) unitSelect.value = '';
         if (qtyInput) qtyInput.placeholder = 'e.g. 50';
         hideBundleReceiveSection();
@@ -462,6 +466,7 @@ function bindFormEvents() {
       setTimeout(() => {
         if (stockPreview) stockPreview.style.display = 'none';
         if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffRecUnitBadge');
         if (unitSelect) unitSelect.value = '';
         hideBundleReceiveSection();
         initDatePicker();
@@ -503,12 +508,15 @@ function handleOpenReview() {
   const notesInput = document.getElementById('staffRecNotes');
 
   const material = matSelect ? matSelect.value : '';
-  const quantity = qtyInput ? parseFloat(qtyInput.value) : 0;
+  let quantity = qtyInput ? parseFloat(qtyInput.value) : 0;
   const selectedOpt = matSelect && matSelect.selectedIndex >= 0 ? matSelect.options[matSelect.selectedIndex] : null;
   const unit = (selectedOpt && selectedOpt.dataset.unit) ? selectedOpt.dataset.unit : (unitSelect && unitSelect.value ? unitSelect.value : '');
+  // the quantity may be typed in another unit (e.g. kg for a material kept in g): use it in the stock unit
+  const unitConv = (quantity > 0) ? readQtyInStockUnit(quantity, 'staffRecUnitBadge', unit) : { qty: quantity, note: '' };
+  quantity = unitConv.qty;
   const date = dateInput ? dateInput.value : '';
   const supplier = supInput ? supInput.value.trim() : '';
-  const notes = notesInput ? notesInput.value.trim() : '';
+  const notes = [notesInput ? notesInput.value.trim() : '', unitConv.note].filter(Boolean).join(' • ');
 
   if (!material) {
     alert('Please choose a raw material to receive.');
@@ -530,6 +538,10 @@ function handleOpenReview() {
     if (supInput) supInput.focus();
     return;
   }
+
+  // One finished product per receipt (same rule as Disburse)
+  const pick = getSelectedFinishedProduct(material);
+  if (!pick.ok) { alert(pick.message); return; }
 
   // =========================================================================
   // RULE #8, 9, 10: REFERENCE NUMBER CHECK (ONLY BASIS FOR DUPLICATE DETECTION)
@@ -564,6 +576,7 @@ function handleOpenReview() {
     date,
     supplier,
     notes,
+    usedFor: pick.product,
     activity: 'Receive',
     staff: getLiveStaffInfo().name
   };
@@ -625,6 +638,7 @@ function submitReceiveNow() {
         document.getElementById('staffRecStockPreview').style.display = 'none';
         const unitBadge = document.getElementById('staffRecUnitBadge');
         if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffRecUnitBadge');
         const unitSelect = document.getElementById('staffRecUnit');
         if (unitSelect) unitSelect.value = '';
         hideBundleReceiveSection();
@@ -649,6 +663,7 @@ function submitReceiveNow() {
     quantity: currentReviewData.quantity,
     unit: currentReviewData.unit,
     supplier: currentReviewData.supplier,
+    usedFor: currentReviewData.usedFor || '',
     notes: currentReviewData.notes
   });
 
@@ -680,6 +695,7 @@ function submitReceiveNow() {
   document.getElementById('staffRecStockPreview').style.display = 'none';
   const unitBadge = document.getElementById('staffRecUnitBadge');
   if (unitBadge) unitBadge.textContent = '--';
+  detachUnitPicker('staffRecUnitBadge');
   const unitSelect = document.getElementById('staffRecUnit');
   if (unitSelect) unitSelect.value = '';
   hideBundleReceiveSection();
@@ -713,7 +729,7 @@ function renderMySubmissions() {
   if (myReceives.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align:center; padding:28px 16px; color:#64748B;">
+        <td colspan="7" style="text-align:center; padding:28px 16px; color:#64748B;">
           No incoming material submissions recorded yet.
         </td>
       </tr>
@@ -739,8 +755,8 @@ function renderMySubmissions() {
     }
   }
 
-  tbody.innerHTML = myReceives.slice(0, 10).map(t => {
-    let statusPill = '<span class="status-pill pill-pending">Pending Review</span>';
+  tbody.innerHTML = myReceives.map(t => {
+    let statusPill = `<span class="status-pill pill-pending">${t.isUpdated ? 'Pending Update' : 'Pending Review'}</span>`;
     if (t.status === 'Approved') statusPill = '<span class="status-pill pill-approved">Approved</span>';
     else if (t.status === 'Rejected') statusPill = '<span class="status-pill pill-rejected">Rejected</span>';
     else if (t.status === 'Correction Needed') statusPill = '<span class="status-pill pill-correction">Correction Needed</span>';
@@ -752,7 +768,6 @@ function renderMySubmissions() {
       <tr style="${isCorrection ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td><code style="background:#F1F5F9; padding:2px 6px; border-radius:5px; font-weight:700; color:#334155;">${escapeHtml(t.ref)}</code></td>
         <td><strong>${escapeHtml(t.date || '—')}</strong></td>
-        <td><small style="color:#64748B; font-weight:600;">${escapeHtml(t.time || '—')}</small></td>
         <td><strong>${escapeHtml(t.material)}</strong></td>
         <td><span style="color:#15803D; font-weight:700;">+${t.quantity}${t.unit ? ' ' + escapeHtml(t.unit) : ''}</span></td>
         <td>${escapeHtml(t.supplier || '--')}</td>
@@ -925,3 +940,7 @@ function openStaffDeleteRecModal(ref) {
   if (modal) modal.style.display = 'flex';
 }
 
+
+
+// 10 records per page
+autoPaginate('myReceiveSubmissionsTbody', { pageSize: 10, label: 'submissions' });

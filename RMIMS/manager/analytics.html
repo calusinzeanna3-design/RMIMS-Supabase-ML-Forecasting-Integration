@@ -25,9 +25,13 @@
 <script src="../vendor/flatpickr/flatpickr.min.js"></script>
 <script src="../vendor/chart/chart.umd.js"></script>
     <script>window.Chart||document.write('<script src="../js/chart.js"><\/script>')</script>
+    <script src="../js/chart-bar-values.js"></script>
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 
 <body class="manager-page admin-page">
@@ -44,7 +48,7 @@
       <div class="topbar-left">
         <span class="topbar-kicker">STORE OPERATIONS</span>
         <h1 class="topbar-title">Consumption Analytics</h1>
-        <p class="topbar-subtitle">Authoritative real-time telemetry comparing inward deliveries, production disbursements, and consumption trends.</p>
+        <p class="topbar-subtitle">Authoritative real-time telemetry comparing inward deliveries, material disbursements, and consumption trends.</p>
       </div>
 
       <div class="topbar-right">
@@ -70,10 +74,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -82,7 +86,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -104,6 +108,57 @@
 
     <main class="admin-scroll-body" style="padding: 24px 32px 48px; overflow-y: auto;">
       <div class="an-container" style="padding: 0;">
+
+      <!-- ====================================================================
+           CARD 0: DISBURSED QUANTITY LINES (per raw material, from disbursement records)
+           ==================================================================== -->
+      <section class="an-card" id="anCardDisburseLines">
+        <div class="an-card-header">
+          <div>
+            <h2 class="an-card-title">Disbursed Quantity by Raw Material</h2>
+            <p class="an-card-sub">Quantity disbursed per raw material over time, from the recorded disbursements</p>
+          </div>
+          <div class="an-controls" style="flex-wrap:wrap;">
+            <select id="anLinesMaterialSelect" class="mgr-form-select" style="width:auto; min-width:220px; padding:7px 38px 7px 14px; font-size:12.5px;" aria-label="Raw material">
+              <option value="GENERAL">General (All Raw Materials Combined)</option>
+              <option value="TOP">Top Raw Materials (one line each)</option>
+            </select>
+            <div class="an-top-box" title="How many raw material lines to show (Top Raw Materials)">
+              <span class="an-top-label">Lines:</span>
+              <input type="text" inputmode="numeric" pattern="[0-9]*" id="anLinesTopCount" class="an-top-input" value="5" maxlength="2" aria-label="Number of raw material lines">
+            </div>
+          </div>
+        </div>
+        <div class="an-metrics-bar" style="justify-content: space-between; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="an-metrics-label">Timeframe:</span>
+            <button type="button" class="an-timeframe-btn an-lines-tf active" data-lines-tf="days">Days</button>
+            <button type="button" class="an-timeframe-btn an-lines-tf" data-lines-tf="weeks">Weeks</button>
+            <button type="button" class="an-timeframe-btn an-lines-tf" data-lines-tf="months">Months</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="an-metrics-label">Date range:</span>
+            <select id="anLinesRangePreset" class="mgr-form-select" style="width:auto; padding:6px 34px 6px 12px; font-size:12px;" aria-label="Date range">
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="all">All records</option>
+              <option value="custom">Custom range</option>
+            </select>
+            <input type="text" id="anLinesDateRange" class="mgr-form-input" placeholder="Pick start – end" readonly
+              style="display:none; width:210px; padding:6px 10px; font-size:12px; border:1px solid #CBD5E1; border-radius:8px;">
+          </div>
+        </div>
+        <div class="an-chart-wrap" style="height: 260px;">
+          <canvas id="anDisburseLinesCanvas" role="img" aria-label="Disbursed quantity per raw material over time"></canvas>
+          <div class="an-chart-empty" id="anDisburseLinesEmpty" style="display:none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>No disbursements recorded in this date range.</span>
+          </div>
+        </div>
+        <div id="anDisburseLinesLegend" style="display:flex; flex-wrap:wrap; gap:8px 16px; padding:10px 4px 2px; font-size:12px; color:#334155;"></div>
+      </section>
 
       <!-- ====================================================================
            CARD 1: TOP RAW MATERIALS RANKING (FULL WIDTH TOP CARD)
@@ -326,7 +381,7 @@
               <button type="button" class="an-timeframe-btn" data-timeframe="weeks">Weeks</button>
               <button type="button" class="an-timeframe-btn" data-timeframe="months">Months</button>
             </div>
-            <span style="font-size:11.5px; color:#64748B; font-weight:600;">Continuous Production Curve</span>
+            <span style="font-size:11.5px; color:#64748B; font-weight:600;">Continuous Usage Curve</span>
           </div>
 
           <!-- Chart Canvas -->
@@ -381,6 +436,7 @@
 <!-- SCRIPTS -->
 <script type="module" src="../js/system-materials.js"></script>
 <script type="module" src="../js/analytics-engine.js"></script>
+<script type="module" src="../js/rmims-disburse-lines.js"></script>
 <script type="module" src="../js/rmsme-shell.js"></script>
 
 </body>
