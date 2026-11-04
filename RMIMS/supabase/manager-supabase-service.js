@@ -2212,25 +2212,6 @@ function explainFpError(msg) {
   return m || 'The database did not save the finished product.';
 }
 
-/** Manager deletes a finished product: its row in finished_products AND its saved copies are removed from Supabase. */
-export async function deleteFinishedProductInSupabase(name) {
-  if (!supabase || !name) return { success: false };
-  setFpPending(name, false);
-  try {
-    const { data, error } = await supabase.rpc('delete_finished_product', { p_name: String(name).trim() });
-    if (!error && data && data.success) return { success: true };
-    if (error) console.warn('[ManagerSupabase] delete_finished_product notice:', error.message);
-  } catch (_) {}
-  // database function not installed yet: remove what this account is allowed to remove directly
-  try { await supabase.from('finished_products').delete().eq('name_key', fpKey(name)); } catch (_) {}
-  try {
-    await supabase.from('activity_audit_logs').delete()
-      .in('action', ['UPSERT_FINISHED_PRODUCT', 'DELETE_FINISHED_PRODUCT'])
-      .ilike('details->>name', String(name).trim().replace(/[\\%_]/g, m => '\\' + m));
-  } catch (_) {}
-  return { success: true };
-}
-
 /**
  * Saves a Finished Product formulation to the finished_products table (one row per company + name; an edit
  * updates that row). Returns { success, tableSaved, error } - success is true ONLY when the row is in Supabase.
