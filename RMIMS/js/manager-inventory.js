@@ -14,6 +14,7 @@ import { getSystemRawMaterials, saveCustomRawMaterial, getSystemCustomReceipts, 
 import {
   fetchUnifiedInventoryFromSupabase,
   fetchLiveFinishedProductsFromSupabase,
+  saveFinishedProductToSupabase,
   deleteFinishedProductInSupabase,
   saveRawMaterialToSupabase,
   deleteRawMaterialOnSupabase,
@@ -1353,13 +1354,21 @@ function getCustomFinishedProducts() {
   }
 }
 
-function saveCustomFinishedProducts(list) {
+/**
+ * Writes the formulations to this device. `pushNames` = the formulations the Manager just added / edited: only
+ * those are sent to Supabase (returns the database answers so the screen can say whether it really saved).
+ */
+function saveCustomFinishedProducts(list, pushNames = []) {
+    const pushKeys = new Set((pushNames || []).map(n => String(n || '').toLowerCase().trim()));
+    const pushes = [];
     if (Array.isArray(list)) {
       list.forEach(p => {
         if (!p || !p.name) return;
         if (!p.last_updated || p.date_modified > p.last_updated) p.last_updated = p.date_modified || new Date().toISOString();
-        clearDeletedFinishedProduct(p.name);
-        if (typeof saveFinishedProductToSupabase === 'function') saveFinishedProductToSupabase(p).catch(() => {});
+        if (pushKeys.has(String(p.name).toLowerCase().trim())) {
+          clearDeletedFinishedProduct(p.name);
+          pushes.push(saveFinishedProductToSupabase(p).catch(err => ({ success: false, error: (err && err.message) || String(err) })));
+        }
       });
     }
   try {
@@ -1376,6 +1385,17 @@ function saveCustomFinishedProducts(list) {
   } catch (e) {
     console.warn('Failed to save custom finished products', e);
   }
+  return Promise.all(pushes);
+}
+
+/** Tells the Manager whether the formulation is really in Supabase. */
+function reportFinishedProductSave(results, okMessage) {
+  const failed = (results || []).find(r => !r || !r.success);
+  if (!failed) { showToast(okMessage, 'success'); return true; }
+  const why = failed.error || 'The database did not save it.';
+  showToast(`NOT saved to the database: ${why} It is kept on this device and will be saved again automatically.`, 'danger');
+  try { alert(`The finished product was NOT saved to Supabase.\n\n${why}\n\nIt stays on this device and is uploaded again automatically when the problem is fixed.`); } catch (_) {}
+  return false;
 }
 
 function getAllFinishedProducts() {
@@ -1824,7 +1844,7 @@ function renderNewFpSelectedMaterials() {
   });
 }
 
-function handleAddFinishedProductSubmit(e) {
+async function handleAddFinishedProductSubmit(e) {
   e.preventDefault();
 
   const nameInput = document.getElementById('newFpName');
@@ -1941,8 +1961,16 @@ function handleAddFinishedProductSubmit(e) {
       addDeletedFinishedProduct(originalName);
       try { deleteFinishedProductInSupabase(originalName).catch(() => {}); } catch (_) {}
     }
-    saveCustomFinishedProducts(custom);
-    showToast(`Formulation "${name}" updated successfully!`, 'success');
+    const fpSubmitBtn = (e && e.submitter) || (document.getElementById('btnSubmitAddFpText') || {}).closest?.('button');
+    if (fpSubmitBtn) fpSubmitBtn.disabled = true;
+    const fpSubmitText = document.getElementById('btnSubmitAddFpText');
+    if (fpSubmitText) fpSubmitText.textContent = 'Saving…';
+    try {
+      const results = await saveCustomFinishedProducts(custom, [name]);
+      reportFinishedProductSave(results, `Formulation "${name}" updated and saved to the database.`);
+    } finally {
+      if (fpSubmitBtn) fpSubmitBtn.disabled = false;
+    }
   } else {
     const newProduct = {
       id: 'fp-' + Date.now(),
@@ -1953,20 +1981,52 @@ function handleAddFinishedProductSubmit(e) {
       date_added: new Date().toISOString()
     };
     custom.unshift(newProduct);
-    saveCustomFinishedProducts(custom);
-    showToast(`Finished product "${name}" created with ${materialNames.length} raw materials and minimum stock limits!`, 'success');
+    const fpSubmitBtn = (e && e.submitter) || (document.getElementById('btnSubmitAddFpText') || {}).closest?.('button');
+    if (fpSubmitBtn) fpSubmitBtn.disabled = true;
+    const fpSubmitText = document.getElementById('btnSubmitAddFpText');
+    if (fpSubmitText) fpSubmitText.textContent = 'Saving…';
+    try {
+      const results = await saveCustomFinishedProducts(custom, [name]);
+      reportFinishedProductSave(results, `Finished product "${name}" saved to the database with ${materialNames.length} raw materials and minimum stock limits.`);
+    } finally {
+      if (fpSubmitBtn) fpSubmitBtn.disabled = false;
+    }
   }
 
+  // Saved: close the form (and any open recipe window) and go back to the finished product cards
+  returnToFinishedProductCards(name, { showCatalog: true });
+}
+
+/**
+ * After a save: the form and the recipe detail window close, the Finished Food cards are shown (refreshed) and
+ * the saved product's card is scrolled into view and highlighted for a moment.
+ */
+function returnToFinishedProductCards(productName, { showCatalog = true } = {}) {
   closeAddFinishedProductPanel();
+  const detailModal = document.getElementById('modalFinishedProductFolder');
+  if (detailModal && !detailModal.hidden) closeFinishedProductModal();
+
+  const catalog = document.getElementById('modalFinishedFoodCatalogPopup');
+  const catalogOpen = Boolean(catalog && !catalog.hidden);
+  const search = document.getElementById('finishedFoodPopupSearchInput');
+  if (search) search.value = '';
+  if (catalog && (showCatalog || catalogOpen)) showModalBackdrop(catalog);
+
   renderFinishedFoodModalContent('');
   renderFinishedProductsFolders();
 
-  const detailModal = document.getElementById('modalFinishedProductFolder');
-  if (detailModal && !detailModal.hidden) {
-    openFinishedProductModal(name);
-  } else if (!originalName) {
-    openFinishedProductModal(name);
-  }
+  if (!productName) return;
+  const target = encodeURIComponent(productName);
+  const scope = (catalog && !catalog.hidden) ? catalog : document;
+  const card = Array.from(scope.querySelectorAll('.mgr-fp-folder-card')).find(c => c.getAttribute('data-fp-name') === target);
+  if (!card) return;
+  try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+  const prevShadow = card.style.boxShadow;
+  const prevOutline = card.style.outline;
+  card.style.transition = 'box-shadow 0.3s ease, outline-color 0.3s ease';
+  card.style.outline = '2px solid #D97706';
+  card.style.boxShadow = '0 0 0 6px rgba(217, 119, 6, 0.18)';
+  setTimeout(() => { card.style.outline = prevOutline; card.style.boxShadow = prevShadow; }, 2200);
 }
 
 /**
@@ -3899,10 +3959,11 @@ function openFinishedProductModal(productName) {
         };
       });
       custom[idx].date_modified = new Date().toISOString();
-      saveCustomFinishedProducts(custom);
-      renderFinishedFoodModalContent('');
-      renderFinishedProductsFolders();
-      showToast(`Formulation limits for "${product.name}" saved successfully!`, 'success');
+      const savedName = custom[idx].name;
+      const pushed = saveCustomFinishedProducts(custom, [savedName]);
+      // back to the finished product cards (the catalog stays open if the recipe was opened from it)
+      returnToFinishedProductCards(savedName, { showCatalog: false });
+      pushed.then(results => reportFinishedProductSave(results, `Formulation limits for "${product.name}" saved to the database.`));
     }
   };
 

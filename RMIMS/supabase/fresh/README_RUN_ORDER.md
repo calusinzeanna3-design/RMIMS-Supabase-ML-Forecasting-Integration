@@ -1,6 +1,6 @@
 # RMIMS — fresh Supabase setup
 
-Run each file once in the Supabase SQL Editor, in this order (00 to 14). Every file is one module of the system.
+Run each file once in the Supabase SQL Editor, in this order (00 to 15). Every file is one module of the system.
 
 | File | Module | What it holds |
 |---|---|---|
@@ -19,6 +19,7 @@ Run each file once in the Supabase SQL Editor, in this order (00 to 14). Every f
 | 12_REPORTS_VIEWS.sql | Reports | One read-only view per Reports tab (same security as the tables) |
 | 13_IMPORT_RAW_MATERIALS.sql | Import | Import raw materials from the template file (Manager, or a CSV uploaded in Supabase) |
 | 14_STAFF_REPORTS.sql | Staff reports | One row per staff submission and per staff member, each with its company (no cross-company) |
+| 15_FIX_FINISHED_PRODUCTS_SAVE.sql | Fix (v25) | Finished products always save; clear reason when the database refuses; Manager account check. Safe to re-run, deletes nothing |
 
 About 00: it keeps every login whose profile has the Admin role (no e-mail is written in the file).
 Only if it stops with "No Admin account found", type your Admin e-mail inside `v_admin_emails` at the top

@@ -2167,82 +2167,175 @@ export async function deleteMaterialDisbursementOnSupabase(refOrId) {
 }
 
 
-// Formulations saved on this device that have not reached the finished_products table yet (e.g. offline).
-// Only these may be uploaded by a sync; anything else that is missing from the table was removed there.
+// Formulations saved on this device that have not reached the finished_products table yet (e.g. offline,
+// expired sign-in, database refused). They are kept on this device and uploaded again by every sync.
 const FP_PENDING_KEY = 'rmims_fp_pending_upload';
+// Formulations this device has SEEN in the finished_products table. Only these are removed from this device when
+// they are no longer in the table (removed there by a delete / reset). A formulation never confirmed is never dropped.
+const FP_SYNCED_KEY = 'rmims_fp_synced_names';
 const fpKey = (n) => String(n || '').toLowerCase().trim();
-function readFpPending() {
-  try { const a = JSON.parse(localStorage.getItem(FP_PENDING_KEY) || '[]'); return new Set(Array.isArray(a) ? a : []); } catch (_) { return new Set(); }
+function readFpSet(key) {
+  try { const a = JSON.parse(localStorage.getItem(key) || '[]'); return new Set(Array.isArray(a) ? a : []); } catch (_) { return new Set(); }
 }
+function writeFpSet(key, set) {
+  try { localStorage.setItem(key, JSON.stringify(Array.from(set))); } catch (_) {}
+}
+function readFpPending() { return readFpSet(FP_PENDING_KEY); }
 function setFpPending(name, on) {
-  try {
-    const set = readFpPending();
-    if (on) set.add(fpKey(name)); else set.delete(fpKey(name));
-    localStorage.setItem(FP_PENDING_KEY, JSON.stringify(Array.from(set)));
-  } catch (_) {}
+  const set = readFpPending();
+  if (on) set.add(fpKey(name)); else set.delete(fpKey(name));
+  writeFpSet(FP_PENDING_KEY, set);
 }
+function readFpSynced() { return readFpSet(FP_SYNCED_KEY); }
+function setFpSynced(name, on) {
+  const set = readFpSynced();
+  if (on) set.add(fpKey(name)); else set.delete(fpKey(name));
+  writeFpSet(FP_SYNCED_KEY, set);
+}
+// automatic re-uploads of the same formulation are spaced out (no request storm while the database refuses)
+const fpLastAutoUpload = new Map();
+const FP_RETRY_MS = 60000;
 
-/**
- * Saves a Finished Product formulation to the finished_products table (one row per company + name; an edit
- * updates that row). Activity log entry is kept for the audit trail.
- */
-export async function saveFinishedProductToSupabase(product) {
-  if (!supabase || !product || !product.name) return { success: false };
-  let tableSaved = false;
-  try {
-    if (isManagerSession()) {
-      setFpPending(product.name, true);
-      // 1st choice: the database function (RMIMS_FINISHED_PRODUCTS_FRESH_START.sql) - one row per product, edited in place
-      try {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('save_finished_product', {
-          p_name: String(product.name).trim(),
-          p_material_names: product.materialNames || [],
-          p_recipe_details: product.recipeDetails || {},
-          p_category: product.category || null,
-          p_batch_units: product.batchUnits != null && product.batchUnits !== '' ? Number(product.batchUnits) : null
-        });
-        if (!rpcErr && rpcData && rpcData.success) { tableSaved = true; setFpPending(product.name, false); }
-      } catch (_) {}
-      const { error: fpErr } = tableSaved ? { error: null } : await supabase.from('finished_products').upsert([{
-        name: String(product.name).trim(),
-        name_key: fpKey(product.name),
-        material_names: product.materialNames || [],
-        recipe_details: product.recipeDetails || {},
-        category: product.category || null,
-        batch_units: product.batchUnits != null ? product.batchUnits : null,
-        deleted_at: null
-      }], { onConflict: 'company_id,name_key' });
-      if (!fpErr && !tableSaved) { tableSaved = true; setFpPending(product.name, false); }
-      else console.warn('[ManagerSupabase] finished_products save notice:', fpErr.message);
-    }
-  } catch (_) {}
-  try {
-    await logManagerActivityToSupabase({
-      action: 'UPSERT_FINISHED_PRODUCT',
-      entityType: 'finished_products',
-      entityId: product.id || product.name,
-      details: {
-        id: product.id || ('fp-' + Date.now()),
-        name: product.name,
-        materialNames: product.materialNames || [],
-        recipeDetails: product.recipeDetails || {},
-        category: product.category || 'Bakery & Breads',
-        batchUnits: product.batchUnits != null ? product.batchUnits : null,
-        date_added: product.date_added || new Date().toISOString(),
-        last_updated: new Date().toISOString()
-      }
-    });
-    return { success: true, tableSaved };
-  } catch (err) {
-    console.warn('[ManagerSupabase] Error saving finished product formulation to Supabase:', err);
-    return { success: false, error: err };
+/** Plain-language reason for a refused finished-product save. */
+function explainFpError(msg) {
+  const m = String(msg || '');
+  if (/row-level security|42501|permission denied/i.test(m)) {
+    return 'The database refused the save: this account is not an active Manager with a company in Supabase (user_profiles). ' +
+           'Ask the Admin to check the account, or run 15_FIX_FINISHED_PRODUCTS_SAVE.sql.';
   }
+  if (/JWT|jwt|session|not authenticated|401/i.test(m)) {
+    return 'Your sign-in session has expired. Sign out, sign in again, then save the finished product.';
+  }
+  if (/Could not find the function|PGRST202|42883/i.test(m)) {
+    return 'The save_finished_product function is missing in Supabase. Run 07_FINISHED_PRODUCTS.sql (or 15_FIX_FINISHED_PRODUCTS_SAVE.sql).';
+  }
+  return m || 'The database did not save the finished product.';
 }
 
 /** Manager deletes a finished product: its row in finished_products AND its saved copies are removed from Supabase. */
 export async function deleteFinishedProductInSupabase(name) {
   if (!supabase || !name) return { success: false };
   setFpPending(name, false);
+  try {
+    const { data, error } = await supabase.rpc('delete_finished_product', { p_name: String(name).trim() });
+    if (!error && data && data.success) return { success: true };
+    if (error) console.warn('[ManagerSupabase] delete_finished_product notice:', error.message);
+  } catch (_) {}
+  // database function not installed yet: remove what this account is allowed to remove directly
+  try { await supabase.from('finished_products').delete().eq('name_key', fpKey(name)); } catch (_) {}
+  try {
+    await supabase.from('activity_audit_logs').delete()
+      .in('action', ['UPSERT_FINISHED_PRODUCT', 'DELETE_FINISHED_PRODUCT'])
+      .ilike('details->>name', String(name).trim().replace(/[\\%_]/g, m => '\\' + m));
+  } catch (_) {}
+  return { success: true };
+}
+
+/**
+ * Saves a Finished Product formulation to the finished_products table (one row per company + name; an edit
+ * updates that row). Returns { success, tableSaved, error } - success is true ONLY when the row is in Supabase.
+ * Until then the formulation stays on this device as "pending" and is uploaded again by the next sync.
+ */
+export async function saveFinishedProductToSupabase(product) {
+  if (!product || !product.name) return { success: false, tableSaved: false, error: 'No finished product name.' };
+  const name = String(product.name).trim();
+  if (!isManagerSession()) {
+    return { success: false, tableSaved: false, error: 'Only the Manager can save a finished product.' };
+  }
+  // from here on the formulation is kept on this device until the table has it
+  setFpPending(name, true);
+  if (!supabase || supabase.__offline) {
+    return { success: false, tableSaved: false, error: 'No connection to the database. It is kept on this device and will be saved when the connection is back.' };
+  }
+
+  let tableSaved = false;
+  let reason = '';
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    if (!sess || !sess.session) reason = 'Your sign-in session has expired. Sign out, sign in again, then save the finished product.';
+  } catch (_) {}
+
+  const batch = product.batchUnits != null && product.batchUnits !== '' && !isNaN(Number(product.batchUnits)) ? Number(product.batchUnits) : null;
+
+  if (!reason) {
+    // 1st choice: the database function (07_FINISHED_PRODUCTS.sql) - one row per product, edited in place
+    let rpcMissing = false;
+    try {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('save_finished_product', {
+        p_name: name,
+        p_material_names: Array.isArray(product.materialNames) ? product.materialNames : [],
+        p_recipe_details: product.recipeDetails && typeof product.recipeDetails === 'object' ? product.recipeDetails : {},
+        p_category: product.category || null,
+        p_batch_units: batch
+      });
+      if (rpcErr) {
+        reason = rpcErr.message || String(rpcErr.code || '');
+        rpcMissing = /Could not find the function|PGRST202|42883/i.test(reason + ' ' + (rpcErr.code || ''));
+      } else if (rpcData && rpcData.success) {
+        tableSaved = true;
+      } else {
+        reason = (rpcData && rpcData.error) || 'The database did not save the finished product.';
+      }
+    } catch (e) {
+      reason = (e && e.message) || 'The database did not answer.';
+      rpcMissing = true;
+    }
+
+    // 2nd choice (function not installed): write the row directly and read it back to be sure it is there
+    if (!tableSaved && rpcMissing) {
+      try {
+        const { data: up, error: upErr } = await supabase.from('finished_products').upsert([{
+          name,
+          name_key: fpKey(name),
+          material_names: Array.isArray(product.materialNames) ? product.materialNames : [],
+          recipe_details: product.recipeDetails && typeof product.recipeDetails === 'object' ? product.recipeDetails : {},
+          category: product.category || null,
+          batch_units: batch,
+          deleted_at: null
+        }], { onConflict: 'company_id,name_key' }).select('id');
+        if (!upErr && Array.isArray(up) && up.length) { tableSaved = true; reason = ''; }
+        else if (upErr) reason = upErr.message || reason;
+      } catch (e) {
+        reason = (e && e.message) || reason;
+      }
+    }
+  }
+
+  if (tableSaved) {
+    setFpPending(name, false);
+    setFpSynced(name, true);
+    // audit trail (never decides whether the save worked)
+    try {
+      await logManagerActivityToSupabase({
+        action: 'UPSERT_FINISHED_PRODUCT',
+        entityType: 'finished_products',
+        entityId: product.id || name,
+        details: {
+          id: product.id || ('fp-' + Date.now()),
+          name,
+          materialNames: product.materialNames || [],
+          recipeDetails: product.recipeDetails || {},
+          category: product.category || 'Bakery & Breads',
+          batchUnits: batch,
+          date_added: product.date_added || new Date().toISOString(),
+          last_updated: new Date().toISOString()
+        }
+      });
+    } catch (_) {}
+    return { success: true, tableSaved: true };
+  }
+
+  const error = explainFpError(reason);
+  console.warn('[ManagerSupabase] finished product NOT saved to Supabase:', name, '-', reason);
+  return { success: false, tableSaved: false, error };
+}
+
+/** Manager deletes a finished product: its row in finished_products AND its saved copies are removed from Supabase. */
+export async function deleteFinishedProductInSupabase(name) {
+  if (!name) return { success: false };
+  setFpPending(name, false);
+  setFpSynced(name, false);
+  if (!supabase) return { success: false };
   try {
     const { data, error } = await supabase.rpc('delete_finished_product', { p_name: String(name).trim() });
     if (!error && data && data.success) return { success: true };
@@ -2335,17 +2428,35 @@ export async function fetchLiveFinishedProductsFromSupabase() {
     const merged = new Map();
     const toUpload = [];
     if (tableIsSource) {
-      // Supabase is the record: a product shows only if it is in the table. A formulation that exists only on
-      // this device is kept (and uploaded) only when it was saved here and has not reached the table yet.
+      // Supabase is the record. A formulation on this device that is NOT in the table is dropped only when this
+      // device saw it in the table before (so it was removed there). One that never reached the table (save
+      // refused, offline, older version that never uploaded) is kept and - for the Manager - uploaded again.
       const pending = readFpPending();
+      // first run of this version: what is already on this device counts as seen before (a formulation deleted
+      // on another device never comes back); only ones saved from now on and not yet in the table are "pending"
+      let synced;
+      try { synced = localStorage.getItem(FP_SYNCED_KEY) === null ? new Set(Array.from(local.keys()).filter(k => !pending.has(k))) : readFpSynced(); }
+      catch (_) { synced = readFpSynced(); }
+      const manager = isManagerSession();
       local.forEach((p, key) => {
         const r = remote.get(key);
-        if (pending.has(key) && isManagerSession()) {
-          if (!r || r.deleted || stamp(p) > (stamp(r.det) || r.at)) { merged.set(key, p); toUpload.push(p); return; }
+        if (r && !r.deleted) {
+          if (manager && pending.has(key) && stamp(p) > (stamp(r.det) || r.at)) { merged.set(key, p); toUpload.push(p); }
+          else merged.set(key, r.det);
+          return;
         }
-        if (r && !r.deleted) merged.set(key, r.det);
+        const neverReachedTable = pending.has(key) || !synced.has(key);
+        if (manager && neverReachedTable && !(r && r.deleted && stamp(p) <= r.at)) {
+          merged.set(key, p);
+          toUpload.push(p);
+        }
       });
       remote.forEach((r, key) => { if (!merged.has(key) && !r.deleted) merged.set(key, r.det); });
+      // remember every formulation the table holds now
+      const nowSynced = new Set(synced);
+      remote.forEach((r, key) => { if (!r.deleted) nowSynced.add(key); else nowSynced.delete(key); });
+      synced.forEach(key => { if (!remote.has(key)) nowSynced.delete(key); });
+      writeFpSet(FP_SYNCED_KEY, nowSynced);
     } else local.forEach((p, key) => {
       const r = remote.get(key);
       if (!r) { merged.set(key, p); toUpload.push(p); return; }              // only here -> keep & save
@@ -2392,7 +2503,13 @@ export async function fetchLiveFinishedProductsFromSupabase() {
 
     // Formulations the manager made that never reached the database are saved now (manager only)
     if (isManagerSession() && toUpload.length) {
-      toUpload.forEach(p => { saveFinishedProductToSupabase(p).catch(() => {}); });
+      const now = Date.now();
+      toUpload.forEach(p => {
+        const k = norm(p.name);
+        if (now - (fpLastAutoUpload.get(k) || 0) < FP_RETRY_MS) return;
+        fpLastAutoUpload.set(k, now);
+        saveFinishedProductToSupabase(p).catch(() => {});
+      });
     }
 
     return reconciled;
