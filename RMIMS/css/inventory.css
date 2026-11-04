@@ -175,7 +175,7 @@ body.manager-page {
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  background: #2563eb;
+  background: #14532D;
   color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
@@ -770,7 +770,7 @@ body.manager-page {
 
 .inv-search-wrap input:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.12);
 }
 
 .search-icon {
@@ -1329,7 +1329,7 @@ body.manager-page {
 .input-group select:focus,
 .input-group textarea:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.12);
 }
 
 .input-group textarea {
@@ -1592,7 +1592,7 @@ body.manager-page {
   height: 18px;
 }
 
-.etc-icon-wrap.icon-blue { background: rgba(37, 99, 235, 0.1); color: #2563EB; }
+.etc-icon-wrap.icon-blue { background: rgba(20, 83, 45, 0.1); color: #14532D; }
 .etc-icon-wrap.icon-emerald { background: rgba(16, 185, 129, 0.1); color: #10B981; }
 .etc-icon-wrap.icon-amber { background: rgba(245, 158, 11, 0.1); color: #F59E0B; }
 .etc-icon-wrap.icon-purple { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
@@ -1657,9 +1657,9 @@ body.manager-page {
 }
 
 .export-format-btn.active {
-  border-color: #2563EB;
-  background: rgba(37, 99, 235, 0.04);
-  box-shadow: 0 0 0 1px #2563EB;
+  border-color: #14532D;
+  background: rgba(20, 83, 45, 0.04);
+  box-shadow: 0 0 0 1px #14532D;
 }
 
 .export-fmt-icon {
@@ -1676,8 +1676,8 @@ body.manager-page {
 }
 
 .export-fmt-icon.csv {
-  background: rgba(37, 99, 235, 0.14);
-  color: #2563EB;
+  background: rgba(20, 83, 45, 0.14);
+  color: #14532D;
 }
 
 .efb-title strong {
@@ -2118,9 +2118,9 @@ tr.row-selected {
 }
 
 .row-action-btn.edit-direct-btn:hover {
-  background: #EFF6FF;
-  border-color: #93C5FD;
-  color: #2563EB;
+  background: #F0FDF4;
+  border-color: #86EFAC;
+  color: #14532D;
   transform: translateY(-1px);
 }
 

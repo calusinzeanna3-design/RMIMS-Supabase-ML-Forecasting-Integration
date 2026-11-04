@@ -5,7 +5,7 @@
 // synced to staff devices. The requirement per unit is exactly what the manager entered in the formulation;
 // if the manager left it blank the product is still listed, marked "not set" - no built-in ratio or batch size.
 
-import { getUserFinishedProducts } from './rmims-reorder-engine.js';
+import { getUserFinishedProducts, sameMaterialName } from './rmims-reorder-engine.js';
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[\/\(\)\-_,&.]/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -25,9 +25,7 @@ function ingredientNames(p) {
 }
 
 function matches(ingredient, materialName) {
-  const a = norm(ingredient), b = norm(materialName);
-  if (!a || !b) return false;
-  return a === b || a.includes(b) || b.includes(a);
+  return sameMaterialName(ingredient, materialName);
 }
 
 /**
@@ -70,3 +68,89 @@ export function notSetBundleCard(p, escapeHtml) {
         <div class="rec-bar-wrap"><div class="rec-bar-fill fill-unreached" style="width:0%;"></div></div>
       </div>`;
 }
+
+/* ============================================================================
+ * Which finished product(s) a Receive / Disburse record is for (Manager & Staff)
+ *   - Nothing picked  -> the record covers ALL the linked finished products (the whole bundle). It is saved without
+ *                        a product name and the database splits it into one row per linked product, shared by each
+ *                        product's recipe amount (equal shares when an amount is missing) - so Reports, Analytics and
+ *                        the forecast see every product.
+ *   - A product picked -> the record is for that product only. Tap the picked card again to go back to "all".
+ * ========================================================================== */
+const selection = { material: '', product: '' };
+
+/** Wire the bundle cards in `grid` for selection; call after the cards are rendered. */
+export function bindBundleSelection(grid, materialName, linked) {
+  if (!grid) return;
+  const names = Array.from(new Set((linked || []).map(p => p.productName)));
+  if (selection.material !== materialName || !names.includes(selection.product)) {
+    selection.material = materialName;
+    selection.product = '';
+  }
+  const paint = () => {
+    grid.querySelectorAll('.rec-product-card').forEach(card => {
+      const on = selection.product ? card.dataset.product === selection.product : names.length > 1;
+      const picked = card.dataset.product === selection.product;
+      card.style.outline = picked ? '2px solid #15803D' : '';
+      card.style.outlineOffset = picked ? '2px' : '';
+      card.style.opacity = on || !selection.product ? '' : '0.55';
+      card.setAttribute('aria-pressed', picked ? 'true' : 'false');
+      card.title = picked ? 'Picked: this record is only for this finished product (tap again to record for all)'
+                          : 'Tap to record this only for this finished product';
+    });
+    let hint = grid.parentElement && grid.parentElement.querySelector('.rmims-bundle-pick-hint');
+    if (!hint && grid.parentElement) {
+      hint = document.createElement('div');
+      hint.className = 'rmims-bundle-pick-hint';
+      hint.style.cssText = 'margin-top:8px; font-size:12px; font-weight:600;';
+      grid.insertAdjacentElement('afterend', hint);
+    }
+    if (hint) {
+      if (names.length > 1) {
+        hint.style.color = '#15803D';
+        hint.textContent = selection.product
+          ? `Recording only for: ${selection.product} (tap it again to record for all ${names.length} products)`
+          : `Recording for all ${names.length} linked products (${names.join(', ')}). Tap one product to record it only for that product.`;
+        hint.style.display = 'block';
+      } else {
+        hint.style.display = 'none';
+      }
+    }
+  };
+  grid.querySelectorAll('.rec-product-card').forEach(card => {
+    if (card.__rmimsPick) return;
+    card.__rmimsPick = true;
+    card.addEventListener('click', () => {
+      const n = card.dataset.product || '';
+      selection.material = materialName;
+      selection.product = selection.product === n ? '' : n;
+      paint();
+    });
+  });
+  paint();
+}
+
+/**
+ * The finished product for the record being made.
+ * product = the picked / only product, or '' when the record covers all linked products (all = their names).
+ * @returns {{ok:boolean, product:string, all:string[], label:string}}
+ */
+export function getSelectedFinishedProduct(materialName) {
+  const linked = Array.from(new Set(getLinkedFinishedProducts(materialName).map(p => p.productName)));
+  if (linked.length === 0) return { ok: true, product: '', all: [], label: '' };
+  if (linked.length === 1) return { ok: true, product: linked[0], all: linked, label: linked[0] };
+  if (selection.material === materialName && linked.includes(selection.product)) {
+    return { ok: true, product: selection.product, all: linked, label: selection.product };
+  }
+  return { ok: true, product: '', all: linked, label: `All linked products (${linked.join(', ')})` };
+}
+
+/** Text for a record's finished product: the product, or the whole bundle when none was picked. */
+export function bundleTargetLabel(materialName, product) {
+  if (product) return product;
+  const linked = Array.from(new Set(getLinkedFinishedProducts(materialName).map(p => p.productName)));
+  if (linked.length > 1) return `All linked products (${linked.join(', ')})`;
+  return linked[0] || '—';
+}
+
+export function clearBundleSelection() { selection.material = ''; selection.product = ''; }

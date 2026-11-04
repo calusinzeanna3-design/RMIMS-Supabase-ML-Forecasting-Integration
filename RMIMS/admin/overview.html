@@ -12,12 +12,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Share+Tech+Mono&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js for RMIMS styled emerald chart -->
   <script src="../vendor/chart/chart.umd.js"></script>
+    <script src="../js/chart-bar-values.js"></script>
   <!-- Admin Stylesheet -->
   <link rel="stylesheet" href="../css/admin-shell.css">
   <link rel="icon" type="image/png" href="../assets/favicon-32.png">
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 <body>
   <div class="admin-app">
@@ -146,7 +150,7 @@
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">Z</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Zeanna</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
               </div>
             </div>
@@ -155,7 +159,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Zeanna</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
                   </div>
                 </div>
@@ -214,10 +218,17 @@
 
             <div class="card-actions">
               <span class="range-date-indicator" id="usageDateRangeSpan" style="display:none;"></span>
+              <select class="dropdown-select" id="chartRoleSelect" aria-label="System role">
+                <option value="general" selected>General</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="staff">Staff</option>
+              </select>
               <select class="dropdown-select" id="chartRangeSelect">
                 <option value="7">Last 7 Days</option>
                 <option value="14" selected>Last 14 Days</option>
                 <option value="30">Last 30 Days</option>
+                <option value="prev30">Previous 30 Days</option>
               </select>
             </div>
           </div>

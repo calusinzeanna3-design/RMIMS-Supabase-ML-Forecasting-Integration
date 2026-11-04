@@ -93,7 +93,7 @@ export function attachSearchableCombobox(selectEl, options = {}) {
     return opts.map(opt => ({
       value: opt.value,
       text: opt.textContent.trim(),
-      code: opt.dataset.code || opt.dataset.itemCode || opt.dataset.unit || '',
+      code: opt.dataset.code || opt.dataset.itemCode || '',
       stock: opt.dataset.stock,
       selected: opt.selected,
       disabled: opt.disabled

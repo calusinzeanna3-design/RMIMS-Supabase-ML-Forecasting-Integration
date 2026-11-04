@@ -17,9 +17,13 @@
     <link href="../css/manager-theme.css" rel="stylesheet"/>
     <script src="../vendor/chart/chart.umd.js"></script>
     <script>window.Chart||document.write('<script src="../js/chart.js"><\/script>')</script>
+    <script src="../js/chart-bar-values.js"></script>
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 <body class="manager-page admin-page">
 <div class="admin-app">
@@ -58,10 +62,10 @@
 
           <!-- Profile Pill & Dropdown -->
           <div class="rmsme-popover-anchor" id="profileAnchor">
-            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Aizel" style="cursor: pointer;">
+            <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">A</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Aizel</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Manager</span>
               </div>
             </div>
@@ -70,7 +74,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Aizel</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Manager</small>
                   </div>
                 </div>
@@ -187,7 +191,7 @@
                     </div>
                     <div class="fc-card-body">
                         <!-- Two arc gauges: recorded usage & future reorder (rmims-forecast-gauges.js) -->
-                        <div id="fcGaugeContainer" style="width:100%; min-height:240px;"></div>
+                        <div id="fcGaugeContainer" style="width:100%;"></div>
                     </div>
                 </div>
 
@@ -227,8 +231,8 @@
                 </div>
             </section>
 
-            <!-- ROW 2.5: LOW-STOCK ALERTS & RAW MATERIALS REQUIREMENTS (SAME 2 IN ONE ROW) -->
-            <section class="mgr-grid-2col fc-grid-row-1" style="margin-bottom: 24px;">
+            <!-- ROW 2.5: LOW-STOCK ALERTS (Raw Materials Requirements donut removed) -->
+            <section class="fc-grid-row-full" style="margin-bottom: 24px;">
                 <!-- Card 1: Smart Stock Alerts (Low-Stock & Out of Stock Alerts) -->
                 <div class="admin-card fc-card fc-chart-card-main" id="lowStockAlertsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
                     <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px 20px;">
@@ -271,79 +275,6 @@
                     </div>
                 </div>
 
-                <!-- Card 2: Raw Materials Requirements (Donut Chart) -->
-                <div class="admin-card fc-card fc-chart-card-main" id="matRequirementsCard" style="width: 100%; min-width: 0; display: flex; flex-direction: column;">
-                    <div class="fc-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:0 0 8px 0;">
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <div style="width:36px; height:36px; border-radius:10px; background:#DCFCE7; color:#15803D; border: 1px solid #86EFAC; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <path d="M12 2a10 10 0 0 1 10 10h-10z"/>
-                                </svg>
-                            </div>
-                            <div class="fc-card-title-group" style="gap:2px;">
-                                <h2 class="fc-card-title" style="margin:0; font-size:1.05rem;">Raw Materials Requirements</h2>
-                                <p class="fc-card-subtitle" style="margin:0; font-size:0.8rem;">Inventory reorder status breakdown across all catalog items</p>
-                            </div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <select class="fc-select" id="reqHorizonSelect" aria-label="Filter Requirements Horizon" style="font-size:12px; padding:4px 36px 4px 12px; height:32px; border-radius:8px; border:1px solid #CBD5E1; color:#334155;">
-                                <option value="7">Next 7 Days</option>
-                                <option value="30">Next 30 Days</option>
-                            </select>
-                            <button type="button" class="cal-expand-icon-btn" id="openTableFromRequirementsBtn" title="View Full Requirements Breakdown Table" aria-label="Expand requirements table">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
-                                    <polyline points="15 3 21 3 21 9"/>
-                                    <line x1="21" y1="3" x2="14" y2="10"/>
-                                    <polyline points="9 21 3 21 3 15"/>
-                                    <line x1="3" y1="21" x2="10" y2="14"/>
-                                    <polyline points="21 15 21 21 15 21"/>
-                                    <line x1="21" y1="21" x2="14" y2="14"/>
-                                    <polyline points="3 9 3 3 9 3"/>
-                                    <line x1="3" y1="3" x2="10" y2="10"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="fc-card-body" style="padding:0; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; width: 100%;">
-                            <!-- Donut Chart Canvas with Center Text -->
-                            <div style="position: relative; width: 175px; height: 175px; flex-shrink: 0;">
-                                <canvas id="matRequirementsDonutCanvas"></canvas>
-                                <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
-                                    <span style="font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 800; color: #0F2A1B; line-height: 1;" id="reqTotalCount">0</span>
-                                    <span style="font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 3px;">Total Items</span>
-                                </div>
-                            </div>
-
-                            <!-- Dynamic Legend matching User's 3 Categories with System Brand Colors -->
-                            <div style="display: flex; flex-direction: column; gap: 14px; min-width: 180px; flex: 1;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                                    <span style="display: inline-flex; align-items: center; gap: 8px; color: #1E293B; font-weight: 600;">
-                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #EF4444;"></span>
-                                        Need Reorder
-                                    </span>
-                                    <span style="font-weight: 700; color: #0F2A1B;"><span id="reqNeedCount">0</span> (<span id="reqNeedPct">0%</span>)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                                    <span style="display: inline-flex; align-items: center; gap: 8px; color: #1E293B; font-weight: 600;">
-                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #22C55E;"></span>
-                                        Not Yet Reorder
-                                    </span>
-                                    <span style="font-weight: 700; color: #0F2A1B;"><span id="reqNotYetCount">0</span> (<span id="reqNotYetPct">0%</span>)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                                    <span style="display: inline-flex; align-items: center; gap: 8px; color: #1E293B; font-weight: 600;">
-                                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #0F2A1B;"></span>
-                                        Successfully Reordered
-                                    </span>
-                                    <span style="font-weight: 700; color: #0F2A1B;"><span id="reqSuccessCount">0</span> (<span id="reqSuccessPct">0%</span>)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </section>
 
             <!-- ROW 3: TOP RAW MATERIALS (RECEIVED VS FUTURE REQUIREMENT) - MATCHING USER SPEC & IMAGE -->
@@ -451,6 +382,8 @@
             <button type="button" class="fc-func-tab active" data-function="total_breakdown">Requirements Ledger</button>
         </div>
 
+        <!-- ONE scroll area: toolbar, chart, cards and table scroll together; header + tabs stay fixed -->
+        <div class="fc-modal-scroll" id="modalFuncScroll">
         <!-- Interactive Search & Filter Toolbar -->
         <div class="fc-modal-toolbar" id="modalFuncToolbar" style="padding: 12px 24px;">
             <div class="fc-modal-search-box">
@@ -482,13 +415,13 @@
         </div>
 
         <!-- Optional Cards Container (e.g. for AI Forecasted Support) -->
-        <div id="modalCustomCardsContainer" style="display: none; padding: 0 24px 16px 24px; max-height: 52vh; overflow-y: auto;">
+        <div id="modalCustomCardsContainer" style="display: none; padding: 0 24px 16px 24px;">
             <div class="forecast-support-grid" id="modalCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;"></div>
         </div>
 
         <!-- Table Container -->
-        <div class="fc-modal-body" id="modalTableWrap" style="padding: 0 24px 16px 24px; max-height: calc(88vh - 150px); overflow-y: auto;">
-            <div class="fc-table-container fc-table-modal-container" style="max-height: 48vh; overflow-y: auto; overflow-x: auto;">
+        <div class="fc-modal-body" id="modalTableWrap" style="padding: 0 24px 16px 24px;">
+            <div class="fc-table-container fc-table-modal-container" style="overflow-x: auto;">
                 <table class="fc-table fc-modal-table">
                     <thead id="modalTableHeaderRow">
                         <tr>
@@ -507,6 +440,7 @@
                 </table>
             </div>
         </div>
+        </div><!-- /fc-modal-scroll -->
         <div class="fc-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="fc-modal-summary-banner" id="modalTotalForecastSummary">
                 <span>Total Demand: <strong id="modalSummaryTotalDemand" style="color:#15803D;">--</strong></span>

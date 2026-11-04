@@ -12,6 +12,7 @@
  * - Resubmission stores change diff so Manager sees '🔵 UPDATED' in Review popup
  */
 
+import { autoPaginate } from './rmims-table-pager.js';
 import { getSystemRawMaterials } from './system-materials.js';
 import {
   getStaffTransactions,
@@ -391,8 +392,7 @@ function loadAndRenderActivity() {
   let cleanName = String(activeUser?.fullName || activeUser?.name || '').trim().toLowerCase();
   const BANNED_STAFF = ['user account', 'staff member', 'user', 'account', 'staff user', 'store manager', 'manager', 'admin', '—', '-'];
   if (!cleanName || BANNED_STAFF.includes(cleanName)) {
-    if (cleanEmail === 'scone2@gmail.com') cleanName = 'staff_2';
-    else if (cleanEmail) cleanName = 'staff_1';
+    cleanName = String(activeUser?.username || cleanEmail.split('@')[0] || '').trim().toLowerCase();
   }
 
   const rawStaffList = getStaffTransactions() || [];
@@ -492,7 +492,7 @@ function applyFiltersAndRender() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" style="text-align:center; padding:36px 16px; color:#64748B;">
+        <td colspan="7" style="text-align:center; padding:36px 16px; color:#64748B;">
           No transactions found matching the selected filters.
         </td>
       </tr>
@@ -525,11 +525,9 @@ function applyFiltersAndRender() {
       </span>`;
     } else {
       if (t.isUpdated) {
-        statusPill = `<span class="badge" style="background:#E0F2FE; color:#0369A1; font-weight:700; padding:3px 8px; border-radius:6px; font-size:11.5px; display:inline-flex; align-items:center; gap:4px;">
-          Pending <span style="background:#0284C7; color:#FFF; font-size:9.5px; padding:1px 5px; border-radius:4px;">UPDATED</span>
-        </span>`;
+        statusPill = `<span class="badge" style="background:#DCFCE7; color:#14532D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px; white-space:nowrap;">Pending Update</span>`;
       } else {
-        statusPill = `<span class="badge" style="background:#E0F2FE; color:#0369A1; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Pending</span>`;
+        statusPill = `<span class="badge" style="background:#DCFCE7; color:#14532D; font-weight:700; padding:3px 10px; border-radius:6px; font-size:11.5px;">Pending</span>`;
       }
     }
 
@@ -584,7 +582,6 @@ function applyFiltersAndRender() {
     return `
       <tr style="${statusVal === 'Correction Needed' ? 'background:rgba(254, 243, 199, 0.25);' : ''}">
         <td style="font-weight:600; color:#334155; font-size:12px; white-space:nowrap;">${escapeHtml(dateFormatted)}</td>
-        <td style="color:#64748B; font-size:12px; white-space:nowrap;">${escapeHtml(timeFormatted)}</td>
         <td>${actBadge}</td>
         <td style="font-weight:700; font-family:'Sora',sans-serif; color:#0F2A1B; white-space:nowrap;">${escapeHtml(t.ref)}</td>
         <td style="font-weight:600; color:#0F2A1B;">${escapeHtml(t.material)}</td>
@@ -681,16 +678,16 @@ function openViewModal(tx) {
       `;
     }
   } else if (st === 'Pending') {
-    if (statusBadge) statusBadge.style.color = '#0369A1';
+    if (statusBadge) statusBadge.style.color = '#14532D';
     if (statusBanner) {
-      statusBanner.style.background = '#E0F2FE';
-      statusBanner.style.borderColor = '#BAE6FD';
+      statusBanner.style.background = '#DCFCE7';
+      statusBanner.style.borderColor = '#BBF7D0';
     }
 
     if (tx.isUpdated && correctionBox) {
       correctionBox.style.display = 'block';
       correctionBox.style.background = '#F0F9FF';
-      correctionBox.style.borderColor = '#BAE6FD';
+      correctionBox.style.borderColor = '#BBF7D0';
       const msgEl = document.getElementById('viewTxCorrectionMsg');
       if (msgEl) {
         msgEl.textContent = tx.previousCorrectionMessage 
@@ -889,3 +886,7 @@ if (typeof window !== 'undefined') {
   window.closeViewModal = closeViewModal;
   window.closeCorrectionModal = closeCorrectionModal;
 }
+
+
+// 10 records per page
+autoPaginate('myActivityTbody', { pageSize: 10, label: 'records' });

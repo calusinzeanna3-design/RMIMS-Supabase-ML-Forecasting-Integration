@@ -1234,8 +1234,8 @@ body {
 }
 
 .card-icon-badge.blue {
-  background: #DBEAFE;
-  color: #2563EB;
+  background: #DCFCE7;
+  color: #14532D;
 }
 
 .card-icon-badge.purple {
@@ -1510,8 +1510,8 @@ body {
 }
 
 .action-tag.login {
-  background: #DBEAFE;
-  color: #1D4ED8;
+  background: #DCFCE7;
+  color: #14532D;
 }
 
 .action-tag.created {
@@ -1711,8 +1711,8 @@ canvas#usageChart {
 }
 
 .kpi-icon-box.blue {
-  background: #E0F2FE;
-  color: #0284C7;
+  background: #DCFCE7;
+  color: #14532D;
 }
 
 .kpi-icon-box.purple {
@@ -1830,9 +1830,9 @@ canvas#usageChart {
 }
 
 .branch-store-thumb.sky {
-  background: #E0F2FE;
-  color: #0369A1;
-  border-color: rgba(14, 165, 233, 0.25);
+  background: #DCFCE7;
+  color: #14532D;
+  border-color: rgba(20, 83, 45, 0.25);
 }
 
 .branch-store-thumb.purple {
@@ -2402,8 +2402,8 @@ canvas#usageChart {
 
 .location-badge.lucena {
   background: #F0F9FF;
-  color: #0369A1;
-  border: 1px solid #BAE6FD;
+  color: #14532D;
+  border: 1px solid #BBF7D0;
 }
 
 .location-badge.hq,
@@ -2574,8 +2574,8 @@ canvas#usageChart {
 }
 
 .alert-metric-icon.blue {
-  background: #DBEAFE;
-  color: #2563EB;
+  background: #DCFCE7;
+  color: #14532D;
 }
 
 .alert-metric-icon.amber {
@@ -2803,9 +2803,9 @@ canvas#usageChart {
 }
 
 .role-pill.staff {
-  background: #DBEAFE;
-  color: #1D4ED8;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: #DCFCE7;
+  color: #14532D;
+  border: 1px solid rgba(20, 83, 45, 0.25);
 }
 
 
@@ -2815,8 +2815,8 @@ canvas#usageChart {
 }
 
 .action-tag.viewed {
-  background: #E0F2FE;
-  color: #0284C7;
+  background: #DCFCE7;
+  color: #14532D;
 }
 
 .status-pill.status-success {
@@ -4113,9 +4113,9 @@ canvas#usageChart {
 }
 
 .role-avatar-chip.staff-chip {
-  background: #E0F2FE;
-  border-color: #BAE6FD;
-  color: #0369A1;
+  background: #DCFCE7;
+  border-color: #BBF7D0;
+  color: #14532D;
 }
 
 .role-user-name {

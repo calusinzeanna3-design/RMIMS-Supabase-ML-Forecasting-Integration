@@ -2,6 +2,7 @@
 // Initializes the Branch Stores Usage Chart using authentic RMIMS Emerald styling,
 // handles chart timeframes, interactive account approvals, real-time system alerts, and overview search.
 
+import { getAdminActivityList } from './admin-activity-feed.js';
 import { maskOperationalDetails } from './admin-privacy.js';
 import { getAlerts, getCategoryCounts, getDiagnosticRecipient, formatCleanBranchLocation } from './system-alerts-service.js';
 import { initAdminCalendarPicker, MONTH_NAMES_SHORT, getLiveTodayISO, getDaysAgoISO, formatDisplayDate } from './admin-calendar-picker.js';
@@ -19,6 +20,14 @@ import {
   rejectUserAccount as srvRejectUser,
   subscribeToAdminFeed
 } from '../supabase/admin-supabase-service.js';
+
+// Rebuild a block only when its content really changed (an identical rebuild restarts animations = flicker)
+function setHtmlIfChanged(el, html) {
+  if (!el) return;
+  if (el.__rmimsHtml === html) return;
+  el.__rmimsHtml = html;
+  el.innerHTML = html;
+}
 
 function escapeHtml(str) {
   return String(str || '')
@@ -257,7 +266,7 @@ function renderOverviewPendingApprovals() {
   }
 
   if (pendingList.length === 0) {
-    tbody.innerHTML = `
+    setHtmlIfChanged(tbody, `
       <tr>
         <td colspan="7" style="text-align: center; padding: 36px 16px; color: var(--rm-ink-dim);">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -271,11 +280,11 @@ function renderOverviewPendingApprovals() {
           </div>
         </td>
       </tr>
-    `;
+    `);
     return;
   }
 
-  tbody.innerHTML = pendingList.map(u => {
+  setHtmlIfChanged(tbody, pendingList.map(u => {
     const locRaw = (u.branchLoc || '').trim();
     let locClass = 'neutral';
     if (locRaw.toLowerCase().includes('lucena')) locClass = 'lucena';
@@ -308,7 +317,7 @@ function renderOverviewPendingApprovals() {
         </td>
       </tr>
     `;
-  }).join('');
+  }).join(''));
 }
 
 function formatLogTime(ts) {
@@ -328,90 +337,11 @@ function renderOverviewLatestActivities() {
   const tbody = document.getElementById('overviewActivityTableBody');
   if (!tbody) return;
 
-  const list = [];
-  try {
-    const mgr = JSON.parse(localStorage.getItem('rmims_manager_activities') || '[]');
-    mgr.forEach(m => {
-      const details = (m.details || m.activity || '').trim();
-      const user = (m.user || '').trim();
-      const bLoc = (m.branchLoc || m.branch || '').trim();
-      const bName = (m.branchName || '').trim();
-      const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-      if (!hasBranch) return;
-      const displayUser = user || (m.role === 'Main Admin' ? 'Zeanna' : (m.role === 'Manager' ? 'Store Manager' : 'Store Staff'));
-
-      const txt = `${user} ${details} ${bLoc} ${bName}`.toLowerCase();
-      if (txt.includes('simulated_user') || txt.includes('demo') || txt.includes('john reyes')) {
-        return;
-      }
-      if (['receive', 'approve transaction', 'disburse'].includes(details.toLowerCase())) {
-        return;
-      }
-      list.push({
-        user: user,
-        action: m.action || 'Updated',
-        branchLoc: bLoc,
-        branchName: bName || bLoc,
-        details: details || 'Inventory operation executed.',
-        timestamp: m.timestamp || m.datetime || new Date().toISOString()
-      });
-    });
-  } catch (_) {}
-
-  try {
-    const recs = JSON.parse(localStorage.getItem('rmims_manager_receipts') || '[]');
-    recs.forEach(r => {
-      const bLoc = (r.branchLoc || '').trim();
-      const bName = (r.branchName || '').trim();
-      const user = (r.receivedBy || '').trim();
-      const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-      if (!hasBranch) return;
-      const displayUser = user || 'Store Manager';
-      const ref = r.ref || '';
-      // Process all authentic live receipts without hardcoded filters
-
-      const txt = `${user} ${r.supplierName || ''} ${bLoc} ${bName}`.toLowerCase();
-      if (txt.includes('simulated_user')) return;
-      list.push({
-        user: user,
-        action: 'Received',
-        branchLoc: bLoc,
-        branchName: bName || bLoc,
-        details: `Received ${Array.isArray(r.items) ? r.items.length : 1} raw material(s) (${ref || 'Ref'})`,
-        timestamp: r.timestamp || ((r.receiptDate || r.date || getLiveTodayISO()) + 'T10:00:00Z')
-      });
-    });
-  } catch (_) {}
-
-  try {
-    const disbs = JSON.parse(localStorage.getItem('rmims_manager_disbursements') || '[]');
-    disbs.forEach(d => {
-      const bLoc = (d.branchLoc || '').trim();
-      const bName = (d.branchName || '').trim();
-      const user = (d.disbursedBy || '').trim();
-      const hasBranch = (bLoc !== '' && bLoc !== '—') || bName !== '';
-      if (!hasBranch) return;
-      const displayUser = user || 'Store Staff';
-      const ref = d.ref || '';
-      // Process all authentic live disbursements without hardcoded filters
-
-      const txt = `${user} ${d.reason || ''} ${bLoc} ${bName}`.toLowerCase();
-      if (txt.includes('simulated_user')) return;
-      list.push({
-        user: user,
-        action: 'Disbursed',
-        branchLoc: bLoc,
-        branchName: bName || bLoc,
-        details: `Disbursed ${Array.isArray(d.items) ? d.items.length : 1} item(s) for ${d.reason || 'production'} (${ref || 'Ref'})`,
-        timestamp: d.timestamp || ((d.disbursementDate || d.date || getLiveTodayISO()) + 'T14:00:00Z')
-      });
-    });
-  } catch (_) {}
-
-  list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  // Same synced feed as the Activity Logs module (admin-activity-feed.js), newest first
+  const list = getAdminActivityList();
 
   if (list.length === 0) {
-    tbody.innerHTML = `
+    setHtmlIfChanged(tbody, `
       <tr>
         <td colspan="6" style="text-align: center; padding: 36px 16px; color: var(--rm-ink-dim);">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -428,11 +358,11 @@ function renderOverviewLatestActivities() {
           </div>
         </td>
       </tr>
-    `;
+    `);
     return;
   }
 
-  tbody.innerHTML = list.slice(0, 5).map(act => {
+  setHtmlIfChanged(tbody, list.slice(0, 5).map(act => {
     const locRaw = (act.branchLoc || '').trim();
     let locClass = 'neutral';
     if (locRaw.toLowerCase().includes('lucena')) locClass = 'lucena';
@@ -460,7 +390,7 @@ function renderOverviewLatestActivities() {
         <td>${escapeHtml(formatLogTime(act.timestamp))}</td>
       </tr>
     `;
-  }).join('');
+  }).join(''));
 }
 
 function renderOverviewBranchStores() {
@@ -471,7 +401,7 @@ function renderOverviewBranchStores() {
   const storeList = Object.values(stores);
 
   if (storeList.length === 0) {
-    tbody.innerHTML = `
+    setHtmlIfChanged(tbody, `
       <tr>
         <td colspan="5" style="text-align: center; padding: 32px 16px; color: var(--rm-ink-dim);">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -486,11 +416,11 @@ function renderOverviewBranchStores() {
           </div>
         </td>
       </tr>
-    `;
+    `);
     return;
   }
 
-  tbody.innerHTML = storeList.map(s => {
+  setHtmlIfChanged(tbody, storeList.map(s => {
     const locRaw = (s.location || s.locKey || '').trim();
     let locClass = 'neutral';
     if (locRaw.toLowerCase().includes('lucena')) locClass = 'lucena';
@@ -513,7 +443,7 @@ function renderOverviewBranchStores() {
         <td><span class="status-pill status-${(s.status || 'active').toLowerCase()}">${escapeHtml(s.status || 'Active')}</span></td>
       </tr>
     `;
-  }).join('');
+  }).join(''));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -529,8 +459,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // RMIMS Sky/Teal Gradient for Store 2
   const gradSky = ctx.createLinearGradient(0, 0, 0, 240);
-  gradSky.addColorStop(0, 'rgba(14, 165, 233, 0.22)');
-  gradSky.addColorStop(1, 'rgba(14, 165, 233, 0.02)');
+  gradSky.addColorStop(0, 'rgba(20, 83, 45, 0.22)');
+  gradSky.addColorStop(1, 'rgba(20, 83, 45, 0.02)');
 
   // Initial stores from storage
   const initialStores = getStoresData();
@@ -604,22 +534,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── Dynamic Custom Legend Builder ───────────────────────────────────────
   // Populates the #branchUsageChartLegend container from live chart dataset
   // labels and colors — no hardcoded branch names.
-  const DATASET_COLORS = ['#10B981', '#0EA5E9', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+  const DATASET_COLORS = ['#10B981', '#14532D', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
   function buildChartLegend() {
     const legendEl = document.getElementById('branchUsageChartLegend');
     if (!legendEl) return;
     if (!chart || !chart.data || !chart.data.datasets || chart.data.datasets.length === 0) {
-      legendEl.innerHTML = '<span style="color:var(--rm-ink-dim,#5C7A68);font-size:12px;">No branches registered</span>';
+      setHtmlIfChanged(legendEl, '<span style="color:var(--rm-ink-dim,#5C7A68);font-size:12px;">No branches registered</span>');
       return;
     }
-    legendEl.innerHTML = chart.data.datasets.map((ds, i) => {
+    setHtmlIfChanged(legendEl, chart.data.datasets.map((ds, i) => {
       const color = ds.borderColor || DATASET_COLORS[i % DATASET_COLORS.length];
       const label = ds.label || `Branch Store ${i + 1}`;
       return `<div class="legend-item">
         <span class="legend-dot" style="background:${color};"></span>
         <span>${label}</span>
       </div>`;
-    }).join('');
+    }).join(''));
   }
   buildChartLegend();
 
@@ -674,90 +604,109 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ─── Role usage lines: distinct active users per day, by system role (shared admin activity feed) ───
+  const ROLE_SERIES = {
+    total:   { label: 'Total (All Roles)', color: '#10B981', fill: 'rgba(16, 185, 129, 0.10)' },
+    admin:   { label: 'Admin',             color: '#F87171', fill: 'rgba(248, 113, 113, 0.12)' },
+    manager: { label: 'Manager',           color: '#4ADE80', fill: 'rgba(20, 83, 45, 0.12)' },
+    staff:   { label: 'Staff',             color: '#FBBF24', fill: 'rgba(251, 191, 36, 0.14)' }
+  };
+  const roleSelect = document.getElementById('chartRoleSelect');
+  let lastRange = null;
+
+  function roleKeyOf(role) {
+    const r = String(role || '').toLowerCase();
+    if (r.includes('admin')) return 'admin';
+    if (r.includes('manager')) return 'manager';
+    if (r.includes('staff') || r === 'user') return 'staff';
+    return '';
+  }
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   function updateOverviewChartForRange(startStr, endStr) {
     if (!startStr) return;
-    const startDate = new Date(startStr);
-    const endDate = endStr ? new Date(endStr) : new Date(startStr);
+    lastRange = [startStr, endStr];
+    const startDate = new Date(startStr + 'T00:00:00');
+    const endDate = endStr ? new Date(endStr + 'T00:00:00') : new Date(startStr + 'T00:00:00');
     const diffDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
 
-    const activeStores = getStoresData();
-    const currentStoreList = Object.values(activeStores);
-    const hasStores = currentStoreList.length > 0;
-
-    let labels = [];
-
-    if (diffDays === 1) {
-      labels = ['8 AM', '10 AM', '12 PM', '2 PM', '4 PM', '6 PM', '8 PM'];
-    } else if (diffDays <= 7) {
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        labels.push(`${MONTH_NAMES_SHORT[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`);
-      }
-      if (rangeSelect) rangeSelect.value = '7';
-    } else if (diffDays <= 14) {
-      for (let i = 0; i < 7; i++) {
-        const pointDate = new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * (i / 6));
-        labels.push(`${MONTH_NAMES_SHORT[pointDate.getMonth()]} ${String(pointDate.getDate()).padStart(2, '0')}`);
-      }
-      if (rangeSelect) rangeSelect.value = '14';
-    } else {
-      const pointsCount = Math.min(diffDays, 7);
-      for (let i = 0; i < pointsCount; i++) {
-        const pointDate = new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * (i / (pointsCount - 1)));
-        labels.push(`${MONTH_NAMES_SHORT[pointDate.getMonth()]} ${String(pointDate.getDate()).padStart(2, '0')}`);
-      }
-      if (rangeSelect) rangeSelect.value = '30';
+    // Every date in the range is shown on the axis (no sampling)
+    const dayKeys = [];
+    const labels = [];
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      dayKeys.push(ymd(d));
+      labels.push(`${MONTH_NAMES_SHORT[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`);
     }
 
-    // Compute real activity data per store from live records
-    const store1Key = currentStoreList[0] ? (currentStoreList[0].locKey || currentStoreList[0].location || 'store1') : 'all';
-    const store2Key = currentStoreList[1] ? (currentStoreList[1].locKey || currentStoreList[1].location || 'store2') : null;
+    // distinct active users per day per role
+    const sets = { admin: new Map(), manager: new Map(), staff: new Map() };
+    getAdminActivityList().forEach(a => {
+      const rk = roleKeyOf(a.role);
+      if (!rk) return;
+      const t = new Date(a.timestamp || (a.date + 'T00:00:00'));
+      if (isNaN(t.getTime())) return;
+      const k = ymd(t);
+      const who = String(a.user || '').trim().toLowerCase();
+      if (!who || who === '—') return;
+      if (!sets[rk].has(k)) sets[rk].set(k, new Set());
+      sets[rk].get(k).add(who);
+    });
+    const series = {};
+    ['admin', 'manager', 'staff'].forEach(rk => { series[rk] = dayKeys.map(k => (sets[rk].get(k) || new Set()).size); });
+    series.total = dayKeys.map((_, i) => series.admin[i] + series.manager[i] + series.staff[i]);
 
-    const store1Data = hasStores ? buildRealChartDataForStore(store1Key, labels, startDate, endDate, diffDays) : labels.map(() => 0);
-    const store2Data = hasStores && currentStoreList.length > 1 && store2Key ? buildRealChartDataForStore(store2Key, labels, startDate, endDate, diffDays) : labels.map(() => 0);
+    const sel = roleSelect ? roleSelect.value : 'general';
+    const keys = sel === 'general' ? ['total', 'admin', 'manager', 'staff'] : [sel];
 
     updateOverviewKPICounters();
 
-    chart.data.labels = labels;
-    if (currentStoreList.length === 0) {
-      chart.data.datasets = [
-        {
-          label: 'All Activity',
-          data: labels.map(() => 0),
-          borderColor: '#10B981',
-          backgroundColor: gradEmerald,
-          borderWidth: 2.8,
-          fill: true,
-          tension: 0.38,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: '#10B981',
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 2
-        }
-      ];
-    } else {
-      chart.data.datasets = currentStoreList.slice(0, 4).map((st, idx) => {
-        const color = DATASET_COLORS[idx % DATASET_COLORS.length];
-        const storeKey = st.locKey || st.location || st.name;
-        const storeData = buildRealChartDataForStore(storeKey, labels, startDate, endDate, diffDays);
-        return {
-          label: `${st.name} (${st.location || 'Branch'})`,
-          data: storeData,
-          borderColor: color,
-          backgroundColor: idx === 0 ? gradEmerald : (idx === 1 ? gradSky : 'rgba(245, 158, 11, 0.08)'),
-          borderWidth: 2.8,
-          fill: true,
-          tension: 0.38,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: color,
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 2
-        };
-      });
+    // Same numbers as what is already drawn: leave the chart alone (no redraw, no re-animation)
+    const signature = JSON.stringify([labels, keys, keys.map(k => series[k])]);
+    if (chart.__rmimsSig === signature) return;
+    const sameShape = chart.__rmimsShape === JSON.stringify([labels, keys]);
+    chart.__rmimsSig = signature;
+    chart.__rmimsShape = JSON.stringify([labels, keys]);
+    if (sameShape && chart.data.datasets.length === keys.length) {
+      // only the values changed: move the existing lines to the new values smoothly
+      keys.forEach((k, i) => { chart.data.datasets[i].data = series[k]; });
+      const peakNow = Math.max(1, ...keys.flatMap(k => series[k]));
+      chart.options.scales.y.suggestedMax = peakNow + 1;
+      chart.options.scales.y.ticks.stepSize = peakNow > 10 ? undefined : 1;
+      chart.update();
+      return;
     }
+
+    chart.data.labels = labels;
+    chart.data.datasets = keys.map(k => ({
+      label: ROLE_SERIES[k].label,
+      data: series[k],
+      borderColor: ROLE_SERIES[k].color,
+      backgroundColor: ROLE_SERIES[k].fill,
+      borderWidth: k === 'total' ? 2.8 : 2.4,
+      fill: k === 'total' || keys.length === 1,
+      tension: 0.3,
+      cubicInterpolationMode: 'monotone',
+      pointRadius: diffDays > 31 ? 2 : 3.5,
+      pointHoverRadius: 6,
+      pointBackgroundColor: ROLE_SERIES[k].color,
+      pointBorderColor: '#FFFFFF',
+      pointBorderWidth: 2
+    }));
+    const peak = Math.max(1, ...keys.flatMap(k => series[k]));
+    chart.options.scales.y.max = undefined;
+    chart.options.scales.y.suggestedMax = peak + 1;
+    chart.options.scales.y.ticks.stepSize = peak > 10 ? undefined : 1;
+    chart.options.scales.y.ticks.precision = 0;
+    chart.options.scales.x.ticks.autoSkip = false;
+    chart.options.scales.x.ticks.maxRotation = diffDays > 14 ? 60 : 0;
+    chart.options.scales.x.ticks.minRotation = diffDays > 14 ? 45 : 0;
+    chart.options.plugins.tooltip.callbacks.label = (c) => ` ${c.dataset.label}: ${c.parsed.y} active user${c.parsed.y === 1 ? '' : 's'}`;
     chart.update();
     buildChartLegend();
+  }
+
+  if (roleSelect) {
+    roleSelect.addEventListener('change', () => { if (lastRange) updateOverviewChartForRange(lastRange[0], lastRange[1]); });
   }
 
   function updateOverviewKPICounters() {
@@ -869,16 +818,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial 14 days chart state
   updateOverviewChartForRange(initStart, initEnd);
+  // later live refreshes keep the range the person chose
+  function refreshChart() {
+    if (lastRange) updateOverviewChartForRange(lastRange[0], lastRange[1]);
+    else updateOverviewChartForRange(initStart, initEnd);
+  }
 
   if (rangeSelect) {
     rangeSelect.addEventListener('change', (e) => {
       const days = e.target.value;
-      const end = getLiveTodayISO();
+      let end = getLiveTodayISO();
       let start;
       if (days === '14') {
         start = getDaysAgoISO(13);
       } else if (days === '30') {
         start = getDaysAgoISO(29);
+      } else if (days === 'prev30') {
+        // the 30 days before the last 30 days
+        start = getDaysAgoISO(59);
+        end = getDaysAgoISO(30);
       } else {
         start = getDaysAgoISO(6);
       }
@@ -897,7 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tbody) {
       const alerts = getAlerts().slice(0, 5);
       if (alerts.length === 0) {
-        tbody.innerHTML = `
+        setHtmlIfChanged(tbody, `
           <tr>
             <td colspan="8" style="text-align: center; padding: 36px 16px; color: var(--rm-ink-dim);">
               <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -911,9 +869,9 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </td>
           </tr>
-        `;
+        `);
       } else {
-        tbody.innerHTML = alerts.map(a => {
+        setHtmlIfChanged(tbody, alerts.map(a => {
           let dotColor = '#DC2626';
           if (a.status === 'monitoring') dotColor = '#D97706';
           if (a.status === 'resolved') dotColor = '#16A34A';
@@ -957,7 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <td>${escapeHtml(maskOperationalDetails(a.details))}</td>
             </tr>
           `;
-        }).join('');
+        }).join(''));
       }
     }
   }
@@ -974,13 +932,14 @@ document.addEventListener('DOMContentLoaded', () => {
       Promise.all([
         srv.fetchPendingApprovals(),
         srv.fetchLiveSystemActivities(),
+        srv.fetchRegisteredUsers().catch(() => null),
         srv.fetchBranchStores()
       ]).then(() => {
         renderOverviewPendingApprovals();
         renderOverviewLatestActivities();
         renderOverviewBranchStores();
         updateOverviewKPICounters();
-        updateOverviewChartForRange(initStart, initEnd);
+        refreshChart();
       }).catch(() => {});
 
       // Real-time live websocket feed across devices (Manager, Staff, Admin)
@@ -999,7 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
           srv.fetchLiveSystemActivities().then(() => {
             renderOverviewLatestActivities();
             updateOverviewKPICounters();
-            updateOverviewChartForRange(initStart, initEnd);
+            refreshChart();
           }).catch(() => {});
         } else if (table === 'branch_stores') {
           srv.fetchBranchStores().then(() => {
@@ -1028,13 +987,12 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('rmims_stores_updated', () => {
     renderOverviewBranchStores();
     updateOverviewKPICounters();
-    updateOverviewChartForRange(initStart, initEnd);
   });
   window.addEventListener('rmims_inventory_updated', () => {
     renderOverviewLatestActivities();
     renderOverviewBranchStores();
     updateOverviewKPICounters();
-    updateOverviewChartForRange(initStart, initEnd);
+    refreshChart();
   });
   // Inter-tab instant real-time synchronization
   try {
@@ -1059,7 +1017,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'RMIMS_BRANCH_STORES_V3' || e.key === 'rmims_stores_updated') {
       renderOverviewBranchStores();
       updateOverviewKPICounters();
-      updateOverviewChartForRange(initStart, initEnd);
     }
     if (e.key === 'rmims_manager_activities' || e.key === 'rmims_manager_receipts' || e.key === 'rmims_manager_disbursements' || e.key === 'rmims_staff_transactions') {
       renderOverviewLatestActivities();

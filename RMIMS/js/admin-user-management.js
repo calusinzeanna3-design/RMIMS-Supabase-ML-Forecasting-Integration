@@ -2,6 +2,7 @@
 // Handles pending approvals, active users directory, add/edit/delete user workflows,
 // dynamic counters, search filtering, and pagination.
 
+import { supabase } from '../supabase/supabase-config.js';
 import {
   STORAGE_KEYS,
   isMockUser,
@@ -81,9 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!u) return false;
     const txt = `${u.name || ''} ${u.username || ''} ${u.email || ''} ${u.branchName || ''}`.toLowerCase();
     const role = String(u.role || '').toLowerCase();
-    // Aizel does not have a staff account; purge any dump staff accounts for Aizel
-    if (txt.includes('aizel') && (role.includes('staff') || role.includes('user'))) return true;
-    return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
+        return BANNED_MOCK_USER_TOKENS.some(tok => txt.includes(tok));
   }
 
   function cleanPendingFromRegisteredDirectory() {
@@ -194,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return s !== 'pending' && s !== 'pending_approval';
       });
 
-      // Ensure Master Admin Zeanna is present with Headquarters location (separate from the two store companies)
+      // Show the Admin with Headquarters location (separate from the two store companies)
       list = list.map(u => {
         if (!u) return u;
         const role = String(u.role || '').toLowerCase();
@@ -565,50 +564,83 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Add User Submission
-  window.submitAddUser = function () {
+  // The account is created on the server by the admin-create-user Edge Function (a real login with a password);
+  // nothing is created only in this browser.
+  let addUserBusy = false;
+  window.submitAddUser = async function () {
+    if (addUserBusy) return;
     const nameInput = document.getElementById('newUserName');
     const usernameInput = document.getElementById('newUserUsername');
     const branchLocInput = document.getElementById('newUserBranchLoc') || document.getElementById('newUserBranch');
     const branchNameInput = document.getElementById('newUserBranchName');
     const roleInput = document.getElementById('newUserRole');
     const emailInput = document.getElementById('newUserEmail');
+    const companyInput = document.getElementById('newUserCompany');
+    const passwordInput = document.getElementById('newUserPassword');
 
     const name = nameInput ? nameInput.value.trim() : '';
     const username = usernameInput ? usernameInput.value.trim() : '';
     const branchLoc = branchLocInput ? branchLocInput.value : '';
-    let branchName = branchNameInput ? branchNameInput.value.trim() : '';
-    if (!branchName) {
-      branchName = branchLoc ? `${branchLoc} Branch` : 'Unassigned';
-    }
     const role = roleInput ? roleInput.value : 'Staff';
     const email = emailInput ? emailInput.value.trim() : '';
+    const company = companyInput ? companyInput.value : '';
+    const password = passwordInput ? passwordInput.value : '';
+    const branchName = (branchNameInput ? branchNameInput.value.trim() : '') || company;
 
-    if (!name || !username || !email) {
+    if (!name || !username || !email || !password) {
       window.showAdminToast('Please fill out all required fields.', 'danger');
       return;
     }
+    if (role !== 'Admin' && !company) {
+      window.showAdminToast('Please choose the company this account belongs to.', 'danger');
+      return;
+    }
 
-    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `user-${Date.now()}`;
+    addUserBusy = true;
+    const submitBtn = document.querySelector('#addUserForm button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    let res = null;
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { full_name: name, username, email, password, operational_role: role.toLowerCase(),
+                company, branch_name: branchName, branch_location: branchLoc }
+      });
+      if (error) {
+        let payload = null;
+        try { payload = error.context && typeof error.context.json === 'function' ? await error.context.json() : null; } catch (_) {}
+        res = payload && typeof payload.ok === 'boolean' ? payload
+          : { ok: false, message: 'The account service is not reachable. (Deploy the admin-create-user Edge Function.)' };
+      } else {
+        res = data;
+      }
+    } catch (_) {
+      res = { ok: false, message: 'The account service is not reachable right now. Please try again.' };
+    } finally {
+      addUserBusy = false;
+      if (submitBtn) submitBtn.disabled = false;
+    }
+    if (!res || !res.ok) {
+      window.showAdminToast((res && res.message) || 'The account could not be created.', 'danger');
+      return;
+    }
+
+    const created = res.user || {};
     const newUserRecord = {
-      id: newId,
+      id: created.id,
       name,
       username,
-      email,
+      email: created.email || email,
       branchLoc,
       branchName,
+      companyId: created.company_id || null,
+      companyName: created.company_name || null,
       role,
       status: 'Active'
     };
     const users = getStoredRegisteredUsers();
     users.push(newUserRecord);
     saveStoredRegisteredUsers(users);
-
-    // Persist user account directly to Supabase user_profiles
-    if (typeof srvCreateUser === 'function') {
-      srvCreateUser(newUserRecord).catch(err => {
-        console.warn('[AdminUserManagement] Supabase create user notice:', err.message || err);
-      });
-    }
+    if (passwordInput) passwordInput.value = '';
 
     // Broadcast live notification across all portals (Admin, Manager, Staff)
     try {
@@ -717,10 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (
       targetRole === 'administrator' || 
-      targetRole === 'admin' || 
-      targetEmail === 'calusinzeanna3@gmail.com' || 
-      targetName === 'zeanna' ||
-      targetUser === 'zeanna'
+      targetRole === 'admin'
     ) {
       if (window.showAdminToast) {
         window.showAdminToast('Main Administrator account is permanently protected and cannot be deleted.', 'danger');
@@ -730,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!confirm(`Are you sure you want to permanently delete ${name} from all branch stores and user directories?`)) {
+    if (!await window.rmimsConfirm(`Are you sure you want to permanently delete ${name} from all branch stores and user directories?`)) {
       return;
     }
 
@@ -750,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Unlock User Account Action (Admin Security Operation)
   window.unlockUserAccountAction = async function (id, name, email) {
-    if (!confirm(`Unlock account for ${name} (${email})?\nThis will clear the failed login lock and restore full access.`)) {
+    if (!await window.rmimsConfirm(`Unlock account for ${name} (${email})?\nThis will clear the failed login lock and restore full access.`)) {
       return;
     }
 
@@ -796,7 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof window.pushRMIMSNotification === 'function') {
           window.pushRMIMSNotification({
             title: `Account Unlocked: ${name}`,
-            message: `Administrator Zeanna unlocked the account for ${name} (${email}). The user may now sign in.`,
+            message: `The Administrator unlocked the account for ${name} (${email}). The user may now sign in.`,
             category: 'Security',
             badge: 'Unlocked',
             role: 'all',
@@ -834,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
       branchName = branchLoc && branchLoc !== 'Unassigned' ? `${branchLoc} Branch` : 'Main Operations';
     }
     let role = target ? target.role : (row ? row.getAttribute('data-role') : 'Staff');
-    let email = target ? target.email : (row ? row.getAttribute('data-email') : `${username}@store.ph`);
+    let email = target ? target.email : (row ? row.getAttribute('data-email') : '');
 
     const targetPayload = {
       id: target && target.id ? target.id : (cleanParam.startsWith('req_') ? cleanParam.slice(4) : cleanParam),

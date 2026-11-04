@@ -4,6 +4,7 @@
 // Strictly READ-ONLY. Zero direct stock mutations. Zero mock data.
 
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS } from "./authentic-59-dataset.js";
 import { getSystemRawMaterials, getSystemCustomReceipts, getSystemCustomDisbursements } from "./system-materials.js";
@@ -81,7 +82,7 @@ let currentForecastSupportItems = [];
 const RECEIVE_PIE_PALETTE = [
   "#00B5AD", // Teal / Cyan
   "#FF7A00", // Vibrant Orange
-  "#6366F1", // Indigo / Purple
+  "#14532D", // Indigo / Purple
   "#84CC16", // Lime Green
   "#EC4899", // Pink
   "#64748B"  // Slate (Others)
@@ -155,14 +156,14 @@ let currentModalCategory = "all";
 // Guaranteed unique series colors palette for Chart.js
 const SERIES_PALETTE = [
   "#10B981", // Emerald
-  "#3B82F6", // Blue
+  "#14532D", // Blue
   "#F59E0B", // Amber
   "#8B5CF6", // Purple
   "#EC4899", // Pink
-  "#06B6D4", // Cyan
+  "#14532D", // Cyan
   "#14B8A6", // Teal
   "#F97316", // Orange
-  "#6366F1", // Indigo
+  "#14532D", // Indigo
   "#84CC16"  // Lime
 ];
 
@@ -270,8 +271,6 @@ function renderBaselineInstant() {
     if (deletedMatIds.size > 0) {
       rawMats = rawMats.filter(m => {
         const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
-        if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true; // Always keep Scones 19
-        if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true; // Always keep KXC 59
         return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
       });
     }
@@ -374,24 +373,21 @@ async function loadDashboard() {
 
     try {
       const [matRes, recRes, disbRes] = await Promise.allSettled([
-        fetchWithTimeout(
+        fetchWithTimeout(allRows(
           supabase
             .from("raw_materials")
             .select("id, item_code, name, unit_of_measure, current_stock, minimum_threshold, reorder_quantity, lead_time_days, description")
-            .order("name")
-        ),
-        fetchWithTimeout(
+            .order("name")), 30000),
+        fetchWithTimeout(allRows(
           supabase
             .from("stock_receipts")
             .select("id, receipt_date, material_id, received_quantity, unit, supplier_name, received_by, created_at")
-            .order("receipt_date", { ascending: false })
-        ),
-        fetchWithTimeout(
+            .order("receipt_date", { ascending: false })), 30000),
+        fetchWithTimeout(allRows(
           supabase
             .from("material_disbursements")
             .select("id, usage_date, material_id, consumed_quantity, unit, activity_type, finished_product_name, recorded_by, created_at")
-            .order("usage_date", { ascending: false })
-        )
+            .order("usage_date", { ascending: false })), 30000)
       ]);
 
       // Additive merge: start with system raw materials matching active tenant
@@ -451,8 +447,6 @@ async function loadDashboard() {
     if (deletedMatIds.size > 0) {
       rawMats = rawMats.filter(m => {
         const code = String(m.item_code || m.itemCode || m.id || "").toUpperCase().trim();
-        if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true;
-        if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true;
         return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
       });
     }
@@ -1294,7 +1288,7 @@ function startCard3Ticker() {
 // ============================================================
 
 function renderCard4LowStock() {
-  const lowStockMats = catalogMaterials.filter(m => m.status === "Might Restock" || (m.currentStock > 0 && m.currentStock <= (m.reorderPoint || 100)));
+  const lowStockMats = catalogMaterials.filter(m => m.status === "Might Restock" || (m.currentStock > 0 && m.currentStock <= Number(m.reorderPoint ?? m.minStock ?? m.minimum_stock ?? 0)));
   const countEl = $("lowStockCount");
   if (countEl) countEl.textContent = lowStockMats.length;
 
@@ -1450,7 +1444,7 @@ function computeClientSideForecastBreakdown(matName, horizonType = "month", hori
 
   const count = matchedRecords.length;
   const total = matchedRecords.reduce((sum, r) => sum + r.consumedQuantity, 0);
-  const avgDaily = count > 0 ? total / Math.max(1, count) : Math.max(1, (mat?.currentStock || 50) * 0.05);
+  const avgDaily = count > 0 ? total / Math.max(1, count) : 0; // no recorded usage -> no invented rate
 
   let stepDays = 1;
   let numSteps = horizonVal;
@@ -1948,7 +1942,7 @@ async function renderRawMaterialsTrendChart() {
     } else if (currentTrendGranularity === "weekly") {
       metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 16-Week Historical Wave</span> <span style="color:#64748B; margin-left:8px;">(4-Week Cycles • Locked Margin: ±7.51%${shiftNotice})</span>`;
     } else if (currentTrendGranularity === "yearly") {
-      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Production Expansion</span> <span style="color:#64748B; margin-left:8px;">(Projected: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit}${shiftNotice})</span>`;
+      metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📈 Multi-Year Usage Trend</span> <span style="color:#64748B; margin-left:8px;">(Projected: ${Math.round(forecastData[forecastData.length - 1]).toLocaleString()} ${primaryUnit}${shiftNotice})</span>`;
     } else {
       metaEl.innerHTML = `<span style="color:#10B981; font-weight:600;">📊 8-Month Operational Evaluation: Jan to Aug 2026</span> <span style="color:#64748B; margin-left:8px;">(Actual vs. Learned Seasonal Forecast • Margin: ±7.51%${shiftNotice})</span>`;
     }
@@ -1997,15 +1991,15 @@ async function renderRawMaterialsTrendChart() {
         {
           label: `Actual (${primaryUnit})`,
           data: consumedData,
-          borderColor: "#0284C7",
-          backgroundColor: "#0284C7",
+          borderColor: "#14532D",
+          backgroundColor: "#14532D",
           borderWidth: 2.6,
           fill: false,
           tension: 0,
           pointStyle: "circle",
           pointRadius: 5,
           pointHoverRadius: 8,
-          pointBackgroundColor: "#0284C7",
+          pointBackgroundColor: "#14532D",
           pointBorderColor: "#FFFFFF",
           pointBorderWidth: 2,
           spanGaps: false
@@ -2534,7 +2528,7 @@ async function renderAiForecastedSupportCard() {
         if (curStock < fQty) {
           plainInsight = `${mat.materialName} requires ~${fQty.toLocaleString()} ${unit} next week. Stock (${curStock.toLocaleString()} ${unit}) is below the projected demand.`;
         } else {
-          plainInsight = `${mat.materialName} requires ~${fQty.toLocaleString()} ${unit} next week. Active stock is sufficient to maintain production operations.`;
+          plainInsight = `${mat.materialName} requires ~${fQty.toLocaleString()} ${unit} next week. Active stock is sufficient to cover daily operations.`;
         }
       }
 
@@ -2804,9 +2798,9 @@ async function updateModalForecastProjection() {
         datasets: [{
           label: `Forecasted ${mat.materialName} Demand (${unit})`,
           data: chartValues,
-          backgroundColor: "rgba(37, 99, 235, 0.75)",
-          hoverBackgroundColor: "rgba(37, 99, 235, 0.95)",
-          borderColor: "#2563EB",
+          backgroundColor: "rgba(20, 83, 45, 0.75)",
+          hoverBackgroundColor: "rgba(20, 83, 45, 0.95)",
+          borderColor: "#14532D",
           borderWidth: 1.5,
           borderRadius: 6,
           maxBarThickness: 45,
@@ -2963,7 +2957,7 @@ onAuthStateChanged(auth, async user => {
   try {
     const uid = user.id || user.uid;
     const cleanEmail = (user.email || "").toLowerCase();
-    const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+    const isMasterAdmin = false;
 
     let profile = null;
     try {
@@ -3014,7 +3008,7 @@ onAuthStateChanged(auth, async user => {
       if (!profile) {
         profile = {
           id: uid,
-          full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+          full_name: user.displayName || user.user_metadata?.full_name || "",
           email: user.email,
           role: "admin",
           operational_role: "admin",
@@ -3056,9 +3050,7 @@ onAuthStateChanged(auth, async user => {
     let mName = (profile?.full_name || '').trim();
     const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
     if (!mName || ['manager', 'user account', 'user', 'undefined', 'null'].includes(mName.toLowerCase())) {
-      if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
-      else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
-      else mName = 'Aizel';
+      mName = (profile?.username || userEmail.split('@')[0] || '').trim();
     }
     const greet = greetingWord();
     const greetingText = `${greet}, ${mName}! Overview of your raw materials and inventory activity.`;

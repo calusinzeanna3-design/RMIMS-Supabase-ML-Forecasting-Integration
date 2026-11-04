@@ -5,7 +5,9 @@
 // Authoritative Supabase Data (raw_materials, stock_receipts, material_disbursements) & Authoritative AI Forecast Output.
 // Strictly Light Mode. No Mock Data. Unit-Safe.
 
+import { canonicalTxRef, txKey } from './rmims-tx-key.js';
 import { supabase, auth } from "../supabase/supabase-config.js";
+import { allRows } from './rmims-fetch-all.js';
 import { onAuthStateChanged } from "../supabase/auth-compat.js";
 import { AUTHENTIC_59_RAW_MATERIALS, AUTHENTIC_STOCK_RECEIPTS_6MONTHS, AUTHENTIC_DAILY_DISBURSEMENTS_6MONTHS, AUTHENTIC_FINISHED_PRODUCTS_CATALOG } from "./authentic-59-dataset.js";
 import { AUTHENTIC_19_SCONES_MATERIALS } from "./authentic-scones-dataset.js";
@@ -14,10 +16,38 @@ import { getDeletedSet, extractRefFromText } from "./rmims-deleted-ledger.js";
 import { getActiveTenantContext } from "./tenant-manager.js";
 import { attachSearchableCombobox } from "./rmims-combobox.js";
 import { loadRecorderDirectory, resolveRecorderName } from "./rmims-recorder-resolver.js";
-import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, finishedProductsForMaterial, fmtQtyOrDash } from "./rmims-reorder-engine.js";
+import { computeDataDrivenReorder, buildActualsForMaterial, getUserFinishedProducts, resolveFinishedProductName, displayFinishedProduct, finishedProductsForMaterial, fmtQtyOrDash } from "./rmims-reorder-engine.js";
 
 /** Reorder quantity for display: only data-driven values, "—" when there is no recorded consumption. */
+/** Reorder cell: the reorder quantity, plus tomorrow's estimated need (from recorded usage) underneath. */
+/** Finished products of a raw material as one compact "Products" dropdown per row (never spills into other columns). */
+function productsDropdownHtml(parts) {
+    const list = Array.isArray(parts) ? parts.filter(Boolean) : [];
+    if (!list.length) return '<span style="color:#64748B;">—</span>';
+    return `<details class="rmims-products-dd"><summary>Products (${list.length})</summary><ul>${
+        list.map(t => {
+            const i = t.lastIndexOf(':');
+            const name = i > 0 ? t.slice(0, i) : t;
+            const qty = i > 0 ? t.slice(i + 1).trim() : '';
+            return `<li><span class="rmims-products-dd-name">${escapeHtml(name)}</span>${qty ? `<strong>${escapeHtml(qty)}</strong>` : ''}</li>`;
+        }).join('')
+    }</ul></details>`;
+}
+
+function reorderCellHtml(m, withUnit = false) {
+    if (reorderShowsTomorrow(m)) {
+        return `${escapeHtml(fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit))}<div style="font-size:11px; color:#64748B; font-weight:500; margin-top:2px;" title="No 7-day reorder needed yet; estimated need for tomorrow from recorded usage">Est. for tomorrow</div>`;
+    }
+    return escapeHtml(reorderText(m, withUnit));
+}
+/** Reorder figure shown to users: the 7-day reorder quantity when one is needed; when none is needed yet
+ *  (0), tomorrow's estimated need from recorded usage is shown instead of a bare 0. */
+function reorderShowsTomorrow(m) {
+    const plan = m && m.reorderPlan;
+    return Boolean(m && m.reorderQty === 0 && plan && plan.hasData && plan.requirementTomorrow != null);
+}
 function reorderText(m, withUnit = true) {
+    if (reorderShowsTomorrow(m)) return `${fmtQtyOrDash(m.reorderPlan.requirementTomorrow, m.unit)} (est. tomorrow)`;
     return fmtQtyOrDash(m && m.reorderQty, withUnit ? (m && m.unit) : "");
 }
 function reorderAction(m, verb) {
@@ -62,7 +92,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
         const uid = user.id || user.uid;
         const cleanEmail = (user.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
 
         let profile = null;
         try {
@@ -113,7 +143,7 @@ onAuthStateChanged(auth, async (user) => {
             if (!profile) {
                 profile = {
                     id: uid,
-                    full_name: user.displayName || user.user_metadata?.full_name || "Zeanna Calusin",
+                    full_name: user.displayName || user.user_metadata?.full_name || "",
                     email: user.email,
                     role: "admin",
                     operational_role: "admin",
@@ -152,9 +182,7 @@ onAuthStateChanged(auth, async (user) => {
         let mName = (profile?.full_name || '').trim();
         const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
         if (!mName || ['manager', 'user account', 'user', 'undefined', 'null', '—', '-'].includes(mName.toLowerCase())) {
-            if (userEmail === 'zeannapatricia@gmail.com') mName = 'Glazel';
-            else if (userEmail === 'calusinzeanna3@gmail.com') mName = 'Zeanna';
-            else mName = 'Aizel';
+            mName = (profile?.username || userEmail.split('@')[0] || '').trim();
         }
         if (pBtn) {
             const nameEl = pBtn.querySelector("[data-shell-name]") || pBtn.querySelector(".profile-name") || pBtn.querySelector(".mgr-name");
@@ -572,18 +600,18 @@ async function loadAuthoritativeData() {
                     ]);
 
                 const [matRes, rcvRes, disbRes] = await Promise.allSettled([
-                    fetchWithTimeout(supabase
+                    fetchWithTimeout(allRows(supabase
                         .from("raw_materials")
                         .select("*")
-                        .order("name")),
-                    fetchWithTimeout(supabase
+                        .order("name")), 30000),
+                    fetchWithTimeout(allRows(supabase
                         .from("stock_receipts")
                         .select("*")
-                        .order("receipt_date", { ascending: false })),
-                    fetchWithTimeout(supabase
+                        .order("receipt_date", { ascending: false })), 30000),
+                    fetchWithTimeout(allRows(supabase
                         .from("material_disbursements")
                         .select("*")
-                        .order("usage_date", { ascending: false }))
+                        .order("usage_date", { ascending: false })), 30000)
                 ]);
 
                 if (matRes.status === "fulfilled" && Array.isArray(matRes.value?.data)) rawMats = matRes.value.data;
@@ -610,15 +638,16 @@ async function loadAuthoritativeData() {
         const getCanonicalCode = (rawName, rawCode) => {
             const cleanCode = String(rawCode || "").toUpperCase().trim();
             const cleanName = String(rawName || "").trim();
+            if (cleanCode.startsWith(expectedPrefix)) return cleanCode;   // the material's own code always wins
             const rec = resolveForecastingMaterialByName(cleanName, isScones);
             if (rec && rec.code && rec.code.startsWith(expectedPrefix)) return rec.code;
-            if (cleanCode.startsWith(expectedPrefix)) {
+            if (false) {
                 return cleanCode;
             }
             return null;
         };
 
-        // Seed with authentic system raw materials for the current tenant (guarantees strictly 19 for Scones, 59 for KXC)
+        // Seed with the company's own raw materials (every material, not a fixed 19 / 59)
         getSystemRawMaterials().forEach(m => {
             const code = getCanonicalCode(m.name || m.raw_material_name, m.item_code || m.id);
             if (!code) return;
@@ -695,7 +724,7 @@ async function loadAuthoritativeData() {
             }
         });
 
-        // Enforce strict sequential sort and strict 19-material limit for Scones & Muffins
+        // Sequential sort of every company material
         rawMats = Array.from(matBaseMap.values());
         if (isScones) {
             rawMats = rawMats.filter(m => {
@@ -712,8 +741,9 @@ async function loadAuthoritativeData() {
         // 3. Receipts mapping (STRICTLY live: Supabase + local manager receipts, ZERO 6-month mock fallbacks)
         // Remote rows carry the system reference inside text ("[Ref: X]"); use it as the id so the
         // local copy and the Supabase copy collapse into ONE record instead of being double counted.
-        rawReceipts = (rawReceipts || []).map(r => ({ ...r, id: extractRefFromText(r.supplier_name) || r.id }));
-        rawDisbursements = (rawDisbursements || []).map(d => ({ ...d, id: extractRefFromText(d.activity_type) || d.id }));
+        // one key per real movement (local copies, approval copies and the Supabase row are the same record)
+        rawReceipts = (rawReceipts || []).map(r => ({ ...r, ref: canonicalTxRef(r) || undefined, __key: txKey(r) }));
+        rawDisbursements = (rawDisbursements || []).map(d => ({ ...d, ref: canonicalTxRef(d) || undefined, __key: txKey(d) }));
         const recBaseMap = new Map();
         let localMgrReceipts = [];
         try {
@@ -723,22 +753,29 @@ async function loadAuthoritativeData() {
         } catch (_) {}
 
         localMgrReceipts.forEach(r => {
-            const rId = String(r.id || r.ref || "");
+            const rId = txKey(r);
+            const prev = recBaseMap.get(rId) || {};
             if (rId) recBaseMap.set(rId, {
-                id: rId,
-                material_id: r.materialId || r.material_id,
+                ...prev,
+                id: canonicalTxRef(r) || r.id,
+                ref: canonicalTxRef(r) || prev.ref,
+                material_name: r.materialName || r.material_name || prev.material_name,
+                material_id: r.materialId || r.material_id || prev.material_id,
                 received_quantity: Number(r.quantity || r.received_quantity || 0),
                 receipt_date: r.date || r.receipt_date,
                 unit: r.unit,
                 supplier_name: r.supplier || r.supplier_name,
                 received_by: r.recordedBy || r.received_by || "",
+                finished_product_name: r.usedFor || r.finished_product_name || prev.finished_product_name,
                 created_at: r.createdAt || r.created_at
             });
         });
 
         (rawReceipts || []).forEach(r => {
-            const rId = String(r.id || "");
-            if (rId) recBaseMap.set(rId, { ...(recBaseMap.get(rId) || {}), ...r });
+            const rId = r.__key;
+            const prev = recBaseMap.get(rId) || {};
+            // keep the device's readable fields (recorder / material name) when the database row lacks them
+            if (rId) recBaseMap.set(rId, { ...prev, ...r, id: r.ref || r.id, received_by: r.received_by || prev.received_by, material_name: prev.material_name || r.material_name, finished_product_name: r.finished_product_name || prev.finished_product_name });
         });
         rawReceipts = Array.from(recBaseMap.values());
 
@@ -752,14 +789,18 @@ async function loadAuthoritativeData() {
         } catch (_) {}
 
         localMgrDisb.forEach(d => {
-            const dId = String(d.id || d.ref || "");
+            const dId = txKey(d);
+            const prev = disbBaseMap.get(dId) || {};
             if (dId) disbBaseMap.set(dId, {
-                id: dId,
-                material_id: d.materialId || d.material_id,
+                ...prev,
+                id: canonicalTxRef(d) || d.id,
+                ref: canonicalTxRef(d) || prev.ref,
+                material_name: d.materialName || d.material_name || prev.material_name,
+                material_id: d.materialId || d.material_id || prev.material_id,
                 consumed_quantity: Number(d.quantity || d.consumed_quantity || 0),
                 usage_date: d.date || d.usage_date,
                 unit: d.unit,
-                finished_product_name: d.recipient || d.finished_product_name,
+                finished_product_name: d.recipient || d.usedFor || d.finished_product_name || prev.finished_product_name,
                 activity_type: d.activity_type || "",
                 recorded_by: d.recordedBy || d.recorded_by || "",
                 created_at: d.createdAt || d.created_at
@@ -767,8 +808,9 @@ async function loadAuthoritativeData() {
         });
 
         (rawDisbursements || []).forEach(d => {
-            const dId = String(d.id || "");
-            if (dId) disbBaseMap.set(dId, { ...(disbBaseMap.get(dId) || {}), ...d });
+            const dId = d.__key;
+            const prev = disbBaseMap.get(dId) || {};
+            if (dId) disbBaseMap.set(dId, { ...prev, ...d, id: d.ref || d.id, recorded_by: d.recorded_by || prev.recorded_by, material_name: prev.material_name || d.material_name, finished_product_name: d.finished_product_name || prev.finished_product_name });
         });
         rawDisbursements = Array.from(disbBaseMap.values());
 
@@ -785,8 +827,6 @@ async function loadAuthoritativeData() {
             // Never delete core registered catalog materials (NB-001 to NB-019 for Scones; RM-001 to RM-059 for KXC)
             rawMats = rawMats.filter(m => {
                 const code = String(m.item_code || m.id || "").toUpperCase().trim();
-                if (/^NB-0(0[1-9]|1[0-9])$/.test(code)) return true;
-                if (/^RM-0(0[1-9]|[1-5][0-9])$/.test(code)) return true;
                 return !deletedMatIds.has(String(m.id).toLowerCase().trim()) && !deletedMatIds.has((m.name || "").toLowerCase().trim());
             });
         }
@@ -831,7 +871,10 @@ async function loadAuthoritativeData() {
         // Normalize Receipts
         state.receipts = rawReceipts.map(r => {
             const matKey = String(r.material_id || "").toLowerCase().trim();
-            const mat = matMap.get(r.material_id) || matMap.get(uuidToCode.get(String(r.material_id))) || state.materials.find(m => String(m.id).toLowerCase() === matKey || (m.name && m.name.toLowerCase() === matKey));
+            const nameKey = String(r.material_name || r.materialName || "").toLowerCase().trim();
+            const mat = matMap.get(r.material_id) || matMap.get(uuidToCode.get(String(r.material_id))) || state.materials.find(m =>
+                String(m.id).toLowerCase() === matKey || String(m.itemCode || "").toLowerCase() === matKey ||
+                (m.name && (m.name.toLowerCase() === matKey || (nameKey && m.name.toLowerCase() === nameKey))));
             const supName = (r.supplier_name && r.supplier_name.toLowerCase() !== "all" ? String(r.supplier_name).replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() : "") || "—";
             const refNo = r.reference_no || r.ref || r.id || "—";
             const matCode = mat ? (mat.itemCode || mat.item_code || mat.id || "—") : (r.item_code || r.material_id || "—");
@@ -847,13 +890,13 @@ async function loadAuthoritativeData() {
                 receiptTime: rTime,
                 materialCode: matCode,
                 materialId: mat ? mat.id : r.material_id,
-                materialName: mat ? mat.name : "Raw Material",
+                materialName: mat ? mat.name : (r.material_name || r.materialName || "—"),
                 receivedQuantity: Number(r.received_quantity || 0),
                 receiptDate: r.receipt_date || (r.created_at ? r.created_at.split("T")[0] : "—"),
                 unit: (r.unit || (mat ? (mat.unit || mat.unit_of_measure) : "") || "").trim(),
                 supplierName: supName,
                 receivedBy: resolveRecorderName({ recordedBy: r.received_by, ref: refNo }),
-                finishedProduct: (finishedProductsForMaterial(mat ? mat.name : "", userFinishedProducts).join(", ") || "—"),
+                finishedProduct: displayFinishedProduct(mat ? mat.name : "", r.finished_product_name || r.usedFor || r.finishedProduct, userFinishedProducts), // the finished product this delivery is for
                 createdAt: r.created_at
             };
         });
@@ -861,9 +904,12 @@ async function loadAuthoritativeData() {
         // Normalize Disbursements
         state.disbursements = rawDisbursements.map(d => {
             const matKey = String(d.material_id || "").toLowerCase().trim();
-            const mat = matMap.get(d.material_id) || matMap.get(uuidToCode.get(String(d.material_id))) || state.materials.find(m => String(m.id).toLowerCase() === matKey || (m.name && m.name.toLowerCase() === matKey));
-            const pName = resolveFinishedProductName(mat ? mat.name : "", d.finished_product_name, userFinishedProducts);
-            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? String(d.activity_type).replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim() : "") || "—";
+            const nameKey = String(d.material_name || d.materialName || "").toLowerCase().trim();
+            const mat = matMap.get(d.material_id) || matMap.get(uuidToCode.get(String(d.material_id))) || state.materials.find(m =>
+                String(m.id).toLowerCase() === matKey || String(m.itemCode || "").toLowerCase() === matKey ||
+                (m.name && (m.name.toLowerCase() === matKey || (nameKey && m.name.toLowerCase() === nameKey))));
+            const pName = displayFinishedProduct(mat ? mat.name : "", d.finished_product_name, userFinishedProducts);
+            const actType = (d.activity_type && d.activity_type.toLowerCase() !== "all" ? String(d.activity_type).replace(/\s*\[Ref:[^\]]*\]\s*/i, "").trim().replace(/^pro\u0064uction usage$/i, "Material Usage") : "") || "—"; // older records' label shown as today's
             const refNo = d.reference_no || d.ref || d.id || "—";
             const matCode = mat ? (mat.itemCode || mat.item_code || mat.id || "—") : (d.item_code || d.material_id || "—");
             let dTime = d.time || d.usage_time || "";
@@ -878,7 +924,7 @@ async function loadAuthoritativeData() {
                 usageTime: dTime,
                 materialCode: matCode,
                 materialId: mat ? mat.id : d.material_id,
-                materialName: mat ? mat.name : "Raw Material",
+                materialName: mat ? mat.name : (d.material_name || d.materialName || "—"),
                 disbursedQuantity: Number(d.consumed_quantity || 0),
                 usageDate: d.usage_date || (d.created_at ? d.created_at.split("T")[0] : "—"),
                 unit: (d.unit || (mat ? (mat.unit || mat.unit_of_measure) : "") || "").trim(),
@@ -944,13 +990,30 @@ function loadAuthoritativeForecasts() {
 
     state.materials.forEach(m => {
         const plan = m.reorderPlan || computeDataDrivenReorder(m, buildActualsForMaterial(m, state.disbursements));
-        const recent = state.disbursements
-            .filter(d => d.materialId === m.id && d.usageDate && d.usageDate >= since30Key)
-            .reduce((sum, d) => sum + (Number(d.disbursedQuantity) || 0), 0);
-        const usedFor = Array.from(new Set(state.disbursements
+        // same record matching as the forecast (id, code or name): consumption in the last 30 days
+        let recent = 0;
+        buildActualsForMaterial(m, state.disbursements).forEach((q, day) => { if (day >= since30Key) recent += q; });
+        // Every finished product that uses this raw material (the Manager's formulations), with its limit per unit
+        // and the total of this material recorded for it -> "Nutribun (30 g/unit): 750 g · Nutricookies (10 g/unit): 250 g"
+        const totals = new Map();
+        state.disbursements
             .filter(d => d.materialId === m.id && d.finishedProduct && d.finishedProduct !== "—")
-            .map(d => d.finishedProduct)));
-        const finishedProduct = usedFor.length ? usedFor.join(", ") : (finishedProductsForMaterial(m.name, fpList).join(", ") || "—");
+            .forEach(d => totals.set(d.finishedProduct, (totals.get(d.finishedProduct) || 0) + Number(d.disbursedQuantity || 0)));
+        const matKey = String(m.name || "").toLowerCase().trim();
+        const parts = [];
+        const seen = new Set();
+        finishedProductsForMaterial(m.name, fpList).forEach(name => {
+            if (seen.has(name)) return;
+            seen.add(name);
+            const prod = fpList.find(p => String(p.name).trim() === name) || {};
+            const recipeKey = Object.keys(prod.recipeDetails || {}).find(k => k.toLowerCase().trim() === matKey);
+            const need = recipeKey ? parseFloat(String((prod.recipeDetails[recipeKey] || {}).needPerUnit ?? "").replace(/[^0-9.]/g, "")) : NaN;
+            const limit = isFinite(need) && need > 0 ? ` (${fmtQtyOrDash(need, m.unit)}/unit)` : "";
+            parts.push(`${name}${limit}: ${fmtQtyOrDash(totals.get(name) || 0, m.unit)}`);
+        });
+        totals.forEach((q, name) => { if (!seen.has(name)) parts.push(`${name}: ${fmtQtyOrDash(q, m.unit)}`); });
+        const finishedProduct = parts.length ? parts.join(" · ") : "—";
+        const finishedProductParts = parts.slice();
 
         let additionalNeed7 = null, additionalNeed1m = null, status, interpretation;
         if (plan.hasData) {
@@ -979,6 +1042,7 @@ function loadAuthoritativeForecasts() {
             hasUsageData: plan.hasData,
             mapePct: plan.mapePct,
             finishedProduct,
+            finishedProductParts,
             forecast7Day: plan.forecast7,
             forecast1Month: plan.forecast30,
             additionalNeed7,
@@ -1114,7 +1178,7 @@ function renderManagerSummaryTab() {
                 <td>${periodReceipts.length > 0 ? `<span class="rpt-badge rpt-badge-good">${periodReceipts.length} Batches Stored</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
             </tr>
             <tr>
-                <td><strong>Production Usage</strong></td>
+                <td><strong>Material Usage</strong></td>
                 <td><strong>${periodDisbursements.length}</strong></td>
                 <td>Stock Used in Kitchen</td>
                 <td>${periodDisbursements.length > 0 ? `<span class="rpt-badge rpt-badge-good">${periodDisbursements.length} Usages Recorded</span>` : `<span class="rpt-badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;">No Activity in Period</span>`}</td>
@@ -1410,7 +1474,7 @@ function renderManagerCharts() {
                     {
                         label: "Disbursed Outflow (-)",
                         data: disbData.length > 0 ? disbData : [0],
-                        backgroundColor: "#2563eb", // Blue
+                        backgroundColor: "#14532D", // Blue
                         borderRadius: 4,
                         barPercentage: 0.7,
                         categoryPercentage: 0.8
@@ -1582,7 +1646,7 @@ function renderInventoryRecordsTab() {
                     <td>${escapeHtml(m.unit)}</td>
                     <td><strong>${m.currentStock.toLocaleString()}</strong></td>
                     <td>${m.minThreshold.toLocaleString()}</td>
-                    <td>${escapeHtml(reorderText(m, false))}</td>
+                    <td>${reorderCellHtml(m, false)}</td>
                     <td><span class="rpt-badge ${badgeCls}">${m.status}</span></td>
                 </tr>
             `;
@@ -1641,20 +1705,19 @@ function renderMaterialReceivingTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.rcvPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No receiving records recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(r => `
             <tr>
                 <td>${escapeHtml(r.receiptDate)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(r.receiptTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(16,185,129,0.1); color:#065f46; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(r.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(r.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(r.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(r.materialName)}</strong></td>
                 <td><strong style="color:var(--rpt-green-dark);">+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
                 <td>${escapeHtml(r.unit)}</td>
                 <td>${escapeHtml(r.supplierName)}</td>
                 <td>${escapeHtml(r.receivedBy)}</td>
-                <td><span class="rpt-badge rpt-badge-good">Verified &amp; Received</span></td>
+                <td><span class="rpt-badge rpt-badge-good">Received</span></td>
             </tr>
         `).join("");
     }
@@ -1711,14 +1774,13 @@ function renderMaterialDisbursementTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.disbPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No material disbursements recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(d => `
             <tr>
                 <td>${escapeHtml(d.usageDate)}</td>
-                <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(d.usageTime || '—')}</span></td>
                 <td><code class="ref-badge" style="font-family:monospace; background:rgba(239,68,68,0.1); color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(d.referenceNo || '—')}</code></td>
-                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(d.materialCode || '—')}</span></td>
+                <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(d.materialCode || '—')}</span></td>
                 <td><strong>${escapeHtml(d.materialName)}</strong></td>
                 <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(d.finishedProduct)}</span></td>
                 <td><strong style="color:var(--rpt-orange-dark);">${d.disbursedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></td>
@@ -1816,7 +1878,7 @@ function renderMaterialActivityTab() {
     const pageItems = filtered.slice(startIdx, startIdx + state.actPageSize);
 
     if (pageItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--rpt-text-dim);">No activity transactions recorded for this period.</td></tr>`;
     } else {
         tbody.innerHTML = pageItems.map(a => {
             const isRcv = a.type === "Received";
@@ -1827,9 +1889,8 @@ function renderMaterialActivityTab() {
             return `
                 <tr>
                     <td>${escapeHtml(a.date)}</td>
-                    <td><span style="font-size:0.75rem; color:#64748B; font-weight:600;">${escapeHtml(a.time || '—')}</span></td>
                     <td><code class="ref-badge" style="font-family:monospace; background:rgba(99,102,241,0.1); color:#3730a3; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(a.referenceNo || '—')}</code></td>
-                    <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#2563EB; background:#EFF6FF; padding:2px 6px; border-radius:4px; border:1px solid #DBEAFE;">${escapeHtml(a.materialCode || '—')}</span></td>
+                    <td><span style="font-family:monospace; font-size:12px; font-weight:700; color:#14532D; background:#F0FDF4; padding:2px 6px; border-radius:4px; border:1px solid #DCFCE7;">${escapeHtml(a.materialCode || '—')}</span></td>
                     <td><span class="rpt-badge ${badgeCls}">${a.type}</span></td>
                     <td><strong>${escapeHtml(a.material)}</strong></td>
                     <td><strong style="color:${qtyColor};">${qtyStr}</strong></td>
@@ -2093,52 +2154,41 @@ function renderAiForecastingTab() {
 
             let cardsHtml = "";
 
+            // Status cards: Critical (red) / Low (orange) / Good (green) - the whole card is tinted and glows in its status colour
+            const card = (tone, title, label, body) => `
+                        <div class="rpt-fc-decision-card rmims-status-card rmims-status-card-${tone}">
+                            <div class="rpt-fc-decision-title">
+                                <span class="rmims-status-card-title">${title}</span>
+                                <span class="rmims-status-card-badge">${label}</span>
+                            </div>
+                            <div class="rpt-fc-decision-body">${body}</div>
+                        </div>`;
+            const fmt = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
             if (criticalItems.length > 0) {
                 criticalItems.slice(0, 3).forEach(item => {
                     const req = isMonthly ? item.forecast1Month : item.forecast7Day;
                     const addNeed = isMonthly ? item.additionalNeed1m : item.additionalNeed7;
-                    cardsHtml += `
-                        <div class="rpt-fc-decision-card warning">
-                            <div class="rpt-fc-decision-title">
-                                <span style="color:#b91c1c;">${escapeHtml(item.name)} — Potential Deficit</span>
-                                <span class="rpt-badge rpt-badge-shortage">Deficit Warning</span>
-                            </div>
-                            <div class="rpt-fc-decision-body">
-                                Projected ${isMonthly ? "30-day" : "7-day"} requirement is <strong>${req.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong> vs current stock of <strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong>. Additional <strong>+${addNeed.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}</strong> required to satisfy operations.
-                            </div>
-                        </div>
-                    `;
+                    const u = escapeHtml(item.unit);
+                    const minPart = Number(item.minThreshold) > 0 ? ` plus the minimum stock of <strong>${fmt(item.minThreshold)} ${u}</strong>` : "";
+                    // colour follows the stock itself: Critical = out of stock / far below minimum, otherwise Low (order more)
+                    const stk = Number(item.currentStock) || 0, mn = Number(item.minThreshold) || 0;
+                    const isCrit = stk <= 0 || (mn > 0 && stk <= mn / 2);
+                    cardsHtml += card(isCrit ? "critical" : "low", `${escapeHtml(item.name)} — ${isCrit ? "needs restock now" : "order more"}`, isCrit ? "Critical" : "Low",
+                        `Expected use in the next ${isMonthly ? "30" : "7"} days: <strong>${fmt(req)} ${u}</strong>${minPart}. In stock: <strong>${fmt(item.currentStock)} ${u}</strong>. Order <strong>${fmt(addNeed)} ${u}</strong> more.`);
                 });
             }
 
             if (attentionItems.length > 0 && criticalItems.length < 3) {
                 attentionItems.slice(0, 3 - criticalItems.length).forEach(item => {
-                    cardsHtml += `
-                        <div class="rpt-fc-decision-card attention">
-                            <div class="rpt-fc-decision-title">
-                                <span style="color:#c2410c;">${escapeHtml(item.name)} — Threshold Alert</span>
-                                <span class="rpt-badge rpt-badge-attention">Needs Attention</span>
-                            </div>
-                            <div class="rpt-fc-decision-body">
-                                Current stock (<strong>${item.currentStock.toLocaleString()} ${escapeHtml(item.unit)}</strong>) is within minimum safety threshold (<strong>${item.minThreshold} ${escapeHtml(item.unit)}</strong>). Place replenishment order with supplier to avoid kitchen stockout.
-                            </div>
-                        </div>
-                    `;
+                    const u = escapeHtml(item.unit);
+                    cardsHtml += card("low", `${escapeHtml(item.name)} — running low`, "Low",
+                        `In stock: <strong>${fmt(item.currentStock)} ${u}</strong>, at or below its minimum of <strong>${fmt(item.minThreshold)} ${u}</strong>. Order soon to avoid running out.`);
                 });
             }
 
             if (!cardsHtml) {
-                cardsHtml = `
-                    <div class="rpt-fc-decision-card">
-                        <div class="rpt-fc-decision-title">
-                            <span style="color:#15803d;">All Raw Materials Within Safe Operational Buffers</span>
-                            <span class="rpt-badge rpt-badge-good">Sufficient Stock</span>
-                        </div>
-                        <div class="rpt-fc-decision-body">
-                            Current inventory cushions across all registered materials fully satisfy projected ${isMonthly ? "30-day" : "7-day"} operational demand. No immediate shortage risks detected.
-                        </div>
-                    </div>
-                `;
+                cardsHtml = card("good", "All raw materials have enough stock", "Good",
+                    `Stock on hand covers the expected use for the next ${isMonthly ? "30" : "7"} days for every raw material.`);
             }
 
             decisionListEl.innerHTML = cardsHtml;
@@ -2211,11 +2261,11 @@ function renderAiForecastingTab() {
                 <tr>
                     <td><strong>${escapeHtml(item.name)}</strong></td>
                     <td><span style="font-size:0.75rem; color:var(--rpt-text-mid); font-family:monospace;">${escapeHtml(item.itemCode)}</span></td>
-                    <td><span style="font-weight:600; color:var(--rpt-blue-dark);">${escapeHtml(item.finishedProduct)}</span></td>
+                    <td>${productsDropdownHtml(item.finishedProductParts)}</td>
                     <td><strong>${item.currentStock.toLocaleString()}</strong> <small style="color:var(--rpt-text-dim);">${escapeHtml(item.unit)}</small></td>
                     <td>${escapeHtml(item.unit)}</td>
                     <td>${item.recentConsumption > 0 ? `${item.recentConsumption.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${escapeHtml(item.unit)}` : (item.hasUsageData ? `0 ${escapeHtml(item.unit)}` : "—")}</td>
-                    <td><strong style="color:var(--rpt-blue-dark, #1e40af); font-weight:700;" title="${item.hasUsageData ? `±${item.mapePct}% margin of error` : "No recorded usage"}">${escapeHtml(fmtQtyOrDash(req, item.unit))}</strong></td>
+                    <td><strong style="color:var(--rpt-blue-dark, #14532D); font-weight:700;" title="${item.hasUsageData ? `±${item.mapePct}% margin of error` : "No recorded usage"}">${escapeHtml(fmtQtyOrDash(req, item.unit))}</strong></td>
                     <td><strong style="color:${addNeed > 0 ? '#DC2626' : 'var(--rpt-text-mid)'}; font-weight:700;">${addNeed == null ? "—" : escapeHtml(fmtQtyOrDash(addNeed, item.unit, { signed: true }))}</strong></td>
                     <td>${badge}</td>
                 </tr>
@@ -2432,7 +2482,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                     <td><span style="font-family:'Inter', sans-serif; font-weight:600; color:#475569;">${escapeHtml(m.itemCode)}</span></td>
                                     <td>${escapeHtml(m.stock)}</td>
                                     <td>${escapeHtml(m.threshold)}</td>
-                                    <td><span style="color:#2563EB; font-weight:600;">${escapeHtml(m.action)}</span></td>
+                                    <td><span style="color:#14532D; font-weight:600;">${escapeHtml(m.action)}</span></td>
                                     <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `).join("")
@@ -2472,7 +2522,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                     <td>${escapeHtml(m.unit)}</td>
                                     <td><strong>${m.currentStock.toLocaleString()}</strong></td>
                                     <td>${m.minThreshold.toLocaleString()}</td>
-                                    <td>${escapeHtml(reorderText(m, false))}</td>
+                                    <td>${reorderCellHtml(m, false)}</td>
                                     <td><strong style="color:${m.status === 'Good' ? '#059669' : (m.status === 'Low' ? '#D97706' : '#DC2626')}">${escapeHtml(m.status)}</strong></td>
                                 </tr>
                             `).join("")
@@ -2490,7 +2540,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
 
         sectionsHtml += `
             <div class="print-section">
-                <h3 class="print-section-title">Material Receiving Verified Log</h3>
+                <h3 class="print-section-title">Material Receiving Log</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -2509,7 +2559,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                                     <td><strong>${escapeHtml(r.materialName)}</strong></td>
                                     <td><strong style="color:#059669;">+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(r.unit || "")}</td>
                                     <td>${escapeHtml(r.supplierName || "—")}</td>
-                                    <td>${escapeHtml(r.receivedBy || "Verified")}</td>
+                                    <td>${escapeHtml(r.receivedBy || "—")}</td>
                                 </tr>
                             `).join("")
                         }
@@ -2526,7 +2576,7 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
 
         sectionsHtml += `
             <div class="print-section">
-                <h3 class="print-section-title">Production Material Disbursement Log</h3>
+                <h3 class="print-section-title">Material Disbursement Log</h3>
                 <table class="print-table">
                     <thead>
                         <tr>
@@ -2538,12 +2588,12 @@ function buildContinuousPrintHtml(selectedSections = [state.activeTab || "manage
                         </tr>
                     </thead>
                     <tbody>
-                        ${displayDisbs.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No production disbursements recorded for this period.</td></tr>` :
+                        ${displayDisbs.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b; font-style:italic;">No disbursements recorded for this period.</td></tr>` :
                             displayDisbs.map(d => `
                                 <tr>
                                     <td>${escapeHtml(d.usageDate)}</td>
                                     <td><strong>${escapeHtml(d.materialName)}</strong></td>
-                                    <td>${escapeHtml(d.finishedProduct || "Production Batch")}</td>
+                                    <td>${escapeHtml(d.finishedProduct || "—")}</td>
                                     <td><strong style="color:#DC2626;">-${(d.disbursedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> ${escapeHtml(d.unit || "")}</td>
                                     <td>${escapeHtml(d.recordedBy || "Manager")}</td>
                                 </tr>
@@ -3261,7 +3311,7 @@ function generateSingleTabPdf(tabKey = "manager") {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10.5);
         doc.setTextColor(...RM_GREEN);
-        doc.text("Material Receiving Verified Log", 40, y);
+        doc.text("Material Receiving Log", 40, y);
         y += 10;
 
         const rows = filteredData.records.length === 0
@@ -3272,7 +3322,7 @@ function generateSingleTabPdf(tabKey = "manager") {
                 `+${(r.receivedQuantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
                 r.supplierName,
                 r.receivedBy,
-                "Verified"
+                "Received"
             ]);
 
         doc.autoTable({
@@ -3287,7 +3337,7 @@ function generateSingleTabPdf(tabKey = "manager") {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10.5);
         doc.setTextColor(...RM_GREEN);
-        doc.text("Production Material Disbursement Log", 40, y);
+        doc.text("Material Disbursement Log", 40, y);
         y += 10;
 
         const rows = filteredData.records.length === 0
@@ -3464,13 +3514,13 @@ function generateSingleTabExcelBlob(tabKey = "manager") {
         sheetName = "Inventory Records";
         rows = [
             ["Raw Material", "Item Code", "Unit", "Current Stock", "Minimum Threshold", "Reorder Quantity", "Status"],
-            ...filteredData.records.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, m.reorderQty == null ? "—" : m.reorderQty, m.status])
+            ...filteredData.records.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, reorderText(m), m.status])
         ];
     } else if (tabKey === "receiving") {
         sheetName = "Material Receiving";
         rows = [
             ["Receipt Date", "Raw Material", "Received Qty", "Unit", "Supplier Name", "Received By", "Status"],
-            ...filteredData.records.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Verified Inbound"])
+            ...filteredData.records.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Received"])
         ];
     } else if (tabKey === "disbursement") {
         sheetName = "Material Disbursement";
@@ -3572,7 +3622,7 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
     ];
     const rightCol = [
         ["GENERATED AT", `${genDateStr} ${genTimeStr}`],
-        ["SYSTEM AUTHORITY", "RMSME Production & Inventory Controller"],
+        ["SYSTEM AUTHORITY", "RMSME Inventory Controller"],
         ["SOURCE DATABASE", "RMSME Authoritative PostgreSQL Database"]
     ];
 
@@ -3651,7 +3701,7 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
                     ["Optimal / Good Stock Items", `${goodStock} items`],
                     ["Attention Required (Low / Critical)", `${attentionStock} items`],
                     ["Period Material Receipts Logged", `${periodReceipts.length} receipt records`],
-                    ["Period Production Disbursements Logged", `${periodDisbursements.length} disbursement records`]
+                    ["Period Disbursements Logged", `${periodDisbursements.length} disbursement records`]
                 ],
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
@@ -3773,7 +3823,7 @@ function generateContinuousPdf(selectedSections = ["manager", "inventory", "rece
                         `+${r.receivedQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${r.unit}`,
                         r.supplierName,
                         r.receivedBy,
-                        "Verified"
+                        "Received"
                     ]),
                 margin: { left: 40, right: 40 },
                 styles: { font: "helvetica", fontSize: 8, textColor: RM_INK, cellPadding: 4.5 },
@@ -4017,7 +4067,7 @@ function buildMultiSheetExcelWorkbook(selectedSections = ["manager", "restock", 
         if (key === "inventory") {
             const rows = [
                 ["Raw Material", "Item Code", "Unit", "Current Stock", "Minimum Threshold", "Reorder Quantity", "Status"],
-                ...targetMaterials.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, m.reorderQty == null ? "—" : m.reorderQty, m.status])
+                ...targetMaterials.map(m => [m.name, m.itemCode, m.unit, m.currentStock, m.minThreshold, reorderText(m), m.status])
             ];
             const ws = XLSX.utils.aoa_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, "Inventory Records");
@@ -4026,7 +4076,7 @@ function buildMultiSheetExcelWorkbook(selectedSections = ["manager", "restock", 
         if (key === "receiving") {
             const rows = [
                 ["Receipt Date", "Raw Material", "Received Qty", "Unit", "Supplier Name", "Received By", "Status"],
-                ...periodReceipts.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Verified"])
+                ...periodReceipts.map(r => [r.receiptDate, r.materialName, r.receivedQuantity, r.unit, r.supplierName, r.receivedBy, "Received"])
             ];
             const ws = XLSX.utils.aoa_to_sheet(rows);
             XLSX.utils.book_append_sheet(wb, ws, "Material Receiving");
@@ -4558,9 +4608,9 @@ function initEventListeners() {
     }
 
     if (locInput) {
-        locInput.addEventListener("click", () => {
+        locInput.addEventListener("click", async () => {
             if (state.customSaveDirectoryHandle || state.customSaveDirectoryName) {
-                if (confirm("Reset save location back to default browser Downloads folder?")) {
+                if (await window.rmimsConfirm("Reset save location back to default browser Downloads folder?")) {
                     state.customSaveDirectoryHandle = null;
                     state.customSaveDirectoryName = null;
                     locInput.value = "Downloads (Browser Default)";
@@ -4660,7 +4710,7 @@ function updateCorporatePreviewDetails(target) {
         restock: { title: "Restock Recommendations", ref: "MRV-2026-RST", desc: "Actionable replenishment guide for low and critical inventory." },
         inventory: { title: "Inventory Records", ref: "MRV-2026-INV", desc: "Stock catalog, quantities on hand, units, and replenishment states." },
         receiving: { title: "Material Receiving", ref: "MRV-2026-RCV", desc: "Supplier deliveries, inbound shipments, lots, and dates." },
-        disbursement: { title: "Material Disbursement", ref: "MRV-2026-DSB", desc: "Disbursed raw materials released for production batches." },
+        disbursement: { title: "Material Disbursement", ref: "MRV-2026-DSB", desc: "Disbursed raw materials released for finished products." },
         activity: { title: "Material Activity", ref: "MRV-2026-ACT", desc: "Chronological audit ledger combining all inbound and outbound stock." },
         consumption: { title: "Consumption Analysis", ref: "MRV-2026-CNS", desc: "Material burn rates, daily consumption velocity, and usage trends." },
         forecasting: { title: "AI Forecasting", ref: "MRV-2026-FOR", desc: "Machine learning demand projections and safety stock targets." }
@@ -4681,7 +4731,7 @@ function updateCorporatePreviewDetails(target) {
         const pBtn = document.getElementById("profileBtn");
         let pName = pBtn?.querySelector("[data-shell-name]")?.textContent?.trim();
         if (!pName || ['manager', 'manager_01', 'user account', 'user'].includes(pName.toLowerCase())) {
-            pName = "Aizel";
+            pName = pName || "";
         }
         mgrEl.textContent = pName;
     }
@@ -4811,7 +4861,7 @@ function formatOperatorDisplay(val, fallback = "Manager") {
     return clean;
 }
 
-function formatContextDisplay(val, fallback = "General Production") {
+function formatContextDisplay(val, fallback = "—") {
     if (!val || typeof val !== "string") return fallback;
     const clean = val.trim();
     if (clean.toLowerCase() === "all" || clean.toLowerCase() === "null" || clean === "—" || !clean) {

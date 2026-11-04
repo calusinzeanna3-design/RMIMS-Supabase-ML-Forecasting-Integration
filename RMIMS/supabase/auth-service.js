@@ -26,6 +26,39 @@ function friendlyAuthError(error) {
 }
 
 /**
+ * Calls the auth-gate Edge Function (sign-in / sign-up / password reset). All security checks run there.
+ * Always resolves to { ok, code, message, ... }; never falls back to a weaker browser-side check.
+ */
+export async function callAuthGate(body) {
+    try {
+        const { data, error } = await supabase.functions.invoke("auth-gate", { body });
+        if (error) {
+            let payload = null;
+            try { payload = error.context && typeof error.context.json === "function" ? await error.context.json() : null; } catch (_) {}
+            if (payload && typeof payload.ok === "boolean" && payload.code) return payload;   // auth-gate's own answer
+            return { ok: false, code: "SERVICE_UNAVAILABLE", message: "The sign-in service is not reachable right now. Please check your connection and try again. (Administrator: deploy the auth-gate Edge Function.)" };
+        }
+        if (data && typeof data === "object" && typeof data.ok === "boolean" && data.code) return data;
+        return { ok: false, code: "SERVER_ERROR", message: "The sign-in service gave an unexpected answer. Please try again." };
+    } catch (_) {
+        return { ok: false, code: "SERVICE_UNAVAILABLE", message: "The sign-in service is not reachable right now. Please check your connection and try again." };
+    }
+}
+
+/** The message to show for a failed auth-gate answer (adds the attempts left on a wrong password). */
+export function authGateMessage(res) {
+    if (!res) return "Unable to proceed. Please try again.";
+    let msg = res.message || "Unable to proceed. Please try again.";
+    if (res.code === "WRONG_PASSWORD" && Number.isFinite(Number(res.remaining))) {
+        const left = Number(res.remaining);
+        msg += left <= 2
+            ? ` Warning: ${left} attempt${left === 1 ? "" : "s"} left before this account is locked.`
+            : ` ${left} attempts left.`;
+    }
+    return msg;
+}
+
+/**
  * Ensures the transition DOM overlay exists on the page and returns its elements.
  */
 function ensureAuthTransitionDOM(expectedRole) {
@@ -281,7 +314,7 @@ export function isUserAccountRejected(email, uid, username = '') {
 
 export function isUserAccountLocked(email) {
     const cleanEmail = (email || '').toLowerCase().trim();
-    if (!cleanEmail || cleanEmail === 'calusinzeanna3@gmail.com') return false;
+    if (!cleanEmail) return false;
 
     try {
         const telemetry = JSON.parse(localStorage.getItem('RMIMS_AUTH_TELEMETRY_V2') || '{"loginFailures":{}}');
@@ -428,132 +461,25 @@ export async function loginUser(email, password, expectedRole) {
     const transDOM = showAuthTransition(expectedRole, "Connecting to Supabase Authentication...", 18);
 
     try {
-        let cleanEmailInput = email.trim();
-        if (!cleanEmailInput.includes('@')) {
-            if (cleanEmailInput.toLowerCase() === 'zeanna' || cleanEmailInput.toLowerCase() === 'admin') {
-                cleanEmailInput = 'calusinzeanna3@gmail.com';
-            } else {
-                const targetClean = cleanEmailInput.toLowerCase().replace(/\s+/g, '');
-                
-                // 1. Check approved users cache
-                try {
-                    const approved = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
-                    const found = approved.find(u => {
-                        const uUser = (u.username || '').toLowerCase().replace(/\s+/g, '');
-                        const uName = (u.name || '').toLowerCase().replace(/\s+/g, '');
-                        return (uUser && uUser === targetClean) || (uName && uName === targetClean);
-                    });
-                    if (found && found.email) cleanEmailInput = found.email;
-                } catch (_) {}
+        // Step 1: every check (e-mail / username exists, locked, wrong password, approval status, rate limit)
+        // runs on the server in the auth-gate Edge Function; the browser only receives the result.
+        const gate = await callAuthGate({ action: "login", identifier: String(email || "").trim(), password: password || "" });
 
-                // 2. Check registered users directory
-                if (!cleanEmailInput.includes('@')) {
-                    try {
-                        const regList = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-                        const found = regList.find(u => {
-                            const uUser = (u.username || '').toLowerCase().replace(/\s+/g, '');
-                            const uName = (u.name || '').toLowerCase().replace(/\s+/g, '');
-                            return (uUser && uUser === targetClean) || (uName && uName === targetClean);
-                        });
-                        if (found && found.email) cleanEmailInput = found.email;
-                    } catch (_) {}
-                }
-
-                // 3. Check pending users
-                if (!cleanEmailInput.includes('@')) {
-                    try {
-                        const pending = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-                        const found = pending.find(u => {
-                            const uUser = (u.username || '').toLowerCase().replace(/\s+/g, '');
-                            const uName = (u.name || '').toLowerCase().replace(/\s+/g, '');
-                            return (uUser && uUser === targetClean) || (uName && uName === targetClean);
-                        });
-                        if (found && found.email) cleanEmailInput = found.email;
-                    } catch (_) {}
-                }
-
-                // 4. Query Supabase user_profiles if still not resolved
-                if (!cleanEmailInput.includes('@')) {
-                    try {
-                        const { data: upData } = await supabase
-                            .from('user_profiles')
-                            .select('email')
-                            .or(`username.ilike.${cleanEmailInput},username.ilike.${targetClean},full_name.ilike.${cleanEmailInput}`)
-                            .limit(1)
-                            .maybeSingle();
-                        if (upData && upData.email) {
-                            cleanEmailInput = upData.email;
-                        }
-                    } catch (_) {}
-                }
-
-                // Fallback store.ph domain if still no @
-                if (!cleanEmailInput.includes('@')) {
-                    cleanEmailInput = `${targetClean}@store.ph`;
-                }
-            }
-        }
-
-        // Security Pre-Check: Block locked accounts before attempting sign in
-        if (isUserAccountLocked(cleanEmailInput)) {
-            hideAuthTransition(transDOM);
-            throw new Error(`Your account is locked due to 5 consecutive failed login attempts. An operational security alert has been dispatched to ${cleanEmailInput}. Please contact your System Administrator to unlock your account.`);
-        }
-
-        // Step 1: Sign in with Supabase Auth
-        const authPromise = supabase.auth.signInWithPassword({
-            email: cleanEmailInput,
-            password: password
-        });
-
-        // Smooth pacing delay to allow video playback
         await sleep(550);
         updateAuthProgress(transDOM, 38, "Verifying credentials & security tokens...");
 
-        const { data, error } = await authPromise;
-
-        if (error) {
+        if (!gate.ok) {
             hideAuthTransition(transDOM);
-            const msg = (error.message || "").toLowerCase();
-            if (msg.includes("invalid") || msg.includes("credential") || msg.includes("password")) {
-                const userCtx = resolveUserAccountContext(cleanEmailInput);
-                const failRes = recordLoginFailure(cleanEmailInput, `${userCtx.branchName} (${userCtx.branchLocation})`);
-                if (failRes && failRes.accountLocked) {
-                    dispatchAccountLockoutEmailAlert({
-                        email: cleanEmailInput,
-                        branchName: userCtx.branchName,
-                        branchLocation: userCtx.branchLocation,
-                        attempts: failRes.attempts
-                    });
-
-                    // Update local caches to status 'Locked'
-                    try {
-                        const reg = JSON.parse(localStorage.getItem('rmims_registered_users') || '[]');
-                        reg.forEach(u => {
-                            if ((u.email || '').toLowerCase().trim() === cleanEmailInput) u.status = 'Locked';
-                        });
-                        localStorage.setItem('rmims_registered_users', JSON.stringify(reg));
-                    } catch (_) {}
-                    try {
-                        const app = JSON.parse(localStorage.getItem('rmims_approved_users') || '[]');
-                        app.forEach(u => {
-                            if ((u.email || '').toLowerCase().trim() === cleanEmailInput) u.status = 'Locked';
-                        });
-                        localStorage.setItem('rmims_approved_users', JSON.stringify(app));
-                    } catch (_) {}
-
-                    // Update Supabase user_profiles if reachable
-                    try {
-                        supabase.from("user_profiles").update({ status: "locked", updated_at: new Date().toISOString() }).eq("email", cleanEmailInput);
-                    } catch (_) {}
-
-                    throw new Error(`Account Locked: 5 failed login attempts reached. An operational security alert has been dispatched to ${cleanEmailInput}. Please contact the Administrator to unlock your account.`);
-                } else if (failRes && failRes.attempts >= 3) {
-                    throw new Error(`Invalid credentials. Security Warning: Failed attempt ${failRes.attempts} of 5. After 5 failed attempts, your account will be locked.`);
-                }
-            }
-            throw new Error(friendlyAuthError(error));
+            throw new Error(authGateMessage(gate));
         }
+
+        const { data: sessData, error: sessErr } = await supabase.auth.setSession(gate.session);
+        if (sessErr || !sessData?.user) {
+            hideAuthTransition(transDOM);
+            throw new Error("Your sign-in could not be completed on this device. Please try again.");
+        }
+        const data = { user: sessData.user, session: sessData.session };
+        const cleanEmailInput = String(sessData.user.email || "").toLowerCase();
 
         if (!data?.user?.id) {
             await supabase.auth.signOut();
@@ -662,7 +588,7 @@ export async function loginUser(email, password, expectedRole) {
         }
 
         const cleanEmail = (data.user?.email || "").toLowerCase();
-        const isMasterAdmin = cleanEmail === "calusinzeanna3@gmail.com";
+        const isMasterAdmin = false;
         const accountUsername = profile.username || (data.user?.email ? data.user.email.split('@')[0] : '');
         const accountFullName = profile.full_name || '';
 
@@ -670,7 +596,6 @@ export async function loginUser(email, password, expectedRole) {
             profile.role = "admin";
             profile.operational_role = "admin";
             profile.status = "active";
-            profile.full_name = profile.full_name || "Zeanna";
             // Ensure Supabase user_profiles table also updates to active if possible
             try {
                 await supabase.from("user_profiles").upsert({
@@ -684,7 +609,7 @@ export async function loginUser(email, password, expectedRole) {
             } catch (_) {}
         } else {
             // Unified Admin Security Check 1: Block permanently deleted accounts
-            const isDeleted = isUserAccountDeleted(cleanEmail, uid, accountUsername) || profile.status === "deleted";
+            const isDeleted = profile.status === "deleted"; // the database is the record (checked by auth-gate too)
             if (isDeleted) {
                 hideAuthTransition(transDOM);
                 await supabase.auth.signOut();
@@ -698,7 +623,7 @@ export async function loginUser(email, password, expectedRole) {
             }
 
             // Unified Admin Security Check 2: Block rejected account applications
-            const isRejected = isUserAccountRejected(cleanEmail, uid, accountUsername) || profile.status === "rejected";
+            const isRejected = profile.status === "rejected";
             if (isRejected) {
                 hideAuthTransition(transDOM);
                 await supabase.auth.signOut();
@@ -712,7 +637,7 @@ export async function loginUser(email, password, expectedRole) {
             }
 
             // Unified Admin Security Check 3: Block locked, inactive, or suspended accounts
-            const isLocked = (profile.status === "locked" || isUserAccountLocked(cleanEmail)) && !isMasterAdmin;
+            const isLocked = profile.status === "locked" && !isMasterAdmin;
             if (isLocked) {
                 hideAuthTransition(transDOM);
                 await supabase.auth.signOut();
@@ -739,7 +664,7 @@ export async function loginUser(email, password, expectedRole) {
             }
 
             // Unified Admin Security Check 4: Enforce Admin approval for pending accounts
-            const isPending = isUserPendingApproval(cleanEmail, uid, profile.status, accountUsername, accountFullName);
+            const isPending = ["pending", "pending_approval"].includes(String(profile.status || "").toLowerCase());
             if (isPending) {
                 hideAuthTransition(transDOM);
                 await supabase.auth.signOut();
@@ -752,14 +677,6 @@ export async function loginUser(email, password, expectedRole) {
                 throw new Error("Your account is currently awaiting Administrator approval. Please wait for the Main Admin to activate your access.");
             }
             profile.status = "active";
-
-            // Ensure Supabase database user_profiles table is kept in sync with active status
-            try {
-                await supabase.from("user_profiles").update({
-                    status: "active",
-                    updated_at: new Date().toISOString()
-                }).eq("id", uid);
-            } catch (_) {}
         }
 
         const isDumpAccount = cleanEmail === "admin@rmims.ph" || cleanEmail === "manager@rmims.ph" || cleanEmail === "staff@rmims.ph" || cleanEmail === "asst.manager@rmims.ph";
@@ -990,135 +907,28 @@ export async function signOutUser() {
  * Enforces that created accounts are End Users, assigned with 'pending' status
  * strictly requiring Admin confirmation before access is granted.
  */
-export async function signUpUser({ fullName, email, username, password, branchName, branchLocation, branchStore, role, companyId, companyName }) {
-    if (!email || !password) {
-        throw new Error("Email and password are required.");
-    }
-    if (!username || !username.trim()) {
-        throw new Error("Username is required.");
-    }
-    const cleanUsername = username.trim();
-    if (cleanUsername.length < 3) {
-        throw new Error("Username must be at least 3 characters.");
-    }
-
-    const combinedBranch = (branchName && branchLocation)
-        ? `${branchName.trim()} (${branchLocation.trim()})`
-        : (branchName?.trim() || branchStore || branchLocation?.trim() || "General Operations");
-
-    const strToCheck = [
-        companyId,
-        companyName,
-        branchName,
-        branchLocation,
-        branchStore
-    ].map(s => String(s || '').toLowerCase()).join(' ');
-
-    const isScones = strToCheck.includes("1872cf44-e821-4370-b227-d1b7e4fc6f56") ||
-        strToCheck.includes("scones") ||
-        strToCheck.includes("muffin") ||
-        strToCheck.includes("nutribun") ||
-        strToCheck.includes("bakery");
-
-    const assignedCompanyId = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
-    const assignedCompanyName = isScones ? "Scones & Muffins Bakery" : "KXC 5-Year Enterprise";
-    const assignedDatasetFolder = isScones ? "1872cf44-e821-4370-b227-d1b7e4fc6f56" : "a72a7971-6ec7-4edc-ae72-89d702199ed9";
-
-    // Explicitly enforce end-user operational roles only (never admin)
-    const validRoles = ["staff", "manager", "user", "user_staff"];
-    const operationalRole = validRoles.includes(role) ? role : "staff";
-
-    // Use non-persisting ephemeral client for signup so browser session is preserved
-    let signUpClient = supabase;
-    try {
-        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-        const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import("./supabase-config.js");
-        signUpClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false,
-                detectSessionInUrl: false
-            }
-        });
-    } catch (_) {}
-
-    const { data, error } = await signUpClient.auth.signUp({
-        email: email.trim(),
-        password: password,
-        options: {
-            data: {
-                full_name: fullName.trim(),
-                username: cleanUsername,
-                branch_store: combinedBranch,
-                branch_name: branchName?.trim() || (isScones ? "Scones & Muffins Store" : "Branch Store"),
-                branch_location: branchLocation?.trim() || "Lucena",
-                operational_role: operationalRole,
-                role: "user", // base role for schema access
-                status: "pending", // Strictly requires Admin approval
-                company_id: assignedCompanyId,
-                company_name: assignedCompanyName,
-                dataset_folder: assignedDatasetFolder
-            }
-        }
+export async function signUpUser({ fullName, email, username, password, confirmPassword, branchName, branchLocation, branchStore, role, companyId, companyName }) {
+    // Every check (blank fields, e-mail format, e-mail / username already used, company, role, password rules)
+    // runs on the server in the auth-gate Edge Function, which also creates the login. The account starts PENDING
+    // until the Administrator approves it.
+    const res = await callAuthGate({
+        action: "signup",
+        email: String(email || "").trim(),
+        username: String(username || "").trim(),
+        full_name: String(fullName || "").trim(),
+        password: password || "",
+        confirm_password: confirmPassword ?? password ?? "",
+        company: String(companyName || branchName || companyId || "").trim(),
+        role: String(role || "").trim().toLowerCase(),
+        branch_name: String(branchName || companyName || "").trim(),
+        branch_location: String(branchLocation || "").trim(),
+        branch_store: String(branchStore || "").trim()
     });
-
-    if (error) {
-        throw new Error(friendlyAuthError(error));
-    }
-
-    // Record profile in user_profiles with status: 'pending'
-    if (data?.user?.id) {
-        try {
-            const profilePayload = {
-                id: data.user.id,
-                email: email.trim(),
-                full_name: fullName.trim(),
-                username: cleanUsername,
-                role: "user",
-                operational_role: operationalRole,
-                branch_name: branchName?.trim() || (isScones ? "Scones & Muffins Store" : "Branch Store"),
-                branch_location: branchLocation?.trim() || "Lucena",
-                branch_store: combinedBranch,
-                status: "pending", // Strictly requires Admin approval
-                company_id: assignedCompanyId,
-                company_name: assignedCompanyName,
-                dataset_folder: assignedDatasetFolder
-            };
-
-            const { error: upsertErr } = await supabase.from("user_profiles").upsert(profilePayload);
-            if (upsertErr) {
-                console.warn("user_profiles initialization notice:", upsertErr);
-            }
-        } catch (insertErr) {
-            console.log("user_profiles initialization notice:", insertErr);
-        }
-
-        // Strictly place in pending queue for Admin approval.
-        // DO NOT put in rmims_registered_users until approved by Admin!
-        try {
-            const pendingList = JSON.parse(localStorage.getItem('rmims_pending_users') || '[]');
-            if (!pendingList.some(u => u.email && u.email.toLowerCase() === email.trim().toLowerCase())) {
-                pendingList.unshift({
-                    id: data.user.id,
-                    name: fullName.trim(),
-                    username: cleanUsername,
-                    email: email.trim(),
-                    role: operationalRole === 'manager' ? 'Manager' : 'Staff',
-                    branchName: branchName?.trim() || 'Branch Store',
-                    branchLoc: branchLocation?.trim() || 'Lucena',
-                    status: 'Pending',
-                    requestedOn: new Date().toISOString()
-                });
-                localStorage.setItem('rmims_pending_users', JSON.stringify(pendingList));
-                window.dispatchEvent(new Event('rmims_pending_users_updated'));
-            }
-            window.dispatchEvent(new Event('storage'));
-        } catch (_) {}
-    }
-
+    if (!res.ok) throw new Error(authGateMessage(res));
     return {
-        user: data.user,
-        username: cleanUsername,
+        user: { id: null, email: String(email || "").trim().toLowerCase() },
+        username: String(username || "").trim(),
+        companyName: res.company_name || "",
         session: null
     };
 }

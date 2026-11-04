@@ -2,35 +2,8 @@
 // Never secretly deletes or hides user-inputted finished products or recipes.
 // Automatically synchronizes across local storage keys, BroadcastChannel, and Supabase.
 
-export const AUTHENTIC_SCONES_FINISHED_PRODUCTS = [
-  {
-    id: "fp-scones-01",
-    name: "Scones Formulation",
-    materialNames: [
-      "All-Purpose / Bread Flour",
-      "Refined White Sugar",
-      "Fresh Yellow Squash (Kalabasa)",
-      "Skimmed Milk Powder",
-      "Condensed Milk",
-      "Fresh Whole Eggs",
-      "Baking Shortening",
-      "Margarine",
-      "Instant Dry Yeast",
-      "Baking Soda",
-      "Iodized Salt",
-      "Calcium Propionate",
-      "Potassium Sorbate",
-      "Crushed Peanuts / Nuts",
-      "Black Sesame Seeds",
-      "Malunggay (Moringa) Flakes",
-      "Vanilla Extract",
-      "Plastic Pillow Packaging"
-    ],
-    category: "Bakery & Breads",
-    batchUnits: 50,
-    created_at: new Date().toISOString()
-  }
-];
+// No built-in finished product: every formulation is entered by the Manager (My Inventory -> Finished Food).
+export const AUTHENTIC_SCONES_FINISHED_PRODUCTS = [];
 
 export const AUTHENTIC_FINISHED_PRODUCTS_CATALOG = [
   ...AUTHENTIC_SCONES_FINISHED_PRODUCTS
@@ -77,12 +50,7 @@ export function getUnifiedFinishedProducts() {
     } catch (_) {}
   });
 
-  // If no products exist yet, seed baseline Scones formulation
-  if (seenMap.size === 0) {
-    AUTHENTIC_SCONES_FINISHED_PRODUCTS.forEach(p => {
-      seenMap.set(String(p.name).toLowerCase().trim(), { ...p });
-    });
-  }
+  // (nothing is seeded: with no formulations entered yet the list is empty)
 
   return Array.from(seenMap.values());
 }
@@ -102,7 +70,7 @@ export function saveUnifiedFinishedProduct(product) {
     materialNames: Array.isArray(product.materialNames) ? product.materialNames : [],
     recipeDetails: product.recipeDetails || {},
     category: product.category || 'Bakery & Breads',
-    batchUnits: Number(product.batchUnits || 50),
+    batchUnits: product.batchUnits != null && product.batchUnits !== '' ? Number(product.batchUnits) : null,
     date_added: product.date_added || new Date().toISOString(),
     last_updated: new Date().toISOString(),
     created_at: product.created_at || product.date_added || new Date().toISOString()

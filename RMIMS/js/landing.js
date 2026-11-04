@@ -18,7 +18,7 @@ const featureDetails = {
     icon: "📦",
     title: "Inventory Management",
     does: "Record and monitor raw materials, current stock levels, units of measure, minimum safety thresholds, and supplier lead times in a structured catalog.",
-    matters: "Maintains real-time stock balances across all facilities and prevents sudden production stockouts."
+    matters: "Maintains real-time stock balances across all facilities and prevents sudden stockouts."
   },
   "2": {
     num: "02 Capability",
@@ -79,7 +79,7 @@ const stageData = [
   {
     num: "STAGE 02",
     title: "Monitor Stock Levels & Material Movement",
-    desc: "Track real-time inventory balances, monitor disbursements into production runs, and receive proactive threshold notifications.",
+    desc: "Track real-time inventory balances, monitor disbursements into daily operations, and receive proactive threshold notifications.",
     pills: [
       "Real-time stock balance visibility across all materials.",
       "Safety threshold indicators flag items nearing minimum levels.",
@@ -100,7 +100,7 @@ const stageData = [
     desc: "Examine usage velocity, monthly trends, and high-demand material volume across all finished product recipes.",
     pills: [
       "Historical usage patterns are computed from disbursement logs.",
-      "Identifies high-consumption materials across production runs.",
+      "Identifies high-consumption materials across daily operations.",
       "Transforms raw ledger entries into clear operational insight."
     ],
     qc: {
@@ -545,7 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     {
       num: "STAGE 04",
-      title: "Production Line Disbursement",
+      title: "Kitchen Disbursement",
       text: "Batch disbursement orders draw exact ingredient quantities according to standardized recipes, updating residual inventory live."
     },
     {

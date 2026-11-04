@@ -18,6 +18,9 @@
     <link rel="stylesheet" href="../css/responsive-fix.css">
     <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/motion.js" defer></script>
+    <link rel="stylesheet" href="../css/rmims-ui-fixes.css?v=27">
+    <script src="../js/rmims-text-fit.js" defer></script>
+    <script src="../js/rmims-dialogs.js"></script>    <script src="../js/rmims-table-ui.js" defer></script>
 </head>
 <body>
   <div class="admin-app">
@@ -145,7 +148,7 @@
             <div class="topbar-profile" id="profileBtn" role="button" tabindex="0" title="Signed in as Main Admin" style="cursor: pointer;">
               <div class="profile-avatar" data-shell-avatar id="topbarProfileAvatar">Z</div>
               <div class="profile-meta">
-                <span class="profile-name" data-shell-name id="topbarProfileName">Zeanna</span>
+                <span class="profile-name" data-shell-name id="topbarProfileName"></span>
                 <span class="profile-role" data-shell-role id="topbarProfileRole">Main Admin</span>
               </div>
             </div>
@@ -154,7 +157,7 @@
                 <div class="mgr-online-badge">
                   <span class="mgr-status-indicator"></span>
                   <div>
-                    <strong data-shell-name id="dropdownUserName">Zeanna</strong>
+                    <strong data-shell-name id="dropdownUserName"></strong>
                     <small data-shell-role id="dropdownUserRole" style="display:block; color:#5C7A68; font-size:11.5px;">Main Admin</small>
                   </div>
                 </div>
@@ -340,7 +343,7 @@
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M4 5H20C21.1 5 22 5.9 22 7V17C22 18.1 21.1 19 20 19H4C2.9 19 2 18.1 2 17V7C2 5.9 2.9 5 4 5Z"></path><path d="M22 7L13.03 13.7C12.42 14.15 11.58 14.15 10.97 13.7L2 7"></path></svg>
                         Email Address
                       </label>
-                      <input id="adminSettingEmail" readonly type="email" placeholder="admin@store.ph" title="Email address cannot be modified directly"/>
+                      <input id="adminSettingEmail" readonly type="email" placeholder="" title="Email address cannot be modified directly"/>
                       <span class="field-hint">Managed via Supabase Auth</span>
                     </div>
                     <div class="input-group">
@@ -622,13 +625,13 @@
                   <div style="padding: 14px 16px; background: #F8FAFC; border: 1px solid var(--line-soft); border-radius: 10px;">
                     <span style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase;">Software Version</span>
                     <strong style="display:block; font-size: 16px; color: var(--ink); margin-top: 4px;">RMSME v2.0.0</strong>
-                    <span style="font-size: 11.5px; color: #16A34A; font-weight: 600;">Production Release</span>
+                    <span style="font-size: 11.5px; color: #16A34A; font-weight: 600;">Live Release</span>
                   </div>
 
                   <div style="padding: 14px 16px; background: #F8FAFC; border: 1px solid var(--line-soft); border-radius: 10px;">
                     <span style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase;">Cloud Database Engine</span>
                     <strong style="display:block; font-size: 16px; color: var(--ink); margin-top: 4px;">Supabase PostgreSQL 15</strong>
-                    <span style="font-size: 11.5px; color: #2563EB; font-weight: 600;">Encrypted &bull; Connected</span>
+                    <span style="font-size: 11.5px; color: #14532D; font-weight: 600;">Encrypted &bull; Connected</span>
                   </div>
 
                   <div style="padding: 14px 16px; background: #F8FAFC; border: 1px solid var(--line-soft); border-radius: 10px;">
@@ -640,7 +643,7 @@
                   <div style="padding: 14px 16px; background: #F8FAFC; border: 1px solid var(--line-soft); border-radius: 10px;">
                     <span style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase;">Network Topology</span>
                     <strong style="display:block; font-size: 16px; color: var(--ink); margin-top: 4px;">Multi-Store Distributed</strong>
-                    <span style="font-size: 11.5px; color: #0891B2; font-weight: 600;">Peer Telemetry Active</span>
+                    <span style="font-size: 11.5px; color: #14532D; font-weight: 600;">Peer Telemetry Active</span>
                   </div>
                 </div>
               </div>
